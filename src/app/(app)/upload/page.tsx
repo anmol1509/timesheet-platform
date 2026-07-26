@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/db";
 import { UploadForm } from "./upload-form";
+import { DeleteUploadButton } from "./delete-upload-button";
+import { getCurrentUser } from "@/lib/auth";
 
 export default async function UploadPage() {
-  const recentUploads = await prisma.upload.findMany({
-    orderBy: { uploadedAt: "desc" },
-    take: 10,
-    include: { uploadedBy: true, months: true },
-  });
+  const [recentUploads, user] = await Promise.all([
+    prisma.upload.findMany({
+      orderBy: { uploadedAt: "desc" },
+      take: 10,
+      include: { uploadedBy: true, months: true },
+    }),
+    getCurrentUser(),
+  ]);
+  const isAdmin = user?.role === "ADMIN";
 
   return (
     <div className="space-y-8">
@@ -34,6 +40,7 @@ export default async function UploadPage() {
                   <th className="px-4 py-3">Months</th>
                   <th className="px-4 py-3">Uploaded by</th>
                   <th className="px-4 py-3">When</th>
+                  {isAdmin && <th className="px-4 py-3" />}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -56,6 +63,15 @@ export default async function UploadPage() {
                         minute: "2-digit",
                       })}
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-right">
+                        <DeleteUploadButton
+                          uploadId={u.id}
+                          filename={u.filename}
+                          monthLabels={u.months.map((m) => m.monthLabel)}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
