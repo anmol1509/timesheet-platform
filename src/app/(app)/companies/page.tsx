@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
+import { CompanyGrid } from "./company-grid";
 
 export default async function CompaniesPage({
   searchParams,
@@ -75,37 +76,17 @@ export default async function CompaniesPage({
       )}
 
       {suppliers.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {suppliers.map((s) => {
-            const employeeCount = s.entries.length;
-            const totalHours = s.entries.reduce((sum, e) => sum + e.totalHours, 0);
-            const totalAmount = s.entries.reduce((sum, e) => sum + e.invoiceValue, 0);
-            return (
-              <Link
-                key={s.id}
-                href={`/companies/${s.id}/generate?month=${selectedMonth}`}
-                className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
-              >
-                <h2 className="text-base font-semibold text-slate-900">
-                  {s.name}
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  {s.fullName || "No letterhead name set"}
-                </p>
-                <div className="mt-4 flex items-center gap-4 text-sm text-slate-600">
-                  <span>{employeeCount} employees</span>
-                  <span>{totalHours.toFixed(1)} hrs</span>
-                </div>
-                <div className="mt-1 text-sm font-medium text-slate-900">
-                  AED {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </div>
-                <span className="mt-4 text-sm font-medium text-blue-600 group-hover:underline">
-                  Review &amp; generate →
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+        <CompanyGrid
+          month={selectedMonth!}
+          companies={suppliers.map((s) => ({
+            id: s.id,
+            name: s.name,
+            fullName: s.fullName,
+            employeeCount: s.entries.length,
+            totalHours: s.entries.reduce((sum, e) => sum + e.totalHours, 0),
+            totalAmount: s.entries.reduce((sum, e) => sum + e.invoiceValue, 0),
+          }))}
+        />
       )}
     </div>
   );

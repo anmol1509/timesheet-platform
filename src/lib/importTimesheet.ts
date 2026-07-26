@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { ParsedMonth } from "@/lib/parseTimesheet";
+import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
 
 export type ImportStats = {
@@ -9,6 +9,7 @@ export type ImportStats = {
   entriesCreated: number;
   entriesUpdated: number;
   rowsSkipped: number;
+  skippedRowDetails: SkippedRow[];
   unrecognizedSheets: string[];
 };
 
@@ -39,11 +40,13 @@ export async function importParsedMonths(
     entriesCreated: 0,
     entriesUpdated: 0,
     rowsSkipped: 0,
+    skippedRowDetails: [],
     unrecognizedSheets: [],
   };
 
   for (const month of months) {
     stats.rowsSkipped += month.skippedRows;
+    stats.skippedRowDetails.push(...month.skippedRowDetails);
 
     for (const entry of month.entries) {
       const supplierKey = normalizeKey(entry.supplierName);

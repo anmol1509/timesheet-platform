@@ -3,6 +3,14 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type SkippedRow = {
+  sheetName: string;
+  row: number;
+  name: string;
+  idNo: string;
+  reason: string;
+};
+
 type UploadStats = {
   monthsProcessed: { month: string; monthLabel: string; entries: number }[];
   suppliersCreated: number;
@@ -10,6 +18,7 @@ type UploadStats = {
   entriesCreated: number;
   entriesUpdated: number;
   rowsSkipped: number;
+  skippedRowDetails: SkippedRow[];
 };
 
 type Result =
@@ -114,10 +123,25 @@ export function UploadForm() {
             </li>
             {result.stats.rowsSkipped > 0 && (
               <li className="text-amber-700">
-                {result.stats.rowsSkipped} row(s) skipped (missing company name)
+                {result.stats.rowsSkipped} row(s) skipped
               </li>
             )}
           </ul>
+          {result.stats.skippedRowDetails.length > 0 && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-medium text-amber-900">
+                Skipped rows — fix these in the source sheet and re-upload:
+              </p>
+              <ul className="mt-2 space-y-1 text-xs text-amber-800">
+                {result.stats.skippedRowDetails.map((r, i) => (
+                  <li key={i}>
+                    {r.sheetName}, row {r.row}: {r.name} ({r.idNo}) —{" "}
+                    {r.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

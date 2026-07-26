@@ -35,12 +35,21 @@ export type ParsedEntry = {
   invoiceValue: number;
 };
 
+export type SkippedRow = {
+  sheetName: string;
+  row: number;
+  name: string;
+  idNo: string;
+  reason: string;
+};
+
 export type ParsedMonth = {
   sheetName: string;
   month: string; // "2025-05"
   monthLabel: string; // original sheet name, e.g. "MAY-25"
   entries: ParsedEntry[];
   skippedRows: number;
+  skippedRowDetails: SkippedRow[];
 };
 
 export type ParseResult = {
@@ -288,6 +297,7 @@ export async function parseConsolidatedWorkbook(
     const dataStart = headerRowNum + (hasDateRow ? 2 : 1);
     const entries: ParsedEntry[] = [];
     let skippedRows = 0;
+    const skippedRowDetails: SkippedRow[] = [];
 
     for (let r = dataStart; r <= sheet.rowCount; r++) {
       const row = sheet.getRow(r);
@@ -300,6 +310,13 @@ export async function parseConsolidatedWorkbook(
       if (!name && !idNo) continue; // blank separator row
       if (!supplierName) {
         skippedRows++;
+        skippedRowDetails.push({
+          sheetName: sheet.name,
+          row: r,
+          name: name || "(unnamed)",
+          idNo: idNo || "(no ID)",
+          reason: "Missing company name",
+        });
         continue;
       }
 
@@ -353,6 +370,7 @@ export async function parseConsolidatedWorkbook(
       monthLabel: monthInfo.monthLabel,
       entries: mergedEntries,
       skippedRows,
+      skippedRowDetails,
     });
   }
 

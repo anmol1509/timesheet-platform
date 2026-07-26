@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Dashboard" },
   { href: "/upload", label: "Upload" },
   { href: "/companies", label: "Companies" },
+  { href: "/history", label: "History" },
 ];
 
 const ADMIN_LINKS = [{ href: "/settings", label: "Settings" }];

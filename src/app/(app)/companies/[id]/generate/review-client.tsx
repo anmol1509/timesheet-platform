@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
-import { calculateGasDeduction } from "@/lib/deductions";
+import { calculateAbsentDeduction, calculateGasDeduction } from "@/lib/deductions";
 
 type Entry = {
   id: string;
@@ -33,19 +33,49 @@ export function ReviewClient({
 }) {
   const [fullName, setFullName] = useState(supplier.fullName || supplier.name);
   const [issuedTo, setIssuedTo] = useState(initialIssuedTo);
+
+  const defaultAbsentDeductions = useMemo(
+    () =>
+      Object.fromEntries(
+        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount)])
+      ),
+    [entries]
+  );
+  const defaultGasDeductions = useMemo(
+    () =>
+      Object.fromEntries(
+        entries.map((e) => [
+          e.id,
+          calculateGasDeduction(e.dailyHours.length, e.absentCount),
+        ])
+      ),
+    [entries]
+  );
+
   const [deductions, setDeductions] = useState<Record<string, number>>(() =>
     Object.fromEntries(entries.map((e) => [e.id, e.absentDeduction]))
   );
-  const [gasDeductions, setGasDeductions] = useState<Record<string, number>>(() =>
-    Object.fromEntries(
-      entries.map((e) => [
-        e.id,
-        calculateGasDeduction(e.dailyHours.length, e.absentCount),
-      ])
-    )
+  const [gasDeductions, setGasDeductions] = useState<Record<string, number>>(
+    () => ({ ...defaultGasDeductions })
   );
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function resetRow(id: string) {
+    setDeductions((d) => ({ ...d, [id]: defaultAbsentDeductions[id] }));
+    setGasDeductions((d) => ({ ...d, [id]: defaultGasDeductions[id] }));
+  }
+
+  function resetAll() {
+    setDeductions({ ...defaultAbsentDeductions });
+    setGasDeductions({ ...defaultGasDeductions });
+  }
+
+  const anyEdited = entries.some(
+    (e) =>
+      deductions[e.id] !== defaultAbsentDeductions[e.id] ||
+      gasDeductions[e.id] !== defaultGasDeductions[e.id]
+  );
 
   const tradeSummary = useMemo(() => {
     const map = new Map<
@@ -179,7 +209,18 @@ export function ReviewClient({
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Employees</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">Employees</h2>
+          {anyEdited && (
+            <button
+              type="button"
+              onClick={resetAll}
+              className="text-xs font-medium text-blue-600 hover:underline"
+            >
+              Reset all to calculated
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -192,62 +233,100 @@ export function ReviewClient({
                 <th className="px-4 py-3 text-right">Absent</th>
                 <th className="px-4 py-3 text-right">Absent deduction</th>
                 <th className="px-4 py-3 text-right">Gas deduction</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {entries.map((e) => (
-                <tr key={e.id}>
-                  <td className="px-4 py-2.5 text-slate-500">{e.employeeIdNo}</td>
-                  <td className="px-4 py-2.5 font-medium text-slate-900">
-                    {e.employeeName}
-                    {e.clientName && (
-                      <span className="ml-2 text-xs font-normal text-slate-400">
-                        {e.clientName}
+              {entries.map((e) => {
+                const absentEdited =
+                  deductions[e.id] !== defaultAbsentDeductions[e.id];
+                const gasEdited = gasDeductions[e.id] !== defaultGasDeductions[e.id];
+                const rowEdited = absentEdited || gasEdited;
+                return (
+                  <tr key={e.id}>
+                    <td className="px-4 py-2.5 text-slate-500">{e.employeeIdNo}</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-900">
+                      {e.employeeName}
+                      {e.clientName && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">
+                          {e.clientName}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-600">{e.trade}</td>
+                    <td className="px-4 py-2.5 text-right text-slate-600">
+                      {e.rate.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-slate-600">
+                      {e.totalHours}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-slate-600">
+                      {e.absentCount}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="inline-flex items-center gap-1.5">
+                        {absentEdited && (
+                          <span
+                            title="Overridden from calculated value"
+                            className="h-1.5 w-1.5 rounded-full bg-amber-500"
+                          />
+                        )}
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={deductions[e.id]}
+                          onChange={(ev) =>
+                            setDeductions((d) => ({
+                              ...d,
+                              [e.id]: parseFloat(ev.target.value) || 0,
+                            }))
+                          }
+                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-slate-900 ${
+                            absentEdited ? "border-amber-300 bg-amber-50" : "border-slate-300"
+                          }`}
+                        />
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-600">{e.trade}</td>
-                  <td className="px-4 py-2.5 text-right text-slate-600">
-                    {e.rate.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-slate-600">
-                    {e.totalHours}
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-slate-600">
-                    {e.absentCount}
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={deductions[e.id]}
-                      onChange={(ev) =>
-                        setDeductions((d) => ({
-                          ...d,
-                          [e.id]: parseFloat(ev.target.value) || 0,
-                        }))
-                      }
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
-                    />
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={gasDeductions[e.id]}
-                      onChange={(ev) =>
-                        setGasDeductions((d) => ({
-                          ...d,
-                          [e.id]: parseFloat(ev.target.value) || 0,
-                        }))
-                      }
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
-                    />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="inline-flex items-center gap-1.5">
+                        {gasEdited && (
+                          <span
+                            title="Overridden from calculated value"
+                            className="h-1.5 w-1.5 rounded-full bg-amber-500"
+                          />
+                        )}
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={gasDeductions[e.id]}
+                          onChange={(ev) =>
+                            setGasDeductions((d) => ({
+                              ...d,
+                              [e.id]: parseFloat(ev.target.value) || 0,
+                            }))
+                          }
+                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-slate-900 ${
+                            gasEdited ? "border-amber-300 bg-amber-50" : "border-slate-300"
+                          }`}
+                        />
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      {rowEdited && (
+                        <button
+                          type="button"
+                          onClick={() => resetRow(e.id)}
+                          className="text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
