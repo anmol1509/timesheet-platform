@@ -107,7 +107,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
     if (!dateStr) continue;
     const cell = sheet.getCell(dateRow, DAY_START_COL + i);
     cell.value = new Date(dateStr + "T00:00:00Z");
-    cell.numberFormat = "d-mmm";
+    cell.numFmt = "d-mmm";
     cell.font = { name: FONT, size: 8 };
     cell.alignment = { horizontal: "center" };
   }
@@ -167,7 +167,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
     sheet.getCell(row, TOTAL_COL).alignment = { horizontal: "center" };
     sheet.getCell(row, ABSENT_COL).alignment = { horizontal: "center" };
     sheet.getCell(row, DEDUCTION_COL).alignment = { horizontal: "right" };
-    sheet.getCell(row, DEDUCTION_COL).numberFormat = "#,##0.00";
+    sheet.getCell(row, DEDUCTION_COL).numFmt = "#,##0.00";
 
     row++;
   });
@@ -203,12 +203,12 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
     hourCell.value = { formula: `SUM(${rows.map((rr) => `${totalLetter}${rr}`).join(",")})` };
     const rateCell = sheet.getCell(row, NAME_COL + 2);
     rateCell.value = rate;
-    rateCell.numberFormat = "#,##0.00";
+    rateCell.numFmt = "#,##0.00";
     const amountCell = sheet.getCell(row, NAME_COL + 3);
     const hourLetter = colLetter(NAME_COL + 1);
     const rateLetter = colLetter(NAME_COL + 2);
     amountCell.value = { formula: `${hourLetter}${row}*${rateLetter}${row}` };
-    amountCell.numberFormat = "#,##0.00";
+    amountCell.numFmt = "#,##0.00";
     amountCells.push(row);
 
     for (let c = NAME_COL; c <= NAME_COL + 3; c++) {
@@ -228,7 +228,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   totalAmountCell.value = {
     formula: `SUM(${amountCells.map((rr) => `${amountLetter}${rr}`).join(",")})`,
   };
-  totalAmountCell.numberFormat = "#,##0.00";
+  totalAmountCell.numFmt = "#,##0.00";
   totalAmountCell.font = { name: FONT, bold: true, size: 10 };
   row++;
 
@@ -239,13 +239,13 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   absentDeductionCell.value = {
     formula: `SUM(${deductionLetter}${dataStartRow}:${deductionLetter}${dataEndRow})`,
   };
-  absentDeductionCell.numberFormat = "#,##0.00";
+  absentDeductionCell.numFmt = "#,##0.00";
   row++;
 
   const gasDeductionRow = row;
   sheet.getCell(row, NAME_COL + 2).value = "Gas Deduction";
   sheet.getCell(row, NAME_COL + 3).value = input.gasDeduction;
-  sheet.getCell(row, NAME_COL + 3).numberFormat = "#,##0.00";
+  sheet.getCell(row, NAME_COL + 3).numFmt = "#,##0.00";
   row++;
 
   const totalDeductionRow = row;
@@ -255,7 +255,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   totalDeductionCell.value = {
     formula: `${amountLetter}${absentDeductionRow}+${amountLetter}${gasDeductionRow}`,
   };
-  totalDeductionCell.numberFormat = "#,##0.00";
+  totalDeductionCell.numFmt = "#,##0.00";
   totalDeductionCell.font = { name: FONT, bold: true, size: 10 };
   row++;
 
@@ -266,7 +266,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   netCell.value = {
     formula: `${amountLetter}${totalAmountRow}-${amountLetter}${totalDeductionRow}`,
   };
-  netCell.numberFormat = "#,##0.00";
+  netCell.numFmt = "#,##0.00";
   netCell.font = { name: FONT, bold: true, size: 11 };
   row += 3;
 
