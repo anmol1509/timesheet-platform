@@ -44,10 +44,7 @@ export function ReviewClient({
   const defaultGasDeductions = useMemo(
     () =>
       Object.fromEntries(
-        entries.map((e) => [
-          e.id,
-          calculateGasDeduction(e.dailyHours.length, e.absentCount),
-        ])
+        entries.map((e) => [e.id, calculateGasDeduction(e.dailyHours)])
       ),
     [entries]
   );

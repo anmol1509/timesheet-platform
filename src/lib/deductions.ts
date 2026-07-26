@@ -11,6 +11,13 @@ export function calculateAbsentDeduction(absentCount: number): number {
   return Math.max(0, absentCount - FREE_LEAVE_DAYS) * LEAVE_DEDUCTION_PER_DAY;
 }
 
-export function calculateGasDeduction(dayCount: number, absentCount: number): number {
-  return Math.max(0, dayCount - absentCount) * GAS_DEDUCTION_PER_DAY;
+// A blank cell means the employee wasn't on the roster that day (joined or
+// left mid-month) — not at camp, so no gas charge. "A" (leave) also isn't
+// charged, since they weren't at camp that day either. Everything else
+// (worked hours, "OFF") counts as a day present at camp.
+export function calculateGasDeduction(dailyHours: { value: string }[]): number {
+  const daysAtCamp = dailyHours.filter(
+    (d) => d.value !== "" && !/^a$/i.test(d.value)
+  ).length;
+  return daysAtCamp * GAS_DEDUCTION_PER_DAY;
 }
