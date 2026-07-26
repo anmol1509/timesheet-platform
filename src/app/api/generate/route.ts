@@ -12,7 +12,7 @@ const bodySchema = z.object({
   format: z.enum(["xlsx", "pdf"]),
   fullName: z.string().min(1),
   issuedTo: z.string().min(1),
-  gasDeduction: z.number().min(0),
+  gasDeductions: z.record(z.string(), z.number()),
   deductions: z.record(z.string(), z.number()),
 });
 
@@ -26,8 +26,9 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { supplierId, month, format, fullName, issuedTo, gasDeduction, deductions } =
+  const { supplierId, month, format, fullName, issuedTo, gasDeductions, deductions } =
     parsed.data;
+  const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
   if (!supplier) {

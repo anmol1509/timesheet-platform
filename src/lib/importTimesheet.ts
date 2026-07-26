@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ParsedMonth } from "@/lib/parseTimesheet";
+import { calculateAbsentDeduction } from "@/lib/deductions";
 
 export type ImportStats = {
   monthsProcessed: { month: string; monthLabel: string; entries: number }[];
@@ -102,6 +103,7 @@ export async function importParsedMonths(
           dailyHours: JSON.stringify(entry.dailyHours),
           totalHours: entry.totalHours,
           absentCount: entry.absentCount,
+          absentDeduction: calculateAbsentDeduction(entry.absentCount),
           invoiceValue: entry.invoiceValue,
           supplierId: supplier.id,
           clientId,

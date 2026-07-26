@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
+import { calculateGasDeduction } from "@/lib/deductions";
 
 type Entry = {
   id: string;
@@ -35,7 +36,14 @@ export function ReviewClient({
   const [deductions, setDeductions] = useState<Record<string, number>>(() =>
     Object.fromEntries(entries.map((e) => [e.id, e.absentDeduction]))
   );
-  const [gasDeduction, setGasDeduction] = useState(0);
+  const [gasDeductions, setGasDeductions] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      entries.map((e) => [
+        e.id,
+        calculateGasDeduction(e.dailyHours.length, e.absentCount),
+      ])
+    )
+  );
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +75,11 @@ export function ReviewClient({
     (s, v) => s + (v || 0),
     0
   );
-  const totalDeduction = totalAbsentDeduction + (gasDeduction || 0);
+  const totalGasDeduction = Object.values(gasDeductions).reduce(
+    (s, v) => s + (v || 0),
+    0
+  );
+  const totalDeduction = totalAbsentDeduction + totalGasDeduction;
   const netPayable = totalAmount - totalDeduction;
 
   async function handleDownload(format: "xlsx" | "pdf") {
@@ -83,7 +95,7 @@ export function ReviewClient({
           format,
           fullName,
           issuedTo,
-          gasDeduction: gasDeduction || 0,
+          gasDeductions,
           deductions,
         }),
       });
@@ -179,6 +191,7 @@ export function ReviewClient({
                 <th className="px-4 py-3 text-right">Hours</th>
                 <th className="px-4 py-3 text-right">Absent</th>
                 <th className="px-4 py-3 text-right">Absent deduction</th>
+                <th className="px-4 py-3 text-right">Gas deduction</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -211,6 +224,21 @@ export function ReviewClient({
                       value={deductions[e.id]}
                       onChange={(ev) =>
                         setDeductions((d) => ({
+                          ...d,
+                          [e.id]: parseFloat(ev.target.value) || 0,
+                        }))
+                      }
+                      className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={gasDeductions[e.id]}
+                      onChange={(ev) =>
+                        setGasDeductions((d) => ({
                           ...d,
                           [e.id]: parseFloat(ev.target.value) || 0,
                         }))
@@ -267,17 +295,7 @@ export function ReviewClient({
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
             <SummaryRow label="Total amount" value={totalAmount} />
             <SummaryRow label="Absent deduction" value={totalAbsentDeduction} />
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Gas deduction</span>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={gasDeduction}
-                onChange={(e) => setGasDeduction(parseFloat(e.target.value) || 0)}
-                className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
-              />
-            </div>
+            <SummaryRow label="Gas deduction" value={totalGasDeduction} />
             <SummaryRow label="Total deduction" value={totalDeduction} />
             <div className="border-t border-slate-200 pt-3">
               <SummaryRow
