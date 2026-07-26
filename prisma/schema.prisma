@@ -1,0 +1,124 @@
+// Prisma schema for the Timesheet Platform
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+
+  uploads         Upload[]
+  generatedSheets GeneratedSheet[]
+}
+
+// One row per file import (a whole workbook, which may contain multiple month tabs).
+model Upload {
+  id           String   @id @default(cuid())
+  filename     String
+  uploadedAt   DateTime @default(now())
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+
+  months UploadMonth[]
+}
+
+// One row per month tab processed within an upload (e.g. "MAY-25").
+model UploadMonth {
+  id          String   @id @default(cuid())
+  month       String // normalized key, e.g. "2025-05"
+  monthLabel  String // as it appeared in the sheet, e.g. "MAY-25"
+  sheetName   String
+  rowCount    Int      @default(0)
+  processedAt DateTime @default(now())
+
+  upload   Upload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  uploadId String
+
+  @@index([month])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
+  createdAt DateTime @default(now())
+
+  entries         TimesheetEntry[]
+  generatedSheets GeneratedSheet[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  entries TimesheetEntry[]
+}
+
+// One row per employee, per month, per supplier — upserted on re-upload so
+// daily uploads simply refresh the running month's data.
+model TimesheetEntry {
+  id              String   @id @default(cuid())
+  month           String // "2025-05"
+  monthLabel      String // "MAY-25"
+  employeeIdNo    String // e.g. "BACC123"
+  employeeName    String
+  trade           String
+  rate            Float
+  site            String?
+  dailyHours      String // JSON: [{ "date": "2025-05-01", "label": "Thu", "value": "10" | "A" | "OFF" }, ...]
+  totalHours      Float    @default(0)
+  absentCount     Int      @default(0)
+  absentDeduction Float    @default(0) // editable before export
+  invoiceValue    Float    @default(0) // rate * totalHours, as in source sheet
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplierId String
+
+  client   Client? @relation(fields: [clientId], references: [id])
+  clientId String?
+
+  @@unique([month, supplierId, employeeIdNo, trade, rate])
+  @@index([month, supplierId])
+}
+
+// A record of each generated company timesheet (for history / re-download).
+model GeneratedSheet {
+  id           String   @id @default(cuid())
+  month        String
+  monthLabel   String
+  format       String // "xlsx" | "pdf"
+  gasDeduction Float    @default(0)
+  issuedTo     String
+  generatedAt  DateTime @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplierId String
+
+  generatedBy   User   @relation(fields: [generatedById], references: [id])
+  generatedById String
+
+  @@index([month, supplierId])
+}
+
+model Settings {
+  id       String @id @default("singleton")
+  issuedTo String @default("Kenz Al Turath Technical Services")
+}

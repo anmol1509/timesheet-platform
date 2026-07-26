@@ -1,0 +1,332 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import type { DailyHourCell } from "@/lib/parseTimesheet";
+
+type Entry = {
+  id: string;
+  employeeIdNo: string;
+  employeeName: string;
+  trade: string;
+  rate: number;
+  totalHours: number;
+  absentCount: number;
+  absentDeduction: number;
+  dailyHours: DailyHourCell[];
+  clientName: string | null;
+};
+
+export function ReviewClient({
+  supplier,
+  month,
+  monthLabel,
+  issuedTo: initialIssuedTo,
+  entries,
+}: {
+  supplier: { id: string; name: string; fullName: string | null };
+  month: string;
+  monthLabel: string;
+  issuedTo: string;
+  entries: Entry[];
+}) {
+  const [fullName, setFullName] = useState(supplier.fullName || supplier.name);
+  const [issuedTo, setIssuedTo] = useState(initialIssuedTo);
+  const [deductions, setDeductions] = useState<Record<string, number>>(() =>
+    Object.fromEntries(entries.map((e) => [e.id, e.absentDeduction]))
+  );
+  const [gasDeduction, setGasDeduction] = useState(0);
+  const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const tradeSummary = useMemo(() => {
+    const map = new Map<
+      string,
+      { trade: string; rate: number; hours: number; amount: number }
+    >();
+    for (const e of entries) {
+      const key = `${e.trade}__${e.rate}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.hours += e.totalHours;
+        existing.amount += e.totalHours * e.rate;
+      } else {
+        map.set(key, {
+          trade: e.trade,
+          rate: e.rate,
+          hours: e.totalHours,
+          amount: e.totalHours * e.rate,
+        });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.trade.localeCompare(b.trade));
+  }, [entries]);
+
+  const totalAmount = tradeSummary.reduce((s, r) => s + r.amount, 0);
+  const totalAbsentDeduction = Object.values(deductions).reduce(
+    (s, v) => s + (v || 0),
+    0
+  );
+  const totalDeduction = totalAbsentDeduction + (gasDeduction || 0);
+  const netPayable = totalAmount - totalDeduction;
+
+  async function handleDownload(format: "xlsx" | "pdf") {
+    setGenerating(format);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierId: supplier.id,
+          month,
+          format,
+          fullName,
+          issuedTo,
+          gasDeduction: gasDeduction || 0,
+          deductions,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to generate file.");
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : `${supplier.name}-${month}.${format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate file.");
+    } finally {
+      setGenerating(null);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <Link href="/companies" className="text-sm text-slate-500 hover:underline">
+          ← Companies
+        </Link>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {supplier.name}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {monthLabel} · {entries.length} employees
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleDownload("xlsx")}
+              disabled={generating !== null}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+            >
+              {generating === "xlsx" ? "Generating…" : "Download XLSX"}
+            </button>
+            <button
+              onClick={() => handleDownload("pdf")}
+              disabled={generating !== null}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+            >
+              {generating === "pdf" ? "Generating…" : "Download PDF"}
+            </button>
+          </div>
+        </div>
+        {error && (
+          <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Letterhead name (as it appears on the document)">
+          <input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Issued to">
+          <input
+            value={issuedTo}
+            onChange={(e) => setIssuedTo(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+          />
+        </Field>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Employees</h2>
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">ID No</th>
+                <th className="px-4 py-3">Employee</th>
+                <th className="px-4 py-3">Trade</th>
+                <th className="px-4 py-3 text-right">Rate</th>
+                <th className="px-4 py-3 text-right">Hours</th>
+                <th className="px-4 py-3 text-right">Absent</th>
+                <th className="px-4 py-3 text-right">Absent deduction</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {entries.map((e) => (
+                <tr key={e.id}>
+                  <td className="px-4 py-2.5 text-slate-500">{e.employeeIdNo}</td>
+                  <td className="px-4 py-2.5 font-medium text-slate-900">
+                    {e.employeeName}
+                    {e.clientName && (
+                      <span className="ml-2 text-xs font-normal text-slate-400">
+                        {e.clientName}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-600">{e.trade}</td>
+                  <td className="px-4 py-2.5 text-right text-slate-600">
+                    {e.rate.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-slate-600">
+                    {e.totalHours}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-slate-600">
+                    {e.absentCount}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={deductions[e.id]}
+                      onChange={(ev) =>
+                        setDeductions((d) => ({
+                          ...d,
+                          [e.id]: parseFloat(ev.target.value) || 0,
+                        }))
+                      }
+                      className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Trade summary
+          </h2>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Trade</th>
+                  <th className="px-4 py-3 text-right">Hours</th>
+                  <th className="px-4 py-3 text-right">Rate</th>
+                  <th className="px-4 py-3 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {tradeSummary.map((row) => (
+                  <tr key={`${row.trade}-${row.rate}`}>
+                    <td className="px-4 py-2.5 text-slate-900">{row.trade}</td>
+                    <td className="px-4 py-2.5 text-right text-slate-600">
+                      {row.hours}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-slate-600">
+                      {row.rate.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-medium text-slate-900">
+                      {row.amount.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Payment summary
+          </h2>
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+            <SummaryRow label="Total amount" value={totalAmount} />
+            <SummaryRow label="Absent deduction" value={totalAbsentDeduction} />
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Gas deduction</span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={gasDeduction}
+                onChange={(e) => setGasDeduction(parseFloat(e.target.value) || 0)}
+                className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
+              />
+            </div>
+            <SummaryRow label="Total deduction" value={totalDeduction} />
+            <div className="border-t border-slate-200 pt-3">
+              <SummaryRow
+                label="Net amount payable (AED)"
+                value={netPayable}
+                bold
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-slate-500">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: number;
+  bold?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className={bold ? "font-semibold text-slate-900" : "text-slate-500"}>
+        {label}
+      </span>
+      <span className={bold ? "text-lg font-semibold text-slate-900" : "text-slate-700"}>
+        {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </span>
+    </div>
+  );
+}
