@@ -127,7 +127,10 @@ const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["client", /client\s*name/i],
   ["site", /^site$/i],
   ["trade", /^trade$/i],
-  ["rate", /^rate$/i],
+  // The billing rate column is labeled "Rate" or "Sale Rate" depending on
+  // the sheet. Matched as an exact phrase so it never picks up "Purchase
+  // rate" (the company's cost rate, a different column entirely).
+  ["rate", /^(sale\s*rate|rate)$/i],
   ["total", /^total$/i],
   ["absentCount", /no\.?\s*of\s*absent/i],
   ["absentDeduction", /absent\s*deduction/i],
