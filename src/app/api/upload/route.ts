@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   const upload = await prisma.upload.create({
-    data: { filename: file.name, uploadedById: user.id },
+    data: { filename: file.name, fileData: buffer, uploadedById: user.id },
   });
 
   const stats = await importParsedMonths(parsed.months, upload.id);

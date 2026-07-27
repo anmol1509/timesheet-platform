@@ -4,8 +4,9 @@ const FREE_LEAVE_DAYS = 2;
 const LEAVE_DEDUCTION_PER_DAY = 30;
 
 // Gas/camp: AED 1 per day the employee is present at camp (i.e. not on
-// leave that month).
+// leave that month), capped at AED 30/month.
 const GAS_DEDUCTION_PER_DAY = 1;
+const MAX_GAS_DEDUCTION_PER_MONTH = 30;
 
 export function calculateAbsentDeduction(absentCount: number): number {
   return Math.max(0, absentCount - FREE_LEAVE_DAYS) * LEAVE_DEDUCTION_PER_DAY;
@@ -19,5 +20,5 @@ export function calculateGasDeduction(dailyHours: { value: string }[]): number {
   const daysAtCamp = dailyHours.filter(
     (d) => d.value !== "" && !/^a$/i.test(d.value)
   ).length;
-  return daysAtCamp * GAS_DEDUCTION_PER_DAY;
+  return Math.min(daysAtCamp * GAS_DEDUCTION_PER_DAY, MAX_GAS_DEDUCTION_PER_MONTH);
 }

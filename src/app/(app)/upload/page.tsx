@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { UploadForm } from "./upload-form";
 import { DeleteUploadButton } from "./delete-upload-button";
@@ -40,7 +41,7 @@ export default async function UploadPage() {
                   <th className="px-4 py-3">Months</th>
                   <th className="px-4 py-3">Uploaded by</th>
                   <th className="px-4 py-3">When</th>
-                  {isAdmin && <th className="px-4 py-3" />}
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -63,15 +64,38 @@ export default async function UploadPage() {
                         minute: "2-digit",
                       })}
                     </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-right">
-                        <DeleteUploadButton
-                          uploadId={u.id}
-                          filename={u.filename}
-                          monthLabels={u.months.map((m) => m.monthLabel)}
-                        />
-                      </td>
-                    )}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={`/upload/${u.id}`}
+                          className="text-xs font-medium text-blue-600 hover:underline"
+                        >
+                          View
+                        </Link>
+                        {u.fileData ? (
+                          <a
+                            href={`/api/upload/${u.id}/download`}
+                            className="text-xs font-medium text-blue-600 hover:underline"
+                          >
+                            Download
+                          </a>
+                        ) : (
+                          <span
+                            title="Original file not saved for this upload"
+                            className="text-xs font-medium text-slate-300"
+                          >
+                            Download
+                          </span>
+                        )}
+                        {isAdmin && (
+                          <DeleteUploadButton
+                            uploadId={u.id}
+                            filename={u.filename}
+                            monthLabels={u.months.map((m) => m.monthLabel)}
+                          />
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
