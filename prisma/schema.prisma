@@ -24,6 +24,7 @@ model User {
 
   uploads         Upload[]
   generatedSheets GeneratedSheet[]
+  documents       Document[]
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
@@ -61,14 +62,25 @@ model Supplier {
 
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
+  employees       Employee[]
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  name          String    @unique
+  code          String?   @unique
+  contactPerson String?
+  contactEmail  String?
+  contactPhone  String?
+  basicRate     Float?
+  hourlyRate    Float?
+  contractStart DateTime?
+  contractEnd   DateTime?
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
 
-  entries TimesheetEntry[]
+  entries  TimesheetEntry[]
+  projects Project[]
 }
 
 // One row per employee, per month, per supplier — upserted on re-upload so
@@ -122,4 +134,118 @@ model GeneratedSheet {
 model Settings {
   id       String @id @default("singleton")
   issuedTo String @default("Kenz Al Turath Technical Services")
+}
+
+// Employee master record — auto-created/refreshed from uploads (name, trade,
+// supplier) and manually enriched here (photo, compliance dates, etc). The
+// upload flow never touches the manually-owned fields.
+model Employee {
+  id              String    @id @default(cuid())
+  employeeIdNo    String    @unique
+  name            String
+  trade           String?
+  photoData       Bytes?
+  photoMimeType   String?
+  nationality     String?
+  position        String?
+  passportNumber  String?
+  emiratesId      String?
+  visaExpiry      DateTime?
+  laborCardExpiry DateTime?
+  medicalExpiry   DateTime?
+  passportExpiry  DateTime?
+  salaryType      String? // "BASIC" | "HOURLY" — reference only
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId String?
+
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?
+
+  documents Document[]
+  skills    EmployeeSkill[]
+  bed       Bed?
+}
+
+model Document {
+  id         String    @id @default(cuid())
+  type       String // "PASSPORT" | "VISA" | "LABOR_CARD" | "MEDICAL" | "OTHER"
+  filename   String
+  fileData   Bytes
+  mimeType   String
+  expiryDate DateTime?
+  uploadedAt DateTime  @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+}
+
+model Project {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  name          String
+  description   String?
+  location      String?
+  manager       String?
+  timelineStart DateTime?
+  timelineEnd   DateTime?
+  status        String    @default("PLANNING") // "PLANNING" | "ACTIVE" | "COMPLETED" | "ON_HOLD"
+  createdAt     DateTime  @default(now())
+
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
+
+  employees Employee[]
+}
+
+model Skill {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  category String?
+  trending Boolean @default(false)
+
+  employees EmployeeSkill[]
+}
+
+model EmployeeSkill {
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  skill      Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillId    String
+
+  @@id([employeeId, skillId])
+}
+
+model Camp {
+  id    String @id @default(cuid())
+  name  String @unique
+  rooms Room[]
+}
+
+model Room {
+  id     String @id @default(cuid())
+  name   String
+  camp   Camp   @relation(fields: [campId], references: [id], onDelete: Cascade)
+  campId String
+  beds   Bed[]
+
+  @@unique([campId, name])
+}
+
+model Bed {
+  id     String @id @default(cuid())
+  label  String
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId String
+
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  employeeId String?   @unique
+
+  @@unique([roomId, label])
 }
