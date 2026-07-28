@@ -3,7 +3,7 @@ import { StatTile } from "@/components/StatTile";
 import { BedDouble, Home } from "lucide-react";
 import { createCampAction, createRoomAction } from "./actions";
 import { BedGrid } from "./bed-grid";
-import { OccupancyRing } from "./occupancy-ring";
+import { OccupancyRing } from "@/components/OccupancyRing";
 
 export default async function AccommodationPage({
   searchParams,
