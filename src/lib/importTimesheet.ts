@@ -127,6 +127,25 @@ export async function importParsedMonths(
 
       if (existing) stats.entriesUpdated++;
       else stats.entriesCreated++;
+
+      // Auto-create/refresh the Employee master record. Only the
+      // upload-sourced fields (name, trade, supplier) are touched here —
+      // compliance dates, photo, nationality, etc. are manually owned and
+      // must never be overwritten by a re-upload.
+      await prisma.employee.upsert({
+        where: { employeeIdNo: entry.employeeIdNo },
+        create: {
+          employeeIdNo: entry.employeeIdNo,
+          name: entry.employeeName,
+          trade: entry.trade,
+          supplierId: supplier.id,
+        },
+        update: {
+          name: entry.employeeName,
+          trade: entry.trade,
+          supplierId: supplier.id,
+        },
+      });
     }
 
     await prisma.uploadMonth.create({

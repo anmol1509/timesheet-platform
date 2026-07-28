@@ -1,0 +1,152 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import { Badge } from "@/components/Badge";
+import { complianceStatus } from "@/lib/compliance";
+import { uploadDocumentAction, deleteDocumentAction } from "./actions";
+
+type Doc = {
+  id: string;
+  type: string;
+  filename: string;
+  expiryDate: Date | null;
+  uploadedAt: Date;
+};
+
+const STATUS_BADGE = {
+  valid: { label: "Valid", color: "green" as const },
+  expiring: { label: "Expiring soon", color: "amber" as const },
+  expired: { label: "Expired", color: "red" as const },
+  not_set: { label: "No expiry set", color: "slate" as const },
+};
+
+const DOC_TYPES = ["PASSPORT", "VISA", "LABOR_CARD", "MEDICAL", "OTHER"];
+
+export function DocumentsSection({
+  employeeId,
+  documents,
+}: {
+  employeeId: string;
+  documents: Doc[];
+}) {
+  const [pending, startTransition] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [type, setType] = useState("PASSPORT");
+  const [expiryDate, setExpiryDate] = useState("");
+
+  function handleUpload() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("employeeId", employeeId);
+    formData.append("type", type);
+    formData.append("expiryDate", expiryDate);
+    formData.append("file", file);
+    startTransition(() => {
+      uploadDocumentAction(formData);
+    });
+    if (fileRef.current) fileRef.current.value = "";
+    setExpiryDate("");
+  }
+
+  return (
+    <section>
+      <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
+      <div className="rounded-2xl border border-slate-200 bg-white">
+        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Type
+            </span>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            >
+              {DOC_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Expiry date (optional)
+            </span>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </label>
+          <input
+            ref={fileRef}
+            type="file"
+            onChange={handleUpload}
+            disabled={pending}
+            className="text-sm"
+          />
+        </div>
+
+        {documents.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-slate-500">
+            No documents uploaded yet.
+          </p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <tr>
+                <th className="px-4 py-3">Document</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Expiry</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {documents.map((d) => {
+                const status = complianceStatus(d.expiryDate);
+                const badge = STATUS_BADGE[status];
+                return (
+                  <tr key={d.id}>
+                    <td className="px-4 py-3 text-slate-900">
+                      <a
+                        href={`/api/documents/${d.id}`}
+                        className="hover:underline"
+                      >
+                        {d.filename}
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {d.type.replace("_", " ")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge color={badge.color}>{badge.label}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <form action={deleteDocumentAction}>
+                        <input type="hidden" name="documentId" value={d.id} />
+                        <input
+                          type="hidden"
+                          name="employeeId"
+                          value={employeeId}
+                        />
+                        <button
+                          type="submit"
+                          className="text-xs font-medium text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  );
+}
