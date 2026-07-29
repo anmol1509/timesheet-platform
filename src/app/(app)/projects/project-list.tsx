@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
 import type { BadgeColor } from "@/components/Badge";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 25;
 
 type ProjectRow = {
   id: string;
@@ -36,6 +39,7 @@ function fmtDate(d: string | null) {
 
 export function ProjectList({ projects }: { projects: ProjectRow[] }) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -48,6 +52,13 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
         (p.manager || "").toLowerCase().includes(q)
     );
   }, [projects, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -75,7 +86,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((p) => (
+              {pageRows.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <Link
@@ -113,6 +124,13 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
               No projects match &ldquo;{query}&rdquo;.
             </p>
           )}
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            onPageChange={setPage}
+            totalItems={filtered.length}
+            pageSize={PAGE_SIZE}
+          />
         </div>
       </div>
     </div>

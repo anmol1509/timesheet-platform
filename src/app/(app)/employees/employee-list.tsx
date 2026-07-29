@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
+import { Pagination } from "@/components/Pagination";
 import type { ComplianceStatus } from "@/lib/compliance";
+
+const PAGE_SIZE = 25;
 
 type EmployeeRow = {
   id: string;
@@ -24,6 +27,7 @@ const STATUS_BADGE: Record<ComplianceStatus, { label: string; color: "green" | "
 
 export function EmployeeList({ employees }: { employees: EmployeeRow[] }) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -36,6 +40,13 @@ export function EmployeeList({ employees }: { employees: EmployeeRow[] }) {
         (e.supplierName || "").toLowerCase().includes(q)
     );
   }, [employees, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -59,7 +70,7 @@ export function EmployeeList({ employees }: { employees: EmployeeRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((e) => {
+            {pageRows.map((e) => {
               const badge = STATUS_BADGE[e.worstStatus];
               return (
                 <tr key={e.id} className="hover:bg-slate-50">
@@ -93,6 +104,13 @@ export function EmployeeList({ employees }: { employees: EmployeeRow[] }) {
             No employees match &ldquo;{query}&rdquo;.
           </p>
         )}
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          onPageChange={setPage}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
     </div>
   );

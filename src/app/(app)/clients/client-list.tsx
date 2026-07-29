@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
+import { Pagination } from "@/components/Pagination";
+
+const PAGE_SIZE = 25;
 
 type ClientRow = {
   id: string;
@@ -29,6 +32,7 @@ function fmtDate(d: string | null) {
 
 export function ClientList({ clients }: { clients: ClientRow[] }) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -40,6 +44,13 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
         (c.contactPerson || "").toLowerCase().includes(q)
     );
   }, [clients, query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -68,7 +79,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
+              {pageRows.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-900">
                     <Link href={`/clients/${c.id}`}>{c.name}</Link>
@@ -114,6 +125,13 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
               No clients match &ldquo;{query}&rdquo;.
             </p>
           )}
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            onPageChange={setPage}
+            totalItems={filtered.length}
+            pageSize={PAGE_SIZE}
+          />
         </div>
       </div>
     </div>
