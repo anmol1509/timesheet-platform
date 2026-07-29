@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { BedDouble, Home } from "lucide-react";
-import { createCampAction, createRoomAction } from "./actions";
+import { createCampAction, createRoomAction, deleteCampAction, deleteRoomAction } from "./actions";
 import { BedGrid } from "./bed-grid";
 import { OccupancyRing } from "@/components/OccupancyRing";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default async function AccommodationPage({
   searchParams,
@@ -59,55 +60,77 @@ export default async function AccommodationPage({
       )}
 
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-        <form className="flex items-end gap-2">
-          <label className="block flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
-              Camp
-            </span>
-            <select
-              name="campId"
-              defaultValue={selectedCamp?.id}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        <div className="flex items-end gap-2">
+          <form className="flex flex-1 items-end gap-2">
+            <label className="block flex-1">
+              <span className="mb-1 block text-xs font-medium text-slate-500">
+                Camp
+              </span>
+              <select
+                name="campId"
+                defaultValue={selectedCamp?.id}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              >
+                {camps.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
             >
-              {camps.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-          >
-            Go
-          </button>
-        </form>
-        <form className="flex items-end gap-2">
-          <input type="hidden" name="campId" value={selectedCamp?.id} />
-          <label className="block flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
-              Room
-            </span>
-            <select
-              name="roomId"
-              defaultValue={selectedRoom?.id}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              Go
+            </button>
+          </form>
+          {selectedCamp && (
+            <DeleteButton
+              action={deleteCampAction}
+              hiddenFields={{ campId: selectedCamp.id }}
+              confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
+              label="Delete Camp"
+              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            />
+          )}
+        </div>
+        <div className="flex items-end gap-2">
+          <form className="flex flex-1 items-end gap-2">
+            <input type="hidden" name="campId" value={selectedCamp?.id} />
+            <label className="block flex-1">
+              <span className="mb-1 block text-xs font-medium text-slate-500">
+                Room
+              </span>
+              <select
+                name="roomId"
+                defaultValue={selectedRoom?.id}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              >
+                {selectedCamp?.rooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.beds.length} beds)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
             >
-              {selectedCamp?.rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name} ({r.beds.length} beds)
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-          >
-            Go
-          </button>
-        </form>
+              Go
+            </button>
+          </form>
+          {selectedRoom && (
+            <DeleteButton
+              action={deleteRoomAction}
+              hiddenFields={{ roomId: selectedRoom.id }}
+              confirmMessage={`Delete ${selectedRoom.name}? Its ${selectedRoom.beds.length} bed(s) will be removed, unassigning anyone housed there.`}
+              label="Delete Room"
+              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            />
+          )}
+        </div>
       </div>
 
       {selectedRoom ? (

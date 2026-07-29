@@ -69,3 +69,22 @@ export async function updateProjectAction(formData: FormData) {
   revalidatePath(`/projects/${id}`);
   revalidatePath("/projects");
 }
+
+export async function deleteProjectAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("projectId") || "");
+  if (!id) return;
+
+  // Unassigning employees is a soft, reversible consequence -- unlike a
+  // Client with real timesheet history, it's safe to do automatically
+  // rather than blocking the delete.
+  await prisma.employee.updateMany({
+    where: { projectId: id },
+    data: { projectId: null },
+  });
+  await prisma.project.delete({ where: { id } });
+
+  revalidatePath("/projects");
+  revalidatePath("/employees");
+  redirect("/projects");
+}

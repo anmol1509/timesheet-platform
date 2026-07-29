@@ -79,3 +79,28 @@ export async function updateClientAction(formData: FormData) {
   revalidatePath(`/clients/${id}`);
   revalidatePath("/clients");
 }
+
+export async function deleteClientAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("clientId") || "");
+  if (!id) return;
+
+  const [entryCount, projectCount] = await Promise.all([
+    prisma.timesheetEntry.count({ where: { clientId: id } }),
+    prisma.project.count({ where: { clientId: id } }),
+  ]);
+  if (entryCount > 0 || projectCount > 0) {
+    const parts: string[] = [];
+    if (entryCount > 0) parts.push(`${entryCount} timesheet row(s)`);
+    if (projectCount > 0) parts.push(`${projectCount} project(s)`);
+    redirect(
+      `/clients/${id}?error=${encodeURIComponent(
+        `Can't delete — still linked to ${parts.join(" and ")}. Remove those first.`
+      )}`
+    );
+  }
+
+  await prisma.client.delete({ where: { id } });
+  revalidatePath("/clients");
+  redirect("/clients");
+}

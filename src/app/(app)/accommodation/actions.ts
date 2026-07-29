@@ -46,3 +46,19 @@ export async function unassignBedAction(formData: FormData) {
   await prisma.bed.update({ where: { id: bedId }, data: { employeeId: null } });
   revalidatePath("/accommodation");
 }
+
+export async function deleteRoomAction(formData: FormData) {
+  await requireUser();
+  const roomId = String(formData.get("roomId") || "");
+  if (!roomId) return;
+  await prisma.room.delete({ where: { id: roomId } }); // cascades to its beds
+  revalidatePath("/accommodation");
+}
+
+export async function deleteCampAction(formData: FormData) {
+  await requireUser();
+  const campId = String(formData.get("campId") || "");
+  if (!campId) return;
+  await prisma.camp.delete({ where: { id: campId } }); // cascades to rooms + beds
+  revalidatePath("/accommodation");
+}

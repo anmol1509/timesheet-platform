@@ -28,3 +28,11 @@ export async function toggleTrendingAction(formData: FormData) {
   await prisma.skill.update({ where: { id }, data: { trending: !trending } });
   revalidatePath("/skills");
 }
+
+export async function deleteSkillAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("skillId") || "");
+  if (!id) return;
+  await prisma.skill.delete({ where: { id } });
+  revalidatePath("/skills");
+}

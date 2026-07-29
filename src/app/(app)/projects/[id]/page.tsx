@@ -3,7 +3,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import type { BadgeColor } from "@/components/Badge";
+import { DeleteButton } from "@/components/DeleteButton";
 import { EditProjectForm } from "./edit-form";
+import { deleteProjectAction } from "../actions";
 
 const STATUS_COLOR: Record<string, BadgeColor> = {
   ACTIVE: "green",
@@ -35,13 +37,25 @@ export default async function ProjectDetailPage({
         <Link href="/projects" className="text-sm text-slate-500 hover:underline">
           ← Projects
         </Link>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {project.name}
-          </h1>
-          <Badge color={STATUS_COLOR[project.status] || "slate"}>
-            {project.status.replace("_", " ").toLowerCase()}
-          </Badge>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {project.name}
+            </h1>
+            <Badge color={STATUS_COLOR[project.status] || "slate"}>
+              {project.status.replace("_", " ").toLowerCase()}
+            </Badge>
+          </div>
+          <DeleteButton
+            action={deleteProjectAction}
+            hiddenFields={{ projectId: project.id }}
+            confirmMessage={
+              project.employees.length > 0
+                ? `Delete ${project.name}? ${project.employees.length} employee(s) will be unassigned from it.`
+                : `Delete ${project.name}?`
+            }
+            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+          />
         </div>
         <p className="mt-1 text-sm text-slate-500">
           {project.code} · {project.client.name} ·{" "}

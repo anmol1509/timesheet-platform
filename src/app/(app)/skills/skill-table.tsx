@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
+import { DeleteButton } from "@/components/DeleteButton";
 import { TrendingUp } from "lucide-react";
-import { toggleTrendingAction } from "./actions";
+import { toggleTrendingAction, deleteSkillAction } from "./actions";
 
 type SkillRow = {
   id: string;
@@ -74,6 +75,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                 <th className="px-4 py-3 text-right">Employee Count</th>
                 <th className="px-4 py-3">Popularity</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -132,6 +134,13 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                     </td>
                     <td className="px-4 py-3">
                       <Badge color={demand.color}>{demand.label}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <DeleteButton
+                        action={deleteSkillAction}
+                        hiddenFields={{ skillId: s.id }}
+                        confirmMessage={`Delete the "${s.name}" skill? It will be removed from ${s.employeeCount} employee(s).`}
+                      />
                     </td>
                   </tr>
                 );
