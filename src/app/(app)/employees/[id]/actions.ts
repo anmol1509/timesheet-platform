@@ -33,6 +33,7 @@ export async function updateEmployeeAction(formData: FormData) {
       passportExpiry: dateOrNull(formData.get("passportExpiry")),
       salaryType: stringOrNull(formData.get("salaryType")),
       projectId: stringOrNull(formData.get("projectId")),
+      vehicleId: stringOrNull(formData.get("vehicleId")),
       notes: stringOrNull(formData.get("notes")),
       dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
       gender: stringOrNull(formData.get("gender")),

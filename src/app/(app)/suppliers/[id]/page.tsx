@@ -77,6 +77,7 @@ export default async function SupplierDetailPage({
           iban: supplier.iban,
           paymentTerms: supplier.paymentTerms,
           status: supplier.status,
+          payoutCycleStartDay: supplier.payoutCycleStartDay,
         }}
       />
     </div>

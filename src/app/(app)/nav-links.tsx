@@ -18,6 +18,7 @@ import {
   Settings as SettingsIcon,
   ChevronDown,
   Truck,
+  Bus,
   MapPin,
   PenSquare,
   type LucideIcon,
@@ -51,6 +52,7 @@ const NAV: Entry[] = [
       { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
+      { href: "/transport", label: "Transport", icon: Bus },
     ],
   },
   {

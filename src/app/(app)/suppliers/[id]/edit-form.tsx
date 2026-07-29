@@ -16,11 +16,25 @@ type Supplier = {
   iban: string | null;
   paymentTerms: string | null;
   status: string;
+  payoutCycleStartDay: number;
 };
+
+function ordinal(n: number) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
+function payoutPeriodLabel(startDay: number) {
+  if (startDay <= 1) return "1st – last day of month (calendar month)";
+  const endDay = startDay - 1;
+  return `${ordinal(startDay)} – ${ordinal(endDay)} of next month`;
+}
 
 export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [cycleStartDay, setCycleStartDay] = useState(supplier.payoutCycleStartDay);
 
   return (
     <form
@@ -124,6 +138,20 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             defaultValue={supplier.paymentTerms || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
+        </Field>
+        <Field label="Payout cycle start day">
+          <input
+            name="payoutCycleStartDay"
+            type="number"
+            min={1}
+            max={31}
+            value={cycleStartDay}
+            onChange={(e) => setCycleStartDay(Number(e.target.value) || 1)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Payout period: {payoutPeriodLabel(cycleStartDay)}
+          </p>
         </Field>
       </Section>
 

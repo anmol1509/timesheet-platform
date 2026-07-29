@@ -51,6 +51,10 @@ export async function updateSupplierAction(formData: FormData) {
       bankName: stringOrNull(formData.get("bankName")),
       iban: stringOrNull(formData.get("iban")),
       paymentTerms: stringOrNull(formData.get("paymentTerms")),
+      payoutCycleStartDay: Math.min(
+        31,
+        Math.max(1, Number(formData.get("payoutCycleStartDay")) || 1)
+      ),
     },
   });
 

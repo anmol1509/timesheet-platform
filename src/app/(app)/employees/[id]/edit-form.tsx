@@ -15,6 +15,7 @@ type Employee = {
   passportExpiry: Date | null;
   salaryType: string | null;
   projectId: string | null;
+  vehicleId: string | null;
   notes: string | null;
   dateOfBirth: Date | null;
   gender: string | null;
@@ -31,6 +32,7 @@ type Employee = {
 };
 
 type Project = { id: string; name: string; code: string };
+type Vehicle = { id: string; plateNumber: string; type: string | null };
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -40,9 +42,11 @@ function toDateInput(d: Date | null) {
 export function EditForm({
   employee,
   projects,
+  vehicles,
 }: {
   employee: Employee;
   projects: Project[];
+  vehicles: Vehicle[];
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -262,6 +266,20 @@ export function EditForm({
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code} — {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Vehicle assignment">
+            <select
+              name="vehicleId"
+              defaultValue={employee.vehicleId || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">No vehicle assigned</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.plateNumber} {v.type ? `(${v.type})` : ""}
                 </option>
               ))}
             </select>

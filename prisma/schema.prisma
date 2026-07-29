@@ -60,16 +60,17 @@ model Supplier {
   fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
   createdAt DateTime @default(now())
 
-  mohrePermitNumber  String? // MOHRE manpower supply approval/permit number
-  tradeLicenseNumber String?
-  tradeLicenseExpiry DateTime?
-  contactPerson      String?
-  contactPhone       String?
-  contactEmail       String?
-  bankName           String?
-  iban               String?
-  paymentTerms       String? // e.g. "Net 30"
-  status             String    @default("ACTIVE") // "ACTIVE" | "BLACKLISTED"
+  mohrePermitNumber   String? // MOHRE manpower supply approval/permit number
+  tradeLicenseNumber  String?
+  tradeLicenseExpiry  DateTime?
+  contactPerson       String?
+  contactPhone        String?
+  contactEmail        String?
+  bankName            String?
+  iban                String?
+  paymentTerms        String? // e.g. "Net 30"
+  status              String    @default("ACTIVE") // "ACTIVE" | "BLACKLISTED"
+  payoutCycleStartDay Int       @default(1) // day of month the payout cycle starts; 1 = calendar month
 
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
@@ -200,6 +201,9 @@ model Employee {
   project   Project? @relation(fields: [projectId], references: [id])
   projectId String?
 
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicleId String?
+
   documents Document[]
   skills    EmployeeSkill[]
   bed       Bed?
@@ -239,6 +243,7 @@ model Project {
   siteId String?
 
   employees Employee[]
+  vehicles  VehicleProject[]
 }
 
 model Skill {
@@ -271,6 +276,33 @@ model Site {
   createdAt DateTime @default(now())
 
   projects Project[]
+}
+
+model Vehicle {
+  id                 String    @id @default(cuid())
+  plateNumber        String    @unique
+  type               String? // e.g. "Bus", "Hiace Van", "Pickup"
+  capacity           Int?
+  driverName         String?
+  driverPhone        String?
+  registrationExpiry DateTime? // Mulkiya
+  insuranceExpiry    DateTime?
+  status             String    @default("ACTIVE") // "ACTIVE" | "MAINTENANCE" | "INACTIVE"
+  notes              String?
+  createdAt          DateTime  @default(now())
+
+  employees Employee[]
+  projects  VehicleProject[]
+}
+
+model VehicleProject {
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId String
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@id([vehicleId, projectId])
 }
 
 model Room {

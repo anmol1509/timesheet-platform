@@ -7,6 +7,7 @@ import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
+import { AccommodationSection } from "./accommodation-section";
 
 const STATUS_BADGE = {
   valid: { label: "Valid", color: "green" as const },
@@ -21,7 +22,7 @@ export default async function EmployeeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [employee, projects] = await Promise.all([
+  const [employee, projects, vehicles, vacantBeds] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
       include: {
@@ -33,6 +34,12 @@ export default async function EmployeeDetailPage({
       },
     }),
     prisma.project.findMany({ orderBy: { name: "asc" } }),
+    prisma.vehicle.findMany({ orderBy: { plateNumber: "asc" } }),
+    prisma.bed.findMany({
+      where: { employeeId: null },
+      include: { room: { include: { camp: true } } },
+      orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
+    }),
   ]);
   if (!employee) notFound();
 
@@ -90,17 +97,27 @@ export default async function EmployeeDetailPage({
         </div>
       )}
 
-      {employee.bed && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
-          Accommodation:{" "}
-          <span className="font-medium text-slate-900">
-            {employee.bed.room.camp.name} · {employee.bed.room.name} ·{" "}
-            {employee.bed.label}
-          </span>
-        </div>
-      )}
+      <AccommodationSection
+        employeeId={employee.id}
+        currentBed={
+          employee.bed
+            ? {
+                id: employee.bed.id,
+                label: employee.bed.label,
+                roomName: employee.bed.room.name,
+                campName: employee.bed.room.camp.name,
+              }
+            : null
+        }
+        vacantBeds={vacantBeds.map((b) => ({
+          id: b.id,
+          label: b.label,
+          roomName: b.room.name,
+          campName: b.room.camp.name,
+        }))}
+      />
 
-      <EditForm employee={employee} projects={projects} />
+      <EditForm employee={employee} projects={projects} vehicles={vehicles} />
 
       <SkillsSection
         employeeId={employee.id}

@@ -37,14 +37,17 @@ export async function assignBedAction(formData: FormData) {
   if (!bedId || !employeeId) return;
   await prisma.bed.update({ where: { id: bedId }, data: { employeeId } });
   revalidatePath("/accommodation");
+  revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function unassignBedAction(formData: FormData) {
   await requireUser();
   const bedId = String(formData.get("bedId") || "");
+  const employeeId = String(formData.get("employeeId") || "");
   if (!bedId) return;
   await prisma.bed.update({ where: { id: bedId }, data: { employeeId: null } });
   revalidatePath("/accommodation");
+  if (employeeId) revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function deleteRoomAction(formData: FormData) {
