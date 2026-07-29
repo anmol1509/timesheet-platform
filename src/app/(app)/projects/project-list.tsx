@@ -14,7 +14,7 @@ type ProjectRow = {
   name: string;
   description: string | null;
   clientName: string;
-  location: string | null;
+  siteName: string | null;
   manager: string | null;
   timelineStart: string | null;
   timelineEnd: string | null;
@@ -48,7 +48,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.code.toLowerCase().includes(q) ||
-        (p.location || "").toLowerCase().includes(q) ||
+        (p.siteName || "").toLowerCase().includes(q) ||
         (p.manager || "").toLowerCase().includes(q)
     );
   }, [projects, query]);
@@ -65,7 +65,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search projects by name, code, location, or manager..."
+        placeholder="Search projects by name, code, site, or manager..."
         className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
       />
       <div>
@@ -79,7 +79,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                 <th className="px-4 py-3">Project</th>
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Client</th>
-                <th className="px-4 py-3">Location</th>
+                <th className="px-4 py-3">Site</th>
                 <th className="px-4 py-3">Project Manager</th>
                 <th className="px-4 py-3">Timeline</th>
                 <th className="px-4 py-3">Status</th>
@@ -102,7 +102,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                   <td className="px-4 py-3 text-slate-500">{p.code}</td>
                   <td className="px-4 py-3 text-slate-600">{p.clientName}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {p.location || "—"}
+                    {p.siteName || "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {p.manager || "—"}

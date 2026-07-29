@@ -1,19 +1,26 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { updateProjectAction } from "../actions";
 
 type Project = {
   id: string;
   description: string | null;
-  location: string | null;
+  siteId: string | null;
   manager: string | null;
   timelineStart: string;
   timelineEnd: string;
   status: string;
 };
 
-export function EditProjectForm({ project }: { project: Project }) {
+export function EditProjectForm({
+  project,
+  sites,
+}: {
+  project: Project;
+  sites: { id: string; name: string }[];
+}) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
 
@@ -38,12 +45,29 @@ export function EditProjectForm({ project }: { project: Project }) {
         />
       </Field>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Location">
-          <input
-            name="location"
-            defaultValue={project.location || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
+        <Field label="Site">
+          {sites.length === 0 ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              No sites yet.{" "}
+              <Link href="/sites" className="underline">
+                Add a site
+              </Link>
+              .
+            </p>
+          ) : (
+            <select
+              name="siteId"
+              defaultValue={project.siteId || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">No site</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
         </Field>
         <Field label="Project manager">
           <input

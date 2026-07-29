@@ -36,8 +36,8 @@ export async function createProjectAction(
       code: await nextProjectCode(),
       name,
       clientId,
+      siteId: stringOrNull(formData.get("siteId")),
       description: stringOrNull(formData.get("description")),
-      location: stringOrNull(formData.get("location")),
       manager: stringOrNull(formData.get("manager")),
       timelineStart: dateOrNull(formData.get("timelineStart")),
       timelineEnd: dateOrNull(formData.get("timelineEnd")),
@@ -58,7 +58,7 @@ export async function updateProjectAction(formData: FormData) {
     where: { id },
     data: {
       description: stringOrNull(formData.get("description")),
-      location: stringOrNull(formData.get("location")),
+      siteId: stringOrNull(formData.get("siteId")),
       manager: stringOrNull(formData.get("manager")),
       timelineStart: dateOrNull(formData.get("timelineStart")),
       timelineEnd: dateOrNull(formData.get("timelineEnd")),

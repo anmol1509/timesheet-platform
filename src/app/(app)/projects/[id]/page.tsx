@@ -25,10 +25,13 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const project = await prisma.project.findUnique({
-    where: { id },
-    include: { client: true, employees: true },
-  });
+  const [project, sites] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id },
+      include: { client: true, employees: true, site: true },
+    }),
+    prisma.site.findMany({ orderBy: { name: "asc" } }),
+  ]);
   if (!project) notFound();
 
   return (
@@ -67,12 +70,13 @@ export default async function ProjectDetailPage({
         project={{
           id: project.id,
           description: project.description,
-          location: project.location,
+          siteId: project.siteId,
           manager: project.manager,
           timelineStart: toDateInput(project.timelineStart),
           timelineEnd: toDateInput(project.timelineEnd),
           status: project.status,
         }}
+        sites={sites.map((s) => ({ id: s.id, name: s.name }))}
       />
 
       {project.employees.length > 0 && (

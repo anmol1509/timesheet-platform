@@ -6,8 +6,10 @@ import { createProjectAction } from "../actions";
 
 export function NewProjectForm({
   clients,
+  sites,
 }: {
   clients: { id: string; name: string }[];
+  sites: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(createProjectAction, {
     error: null,
@@ -72,11 +74,28 @@ export function NewProjectForm({
                   ))}
                 </select>
               </Field>
-              <Field label="Location">
-                <input
-                  name="location"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-                />
+              <Field label="Site">
+                {sites.length === 0 ? (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    No sites yet.{" "}
+                    <Link href="/sites" className="underline">
+                      Add a site
+                    </Link>{" "}
+                    to link this project to a location.
+                  </p>
+                ) : (
+                  <select
+                    name="siteId"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  >
+                    <option value="">No site</option>
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </Field>
               <Field label="Project manager">
                 <input

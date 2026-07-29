@@ -4,7 +4,7 @@ import { ProjectList } from "./project-list";
 
 export default async function ProjectsPage() {
   const projects = await prisma.project.findMany({
-    include: { client: true },
+    include: { client: true, site: true },
     orderBy: { name: "asc" },
   });
 
@@ -14,7 +14,7 @@ export default async function ProjectsPage() {
     name: p.name,
     description: p.description,
     clientName: p.client.name,
-    location: p.location,
+    siteName: p.site?.name ?? null,
     manager: p.manager,
     timelineStart: p.timelineStart ? p.timelineStart.toISOString() : null,
     timelineEnd: p.timelineEnd ? p.timelineEnd.toISOString() : null,

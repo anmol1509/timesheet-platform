@@ -191,7 +191,6 @@ model Project {
   code          String    @unique
   name          String
   description   String?
-  location      String?
   manager       String?
   timelineStart DateTime?
   timelineEnd   DateTime?
@@ -200,6 +199,9 @@ model Project {
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
+
+  site   Site?   @relation(fields: [siteId], references: [id])
+  siteId String?
 
   employees Employee[]
 }
@@ -232,6 +234,8 @@ model Site {
   id        String   @id @default(cuid())
   name      String   @unique
   createdAt DateTime @default(now())
+
+  projects Project[]
 }
 
 model Room {
