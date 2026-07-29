@@ -51,5 +51,14 @@ export async function POST(request: Request) {
 
   const stats = await importParsedMonths(parsed.months, upload.id);
 
-  return NextResponse.json({ upload: { id: upload.id, filename: file.name }, stats });
+  return NextResponse.json({
+    upload: { id: upload.id, filename: file.name },
+    stats,
+    warnings: {
+      zeroRateCount: parsed.zeroRateCount,
+      zeroRateSample: parsed.zeroRateSample,
+      implausibleHoursCount: parsed.implausibleHoursCount,
+      implausibleHoursSample: parsed.implausibleHoursSample,
+    },
+  });
 }

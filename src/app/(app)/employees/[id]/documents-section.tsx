@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/Badge";
 import { complianceStatus } from "@/lib/compliance";
 import { uploadDocumentAction, deleteDocumentAction } from "./actions";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
 type Doc = {
   id: string;
@@ -33,10 +34,17 @@ export function DocumentsSection({
   const fileRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState("PASSPORT");
   const [expiryDate, setExpiryDate] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   function handleUpload() {
     const file = fileRef.current?.files?.[0];
     if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    setError(null);
     const formData = new FormData();
     formData.append("employeeId", employeeId);
     formData.append("type", type);
@@ -89,6 +97,11 @@ export function DocumentsSection({
             className="text-sm"
           />
         </div>
+        {error && (
+          <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
+            {error}
+          </p>
+        )}
 
         {documents.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-slate-500">

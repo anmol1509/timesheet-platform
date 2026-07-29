@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -45,6 +46,7 @@ export async function uploadPhotoAction(formData: FormData) {
   const id = String(formData.get("employeeId") || "");
   const file = formData.get("photo");
   if (!id || !(file instanceof File) || file.size === 0) return;
+  if (file.size > MAX_UPLOAD_BYTES) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.employee.update({
@@ -63,6 +65,7 @@ export async function uploadDocumentAction(formData: FormData) {
   const expiryDate = dateOrNull(formData.get("expiryDate"));
   const file = formData.get("file");
   if (!employeeId || !(file instanceof File) || file.size === 0) return;
+  if (file.size > MAX_UPLOAD_BYTES) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.document.create({

@@ -21,8 +21,22 @@ type UploadStats = {
   skippedRowDetails: SkippedRow[];
 };
 
+type ImportWarning = {
+  sheetName: string;
+  employeeIdNo: string;
+  employeeName: string;
+  detail: string;
+};
+
+type UploadWarnings = {
+  zeroRateCount: number;
+  zeroRateSample: ImportWarning[];
+  implausibleHoursCount: number;
+  implausibleHoursSample: ImportWarning[];
+};
+
 type Result =
-  | { kind: "success"; filename: string; stats: UploadStats }
+  | { kind: "success"; filename: string; stats: UploadStats; warnings: UploadWarnings }
   | { kind: "error"; message: string };
 
 export function UploadForm() {
@@ -43,7 +57,12 @@ export function UploadForm() {
       if (!res.ok) {
         setResult({ kind: "error", message: data.error ?? "Upload failed." });
       } else {
-        setResult({ kind: "success", filename: file.name, stats: data.stats });
+        setResult({
+          kind: "success",
+          filename: file.name,
+          stats: data.stats,
+          warnings: data.warnings,
+        });
         router.refresh();
       }
     } catch {
@@ -139,6 +158,48 @@ export function UploadForm() {
                     {r.reason}
                   </li>
                 ))}
+              </ul>
+            </div>
+          )}
+          {(result.warnings?.zeroRateCount > 0 ||
+            result.warnings?.implausibleHoursCount > 0) && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-medium text-amber-900">
+                Worth reviewing before trusting this data:
+              </p>
+              <ul className="mt-2 space-y-2 text-xs text-amber-800">
+                {result.warnings.zeroRateCount > 0 && (
+                  <li>
+                    <span className="font-medium">
+                      {result.warnings.zeroRateCount} row(s) have a rate of 0
+                    </span>{" "}
+                    — usually means a column header wasn&rsquo;t recognized.
+                    <ul className="mt-1 ml-3 list-disc space-y-0.5">
+                      {result.warnings.zeroRateSample.map((w, i) => (
+                        <li key={i}>
+                          {w.sheetName}: {w.employeeName} ({w.employeeIdNo})
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                )}
+                {result.warnings.implausibleHoursCount > 0 && (
+                  <li>
+                    <span className="font-medium">
+                      {result.warnings.implausibleHoursCount} day(s) have an
+                      unusual hour value
+                    </span>{" "}
+                    (negative, or over 24 hours in a day).
+                    <ul className="mt-1 ml-3 list-disc space-y-0.5">
+                      {result.warnings.implausibleHoursSample.map((w, i) => (
+                        <li key={i}>
+                          {w.sheetName}: {w.employeeName} ({w.employeeIdNo}) —{" "}
+                          {w.detail}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                )}
               </ul>
             </div>
           )}

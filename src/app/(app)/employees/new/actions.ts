@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -35,6 +36,9 @@ export async function createEmployeeAction(
   }
 
   const photo = formData.get("photo");
+  if (photo instanceof File && photo.size > MAX_UPLOAD_BYTES) {
+    return { error: `Photo is too large — max ${MAX_UPLOAD_LABEL}.` };
+  }
   const skillsRaw = String(formData.get("skills") || "");
   const skillNames = skillsRaw
     .split(",")

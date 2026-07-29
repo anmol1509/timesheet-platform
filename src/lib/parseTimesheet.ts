@@ -52,10 +52,73 @@ export type ParsedMonth = {
   skippedRowDetails: SkippedRow[];
 };
 
+export type ImportWarning = {
+  sheetName: string;
+  employeeIdNo: string;
+  employeeName: string;
+  detail: string;
+};
+
 export type ParseResult = {
   months: ParsedMonth[];
   unrecognizedSheets: string[];
+  zeroRateCount: number;
+  zeroRateSample: ImportWarning[];
+  implausibleHoursCount: number;
+  implausibleHoursSample: ImportWarning[];
 };
+
+const MAX_WARNING_SAMPLE = 10;
+const IMPLAUSIBLE_DAILY_HOURS = 24;
+
+// Sanity checks that don't block the import (the data still gets saved),
+// but flag rows likely caused by a parsing mismatch (e.g. the "Sale Rate"
+// header incident) or a typo in the source sheet, so they get reviewed
+// instead of silently trusted.
+function computeImportWarnings(months: ParsedMonth[]): {
+  zeroRateCount: number;
+  zeroRateSample: ImportWarning[];
+  implausibleHoursCount: number;
+  implausibleHoursSample: ImportWarning[];
+} {
+  let zeroRateCount = 0;
+  const zeroRateSample: ImportWarning[] = [];
+  let implausibleHoursCount = 0;
+  const implausibleHoursSample: ImportWarning[] = [];
+
+  for (const month of months) {
+    for (const entry of month.entries) {
+      if (entry.rate === 0) {
+        zeroRateCount++;
+        if (zeroRateSample.length < MAX_WARNING_SAMPLE) {
+          zeroRateSample.push({
+            sheetName: month.sheetName,
+            employeeIdNo: entry.employeeIdNo,
+            employeeName: entry.employeeName,
+            detail: "Rate parsed as 0",
+          });
+        }
+      }
+      for (const day of entry.dailyHours) {
+        const num = Number(day.value);
+        if (day.value === "" || Number.isNaN(num)) continue;
+        if (num < 0 || num > IMPLAUSIBLE_DAILY_HOURS) {
+          implausibleHoursCount++;
+          if (implausibleHoursSample.length < MAX_WARNING_SAMPLE) {
+            implausibleHoursSample.push({
+              sheetName: month.sheetName,
+              employeeIdNo: entry.employeeIdNo,
+              employeeName: entry.employeeName,
+              detail: `${day.date ?? day.label}: ${day.value} hours`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return { zeroRateCount, zeroRateSample, implausibleHoursCount, implausibleHoursSample };
+}
 
 function parseMonthFromSheetName(
   name: string
@@ -380,5 +443,6 @@ export async function parseConsolidatedWorkbook(
     });
   }
 
-  return { months, unrecognizedSheets };
+  const warnings = computeImportWarnings(months);
+  return { months, unrecognizedSheets, ...warnings };
 }

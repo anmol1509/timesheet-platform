@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { uploadDocumentAction } from "@/app/(app)/employees/[id]/actions";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
 type DocRow = {
   id: string;
@@ -194,11 +195,17 @@ function UploadForm({
   const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
   const [type, setType] = useState("PASSPORT");
   const [expiryDate, setExpiryDate] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file || !employeeId) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      return;
+    }
+    setError(null);
     const formData = new FormData();
     formData.append("employeeId", employeeId);
     formData.append("type", type);
@@ -276,6 +283,7 @@ function UploadForm({
       >
         {pending ? "Uploading…" : "Upload"}
       </button>
+      {error && <p className="w-full text-xs text-red-600">{error}</p>}
     </form>
   );
 }
