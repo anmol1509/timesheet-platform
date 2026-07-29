@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Pagination } from "@/components/Pagination";
+import { toCsv, downloadCsv } from "@/lib/csv";
 
 const PAGE_SIZE = 25;
 
@@ -52,14 +54,39 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  function exportCsv() {
+    const csv = toCsv(filtered, [
+      { header: "Company", value: (c) => c.name },
+      { header: "Code", value: (c) => c.code },
+      { header: "Contact Person", value: (c) => c.contactPerson },
+      { header: "Contact Email", value: (c) => c.contactEmail },
+      { header: "Contact Phone", value: (c) => c.contactPhone },
+      { header: "Basic Rate (AED)", value: (c) => c.basicRate },
+      { header: "Hourly Rate (AED)", value: (c) => c.hourlyRate },
+      { header: "Contract Start", value: (c) => fmtDate(c.contractStart) },
+      { header: "Contract End", value: (c) => fmtDate(c.contractEnd) },
+      { header: "Status", value: (c) => c.status },
+    ]);
+    downloadCsv(`clients-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  }
+
   return (
     <div className="space-y-4">
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search clients by company name, code, or contact person..."
-        className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search clients by company name, code, or contact person..."
+          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        />
+        <button
+          type="button"
+          onClick={exportCsv}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
+      </div>
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
