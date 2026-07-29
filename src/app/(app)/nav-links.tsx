@@ -17,6 +17,9 @@ import {
   Clock,
   Settings as SettingsIcon,
   ChevronDown,
+  Truck,
+  MapPin,
+  PenSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +47,8 @@ const NAV: Entry[] = [
     icon: Building2,
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
+      { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
     ],
@@ -54,6 +59,7 @@ const NAV: Entry[] = [
     icon: FileSpreadsheet,
     children: [
       { href: "/upload", label: "Upload", icon: UploadIcon },
+      { href: "/timesheets/manual", label: "Manual Entry", icon: PenSquare },
       { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },
       { href: "/history", label: "History", icon: Clock },
     ],

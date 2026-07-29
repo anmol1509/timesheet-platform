@@ -228,6 +228,12 @@ model Camp {
   rooms Room[]
 }
 
+model Site {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Room {
   id     String @id @default(cuid())
   name   String
