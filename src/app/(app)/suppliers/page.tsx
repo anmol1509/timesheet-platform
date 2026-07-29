@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { createSupplierAction, deleteSupplierAction } from "./actions";
 
@@ -9,7 +11,14 @@ export default async function SuppliersPage({
 }) {
   const { error } = await searchParams;
   const suppliers = await prisma.supplier.findMany({
-    include: { _count: { select: { employees: true, entries: true } } },
+    select: {
+      id: true,
+      name: true,
+      contactPerson: true,
+      contactPhone: true,
+      status: true,
+      _count: { select: { employees: true, entries: true } },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -73,9 +82,10 @@ export default async function SuppliersPage({
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
               <tr>
                 <th className="px-4 py-3">Supplier</th>
-                <th className="px-4 py-3">Full name</th>
+                <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3 text-right">Employees</th>
                 <th className="px-4 py-3 text-right">Timesheet rows</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -83,16 +93,34 @@ export default async function SuppliersPage({
               {suppliers.map((s) => (
                 <tr key={s.id}>
                   <td className="px-4 py-3 font-medium text-slate-900">
-                    {s.name}
+                    <Link href={`/suppliers/${s.id}`} className="hover:underline">
+                      {s.name}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {s.fullName || "—"}
+                    {s.contactPerson || s.contactPhone ? (
+                      <>
+                        {s.contactPerson && <div>{s.contactPerson}</div>}
+                        {s.contactPhone && (
+                          <div className="text-xs text-slate-400">
+                            {s.contactPhone}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600">
                     {s._count.employees}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600">
                     {s._count.entries}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge color={s.status === "ACTIVE" ? "green" : "red"}>
+                      {s.status}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <DeleteButton

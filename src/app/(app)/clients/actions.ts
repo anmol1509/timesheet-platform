@@ -73,6 +73,15 @@ export async function updateClientAction(formData: FormData) {
       contractStart: dateOrNull(formData.get("contractStart")),
       contractEnd: dateOrNull(formData.get("contractEnd")),
       status: String(formData.get("status") || "ACTIVE"),
+      trn: stringOrNull(formData.get("trn")),
+      tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
+      tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
+      billingAddress: stringOrNull(formData.get("billingAddress")),
+      paymentTerms: stringOrNull(formData.get("paymentTerms")),
+      retentionPercent: numberOrNull(formData.get("retentionPercent")),
+      secondContactName: stringOrNull(formData.get("secondContactName")),
+      secondContactPhone: stringOrNull(formData.get("secondContactPhone")),
+      secondContactEmail: stringOrNull(formData.get("secondContactEmail")),
     },
   });
 

@@ -60,6 +60,17 @@ model Supplier {
   fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
   createdAt DateTime @default(now())
 
+  mohrePermitNumber  String? // MOHRE manpower supply approval/permit number
+  tradeLicenseNumber String?
+  tradeLicenseExpiry DateTime?
+  contactPerson      String?
+  contactPhone       String?
+  contactEmail       String?
+  bankName           String?
+  iban               String?
+  paymentTerms       String? // e.g. "Net 30"
+  status             String    @default("ACTIVE") // "ACTIVE" | "BLACKLISTED"
+
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
   employees       Employee[]
@@ -78,6 +89,16 @@ model Client {
   contractEnd   DateTime?
   status        String    @default("ACTIVE")
   createdAt     DateTime  @default(now())
+
+  trn                String? // Tax Registration Number
+  tradeLicenseNumber String?
+  tradeLicenseExpiry DateTime?
+  billingAddress     String?
+  paymentTerms       String? // e.g. "Net 30"
+  retentionPercent   Float?
+  secondContactName  String? // accounts payable contact, if different
+  secondContactPhone String?
+  secondContactEmail String?
 
   entries  TimesheetEntry[]
   projects Project[]
@@ -156,8 +177,22 @@ model Employee {
   passportExpiry  DateTime?
   salaryType      String? // "BASIC" | "HOURLY" — reference only
   notes           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+
+  dateOfBirth           DateTime?
+  gender                String? // "MALE" | "FEMALE"
+  bloodGroup            String?
+  mobileNumber          String?
+  whatsappNumber        String?
+  joinDate              DateTime?
+  laborCardNumber       String?
+  sponsorName           String? // visa-holding entity, if different from supplier
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  wpsBankName           String? // Wage Protection System bank / exchange house
+  wpsIban               String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   supplier   Supplier? @relation(fields: [supplierId], references: [id])
   supplierId String?

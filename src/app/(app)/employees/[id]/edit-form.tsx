@@ -16,6 +16,18 @@ type Employee = {
   salaryType: string | null;
   projectId: string | null;
   notes: string | null;
+  dateOfBirth: Date | null;
+  gender: string | null;
+  bloodGroup: string | null;
+  mobileNumber: string | null;
+  whatsappNumber: string | null;
+  joinDate: Date | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  sponsorName: string | null;
+  laborCardNumber: string | null;
+  wpsBankName: string | null;
+  wpsIban: string | null;
 };
 
 type Project = { id: string; name: string; code: string };
@@ -78,6 +90,107 @@ export function EditForm({
             <input
               name="emiratesId"
               defaultValue={employee.emiratesId || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Date of birth">
+            <input
+              type="date"
+              name="dateOfBirth"
+              defaultValue={toDateInput(employee.dateOfBirth)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Gender">
+            <select
+              name="gender"
+              defaultValue={employee.gender || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            >
+              <option value="">Not set</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+            </select>
+          </Field>
+          <Field label="Blood group">
+            <input
+              name="bloodGroup"
+              placeholder="e.g. O+"
+              defaultValue={employee.bloodGroup || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Mobile number">
+            <input
+              name="mobileNumber"
+              defaultValue={employee.mobileNumber || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="WhatsApp number">
+            <input
+              name="whatsappNumber"
+              defaultValue={employee.whatsappNumber || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Join date">
+            <input
+              type="date"
+              name="joinDate"
+              defaultValue={toDateInput(employee.joinDate)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Sponsor / visa-holding entity">
+            <input
+              name="sponsorName"
+              placeholder="If different from company"
+              defaultValue={employee.sponsorName || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Emergency contact name">
+            <input
+              name="emergencyContactName"
+              defaultValue={employee.emergencyContactName || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Emergency contact phone">
+            <input
+              name="emergencyContactPhone"
+              defaultValue={employee.emergencyContactPhone || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          Payroll & WPS
+        </h2>
+        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <Field label="Labor card number">
+            <input
+              name="laborCardNumber"
+              defaultValue={employee.laborCardNumber || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <div />
+          <Field label="WPS bank / exchange house name">
+            <input
+              name="wpsBankName"
+              defaultValue={employee.wpsBankName || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="WPS IBAN">
+            <input
+              name="wpsIban"
+              defaultValue={employee.wpsIban || ""}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>

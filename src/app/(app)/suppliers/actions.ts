@@ -5,6 +5,16 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 
+function stringOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  return s || null;
+}
+
+function dateOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  return s ? new Date(s) : null;
+}
+
 export async function createSupplierAction(formData: FormData) {
   await requireUser();
   const name = String(formData.get("name") || "").trim();
@@ -19,6 +29,32 @@ export async function createSupplierAction(formData: FormData) {
   }
 
   await prisma.supplier.create({ data: { name, fullName } });
+  revalidatePath("/suppliers");
+}
+
+export async function updateSupplierAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("supplierId") || "");
+  if (!id) return;
+
+  await prisma.supplier.update({
+    where: { id },
+    data: {
+      fullName: stringOrNull(formData.get("fullName")),
+      status: String(formData.get("status") || "ACTIVE"),
+      mohrePermitNumber: stringOrNull(formData.get("mohrePermitNumber")),
+      tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
+      tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
+      contactPerson: stringOrNull(formData.get("contactPerson")),
+      contactPhone: stringOrNull(formData.get("contactPhone")),
+      contactEmail: stringOrNull(formData.get("contactEmail")),
+      bankName: stringOrNull(formData.get("bankName")),
+      iban: stringOrNull(formData.get("iban")),
+      paymentTerms: stringOrNull(formData.get("paymentTerms")),
+    },
+  });
+
+  revalidatePath(`/suppliers/${id}`);
   revalidatePath("/suppliers");
 }
 

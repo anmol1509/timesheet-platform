@@ -34,6 +34,18 @@ export async function updateEmployeeAction(formData: FormData) {
       salaryType: stringOrNull(formData.get("salaryType")),
       projectId: stringOrNull(formData.get("projectId")),
       notes: stringOrNull(formData.get("notes")),
+      dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
+      gender: stringOrNull(formData.get("gender")),
+      bloodGroup: stringOrNull(formData.get("bloodGroup")),
+      mobileNumber: stringOrNull(formData.get("mobileNumber")),
+      whatsappNumber: stringOrNull(formData.get("whatsappNumber")),
+      joinDate: dateOrNull(formData.get("joinDate")),
+      sponsorName: stringOrNull(formData.get("sponsorName")),
+      emergencyContactName: stringOrNull(formData.get("emergencyContactName")),
+      emergencyContactPhone: stringOrNull(formData.get("emergencyContactPhone")),
+      laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
+      wpsBankName: stringOrNull(formData.get("wpsBankName")),
+      wpsIban: stringOrNull(formData.get("wpsIban")),
     },
   });
 

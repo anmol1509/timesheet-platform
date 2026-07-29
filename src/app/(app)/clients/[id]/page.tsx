@@ -69,6 +69,15 @@ export default async function ClientDetailPage({
           contractStart: toDateInput(client.contractStart),
           contractEnd: toDateInput(client.contractEnd),
           status: client.status,
+          trn: client.trn,
+          tradeLicenseNumber: client.tradeLicenseNumber,
+          tradeLicenseExpiry: toDateInput(client.tradeLicenseExpiry),
+          billingAddress: client.billingAddress,
+          paymentTerms: client.paymentTerms,
+          retentionPercent: client.retentionPercent,
+          secondContactName: client.secondContactName,
+          secondContactPhone: client.secondContactPhone,
+          secondContactEmail: client.secondContactEmail,
         }}
       />
 
