@@ -108,7 +108,7 @@ model TimesheetEntry {
   client   Client? @relation(fields: [clientId], references: [id])
   clientId String?
 
-  @@unique([month, supplierId, employeeIdNo, trade, rate])
+  @@unique([month, supplierId, employeeIdNo, trade])
   @@index([month, supplierId])
 }
 

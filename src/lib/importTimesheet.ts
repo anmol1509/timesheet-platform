@@ -75,24 +75,22 @@ export async function importParsedMonths(
 
       const existing = await prisma.timesheetEntry.findUnique({
         where: {
-          month_supplierId_employeeIdNo_trade_rate: {
+          month_supplierId_employeeIdNo_trade: {
             month: month.month,
             supplierId: supplier.id,
             employeeIdNo: entry.employeeIdNo,
             trade: entry.trade,
-            rate: entry.rate,
           },
         },
       });
 
       await prisma.timesheetEntry.upsert({
         where: {
-          month_supplierId_employeeIdNo_trade_rate: {
+          month_supplierId_employeeIdNo_trade: {
             month: month.month,
             supplierId: supplier.id,
             employeeIdNo: entry.employeeIdNo,
             trade: entry.trade,
-            rate: entry.rate,
           },
         },
         create: {
@@ -113,6 +111,7 @@ export async function importParsedMonths(
         },
         update: {
           employeeName: entry.employeeName,
+          rate: entry.rate,
           site: entry.site,
           monthLabel: month.monthLabel,
           dailyHours: JSON.stringify(entry.dailyHours),

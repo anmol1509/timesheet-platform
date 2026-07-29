@@ -165,15 +165,18 @@ function normalizeTradeCasing(entries: ParsedEntry[]) {
   }
 }
 
-// The same employee/trade/rate sometimes appears on two separate rows within
-// one month (e.g. moved between client sites mid-month, and the old row was
-// left behind instead of removed). Merge those into a single entry by taking,
-// for each day, the last non-blank value across the group — otherwise the
-// second row would silently overwrite the first one's hours on import.
+// The same employee/trade sometimes appears on two separate rows within one
+// month (e.g. moved between client sites mid-month and the old row was left
+// behind, or someone re-entered the row with a corrected rate instead of
+// editing it in place). Merge those into a single entry by taking, for each
+// day, the last non-blank value across the group, and the last row's rate —
+// otherwise the second row would silently overwrite the first one's hours on
+// import, or the two would collide as separate database rows and double-count
+// the employee's hours.
 function mergeDuplicateRows(entries: ParsedEntry[]): ParsedEntry[] {
   const groups = new Map<string, ParsedEntry[]>();
   for (const entry of entries) {
-    const key = `${entry.supplierName.trim().toLowerCase()}||${entry.employeeIdNo}||${entry.trade}||${entry.rate}`;
+    const key = `${entry.supplierName.trim().toLowerCase()}||${entry.employeeIdNo}||${entry.trade}`;
     const group = groups.get(key);
     if (group) group.push(entry);
     else groups.set(key, [entry]);
@@ -185,7 +188,7 @@ function mergeDuplicateRows(entries: ParsedEntry[]): ParsedEntry[] {
       merged.push(group[0]);
       continue;
     }
-    const base = { ...group[0] };
+    const base = { ...group[0], rate: group[group.length - 1].rate };
     const dailyHours = base.dailyHours.map((cell, i) => {
       for (let g = group.length - 1; g >= 0; g--) {
         const candidate = group[g].dailyHours[i];
