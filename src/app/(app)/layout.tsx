@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { NavLinks } from "./nav-links";
-import { Search, Bell } from "lucide-react";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { Bell } from "lucide-react";
 
 export default async function AppLayout({
   children,
@@ -33,13 +34,7 @@ export default async function AppLayout({
       <div className="flex min-h-screen flex-1 flex-col lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
           <div className="flex items-center gap-4 px-4 py-3 sm:px-6">
-            <div className="relative max-w-md flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                placeholder="Search employees, projects, or documents..."
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-sm text-slate-700 outline-none focus:border-slate-400"
-              />
-            </div>
+            <GlobalSearch />
             <div className="flex shrink-0 items-center gap-3">
               <button
                 type="button"
