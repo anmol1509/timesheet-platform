@@ -86,6 +86,12 @@ model Supplier {
   bankCompany         String? // beneficiary company name on the bank account
   bankEmirate         String?
 
+  trn        String? // Tax Registration Number
+  activeFrom DateTime?
+  poBox      String?
+  location   String?
+  phone      String? // secondary phone, distinct from contactPhone (mobile)
+
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
   employees       Employee[]
@@ -123,6 +129,11 @@ model Client {
   paymentSchedule String?
   account         String? // accounting reference only, no ledger integration
   vendorCode      String?
+
+  customer  String? // parent/umbrella account, if applicable
+  currency  String? @default("AED")
+  grades    String?
+  telephone String? // landline, distinct from contactPhone (mobile)
 
   entries  TimesheetEntry[]
   projects Project[]

@@ -30,6 +30,11 @@ type Supplier = {
   bankAccountNumber: string | null;
   bankCompany: string | null;
   bankEmirate: string | null;
+  trn: string | null;
+  activeFrom: string;
+  poBox: string | null;
+  location: string | null;
+  phone: string | null;
 };
 
 function ordinal(n: number) {
@@ -79,6 +84,21 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             <option value="ACTIVE">Active</option>
             <option value="BLACKLISTED">Blacklisted</option>
           </select>
+        </Field>
+        <Field label="TRN (Tax Registration Number)">
+          <input
+            name="trn"
+            defaultValue={supplier.trn || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Active from">
+          <input
+            name="activeFrom"
+            type="date"
+            defaultValue={supplier.activeFrom}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
         </Field>
         <Field label="MOHRE manpower supply permit #">
           <input
@@ -182,6 +202,28 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="contactEmail"
             type="email"
             defaultValue={supplier.contactEmail || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Phone">
+          <input
+            name="phone"
+            placeholder="Landline, if different from mobile"
+            defaultValue={supplier.phone || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Location / address">
+          <input
+            name="location"
+            defaultValue={supplier.location || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="P.O. Box">
+          <input
+            name="poBox"
+            defaultValue={supplier.poBox || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>

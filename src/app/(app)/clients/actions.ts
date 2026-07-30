@@ -90,6 +90,10 @@ export async function updateClientAction(formData: FormData) {
       paymentSchedule: stringOrNull(formData.get("paymentSchedule")),
       account: stringOrNull(formData.get("account")),
       vendorCode: stringOrNull(formData.get("vendorCode")),
+      customer: stringOrNull(formData.get("customer")),
+      currency: stringOrNull(formData.get("currency")),
+      grades: stringOrNull(formData.get("grades")),
+      telephone: stringOrNull(formData.get("telephone")),
     },
   });
 

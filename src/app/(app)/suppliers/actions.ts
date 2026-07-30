@@ -75,6 +75,11 @@ export async function updateSupplierAction(formData: FormData) {
       bankAccountNumber: stringOrNull(formData.get("bankAccountNumber")),
       bankCompany: stringOrNull(formData.get("bankCompany")),
       bankEmirate: stringOrNull(formData.get("bankEmirate")),
+      trn: stringOrNull(formData.get("trn")),
+      activeFrom: dateOrNull(formData.get("activeFrom")),
+      poBox: stringOrNull(formData.get("poBox")),
+      location: stringOrNull(formData.get("location")),
+      phone: stringOrNull(formData.get("phone")),
     },
   });
 

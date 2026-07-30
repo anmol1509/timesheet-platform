@@ -30,6 +30,10 @@ type Client = {
   paymentSchedule: string | null;
   account: string | null;
   vendorCode: string | null;
+  customer: string | null;
+  currency: string | null;
+  grades: string | null;
+  telephone: string | null;
 };
 
 export function EditClientForm({ client }: { client: Client }) {
@@ -61,6 +65,28 @@ export function EditClientForm({ client }: { client: Client }) {
           <input
             name="emirate"
             defaultValue={client.emirate || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Customer">
+          <input
+            name="customer"
+            placeholder="Parent/umbrella account, if applicable"
+            defaultValue={client.customer || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Currency">
+          <input
+            name="currency"
+            defaultValue={client.currency || "AED"}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Grade">
+          <input
+            name="grades"
+            defaultValue={client.grades || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
@@ -124,10 +150,17 @@ export function EditClientForm({ client }: { client: Client }) {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
-        <Field label="Contact phone">
+        <Field label="Contact phone (mobile)">
           <input
             name="contactPhone"
             defaultValue={client.contactPhone || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Telephone (landline)">
+          <input
+            name="telephone"
+            defaultValue={client.telephone || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>

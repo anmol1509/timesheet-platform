@@ -91,6 +91,11 @@ export default async function SupplierDetailPage({
           bankAccountNumber: supplier.bankAccountNumber,
           bankCompany: supplier.bankCompany,
           bankEmirate: supplier.bankEmirate,
+          trn: supplier.trn,
+          activeFrom: toDateInput(supplier.activeFrom),
+          poBox: supplier.poBox,
+          location: supplier.location,
+          phone: supplier.phone,
         }}
       />
     </div>

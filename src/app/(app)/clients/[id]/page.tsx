@@ -90,6 +90,10 @@ export default async function ClientDetailPage({
           paymentSchedule: client.paymentSchedule,
           account: client.account,
           vendorCode: client.vendorCode,
+          customer: client.customer,
+          currency: client.currency,
+          grades: client.grades,
+          telephone: client.telephone,
         }}
       />
 
