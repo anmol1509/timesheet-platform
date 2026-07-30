@@ -81,13 +81,13 @@ export async function deleteVehicleAction(formData: FormData) {
   redirect("/transport");
 }
 
-export async function assignEmployeeToVehicleAction(formData: FormData) {
+export async function assignEmployeesToVehicleAction(formData: FormData) {
   await requireUser();
   const vehicleId = String(formData.get("vehicleId") || "");
-  const employeeId = String(formData.get("employeeId") || "");
-  if (!vehicleId || !employeeId) return;
-  await prisma.employee.update({
-    where: { id: employeeId },
+  const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
+  if (!vehicleId || employeeIds.length === 0) return;
+  await prisma.employee.updateMany({
+    where: { id: { in: employeeIds } },
     data: { vehicleId },
   });
   revalidatePath(`/transport/${vehicleId}`);

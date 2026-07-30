@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EditVehicleForm } from "./edit-form";
 import { ProjectRoutes } from "./project-routes";
+import { RosterManager } from "./roster-manager";
 import { deleteVehicleAction } from "../actions";
 
 const STATUS_COLOR = {
@@ -24,7 +25,7 @@ export default async function VehicleDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [vehicle, allProjects] = await Promise.all([
+  const [vehicle, allProjects, allEmployees] = await Promise.all([
     prisma.vehicle.findUnique({
       where: { id },
       include: {
@@ -33,6 +34,10 @@ export default async function VehicleDetailPage({
       },
     }),
     prisma.project.findMany({ orderBy: { name: "asc" } }),
+    prisma.employee.findMany({
+      select: { id: true, name: true, employeeIdNo: true, trade: true, vehicleId: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
   if (!vehicle) notFound();
 
@@ -92,35 +97,16 @@ export default async function VehicleDetailPage({
         allProjects={allProjects.map((p) => ({ id: p.id, name: p.name, code: p.code }))}
       />
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
-          Roster ({vehicle.employees.length})
-        </h2>
-        {vehicle.employees.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-sm text-slate-500">
-            No employees assigned yet. Assign this vehicle from an
-            employee&rsquo;s profile page.
-          </p>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
-                {vehicle.employees.map((e) => (
-                  <tr key={e.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      <Link href={`/employees/${e.id}`}>{e.name}</Link>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">
-                      {e.employeeIdNo}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{e.trade}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <RosterManager
+        vehicleId={vehicle.id}
+        roster={vehicle.employees.map((e) => ({
+          id: e.id,
+          name: e.name,
+          employeeIdNo: e.employeeIdNo,
+          trade: e.trade,
+        }))}
+        allEmployees={allEmployees}
+      />
     </div>
   );
 }
