@@ -78,6 +78,19 @@ export default async function SupplierDetailPage({
           paymentTerms: supplier.paymentTerms,
           status: supplier.status,
           payoutCycleStartDay: supplier.payoutCycleStartDay,
+          category: supplier.category,
+          previousId: supplier.previousId,
+          allowManualLabourId: supplier.allowManualLabourId,
+          overtime: supplier.overtime,
+          supplierAmountLimit: supplier.supplierAmountLimit,
+          pointOfContact: supplier.pointOfContact,
+          country: supplier.country,
+          emirate: supplier.emirate,
+          account: supplier.account,
+          bankAccountName: supplier.bankAccountName,
+          bankAccountNumber: supplier.bankAccountNumber,
+          bankCompany: supplier.bankCompany,
+          bankEmirate: supplier.bankEmirate,
         }}
       />
     </div>

@@ -63,6 +63,26 @@ export async function updateProjectAction(formData: FormData) {
       timelineStart: dateOrNull(formData.get("timelineStart")),
       timelineEnd: dateOrNull(formData.get("timelineEnd")),
       status: String(formData.get("status") || "PLANNING"),
+      clientProjectNo: stringOrNull(formData.get("clientProjectNo")),
+      jobType: stringOrNull(formData.get("jobType")),
+      mainContractor: stringOrNull(formData.get("mainContractor")),
+      paymentType: stringOrNull(formData.get("paymentType")),
+      lpoNo: stringOrNull(formData.get("lpoNo")),
+      lpoDate: dateOrNull(formData.get("lpoDate")),
+      closedLpo: formData.get("closedLpo") === "on",
+      sponsorshipCompany: stringOrNull(formData.get("sponsorshipCompany")),
+      salesExecutive: stringOrNull(formData.get("salesExecutive")),
+      contactNo: stringOrNull(formData.get("contactNo")),
+      timesheetCollectionDate: dateOrNull(formData.get("timesheetCollectionDate")),
+      noOfEmployeesRequired: formData.get("noOfEmployeesRequired")
+        ? Number(formData.get("noOfEmployeesRequired"))
+        : null,
+      dayShiftStart: stringOrNull(formData.get("dayShiftStart")),
+      dayShiftEnd: stringOrNull(formData.get("dayShiftEnd")),
+      nightShiftStart: stringOrNull(formData.get("nightShiftStart")),
+      nightShiftEnd: stringOrNull(formData.get("nightShiftEnd")),
+      interTransfer: formData.get("interTransfer") === "on",
+      internalUse: formData.get("internalUse") === "on",
     },
   });
 

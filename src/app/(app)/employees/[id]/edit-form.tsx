@@ -29,6 +29,14 @@ type Employee = {
   laborCardNumber: string | null;
   wpsBankName: string | null;
   wpsIban: string | null;
+  active: boolean;
+  inactiveReason: string | null;
+  lastDemobilizedDate: Date | null;
+  religion: string | null;
+  state: string | null;
+  accommodationType: string | null;
+  previousId: string | null;
+  nameInIdCard: string | null;
 };
 
 type Project = { id: string; name: string; code: string };
@@ -50,6 +58,7 @@ export function EditForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [active, setActive] = useState(employee.active);
 
   return (
     <form
@@ -63,6 +72,42 @@ export function EditForm({
       className="space-y-8"
     >
       <input type="hidden" name="employeeId" value={employee.id} />
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Status</h2>
+        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              name="active"
+              checked={active}
+              onChange={(e) => setActive(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            Active
+          </label>
+          <div />
+          {!active && (
+            <>
+              <Field label="Reason">
+                <input
+                  name="inactiveReason"
+                  defaultValue={employee.inactiveReason || ""}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                />
+              </Field>
+              <Field label="Last demobilized date">
+                <input
+                  name="lastDemobilizedDate"
+                  type="date"
+                  defaultValue={toDateInput(employee.lastDemobilizedDate)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                />
+              </Field>
+            </>
+          )}
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
@@ -165,6 +210,43 @@ export function EditForm({
             <input
               name="emergencyContactPhone"
               defaultValue={employee.emergencyContactPhone || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Religion">
+            <input
+              name="religion"
+              defaultValue={employee.religion || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="State">
+            <input
+              name="state"
+              placeholder="State/province within nationality"
+              defaultValue={employee.state || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Accommodation type">
+            <input
+              name="accommodationType"
+              placeholder="e.g. Staff Accommodation"
+              defaultValue={employee.accommodationType || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Previous ID">
+            <input
+              name="previousId"
+              defaultValue={employee.previousId || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Name in ID card">
+            <input
+              name="nameInIdCard"
+              defaultValue={employee.nameInIdCard || ""}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>

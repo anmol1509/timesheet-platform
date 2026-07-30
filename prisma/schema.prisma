@@ -72,6 +72,20 @@ model Supplier {
   status              String    @default("ACTIVE") // "ACTIVE" | "BLACKLISTED"
   payoutCycleStartDay Int       @default(1) // day of month the payout cycle starts; 1 = calendar month
 
+  category            String?
+  previousId          String?
+  allowManualLabourId Boolean @default(false)
+  overtime            Boolean @default(false)
+  supplierAmountLimit Float? // credit limit
+  pointOfContact      String?
+  country             String?
+  emirate             String?
+  account             String? // accounting reference only, no ledger integration
+  bankAccountName     String?
+  bankAccountNumber   String?
+  bankCompany         String? // beneficiary company name on the bank account
+  bankEmirate         String?
+
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
   employees       Employee[]
@@ -101,8 +115,29 @@ model Client {
   secondContactPhone String?
   secondContactEmail String?
 
+  country         String?
+  emirate         String?
+  website         String?
+  fax             String?
+  poBox           String?
+  paymentSchedule String?
+  account         String? // accounting reference only, no ledger integration
+  vendorCode      String?
+
   entries  TimesheetEntry[]
   projects Project[]
+  contacts ClientContact[]
+}
+
+model ClientContact {
+  id          String  @id @default(cuid())
+  name        String
+  designation String?
+  phone       String?
+  email       String?
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
 }
 
 // One row per employee, per month, per supplier — upserted on re-upload so
@@ -192,6 +227,15 @@ model Employee {
   wpsBankName           String? // Wage Protection System bank / exchange house
   wpsIban               String?
 
+  active              Boolean   @default(true)
+  inactiveReason      String?
+  lastDemobilizedDate DateTime?
+  religion            String?
+  state               String? // state/province within nationality country
+  accommodationType   String?
+  previousId          String?
+  nameInIdCard        String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -235,6 +279,25 @@ model Project {
   timelineEnd   DateTime?
   status        String    @default("PLANNING") // "PLANNING" | "ACTIVE" | "COMPLETED" | "ON_HOLD"
   createdAt     DateTime  @default(now())
+
+  clientProjectNo         String? // client's own reference/PO number
+  jobType                 String?
+  mainContractor          String?
+  paymentType             String?
+  lpoNo                   String?
+  lpoDate                 DateTime?
+  closedLpo               Boolean   @default(false)
+  sponsorshipCompany      String?
+  salesExecutive          String?
+  contactNo               String?
+  timesheetCollectionDate DateTime?
+  noOfEmployeesRequired   Int?
+  dayShiftStart           String? // "HH:MM"
+  dayShiftEnd             String?
+  nightShiftStart         String?
+  nightShiftEnd           String?
+  interTransfer           Boolean   @default(false)
+  internalUse             Boolean   @default(false)
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId String

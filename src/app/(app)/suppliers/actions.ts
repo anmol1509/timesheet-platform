@@ -15,6 +15,13 @@ function dateOrNull(value: FormDataEntryValue | null) {
   return s ? new Date(s) : null;
 }
 
+function numberOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function createSupplierAction(formData: FormData) {
   await requireUser();
   const name = String(formData.get("name") || "").trim();
@@ -55,6 +62,19 @@ export async function updateSupplierAction(formData: FormData) {
         31,
         Math.max(1, Number(formData.get("payoutCycleStartDay")) || 1)
       ),
+      category: stringOrNull(formData.get("category")),
+      previousId: stringOrNull(formData.get("previousId")),
+      allowManualLabourId: formData.get("allowManualLabourId") === "on",
+      overtime: formData.get("overtime") === "on",
+      supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
+      pointOfContact: stringOrNull(formData.get("pointOfContact")),
+      country: stringOrNull(formData.get("country")),
+      emirate: stringOrNull(formData.get("emirate")),
+      account: stringOrNull(formData.get("account")),
+      bankAccountName: stringOrNull(formData.get("bankAccountName")),
+      bankAccountNumber: stringOrNull(formData.get("bankAccountNumber")),
+      bankCompany: stringOrNull(formData.get("bankCompany")),
+      bankEmirate: stringOrNull(formData.get("bankEmirate")),
     },
   });
 

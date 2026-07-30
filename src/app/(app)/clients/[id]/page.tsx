@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EditClientForm } from "./edit-form";
+import { ClientContacts } from "./client-contacts";
 import { deleteClientAction } from "../actions";
 
 function toDateInput(d: Date | null) {
@@ -22,7 +23,10 @@ export default async function ClientDetailPage({
   const { error } = await searchParams;
   const client = await prisma.client.findUnique({
     where: { id },
-    include: { projects: { orderBy: { name: "asc" } } },
+    include: {
+      projects: { orderBy: { name: "asc" } },
+      contacts: { orderBy: { name: "asc" } },
+    },
   });
   if (!client) notFound();
 
@@ -78,8 +82,18 @@ export default async function ClientDetailPage({
           secondContactName: client.secondContactName,
           secondContactPhone: client.secondContactPhone,
           secondContactEmail: client.secondContactEmail,
+          country: client.country,
+          emirate: client.emirate,
+          website: client.website,
+          fax: client.fax,
+          poBox: client.poBox,
+          paymentSchedule: client.paymentSchedule,
+          account: client.account,
+          vendorCode: client.vendorCode,
         }}
       />
+
+      <ClientContacts clientId={client.id} contacts={client.contacts} />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Projects</h2>

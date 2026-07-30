@@ -82,11 +82,47 @@ export async function updateClientAction(formData: FormData) {
       secondContactName: stringOrNull(formData.get("secondContactName")),
       secondContactPhone: stringOrNull(formData.get("secondContactPhone")),
       secondContactEmail: stringOrNull(formData.get("secondContactEmail")),
+      country: stringOrNull(formData.get("country")),
+      emirate: stringOrNull(formData.get("emirate")),
+      website: stringOrNull(formData.get("website")),
+      fax: stringOrNull(formData.get("fax")),
+      poBox: stringOrNull(formData.get("poBox")),
+      paymentSchedule: stringOrNull(formData.get("paymentSchedule")),
+      account: stringOrNull(formData.get("account")),
+      vendorCode: stringOrNull(formData.get("vendorCode")),
     },
   });
 
   revalidatePath(`/clients/${id}`);
   revalidatePath("/clients");
+}
+
+export async function addClientContactAction(formData: FormData) {
+  await requireUser();
+  const clientId = String(formData.get("clientId") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!clientId || !name) return;
+
+  await prisma.clientContact.create({
+    data: {
+      clientId,
+      name,
+      designation: stringOrNull(formData.get("designation")),
+      phone: stringOrNull(formData.get("phone")),
+      email: stringOrNull(formData.get("email")),
+    },
+  });
+
+  revalidatePath(`/clients/${clientId}`);
+}
+
+export async function removeClientContactAction(formData: FormData) {
+  await requireUser();
+  const clientId = String(formData.get("clientId") || "");
+  const contactId = String(formData.get("contactId") || "");
+  if (!contactId) return;
+  await prisma.clientContact.delete({ where: { id: contactId } });
+  revalidatePath(`/clients/${clientId}`);
 }
 
 export async function deleteClientAction(formData: FormData) {

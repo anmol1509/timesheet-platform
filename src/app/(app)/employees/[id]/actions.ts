@@ -47,6 +47,14 @@ export async function updateEmployeeAction(formData: FormData) {
       laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
       wpsBankName: stringOrNull(formData.get("wpsBankName")),
       wpsIban: stringOrNull(formData.get("wpsIban")),
+      active: formData.get("active") === "on",
+      inactiveReason: stringOrNull(formData.get("inactiveReason")),
+      lastDemobilizedDate: dateOrNull(formData.get("lastDemobilizedDate")),
+      religion: stringOrNull(formData.get("religion")),
+      state: stringOrNull(formData.get("state")),
+      accommodationType: stringOrNull(formData.get("accommodationType")),
+      previousId: stringOrNull(formData.get("previousId")),
+      nameInIdCard: stringOrNull(formData.get("nameInIdCard")),
     },
   });
 

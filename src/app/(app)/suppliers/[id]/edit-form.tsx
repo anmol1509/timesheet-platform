@@ -17,6 +17,19 @@ type Supplier = {
   paymentTerms: string | null;
   status: string;
   payoutCycleStartDay: number;
+  category: string | null;
+  previousId: string | null;
+  allowManualLabourId: boolean;
+  overtime: boolean;
+  supplierAmountLimit: number | null;
+  pointOfContact: string | null;
+  country: string | null;
+  emirate: string | null;
+  account: string | null;
+  bankAccountName: string | null;
+  bankAccountNumber: string | null;
+  bankCompany: string | null;
+  bankEmirate: string | null;
 };
 
 function ordinal(n: number) {
@@ -89,6 +102,64 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
+        <Field label="Category">
+          <input
+            name="category"
+            placeholder="e.g. Manpower Supply"
+            defaultValue={supplier.category || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Previous ID">
+          <input
+            name="previousId"
+            defaultValue={supplier.previousId || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Country">
+          <input
+            name="country"
+            defaultValue={supplier.country || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Emirate">
+          <input
+            name="emirate"
+            defaultValue={supplier.emirate || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Point of contact">
+          <input
+            name="pointOfContact"
+            defaultValue={supplier.pointOfContact || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Supplier amount limit (credit limit)">
+          <input
+            name="supplierAmountLimit"
+            type="number"
+            step="0.01"
+            defaultValue={supplier.supplierAmountLimit ?? ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Account (reference only)">
+          <input
+            name="account"
+            defaultValue={supplier.account || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <CheckboxField
+          label="Allow manual labour ID"
+          name="allowManualLabourId"
+          defaultChecked={supplier.allowManualLabourId}
+        />
+        <CheckboxField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} />
       </Section>
 
       <Section title="Contact">
@@ -128,6 +199,34 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           <input
             name="iban"
             defaultValue={supplier.iban || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Bank account name">
+          <input
+            name="bankAccountName"
+            defaultValue={supplier.bankAccountName || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Bank account number">
+          <input
+            name="bankAccountNumber"
+            defaultValue={supplier.bankAccountNumber || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Bank beneficiary company">
+          <input
+            name="bankCompany"
+            defaultValue={supplier.bankCompany || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Bank emirate">
+          <input
+            name="bankEmirate"
+            defaultValue={supplier.bankEmirate || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
@@ -189,6 +288,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </span>
       {children}
+    </label>
+  );
+}
+
+function CheckboxField({
+  label,
+  name,
+  defaultChecked,
+}: {
+  label: string;
+  name: string;
+  defaultChecked: boolean;
+}) {
+  return (
+    <label className="flex items-center gap-2 pt-5 text-sm text-slate-600">
+      <input
+        type="checkbox"
+        name={name}
+        defaultChecked={defaultChecked}
+        className="h-4 w-4 rounded border-slate-300"
+      />
+      {label}
     </label>
   );
 }

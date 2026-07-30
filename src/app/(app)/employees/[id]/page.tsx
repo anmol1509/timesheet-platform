@@ -62,9 +62,14 @@ export default async function EmployeeDetailPage({
               name={employee.name}
             />
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                {employee.name}
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-slate-900">
+                  {employee.name}
+                </h1>
+                <Badge color={employee.active ? "green" : "slate"}>
+                  {employee.active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
               <p className="mt-1 text-sm text-slate-500">
                 {employee.employeeIdNo} · {employee.trade || "No trade set"} ·{" "}
                 {employee.supplier?.name || "No company"}

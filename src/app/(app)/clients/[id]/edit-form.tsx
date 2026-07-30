@@ -22,6 +22,14 @@ type Client = {
   secondContactName: string | null;
   secondContactPhone: string | null;
   secondContactEmail: string | null;
+  country: string | null;
+  emirate: string | null;
+  website: string | null;
+  fax: string | null;
+  poBox: string | null;
+  paymentSchedule: string | null;
+  account: string | null;
+  vendorCode: string | null;
 };
 
 export function EditClientForm({ client }: { client: Client }) {
@@ -40,6 +48,65 @@ export function EditClientForm({ client }: { client: Client }) {
       className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6"
     >
       <input type="hidden" name="clientId" value={client.id} />
+
+      <Section title="Company">
+        <Field label="Country">
+          <input
+            name="country"
+            defaultValue={client.country || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Emirate">
+          <input
+            name="emirate"
+            defaultValue={client.emirate || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Website">
+          <input
+            name="website"
+            defaultValue={client.website || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Payment schedule">
+          <input
+            name="paymentSchedule"
+            defaultValue={client.paymentSchedule || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Fax">
+          <input
+            name="fax"
+            defaultValue={client.fax || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="P.O. Box">
+          <input
+            name="poBox"
+            defaultValue={client.poBox || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Account (reference only)">
+          <input
+            name="account"
+            defaultValue={client.account || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Vendor code">
+          <input
+            name="vendorCode"
+            defaultValue={client.vendorCode || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+      </Section>
 
       <Section title="Contact">
         <Field label="Contact person">
