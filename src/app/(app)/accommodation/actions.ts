@@ -30,6 +30,41 @@ export async function createRoomAction(formData: FormData) {
   revalidatePath("/accommodation");
 }
 
+export async function updateCampAction(formData: FormData) {
+  await requireUser();
+  const campId = String(formData.get("campId") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!campId || !name) return;
+  await prisma.camp.update({ where: { id: campId }, data: { name } });
+  revalidatePath("/accommodation");
+}
+
+export async function updateRoomAction(formData: FormData) {
+  await requireUser();
+  const roomId = String(formData.get("roomId") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!roomId || !name) return;
+  await prisma.room.update({ where: { id: roomId }, data: { name } });
+  revalidatePath("/accommodation");
+}
+
+export async function addBedsToRoomAction(formData: FormData) {
+  await requireUser();
+  const roomId = String(formData.get("roomId") || "");
+  const count = Math.max(1, Math.min(20, Number(formData.get("count")) || 1));
+  if (!roomId) return;
+
+  const existingBeds = await prisma.bed.count({ where: { roomId } });
+  await prisma.bed.createMany({
+    data: Array.from({ length: count }, (_, i) => ({
+      roomId,
+      label: `Bed ${String(existingBeds + i + 1).padStart(2, "0")}`,
+    })),
+  });
+
+  revalidatePath("/accommodation");
+}
+
 export async function assignBedAction(formData: FormData) {
   await requireUser();
   const bedId = String(formData.get("bedId") || "");

@@ -20,6 +20,16 @@ export async function createSkillAction(formData: FormData) {
   revalidatePath("/skills");
 }
 
+export async function updateSkillAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("skillId") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!id || !name) return;
+  const category = String(formData.get("category") || "").trim() || null;
+  await prisma.skill.update({ where: { id }, data: { name, category } });
+  revalidatePath("/skills");
+}
+
 export async function toggleTrendingAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("skillId") || "");

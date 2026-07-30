@@ -1,6 +1,11 @@
 "use client";
 
-import { addClientContactAction, removeClientContactAction } from "../actions";
+import { useState, useTransition } from "react";
+import {
+  addClientContactAction,
+  removeClientContactAction,
+  updateClientContactAction,
+} from "../actions";
 
 type Contact = {
   id: string;
@@ -10,6 +15,8 @@ type Contact = {
   email: string | null;
 };
 
+const emptyDraft = { name: "", designation: "", phone: "", email: "" };
+
 export function ClientContacts({
   clientId,
   contacts,
@@ -17,6 +24,35 @@ export function ClientContacts({
   clientId: string;
   contacts: Contact[];
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState(emptyDraft);
+  const [pending, startTransition] = useTransition();
+
+  function startEdit(c: Contact) {
+    setEditingId(c.id);
+    setDraft({
+      name: c.name,
+      designation: c.designation || "",
+      phone: c.phone || "",
+      email: c.email || "",
+    });
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+    const formData = new FormData();
+    formData.set("clientId", clientId);
+    formData.set("contactId", editingId);
+    formData.set("name", draft.name);
+    formData.set("designation", draft.designation);
+    formData.set("phone", draft.phone);
+    formData.set("email", draft.email);
+    startTransition(async () => {
+      await updateClientContactAction(formData);
+      setEditingId(null);
+    });
+  }
+
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold text-slate-900">
@@ -35,30 +71,96 @@ export function ClientContacts({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {contacts.map((c) => (
-                <tr key={c.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    {c.name}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {c.designation || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{c.phone || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{c.email || "—"}</td>
-                  <td className="px-4 py-3 text-right">
-                    <form action={removeClientContactAction}>
-                      <input type="hidden" name="clientId" value={clientId} />
-                      <input type="hidden" name="contactId" value={c.id} />
+              {contacts.map((c) =>
+                editingId === c.id ? (
+                  <tr key={c.id}>
+                    <td className="px-4 py-2">
+                      <input
+                        value={draft.name}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, name: e.target.value }))
+                        }
+                        autoFocus
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={draft.designation}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, designation: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={draft.phone}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, phone: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={draft.email}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, email: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
                       <button
-                        type="submit"
-                        className="text-xs font-medium text-red-600 hover:underline"
+                        type="button"
+                        disabled={pending}
+                        onClick={saveEdit}
+                        className="mr-2 text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
                       >
-                        Remove
+                        {pending ? "Saving…" : "Save"}
                       </button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="text-xs font-medium text-slate-400 hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={c.id}>
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      {c.name}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {c.designation || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{c.phone || "—"}</td>
+                    <td className="px-4 py-3 text-slate-600">{c.email || "—"}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(c)}
+                        className="mr-2 text-xs font-medium text-slate-500 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <form action={removeClientContactAction} className="inline">
+                        <input type="hidden" name="clientId" value={clientId} />
+                        <input type="hidden" name="contactId" value={c.id} />
+                        <button
+                          type="submit"
+                          className="text-xs font-medium text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         )}

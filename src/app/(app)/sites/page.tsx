@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { DeleteButton } from "@/components/DeleteButton";
-import { createSiteAction, deleteSiteAction } from "./actions";
+import { InlineEditRow } from "@/components/InlineEditRow";
+import { createSiteAction, updateSiteAction, deleteSiteAction } from "./actions";
 
 export default async function SitesPage() {
   const sites = await prisma.site.findMany({ orderBy: { name: "asc" } });
@@ -55,7 +56,11 @@ export default async function SitesPage() {
               {sites.map((s) => (
                 <tr key={s.id}>
                   <td className="px-4 py-3 font-medium text-slate-900">
-                    {s.name}
+                    <InlineEditRow
+                      value={s.name}
+                      action={updateSiteAction}
+                      hiddenFields={{ siteId: s.id }}
+                    />
                   </td>
                   <td className="px-4 py-3 text-right">
                     <DeleteButton

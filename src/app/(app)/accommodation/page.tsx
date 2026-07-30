@@ -1,10 +1,19 @@
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { BedDouble, Home } from "lucide-react";
-import { createCampAction, createRoomAction, deleteCampAction, deleteRoomAction } from "./actions";
+import {
+  createCampAction,
+  createRoomAction,
+  deleteCampAction,
+  deleteRoomAction,
+  updateCampAction,
+  updateRoomAction,
+  addBedsToRoomAction,
+} from "./actions";
 import { BedGrid } from "./bed-grid";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { DeleteButton } from "@/components/DeleteButton";
+import { InlineEditRow } from "@/components/InlineEditRow";
 
 export default async function AccommodationPage({
   searchParams,
@@ -86,13 +95,20 @@ export default async function AccommodationPage({
             </button>
           </form>
           {selectedCamp && (
-            <DeleteButton
-              action={deleteCampAction}
-              hiddenFields={{ campId: selectedCamp.id }}
-              confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
-              label="Delete Camp"
-              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-            />
+            <>
+              <InlineEditRow
+                value={selectedCamp.name}
+                action={updateCampAction}
+                hiddenFields={{ campId: selectedCamp.id }}
+              />
+              <DeleteButton
+                action={deleteCampAction}
+                hiddenFields={{ campId: selectedCamp.id }}
+                confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
+                label="Delete Camp"
+                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              />
+            </>
           )}
         </div>
         <div className="flex items-end gap-2">
@@ -122,22 +138,48 @@ export default async function AccommodationPage({
             </button>
           </form>
           {selectedRoom && (
-            <DeleteButton
-              action={deleteRoomAction}
-              hiddenFields={{ roomId: selectedRoom.id }}
-              confirmMessage={`Delete ${selectedRoom.name}? Its ${selectedRoom.beds.length} bed(s) will be removed, unassigning anyone housed there.`}
-              label="Delete Room"
-              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-            />
+            <>
+              <InlineEditRow
+                value={selectedRoom.name}
+                action={updateRoomAction}
+                hiddenFields={{ roomId: selectedRoom.id }}
+              />
+              <DeleteButton
+                action={deleteRoomAction}
+                hiddenFields={{ roomId: selectedRoom.id }}
+                confirmMessage={`Delete ${selectedRoom.name}? Its ${selectedRoom.beds.length} bed(s) will be removed, unassigning anyone housed there.`}
+                label="Delete Room"
+                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              />
+            </>
           )}
         </div>
       </div>
 
       {selectedRoom ? (
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
-            {selectedRoom.name} — Bed Layout
-          </h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-900">
+              {selectedRoom.name} — Bed Layout
+            </h2>
+            <form action={addBedsToRoomAction} className="flex items-center gap-2">
+              <input type="hidden" name="roomId" value={selectedRoom.id} />
+              <input
+                name="count"
+                type="number"
+                min={1}
+                max={20}
+                defaultValue={1}
+                className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+              />
+              <button
+                type="submit"
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                + Add beds
+              </button>
+            </form>
+          </div>
           <BedGrid
             beds={selectedRoom.beds.map((b) => ({
               id: b.id,

@@ -120,6 +120,26 @@ export async function addClientContactAction(formData: FormData) {
   revalidatePath(`/clients/${clientId}`);
 }
 
+export async function updateClientContactAction(formData: FormData) {
+  await requireUser();
+  const clientId = String(formData.get("clientId") || "");
+  const contactId = String(formData.get("contactId") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!contactId || !name) return;
+
+  await prisma.clientContact.update({
+    where: { id: contactId },
+    data: {
+      name,
+      designation: stringOrNull(formData.get("designation")),
+      phone: stringOrNull(formData.get("phone")),
+      email: stringOrNull(formData.get("email")),
+    },
+  });
+
+  revalidatePath(`/clients/${clientId}`);
+}
+
 export async function removeClientContactAction(formData: FormData) {
   await requireUser();
   const clientId = String(formData.get("clientId") || "");

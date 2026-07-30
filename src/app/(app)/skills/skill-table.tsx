@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { TrendingUp } from "lucide-react";
-import { toggleTrendingAction, deleteSkillAction } from "./actions";
+import { toggleTrendingAction, deleteSkillAction, updateSkillAction } from "./actions";
 
 type SkillRow = {
   id: string;
@@ -24,6 +24,28 @@ function demandLevel(pct: number): { label: string; color: "green" | "amber" | "
 export function SkillTable({ skills }: { skills: SkillRow[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All Categories");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const [draftCategory, setDraftCategory] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function startEdit(s: SkillRow) {
+    setEditingId(s.id);
+    setDraftName(s.name);
+    setDraftCategory(s.category || "");
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+    const formData = new FormData();
+    formData.set("skillId", editingId);
+    formData.set("name", draftName);
+    formData.set("category", draftCategory);
+    startTransition(async () => {
+      await updateSkillAction(formData);
+      setEditingId(null);
+    });
+  }
 
   const categories = useMemo(() => {
     const set = new Set(skills.map((s) => s.category).filter(Boolean) as string[]);
@@ -83,39 +105,84 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                 const demand = demandLevel(s.popularity);
                 return (
                   <tr key={s.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      <div className="flex items-center gap-2">
-                        {s.name}
-                        <form action={toggleTrendingAction}>
-                          <input type="hidden" name="skillId" value={s.id} />
-                          <input
-                            type="hidden"
-                            name="trending"
-                            value={String(s.trending)}
-                          />
-                          <button
-                            type="submit"
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                              s.trending
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-slate-50 text-slate-300 hover:text-slate-500"
-                            }`}
-                            title="Toggle trending"
-                          >
-                            <TrendingUp className="h-3 w-3" /> Trending
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {s.category ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs">
-                          {s.category}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
+                    {editingId === s.id ? (
+                      <>
+                        <td className="px-4 py-3" colSpan={2}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              value={draftName}
+                              onChange={(e) => setDraftName(e.target.value)}
+                              autoFocus
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                            />
+                            <input
+                              value={draftCategory}
+                              onChange={(e) => setDraftCategory(e.target.value)}
+                              placeholder="Category"
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                            />
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={saveEdit}
+                              className="text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
+                            >
+                              {pending ? "Saving…" : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="text-xs font-medium text-slate-400 hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          <div className="flex items-center gap-2">
+                            {s.name}
+                            <form action={toggleTrendingAction}>
+                              <input type="hidden" name="skillId" value={s.id} />
+                              <input
+                                type="hidden"
+                                name="trending"
+                                value={String(s.trending)}
+                              />
+                              <button
+                                type="submit"
+                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                  s.trending
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-slate-50 text-slate-300 hover:text-slate-500"
+                                }`}
+                                title="Toggle trending"
+                              >
+                                <TrendingUp className="h-3 w-3" /> Trending
+                              </button>
+                            </form>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(s)}
+                              className="text-xs font-medium text-slate-400 hover:text-slate-700 hover:underline"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {s.category ? (
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs">
+                              {s.category}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-3 text-right text-slate-600">
                       {s.employeeCount}
                     </td>
