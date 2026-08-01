@@ -28,6 +28,37 @@ export async function updateSiteAction(formData: FormData) {
   revalidatePath("/projects");
 }
 
+export async function bulkImportSitesAction(rows: Record<string, string>[]) {
+  await requireUser();
+  const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const name = (rows[i]["Site name"] || "").trim();
+    if (!name) {
+      results.push({ row: i + 2, status: "error", message: "Site name is required." });
+      continue;
+    }
+    try {
+      const existing = await prisma.site.findUnique({ where: { name } });
+      if (existing) {
+        results.push({ row: i + 2, status: "updated" });
+      } else {
+        await prisma.site.create({ data: { name } });
+        results.push({ row: i + 2, status: "created" });
+      }
+    } catch (e) {
+      results.push({
+        row: i + 2,
+        status: "error",
+        message: e instanceof Error ? e.message : "Failed to import row.",
+      });
+    }
+  }
+
+  revalidatePath("/sites");
+  return results;
+}
+
 export async function deleteSiteAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("siteId") || "");

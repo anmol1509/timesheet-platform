@@ -5,9 +5,18 @@ import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 
-export default async function EmployeesPage() {
+export default async function EmployeesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const { filter } = await searchParams;
   const employees = await prisma.employee.findMany({
-    include: { supplier: true },
+    include: {
+      supplier: true,
+      project: { select: { name: true } },
+      bed: { select: { label: true, room: { select: { camp: { select: { name: true } } } } } },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -17,6 +26,7 @@ export default async function EmployeesPage() {
       complianceStatus(e.laborCardExpiry),
       complianceStatus(e.medicalExpiry),
       complianceStatus(e.passportExpiry),
+      complianceStatus(e.emiratesIdExpiry),
     ];
     const worstStatus = statuses.sort(
       (a, b) => STATUS_RANK[a] - STATUS_RANK[b]
@@ -28,6 +38,9 @@ export default async function EmployeesPage() {
       trade: e.trade,
       nationality: e.nationality,
       supplierName: e.supplier?.name ?? null,
+      projectName: e.project?.name ?? null,
+      bedLabel: e.bed ? `${e.bed.room.camp.name} · ${e.bed.label}` : null,
+      onWork: e.active && e.project != null,
       worstStatus,
     };
   });
@@ -61,7 +74,7 @@ export default async function EmployeesPage() {
           </p>
         </div>
       ) : (
-        <EmployeeList employees={rows} />
+        <EmployeeList employees={rows} initialFilter={filter} />
       )}
     </div>
   );

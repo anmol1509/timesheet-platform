@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { Badge } from "@/components/Badge";
 import { OccupancyRing } from "@/components/OccupancyRing";
+import { WorkforcePie } from "@/components/WorkforcePie";
 import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import {
   Users,
@@ -24,6 +25,7 @@ function formatMonthLabel(month: string) {
 export default async function DashboardPage() {
   const [
     employeeCount,
+    onWorkCount,
     activeProjectCount,
     activeClientCount,
     employeesForAlerts,
@@ -32,6 +34,7 @@ export default async function DashboardPage() {
     months,
   ] = await Promise.all([
     prisma.employee.count(),
+    prisma.employee.count({ where: { active: true, projectId: { not: null } } }),
     prisma.project.count({ where: { status: "ACTIVE" } }),
     prisma.client.count({ where: { status: "ACTIVE" } }),
     prisma.employee.findMany({
@@ -43,6 +46,7 @@ export default async function DashboardPage() {
         laborCardExpiry: true,
         medicalExpiry: true,
         passportExpiry: true,
+        emiratesIdExpiry: true,
       },
     }),
     prisma.bed.findMany({ select: { employeeId: true } }),
@@ -56,6 +60,7 @@ export default async function DashboardPage() {
       orderBy: { month: "desc" },
     }),
   ]);
+  const benchCount = employeeCount - onWorkCount;
 
   const ALERT_THRESHOLD_DAYS = 30;
   type Alert = { employeeId: string; name: string; field: string; days: number };
@@ -100,6 +105,13 @@ export default async function DashboardPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          Workforce status
+        </h2>
+        <WorkforcePie onWork={onWorkCount} bench={benchCount} />
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
           <AlertTriangle className="h-4 w-4 text-amber-500" /> Key Alerts
         </h2>
@@ -116,7 +128,7 @@ export default async function DashboardPage() {
               >
                 <div>
                   <Link
-                    href={`/employees/${a.employeeId}`}
+                    href={`/documents?employee=${a.employeeId}`}
                     className="text-sm font-medium text-slate-900 hover:underline"
                   >
                     {a.field} Expiry

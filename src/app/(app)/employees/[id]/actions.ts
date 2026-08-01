@@ -15,6 +15,13 @@ function stringOrNull(value: FormDataEntryValue | null) {
   return s || null;
 }
 
+function numberOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function updateEmployeeAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("employeeId") || "");
@@ -31,7 +38,9 @@ export async function updateEmployeeAction(formData: FormData) {
       laborCardExpiry: dateOrNull(formData.get("laborCardExpiry")),
       medicalExpiry: dateOrNull(formData.get("medicalExpiry")),
       passportExpiry: dateOrNull(formData.get("passportExpiry")),
+      emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
       salaryType: stringOrNull(formData.get("salaryType")),
+      salaryRate: numberOrNull(formData.get("salaryRate")),
       projectId: stringOrNull(formData.get("projectId")),
       vehicleId: stringOrNull(formData.get("vehicleId")),
       notes: stringOrNull(formData.get("notes")),
@@ -62,6 +71,49 @@ export async function updateEmployeeAction(formData: FormData) {
   revalidatePath("/employees");
 }
 
+export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {
+  await requireUser();
+  const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const employeeIdNo = (r["Employee ID No"] || "").trim();
+    const name = (r["Full name"] || "").trim();
+    if (!employeeIdNo || !name) {
+      results.push({ row: i + 2, status: "error", message: "Employee ID No and Full name are required." });
+      continue;
+    }
+    try {
+      const existing = await prisma.employee.findUnique({ where: { employeeIdNo } });
+      const data = {
+        name,
+        trade: stringOrNull(r["Trade"] ?? null),
+        nationality: stringOrNull(r["Nationality"] ?? null),
+        position: stringOrNull(r["Position"] ?? null),
+        passportNumber: stringOrNull(r["Passport number"] ?? null),
+        emiratesId: stringOrNull(r["Emirates ID"] ?? null),
+        mobileNumber: stringOrNull(r["Mobile number"] ?? null),
+      };
+      if (existing) {
+        await prisma.employee.update({ where: { id: existing.id }, data });
+        results.push({ row: i + 2, status: "updated" });
+      } else {
+        await prisma.employee.create({ data: { employeeIdNo, ...data } });
+        results.push({ row: i + 2, status: "created" });
+      }
+    } catch (e) {
+      results.push({
+        row: i + 2,
+        status: "error",
+        message: e instanceof Error ? e.message : "Failed to import row.",
+      });
+    }
+  }
+
+  revalidatePath("/employees");
+  return results;
+}
+
 export async function uploadPhotoAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("employeeId") || "");
@@ -77,6 +129,34 @@ export async function uploadPhotoAction(formData: FormData) {
 
   revalidatePath(`/employees/${id}`);
   revalidatePath("/employees");
+}
+
+export async function applyExtractedFieldsAction(formData: FormData) {
+  await requireUser();
+  const employeeId = String(formData.get("employeeId") || "");
+  if (!employeeId) return;
+
+  const data: {
+    name?: string;
+    passportNumber?: string;
+    emiratesId?: string;
+    dateOfBirth?: Date;
+    nationality?: string;
+  } = {};
+  const name = stringOrNull(formData.get("name"));
+  const passportNumber = stringOrNull(formData.get("passportNumber"));
+  const emiratesId = stringOrNull(formData.get("emiratesId"));
+  const nationality = stringOrNull(formData.get("nationality"));
+  const dateOfBirth = dateOrNull(formData.get("dateOfBirth"));
+  if (name) data.name = name;
+  if (passportNumber) data.passportNumber = passportNumber;
+  if (emiratesId) data.emiratesId = emiratesId;
+  if (nationality) data.nationality = nationality;
+  if (dateOfBirth) data.dateOfBirth = dateOfBirth;
+  if (Object.keys(data).length === 0) return;
+
+  await prisma.employee.update({ where: { id: employeeId }, data });
+  revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function uploadDocumentAction(formData: FormData) {

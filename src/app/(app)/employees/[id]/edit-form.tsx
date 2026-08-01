@@ -13,7 +13,9 @@ type Employee = {
   laborCardExpiry: Date | null;
   medicalExpiry: Date | null;
   passportExpiry: Date | null;
+  emiratesIdExpiry: Date | null;
   salaryType: string | null;
+  salaryRate: number | null;
   projectId: string | null;
   vehicleId: string | null;
   notes: string | null;
@@ -59,6 +61,7 @@ export function EditForm({
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [active, setActive] = useState(employee.active);
+  const [salaryType, setSalaryType] = useState(employee.salaryType || "");
 
   return (
     <form
@@ -320,6 +323,14 @@ export function EditForm({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>
+          <Field label="Emirates ID expiry date">
+            <input
+              type="date"
+              name="emiratesIdExpiry"
+              defaultValue={toDateInput(employee.emiratesIdExpiry)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
           <div className="sm:col-span-2">
             <Field label="Additional notes">
               <textarea
@@ -369,7 +380,8 @@ export function EditForm({
           <Field label="Salary type (reference only)">
             <select
               name="salaryType"
-              defaultValue={employee.salaryType || ""}
+              value={salaryType}
+              onChange={(e) => setSalaryType(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             >
               <option value="">Not set</option>
@@ -377,6 +389,17 @@ export function EditForm({
               <option value="HOURLY">Hourly Rate</option>
             </select>
           </Field>
+          {salaryType && (
+            <Field label={salaryType === "HOURLY" ? "Hourly rate (AED, reference only)" : "Basic salary (AED, reference only)"}>
+              <input
+                type="number"
+                step="0.01"
+                name="salaryRate"
+                defaultValue={employee.salaryRate ?? ""}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </Field>
+          )}
         </div>
       </section>
 

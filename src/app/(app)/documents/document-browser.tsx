@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { uploadDocumentAction } from "@/app/(app)/employees/[id]/actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
@@ -10,6 +12,7 @@ type DocRow = {
   id: string;
   filename: string;
   type: string;
+  employeeId: string;
   employeeName: string;
   employeeIdNo: string;
   uploadedByName: string;
@@ -27,7 +30,7 @@ const STATUS_BADGE = {
   not_set: { label: "No expiry", color: "slate" as const },
 };
 
-const DOC_TYPES = ["PASSPORT", "VISA", "LABOR_CARD", "MEDICAL", "OTHER"];
+const DOC_TYPES = ["PASSPORT", "VISA", "LABOR_CARD", "MEDICAL", "EMIRATES_ID", "OTHER"];
 
 export function DocumentBrowser({
   documents,
@@ -36,12 +39,18 @@ export function DocumentBrowser({
   documents: DocRow[];
   employees: EmployeeOption[];
 }) {
+  const searchParams = useSearchParams();
+  const initialEmployeeId = searchParams.get("employee");
   const [tab, setTab] = useState<"all" | "valid" | "expiring">("all");
   const [query, setQuery] = useState("");
   const [showUpload, setShowUpload] = useState(false);
+  const [employeeFilter, setEmployeeFilter] = useState<string | null>(initialEmployeeId);
+
+  const filteredEmployee = employees.find((e) => e.id === employeeFilter) || null;
 
   const filtered = useMemo(() => {
     let rows = documents;
+    if (employeeFilter) rows = rows.filter((d) => d.employeeId === employeeFilter);
     if (tab === "valid") rows = rows.filter((d) => d.status === "valid");
     if (tab === "expiring")
       rows = rows.filter((d) => d.status === "expiring" || d.status === "expired");
@@ -55,7 +64,7 @@ export function DocumentBrowser({
       );
     }
     return rows;
-  }, [documents, tab, query]);
+  }, [documents, tab, query, employeeFilter]);
 
   const validCount = documents.filter((d) => d.status === "valid").length;
   const expiringCount = documents.filter(
@@ -65,12 +74,26 @@ export function DocumentBrowser({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search documents by name, type, or employee..."
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search documents by name, type, or employee..."
+            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+          {filteredEmployee && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">
+              {filteredEmployee.name}
+              <button
+                type="button"
+                onClick={() => setEmployeeFilter(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setShowUpload((v) => !v)}
@@ -123,7 +146,12 @@ export function DocumentBrowser({
                     {d.type.replace("_", " ")}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {d.employeeName}
+                    <Link
+                      href={`/employees/${d.employeeId}`}
+                      className="hover:underline"
+                    >
+                      {d.employeeName}
+                    </Link>
                     <span className="ml-1 text-xs text-slate-400">
                       {d.employeeIdNo}
                     </span>
@@ -192,10 +220,25 @@ function UploadForm({
 }) {
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
+  const [employeeId, setEmployeeId] = useState("");
+  const [employeeQuery, setEmployeeQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [type, setType] = useState("PASSPORT");
   const [expiryDate, setExpiryDate] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const selectedEmployee = employees.find((e) => e.id === employeeId) || null;
+
+  const suggestions = useMemo(() => {
+    const q = employeeQuery.trim().toLowerCase();
+    if (!q) return [];
+    return employees
+      .filter(
+        (e) =>
+          e.name.toLowerCase().includes(q) || e.employeeIdNo.toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+  }, [employees, employeeQuery]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -234,22 +277,43 @@ function UploadForm({
       onSubmit={handleSubmit}
       className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4"
     >
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-slate-500">
-          Employee
-        </span>
-        <select
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        >
-          {employees.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name} ({e.employeeIdNo})
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="relative">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-slate-500">
+            Employee
+          </span>
+          <input
+            value={selectedEmployee ? `${selectedEmployee.name} (${selectedEmployee.employeeIdNo})` : employeeQuery}
+            onChange={(e) => {
+              setEmployeeId("");
+              setEmployeeQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            placeholder="Type a name or ID…"
+            className="w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </label>
+        {showSuggestions && suggestions.length > 0 && !employeeId && (
+          <div className="absolute top-full left-0 z-10 mt-1 max-h-56 w-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+            {suggestions.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => {
+                  setEmployeeId(e.id);
+                  setEmployeeQuery("");
+                  setShowSuggestions(false);
+                }}
+                className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+              >
+                <span className="font-medium text-slate-900">{e.name}</span>{" "}
+                <span className="text-slate-400">{e.employeeIdNo}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-slate-500">Type</span>
         <select
@@ -278,7 +342,7 @@ function UploadForm({
       <input ref={fileRef} type="file" required className="text-sm" />
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !employeeId}
         className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
       >
         {pending ? "Uploading…" : "Upload"}

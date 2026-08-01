@@ -39,6 +39,7 @@ export async function submitManualEntryAction(
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return { error: "Pick a valid month." };
   }
+  const projectId = String(formData.get("projectId") || "").trim() || null;
 
   let rows: ManualRow[];
   try {
@@ -123,7 +124,7 @@ export async function submitManualEntryAction(
     },
   });
 
-  await importParsedMonths([parsedMonth], upload.id);
+  await importParsedMonths([parsedMonth], upload.id, projectId);
 
   revalidatePath("/upload");
   revalidatePath("/history");

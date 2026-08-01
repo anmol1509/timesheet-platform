@@ -19,7 +19,8 @@ function normalizeKey(name: string) {
 
 export async function importParsedMonths(
   months: ParsedMonth[],
-  uploadId: string
+  uploadId: string,
+  projectId: string | null = null
 ): Promise<ImportStats> {
   const [existingSuppliers, existingClients] = await Promise.all([
     prisma.supplier.findMany(),
@@ -108,6 +109,7 @@ export async function importParsedMonths(
           invoiceValue: entry.invoiceValue,
           supplierId: supplier.id,
           clientId,
+          projectId,
         },
         update: {
           employeeName: entry.employeeName,
@@ -119,6 +121,10 @@ export async function importParsedMonths(
           absentCount: entry.absentCount,
           invoiceValue: entry.invoiceValue,
           clientId,
+          // Only touch projectId when this import explicitly carries one
+          // (manual entry) — a plain Excel re-upload must not clobber a
+          // project tag set on a prior pass for the same row.
+          ...(projectId ? { projectId } : {}),
           // Preserve any manually-entered absent deduction from a prior
           // review unless the recomputed absent count changed.
         },

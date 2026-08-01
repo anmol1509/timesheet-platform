@@ -42,6 +42,16 @@ export default async function SettingsPage() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
             />
           </label>
+          <label className="mt-4 block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Company TRN (printed on client invoices)
+            </span>
+            <input
+              name="companyTrn"
+              defaultValue={settings.companyTrn ?? ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+            />
+          </label>
           <button
             type="submit"
             className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"

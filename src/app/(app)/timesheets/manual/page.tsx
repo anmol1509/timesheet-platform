@@ -2,10 +2,14 @@ import { prisma } from "@/lib/db";
 import { ManualEntryForm } from "./manual-entry-form";
 
 export default async function ManualTimesheetEntryPage() {
-  const [suppliers, clients, sites] = await Promise.all([
+  const [suppliers, clients, sites, projects] = await Promise.all([
     prisma.supplier.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
     prisma.client.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
     prisma.site.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.project.findMany({
+      select: { id: true, code: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (
@@ -25,6 +29,7 @@ export default async function ManualTimesheetEntryPage() {
         supplierNames={suppliers.map((s) => s.name)}
         clientNames={clients.map((c) => c.name)}
         siteNames={sites.map((s) => s.name)}
+        projects={projects}
       />
     </div>
   );

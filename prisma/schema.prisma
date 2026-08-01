@@ -22,9 +22,12 @@ model User {
   role         Role     @default(STAFF)
   createdAt    DateTime @default(now())
 
-  uploads         Upload[]
-  generatedSheets GeneratedSheet[]
-  documents       Document[]
+  uploads          Upload[]
+  generatedSheets  GeneratedSheet[]
+  documents        Document[]
+  clientInvoices   ClientInvoice[]
+  clientDocuments  ClientDocument[]
+  projectDocuments ProjectDocument[]
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
@@ -135,9 +138,68 @@ model Client {
   grades    String?
   telephone String? // landline, distinct from contactPhone (mobile)
 
-  entries  TimesheetEntry[]
-  projects Project[]
-  contacts ClientContact[]
+  entries    TimesheetEntry[]
+  projects   Project[]
+  contacts   ClientContact[]
+  invoices   ClientInvoice[]
+  tradeRates ClientTradeRate[]
+  documents  ClientDocument[]
+}
+
+// Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
+// Falls back to Client.hourlyRate/basicRate when a trade has no rate set here.
+// A row with projectId set overrides the client-wide row for that trade on that project.
+model ClientTradeRate {
+  id    String @id @default(cuid())
+  trade String
+  rate  Float
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  @@unique([clientId, projectId, trade])
+}
+
+model ClientDocument {
+  id         String    @id @default(cuid())
+  type       String // "TRADE_LICENSE" | "TRN_CERTIFICATE" | "CONTRACT" | "OTHER"
+  filename   String
+  fileData   Bytes
+  mimeType   String
+  expiryDate DateTime?
+  uploadedAt DateTime  @default(now())
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+}
+
+// A record of each generated client invoice (for history / re-download / AR tracking).
+model ClientInvoice {
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  month         String
+  monthLabel    String
+  subtotal      Float
+  vatAmount     Float
+  totalAmount   Float
+  status        String    @default("DRAFT") // "DRAFT" | "SENT" | "PAID" | "OVERDUE"
+  issueDate     DateTime  @default(now())
+  dueDate       DateTime?
+  paidDate      DateTime?
+
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
+
+  generatedBy   User   @relation(fields: [generatedById], references: [id])
+  generatedById String
+
+  @@index([month, clientId])
 }
 
 model ClientContact {
@@ -176,6 +238,11 @@ model TimesheetEntry {
   client   Client? @relation(fields: [clientId], references: [id])
   clientId String?
 
+  // Set only via manual entry today; Excel-upload entries have no project info
+  // and fall back to the client-level billing rate when generating invoices.
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?
+
   @@unique([month, supplierId, employeeIdNo, trade])
   @@index([month, supplierId])
 }
@@ -200,30 +267,33 @@ model GeneratedSheet {
 }
 
 model Settings {
-  id       String @id @default("singleton")
-  issuedTo String @default("Kenz Al Turath Technical Services")
+  id         String  @id @default("singleton")
+  issuedTo   String  @default("Kenz Al Turath Technical Services")
+  companyTrn String? // this company's own Tax Registration Number, printed on client invoices
 }
 
 // Employee master record — auto-created/refreshed from uploads (name, trade,
 // supplier) and manually enriched here (photo, compliance dates, etc). The
 // upload flow never touches the manually-owned fields.
 model Employee {
-  id              String    @id @default(cuid())
-  employeeIdNo    String    @unique
-  name            String
-  trade           String?
-  photoData       Bytes?
-  photoMimeType   String?
-  nationality     String?
-  position        String?
-  passportNumber  String?
-  emiratesId      String?
-  visaExpiry      DateTime?
-  laborCardExpiry DateTime?
-  medicalExpiry   DateTime?
-  passportExpiry  DateTime?
-  salaryType      String? // "BASIC" | "HOURLY" — reference only
-  notes           String?
+  id               String    @id @default(cuid())
+  employeeIdNo     String    @unique
+  name             String
+  trade            String?
+  photoData        Bytes?
+  photoMimeType    String?
+  nationality      String?
+  position         String?
+  passportNumber   String?
+  emiratesId       String?
+  emiratesIdExpiry DateTime?
+  visaExpiry       DateTime?
+  laborCardExpiry  DateTime?
+  medicalExpiry    DateTime?
+  passportExpiry   DateTime?
+  salaryType       String? // "BASIC" | "HOURLY" — reference only
+  salaryRate       Float? // reference only, pairs with salaryType
+  notes            String?
 
   dateOfBirth           DateTime?
   gender                String? // "MALE" | "FEMALE"
@@ -266,7 +336,7 @@ model Employee {
 
 model Document {
   id         String    @id @default(cuid())
-  type       String // "PASSPORT" | "VISA" | "LABOR_CARD" | "MEDICAL" | "OTHER"
+  type       String // "PASSPORT" | "VISA" | "LABOR_CARD" | "MEDICAL" | "EMIRATES_ID" | "OTHER"
   filename   String
   fileData   Bytes
   mimeType   String
@@ -300,6 +370,7 @@ model Project {
   closedLpo               Boolean   @default(false)
   sponsorshipCompany      String?
   salesExecutive          String?
+  projectCoordinator      String?
   contactNo               String?
   timesheetCollectionDate DateTime?
   noOfEmployeesRequired   Int?
@@ -310,14 +381,87 @@ model Project {
   interTransfer           Boolean   @default(false)
   internalUse             Boolean   @default(false)
 
+  address   String? // free-text location detail, used alongside or instead of a formal Site
+  latitude  Float?
+  longitude Float?
+
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
 
   site   Site?   @relation(fields: [siteId], references: [id])
   siteId String?
 
-  employees Employee[]
-  vehicles  VehicleProject[]
+  employees        Employee[]
+  vehicles         VehicleProject[]
+  timesheetEntries TimesheetEntry[]
+  tradeRates       ClientTradeRate[]
+  documents        ProjectDocument[]
+  holidays         ProjectHoliday[]
+  contacts         ProjectContact[]
+  inventory        ProjectInventoryAssignment[]
+}
+
+model ProjectDocument {
+  id         String    @id @default(cuid())
+  type       String // "CONTRACT" | "LPO" | "PERMIT" | "OTHER"
+  filename   String
+  fileData   Bytes
+  mimeType   String
+  expiryDate DateTime?
+  uploadedAt DateTime  @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+}
+
+model ProjectHoliday {
+  id             String   @id @default(cuid())
+  date           DateTime
+  label          String
+  rateMultiplier Float? // e.g. 1.5 for 1.5x pay on this date
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@unique([projectId, date])
+}
+
+// Free-text roster of people tied to a project (not a login/User account).
+model ProjectContact {
+  id    String  @id @default(cuid())
+  name  String
+  role  String?
+  phone String?
+  email String?
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+}
+
+model InventoryItem {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  category String?
+  notes    String?
+
+  assignments ProjectInventoryAssignment[]
+}
+
+model ProjectInventoryAssignment {
+  id           String    @id @default(cuid())
+  quantity     Int       @default(1)
+  assignedDate DateTime  @default(now())
+  returnDate   DateTime?
+  condition    String?
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+  itemId String
 }
 
 model Skill {

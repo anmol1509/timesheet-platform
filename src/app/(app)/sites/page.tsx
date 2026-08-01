@@ -1,13 +1,26 @@
 import { prisma } from "@/lib/db";
-import { DeleteButton } from "@/components/DeleteButton";
-import { InlineEditRow } from "@/components/InlineEditRow";
-import { createSiteAction, updateSiteAction, deleteSiteAction } from "./actions";
+import { createSiteAction } from "./actions";
+import { SiteList } from "./site-list";
 
 export default async function SitesPage() {
-  const sites = await prisma.site.findMany({ orderBy: { name: "asc" } });
+  const sites = await prisma.site.findMany({
+    include: {
+      projects: {
+        select: { _count: { select: { employees: true } } },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  const rows = sites.map((s) => ({
+    id: s.id,
+    name: s.name,
+    projectCount: s.projects.length,
+    employeeCount: s.projects.reduce((sum, p) => sum + p._count.employees, 0),
+  }));
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Sites</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -39,41 +52,12 @@ export default async function SitesPage() {
         </button>
       </form>
 
-      {sites.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
           No sites added yet. Add one above.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
-              <tr>
-                <th className="px-4 py-3">Site</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {sites.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    <InlineEditRow
-                      value={s.name}
-                      action={updateSiteAction}
-                      hiddenFields={{ siteId: s.id }}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DeleteButton
-                      action={deleteSiteAction}
-                      hiddenFields={{ siteId: s.id }}
-                      confirmMessage={`Delete site "${s.name}"?`}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SiteList sites={rows} />
       )}
     </div>
   );

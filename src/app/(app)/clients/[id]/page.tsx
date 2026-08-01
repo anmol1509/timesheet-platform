@@ -5,6 +5,8 @@ import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EditClientForm } from "./edit-form";
 import { ClientContacts } from "./client-contacts";
+import { ClientTradeRates } from "./client-trade-rates";
+import { ClientDocuments } from "./client-documents";
 import { deleteClientAction } from "../actions";
 
 function toDateInput(d: Date | null) {
@@ -26,6 +28,8 @@ export default async function ClientDetailPage({
     include: {
       projects: { orderBy: { name: "asc" } },
       contacts: { orderBy: { name: "asc" } },
+      tradeRates: { orderBy: { trade: "asc" } },
+      documents: { orderBy: { uploadedAt: "desc" } },
     },
   });
   if (!client) notFound();
@@ -98,6 +102,10 @@ export default async function ClientDetailPage({
       />
 
       <ClientContacts clientId={client.id} contacts={client.contacts} />
+
+      <ClientTradeRates clientId={client.id} rates={client.tradeRates} />
+
+      <ClientDocuments clientId={client.id} documents={client.documents} />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Projects</h2>

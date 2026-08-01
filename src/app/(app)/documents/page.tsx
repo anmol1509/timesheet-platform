@@ -26,6 +26,7 @@ export default async function DocumentsPage() {
     id: d.id,
     filename: d.filename,
     type: d.type,
+    employeeId: d.employeeId,
     employeeName: d.employee.name,
     employeeIdNo: d.employee.employeeIdNo,
     uploadedByName: d.uploadedBy.name,

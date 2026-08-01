@@ -5,12 +5,9 @@ import {
   createCampAction,
   createRoomAction,
   deleteCampAction,
-  deleteRoomAction,
   updateCampAction,
-  updateRoomAction,
-  addBedsToRoomAction,
 } from "./actions";
-import { BedGrid } from "./bed-grid";
+import { CampView } from "./camp-view";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
@@ -18,11 +15,16 @@ import { InlineEditRow } from "@/components/InlineEditRow";
 export default async function AccommodationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campId?: string; roomId?: string }>;
+  searchParams: Promise<{ campId?: string }>;
 }) {
   const params = await searchParams;
   const camps = await prisma.camp.findMany({
-    include: { rooms: { include: { beds: true } } },
+    include: {
+      rooms: {
+        include: { beds: { orderBy: { label: "asc" } } },
+        orderBy: { name: "asc" },
+      },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -34,16 +36,29 @@ export default async function AccommodationPage({
 
   const selectedCamp =
     camps.find((c) => c.id === params.campId) || camps[0] || null;
-  const selectedRoom =
-    selectedCamp?.rooms.find((r) => r.id === params.roomId) ||
-    selectedCamp?.rooms[0] ||
-    null;
 
-  const unassignedEmployees = await prisma.employee.findMany({
-    where: { bed: null },
-    select: { id: true, name: true, employeeIdNo: true, nationality: true },
-    orderBy: { name: "asc" },
-  });
+  const campBedEmployeeIds =
+    selectedCamp?.rooms.flatMap((r) =>
+      r.beds.map((b) => b.employeeId).filter((id): id is string => !!id)
+    ) ?? [];
+
+  const [occupants, unassignedEmployees] = await Promise.all([
+    campBedEmployeeIds.length > 0
+      ? prisma.employee.findMany({
+          where: { id: { in: campBedEmployeeIds } },
+          select: { id: true, name: true, employeeIdNo: true },
+        })
+      : Promise.resolve([]),
+    prisma.employee.findMany({
+      where: { bed: null },
+      select: { id: true, name: true, employeeIdNo: true, nationality: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  const employeeNames = Object.fromEntries(
+    occupants.map((e) => [e.id, { name: e.name, employeeIdNo: e.employeeIdNo }])
+  );
 
   return (
     <div className="space-y-6">
@@ -68,10 +83,10 @@ export default async function AccommodationPage({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-        <div className="flex items-end gap-2">
+      {camps.length > 0 && (
+        <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-5">
           <form className="flex flex-1 items-end gap-2">
-            <label className="block flex-1">
+            <label className="block max-w-xs flex-1">
               <span className="mb-1 block text-xs font-medium text-slate-500">
                 Camp
               </span>
@@ -111,90 +126,30 @@ export default async function AccommodationPage({
             </>
           )}
         </div>
-        <div className="flex items-end gap-2">
-          <form className="flex flex-1 items-end gap-2">
-            <input type="hidden" name="campId" value={selectedCamp?.id} />
-            <label className="block flex-1">
-              <span className="mb-1 block text-xs font-medium text-slate-500">
-                Room
-              </span>
-              <select
-                name="roomId"
-                defaultValue={selectedRoom?.id}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-              >
-                {selectedCamp?.rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} ({r.beds.length} beds)
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
-            >
-              Go
-            </button>
-          </form>
-          {selectedRoom && (
-            <>
-              <InlineEditRow
-                value={selectedRoom.name}
-                action={updateRoomAction}
-                hiddenFields={{ roomId: selectedRoom.id }}
-              />
-              <DeleteButton
-                action={deleteRoomAction}
-                hiddenFields={{ roomId: selectedRoom.id }}
-                confirmMessage={`Delete ${selectedRoom.name}? Its ${selectedRoom.beds.length} bed(s) will be removed, unassigning anyone housed there.`}
-                label="Delete Room"
-                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-              />
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
-      {selectedRoom ? (
+      {selectedCamp ? (
         <div>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-slate-900">
-              {selectedRoom.name} — Bed Layout
-            </h2>
-            <form action={addBedsToRoomAction} className="flex items-center gap-2">
-              <input type="hidden" name="roomId" value={selectedRoom.id} />
-              <input
-                name="count"
-                type="number"
-                min={1}
-                max={20}
-                defaultValue={1}
-                className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
-              />
-              <button
-                type="submit"
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-              >
-                + Add beds
-              </button>
-            </form>
-          </div>
-          <BedGrid
-            beds={selectedRoom.beds.map((b) => ({
-              id: b.id,
-              label: b.label,
-              employeeId: b.employeeId,
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            {selectedCamp.name} — All Rooms
+          </h2>
+          <CampView
+            rooms={selectedCamp.rooms.map((r) => ({
+              id: r.id,
+              name: r.name,
+              beds: r.beds.map((b) => ({
+                id: b.id,
+                label: b.label,
+                employeeId: b.employeeId,
+              })),
             }))}
-            employeeNames={await employeeNameMap(selectedRoom.beds.map((b) => b.employeeId))}
+            employeeNames={employeeNames}
             unassignedEmployees={unassignedEmployees}
           />
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
-          {selectedCamp
-            ? "This camp has no rooms yet — add one below."
-            : "No camps yet — add one below to get started."}
+          No camps yet — add one below to get started.
         </p>
       )}
 
@@ -252,17 +207,5 @@ export default async function AccommodationPage({
         )}
       </div>
     </div>
-  );
-}
-
-async function employeeNameMap(employeeIds: (string | null)[]) {
-  const ids = employeeIds.filter((id): id is string => !!id);
-  if (ids.length === 0) return {} as Record<string, { name: string; employeeIdNo: string }>;
-  const employees = await prisma.employee.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, name: true, employeeIdNo: true },
-  });
-  return Object.fromEntries(
-    employees.map((e) => [e.id, { name: e.name, employeeIdNo: e.employeeIdNo }])
   );
 }

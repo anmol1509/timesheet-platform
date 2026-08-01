@@ -266,3 +266,162 @@ function SummaryRow({
     </View>
   );
 }
+
+export type ClientInvoiceLine = {
+  employeeIdNo: string;
+  employeeName: string;
+  trade: string;
+  totalHours: number;
+  billRate: number;
+};
+
+export type ClientInvoiceInput = {
+  invoiceNumber: string;
+  issuedByName: string;
+  issuedByTrn: string | null;
+  monthLabel: string;
+  issueDate: Date;
+  dueDate: Date | null;
+  clientName: string;
+  clientTrn: string | null;
+  clientBillingAddress: string | null;
+  lines: ClientInvoiceLine[];
+};
+
+const invStyles = StyleSheet.create({
+  page: { padding: 36, fontSize: 9, fontFamily: "Helvetica" },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  title: { fontSize: 20, fontWeight: 700, color: "#0B1642" },
+  small: { fontSize: 8, color: "#475569", marginTop: 2 },
+  metaBlock: { alignItems: "flex-end" },
+  billTo: { marginBottom: 16 },
+  billToLabel: { fontSize: 8, fontWeight: 700, color: "#94A3B8", marginBottom: 3 },
+  table: { display: "flex", flexDirection: "column", borderWidth: 0.5, borderColor: "#94A3B8" },
+  headerRow2: { flexDirection: "row", backgroundColor: "#0B1642" },
+  row: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#E2E8F0" },
+  cell: { padding: 5, justifyContent: "center" },
+  headerCell: { fontSize: 8, fontWeight: 700, color: "#FFFFFF" },
+  summaryBlock: { marginTop: 16, alignItems: "flex-end" },
+  summaryTable: { width: 220 },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 5,
+    borderTopWidth: 1,
+    borderColor: "#0B1642",
+    marginTop: 2,
+  },
+});
+
+export async function generateClientInvoicePdf(input: ClientInvoiceInput): Promise<Buffer> {
+  const nameW = 130,
+    tradeW = 80,
+    hoursW = 55,
+    rateW = 65,
+    amountW = 75;
+
+  const doc = (
+    <Document>
+      <Page size="A4" style={invStyles.page}>
+        <View style={invStyles.headerRow}>
+          <View>
+            <Text style={invStyles.title}>{input.issuedByName}</Text>
+            {input.issuedByTrn && <Text style={invStyles.small}>TRN: {input.issuedByTrn}</Text>}
+          </View>
+          <View style={invStyles.metaBlock}>
+            <Text style={{ fontSize: 14, fontWeight: 700 }}>TAX INVOICE</Text>
+            <Text style={invStyles.small}>No: {input.invoiceNumber}</Text>
+            <Text style={invStyles.small}>
+              Issued: {input.issueDate.toLocaleDateString("en-GB")}
+            </Text>
+            {input.dueDate && (
+              <Text style={invStyles.small}>
+                Due: {input.dueDate.toLocaleDateString("en-GB")}
+              </Text>
+            )}
+            <Text style={invStyles.small}>Period: {input.monthLabel}</Text>
+          </View>
+        </View>
+
+        <View style={invStyles.billTo}>
+          <Text style={invStyles.billToLabel}>BILL TO</Text>
+          <Text style={{ fontSize: 11, fontWeight: 700 }}>{input.clientName}</Text>
+          {input.clientBillingAddress && (
+            <Text style={invStyles.small}>{input.clientBillingAddress}</Text>
+          )}
+          {input.clientTrn && <Text style={invStyles.small}>TRN: {input.clientTrn}</Text>}
+        </View>
+
+        <View style={invStyles.table}>
+          <View style={invStyles.headerRow2}>
+            <View style={[invStyles.cell, { width: nameW }]}>
+              <Text style={invStyles.headerCell}>EMPLOYEE</Text>
+            </View>
+            <View style={[invStyles.cell, { width: tradeW }]}>
+              <Text style={invStyles.headerCell}>TRADE</Text>
+            </View>
+            <View style={[invStyles.cell, { width: hoursW, textAlign: "right" }]}>
+              <Text style={invStyles.headerCell}>HOURS</Text>
+            </View>
+            <View style={[invStyles.cell, { width: rateW, textAlign: "right" }]}>
+              <Text style={invStyles.headerCell}>RATE (AED)</Text>
+            </View>
+            <View style={[invStyles.cell, { width: amountW, textAlign: "right" }]}>
+              <Text style={invStyles.headerCell}>AMOUNT (AED)</Text>
+            </View>
+          </View>
+          {input.lines.map((l, i) => (
+            <View key={i} style={invStyles.row} wrap={false}>
+              <View style={[invStyles.cell, { width: nameW }]}>
+                <Text>{l.employeeName}</Text>
+                <Text style={{ fontSize: 7, color: "#94A3B8" }}>{l.employeeIdNo}</Text>
+              </View>
+              <View style={[invStyles.cell, { width: tradeW }]}>
+                <Text>{l.trade}</Text>
+              </View>
+              <View style={[invStyles.cell, { width: hoursW, alignItems: "flex-end" }]}>
+                <Text>{l.totalHours}</Text>
+              </View>
+              <View style={[invStyles.cell, { width: rateW, alignItems: "flex-end" }]}>
+                <Text>{fmt(l.billRate)}</Text>
+              </View>
+              <View style={[invStyles.cell, { width: amountW, alignItems: "flex-end" }]}>
+                <Text>{fmt(l.totalHours * l.billRate)}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={invStyles.summaryBlock}>
+          <View style={invStyles.summaryTable}>
+            <View style={invStyles.summaryRow}>
+              <Text>Subtotal</Text>
+              <Text>
+                {fmt(input.lines.reduce((s, l) => s + l.totalHours * l.billRate, 0))}
+              </Text>
+            </View>
+            <View style={invStyles.summaryRow}>
+              <Text>VAT (5%)</Text>
+              <Text>
+                {fmt(
+                  input.lines.reduce((s, l) => s + l.totalHours * l.billRate, 0) * 0.05
+                )}
+              </Text>
+            </View>
+            <View style={invStyles.totalRow}>
+              <Text style={{ fontWeight: 700, fontSize: 11 }}>Total Due (AED)</Text>
+              <Text style={{ fontWeight: 700, fontSize: 11 }}>
+                {fmt(
+                  input.lines.reduce((s, l) => s + l.totalHours * l.billRate, 0) * 1.05
+                )}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  );
+
+  return renderToBuffer(doc);
+}

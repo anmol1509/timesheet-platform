@@ -41,19 +41,24 @@ function blankRow(dayCount: number): RowState {
   };
 }
 
+type ProjectOption = { id: string; code: string; name: string };
+
 export function ManualEntryForm({
   supplierNames,
   clientNames,
   siteNames,
+  projects,
 }: {
   supplierNames: string[];
   clientNames: string[];
   siteNames: string[];
+  projects: ProjectOption[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
     error: null,
   });
   const [month, setMonth] = useState(currentMonthValue());
+  const [projectId, setProjectId] = useState("");
   const dayCount = useMemo(() => daysInMonth(month), [month]);
   const [rows, setRows] = useState<RowState[]>(() => [blankRow(dayCount)]);
 
@@ -98,6 +103,7 @@ export function ManualEntryForm({
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="month" value={month} />
       <input type="hidden" name="rowsJson" value={rowsJson} readOnly />
+      <input type="hidden" name="projectId" value={projectId} />
 
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -117,6 +123,23 @@ export function ManualEntryForm({
             required
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-slate-500">
+            Project (optional — enables Approved Rates on the invoice)
+          </span>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          >
+            <option value="">No project</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.code} — {p.name}
+              </option>
+            ))}
+          </select>
         </label>
         <button
           type="button"

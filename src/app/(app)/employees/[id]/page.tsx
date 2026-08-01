@@ -129,7 +129,17 @@ export default async function EmployeeDetailPage({
         skills={employee.skills.map((s) => ({ id: s.skill.id, name: s.skill.name }))}
       />
 
-      <DocumentsSection employeeId={employee.id} documents={employee.documents} />
+      <DocumentsSection
+        employeeId={employee.id}
+        documents={employee.documents}
+        complianceDates={{
+          PASSPORT: employee.passportExpiry,
+          VISA: employee.visaExpiry,
+          LABOR_CARD: employee.laborCardExpiry,
+          MEDICAL: employee.medicalExpiry,
+          EMIRATES_ID: employee.emiratesIdExpiry,
+        }}
+      />
     </div>
   );
 }

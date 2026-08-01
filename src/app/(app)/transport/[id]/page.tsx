@@ -29,13 +29,27 @@ export default async function VehicleDetailPage({
     prisma.vehicle.findUnique({
       where: { id },
       include: {
-        employees: { orderBy: { name: "asc" } },
+        employees: {
+          include: {
+            project: { select: { name: true } },
+            skills: { include: { skill: { select: { name: true } } } },
+          },
+          orderBy: { name: "asc" },
+        },
         projects: { include: { project: true } },
       },
     }),
     prisma.project.findMany({ orderBy: { name: "asc" } }),
     prisma.employee.findMany({
-      select: { id: true, name: true, employeeIdNo: true, trade: true, vehicleId: true },
+      select: {
+        id: true,
+        name: true,
+        employeeIdNo: true,
+        trade: true,
+        vehicleId: true,
+        project: { select: { name: true } },
+        skills: { select: { skill: { select: { name: true } } } },
+      },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -104,8 +118,18 @@ export default async function VehicleDetailPage({
           name: e.name,
           employeeIdNo: e.employeeIdNo,
           trade: e.trade,
+          projectName: e.project?.name ?? null,
+          skills: e.skills.map((s) => s.skill.name),
         }))}
-        allEmployees={allEmployees}
+        allEmployees={allEmployees.map((e) => ({
+          id: e.id,
+          name: e.name,
+          employeeIdNo: e.employeeIdNo,
+          trade: e.trade,
+          vehicleId: e.vehicleId,
+          projectName: e.project?.name ?? null,
+          skills: e.skills.map((s) => s.skill.name),
+        }))}
       />
     </div>
   );

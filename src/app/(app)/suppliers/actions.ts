@@ -87,6 +87,46 @@ export async function updateSupplierAction(formData: FormData) {
   revalidatePath("/suppliers");
 }
 
+export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
+  await requireUser();
+  const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const name = (r["Supplier name"] || "").trim();
+    if (!name) {
+      results.push({ row: i + 2, status: "error", message: "Supplier name is required." });
+      continue;
+    }
+    try {
+      const existing = await prisma.supplier.findUnique({ where: { name } });
+      const data = {
+        fullName: stringOrNull(r["Full name"] ?? null),
+        contactPerson: stringOrNull(r["Contact person"] ?? null),
+        contactPhone: stringOrNull(r["Contact phone"] ?? null),
+        contactEmail: stringOrNull(r["Contact email"] ?? null),
+        tradeLicenseNumber: stringOrNull(r["Trade license number"] ?? null),
+      };
+      if (existing) {
+        await prisma.supplier.update({ where: { id: existing.id }, data });
+        results.push({ row: i + 2, status: "updated" });
+      } else {
+        await prisma.supplier.create({ data: { name, ...data } });
+        results.push({ row: i + 2, status: "created" });
+      }
+    } catch (e) {
+      results.push({
+        row: i + 2,
+        status: "error",
+        message: e instanceof Error ? e.message : "Failed to import row.",
+      });
+    }
+  }
+
+  revalidatePath("/suppliers");
+  return results;
+}
+
 export async function deleteSupplierAction(formData: FormData) {
   await requireUser();
   const id = String(formData.get("supplierId") || "");

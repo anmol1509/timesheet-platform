@@ -1,14 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { updateProjectAction } from "../actions";
 
 type Project = {
   id: string;
-  description: string | null;
-  siteId: string | null;
+  name: string;
+  clientId: string;
   manager: string | null;
+  projectCoordinator: string | null;
   timelineStart: string;
   timelineEnd: string;
   status: string;
@@ -34,10 +34,10 @@ type Project = {
 
 export function EditProjectForm({
   project,
-  sites,
+  clients,
 }: {
   project: Project;
-  sites: { id: string; name: string }[];
+  clients: { id: string; name: string }[];
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -55,43 +55,19 @@ export function EditProjectForm({
     >
       <input type="hidden" name="projectId" value={project.id} />
 
-      <Section title="Overview">
-        <Field label="Description" className="sm:col-span-2">
-          <textarea
-            name="description"
-            rows={2}
-            defaultValue={project.description || ""}
+      <Section title="Basic Detail">
+        <Field label="Project name">
+          <input
+            name="name"
+            required
+            defaultValue={project.name}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
-        <Field label="Site">
-          {sites.length === 0 ? (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              No sites yet.{" "}
-              <Link href="/sites" className="underline">
-                Add a site
-              </Link>
-              .
-            </p>
-          ) : (
-            <select
-              name="siteId"
-              defaultValue={project.siteId || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">No site</option>
-              {sites.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
-        <Field label="Project manager">
+        <Field label="Client project no.">
           <input
-            name="manager"
-            defaultValue={project.manager || ""}
+            name="clientProjectNo"
+            defaultValue={project.clientProjectNo || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
@@ -106,32 +82,6 @@ export function EditProjectForm({
             <option value="ON_HOLD">On Hold</option>
             <option value="COMPLETED">Completed</option>
           </select>
-        </Field>
-        <Field label="Timeline start">
-          <input
-            name="timelineStart"
-            type="date"
-            defaultValue={project.timelineStart}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-        </Field>
-        <Field label="Timeline end">
-          <input
-            name="timelineEnd"
-            type="date"
-            defaultValue={project.timelineEnd}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-        </Field>
-      </Section>
-
-      <Section title="Procurement">
-        <Field label="Client project no.">
-          <input
-            name="clientProjectNo"
-            defaultValue={project.clientProjectNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
         </Field>
         <Field label="Job type">
           <input
@@ -153,6 +103,19 @@ export function EditProjectForm({
             defaultValue={project.paymentType || ""}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
+        </Field>
+        <Field label="Client">
+          <select
+            name="clientId"
+            defaultValue={project.clientId}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          >
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="LPO no.">
           <input
@@ -176,14 +139,40 @@ export function EditProjectForm({
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
-        <CheckboxField label="Closed LPO" name="closedLpo" defaultChecked={project.closedLpo} />
-      </Section>
-
-      <Section title="Staffing & schedule">
         <Field label="Sales executive">
           <input
             name="salesExecutive"
             defaultValue={project.salesExecutive || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Project coordinator">
+          <input
+            name="projectCoordinator"
+            defaultValue={project.projectCoordinator || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Project manager">
+          <input
+            name="manager"
+            defaultValue={project.manager || ""}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="Start date">
+          <input
+            name="timelineStart"
+            type="date"
+            defaultValue={project.timelineStart}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          />
+        </Field>
+        <Field label="End date">
+          <input
+            name="timelineEnd"
+            type="date"
+            defaultValue={project.timelineEnd}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
@@ -243,11 +232,8 @@ export function EditProjectForm({
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </Field>
-        <CheckboxField
-          label="Inter transfer"
-          name="interTransfer"
-          defaultChecked={project.interTransfer}
-        />
+        <CheckboxField label="Inter transfer" name="interTransfer" defaultChecked={project.interTransfer} />
+        <CheckboxField label="Closed LPO" name="closedLpo" defaultChecked={project.closedLpo} />
         <CheckboxField label="Internal use" name="internalUse" defaultChecked={project.internalUse} />
       </Section>
 

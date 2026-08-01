@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createClientAction } from "../actions";
 
@@ -8,6 +8,7 @@ export default function NewClientPage() {
   const [state, formAction, pending] = useActionState(createClientAction, {
     error: null,
   });
+  const [billingType, setBillingType] = useState("");
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -71,22 +72,28 @@ export default function NewClientPage() {
               <option value="INACTIVE">Inactive</option>
             </select>
           </Field>
-          <Field label="Basic rate (AED)">
-            <input
-              name="basicRate"
-              type="number"
-              step="0.01"
+          <Field label="Billing type">
+            <select
+              name="billingType"
+              value={billingType}
+              onChange={(e) => setBillingType(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
+            >
+              <option value="">Not set</option>
+              <option value="BASIC">Basic rate</option>
+              <option value="HOURLY">Hourly rate</option>
+            </select>
           </Field>
-          <Field label="Hourly rate (AED)">
-            <input
-              name="hourlyRate"
-              type="number"
-              step="0.01"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
+          {billingType && (
+            <Field label={billingType === "HOURLY" ? "Hourly rate (AED)" : "Basic rate (AED)"}>
+              <input
+                name="billingRate"
+                type="number"
+                step="0.01"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </Field>
+          )}
           <Field label="Contract start">
             <input
               name="contractStart"

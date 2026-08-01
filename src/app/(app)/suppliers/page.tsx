@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { Badge } from "@/components/Badge";
-import { DeleteButton } from "@/components/DeleteButton";
-import { createSupplierAction, deleteSupplierAction } from "./actions";
+import { complianceStatus } from "@/lib/compliance";
+import { createSupplierAction } from "./actions";
+import { SupplierList } from "./supplier-list";
 
 export default async function SuppliersPage({
   searchParams,
@@ -17,13 +16,25 @@ export default async function SuppliersPage({
       contactPerson: true,
       contactPhone: true,
       status: true,
+      tradeLicenseExpiry: true,
       _count: { select: { employees: true, entries: true } },
     },
     orderBy: { name: "asc" },
   });
 
+  const rows = suppliers.map((s) => ({
+    id: s.id,
+    name: s.name,
+    contactPerson: s.contactPerson,
+    contactPhone: s.contactPhone,
+    status: s.status,
+    employeeCount: s._count.employees,
+    entryCount: s._count.entries,
+    licenseStatus: complianceStatus(s.tradeLicenseExpiry),
+  }));
+
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Suppliers</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -71,73 +82,13 @@ export default async function SuppliersPage({
         </button>
       </form>
 
-      {suppliers.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
           No suppliers yet. Add one above, or upload a timesheet to create
           them automatically.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
-              <tr>
-                <th className="px-4 py-3">Supplier</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3 text-right">Employees</th>
-                <th className="px-4 py-3 text-right">Timesheet rows</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {suppliers.map((s) => (
-                <tr key={s.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">
-                    <Link href={`/suppliers/${s.id}`} className="hover:underline">
-                      {s.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {s.contactPerson || s.contactPhone ? (
-                      <>
-                        {s.contactPerson && <div>{s.contactPerson}</div>}
-                        {s.contactPhone && (
-                          <div className="text-xs text-slate-400">
-                            {s.contactPhone}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-slate-600">
-                    {s._count.employees}
-                  </td>
-                  <td className="px-4 py-3 text-right text-slate-600">
-                    {s._count.entries}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge color={s.status === "ACTIVE" ? "green" : "red"}>
-                      {s.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DeleteButton
-                      action={deleteSupplierAction}
-                      hiddenFields={{ supplierId: s.id }}
-                      confirmMessage={`Delete supplier "${s.name}"?${
-                        s._count.employees > 0
-                          ? ` ${s._count.employees} employee(s) will be unassigned.`
-                          : ""
-                      }`}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SupplierList suppliers={rows} />
       )}
     </div>
   );

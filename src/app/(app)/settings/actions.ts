@@ -8,11 +8,12 @@ import { requireAdmin } from "@/lib/auth";
 export async function updateIssuedToAction(formData: FormData) {
   await requireAdmin();
   const issuedTo = String(formData.get("issuedTo") || "").trim();
+  const companyTrn = String(formData.get("companyTrn") || "").trim() || null;
   if (!issuedTo) return;
   await prisma.settings.upsert({
     where: { id: "singleton" },
-    update: { issuedTo },
-    create: { id: "singleton", issuedTo },
+    update: { issuedTo, companyTrn },
+    create: { id: "singleton", issuedTo, companyTrn },
   });
   revalidatePath("/settings");
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { Building2, FileCheck2, DollarSign } from "lucide-react";
+import { complianceStatus } from "@/lib/compliance";
 import { ClientList } from "./client-list";
 
 export default async function ClientsPage() {
@@ -26,6 +27,7 @@ export default async function ClientsPage() {
     contractStart: c.contractStart ? c.contractStart.toISOString() : null,
     contractEnd: c.contractEnd ? c.contractEnd.toISOString() : null,
     status: c.status,
+    licenseStatus: complianceStatus(c.tradeLicenseExpiry),
   }));
 
   return (

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 function numberOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -27,6 +28,15 @@ async function nextClientCode() {
   return `CLI${String(count + 1).padStart(3, "0")}`;
 }
 
+function billingFields(formData: FormData) {
+  const billingType = String(formData.get("billingType") || "");
+  const billingRate = numberOrNull(formData.get("billingRate"));
+  return {
+    basicRate: billingType === "BASIC" ? billingRate : null,
+    hourlyRate: billingType === "HOURLY" ? billingRate : null,
+  };
+}
+
 export async function createClientAction(
   _prevState: { error: string | null },
   formData: FormData
@@ -45,8 +55,7 @@ export async function createClientAction(
       contactPerson: stringOrNull(formData.get("contactPerson")),
       contactEmail: stringOrNull(formData.get("contactEmail")),
       contactPhone: stringOrNull(formData.get("contactPhone")),
-      basicRate: numberOrNull(formData.get("basicRate")),
-      hourlyRate: numberOrNull(formData.get("hourlyRate")),
+      ...billingFields(formData),
       contractStart: dateOrNull(formData.get("contractStart")),
       contractEnd: dateOrNull(formData.get("contractEnd")),
       status: String(formData.get("status") || "ACTIVE"),
@@ -68,8 +77,7 @@ export async function updateClientAction(formData: FormData) {
       contactPerson: stringOrNull(formData.get("contactPerson")),
       contactEmail: stringOrNull(formData.get("contactEmail")),
       contactPhone: stringOrNull(formData.get("contactPhone")),
-      basicRate: numberOrNull(formData.get("basicRate")),
-      hourlyRate: numberOrNull(formData.get("hourlyRate")),
+      ...billingFields(formData),
       contractStart: dateOrNull(formData.get("contractStart")),
       contractEnd: dateOrNull(formData.get("contractEnd")),
       status: String(formData.get("status") || "ACTIVE"),
@@ -147,6 +155,110 @@ export async function removeClientContactAction(formData: FormData) {
   if (!contactId) return;
   await prisma.clientContact.delete({ where: { id: contactId } });
   revalidatePath(`/clients/${clientId}`);
+}
+
+export async function addClientTradeRateAction(formData: FormData) {
+  await requireUser();
+  const clientId = String(formData.get("clientId") || "");
+  const trade = String(formData.get("trade") || "").trim();
+  const rate = numberOrNull(formData.get("rate"));
+  if (!clientId || !trade || rate == null) return;
+
+  const existing = await prisma.clientTradeRate.findFirst({
+    where: { clientId, projectId: null, trade },
+  });
+  if (existing) {
+    await prisma.clientTradeRate.update({ where: { id: existing.id }, data: { rate } });
+  } else {
+    await prisma.clientTradeRate.create({ data: { clientId, trade, rate } });
+  }
+
+  revalidatePath(`/clients/${clientId}`);
+}
+
+export async function removeClientTradeRateAction(formData: FormData) {
+  await requireUser();
+  const clientId = String(formData.get("clientId") || "");
+  const rateId = String(formData.get("rateId") || "");
+  if (!rateId) return;
+  await prisma.clientTradeRate.delete({ where: { id: rateId } });
+  revalidatePath(`/clients/${clientId}`);
+}
+
+export async function addClientDocumentAction(formData: FormData) {
+  const user = await requireUser();
+  const clientId = String(formData.get("clientId") || "");
+  const type = String(formData.get("type") || "OTHER");
+  const expiryDate = dateOrNull(formData.get("expiryDate"));
+  const file = formData.get("file");
+  if (!clientId || !(file instanceof File) || file.size === 0) return;
+  if (file.size > MAX_UPLOAD_BYTES) return;
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await prisma.clientDocument.create({
+    data: {
+      clientId,
+      type,
+      filename: file.name,
+      fileData: buffer,
+      mimeType: file.type || "application/octet-stream",
+      expiryDate,
+      uploadedById: user.id,
+    },
+  });
+
+  revalidatePath(`/clients/${clientId}`);
+}
+
+export async function deleteClientDocumentAction(formData: FormData) {
+  await requireUser();
+  const id = String(formData.get("documentId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  if (!id) return;
+  await prisma.clientDocument.delete({ where: { id } });
+  revalidatePath(`/clients/${clientId}`);
+}
+
+export async function bulkImportClientsAction(rows: Record<string, string>[]) {
+  await requireUser();
+  const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const name = (r["Company name"] || "").trim();
+    if (!name) {
+      results.push({ row: i + 2, status: "error", message: "Company name is required." });
+      continue;
+    }
+    try {
+      const existing = await prisma.client.findUnique({ where: { name } });
+      const data = {
+        contactPerson: stringOrNull(r["Contact person"] ?? null),
+        contactEmail: stringOrNull(r["Contact email"] ?? null),
+        contactPhone: stringOrNull(r["Contact phone"] ?? null),
+        trn: stringOrNull(r["TRN"] ?? null),
+        tradeLicenseNumber: stringOrNull(r["Trade license number"] ?? null),
+      };
+      if (existing) {
+        await prisma.client.update({ where: { id: existing.id }, data });
+        results.push({ row: i + 2, status: "updated" });
+      } else {
+        await prisma.client.create({
+          data: { name, code: await nextClientCode(), ...data },
+        });
+        results.push({ row: i + 2, status: "created" });
+      }
+    } catch (e) {
+      results.push({
+        row: i + 2,
+        status: "error",
+        message: e instanceof Error ? e.message : "Failed to import row.",
+      });
+    }
+  }
+
+  revalidatePath("/clients");
+  return results;
 }
 
 export async function deleteClientAction(formData: FormData) {

@@ -278,3 +278,131 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   const arrayBuffer = await wb.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
 }
+
+export type ClientInvoiceXlsxInput = {
+  invoiceNumber: string;
+  issuedByName: string;
+  issuedByTrn: string | null;
+  monthLabel: string;
+  issueDate: Date;
+  dueDate: Date | null;
+  clientName: string;
+  clientTrn: string | null;
+  clientBillingAddress: string | null;
+  lines: {
+    employeeIdNo: string;
+    employeeName: string;
+    trade: string;
+    totalHours: number;
+    billRate: number;
+  }[];
+};
+
+export async function generateClientInvoiceXlsx(input: ClientInvoiceXlsxInput): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Timesheet Platform";
+  const sheet = wb.addWorksheet("Invoice");
+
+  sheet.getColumn(1).width = 24;
+  sheet.getColumn(2).width = 16;
+  sheet.getColumn(3).width = 18;
+  sheet.getColumn(4).width = 12;
+  sheet.getColumn(5).width = 14;
+
+  let r = 1;
+  sheet.mergeCells(r, 1, r, 3);
+  sheet.getCell(r, 1).value = input.issuedByName;
+  sheet.getCell(r, 1).font = { name: FONT, bold: true, size: 16 };
+  sheet.getCell(r, 4).value = "TAX INVOICE";
+  sheet.getCell(r, 4).font = { name: FONT, bold: true, size: 14 };
+  r++;
+  if (input.issuedByTrn) {
+    sheet.getCell(r, 1).value = `TRN: ${input.issuedByTrn}`;
+    sheet.getCell(r, 1).font = { name: FONT, size: 9 };
+  }
+  sheet.getCell(r, 4).value = `No: ${input.invoiceNumber}`;
+  r++;
+  sheet.getCell(r, 4).value = `Issued: ${input.issueDate.toLocaleDateString("en-GB")}`;
+  r++;
+  if (input.dueDate) {
+    sheet.getCell(r, 4).value = `Due: ${input.dueDate.toLocaleDateString("en-GB")}`;
+    r++;
+  }
+  sheet.getCell(r, 4).value = `Period: ${input.monthLabel}`;
+  r += 2;
+
+  sheet.getCell(r, 1).value = "BILL TO";
+  sheet.getCell(r, 1).font = { name: FONT, bold: true, size: 9, color: { argb: "FF94A3B8" } };
+  r++;
+  sheet.getCell(r, 1).value = input.clientName;
+  sheet.getCell(r, 1).font = { name: FONT, bold: true, size: 11 };
+  r++;
+  if (input.clientBillingAddress) {
+    sheet.getCell(r, 1).value = input.clientBillingAddress;
+    r++;
+  }
+  if (input.clientTrn) {
+    sheet.getCell(r, 1).value = `TRN: ${input.clientTrn}`;
+    r++;
+  }
+  r += 1;
+
+  const headerRow = r;
+  const headers = ["Employee", "ID No", "Trade", "Hours", "Rate (AED)", "Amount (AED)"];
+  sheet.getColumn(6).width = 14;
+  headers.forEach((label, i) => {
+    const cell = sheet.getCell(headerRow, i + 1);
+    cell.value = label;
+    cell.font = { name: FONT, bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0B1642" } };
+    cell.border = BORDER_ALL;
+  });
+  r++;
+
+  const dataStartRow = r;
+  for (const l of input.lines) {
+    sheet.getCell(r, 1).value = l.employeeName;
+    sheet.getCell(r, 2).value = l.employeeIdNo;
+    sheet.getCell(r, 3).value = l.trade;
+    sheet.getCell(r, 4).value = l.totalHours;
+    sheet.getCell(r, 5).value = l.billRate;
+    sheet.getCell(r, 5).numFmt = "#,##0.00";
+    const amountCell = sheet.getCell(r, 6);
+    amountCell.value = { formula: `D${r}*E${r}` };
+    amountCell.numFmt = "#,##0.00";
+    for (let c = 1; c <= 6; c++) {
+      sheet.getCell(r, c).border = BORDER_ALL;
+      if (!sheet.getCell(r, c).font) sheet.getCell(r, c).font = { name: FONT, size: 9 };
+    }
+    r++;
+  }
+  const dataEndRow = r - 1;
+  r += 1;
+
+  const subtotalRow = r;
+  sheet.getCell(r, 5).value = "Subtotal";
+  sheet.getCell(r, 5).font = { name: FONT, size: 9 };
+  sheet.getCell(r, 5).alignment = { horizontal: "right" };
+  sheet.getCell(r, 6).value =
+    dataEndRow >= dataStartRow ? { formula: `SUM(F${dataStartRow}:F${dataEndRow})` } : 0;
+  sheet.getCell(r, 6).numFmt = "#,##0.00";
+  r++;
+
+  const vatRow = r;
+  sheet.getCell(r, 5).value = "VAT (5%)";
+  sheet.getCell(r, 5).alignment = { horizontal: "right" };
+  sheet.getCell(r, 6).value = { formula: `F${subtotalRow}*0.05` };
+  sheet.getCell(r, 6).numFmt = "#,##0.00";
+  r++;
+
+  sheet.getCell(r, 5).value = "Total Due (AED)";
+  sheet.getCell(r, 5).font = { name: FONT, bold: true, size: 11 };
+  sheet.getCell(r, 5).alignment = { horizontal: "right" };
+  const totalCell = sheet.getCell(r, 6);
+  totalCell.value = { formula: `F${subtotalRow}+F${vatRow}` };
+  totalCell.numFmt = "#,##0.00";
+  totalCell.font = { name: FONT, bold: true, size: 11 };
+
+  const arrayBuffer = await wb.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
+}

@@ -16,11 +16,26 @@ function stringOrNull(value: FormDataEntryValue | null) {
   return s || null;
 }
 
+function numberOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+const DOC_TYPE_TO_EXPIRY_FIELD: Record<string, string> = {
+  PASSPORT: "passportExpiry",
+  VISA: "visaExpiry",
+  LABOR_CARD: "laborCardExpiry",
+  MEDICAL: "medicalExpiry",
+  EMIRATES_ID: "emiratesIdExpiry",
+};
+
 export async function createEmployeeAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  await requireUser();
+  const user = await requireUser();
 
   const employeeIdNo = String(formData.get("employeeIdNo") || "").trim();
   const name = String(formData.get("name") || "").trim();
@@ -54,13 +69,16 @@ export async function createEmployeeAction(
       trade: stringOrNull(formData.get("position")),
       passportNumber: stringOrNull(formData.get("passportNumber")),
       emiratesId: stringOrNull(formData.get("emiratesId")),
+      dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
       visaExpiry: dateOrNull(formData.get("visaExpiry")),
       laborCardExpiry: dateOrNull(formData.get("laborCardExpiry")),
       medicalExpiry: dateOrNull(formData.get("medicalExpiry")),
       passportExpiry: dateOrNull(formData.get("passportExpiry")),
+      emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
       notes: stringOrNull(formData.get("notes")),
       projectId: stringOrNull(formData.get("projectId")),
       salaryType: stringOrNull(formData.get("salaryType")),
+      salaryRate: numberOrNull(formData.get("salaryRate")),
       photoData:
         photo instanceof File && photo.size > 0
           ? Buffer.from(await photo.arrayBuffer())
@@ -69,6 +87,23 @@ export async function createEmployeeAction(
         photo instanceof File && photo.size > 0 ? photo.type : undefined,
     },
   });
+
+  for (const [type, expiryField] of Object.entries(DOC_TYPE_TO_EXPIRY_FIELD)) {
+    const file = formData.get(`docFile_${type}`);
+    if (!(file instanceof File) || file.size === 0) continue;
+    if (file.size > MAX_UPLOAD_BYTES) continue;
+    await prisma.document.create({
+      data: {
+        employeeId: employee.id,
+        type,
+        filename: file.name,
+        fileData: Buffer.from(await file.arrayBuffer()),
+        mimeType: file.type || "application/octet-stream",
+        expiryDate: dateOrNull(formData.get(expiryField)),
+        uploadedById: user.id,
+      },
+    });
+  }
 
   for (const skillName of skillNames) {
     const skill = await prisma.skill.upsert({

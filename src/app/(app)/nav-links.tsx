@@ -21,6 +21,7 @@ import {
   Bus,
   MapPin,
   PenSquare,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -64,6 +65,15 @@ const NAV: Entry[] = [
       { href: "/timesheets/manual", label: "Manual Entry", icon: PenSquare },
       { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },
       { href: "/history", label: "History", icon: Clock },
+    ],
+  },
+  {
+    type: "group",
+    label: "Billing",
+    icon: Receipt,
+    children: [
+      { href: "/invoices", label: "Invoices", icon: Receipt },
+      { href: "/invoices/history", label: "Invoice History", icon: Clock },
     ],
   },
 ];

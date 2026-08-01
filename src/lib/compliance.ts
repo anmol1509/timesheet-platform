@@ -19,4 +19,11 @@ export const COMPLIANCE_FIELDS = [
   { key: "laborCardExpiry", label: "Labor Card" },
   { key: "medicalExpiry", label: "Medical Certificate" },
   { key: "passportExpiry", label: "Passport" },
+  { key: "emiratesIdExpiry", label: "Emirates ID" },
 ] as const;
+
+export function complianceRowClass(status: ComplianceStatus): string | undefined {
+  if (status === "expired") return "bg-red-50/60";
+  if (status === "expiring") return "bg-amber-50/60";
+  return undefined;
+}
