@@ -87,7 +87,7 @@ export function UploadForm() {
           if (file) handleFile(file);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-14 text-center transition ${
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 py-14 text-center transition ${
           dragging
             ? "border-slate-900 bg-slate-50"
             : "border-slate-300 bg-white hover:border-slate-400"

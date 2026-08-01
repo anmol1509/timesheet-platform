@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { updateIssuedToAction, deleteUserAction } from "./actions";
 import { CreateUserForm } from "./create-user-form";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
@@ -30,7 +31,7 @@ export default async function SettingsPage() {
         </h2>
         <form
           action={updateIssuedToAction}
-          className="max-w-md rounded-2xl border border-slate-200 bg-white p-5"
+          className="max-w-md rounded-3xl border border-slate-200 bg-white p-5"
         >
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-500">
@@ -64,7 +65,7 @@ export default async function SettingsPage() {
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Team</h2>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                 <tr>
@@ -84,15 +85,12 @@ export default async function SettingsPage() {
                     <td className="px-4 py-3 text-slate-600">{u.role}</td>
                     <td className="px-4 py-3 text-right">
                       {u.id !== admin.id && (
-                        <form action={deleteUserAction}>
-                          <input type="hidden" name="userId" value={u.id} />
-                          <button
-                            type="submit"
-                            className="text-xs font-medium text-red-600 hover:underline"
-                          >
-                            Remove
-                          </button>
-                        </form>
+                        <DeleteButton
+                          action={deleteUserAction}
+                          hiddenFields={{ userId: u.id }}
+                          confirmMessage={`Remove "${u.name}" (${u.email}) from your team? They will lose access immediately.`}
+                          label="Remove"
+                        />
                       )}
                     </td>
                   </tr>
@@ -101,7 +99,7 @@ export default async function SettingsPage() {
             </table>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
             <h3 className="mb-3 text-sm font-medium text-slate-900">
               Add team member
             </h3>

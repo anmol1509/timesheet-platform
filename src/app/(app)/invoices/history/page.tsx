@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { markInvoicePaidAction } from "./actions";
+import { MarkPaidButton } from "./mark-paid-button";
 
 function fmt(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -36,14 +37,14 @@ export default async function InvoiceHistoryPage() {
             Every client invoice issued, most recent first.
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3">
+        <div className="rounded-3xl border border-slate-200 bg-white px-5 py-3">
           <p className="text-xs font-medium text-slate-500">Outstanding (AED)</p>
           <p className="text-lg font-semibold text-slate-900">{fmt(outstanding)}</p>
         </div>
       </div>
 
       {invoices.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
           <p className="text-sm text-slate-500">
             Nothing issued yet.{" "}
             <Link href="/invoices" className="font-medium text-slate-900 underline">
@@ -53,7 +54,7 @@ export default async function InvoiceHistoryPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -91,15 +92,11 @@ export default async function InvoiceHistoryPage() {
                     <td className="px-4 py-3 text-slate-600">{inv.generatedBy.name}</td>
                     <td className="px-4 py-3 text-right">
                       {inv.status !== "PAID" && (
-                        <form action={markInvoicePaidAction}>
-                          <input type="hidden" name="invoiceId" value={inv.id} />
-                          <button
-                            type="submit"
-                            className="text-xs font-medium text-blue-600 hover:underline"
-                          >
-                            Mark paid
-                          </button>
-                        </form>
+                        <MarkPaidButton
+                          action={markInvoicePaidAction}
+                          invoiceId={inv.id}
+                          invoiceNumber={inv.invoiceNumber}
+                        />
                       )}
                     </td>
                   </tr>

@@ -6,6 +6,8 @@ import {
   returnProjectInventoryAction,
   removeProjectInventoryAction,
 } from "../actions";
+import { Combobox } from "@/components/ui/Combobox";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type Assignment = {
   id: string;
@@ -57,13 +59,7 @@ export function ProjectInventory({
 
   return (
     <div className="space-y-4">
-      <datalist id="inventory-catalog">
-        {catalog.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
         {active.length > 0 ? (
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
@@ -93,16 +89,12 @@ export function ProjectInventory({
                         Mark returned
                       </button>
                     </form>
-                    <form action={removeProjectInventoryAction} className="inline">
-                      <input type="hidden" name="projectId" value={projectId} />
-                      <input type="hidden" name="assignmentId" value={a.id} />
-                      <button
-                        type="submit"
-                        className="text-xs font-medium text-red-600 hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </form>
+                    <DeleteButton
+                      action={removeProjectInventoryAction}
+                      hiddenFields={{ projectId, assignmentId: a.id }}
+                      confirmMessage={`Remove "${a.item.name}" from this project's equipment?`}
+                      label="Remove"
+                    />
                   </td>
                 </tr>
               ))}
@@ -116,12 +108,11 @@ export function ProjectInventory({
         <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 p-4">
           <label className="block min-w-[160px] flex-1">
             <span className="mb-1 block text-xs font-medium text-slate-500">Item</span>
-            <input
+            <Combobox
               value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              list="inventory-catalog"
+              onChange={setItemName}
               placeholder="e.g. Safety Harness"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              options={catalog.map((name) => ({ value: name, label: name }))}
             />
           </label>
           <label className="block w-20">
@@ -160,7 +151,7 @@ export function ProjectInventory({
             type="button"
             disabled={pending}
             onClick={add}
-            className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-50"
+            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
           >
             + Add
           </button>
@@ -172,7 +163,7 @@ export function ProjectInventory({
           <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
             Returned
           </h3>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-slate-100">
                 {returned.map((a) => (
@@ -183,16 +174,12 @@ export function ProjectInventory({
                       Returned {fmtDate(a.returnDate!)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={removeProjectInventoryAction}>
-                        <input type="hidden" name="projectId" value={projectId} />
-                        <input type="hidden" name="assignmentId" value={a.id} />
-                        <button
-                          type="submit"
-                          className="text-xs font-medium text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </form>
+                      <DeleteButton
+                        action={removeProjectInventoryAction}
+                        hiddenFields={{ projectId, assignmentId: a.id }}
+                        confirmMessage={`Remove "${a.item.name}" from this project's equipment history?`}
+                        label="Remove"
+                      />
                     </td>
                   </tr>
                 ))}

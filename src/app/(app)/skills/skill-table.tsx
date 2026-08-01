@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { TrendingUp } from "lucide-react";
 import { toggleTrendingAction, deleteSkillAction, updateSkillAction } from "./actions";
+import { Select } from "@/components/ui/Select";
 
 type SkillRow = {
   id: string;
@@ -71,24 +72,19 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
           placeholder="Search skills..."
           className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
         />
-        <select
+        <Select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+          onChange={setCategory}
+          triggerClassName="w-56"
+          options={categories.map((c) => ({ value: c, label: c }))}
+        />
       </div>
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           Skills Overview ({filtered.length} skills)
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
               <tr>
@@ -190,7 +186,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
                           <div
-                            className="h-full rounded-full bg-[#0B1642]"
+                            className="h-full rounded-full bg-[#166534]"
                             style={{ width: `${Math.min(100, s.popularity)}%` }}
                           />
                         </div>

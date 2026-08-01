@@ -7,6 +7,8 @@ import {
   assignEmployeesToVehicleAction,
   unassignEmployeeFromVehicleAction,
 } from "../actions";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type EmployeeInfo = {
   id: string;
@@ -73,7 +75,7 @@ export function RosterManager({
       <h2 className="mb-3 text-sm font-semibold text-slate-900">
         Roster ({roster.length})
       </h2>
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
         {roster.length === 0 ? (
           <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
             No employees assigned yet. Pick from the list below.
@@ -104,16 +106,12 @@ export function RosterManager({
                       {e.skills.length > 0 ? e.skills.join(", ") : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={unassignEmployeeFromVehicleAction}>
-                        <input type="hidden" name="vehicleId" value={vehicleId} />
-                        <input type="hidden" name="employeeId" value={e.id} />
-                        <button
-                          type="submit"
-                          className="text-xs font-medium text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </form>
+                      <DeleteButton
+                        action={unassignEmployeeFromVehicleAction}
+                        hiddenFields={{ vehicleId, employeeId: e.id }}
+                        confirmMessage={`Remove "${e.name}" from this vehicle's roster?`}
+                        label="Remove"
+                      />
                     </td>
                   </tr>
                 ))}
@@ -142,16 +140,12 @@ export function RosterManager({
               </p>
             ) : (
               available.map((e) => (
-                <label
+                <div
                   key={e.id}
+                  onClick={() => toggle(e.id)}
                   className="flex cursor-pointer items-center gap-2.5 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0 hover:bg-slate-50"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(e.id)}
-                    onChange={() => toggle(e.id)}
-                    className="h-4 w-4 shrink-0 rounded border-slate-300"
-                  />
+                  <Checkbox checked={selected.has(e.id)} />
                   <span className="min-w-0 flex-1">
                     <span className="font-medium text-slate-900">{e.name}</span>{" "}
                     <span className="text-slate-400">
@@ -168,7 +162,7 @@ export function RosterManager({
                       on another vehicle
                     </span>
                   )}
-                </label>
+                </div>
               ))
             )}
           </div>
@@ -198,7 +192,7 @@ export function RosterManager({
                 type="button"
                 disabled={pending}
                 onClick={assignSelected}
-                className="rounded-lg bg-[#0B1642] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+                className="rounded-lg bg-[#166534] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
               >
                 {pending ? "Assigning…" : `Assign ${selected.size} to roster`}
               </button>

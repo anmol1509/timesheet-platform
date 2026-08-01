@@ -110,7 +110,7 @@ export default async function ClientDetailPage({
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Projects</h2>
         {client.projects.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-sm text-slate-500">
+          <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-sm text-slate-500">
             No projects for this client yet.{" "}
             <Link href="/projects/new" className="underline">
               Add one
@@ -118,7 +118,7 @@ export default async function ClientDetailPage({
             .
           </p>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-slate-100">
                 {client.projects.map((p) => (

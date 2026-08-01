@@ -191,7 +191,7 @@ export default async function ProjectDetailPage({
           <h2 className="mb-3 text-sm font-semibold text-slate-900">
             Assigned employees
           </h2>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-slate-100">
                 {project.employees.map((e) => (

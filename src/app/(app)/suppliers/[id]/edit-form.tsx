@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { updateSupplierAction } from "../actions";
+import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 
 type Supplier = {
   id: string;
@@ -63,7 +66,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           setSaved(true);
         });
       }}
-      className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6"
+      className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6"
     >
       <input type="hidden" name="supplierId" value={supplier.id} />
 
@@ -76,14 +79,15 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             name="status"
             defaultValue={supplier.status}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          >
-            <option value="ACTIVE">Active</option>
-            <option value="BLACKLISTED">Blacklisted</option>
-          </select>
+            searchable={false}
+            options={[
+              { value: "ACTIVE", label: "Active" },
+              { value: "BLACKLISTED", label: "Blacklisted" },
+            ]}
+          />
         </Field>
         <Field label="TRN (Tax Registration Number)">
           <input
@@ -138,11 +142,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           />
         </Field>
         <Field label="Country">
-          <input
-            name="country"
-            defaultValue={supplier.country || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
+          <CountrySelect name="country" defaultValue={supplier.country || ""} />
         </Field>
         <Field label="Emirate">
           <input
@@ -300,7 +300,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
@@ -344,14 +344,8 @@ function CheckboxField({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 pt-5 text-sm text-slate-600">
-      <input
-        type="checkbox"
-        name={name}
-        defaultChecked={defaultChecked}
-        className="h-4 w-4 rounded border-slate-300"
-      />
-      {label}
-    </label>
+    <div className="pt-5">
+      <Checkbox name={name} value="on" defaultChecked={defaultChecked} label={label} />
+    </div>
   );
 }

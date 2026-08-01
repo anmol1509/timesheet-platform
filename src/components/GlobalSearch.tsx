@@ -66,10 +66,10 @@ export function GlobalSearch() {
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search employees, projects, or documents..."
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-sm text-slate-700 outline-none focus:border-slate-400"
+        className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm text-slate-700 outline-none focus:border-slate-400"
       />
       {open && query.trim().length >= 2 && (
-        <div className="absolute top-full left-0 z-20 mt-1 w-full max-h-96 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="absolute top-full left-0 z-20 mt-1 w-full max-h-96 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
           {!hasResults && (
             <p className="px-4 py-6 text-center text-sm text-slate-500">
               No matches for &quot;{query}&quot;.

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { assignBedAction, unassignBedAction } from "../../accommodation/actions";
+import { Select } from "@/components/ui/Select";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type BedOption = {
   id: string;
@@ -25,7 +27,7 @@ export function AccommodationSection({
   const bedsInCamp = vacantBeds.filter((b) => b.campName === camp);
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-3xl border border-slate-200 bg-white p-5">
       <h2 className="mb-2 text-sm font-semibold text-slate-900">
         Accommodation
       </h2>
@@ -36,16 +38,12 @@ export function AccommodationSection({
               {currentBed.campName} · {currentBed.roomName} · {currentBed.label}
             </span>
           </p>
-          <form action={unassignBedAction}>
-            <input type="hidden" name="bedId" value={currentBed.id} />
-            <input type="hidden" name="employeeId" value={employeeId} />
-            <button
-              type="submit"
-              className="text-xs font-medium text-red-600 hover:underline"
-            >
-              Unassign bed
-            </button>
-          </form>
+          <DeleteButton
+            action={unassignBedAction}
+            hiddenFields={{ bedId: currentBed.id, employeeId }}
+            confirmMessage={`Unassign ${currentBed.campName} · ${currentBed.roomName} · ${currentBed.label} from this employee?`}
+            label="Unassign bed"
+          />
         </div>
       ) : vacantBeds.length === 0 ? (
         <p className="text-sm text-slate-500">
@@ -64,47 +62,33 @@ export function AccommodationSection({
             <span className="mb-1 block text-xs font-medium text-slate-500">
               Camp
             </span>
-            <select
+            <Select
               value={camp}
-              onChange={(e) => {
-                setCamp(e.target.value);
+              onChange={(v) => {
+                setCamp(v);
                 setSelected("");
               }}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Select a camp</option>
-              {camps.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              placeholder="Select a camp"
+              options={camps.map((c) => ({ value: c, label: c }))}
+            />
           </label>
           <label className="block min-w-[240px] flex-1">
             <span className="mb-1 block text-xs font-medium text-slate-500">
               Bed
             </span>
-            <select
+            <Select
               name="bedId"
               value={selected}
-              onChange={(e) => setSelected(e.target.value)}
+              onChange={setSelected}
               disabled={!camp}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:bg-slate-50 disabled:text-slate-400"
-            >
-              <option value="">
-                {camp ? "Select a vacant bed" : "Select a camp first"}
-              </option>
-              {bedsInCamp.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.roomName} · {b.label}
-                </option>
-              ))}
-            </select>
+              placeholder={camp ? "Select a vacant bed" : "Select a camp first"}
+              options={bedsInCamp.map((b) => ({ value: b.id, label: `${b.roomName} · ${b.label}` }))}
+            />
           </label>
           <button
             type="submit"
             disabled={!selected}
-            className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-50"
+            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
           >
             Assign
           </button>

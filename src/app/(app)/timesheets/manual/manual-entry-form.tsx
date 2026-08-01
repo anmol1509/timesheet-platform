@@ -3,6 +3,8 @@
 import { useActionState, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { submitManualEntryAction } from "./actions";
+import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 
 type RowState = {
   id: string;
@@ -111,7 +113,7 @@ export function ManualEntryForm({
         </p>
       )}
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-500">
             Month
@@ -128,18 +130,12 @@ export function ManualEntryForm({
           <span className="mb-1 block text-xs font-medium text-slate-500">
             Project (optional — enables Approved Rates on the invoice)
           </span>
-          <select
+          <Select
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          >
-            <option value="">No project</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.code} — {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={setProjectId}
+            placeholder="No project"
+            options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+          />
         </label>
         <button
           type="button"
@@ -150,23 +146,7 @@ export function ManualEntryForm({
         </button>
       </div>
 
-      <datalist id="manual-supplier-list">
-        {supplierNames.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-      <datalist id="manual-client-list">
-        {clientNames.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-      <datalist id="manual-site-list">
-        {siteNames.map((n) => (
-          <option key={n} value={n} />
-        ))}
-      </datalist>
-
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
             <tr>
@@ -228,34 +208,30 @@ export function ManualEntryForm({
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
+                  <Combobox
                     value={row.supplierName}
-                    onChange={(e) =>
-                      updateRow(row.id, { supplierName: e.target.value })
-                    }
-                    list="manual-supplier-list"
+                    onChange={(v) => updateRow(row.id, { supplierName: v })}
+                    options={supplierNames.map((n) => ({ value: n, label: n }))}
                     placeholder="Supplier"
-                    className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-32 px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
+                  <Combobox
                     value={row.clientName}
-                    onChange={(e) =>
-                      updateRow(row.id, { clientName: e.target.value })
-                    }
-                    list="manual-client-list"
+                    onChange={(v) => updateRow(row.id, { clientName: v })}
+                    options={clientNames.map((n) => ({ value: n, label: n }))}
                     placeholder="Client"
-                    className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-32 px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
-                  <input
+                  <Combobox
                     value={row.site}
-                    onChange={(e) => updateRow(row.id, { site: e.target.value })}
-                    list="manual-site-list"
+                    onChange={(v) => updateRow(row.id, { site: v })}
+                    options={siteNames.map((n) => ({ value: n, label: n }))}
                     placeholder="Site"
-                    className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-32 px-2 py-1.5"
                   />
                 </td>
                 {row.days.map((value, dayIndex) => (
@@ -296,7 +272,7 @@ export function ManualEntryForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+        className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save Timesheet Entries"}
       </button>

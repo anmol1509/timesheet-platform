@@ -6,6 +6,7 @@ import {
   removeProjectContactAction,
   updateProjectContactAction,
 } from "../actions";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type Contact = {
   id: string;
@@ -49,7 +50,7 @@ export function ProjectContacts({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
       {contacts.length > 0 && (
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
@@ -126,16 +127,12 @@ export function ProjectContacts({
                     >
                       Edit
                     </button>
-                    <form action={removeProjectContactAction} className="inline">
-                      <input type="hidden" name="projectId" value={projectId} />
-                      <input type="hidden" name="contactId" value={c.id} />
-                      <button
-                        type="submit"
-                        className="text-xs font-medium text-red-600 hover:underline"
-                      >
-                        Remove
-                      </button>
-                    </form>
+                    <DeleteButton
+                      action={removeProjectContactAction}
+                      hiddenFields={{ projectId, contactId: c.id }}
+                      confirmMessage={`Remove contact "${c.name}"?`}
+                      label="Remove"
+                    />
                   </td>
                 </tr>
               )
@@ -181,7 +178,7 @@ export function ProjectContacts({
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
         >
           + Add
         </button>

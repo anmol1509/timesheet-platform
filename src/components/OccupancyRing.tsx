@@ -9,38 +9,40 @@ export function OccupancyRing({
 }) {
   const total = occupied + vacant;
   const radius = 70;
-  const stroke = 22;
+  const stroke = 20;
   const circumference = 2 * Math.PI * radius;
   const occupiedLength = total > 0 ? (occupied / total) * circumference : 0;
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-10">
-      <div className="text-center">
-        <p className="text-3xl font-semibold text-slate-900">{pct}%</p>
-        <p className="text-xs text-slate-500">Occupied</p>
+      <div className="relative h-[180px] w-[180px] shrink-0">
+        <svg width="180" height="180" viewBox="0 0 180 180">
+          <circle
+            cx="90"
+            cy="90"
+            r={radius}
+            fill="none"
+            stroke="#D1FAE5"
+            strokeWidth={stroke}
+          />
+          <circle
+            cx="90"
+            cy="90"
+            r={radius}
+            fill="none"
+            stroke="#166534"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${occupiedLength} ${circumference - occupiedLength}`}
+            strokeDashoffset={circumference / 4}
+            transform="scale(1,-1) translate(0,-180)"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-3xl font-semibold text-slate-900">{pct}%</p>
+          <p className="text-xs text-slate-500">Occupied</p>
+        </div>
       </div>
-
-      <svg width="180" height="180" viewBox="0 0 180 180">
-        <circle
-          cx="90"
-          cy="90"
-          r={radius}
-          fill="none"
-          stroke="#D1FAE5"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx="90"
-          cy="90"
-          r={radius}
-          fill="none"
-          stroke="#0B1642"
-          strokeWidth={stroke}
-          strokeDasharray={`${occupiedLength} ${circumference - occupiedLength}`}
-          strokeDashoffset={circumference / 4}
-          transform="scale(1,-1) translate(0,-180)"
-        />
-      </svg>
 
       <div className="flex gap-6 text-center">
         <div>

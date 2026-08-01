@@ -72,7 +72,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           All Projects
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
               <tr>

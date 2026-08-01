@@ -19,7 +19,7 @@ export function ProjectTabs({
             onClick={() => setActive(t.id)}
             className={`border-b-2 px-3 py-2 text-sm font-medium transition ${
               active === t.id
-                ? "border-[#0B1642] text-[#0B1642]"
+                ? "border-[#166534] text-[#166534]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addProjectTradeRateAction, removeProjectTradeRateAction } from "../actions";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type TradeRate = { id: string; trade: string; rate: number };
 
@@ -60,7 +61,7 @@ export function ProjectTradeRates({
         only. A trade with no rate here falls back to {clientName}&rsquo;s
         client-level rate card, then to their flat Hourly/Basic rate.
       </p>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
         {rates.length > 0 && (
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
@@ -117,16 +118,12 @@ export function ProjectTradeRates({
                       >
                         Edit
                       </button>
-                      <form action={removeProjectTradeRateAction} className="inline">
-                        <input type="hidden" name="projectId" value={projectId} />
-                        <input type="hidden" name="rateId" value={r.id} />
-                        <button
-                          type="submit"
-                          className="text-xs font-medium text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </form>
+                      <DeleteButton
+                        action={removeProjectTradeRateAction}
+                        hiddenFields={{ projectId, rateId: r.id }}
+                        confirmMessage={`Remove the billing rate for "${r.trade}"?`}
+                        label="Remove"
+                      />
                     </td>
                   </tr>
                 )
@@ -162,7 +159,7 @@ export function ProjectTradeRates({
             type="button"
             disabled={pending}
             onClick={addNew}
-            className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-50"
+            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
           >
             + Add
           </button>

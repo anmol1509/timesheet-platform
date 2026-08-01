@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addProjectHolidayAction, removeProjectHolidayAction } from "../actions";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type Holiday = { id: string; date: Date; label: string; rateMultiplier: number | null };
 
@@ -39,7 +40,7 @@ export function ProjectHolidays({
   const sorted = [...holidays].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
       {sorted.length > 0 && (
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
@@ -59,16 +60,12 @@ export function ProjectHolidays({
                   {h.rateMultiplier ? `${h.rateMultiplier}x` : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <form action={removeProjectHolidayAction}>
-                    <input type="hidden" name="projectId" value={projectId} />
-                    <input type="hidden" name="holidayId" value={h.id} />
-                    <button
-                      type="submit"
-                      className="text-xs font-medium text-red-600 hover:underline"
-                    >
-                      Remove
-                    </button>
-                  </form>
+                  <DeleteButton
+                    action={removeProjectHolidayAction}
+                    hiddenFields={{ projectId, holidayId: h.id }}
+                    confirmMessage={`Remove holiday "${h.label}"?`}
+                    label="Remove"
+                  />
                 </td>
               </tr>
             ))}
@@ -116,7 +113,7 @@ export function ProjectHolidays({
           type="button"
           disabled={pending}
           onClick={add}
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-50"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
         >
           + Add
         </button>

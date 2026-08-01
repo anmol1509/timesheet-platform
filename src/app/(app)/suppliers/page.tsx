@@ -51,7 +51,7 @@ export default async function SuppliersPage({
 
       <form
         action={createSupplierAction}
-        className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4"
+        className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
       >
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-xs font-medium text-slate-500">
@@ -76,14 +76,14 @@ export default async function SuppliersPage({
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
         >
           + Add Supplier
         </button>
       </form>
 
       {rows.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
+        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
           No suppliers yet. Add one above, or upload a timesheet to create
           them automatically.
         </p>

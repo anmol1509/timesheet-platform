@@ -5,6 +5,8 @@ import { Badge } from "@/components/Badge";
 import { complianceStatus } from "@/lib/compliance";
 import { addClientDocumentAction, deleteClientDocumentAction } from "../actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { Select } from "@/components/ui/Select";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type Doc = {
   id: string;
@@ -60,23 +62,19 @@ export function ClientDocuments({
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
-      <div className="rounded-2xl border border-slate-200 bg-white">
+      <div className="rounded-3xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-500">
               Type
             </span>
-            <select
+            <Select
               value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              {DOC_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
+              onChange={setType}
+              searchable={false}
+              triggerClassName="min-w-[180px]"
+              options={DOC_TYPES.map((t) => ({ value: t, label: t.replace(/_/g, " ") }))}
+            />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-500">
@@ -138,16 +136,12 @@ export function ClientDocuments({
                       <Badge color={badge.color}>{badge.label}</Badge>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={deleteClientDocumentAction}>
-                        <input type="hidden" name="documentId" value={d.id} />
-                        <input type="hidden" name="clientId" value={clientId} />
-                        <button
-                          type="submit"
-                          className="text-xs font-medium text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </form>
+                      <DeleteButton
+                        action={deleteClientDocumentAction}
+                        hiddenFields={{ documentId: d.id, clientId }}
+                        confirmMessage={`Remove "${d.filename}" from this client's documents?`}
+                        label="Remove"
+                      />
                     </td>
                   </tr>
                 );

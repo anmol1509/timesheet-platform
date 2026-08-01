@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { useRowSelection } from "@/lib/useRowSelection";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 type CompanyRow = {
   id: string;
@@ -60,15 +61,11 @@ export function CompanyGrid({
           className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
         />
         <div className="flex shrink-0 items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleAll}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Select all
-          </label>
+          <Checkbox
+            checked={allSelected}
+            onCheckedChange={() => toggleAll()}
+            label={<span className="text-xs font-medium text-slate-500">Select all</span>}
+          />
           <button
             type="button"
             onClick={exportCsv}
@@ -88,15 +85,14 @@ export function CompanyGrid({
         {filtered.map((c) => (
           <div
             key={c.id}
-            className={`relative flex flex-col rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
-              selected.has(c.id) ? "border-[#0B1642]" : "border-slate-200 hover:border-slate-300"
+            className={`relative flex flex-col rounded-3xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+              selected.has(c.id) ? "border-[#166534]" : "border-slate-200 hover:border-slate-300"
             }`}
           >
-            <input
-              type="checkbox"
+            <Checkbox
               checked={selected.has(c.id)}
-              onChange={() => toggle(c.id)}
-              className="absolute top-4 right-4 h-4 w-4 rounded border-slate-300"
+              onCheckedChange={() => toggle(c.id)}
+              className="absolute top-4 right-4"
             />
             <h2 className="pr-8 text-base font-semibold text-slate-900">{c.name}</h2>
             <p className="mt-1 text-xs text-slate-400">

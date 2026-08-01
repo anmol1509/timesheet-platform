@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createClientAction } from "../actions";
+import { Select } from "@/components/ui/Select";
 
 export default function NewClientPage() {
   const [state, formAction, pending] = useActionState(createClientAction, {
@@ -26,7 +27,7 @@ export default function NewClientPage() {
 
       <form
         action={formAction}
-        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6"
+        className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
       >
         {state.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -63,26 +64,28 @@ export default function NewClientPage() {
             />
           </Field>
           <Field label="Status">
-            <select
+            <Select
               name="status"
               defaultValue="ACTIVE"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
+              searchable={false}
+              options={[
+                { value: "ACTIVE", label: "Active" },
+                { value: "INACTIVE", label: "Inactive" },
+              ]}
+            />
           </Field>
           <Field label="Billing type">
-            <select
+            <Select
               name="billingType"
               value={billingType}
-              onChange={(e) => setBillingType(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Not set</option>
-              <option value="BASIC">Basic rate</option>
-              <option value="HOURLY">Hourly rate</option>
-            </select>
+              onChange={setBillingType}
+              placeholder="Not set"
+              searchable={false}
+              options={[
+                { value: "BASIC", label: "Basic rate" },
+                { value: "HOURLY", label: "Hourly rate" },
+              ]}
+            />
           </Field>
           {billingType && (
             <Field label={billingType === "HOURLY" ? "Hourly rate (AED)" : "Basic rate (AED)"}>
@@ -113,7 +116,7 @@ export default function NewClientPage() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Add Client"}
         </button>

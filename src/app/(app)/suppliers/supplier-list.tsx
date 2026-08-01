@@ -6,6 +6,7 @@ import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
@@ -69,17 +70,12 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
             <tr>
               <th className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
+                <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">Supplier</th>
               <th className="px-4 py-3">Contact</th>
@@ -93,12 +89,7 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
             {suppliers.map((s) => (
               <tr key={s.id} className={complianceRowClass(s.licenseStatus)}>
                 <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(s.id)}
-                    onChange={() => toggle(s.id)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
+                  <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} />
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-900">
                   <Link href={`/suppliers/${s.id}`} className="hover:underline">

@@ -354,7 +354,7 @@ export async function generateClientInvoiceXlsx(input: ClientInvoiceXlsxInput): 
     const cell = sheet.getCell(headerRow, i + 1);
     cell.value = label;
     cell.font = { name: FONT, bold: true, size: 9, color: { argb: "FFFFFFFF" } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0B1642" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF166534" } };
     cell.border = BORDER_ALL;
   });
   r++;

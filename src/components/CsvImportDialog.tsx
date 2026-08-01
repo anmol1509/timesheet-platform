@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { parseCsv } from "@/lib/csv";
+import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/Dialog";
 
 export type ImportColumn = { key: string; label: string; required?: boolean };
 export type ImportRowResult = { row: number; status: "created" | "updated" | "error"; message?: string };
@@ -85,44 +86,30 @@ export function CsvImportDialog({
     URL.revokeObjectURL(url);
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-      >
-        Import CSV
-      </button>
-    );
-  }
-
   const createdCount = results?.filter((r) => r.status === "created").length ?? 0;
   const updatedCount = results?.filter((r) => r.status === "updated").length ?? 0;
   const errorRows = results?.filter((r) => r.status === "error") ?? [];
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
-            Import {entityLabel}
-          </h3>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              reset();
-            }}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            ×
-          </button>
-        </div>
-
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          Import CSV
+        </button>
+      </DialogTrigger>
+      <DialogContent title={`Import ${entityLabel}`} className="max-h-[85vh] max-w-2xl overflow-y-auto">
         {!results && (
           <>
-            <p className="mb-3 text-sm text-slate-500">
+            <p className="mt-3 mb-3 text-sm text-slate-500">
               Upload a CSV with a header row. Existing records are matched and
               updated; new ones are created.
             </p>
@@ -187,7 +174,7 @@ export function CsvImportDialog({
                   type="button"
                   disabled={importing}
                   onClick={handleImport}
-                  className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+                  className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
                 >
                   {importing ? "Importing…" : `Import ${rows.length} row${rows.length === 1 ? "" : "s"}`}
                 </button>
@@ -197,7 +184,7 @@ export function CsvImportDialog({
         )}
 
         {results && (
-          <div className="space-y-3">
+          <div className="mt-3 space-y-3">
             <p className="text-sm text-slate-700">
               {createdCount} created, {updatedCount} updated, {errorRows.length} failed.
             </p>
@@ -220,18 +207,15 @@ export function CsvImportDialog({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setOpen(false);
-                  reset();
-                }}
-                className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white hover:bg-[#0B1642]/90"
+                onClick={() => setOpen(false)}
+                className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534]/90"
               >
                 Done
               </button>
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

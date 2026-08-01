@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { createProjectAction } from "../actions";
+import { Select } from "@/components/ui/Select";
 
 export function NewProjectForm({
   clients,
@@ -28,7 +29,7 @@ export function NewProjectForm({
 
       <form
         action={formAction}
-        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6"
+        className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
       >
         {state.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -62,17 +63,12 @@ export function NewProjectForm({
             </Field>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Client">
-                <select
+                <Select
                   name="clientId"
                   required
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-                >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  defaultValue={clients[0]?.id}
+                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                />
               </Field>
               <Field label="Site">
                 {sites.length === 0 ? (
@@ -84,17 +80,11 @@ export function NewProjectForm({
                     to link this project to a location.
                   </p>
                 ) : (
-                  <select
+                  <Select
                     name="siteId"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-                  >
-                    <option value="">No site</option>
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="No site"
+                    options={sites.map((s) => ({ value: s.id, label: s.name }))}
+                  />
                 )}
               </Field>
               <Field label="Project manager">
@@ -104,16 +94,17 @@ export function NewProjectForm({
                 />
               </Field>
               <Field label="Status">
-                <select
+                <Select
                   name="status"
                   defaultValue="PLANNING"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-                >
-                  <option value="PLANNING">Planning</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="ON_HOLD">On Hold</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
+                  searchable={false}
+                  options={[
+                    { value: "PLANNING", label: "Planning" },
+                    { value: "ACTIVE", label: "Active" },
+                    { value: "ON_HOLD", label: "On Hold" },
+                    { value: "COMPLETED", label: "Completed" },
+                  ]}
+                />
               </Field>
               <Field label="Timeline start">
                 <input
@@ -134,7 +125,7 @@ export function NewProjectForm({
             <button
               type="submit"
               disabled={pending}
-              className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+              className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
             >
               {pending ? "Saving…" : "Add Project"}
             </button>

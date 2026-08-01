@@ -10,7 +10,7 @@ export default async function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-lg font-semibold text-white">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-800 text-lg font-semibold text-white shadow-sm">
             TS
           </div>
           <h1 className="text-xl font-semibold text-slate-900">
@@ -20,7 +20,7 @@ export default async function LoginPage() {
             Sign in to upload and generate timesheets
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <LoginForm />
         </div>
       </div>

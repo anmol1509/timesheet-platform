@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { bulkImportSitesAction, updateSiteAction, deleteSiteAction } from "./actions";
@@ -53,17 +54,12 @@ export function SiteList({ sites }: { sites: SiteRow[] }) {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
             <tr>
               <th className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
+                <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">Site</th>
               <th className="px-4 py-3 text-right">Projects</th>
@@ -75,12 +71,7 @@ export function SiteList({ sites }: { sites: SiteRow[] }) {
             {sites.map((s) => (
               <tr key={s.id}>
                 <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(s.id)}
-                    onChange={() => toggle(s.id)}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
+                  <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} />
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-900">
                   <InlineEditRow

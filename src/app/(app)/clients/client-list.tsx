@@ -7,6 +7,7 @@ import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Pagination } from "@/components/Pagination";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
@@ -122,17 +123,12 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           All Clients
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
               <tr>
                 <th className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={toggleAll}
-                    className="h-4 w-4 rounded border-slate-300"
-                  />
+                  <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
                 </th>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Code</th>
@@ -148,12 +144,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
               {pageRows.map((c) => (
                 <tr key={c.id} className={complianceRowClass(c.licenseStatus) || "hover:bg-slate-50"}>
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(c.id)}
-                      onChange={() => toggle(c.id)}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
+                    <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} />
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-900">
                     <Link href={`/clients/${c.id}`}>{c.name}</Link>

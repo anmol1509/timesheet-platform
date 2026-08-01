@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createUserAction } from "./actions";
+import { Select } from "@/components/ui/Select";
 
 export function CreateUserForm() {
   const [state, formAction, pending] = useActionState(createUserAction, {
@@ -31,14 +32,15 @@ export function CreateUserForm() {
         minLength={8}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
       />
-      <select
+      <Select
         name="role"
         defaultValue="STAFF"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-      >
-        <option value="STAFF">Staff</option>
-        <option value="ADMIN">Admin</option>
-      </select>
+        searchable={false}
+        options={[
+          { value: "STAFF", label: "Staff" },
+          { value: "ADMIN", label: "Admin" },
+        ]}
+      />
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
           {state.error}

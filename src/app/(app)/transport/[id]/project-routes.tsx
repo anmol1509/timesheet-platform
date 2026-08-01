@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { addVehicleProjectAction, removeVehicleProjectAction } from "../actions";
+import { Select } from "@/components/ui/Select";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type Project = { id: string; name: string; code: string };
 
@@ -23,7 +25,7 @@ export function ProjectRoutes({
       <h2 className="mb-3 text-sm font-semibold text-slate-900">
         Projects serviced
       </h2>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5">
         {assignedProjects.length === 0 ? (
           <p className="text-sm text-slate-500">
             Not linked to any project yet.
@@ -39,16 +41,12 @@ export function ProjectRoutes({
                   <span className="font-medium text-slate-900">{p.name}</span>{" "}
                   <span className="text-slate-400">{p.code}</span>
                 </span>
-                <form action={removeVehicleProjectAction}>
-                  <input type="hidden" name="vehicleId" value={vehicleId} />
-                  <input type="hidden" name="projectId" value={p.id} />
-                  <button
-                    type="submit"
-                    className="text-xs font-medium text-red-600 hover:underline"
-                  >
-                    Remove
-                  </button>
-                </form>
+                <DeleteButton
+                  action={removeVehicleProjectAction}
+                  hiddenFields={{ vehicleId, projectId: p.id }}
+                  confirmMessage={`Remove "${p.name}" from this vehicle's serviced projects?`}
+                  label="Remove"
+                />
               </li>
             ))}
           </ul>
@@ -67,24 +65,18 @@ export function ProjectRoutes({
               <span className="mb-1 block text-xs font-medium text-slate-500">
                 Add a project
               </span>
-              <select
+              <Select
                 name="projectId"
                 value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-              >
-                <option value="">Select a project</option>
-                {available.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} — {p.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelected}
+                placeholder="Select a project"
+                options={available.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+              />
             </label>
             <button
               type="submit"
               disabled={!selected}
-              className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-50"
+              className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
             >
               Add
             </button>

@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { updateProjectAction } from "../actions";
+import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 type Project = {
   id: string;
@@ -51,7 +53,7 @@ export function EditProjectForm({
           setSaved(true);
         });
       }}
-      className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6"
+      className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6"
     >
       <input type="hidden" name="projectId" value={project.id} />
 
@@ -72,16 +74,17 @@ export function EditProjectForm({
           />
         </Field>
         <Field label="Status">
-          <select
+          <Select
             name="status"
             defaultValue={project.status}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          >
-            <option value="PLANNING">Planning</option>
-            <option value="ACTIVE">Active</option>
-            <option value="ON_HOLD">On Hold</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
+            searchable={false}
+            options={[
+              { value: "PLANNING", label: "Planning" },
+              { value: "ACTIVE", label: "Active" },
+              { value: "ON_HOLD", label: "On Hold" },
+              { value: "COMPLETED", label: "Completed" },
+            ]}
+          />
         </Field>
         <Field label="Job type">
           <input
@@ -105,17 +108,11 @@ export function EditProjectForm({
           />
         </Field>
         <Field label="Client">
-          <select
+          <Select
             name="clientId"
             defaultValue={project.clientId}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          >
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            options={clients.map((c) => ({ value: c.id, label: c.name }))}
+          />
         </Field>
         <Field label="LPO no.">
           <input
@@ -241,7 +238,7 @@ export function EditProjectForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
@@ -293,14 +290,8 @@ function CheckboxField({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 pt-5 text-sm text-slate-600">
-      <input
-        type="checkbox"
-        name={name}
-        defaultChecked={defaultChecked}
-        className="h-4 w-4 rounded border-slate-300"
-      />
-      {label}
-    </label>
+    <div className="pt-5">
+      <Checkbox name={name} value="on" defaultChecked={defaultChecked} label={label} />
+    </div>
   );
 }

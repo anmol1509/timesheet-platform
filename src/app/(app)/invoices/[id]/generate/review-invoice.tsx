@@ -167,7 +167,7 @@ export function ReviewInvoice({
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Line items</h2>
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>
@@ -256,7 +256,7 @@ export function ReviewInvoice({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Margin</h2>
           <SummaryRow label="Billable amount" value={subtotal} />
           <SummaryRow label="Supplier cost" value={totalCost} />
@@ -264,7 +264,7 @@ export function ReviewInvoice({
             <SummaryRow label="Margin" value={margin} bold />
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-slate-900">Invoice total</h2>
           <SummaryRow label="Subtotal" value={subtotal} />
           <SummaryRow label="VAT (5%)" value={vatAmount} />

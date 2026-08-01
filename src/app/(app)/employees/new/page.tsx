@@ -15,7 +15,7 @@ export default async function AddEmployeePage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6">
         <h2 className="mb-4 text-base font-semibold text-slate-900">
           Employee Registration
         </h2>

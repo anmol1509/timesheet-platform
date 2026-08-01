@@ -88,6 +88,9 @@ function groupContainsActive(pathname: string, children: Item[]) {
   return children.some((c) => isActive(pathname, c.href));
 }
 
+const ACTIVE_PILL =
+  "relative bg-slate-900 text-white before:absolute before:top-1/2 before:left-0 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-green-500";
+
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -119,10 +122,10 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
                 active
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  ? ACTIVE_PILL
+                  : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -140,10 +143,10 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
             <button
               type="button"
               onClick={() => toggle(entry.label)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
                 hasActiveChild
-                  ? "text-white"
-                  : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  ? "text-slate-900"
+                  : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               <GroupIcon className="h-4 w-4 shrink-0" />
@@ -153,7 +156,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
               />
             </button>
             {open && (
-              <div className="mt-0.5 ml-4 flex flex-col gap-0.5 border-l border-white/10 pl-3">
+              <div className="mt-0.5 ml-4 flex flex-col gap-0.5 border-l border-slate-100 pl-3">
                 {entry.children.map((child) => {
                   const active = isActive(pathname, child.href);
                   const ChildIcon = child.icon;
@@ -161,10 +164,10 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
                     <Link
                       key={child.href}
                       href={child.href}
-                      className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-sm font-medium transition ${
                         active
-                          ? "bg-white/10 text-white"
-                          : "text-slate-400 hover:bg-white/5 hover:text-white"
+                          ? ACTIVE_PILL
+                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                       }`}
                     >
                       <ChildIcon className="h-3.5 w-3.5 shrink-0" />
@@ -181,10 +184,10 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin && (
         <Link
           href={ADMIN_ITEM.href}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+          className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
             isActive(pathname, ADMIN_ITEM.href)
-              ? "bg-white/10 text-white"
-              : "text-slate-300 hover:bg-white/5 hover:text-white"
+              ? ACTIVE_PILL
+              : "text-slate-600 hover:bg-slate-100"
           }`}
         >
           <ADMIN_ITEM.icon className="h-4 w-4 shrink-0" />

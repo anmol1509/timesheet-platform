@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { createSkillAction } from "./actions";
 import { SkillTable } from "./skill-table";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 export default async function SkillsPage() {
   const [skills, totalEmployees] = await Promise.all([
@@ -35,7 +36,7 @@ export default async function SkillsPage() {
 
       <form
         action={createSkillAction}
-        className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4"
+        className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
       >
         <label className="block flex-1 min-w-[160px]">
           <span className="mb-1 block text-xs font-medium text-slate-500">
@@ -58,20 +59,19 @@ export default async function SkillsPage() {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
           />
         </label>
-        <label className="flex items-center gap-2 pb-2 text-sm text-slate-600">
-          <input type="checkbox" name="trending" className="h-4 w-4" />
-          Trending
-        </label>
+        <div className="pb-2">
+          <Checkbox name="trending" value="on" label="Trending" />
+        </div>
         <button
           type="submit"
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
         >
           + Add Skill
         </button>
       </form>
 
       {rows.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
+        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
           No skills tracked yet. Add one above, or tag skills from an
           employee&rsquo;s profile.
         </p>

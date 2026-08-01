@@ -93,7 +93,7 @@ export default async function EmployeeDetailPage({
       </div>
 
       {latest && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
           Latest on-record rate:{" "}
           <span className="font-medium text-slate-900">
             AED {latest.rate.toFixed(2)}

@@ -6,6 +6,7 @@ import {
   removeClientContactAction,
   updateClientContactAction,
 } from "../actions";
+import { DeleteButton } from "@/components/DeleteButton";
 
 type Contact = {
   id: string;
@@ -58,7 +59,7 @@ export function ClientContacts({
       <h2 className="mb-3 text-sm font-semibold text-slate-900">
         Contacts ({contacts.length})
       </h2>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
         {contacts.length > 0 && (
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
@@ -147,16 +148,12 @@ export function ClientContacts({
                       >
                         Edit
                       </button>
-                      <form action={removeClientContactAction} className="inline">
-                        <input type="hidden" name="clientId" value={clientId} />
-                        <input type="hidden" name="contactId" value={c.id} />
-                        <button
-                          type="submit"
-                          className="text-xs font-medium text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </form>
+                      <DeleteButton
+                        action={removeClientContactAction}
+                        hiddenFields={{ clientId, contactId: c.id }}
+                        confirmMessage={`Remove contact "${c.name}"?`}
+                        label="Remove"
+                      />
                     </td>
                   </tr>
                 )
@@ -209,7 +206,7 @@ export function ClientContacts({
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90"
+            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
           >
             + Add
           </button>

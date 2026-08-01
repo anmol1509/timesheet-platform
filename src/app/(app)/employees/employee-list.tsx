@@ -7,6 +7,8 @@ import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Pagination } from "@/components/Pagination";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { SegmentedControl } from "@/components/ui/RadioGroup";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
@@ -113,23 +115,19 @@ export function EmployeeList({
             placeholder="Search employees by name, ID, or trade…"
             className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
           />
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 text-sm">
-            {(["all", "on-work", "bench"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => {
-                  setFilter(f);
-                  router.replace(f === "all" ? "/employees" : `/employees?filter=${f}`);
-                }}
-                className={`rounded-md px-3 py-1.5 font-medium transition ${
-                  filter === f ? "bg-[#0B1642] text-white" : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {f === "all" ? "All" : f === "on-work" ? "On work" : "Bench"}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={filter}
+            onChange={(f) => {
+              const next = f as "all" | "on-work" | "bench";
+              setFilter(next);
+              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`);
+            }}
+            options={[
+              { value: "all", label: "All" },
+              { value: "on-work", label: "On work" },
+              { value: "bench", label: "Bench" },
+            ]}
+          />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <CsvImportDialog
@@ -149,17 +147,12 @@ export function EmployeeList({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
             <tr>
               <th className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
+                <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">ID No</th>
               <th className="px-4 py-3">Employee</th>
@@ -178,12 +171,7 @@ export function EmployeeList({
               return (
                 <tr key={e.id} className={complianceRowClass(e.worstStatus)}>
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(e.id)}
-                      onChange={() => toggle(e.id)}
-                      className="h-4 w-4 rounded border-slate-300"
-                    />
+                    <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggle(e.id)} />
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     <Link href={`/employees/${e.id}`} className="block">

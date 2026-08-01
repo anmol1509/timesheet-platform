@@ -57,14 +57,14 @@ export default async function EmployeesPage({
         </div>
         <Link
           href="/employees/new"
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
         >
           + Add Employee
         </Link>
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
           <p className="text-sm text-slate-500">
             No employees yet.{" "}
             <Link href="/upload" className="font-medium text-slate-900 underline">

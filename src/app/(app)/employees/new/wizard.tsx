@@ -3,6 +3,8 @@
 import { useActionState, useRef, useState } from "react";
 import { createEmployeeAction } from "./actions";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
+import { Select } from "@/components/ui/Select";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 
 type Project = { id: string; name: string; code: string };
 
@@ -34,12 +36,12 @@ export function EmployeeWizard({ projects }: { projects: Project[] }) {
   const [skillInput, setSkillInput] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [salaryType, setSalaryType] = useState("");
+  const [nationality, setNationality] = useState("");
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({});
   const [extracting, setExtracting] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<ExtractedDocumentFields | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
-  const nationalityRef = useRef<HTMLInputElement>(null);
   const passportNumberRef = useRef<HTMLInputElement>(null);
   const emiratesIdRef = useRef<HTMLInputElement>(null);
   const dobRef = useRef<HTMLInputElement>(null);
@@ -80,7 +82,7 @@ export function EmployeeWizard({ projects }: { projects: Project[] }) {
   function applyExtracted() {
     if (!extracted) return;
     if (extracted.name && nameRef.current) nameRef.current.value = extracted.name;
-    if (extracted.nationality && nationalityRef.current) nationalityRef.current.value = extracted.nationality;
+    if (extracted.nationality) setNationality(extracted.nationality);
     if (extracted.passportNumber && passportNumberRef.current) passportNumberRef.current.value = extracted.passportNumber;
     if (extracted.emiratesId && emiratesIdRef.current) emiratesIdRef.current.value = extracted.emiratesId;
     if (extracted.dateOfBirth && dobRef.current) dobRef.current.value = extracted.dateOfBirth;
@@ -97,7 +99,7 @@ export function EmployeeWizard({ projects }: { projects: Project[] }) {
             key={label}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               i === step
-                ? "bg-[#0B1642] text-white"
+                ? "bg-[#166534] text-white"
                 : i < step
                   ? "text-emerald-600"
                   : "text-slate-400"
@@ -165,11 +167,11 @@ export function EmployeeWizard({ projects }: { projects: Project[] }) {
             />
           </Field>
           <Field label="Nationality">
-            <input
-              ref={nationalityRef}
+            <CountrySelect
               name="nationality"
+              value={nationality}
+              onChange={setNationality}
               placeholder="Select nationality"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>
           <Field label="Position / Trade">
@@ -320,29 +322,24 @@ export function EmployeeWizard({ projects }: { projects: Project[] }) {
       <div className={step === 3 ? "space-y-4" : "hidden"}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Project Assignment (optional)">
-            <select
+            <Select
               name="projectId"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Select project (optional)</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
+              placeholder="Select project (optional)"
+              options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            />
           </Field>
           <Field label="Salary type (reference only)">
-            <select
+            <Select
               name="salaryType"
               value={salaryType}
-              onChange={(e) => setSalaryType(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Select salary type</option>
-              <option value="BASIC">Basic Salary</option>
-              <option value="HOURLY">Hourly Rate</option>
-            </select>
+              onChange={setSalaryType}
+              placeholder="Select salary type"
+              searchable={false}
+              options={[
+                { value: "BASIC", label: "Basic Salary" },
+                { value: "HOURLY", label: "Hourly Rate" },
+              ]}
+            />
           </Field>
           {salaryType && (
             <Field label={salaryType === "HOURLY" ? "Hourly rate (AED, reference only)" : "Basic salary (AED, reference only)"}>
@@ -475,7 +472,7 @@ function StepNav({
         <button
           type="button"
           onClick={onNext}
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
         >
           {nextLabel}
         </button>

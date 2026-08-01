@@ -4,9 +4,12 @@ import { StatTile } from "@/components/StatTile";
 import { Badge } from "@/components/Badge";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { WorkforcePie } from "@/components/WorkforcePie";
-import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
+import { WeeklyHoursChart } from "@/components/WeeklyHoursChart";
+import { AssignedStaffList } from "@/components/AssignedStaffList";
+import { getComplianceAlerts } from "@/lib/dashboardAlerts";
+import { getWeeklyHours } from "@/lib/weeklyHours";
+import { getAssignedStaff } from "@/lib/assignedStaff";
 import {
-  Users,
   ClipboardList,
   Building2,
   AlertTriangle,
@@ -15,6 +18,14 @@ import {
   FileText,
   Stethoscope,
 } from "lucide-react";
+
+const ALERT_CHIP_COLORS = [
+  "bg-blue-100 text-blue-600",
+  "bg-amber-100 text-amber-600",
+  "bg-rose-100 text-rose-600",
+  "bg-violet-100 text-violet-600",
+  "bg-emerald-100 text-emerald-600",
+];
 
 function formatMonthLabel(month: string) {
   const [y, m] = month.split("-");
@@ -28,7 +39,9 @@ export default async function DashboardPage() {
     onWorkCount,
     activeProjectCount,
     activeClientCount,
-    employeesForAlerts,
+    alerts,
+    weeklyHours,
+    assignedStaff,
     beds,
     latestUpload,
     months,
@@ -37,18 +50,9 @@ export default async function DashboardPage() {
     prisma.employee.count({ where: { active: true, projectId: { not: null } } }),
     prisma.project.count({ where: { status: "ACTIVE" } }),
     prisma.client.count({ where: { status: "ACTIVE" } }),
-    prisma.employee.findMany({
-      select: {
-        id: true,
-        name: true,
-        employeeIdNo: true,
-        visaExpiry: true,
-        laborCardExpiry: true,
-        medicalExpiry: true,
-        passportExpiry: true,
-        emiratesIdExpiry: true,
-      },
-    }),
+    getComplianceAlerts(),
+    getWeeklyHours(),
+    getAssignedStaff(4),
     prisma.bed.findMany({ select: { employeeId: true } }),
     prisma.upload.findFirst({
       orderBy: { uploadedAt: "desc" },
@@ -61,21 +65,6 @@ export default async function DashboardPage() {
     }),
   ]);
   const benchCount = employeeCount - onWorkCount;
-
-  const ALERT_THRESHOLD_DAYS = 30;
-  type Alert = { employeeId: string; name: string; field: string; days: number };
-  const alerts: Alert[] = [];
-  for (const e of employeesForAlerts) {
-    for (const f of COMPLIANCE_FIELDS) {
-      const date = e[f.key as keyof typeof e] as Date | null;
-      if (!date) continue;
-      const days = daysUntil(date);
-      if (days <= ALERT_THRESHOLD_DAYS) {
-        alerts.push({ employeeId: e.id, name: e.name, field: f.label, days });
-      }
-    }
-  }
-  alerts.sort((a, b) => a.days - b.days);
   const topAlerts = alerts.slice(0, 5);
 
   const totalBeds = beds.length;
@@ -93,7 +82,12 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Total Employees" value={employeeCount} icon={Users} />
+        <StatTile
+          hero
+          label="Total Employees"
+          value={employeeCount}
+          hint={`${onWorkCount} on active projects`}
+        />
         <StatTile label="Active Projects" value={activeProjectCount} icon={ClipboardList} />
         <StatTile label="Active Clients" value={activeClientCount} icon={Building2} />
         <StatTile
@@ -104,53 +98,74 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
-          Workforce status
-        </h2>
-        <WorkforcePie onWork={onWorkCount} bench={benchCount} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 lg:col-span-2">
+          <h2 className="mb-4 text-sm font-semibold text-slate-900">
+            This month&rsquo;s hours by weekday
+          </h2>
+          <WeeklyHoursChart days={weeklyHours} />
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> Key Alerts
+          </h2>
+          {topAlerts.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No compliance items expiring in the next 30 days.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {topAlerts.map((a, i) => (
+                <div key={`${a.employeeId}-${a.field}-${i}`} className="flex items-center gap-3">
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ALERT_CHIP_COLORS[i % ALERT_CHIP_COLORS.length]}`}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/documents?employee=${a.employeeId}`}
+                      className="block truncate text-sm font-medium text-slate-900 hover:underline"
+                    >
+                      {a.field} &mdash; {a.name}
+                    </Link>
+                    <p className="truncate text-xs text-slate-500">
+                      {a.days < 0 ? "expired" : "expires"}{" "}
+                      {a.days < 0 ? `${Math.abs(a.days)}d ago` : `in ${a.days}d`}
+                    </p>
+                  </div>
+                  <Badge color={a.days < 0 ? "red" : a.days <= 7 ? "red" : "amber"}>
+                    {a.days < 0 ? "expired" : `${a.days}d`}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
-          <AlertTriangle className="h-4 w-4 text-amber-500" /> Key Alerts
-        </h2>
-        {topAlerts.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            No compliance items expiring in the next {ALERT_THRESHOLD_DAYS} days.
-          </p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {topAlerts.map((a, i) => (
-              <div
-                key={`${a.employeeId}-${a.field}-${i}`}
-                className="flex items-center justify-between py-2.5"
-              >
-                <div>
-                  <Link
-                    href={`/documents?employee=${a.employeeId}`}
-                    className="text-sm font-medium text-slate-900 hover:underline"
-                  >
-                    {a.field} Expiry
-                  </Link>
-                  <p className="text-xs text-slate-500">
-                    {a.name} · {a.field} {a.days < 0 ? "expired" : "expires"}{" "}
-                    {a.days < 0
-                      ? `${Math.abs(a.days)}d ago`
-                      : `in ${a.days}d`}
-                  </p>
-                </div>
-                <Badge color={a.days < 0 ? "red" : a.days <= 7 ? "red" : "amber"}>
-                  {a.days < 0 ? "expired" : `${a.days}d`}
-                </Badge>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Workforce status
+          </h2>
+          <WorkforcePie onWork={onWorkCount} bench={benchCount} />
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900">Assigned Staff</h2>
+            <Link href="/employees" className="text-xs font-medium text-green-700 hover:underline">
+              View all
+            </Link>
           </div>
-        )}
+          <AssignedStaffList staff={assignedStaff} />
+        </div>
       </div>
 
       {totalBeds > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-slate-900">
             Camp Occupancy
           </h2>
@@ -166,7 +181,7 @@ export default async function DashboardPage() {
             icon={UserPlus}
             label="Add Employee"
             sub="Register new worker"
-            tone="navy"
+            tone="hero"
           />
           <QuickAction
             href="/upload"
@@ -190,7 +205,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-900">
             Timesheet activity
           </h2>
@@ -218,7 +233,7 @@ export default async function DashboardPage() {
           </Link>
         </div>
         {months.length > 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">
               Months with data
             </h2>
@@ -250,28 +265,28 @@ function QuickAction({
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   sub: string;
-  tone?: "navy";
+  tone?: "hero";
 }) {
   return (
     <Link
       href={href}
-      className={`group rounded-2xl border p-5 shadow-sm transition hover:shadow-md ${
-        tone === "navy"
-          ? "border-[#0B1642] bg-[#0B1642] text-white"
+      className={`group rounded-3xl border p-5 shadow-sm transition hover:shadow-md ${
+        tone === "hero"
+          ? "border-transparent bg-gradient-to-br from-green-600 to-green-900 text-white"
           : "border-slate-200 bg-white hover:border-slate-300"
       }`}
     >
       <div
         className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-          tone === "navy" ? "bg-white/10" : "bg-slate-100"
+          tone === "hero" ? "bg-white/10" : "bg-slate-100"
         }`}
       >
-        <Icon className={`h-5 w-5 ${tone === "navy" ? "text-white" : "text-slate-600"}`} />
+        <Icon className={`h-5 w-5 ${tone === "hero" ? "text-white" : "text-slate-600"}`} />
       </div>
-      <h3 className={`mt-3 text-sm font-semibold ${tone === "navy" ? "text-white" : "text-slate-900"}`}>
+      <h3 className={`mt-3 text-sm font-semibold ${tone === "hero" ? "text-white" : "text-slate-900"}`}>
         {label}
       </h3>
-      <p className={`mt-1 text-xs ${tone === "navy" ? "text-slate-300" : "text-slate-500"}`}>
+      <p className={`mt-1 text-xs ${tone === "hero" ? "text-green-100" : "text-slate-500"}`}>
         {sub}
       </p>
     </Link>

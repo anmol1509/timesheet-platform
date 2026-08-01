@@ -64,7 +64,7 @@ export default async function CompaniesPage({
       </div>
 
       {suppliers.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
           <p className="text-sm text-slate-500">
             No data yet.{" "}
             <Link href="/upload" className="font-medium text-slate-900 underline">

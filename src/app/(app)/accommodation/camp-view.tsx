@@ -4,6 +4,9 @@ import { useState } from "react";
 import { BedDouble } from "lucide-react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
+import { SegmentedControl } from "@/components/ui/RadioGroup";
+import { Select } from "@/components/ui/Select";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import {
   assignBedAction,
   unassignBedAction,
@@ -39,7 +42,7 @@ export function CampView({
 
   if (rooms.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
+      <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
         This camp has no rooms yet — add one below.
       </p>
     );
@@ -48,26 +51,14 @@ export function CampView({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 text-sm">
-          <button
-            type="button"
-            onClick={() => setVacantOnly(false)}
-            className={`rounded-md px-3 py-1.5 font-medium transition ${
-              !vacantOnly ? "bg-[#0B1642] text-white" : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            All beds ({allBeds.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setVacantOnly(true)}
-            className={`rounded-md px-3 py-1.5 font-medium transition ${
-              vacantOnly ? "bg-emerald-600 text-white" : "text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            Vacant only ({vacantCount})
-          </button>
-        </div>
+        <SegmentedControl
+          value={vacantOnly ? "vacant" : "all"}
+          onChange={(v) => setVacantOnly(v === "vacant")}
+          options={[
+            { value: "all", label: `All beds (${allBeds.length})` },
+            { value: "vacant", label: `Vacant only (${vacantCount})` },
+          ]}
+        />
         <div className="flex items-center gap-4 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded bg-emerald-500" /> Vacant
@@ -83,7 +74,7 @@ export function CampView({
           const beds = vacantOnly ? room.beds.filter((b) => !b.employeeId) : room.beds;
           const occupied = room.beds.filter((b) => b.employeeId).length;
           return (
-            <div key={room.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div key={room.id} className="rounded-3xl border border-slate-200 bg-white p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <InlineEditRow
@@ -162,15 +153,14 @@ export function CampView({
                             <p className="text-[10px] text-slate-400">
                               {occupant.employeeIdNo}
                             </p>
-                            <form action={unassignBedAction} className="mt-1.5">
-                              <input type="hidden" name="bedId" value={bed.id} />
-                              <button
-                                type="submit"
-                                className="text-xs font-medium text-red-600 hover:underline"
-                              >
-                                Unassign
-                              </button>
-                            </form>
+                            <div className="mt-1.5">
+                              <DeleteButton
+                                action={unassignBedAction}
+                                hiddenFields={{ bedId: bed.id }}
+                                confirmMessage={`Unassign ${occupant.name} from bed ${bed.label}?`}
+                                label="Unassign"
+                              />
+                            </div>
                           </>
                         ) : (
                           <button
@@ -191,14 +181,12 @@ export function CampView({
         })}
       </div>
 
-      {assigningBed && (
-        <AssignModal
-          bedId={assigningBed}
-          bedLabel={assigningBedObj?.label || ""}
-          employees={unassignedEmployees}
-          onClose={() => setAssigningBed(null)}
-        />
-      )}
+      <AssignModal
+        bedId={assigningBed}
+        bedLabel={assigningBedObj?.label || ""}
+        employees={unassignedEmployees}
+        onClose={() => setAssigningBed(null)}
+      />
     </div>
   );
 }
@@ -209,73 +197,77 @@ function AssignModal({
   employees,
   onClose,
 }: {
-  bedId: string;
+  bedId: string | null;
   bedLabel: string;
   employees: EmployeeOption[];
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
-            Assign Employee to {bedLabel}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600"
-          >
-            ×
-          </button>
-        </div>
-        <p className="mb-3 text-sm text-slate-500">
-          Select an unassigned employee to assign to this bed.
-        </p>
+    <Dialog modal={false} open={bedId !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        title={`Assign Employee to ${bedLabel}`}
+        description="Select an unassigned employee to assign to this bed."
+      >
         {employees.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="mt-3 text-sm text-slate-500">
             No unassigned employees available.
           </p>
         ) : (
-          <form
-            action={async (formData) => {
-              await assignBedAction(formData);
-              onClose();
-            }}
-            className="space-y-4"
-          >
-            <input type="hidden" name="bedId" value={bedId} />
-            <select
-              name="employeeId"
-              required
-              defaultValue=""
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Select an employee</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name} ({e.employeeIdNo}){e.nationality ? ` — ${e.nationality}` : ""}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white hover:bg-[#0B1642]/90"
-              >
-                Assign
-              </button>
-            </div>
-          </form>
+          // Keyed by bedId so the selected employee resets whenever a different bed is opened.
+          <AssignForm key={bedId} bedId={bedId} employees={employees} onClose={onClose} />
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssignForm({
+  bedId,
+  employees,
+  onClose,
+}: {
+  bedId: string | null;
+  employees: EmployeeOption[];
+  onClose: () => void;
+}) {
+  const [employeeId, setEmployeeId] = useState("");
+
+  return (
+    <form
+      action={async (formData) => {
+        await assignBedAction(formData);
+        onClose();
+      }}
+      className="mt-4 space-y-4"
+    >
+      <input type="hidden" name="bedId" value={bedId ?? ""} />
+      <Select
+        name="employeeId"
+        value={employeeId}
+        onChange={setEmployeeId}
+        required
+        placeholder="Select an employee"
+        options={employees.map((e) => ({
+          value: e.id,
+          label: `${e.name} (${e.employeeIdNo})${e.nationality ? ` — ${e.nationality}` : ""}`,
+        }))}
+      />
+      <DialogFooter>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={!employeeId}
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+        >
+          Assign
+        </button>
+      </DialogFooter>
+    </form>
   );
 }

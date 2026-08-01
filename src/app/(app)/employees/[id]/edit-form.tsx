@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { updateEmployeeAction } from "./actions";
+import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 
 type Employee = {
   id: string;
@@ -78,17 +81,14 @@ export function EditForm({
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Status</h2>
-        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              name="active"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Active
-          </label>
+        <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <Checkbox
+            name="active"
+            value="on"
+            checked={active}
+            onCheckedChange={setActive}
+            label="Active"
+          />
           <div />
           {!active && (
             <>
@@ -116,13 +116,9 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           Personal details
         </h2>
-        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <Field label="Nationality">
-            <input
-              name="nationality"
-              defaultValue={employee.nationality || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
+            <CountrySelect name="nationality" defaultValue={employee.nationality || ""} />
           </Field>
           <Field label="Position">
             <input
@@ -154,15 +150,16 @@ export function EditForm({
             />
           </Field>
           <Field label="Gender">
-            <select
+            <Select
               name="gender"
               defaultValue={employee.gender || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Not set</option>
-              <option value="MALE">Male</option>
-              <option value="FEMALE">Female</option>
-            </select>
+              placeholder="Not set"
+              searchable={false}
+              options={[
+                { value: "MALE", label: "Male" },
+                { value: "FEMALE", label: "Female" },
+              ]}
+            />
           </Field>
           <Field label="Blood group">
             <input
@@ -260,7 +257,7 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           Payroll & WPS
         </h2>
-        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <Field label="Labor card number">
             <input
               name="laborCardNumber"
@@ -290,7 +287,7 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           Compliance & documents
         </h2>
-        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <Field label="Visa expiry date">
             <input
               type="date"
@@ -348,46 +345,38 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">
           Project & salary
         </h2>
-        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <Field label="Project assignment">
-            <select
+            <Select
               name="projectId"
               defaultValue={employee.projectId || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">No project assigned</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
+              placeholder="No project assigned"
+              options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            />
           </Field>
           <Field label="Vehicle assignment">
-            <select
+            <Select
               name="vehicleId"
               defaultValue={employee.vehicleId || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">No vehicle assigned</option>
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.plateNumber} {v.type ? `(${v.type})` : ""}
-                </option>
-              ))}
-            </select>
+              placeholder="No vehicle assigned"
+              options={vehicles.map((v) => ({
+                value: v.id,
+                label: `${v.plateNumber}${v.type ? ` (${v.type})` : ""}`,
+              }))}
+            />
           </Field>
           <Field label="Salary type (reference only)">
-            <select
+            <Select
               name="salaryType"
               value={salaryType}
-              onChange={(e) => setSalaryType(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            >
-              <option value="">Not set</option>
-              <option value="BASIC">Basic Salary</option>
-              <option value="HOURLY">Hourly Rate</option>
-            </select>
+              onChange={setSalaryType}
+              placeholder="Not set"
+              searchable={false}
+              options={[
+                { value: "BASIC", label: "Basic Salary" },
+                { value: "HOURLY", label: "Hourly Rate" },
+              ]}
+            />
           </Field>
           {salaryType && (
             <Field label={salaryType === "HOURLY" ? "Hourly rate (AED, reference only)" : "Basic salary (AED, reference only)"}>
@@ -407,7 +396,7 @@ export function EditForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#0B1642] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#0B1642]/90 disabled:opacity-60"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

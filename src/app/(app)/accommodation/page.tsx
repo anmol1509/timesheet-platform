@@ -11,6 +11,7 @@ import { CampView } from "./camp-view";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
+import { Select } from "@/components/ui/Select";
 
 export default async function AccommodationPage({
   searchParams,
@@ -78,29 +79,23 @@ export default async function AccommodationPage({
       </div>
 
       {totalBeds > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
         </div>
       )}
 
       {camps.length > 0 && (
-        <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-end gap-2 rounded-3xl border border-slate-200 bg-white p-5">
           <form className="flex flex-1 items-end gap-2">
             <label className="block max-w-xs flex-1">
               <span className="mb-1 block text-xs font-medium text-slate-500">
                 Camp
               </span>
-              <select
+              <Select
                 name="campId"
                 defaultValue={selectedCamp?.id}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-              >
-                {camps.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                options={camps.map((c) => ({ value: c.id, label: c.name }))}
+              />
             </label>
             <button
               type="submit"
@@ -148,7 +143,7 @@ export default async function AccommodationPage({
           />
         </div>
       ) : (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
+        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
           No camps yet — add one below to get started.
         </p>
       )}
@@ -156,7 +151,7 @@ export default async function AccommodationPage({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <form
           action={createCampAction}
-          className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+          className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5"
         >
           <h3 className="text-sm font-semibold text-slate-900">Add Camp</h3>
           <input
@@ -176,7 +171,7 @@ export default async function AccommodationPage({
         {selectedCamp && (
           <form
             action={createRoomAction}
-            className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5"
+            className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5"
           >
             <h3 className="text-sm font-semibold text-slate-900">
               Add Room to {selectedCamp.name}

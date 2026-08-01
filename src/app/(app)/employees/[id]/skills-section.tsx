@@ -28,7 +28,7 @@ export function SkillsSection({
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold text-slate-900">Skills</h2>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5">
         <div className="flex gap-2">
           <input
             ref={inputRef}
