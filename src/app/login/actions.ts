@@ -13,6 +13,7 @@ export async function loginAction(
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") || "");
+  const remember = formData.get("remember") === "on";
 
   if (!email || !password) {
     return { error: "Enter your email and password." };
@@ -23,6 +24,6 @@ export async function loginAction(
     return { error: "Invalid email or password." };
   }
 
-  await setSessionCookie(user.id);
+  await setSessionCookie(user.id, remember);
   redirect("/");
 }

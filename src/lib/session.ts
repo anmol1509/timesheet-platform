@@ -34,7 +34,7 @@ export async function verifySessionToken(
   }
 }
 
-export async function setSessionCookie(userId: string) {
+export async function setSessionCookie(userId: string, remember: boolean = true) {
   const token = await createSessionToken({ userId });
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
@@ -42,7 +42,7 @@ export async function setSessionCookie(userId: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_DURATION_SECONDS,
+    ...(remember ? { maxAge: SESSION_DURATION_SECONDS } : {}),
   });
 }
 

@@ -1,0 +1,136 @@
+<svg width="665" height="900" viewBox="0 0 665 900" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F1240"/>
+      <stop offset="45%" stop-color="#1E2065"/>
+      <stop offset="75%" stop-color="#8A2A4A"/>
+      <stop offset="100%" stop-color="#E8632B"/>
+    </linearGradient>
+    <linearGradient id="duneFar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C4432E"/>
+      <stop offset="100%" stop-color="#E8862E"/>
+    </linearGradient>
+    <linearGradient id="duneNear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5B2A6B"/>
+      <stop offset="100%" stop-color="#8C2E4F"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#12184A"/>
+      <stop offset="100%" stop-color="#0A0E30"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="665" height="900" fill="url(#sky)"/>
+
+  <!-- stars -->
+  <g fill="#ffffff">
+    <circle cx="70" cy="70" r="2" opacity="0.8"/>
+    <circle cx="140" cy="130" r="1.6" opacity="0.6"/>
+    <circle cx="520" cy="90" r="2" opacity="0.8"/>
+    <circle cx="590" cy="160" r="1.6" opacity="0.6"/>
+    <circle cx="460" cy="60" r="1.4" opacity="0.7"/>
+    <circle cx="330" cy="50" r="1.6" opacity="0.7"/>
+    <circle cx="230" cy="100" r="1.4" opacity="0.6"/>
+    <circle cx="610" cy="260" r="1.4" opacity="0.5"/>
+    <circle cx="40" cy="220" r="1.4" opacity="0.5"/>
+    <circle cx="380" cy="150" r="1.2" opacity="0.5"/>
+  </g>
+
+  <!-- shooting stars -->
+  <g stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.55">
+    <line x1="90" y1="180" x2="130" y2="150"/>
+    <line x1="480" y1="200" x2="520" y2="170"/>
+    <line x1="560" y1="110" x2="595" y2="85"/>
+  </g>
+
+  <!-- clouds -->
+  <g fill="#2B2E6E" opacity="0.55">
+    <ellipse cx="120" cy="120" rx="55" ry="16"/>
+    <ellipse cx="160" cy="112" rx="35" ry="13"/>
+    <ellipse cx="520" cy="200" rx="60" ry="16"/>
+    <ellipse cx="470" cy="192" rx="34" ry="12"/>
+    <ellipse cx="70" cy="260" rx="40" ry="12"/>
+  </g>
+
+  <!-- far dunes -->
+  <path d="M0,560 C120,520 220,500 340,530 C440,555 520,510 665,540 L665,900 L0,900 Z" fill="url(#duneFar)" opacity="0.55"/>
+  <!-- near dunes -->
+  <path d="M0,640 C100,600 260,610 360,650 C460,690 560,630 665,655 L665,900 L0,900 Z" fill="url(#duneNear)" opacity="0.7"/>
+
+  <!-- ground plane -->
+  <path d="M0,760 C140,730 300,745 400,760 C500,775 580,745 665,755 L665,900 L0,900 Z" fill="url(#ground)"/>
+
+  <!-- unfinished building under construction -->
+  <g>
+    <rect x="150" y="560" width="150" height="200" fill="#171B4E"/>
+    <rect x="150" y="560" width="150" height="200" fill="#E12A2A" opacity="0.06"/>
+    <!-- rebar / scaffolding top -->
+    <g stroke="#E12A2A" stroke-width="4">
+      <line x1="150" y1="560" x2="150" y2="520"/>
+      <line x1="180" y1="560" x2="180" y2="530"/>
+      <line x1="210" y1="560" x2="210" y2="515"/>
+      <line x1="240" y1="560" x2="240" y2="530"/>
+      <line x1="270" y1="560" x2="270" y2="520"/>
+      <line x1="300" y1="560" x2="300" y2="535"/>
+    </g>
+    <!-- floors -->
+    <g stroke="#0A0E30" stroke-width="3">
+      <line x1="150" y1="600" x2="300" y2="600"/>
+      <line x1="150" y1="640" x2="300" y2="640"/>
+      <line x1="150" y1="680" x2="300" y2="680"/>
+      <line x1="150" y1="720" x2="300" y2="720"/>
+    </g>
+    <!-- windows lit -->
+    <g fill="#F6C453">
+      <rect x="164" y="610" width="14" height="16"/>
+      <rect x="192" y="610" width="14" height="16"/>
+      <rect x="248" y="650" width="14" height="16"/>
+      <rect x="276" y="690" width="14" height="16"/>
+      <rect x="164" y="690" width="14" height="16"/>
+    </g>
+  </g>
+
+  <!-- second background tower -->
+  <g opacity="0.85">
+    <rect x="60" y="640" width="70" height="120" fill="#12164A"/>
+    <g fill="#F6C453" opacity="0.8">
+      <rect x="72" y="656" width="10" height="12"/>
+      <rect x="96" y="656" width="10" height="12"/>
+      <rect x="72" y="684" width="10" height="12"/>
+      <rect x="96" y="712" width="10" height="12"/>
+    </g>
+  </g>
+
+  <!-- crane -->
+  <g stroke="#E12A2A" stroke-width="6" stroke-linecap="round" fill="none">
+    <!-- mast -->
+    <line x1="360" y1="800" x2="360" y2="425"/>
+    <!-- jib (long arm) and counter-jib (short arm) -->
+    <line x1="315" y1="418" x2="565" y2="418"/>
+    <!-- support cables -->
+    <line x1="360" y1="392" x2="315" y2="418"/>
+    <line x1="360" y1="392" x2="560" y2="418"/>
+    <line x1="360" y1="392" x2="360" y2="418"/>
+  </g>
+  <rect x="330" y="800" width="60" height="20" rx="3" fill="#1E2A6E"/>
+  <!-- counterweight -->
+  <rect x="305" y="418" width="26" height="24" fill="#1E2A6E"/>
+  <!-- trolley + hook + load -->
+  <line x1="520" y1="418" x2="520" y2="660" stroke="#E12A2A" stroke-width="3"/>
+  <rect x="496" y="660" width="48" height="16" fill="#1E2A6E"/>
+
+  <!-- crane cabin -->
+  <rect x="348" y="418" width="28" height="22" rx="2" fill="#F6C453"/>
+
+  <!-- silhouette worker with hard hat, foreground -->
+  <g transform="translate(470,760)">
+    <circle cx="0" cy="-46" r="9" fill="#0A0E30"/>
+    <path d="M-10,-52 a10,8 0 0 1 20,0 z" fill="#E12A2A"/>
+    <rect x="-6" y="-38" width="12" height="26" rx="4" fill="#0A0E30"/>
+    <rect x="-13" y="-14" width="9" height="24" rx="3" fill="#0A0E30"/>
+    <rect x="4" y="-14" width="9" height="24" rx="3" fill="#0A0E30"/>
+  </g>
+
+  <!-- wordmark watermark -->
+  <text x="500" y="860" text-anchor="end" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#F5F6FA" opacity="0.12" letter-spacing="2">BURJ AL AWEER</text>
+</svg>
