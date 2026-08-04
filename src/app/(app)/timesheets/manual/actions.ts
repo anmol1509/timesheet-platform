@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import type { DailyHourCell, ParsedEntry, ParsedMonth } from "@/lib/parseTimesheet";
 
@@ -33,7 +33,14 @@ export async function submitManualEntryAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!branchId) {
+    return {
+      error: isSuperAdmin
+        ? "Pick a branch from the switcher before adding a manual entry."
+        : "Your account has no branch assigned — contact an admin.",
+    };
+  }
 
   const month = String(formData.get("month") || "").trim();
   if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -121,10 +128,11 @@ export async function submitManualEntryAction(
       filename: `Manual Entry — ${monthLabel}`,
       fileData: null,
       uploadedById: user.id,
+      branchId,
     },
   });
 
-  await importParsedMonths([parsedMonth], upload.id, projectId);
+  await importParsedMonths([parsedMonth], upload.id, branchId, projectId);
 
   revalidatePath("/upload");
   revalidatePath("/history");

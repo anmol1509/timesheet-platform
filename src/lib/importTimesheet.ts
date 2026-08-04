@@ -20,6 +20,7 @@ function normalizeKey(name: string) {
 export async function importParsedMonths(
   months: ParsedMonth[],
   uploadId: string,
+  branchId: string,
   projectId: string | null = null
 ): Promise<ImportStats> {
   const [existingSuppliers, existingClients] = await Promise.all([
@@ -54,7 +55,7 @@ export async function importParsedMonths(
       let supplier = supplierByKey.get(supplierKey);
       if (!supplier) {
         supplier = await prisma.supplier.create({
-          data: { name: entry.supplierName.trim() },
+          data: { name: entry.supplierName.trim(), branchId },
         });
         supplierByKey.set(supplierKey, supplier);
         stats.suppliersCreated++;
@@ -66,7 +67,7 @@ export async function importParsedMonths(
         let client = clientByKey.get(clientKey);
         if (!client) {
           client = await prisma.client.create({
-            data: { name: entry.clientName.trim() },
+            data: { name: entry.clientName.trim(), branchId },
           });
           clientByKey.set(clientKey, client);
           stats.clientsCreated++;
@@ -107,6 +108,7 @@ export async function importParsedMonths(
           absentCount: entry.absentCount,
           absentDeduction: calculateAbsentDeduction(entry.absentCount),
           invoiceValue: entry.invoiceValue,
+          branchId,
           supplierId: supplier.id,
           clientId,
           projectId,
@@ -144,6 +146,7 @@ export async function importParsedMonths(
           name: entry.employeeName,
           trade: entry.trade,
           supplierId: supplier.id,
+          branchId,
         },
         update: {
           name: entry.employeeName,

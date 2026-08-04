@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { InvoiceGrid } from "./invoice-grid";
 
 export default async function InvoicesPage({
@@ -9,9 +11,10 @@ export default async function InvoicesPage({
   searchParams: Promise<{ month?: string }>;
 }) {
   const params = await searchParams;
+  const { branchId } = await requireUserWithBranch();
 
   const monthRows = await prisma.timesheetEntry.findMany({
-    where: { clientId: { not: null } },
+    where: { clientId: { not: null }, ...branchWhere(branchId) },
     distinct: ["month"],
     select: { month: true },
     orderBy: { month: "desc" },
@@ -23,7 +26,10 @@ export default async function InvoicesPage({
 
   const clients = selectedMonth
     ? await prisma.client.findMany({
-        where: { entries: { some: { month: selectedMonth } } },
+        where: {
+          entries: { some: { month: selectedMonth } },
+          ...branchWhere(branchId),
+        },
         include: {
           entries: { where: { month: selectedMonth } },
           tradeRates: true,

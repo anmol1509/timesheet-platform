@@ -17,12 +17,12 @@ async function main() {
         email,
         name,
         passwordHash: hashPassword(password),
-        role: "ADMIN",
+        role: "SUPER_ADMIN",
       },
     });
-    console.log(`Created admin user ${email} / ${password}`);
+    console.log(`Created super admin user ${email} / ${password}`);
   } else {
-    console.log(`Admin user ${email} already exists, skipping.`);
+    console.log(`Super admin user ${email} already exists, skipping.`);
   }
 
   await prisma.settings.upsert({
@@ -30,6 +30,36 @@ async function main() {
     update: {},
     create: { id: "singleton" },
   });
+
+  // A second branch + a branch-scoped admin, purely so branch scoping is
+  // easy to verify locally (the production MAIN branch already exists from
+  // the migration backfill).
+  const secondBranch = await prisma.branch.upsert({
+    where: { code: "AUH" },
+    update: {},
+    create: { code: "AUH", name: "Abu Dhabi Branch", emirate: "Abu Dhabi" },
+  });
+
+  const branchAdminEmail =
+    process.env.SEED_BRANCH_ADMIN_EMAIL ?? "branchadmin@tickyourlist.com";
+  const branchAdminPassword = process.env.SEED_BRANCH_ADMIN_PASSWORD ?? "changeme123";
+  const existingBranchAdmin = await prisma.user.findUnique({
+    where: { email: branchAdminEmail },
+  });
+  if (!existingBranchAdmin) {
+    await prisma.user.create({
+      data: {
+        email: branchAdminEmail,
+        name: "Abu Dhabi Branch Admin",
+        passwordHash: hashPassword(branchAdminPassword),
+        role: "BRANCH_ADMIN",
+        branchId: secondBranch.id,
+      },
+    });
+    console.log(`Created branch admin user ${branchAdminEmail} / ${branchAdminPassword}`);
+  } else {
+    console.log(`Branch admin user ${branchAdminEmail} already exists, skipping.`);
+  }
 }
 
 main()

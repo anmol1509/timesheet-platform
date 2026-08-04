@@ -1,19 +1,31 @@
 import { requireAdmin } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { updateIssuedToAction, deleteUserAction } from "./actions";
 import { CreateUserForm } from "./create-user-form";
+import { CreateBranchForm } from "./create-branch-form";
 import { DeleteButton } from "@/components/DeleteButton";
+import { branchWhere } from "@/lib/branch";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
+  const isSuperAdmin = admin.role === "SUPER_ADMIN";
+  const branchId = isSuperAdmin
+    ? ((await getSessionFromCookies())?.activeBranchId ?? null)
+    : admin.branchId;
 
-  const [settings, users] = await Promise.all([
+  const [settings, users, branches] = await Promise.all([
     prisma.settings.upsert({
       where: { id: "singleton" },
       update: {},
       create: { id: "singleton" },
     }),
-    prisma.user.findMany({ orderBy: { createdAt: "asc" } }),
+    prisma.user.findMany({
+      where: isSuperAdmin ? {} : branchWhere(branchId),
+      orderBy: { createdAt: "asc" },
+      include: { branch: true },
+    }),
+    isSuperAdmin ? prisma.branch.findMany({ orderBy: { code: "asc" } }) : Promise.resolve([]),
   ]);
 
   return (
@@ -62,6 +74,38 @@ export default async function SettingsPage() {
         </form>
       </section>
 
+      {isSuperAdmin && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Branches</h2>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Code</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Emirate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {branches.map((b) => (
+                    <tr key={b.id}>
+                      <td className="px-4 py-3 font-medium text-slate-900">{b.code}</td>
+                      <td className="px-4 py-3 text-slate-600">{b.name}</td>
+                      <td className="px-4 py-3 text-slate-600">{b.emirate ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-5">
+              <h3 className="mb-3 text-sm font-medium text-slate-900">Add branch</h3>
+              <CreateBranchForm />
+            </div>
+          </div>
+        </section>
+      )}
+
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Team</h2>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -72,6 +116,7 @@ export default async function SettingsPage() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Role</th>
+                  {isSuperAdmin && <th className="px-4 py-3">Branch</th>}
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -83,6 +128,11 @@ export default async function SettingsPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-600">{u.email}</td>
                     <td className="px-4 py-3 text-slate-600">{u.role}</td>
+                    {isSuperAdmin && (
+                      <td className="px-4 py-3 text-slate-600">
+                        {u.branch?.code ?? "— (all)"}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right">
                       {u.id !== admin.id && (
                         <DeleteButton
@@ -103,7 +153,7 @@ export default async function SettingsPage() {
             <h3 className="mb-3 text-sm font-medium text-slate-900">
               Add team member
             </h3>
-            <CreateUserForm />
+            <CreateUserForm isSuperAdmin={isSuperAdmin} branches={branches} />
           </div>
         </div>
       </section>

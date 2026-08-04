@@ -2,18 +2,18 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { UploadForm } from "./upload-form";
 import { DeleteUploadButton } from "./delete-upload-button";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 
 export default async function UploadPage() {
-  const [recentUploads, user] = await Promise.all([
-    prisma.upload.findMany({
-      orderBy: { uploadedAt: "desc" },
-      take: 10,
-      include: { uploadedBy: true, months: true },
-    }),
-    getCurrentUser(),
-  ]);
-  const isAdmin = user?.role === "ADMIN";
+  const { user, branchId } = await requireUserWithBranch();
+  const recentUploads = await prisma.upload.findMany({
+    where: branchWhere(branchId),
+    orderBy: { uploadedAt: "desc" },
+    take: 10,
+    include: { uploadedBy: true, months: true },
+  });
+  const isAdmin = user.role === "SUPER_ADMIN" || user.role === "BRANCH_ADMIN";
 
   return (
     <div className="space-y-8">

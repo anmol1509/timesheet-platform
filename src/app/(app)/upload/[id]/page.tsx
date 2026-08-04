@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 
 export default async function UploadDetailPage({
   params,
@@ -9,11 +11,12 @@ export default async function UploadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const upload = await prisma.upload.findUnique({
     where: { id },
     include: { uploadedBy: true, months: { orderBy: { month: "asc" } } },
   });
-  if (!upload) notFound();
+  if (!upload || isOutsideBranch(upload.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
     <div className="space-y-6">

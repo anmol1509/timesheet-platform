@@ -10,8 +10,29 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
+  SUPER_ADMIN // cross-branch; replaces the old global ADMIN
+  BRANCH_ADMIN // full admin rights, scoped to one branch
   STAFF
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  emirate   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  users     User[]
+  employees Employee[]
+  clients   Client[]
+  suppliers Supplier[]
+  projects  Project[]
+  uploads   Upload[]
+  invoices  ClientInvoice[]
+  sheets    GeneratedSheet[]
+  items     InventoryItem[]
+  entries   TimesheetEntry[]
 }
 
 model User {
@@ -22,12 +43,17 @@ model User {
   role         Role     @default(STAFF)
   createdAt    DateTime @default(now())
 
+  // SUPER_ADMIN is not tied to one branch, so this stays nullable.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
+
   uploads          Upload[]
   generatedSheets  GeneratedSheet[]
   documents        Document[]
   clientInvoices   ClientInvoice[]
   clientDocuments  ClientDocument[]
   projectDocuments ProjectDocument[]
+  attachments      Attachment[]
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
@@ -38,6 +64,9 @@ model Upload {
   uploadedAt   DateTime @default(now())
   uploadedBy   User     @relation(fields: [uploadedById], references: [id])
   uploadedById String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
 
   months UploadMonth[]
 }
@@ -62,6 +91,9 @@ model Supplier {
   name      String   @unique
   fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
   createdAt DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
 
   mohrePermitNumber   String? // MOHRE manpower supply approval/permit number
   tradeLicenseNumber  String?
@@ -104,6 +136,8 @@ model Client {
   id            String    @id @default(cuid())
   name          String    @unique
   code          String?   @unique
+  branch        Branch    @relation(fields: [branchId], references: [id])
+  branchId      String
   contactPerson String?
   contactEmail  String?
   contactPhone  String?
@@ -199,6 +233,9 @@ model ClientInvoice {
   generatedBy   User   @relation(fields: [generatedById], references: [id])
   generatedById String
 
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
   @@index([month, clientId])
 }
 
@@ -232,6 +269,11 @@ model TimesheetEntry {
   updatedAt       DateTime @updatedAt
   createdAt       DateTime @default(now())
 
+  // Denormalized directly rather than derived through supplier/client, since
+  // this is the highest-volume table and list queries need a join-free filter.
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
   supplier   Supplier @relation(fields: [supplierId], references: [id])
   supplierId String
 
@@ -245,6 +287,7 @@ model TimesheetEntry {
 
   @@unique([month, supplierId, employeeIdNo, trade])
   @@index([month, supplierId])
+  @@index([branchId])
 }
 
 // A record of each generated company timesheet (for history / re-download).
@@ -263,6 +306,9 @@ model GeneratedSheet {
   generatedBy   User   @relation(fields: [generatedById], references: [id])
   generatedById String
 
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
   @@index([month, supplierId])
 }
 
@@ -272,14 +318,24 @@ model Settings {
   companyTrn String? // this company's own Tax Registration Number, printed on client invoices
 }
 
+enum EmployeeStatus {
+  ACTIVE
+  IDLE
+  ON_VACATION
+  TERMINATED
+}
+
 // Employee master record — auto-created/refreshed from uploads (name, trade,
 // supplier) and manually enriched here (photo, compliance dates, etc). The
 // upload flow never touches the manually-owned fields.
 model Employee {
-  id               String    @id @default(cuid())
-  employeeIdNo     String    @unique
+  id               String         @id @default(cuid())
+  employeeIdNo     String         @unique
   name             String
   trade            String?
+  // Kept alongside the legacy `active` boolean during the transition — existing
+  // dashboard/list queries still read `active`; new code should prefer `status`.
+  status           EmployeeStatus @default(ACTIVE)
   photoData        Bytes?
   photoMimeType    String?
   nationality      String?
@@ -319,6 +375,9 @@ model Employee {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
 
   supplier   Supplier? @relation(fields: [supplierId], references: [id])
   supplierId String?
@@ -388,6 +447,9 @@ model Project {
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
 
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
   site   Site?   @relation(fields: [siteId], references: [id])
   siteId String?
 
@@ -446,6 +508,9 @@ model InventoryItem {
   name     String  @unique
   category String?
   notes    String?
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
 
   assignments ProjectInventoryAssignment[]
 }
@@ -543,4 +608,31 @@ model Bed {
   employeeId String?   @unique
 
   @@unique([roomId, label])
+}
+
+// Generic document store for entity types that don't have a dedicated
+// *Document model (Supplier docs today; Payslips/Visa docs in later phases).
+// entityId is not a database-enforced FK — Prisma has no polymorphic
+// relations — so referential integrity on delete is app-code responsibility,
+// the same tradeoff the Bytes-in-Postgres file storage already makes elsewhere.
+model Attachment {
+  id         String    @id @default(cuid())
+  entityType String // "SUPPLIER" | "PAYSLIP" | "VISA" | ...
+  entityId   String
+  docType    String
+  filename   String
+  fileData   Bytes
+  mimeType   String
+  expiryDate DateTime?
+  uploadedAt DateTime  @default(now())
+
+  // Copied from the owning entity at write time so dashboard queries can
+  // filter by branch without joining through entityId.
+  branchId String?
+
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedById String
+
+  @@index([entityType, entityId])
+  @@index([branchId, docType])
 }

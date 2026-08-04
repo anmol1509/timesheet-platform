@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { complianceStatus, type ComplianceStatus } from "@/lib/compliance";
+import { branchWhere } from "@/lib/branch";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 
@@ -11,9 +12,12 @@ export type AssignedStaffRow = {
 };
 
 /** Employees currently active on a project, most recently updated first. */
-export async function getAssignedStaff(limit = 4): Promise<AssignedStaffRow[]> {
+export async function getAssignedStaff(
+  limit = 4,
+  branchId: string | null = null
+): Promise<AssignedStaffRow[]> {
   const employees = await prisma.employee.findMany({
-    where: { active: true, projectId: { not: null } },
+    where: { ...branchWhere(branchId), active: true, projectId: { not: null } },
     select: {
       id: true,
       name: true,

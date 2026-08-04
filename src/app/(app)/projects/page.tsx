@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { ProjectList } from "./project-list";
 
 export default async function ProjectsPage() {
+  const { branchId } = await requireUserWithBranch();
   const projects = await prisma.project.findMany({
+    where: branchWhere(branchId),
     include: { client: true, site: true },
     orderBy: { name: "asc" },
   });

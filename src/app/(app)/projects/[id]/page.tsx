@@ -14,6 +14,8 @@ import { ProjectContacts } from "./project-contacts";
 import { ProjectInventory } from "./project-inventory";
 import { ProjectTabs } from "./project-tabs";
 import { deleteProjectAction } from "../actions";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
 
 const STATUS_COLOR: Record<string, BadgeColor> = {
   ACTIVE: "green",
@@ -33,6 +35,7 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [project, sites, clients, inventoryCatalog] = await Promise.all([
     prisma.project.findUnique({
       where: { id },
@@ -48,10 +51,10 @@ export default async function ProjectDetailPage({
       },
     }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
-    prisma.client.findMany({ orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.inventoryItem.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
   ]);
-  if (!project) notFound();
+  if (!project || isOutsideBranch(project.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
     <div className="max-w-4xl space-y-6">

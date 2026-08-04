@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
+import { branchWhere } from "@/lib/branch";
 
 const ALERT_THRESHOLD_DAYS = 30;
 
@@ -10,8 +11,11 @@ export type ComplianceAlert = {
   days: number;
 };
 
-export async function getComplianceAlerts(): Promise<ComplianceAlert[]> {
+export async function getComplianceAlerts(
+  branchId: string | null = null
+): Promise<ComplianceAlert[]> {
   const employees = await prisma.employee.findMany({
+    where: branchWhere(branchId),
     select: {
       id: true,
       name: true,

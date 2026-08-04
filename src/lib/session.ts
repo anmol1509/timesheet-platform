@@ -12,6 +12,13 @@ function getSecretKey() {
 
 export type SessionPayload = {
   userId: string;
+  // Only meaningful for SUPER_ADMIN — the branch they're currently viewing.
+  // Undefined/null means "all branches". Branch-scoped users ignore this and
+  // always resolve to their own User.branchId (see requireUserWithBranch).
+  activeBranchId?: string | null;
+  // Preserved across re-issues (e.g. switching branch) so a "remember me"
+  // login doesn't silently become a session-only cookie later.
+  remember?: boolean;
 };
 
 export async function createSessionToken(payload: SessionPayload) {
@@ -28,14 +35,19 @@ export async function verifySessionToken(
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
     if (typeof payload.userId !== "string") return null;
-    return { userId: payload.userId };
+    return {
+      userId: payload.userId,
+      activeBranchId:
+        typeof payload.activeBranchId === "string" ? payload.activeBranchId : null,
+      remember: payload.remember === true,
+    };
   } catch {
     return null;
   }
 }
 
-export async function setSessionCookie(userId: string, remember: boolean = true) {
-  const token = await createSessionToken({ userId });
+async function writeSessionCookie(payload: SessionPayload, remember: boolean) {
+  const token = await createSessionToken(payload);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -44,6 +56,21 @@ export async function setSessionCookie(userId: string, remember: boolean = true)
     path: "/",
     ...(remember ? { maxAge: SESSION_DURATION_SECONDS } : {}),
   });
+}
+
+export async function setSessionCookie(userId: string, remember: boolean = true) {
+  await writeSessionCookie({ userId, remember }, remember);
+}
+
+// Re-issues the session cookie with a different active branch, preserving
+// the signed-in user and the original "remember me" choice.
+export async function setActiveBranchCookie(activeBranchId: string | null) {
+  const current = await getSessionFromCookies();
+  if (!current) return;
+  await writeSessionCookie(
+    { userId: current.userId, activeBranchId, remember: current.remember },
+    current.remember ?? true
+  );
 }
 
 export async function clearSessionCookie() {

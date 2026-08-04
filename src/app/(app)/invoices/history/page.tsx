@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Badge, type BadgeColor } from "@/components/Badge";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { markInvoicePaidAction } from "./actions";
 import { MarkPaidButton } from "./mark-paid-button";
 
@@ -18,7 +20,9 @@ function statusInfo(status: string, dueDate: Date | null): { label: string; colo
 }
 
 export default async function InvoiceHistoryPage() {
+  const { branchId } = await requireUserWithBranch();
   const invoices = await prisma.clientInvoice.findMany({
+    where: branchWhere(branchId),
     orderBy: { issueDate: "desc" },
     take: 200,
     include: { client: true, generatedBy: true },

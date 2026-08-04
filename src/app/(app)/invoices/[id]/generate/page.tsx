@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getClientMonthEntries } from "@/lib/clientInvoice";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { ReviewInvoice } from "./review-invoice";
 
 export default async function GenerateInvoicePage({
@@ -13,9 +15,10 @@ export default async function GenerateInvoicePage({
 }) {
   const { id } = await params;
   const { month } = await searchParams;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const client = await prisma.client.findUnique({ where: { id } });
-  if (!client || !month) notFound();
+  if (!client || !month || isOutsideBranch(client.branchId, branchId, isSuperAdmin)) notFound();
 
   const entries = await getClientMonthEntries(id, month);
   if (entries.length === 0) notFound();

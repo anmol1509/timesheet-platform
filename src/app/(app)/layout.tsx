@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { NavLinks } from "./nav-links";
 import { MobileSidebar } from "./mobile-sidebar";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
 import { Bell } from "lucide-react";
 
@@ -16,7 +18,13 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, alerts] = await Promise.all([requireUser(), getComplianceAlerts()]);
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const [alerts, branches] = await Promise.all([
+    getComplianceAlerts(branchId),
+    // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
+    prisma.branch.findMany({ orderBy: { code: "asc" } }),
+  ]);
+  const isAdmin = user.role !== "STAFF";
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
@@ -34,16 +42,19 @@ export default async function AppLayout({
           <p className="px-3 pt-2 pb-2 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
             Navigation
           </p>
-          <NavLinks isAdmin={user.role === "ADMIN"} />
+          <NavLinks isAdmin={isAdmin} />
         </div>
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-slate-100 bg-white">
           <div className="flex items-center gap-4 px-4 py-3 sm:px-6">
-            <MobileSidebar isAdmin={user.role === "ADMIN"} />
+            <MobileSidebar isAdmin={isAdmin} />
             <GlobalSearch />
             <div className="flex shrink-0 items-center gap-3">
+              {isSuperAdmin && (
+                <BranchSwitcher branches={branches} activeBranchId={branchId} />
+              )}
               <button
                 type="button"
                 className="relative rounded-full p-2.5 text-slate-500 hover:bg-slate-100"

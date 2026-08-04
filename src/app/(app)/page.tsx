@@ -6,9 +6,16 @@ import { OccupancyRing } from "@/components/OccupancyRing";
 import { WorkforcePie } from "@/components/WorkforcePie";
 import { WeeklyHoursChart } from "@/components/WeeklyHoursChart";
 import { AssignedStaffList } from "@/components/AssignedStaffList";
+import { DocumentExpiryWidget } from "@/components/DocumentExpiryWidget";
+import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
 import { getWeeklyHours } from "@/lib/weeklyHours";
 import { getAssignedStaff } from "@/lib/assignedStaff";
+import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
+import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
+import { getEntityCounts } from "@/lib/entityCounts";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import {
   ClipboardList,
   Building2,
@@ -34,6 +41,9 @@ function formatMonthLabel(month: string) {
 }
 
 export default async function DashboardPage() {
+  const { branchId } = await requireUserWithBranch();
+  const branchScope = branchWhere(branchId);
+
   const [
     employeeCount,
     onWorkCount,
@@ -45,24 +55,36 @@ export default async function DashboardPage() {
     beds,
     latestUpload,
     months,
+    documentExpiryCounts,
+    employeeTypeCounts,
+    entityCounts,
   ] = await Promise.all([
-    prisma.employee.count(),
-    prisma.employee.count({ where: { active: true, projectId: { not: null } } }),
-    prisma.project.count({ where: { status: "ACTIVE" } }),
-    prisma.client.count({ where: { status: "ACTIVE" } }),
-    getComplianceAlerts(),
-    getWeeklyHours(),
-    getAssignedStaff(4),
+    prisma.employee.count({ where: branchScope }),
+    prisma.employee.count({
+      where: { ...branchScope, active: true, projectId: { not: null } },
+    }),
+    prisma.project.count({ where: { ...branchScope, status: "ACTIVE" } }),
+    prisma.client.count({ where: { ...branchScope, status: "ACTIVE" } }),
+    getComplianceAlerts(branchId),
+    getWeeklyHours(branchId),
+    getAssignedStaff(4, branchId),
+    // Camp/Room/Bed aren't branch-scoped yet (deferred to a later phase),
+    // so occupancy stays cross-branch for now.
     prisma.bed.findMany({ select: { employeeId: true } }),
     prisma.upload.findFirst({
+      where: branchScope,
       orderBy: { uploadedAt: "desc" },
       include: { uploadedBy: true },
     }),
     prisma.timesheetEntry.findMany({
+      where: branchScope,
       distinct: ["month"],
       select: { month: true },
       orderBy: { month: "desc" },
     }),
+    getDocumentExpiryCounts(branchId),
+    getEmployeeTypeCounts(branchId),
+    getEntityCounts(branchId),
   ]);
   const benchCount = employeeCount - onWorkCount;
   const topAlerts = alerts.slice(0, 5);
@@ -96,6 +118,41 @@ export default async function DashboardPage() {
           icon={AlertTriangle}
           tone={alerts.length > 0 ? "warning" : "default"}
         />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          Notification for Expiry
+        </h2>
+        <DocumentExpiryWidget categories={documentExpiryCounts} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 lg:col-span-2">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Employee Count
+          </h2>
+          <EmployeeTypeBreakdown counts={employeeTypeCounts} />
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Business Associates
+          </h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Clients</span>
+              <span className="font-semibold text-slate-900">{entityCounts.clients}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Suppliers</span>
+              <span className="font-semibold text-slate-900">{entityCounts.suppliers}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">Projects</span>
+              <span className="font-semibold text-slate-900">{entityCounts.projects}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

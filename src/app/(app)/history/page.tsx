@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 
 export default async function HistoryPage() {
+  const { branchId } = await requireUserWithBranch();
   const sheets = await prisma.generatedSheet.findMany({
+    where: branchWhere(branchId),
     orderBy: { generatedAt: "desc" },
     take: 100,
     include: { supplier: true, generatedBy: true },

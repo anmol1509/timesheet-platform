@@ -22,6 +22,7 @@ import {
   MapPin,
   PenSquare,
   Receipt,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,6 +55,7 @@ const NAV: Entry[] = [
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
       { href: "/transport", label: "Transport", icon: Bus },
+      { href: "/inventory", label: "Inventory", icon: Package },
     ],
   },
   {

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
 function dateOrNull(value: FormDataEntryValue | null) {
@@ -35,12 +35,19 @@ export async function createEmployeeAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const employeeIdNo = String(formData.get("employeeIdNo") || "").trim();
   const name = String(formData.get("name") || "").trim();
   if (!employeeIdNo || !name) {
     return { error: "Employee ID and name are required." };
+  }
+  if (!branchId) {
+    return {
+      error: isSuperAdmin
+        ? "Pick a branch from the switcher before adding an employee."
+        : "Your account has no branch assigned — contact an admin.",
+    };
   }
 
   const existing = await prisma.employee.findUnique({
@@ -64,6 +71,7 @@ export async function createEmployeeAction(
     data: {
       employeeIdNo,
       name,
+      branchId,
       nationality: stringOrNull(formData.get("nationality")),
       position: stringOrNull(formData.get("position")),
       trade: stringOrNull(formData.get("position")),

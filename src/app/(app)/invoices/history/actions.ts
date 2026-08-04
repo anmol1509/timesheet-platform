@@ -2,13 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 
 export async function markInvoicePaidAction(formData: FormData) {
-  const user = await getCurrentUser();
-  if (!user) return;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const invoiceId = String(formData.get("invoiceId") || "");
   if (!invoiceId) return;
+
+  const existing = await prisma.clientInvoice.findUnique({
+    where: { id: invoiceId },
+    select: { branchId: true },
+  });
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+
   await prisma.clientInvoice.update({
     where: { id: invoiceId },
     data: { status: "PAID", paidDate: new Date() },

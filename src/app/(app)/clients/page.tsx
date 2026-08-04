@@ -3,10 +3,16 @@ import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { Building2, FileCheck2, DollarSign } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { ClientList } from "./client-list";
 
 export default async function ClientsPage() {
-  const clients = await prisma.client.findMany({ orderBy: { name: "asc" } });
+  const { branchId } = await requireUserWithBranch();
+  const clients = await prisma.client.findMany({
+    where: branchWhere(branchId),
+    orderBy: { name: "asc" },
+  });
 
   const activeCount = clients.filter((c) => c.status === "ACTIVE").length;
   const basicRates = clients.map((c) => c.basicRate).filter((r): r is number => r != null);

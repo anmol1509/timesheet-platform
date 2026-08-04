@@ -8,6 +8,8 @@ import { ClientContacts } from "./client-contacts";
 import { ClientTradeRates } from "./client-trade-rates";
 import { ClientDocuments } from "./client-documents";
 import { deleteClientAction } from "../actions";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -23,6 +25,7 @@ export default async function ClientDetailPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const client = await prisma.client.findUnique({
     where: { id },
     include: {
@@ -32,7 +35,7 @@ export default async function ClientDetailPage({
       documents: { orderBy: { uploadedAt: "desc" } },
     },
   });
-  if (!client) notFound();
+  if (!client || isOutsideBranch(client.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
     <div className="max-w-3xl space-y-6">

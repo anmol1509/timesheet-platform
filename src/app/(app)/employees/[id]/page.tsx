@@ -3,6 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
@@ -22,6 +24,7 @@ export default async function EmployeeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [employee, projects, vehicles, vacantBeds] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
@@ -41,7 +44,7 @@ export default async function EmployeeDetailPage({
       orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
     }),
   ]);
-  if (!employee) notFound();
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
 
   const latest = await prisma.timesheetEntry.findFirst({
     where: { employeeIdNo: employee.employeeIdNo },

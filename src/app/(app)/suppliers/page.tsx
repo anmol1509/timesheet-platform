@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { createSupplierAction } from "./actions";
 import { SupplierList } from "./supplier-list";
 
@@ -9,7 +11,9 @@ export default async function SuppliersPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const { branchId } = await requireUserWithBranch();
   const suppliers = await prisma.supplier.findMany({
+    where: branchWhere(branchId),
     select: {
       id: true,
       name: true,

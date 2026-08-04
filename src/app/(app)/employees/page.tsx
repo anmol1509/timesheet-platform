@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
@@ -11,7 +13,9 @@ export default async function EmployeesPage({
   searchParams: Promise<{ filter?: string }>;
 }) {
   const { filter } = await searchParams;
+  const { branchId } = await requireUserWithBranch();
   const employees = await prisma.employee.findMany({
+    where: branchWhere(branchId),
     include: {
       supplier: true,
       project: { select: { name: true } },

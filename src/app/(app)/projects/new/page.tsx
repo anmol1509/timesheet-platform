@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { NewProjectForm } from "./new-project-form";
 
 export default async function NewProjectPage() {
+  const { branchId } = await requireUserWithBranch();
   const [clients, sites] = await Promise.all([
-    prisma.client.findMany({ orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.site.findMany({ orderBy: { name: "asc" } }),
   ]);
   return (

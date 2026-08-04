@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseConsolidatedWorkbook } from "@/lib/parseTimesheet";
 import { importParsedMonths } from "@/lib/importTimesheet";
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!branchId) {
+    return NextResponse.json(
+      {
+        error: isSuperAdmin
+          ? "Pick a branch from the switcher before uploading."
+          : "Your account has no branch assigned — contact an admin.",
+      },
+      { status: 400 }
+    );
   }
 
   const formData = await request.formData();
@@ -46,10 +53,10 @@ export async function POST(request: Request) {
   }
 
   const upload = await prisma.upload.create({
-    data: { filename: file.name, fileData: buffer, uploadedById: user.id },
+    data: { filename: file.name, fileData: buffer, uploadedById: user.id, branchId },
   });
 
-  const stats = await importParsedMonths(parsed.months, upload.id);
+  const stats = await importParsedMonths(parsed.months, upload.id, branchId);
 
   return NextResponse.json({
     upload: { id: upload.id, filename: file.name },

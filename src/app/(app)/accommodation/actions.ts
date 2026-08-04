@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 
 export async function createCampAction(formData: FormData) {
   await requireUser();
@@ -65,21 +66,29 @@ export async function addBedsToRoomAction(formData: FormData) {
   revalidatePath("/accommodation");
 }
 
+// Beds/rooms/camps themselves aren't branch-scoped yet — only the employee
+// being assigned/unassigned needs to belong to the caller's branch.
 export async function assignBedAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!bedId || !employeeId) return;
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
   await prisma.bed.update({ where: { id: bedId }, data: { employeeId } });
   revalidatePath("/accommodation");
   revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function unassignBedAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!bedId) return;
+  if (employeeId) {
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+    if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
+  }
   await prisma.bed.update({ where: { id: bedId }, data: { employeeId: null } });
   revalidatePath("/accommodation");
   if (employeeId) revalidatePath(`/employees/${employeeId}`);

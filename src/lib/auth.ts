@@ -17,6 +17,26 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/");
+  if (user.role !== "SUPER_ADMIN" && user.role !== "BRANCH_ADMIN") redirect("/");
   return user;
+}
+
+// The one place every branch-scoped page/action should start from. Resolves
+// which branch the current request should operate on:
+// - SUPER_ADMIN has no home branch; sees whichever branch they last picked
+//   via the branch switcher (null = "all branches").
+// - BRANCH_ADMIN/STAFF always resolve to their own User.branchId — the
+//   session's activeBranchId is ignored for them, so a stale/tampered
+//   cookie value can never widen their access.
+export async function requireUserWithBranch() {
+  const user = await requireUser();
+  const isSuperAdmin = user.role === "SUPER_ADMIN";
+  let branchId: string | null;
+  if (isSuperAdmin) {
+    const session = await getSessionFromCookies();
+    branchId = session?.activeBranchId ?? null;
+  } else {
+    branchId = user.branchId;
+  }
+  return { user, branchId, isSuperAdmin };
 }

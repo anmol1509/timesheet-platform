@@ -5,6 +5,9 @@ import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EditSupplierForm } from "./edit-form";
 import { deleteSupplierAction } from "../actions";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
+import { AttachmentUploader } from "@/components/AttachmentUploader";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -20,11 +23,18 @@ export default async function SupplierDetailPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({
     where: { id },
     include: { _count: { select: { employees: true, entries: true } } },
   });
-  if (!supplier) notFound();
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
+
+  const attachments = await prisma.attachment.findMany({
+    where: { entityType: "SUPPLIER", entityId: supplier.id },
+    orderBy: { uploadedAt: "desc" },
+    select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
+  });
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -98,6 +108,29 @@ export default async function SupplierDetailPage({
           phone: supplier.phone,
         }}
       />
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
+        <AttachmentUploader
+          entityType="SUPPLIER"
+          entityId={supplier.id}
+          entityBranchId={supplier.branchId}
+          revalidate={`/suppliers/${supplier.id}`}
+          docTypeOptions={[
+            { value: "TRADE_LICENSE", label: "Trade License" },
+            { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
+            { value: "CONTRACT", label: "Contract" },
+            { value: "OTHER", label: "Other" },
+          ]}
+          attachments={attachments.map((a) => ({
+            id: a.id,
+            docType: a.docType,
+            filename: a.filename,
+            expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
+            uploadedAt: a.uploadedAt.toISOString(),
+          }))}
+        />
+      </section>
     </div>
   );
 }

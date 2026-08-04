@@ -3,8 +3,18 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+
+// Every nested mutation (documents, trade rates, holidays, contacts,
+// inventory) takes a projectId rather than looking the project up itself,
+// so this is the one place that guards them all against acting on another
+// branch's project.
+async function assertProjectInBranch(projectId: string, branchId: string | null, isSuperAdmin: boolean) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { branchId: true } });
+  return !!project && !isOutsideBranch(project.branchId, branchId, isSuperAdmin);
+}
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -32,11 +42,18 @@ export async function createProjectAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   const clientId = String(formData.get("clientId") || "");
   if (!name || !clientId) {
     return { error: "Project name and client are required." };
+  }
+  if (!branchId) {
+    return {
+      error: isSuperAdmin
+        ? "Pick a branch from the switcher before adding a project."
+        : "Your account has no branch assigned — contact an admin.",
+    };
   }
 
   const project = await prisma.project.create({
@@ -44,6 +61,7 @@ export async function createProjectAction(
       code: await nextProjectCode(),
       name,
       clientId,
+      branchId,
       siteId: stringOrNull(formData.get("siteId")),
       description: stringOrNull(formData.get("description")),
       manager: stringOrNull(formData.get("manager")),
@@ -62,9 +80,10 @@ export async function createProjectAction(
 // touches — and can't accidentally null out — fields that live on another
 // tab's form.
 export async function updateProjectAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
+  if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
 
   const name = stringOrNull(formData.get("name"));
 
@@ -107,9 +126,10 @@ export async function updateProjectAction(formData: FormData) {
 
 // Location Details tab.
 export async function updateProjectLocationAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
+  if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
 
   await prisma.project.update({
     where: { id },
@@ -126,9 +146,10 @@ export async function updateProjectLocationAction(formData: FormData) {
 
 // Other Details tab.
 export async function updateProjectOtherDetailsAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
+  if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
 
   await prisma.project.update({
     where: { id },
@@ -143,13 +164,14 @@ export async function updateProjectOtherDetailsAction(formData: FormData) {
 // --- Documents ---
 
 export async function addProjectDocumentAction(formData: FormData) {
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
   const file = formData.get("file");
   if (!projectId || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.projectDocument.create({
@@ -168,10 +190,11 @@ export async function addProjectDocumentAction(formData: FormData) {
 }
 
 export async function deleteProjectDocumentAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const projectId = String(formData.get("projectId") || "");
   if (!id) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
   await prisma.projectDocument.delete({ where: { id } });
   revalidatePath(`/projects/${projectId}`);
 }
@@ -179,12 +202,13 @@ export async function deleteProjectDocumentAction(formData: FormData) {
 // --- Approved Rates (project-scoped ClientTradeRate) ---
 
 export async function addProjectTradeRateAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const clientId = String(formData.get("clientId") || "");
   const trade = String(formData.get("trade") || "").trim();
   const rate = numberOrNull(formData.get("rate"));
   if (!projectId || !clientId || !trade || rate == null) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   const existing = await prisma.clientTradeRate.findFirst({
     where: { clientId, projectId, trade },
@@ -199,10 +223,11 @@ export async function addProjectTradeRateAction(formData: FormData) {
 }
 
 export async function removeProjectTradeRateAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const rateId = String(formData.get("rateId") || "");
   if (!rateId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
   await prisma.clientTradeRate.delete({ where: { id: rateId } });
   revalidatePath(`/projects/${projectId}`);
 }
@@ -210,12 +235,13 @@ export async function removeProjectTradeRateAction(formData: FormData) {
 // --- Holiday Details ---
 
 export async function addProjectHolidayAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const date = dateOrNull(formData.get("date"));
   const label = String(formData.get("label") || "").trim();
   const rateMultiplier = numberOrNull(formData.get("rateMultiplier"));
   if (!projectId || !date || !label) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   await prisma.projectHoliday.upsert({
     where: { projectId_date: { projectId, date } },
@@ -227,10 +253,11 @@ export async function addProjectHolidayAction(formData: FormData) {
 }
 
 export async function removeProjectHolidayAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const holidayId = String(formData.get("holidayId") || "");
   if (!holidayId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
   await prisma.projectHoliday.delete({ where: { id: holidayId } });
   revalidatePath(`/projects/${projectId}`);
 }
@@ -238,10 +265,11 @@ export async function removeProjectHolidayAction(formData: FormData) {
 // --- Related Users (ProjectContact) ---
 
 export async function addProjectContactAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!projectId || !name) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   await prisma.projectContact.create({
     data: {
@@ -257,11 +285,12 @@ export async function addProjectContactAction(formData: FormData) {
 }
 
 export async function updateProjectContactAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const contactId = String(formData.get("contactId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!contactId || !name) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   await prisma.projectContact.update({
     where: { id: contactId },
@@ -277,10 +306,11 @@ export async function updateProjectContactAction(formData: FormData) {
 }
 
 export async function removeProjectContactAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const contactId = String(formData.get("contactId") || "");
   if (!contactId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
   await prisma.projectContact.delete({ where: { id: contactId } });
   revalidatePath(`/projects/${projectId}`);
 }
@@ -288,18 +318,19 @@ export async function removeProjectContactAction(formData: FormData) {
 // --- Inventory Details ---
 
 export async function addProjectInventoryAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const itemName = String(formData.get("itemName") || "").trim();
   const quantity = Number(formData.get("quantity")) || 1;
   const assignedDate = dateOrNull(formData.get("assignedDate")) || new Date();
   const condition = stringOrNull(formData.get("condition"));
-  if (!projectId || !itemName) return;
+  if (!projectId || !itemName || !branchId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   const item = await prisma.inventoryItem.upsert({
     where: { name: itemName },
     update: {},
-    create: { name: itemName },
+    create: { name: itemName, branchId },
   });
 
   await prisma.projectInventoryAssignment.create({
@@ -310,10 +341,11 @@ export async function addProjectInventoryAction(formData: FormData) {
 }
 
 export async function returnProjectInventoryAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const assignmentId = String(formData.get("assignmentId") || "");
   if (!assignmentId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
   await prisma.projectInventoryAssignment.update({
     where: { id: assignmentId },
     data: { returnDate: new Date() },
@@ -322,18 +354,22 @@ export async function returnProjectInventoryAction(formData: FormData) {
 }
 
 export async function removeProjectInventoryAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const assignmentId = String(formData.get("assignmentId") || "");
   if (!assignmentId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
   await prisma.projectInventoryAssignment.delete({ where: { id: assignmentId } });
   revalidatePath(`/projects/${projectId}`);
 }
 
 export async function deleteProjectAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
+
+  const target = await prisma.project.findUnique({ where: { id }, select: { branchId: true } });
+  if (!target || isOutsideBranch(target.branchId, branchId, isSuperAdmin)) return;
 
   // Unassigning employees is a soft, reversible consequence -- unlike a
   // Client with real timesheet history, it's safe to do automatically

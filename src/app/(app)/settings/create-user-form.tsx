@@ -1,13 +1,33 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createUserAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 
-export function CreateUserForm() {
+type Branch = { id: string; code: string; name: string };
+
+export function CreateUserForm({
+  isSuperAdmin,
+  branches,
+}: {
+  isSuperAdmin: boolean;
+  branches: Branch[];
+}) {
   const [state, formAction, pending] = useActionState(createUserAction, {
     error: null,
   });
+  const [role, setRole] = useState(isSuperAdmin ? "BRANCH_ADMIN" : "STAFF");
+
+  const roleOptions = isSuperAdmin
+    ? [
+        { value: "SUPER_ADMIN", label: "Super Admin (all branches)" },
+        { value: "BRANCH_ADMIN", label: "Branch Admin" },
+        { value: "STAFF", label: "Staff" },
+      ]
+    : [
+        { value: "BRANCH_ADMIN", label: "Branch Admin" },
+        { value: "STAFF", label: "Staff" },
+      ];
 
   return (
     <form action={formAction} className="space-y-3">
@@ -34,13 +54,19 @@ export function CreateUserForm() {
       />
       <Select
         name="role"
-        defaultValue="STAFF"
+        value={role}
+        onChange={setRole}
         searchable={false}
-        options={[
-          { value: "STAFF", label: "Staff" },
-          { value: "ADMIN", label: "Admin" },
-        ]}
+        options={roleOptions}
       />
+      {isSuperAdmin && role !== "SUPER_ADMIN" && (
+        <Select
+          name="branchId"
+          placeholder="Branch"
+          searchable={false}
+          options={branches.map((b) => ({ value: b.id, label: `${b.code} — ${b.name}` }))}
+        />
+      )}
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
           {state.error}

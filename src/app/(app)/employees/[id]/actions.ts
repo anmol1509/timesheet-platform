@@ -2,8 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+
+// Every nested mutation (documents, skills, photo) takes an employeeId
+// rather than looking the employee up itself, so this is the one place
+// that guards them all against acting on another branch's employee.
+async function assertEmployeeInBranch(employeeId: string, branchId: string | null, isSuperAdmin: boolean) {
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  return !!employee && !isOutsideBranch(employee.branchId, branchId, isSuperAdmin);
+}
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -23,9 +32,10 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function updateEmployeeAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   if (!id) return;
+  if (!(await assertEmployeeInBranch(id, branchId, isSuperAdmin))) return;
 
   await prisma.employee.update({
     where: { id },
@@ -72,7 +82,7 @@ export async function updateEmployeeAction(formData: FormData) {
 }
 
 export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -83,8 +93,16 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       results.push({ row: i + 2, status: "error", message: "Employee ID No and Full name are required." });
       continue;
     }
+    if (!branchId) {
+      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
+      continue;
+    }
     try {
       const existing = await prisma.employee.findUnique({ where: { employeeIdNo } });
+      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
+        results.push({ row: i + 2, status: "error", message: "That ID belongs to a different branch." });
+        continue;
+      }
       const data = {
         name,
         trade: stringOrNull(r["Trade"] ?? null),
@@ -98,7 +116,7 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
         await prisma.employee.update({ where: { id: existing.id }, data });
         results.push({ row: i + 2, status: "updated" });
       } else {
-        await prisma.employee.create({ data: { employeeIdNo, ...data } });
+        await prisma.employee.create({ data: { employeeIdNo, ...data, branchId } });
         results.push({ row: i + 2, status: "created" });
       }
     } catch (e) {
@@ -115,11 +133,12 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
 }
 
 export async function uploadPhotoAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   const file = formData.get("photo");
   if (!id || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
+  if (!(await assertEmployeeInBranch(id, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.employee.update({
@@ -132,9 +151,10 @@ export async function uploadPhotoAction(formData: FormData) {
 }
 
 export async function applyExtractedFieldsAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const data: {
     name?: string;
@@ -160,13 +180,14 @@ export async function applyExtractedFieldsAction(formData: FormData) {
 }
 
 export async function uploadDocumentAction(formData: FormData) {
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
   const file = formData.get("file");
   if (!employeeId || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.document.create({
@@ -186,20 +207,22 @@ export async function uploadDocumentAction(formData: FormData) {
 }
 
 export async function deleteDocumentAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!id) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
   await prisma.document.delete({ where: { id } });
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/documents");
 }
 
 export async function addSkillAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const skillName = String(formData.get("skillName") || "").trim();
   if (!employeeId || !skillName) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const skill = await prisma.skill.upsert({
     where: { name: skillName },
@@ -218,10 +241,11 @@ export async function addSkillAction(formData: FormData) {
 }
 
 export async function removeSkillAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const skillId = String(formData.get("skillId") || "");
   if (!employeeId || !skillId) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
   await prisma.employeeSkill
     .delete({ where: { employeeId_skillId: { employeeId, skillId } } })
     .catch(() => {});

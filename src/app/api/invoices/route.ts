@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { getClientMonthEntries, summarizeInvoice, nextInvoiceNumber } from "@/lib/clientInvoice";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
@@ -16,10 +17,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  }
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const parsed = bodySchema.safeParse(await request.json());
   if (!parsed.success) {
@@ -28,8 +26,19 @@ export async function POST(request: Request) {
   const { clientId, month, format, save, rates } = parsed.data;
 
   const client = await prisma.client.findUnique({ where: { id: clientId } });
-  if (!client) {
+  if (!client || isOutsideBranch(client.branchId, branchId, isSuperAdmin)) {
     return NextResponse.json({ error: "Client not found." }, { status: 404 });
+  }
+
+  if (save && !branchId) {
+    return NextResponse.json(
+      {
+        error: isSuperAdmin
+          ? "Pick a branch from the switcher before issuing an invoice."
+          : "Your account has no branch assigned — contact an admin.",
+      },
+      { status: 400 }
+    );
   }
 
   const entries = await getClientMonthEntries(clientId, month);
@@ -84,6 +93,7 @@ export async function POST(request: Request) {
           dueDate,
           clientId,
           generatedById: user.id,
+          branchId: branchId!,
         },
       });
     } catch {

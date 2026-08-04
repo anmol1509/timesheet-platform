@@ -3,8 +3,17 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+
+// Every nested mutation (contacts, trade rates, documents) takes a clientId
+// rather than looking the client up itself, so this is the one place that
+// guards them all against acting on another branch's client.
+async function assertClientInBranch(clientId: string, branchId: string | null, isSuperAdmin: boolean) {
+  const client = await prisma.client.findUnique({ where: { id: clientId }, select: { branchId: true } });
+  return !!client && !isOutsideBranch(client.branchId, branchId, isSuperAdmin);
+}
 
 function numberOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -41,9 +50,16 @@ export async function createClientAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return { error: "Company name is required." };
+  if (!branchId) {
+    return {
+      error: isSuperAdmin
+        ? "Pick a branch from the switcher before adding a client."
+        : "Your account has no branch assigned — contact an admin.",
+    };
+  }
 
   const existing = await prisma.client.findUnique({ where: { name } });
   if (existing) return { error: "A client with that name already exists." };
@@ -52,6 +68,7 @@ export async function createClientAction(
     data: {
       name,
       code: await nextClientCode(),
+      branchId,
       contactPerson: stringOrNull(formData.get("contactPerson")),
       contactEmail: stringOrNull(formData.get("contactEmail")),
       contactPhone: stringOrNull(formData.get("contactPhone")),
@@ -67,9 +84,10 @@ export async function createClientAction(
 }
 
 export async function updateClientAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
+  if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return;
 
   await prisma.client.update({
     where: { id },
@@ -110,10 +128,11 @@ export async function updateClientAction(formData: FormData) {
 }
 
 export async function addClientContactAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!clientId || !name) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
   await prisma.clientContact.create({
     data: {
@@ -129,11 +148,12 @@ export async function addClientContactAction(formData: FormData) {
 }
 
 export async function updateClientContactAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const contactId = String(formData.get("contactId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!contactId || !name) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
   await prisma.clientContact.update({
     where: { id: contactId },
@@ -149,20 +169,22 @@ export async function updateClientContactAction(formData: FormData) {
 }
 
 export async function removeClientContactAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const contactId = String(formData.get("contactId") || "");
   if (!contactId) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
   await prisma.clientContact.delete({ where: { id: contactId } });
   revalidatePath(`/clients/${clientId}`);
 }
 
 export async function addClientTradeRateAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const trade = String(formData.get("trade") || "").trim();
   const rate = numberOrNull(formData.get("rate"));
   if (!clientId || !trade || rate == null) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
   const existing = await prisma.clientTradeRate.findFirst({
     where: { clientId, projectId: null, trade },
@@ -177,22 +199,24 @@ export async function addClientTradeRateAction(formData: FormData) {
 }
 
 export async function removeClientTradeRateAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const rateId = String(formData.get("rateId") || "");
   if (!rateId) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
   await prisma.clientTradeRate.delete({ where: { id: rateId } });
   revalidatePath(`/clients/${clientId}`);
 }
 
 export async function addClientDocumentAction(formData: FormData) {
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
   const file = formData.get("file");
   if (!clientId || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.clientDocument.create({
@@ -211,16 +235,17 @@ export async function addClientDocumentAction(formData: FormData) {
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const clientId = String(formData.get("clientId") || "");
   if (!id) return;
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
   await prisma.clientDocument.delete({ where: { id } });
   revalidatePath(`/clients/${clientId}`);
 }
 
 export async function bulkImportClientsAction(rows: Record<string, string>[]) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -230,8 +255,16 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       results.push({ row: i + 2, status: "error", message: "Company name is required." });
       continue;
     }
+    if (!branchId) {
+      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
+      continue;
+    }
     try {
       const existing = await prisma.client.findUnique({ where: { name } });
+      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
+        results.push({ row: i + 2, status: "error", message: "That name belongs to a different branch." });
+        continue;
+      }
       const data = {
         contactPerson: stringOrNull(r["Contact person"] ?? null),
         contactEmail: stringOrNull(r["Contact email"] ?? null),
@@ -244,7 +277,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
         results.push({ row: i + 2, status: "updated" });
       } else {
         await prisma.client.create({
-          data: { name, code: await nextClientCode(), ...data },
+          data: { name, code: await nextClientCode(), branchId, ...data },
         });
         results.push({ row: i + 2, status: "created" });
       }
@@ -262,9 +295,10 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
 }
 
 export async function deleteClientAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
+  if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return;
 
   const [entryCount, projectCount] = await Promise.all([
     prisma.timesheetEntry.count({ where: { clientId: id } }),

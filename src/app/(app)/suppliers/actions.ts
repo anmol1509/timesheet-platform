@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -23,10 +24,20 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createSupplierAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
   const fullName = String(formData.get("fullName") || "").trim() || null;
+
+  if (!branchId) {
+    redirect(
+      `/suppliers?error=${encodeURIComponent(
+        isSuperAdmin
+          ? "Pick a branch from the switcher before adding a supplier."
+          : "Your account has no branch assigned — contact an admin."
+      )}`
+    );
+  }
 
   const existing = await prisma.supplier.findUnique({ where: { name } });
   if (existing) {
@@ -35,14 +46,17 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  await prisma.supplier.create({ data: { name, fullName } });
+  await prisma.supplier.create({ data: { name, fullName, branchId } });
   revalidatePath("/suppliers");
 }
 
 export async function updateSupplierAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
+
+  const existing = await prisma.supplier.findUnique({ where: { id }, select: { branchId: true } });
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
 
   await prisma.supplier.update({
     where: { id },
@@ -88,7 +102,7 @@ export async function updateSupplierAction(formData: FormData) {
 }
 
 export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -98,8 +112,16 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
       results.push({ row: i + 2, status: "error", message: "Supplier name is required." });
       continue;
     }
+    if (!branchId) {
+      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
+      continue;
+    }
     try {
       const existing = await prisma.supplier.findUnique({ where: { name } });
+      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
+        results.push({ row: i + 2, status: "error", message: "That name belongs to a different branch." });
+        continue;
+      }
       const data = {
         fullName: stringOrNull(r["Full name"] ?? null),
         contactPerson: stringOrNull(r["Contact person"] ?? null),
@@ -111,7 +133,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
         await prisma.supplier.update({ where: { id: existing.id }, data });
         results.push({ row: i + 2, status: "updated" });
       } else {
-        await prisma.supplier.create({ data: { name, ...data } });
+        await prisma.supplier.create({ data: { name, ...data, branchId } });
         results.push({ row: i + 2, status: "created" });
       }
     } catch (e) {
@@ -128,9 +150,12 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
 }
 
 export async function deleteSupplierAction(formData: FormData) {
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
+
+  const target = await prisma.supplier.findUnique({ where: { id }, select: { branchId: true } });
+  if (!target || isOutsideBranch(target.branchId, branchId, isSuperAdmin)) return;
 
   const [entryCount, sheetCount] = await Promise.all([
     prisma.timesheetEntry.count({ where: { supplierId: id } }),

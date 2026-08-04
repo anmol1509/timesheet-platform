@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/auth";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateSupplierXlsx } from "@/lib/generateXlsx";
@@ -17,10 +18,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  }
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const parsed = bodySchema.safeParse(await request.json());
   if (!parsed.success) {
@@ -31,8 +29,19 @@ export async function POST(request: Request) {
   const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
-  if (!supplier) {
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
+  }
+
+  if (!branchId) {
+    return NextResponse.json(
+      {
+        error: isSuperAdmin
+          ? "Pick a branch from the switcher before generating a timesheet."
+          : "Your account has no branch assigned — contact an admin.",
+      },
+      { status: 400 }
+    );
   }
 
   const entryIds = Object.keys(deductions);
@@ -97,6 +106,7 @@ export async function POST(request: Request) {
       issuedTo,
       supplierId,
       generatedById: user.id,
+      branchId,
     },
   });
 

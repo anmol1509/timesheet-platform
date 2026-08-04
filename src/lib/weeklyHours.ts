@@ -1,20 +1,23 @@
 import { prisma } from "@/lib/db";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
+import { branchWhere } from "@/lib/branch";
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 
 export type WeeklyHoursDay = { label: string; hours: number };
 
 /** Total logged hours per weekday, aggregated across the most recent month with timesheet data. */
-export async function getWeeklyHours(): Promise<WeeklyHoursDay[]> {
+export async function getWeeklyHours(branchId: string | null = null): Promise<WeeklyHoursDay[]> {
+  const where = branchWhere(branchId);
   const latest = await prisma.timesheetEntry.findFirst({
+    where,
     orderBy: { month: "desc" },
     select: { month: true },
   });
   if (!latest) return DAY_LABELS.map((label) => ({ label, hours: 0 }));
 
   const entries = await prisma.timesheetEntry.findMany({
-    where: { month: latest.month },
+    where: { ...where, month: latest.month },
     select: { dailyHours: true },
   });
 
