@@ -133,6 +133,7 @@ export default async function EmployeeDetailPage({
         projects={projects}
         vehicles={vehicles}
         sponsorshipCompanies={sponsorshipCompanies}
+        documents={employee.documents}
       />
 
       <SkillsSection
@@ -156,20 +157,7 @@ export default async function EmployeeDetailPage({
         }))}
       />
 
-      <DocumentsSection
-        employeeId={employee.id}
-        documents={employee.documents}
-        complianceDates={{
-          PASSPORT: employee.passportExpiry,
-          VISA: employee.visaExpiry,
-          LABOR_CARD: employee.laborCardExpiry,
-          MEDICAL: employee.medicalExpiry,
-          EMIRATES_ID: employee.emiratesIdExpiry,
-          CICPA: employee.cicpaExpiry,
-          INSURANCE: employee.insuranceExpiry,
-          DRIVING_LICENCE: employee.drivingLicenceExpiry,
-        }}
-      />
+      <DocumentsSection employeeId={employee.id} documents={employee.documents} />
     </div>
   );
 }

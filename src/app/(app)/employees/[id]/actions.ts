@@ -153,8 +153,12 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
         results.push({ row: i + 2, status: "error", message: "That ID belongs to a different branch." });
         continue;
       }
+      const categoryRaw = (r["Category"] || "").trim().toLowerCase();
+      const category: "STAFF" | "SITE_STAFF" | undefined =
+        categoryRaw === "staff" ? "STAFF" : categoryRaw === "site staff" ? "SITE_STAFF" : undefined;
       const data = {
         name,
+        category,
         trade: stringOrNull(r["Trade"] ?? null),
         nationality: stringOrNull(r["Nationality"] ?? null),
         position: stringOrNull(r["Position"] ?? null),

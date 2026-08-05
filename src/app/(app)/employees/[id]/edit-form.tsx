@@ -5,6 +5,9 @@ import { updateEmployeeAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { CountrySelect } from "@/components/ui/CountrySelect";
+import { InlineDocumentUpload } from "./inline-document-upload";
+
+type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
 type Employee = {
   id: string;
@@ -110,11 +113,13 @@ export function EditForm({
   projects,
   vehicles,
   sponsorshipCompanies,
+  documents,
 }: {
   employee: Employee;
   projects: Project[];
   vehicles: Vehicle[];
   sponsorshipCompanies: SponsorshipCompany[];
+  documents: Doc[];
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -124,6 +129,7 @@ export function EditForm({
   const [inactiveReasonPreset, setInactiveReasonPreset] = useState(
     employee.inactiveReason && !knownReason ? "Other" : employee.inactiveReason || ""
   );
+  const docsByType = (type: string) => documents.filter((d) => d.type === type);
 
   return (
     <form
@@ -339,6 +345,16 @@ export function EditForm({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>
+          <div className="sm:col-span-2">
+            <Field label="Additional notes">
+              <textarea
+                name="notes"
+                defaultValue={employee.notes || ""}
+                rows={3}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </Field>
+          </div>
         </div>
       </section>
 
@@ -377,26 +393,8 @@ export function EditForm({
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
-          Compliance & documents
-        </h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">Medical & Emirates ID</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-          <Field label="Visa expiry date">
-            <input
-              type="date"
-              name="visaExpiry"
-              defaultValue={toDateInput(employee.visaExpiry)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
-          <Field label="Labor card expiry">
-            <input
-              type="date"
-              name="laborCardExpiry"
-              defaultValue={toDateInput(employee.laborCardExpiry)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
           <Field label="Medical certificate expiry">
             <input
               type="date"
@@ -406,14 +404,12 @@ export function EditForm({
             />
           </Field>
           <TextField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} />
-          <Field label="Passport expiry date">
-            <input
-              type="date"
-              name="passportExpiry"
-              defaultValue={toDateInput(employee.passportExpiry)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="MEDICAL"
+            documents={docsByType("MEDICAL")}
+            expiryFieldName="medicalExpiry"
+          />
           <Field label="Emirates ID expiry date">
             <input
               type="date"
@@ -423,16 +419,12 @@ export function EditForm({
             />
           </Field>
           <TextField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} />
-          <div className="sm:col-span-2">
-            <Field label="Additional notes">
-              <textarea
-                name="notes"
-                defaultValue={employee.notes || ""}
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-              />
-            </Field>
-          </div>
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="EMIRATES_ID"
+            documents={docsByType("EMIRATES_ID")}
+            expiryFieldName="emiratesIdExpiry"
+          />
         </div>
       </section>
 
@@ -445,6 +437,14 @@ export function EditForm({
           <TextField label="Visa designation" name="visaDesignation" defaultValue={employee.visaDesignation} />
           <DateField label="First visa stamping date" name="visaStampingDate" defaultValue={employee.visaStampingDate} />
           <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} />
+          <DateField label="Visa expiry date" name="visaExpiry" defaultValue={employee.visaExpiry} />
+          <div />
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="VISA"
+            documents={docsByType("VISA")}
+            expiryFieldName="visaExpiry"
+          />
         </div>
       </section>
 
@@ -452,9 +452,15 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Passport</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <TextField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} />
-          <div />
+          <DateField label="Passport expiry date" name="passportExpiry" defaultValue={employee.passportExpiry} />
           <DateField label="Release date" name="passportReleaseDate" defaultValue={employee.passportReleaseDate} />
           <DateField label="Return date" name="passportReturnDate" defaultValue={employee.passportReturnDate} />
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="PASSPORT"
+            documents={docsByType("PASSPORT")}
+            expiryFieldName="passportExpiry"
+          />
         </div>
       </section>
 
@@ -463,6 +469,14 @@ export function EditForm({
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <TextField label="Personal No" name="laborCardPersonalNo" defaultValue={employee.laborCardPersonalNo} />
           <TextField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} />
+          <DateField label="Labor card expiry" name="laborCardExpiry" defaultValue={employee.laborCardExpiry} />
+          <div />
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="LABOR_CARD"
+            documents={docsByType("LABOR_CARD")}
+            expiryFieldName="laborCardExpiry"
+          />
         </div>
       </section>
 
@@ -476,6 +490,12 @@ export function EditForm({
           <DateField label="Issue date" name="cicpaIssueDate" defaultValue={employee.cicpaIssueDate} />
           <DateField label="Expiry date" name="cicpaExpiry" defaultValue={employee.cicpaExpiry} />
           <TextField label="Location" name="cicpaLocation" defaultValue={employee.cicpaLocation} />
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="CICPA"
+            documents={docsByType("CICPA")}
+            expiryFieldName="cicpaExpiry"
+          />
         </div>
       </section>
 
@@ -488,6 +508,12 @@ export function EditForm({
           <DateField label="Expiry date" name="insuranceExpiry" defaultValue={employee.insuranceExpiry} />
           <TextField label="Status" name="insuranceStatus" defaultValue={employee.insuranceStatus} />
           <TextField label="Service provider" name="insuranceServiceProvider" defaultValue={employee.insuranceServiceProvider} />
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="INSURANCE"
+            documents={docsByType("INSURANCE")}
+            expiryFieldName="insuranceExpiry"
+          />
         </div>
       </section>
 
@@ -499,6 +525,12 @@ export function EditForm({
           <DateField label="Issue date" name="drivingLicenceIssueDate" defaultValue={employee.drivingLicenceIssueDate} />
           <DateField label="Expiry date" name="drivingLicenceExpiry" defaultValue={employee.drivingLicenceExpiry} />
           <TextField label="Status" name="drivingLicenceStatus" defaultValue={employee.drivingLicenceStatus} />
+          <InlineDocumentUpload
+            employeeId={employee.id}
+            type="DRIVING_LICENCE"
+            documents={docsByType("DRIVING_LICENCE")}
+            expiryFieldName="drivingLicenceExpiry"
+          />
         </div>
       </section>
 

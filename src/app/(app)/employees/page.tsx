@@ -19,7 +19,6 @@ export default async function EmployeesPage({
     include: {
       supplier: true,
       project: { select: { name: true } },
-      bed: { select: { label: true, room: { select: { camp: { select: { name: true } } } } } },
     },
     orderBy: { name: "asc" },
   });
@@ -39,11 +38,12 @@ export default async function EmployeesPage({
       id: e.id,
       employeeIdNo: e.employeeIdNo,
       name: e.name,
+      category: e.category,
       trade: e.trade,
+      passportNumber: e.passportNumber,
+      emiratesId: e.emiratesId,
       nationality: e.nationality,
       supplierName: e.supplier?.name ?? null,
-      projectName: e.project?.name ?? null,
-      bedLabel: e.bed ? `${e.bed.room.camp.name} · ${e.bed.label}` : null,
       onWork: e.active && e.project != null,
       worstStatus,
     };

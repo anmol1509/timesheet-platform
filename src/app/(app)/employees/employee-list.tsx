@@ -20,13 +20,19 @@ type EmployeeRow = {
   id: string;
   employeeIdNo: string;
   name: string;
+  category: "STAFF" | "SITE_STAFF";
   trade: string | null;
+  passportNumber: string | null;
+  emiratesId: string | null;
   nationality: string | null;
   supplierName: string | null;
-  projectName: string | null;
-  bedLabel: string | null;
   onWork: boolean;
   worstStatus: ComplianceStatus;
+};
+
+const CATEGORY_LABEL: Record<EmployeeRow["category"], string> = {
+  SITE_STAFF: "Site Staff",
+  STAFF: "Staff",
 };
 
 const STATUS_BADGE: Record<ComplianceStatus, { label: string; color: "green" | "amber" | "red" | "slate" }> = {
@@ -39,6 +45,7 @@ const STATUS_BADGE: Record<ComplianceStatus, { label: string; color: "green" | "
 const IMPORT_COLUMNS = [
   { key: "employeeIdNo", label: "Employee ID No", required: true },
   { key: "name", label: "Full name", required: true },
+  { key: "category", label: "Category" },
   { key: "trade", label: "Trade" },
   { key: "nationality", label: "Nationality" },
   { key: "position", label: "Position" },
@@ -95,11 +102,12 @@ export function EmployeeList({
     const csv = toCsv(rows, [
       { header: "ID No", value: (e) => e.employeeIdNo },
       { header: "Employee", value: (e) => e.name },
+      { header: "Category", value: (e) => CATEGORY_LABEL[e.category] },
       { header: "Trade", value: (e) => e.trade },
+      { header: "Passport No", value: (e) => e.passportNumber },
+      { header: "Emirates ID", value: (e) => e.emiratesId },
       { header: "Nationality", value: (e) => e.nationality },
       { header: "Company", value: (e) => e.supplierName },
-      { header: "Project", value: (e) => e.projectName },
-      { header: "Bed", value: (e) => e.bedLabel },
       { header: "Compliance", value: (e) => STATUS_BADGE[e.worstStatus].label },
     ]);
     downloadCsv(`employees-${new Date().toISOString().slice(0, 10)}.csv`, csv);
@@ -157,11 +165,11 @@ export function EmployeeList({
               <th className="px-4 py-3">ID No</th>
               <th className="px-4 py-3">Employee</th>
               <th className="px-4 py-3">Trade</th>
+              <th className="px-4 py-3">Passport No</th>
+              <th className="px-4 py-3">Emirates ID</th>
               <th className="px-4 py-3">Nationality</th>
               <th className="px-4 py-3">Company</th>
-              <th className="px-4 py-3">Project</th>
-              <th className="px-4 py-3">Bed No.</th>
-              <th className="px-4 py-3">Compliance</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -178,20 +186,23 @@ export function EmployeeList({
                       {e.employeeIdNo}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td className="px-4 py-3">
                     <Link href={`/employees/${e.id}`} className="block">
-                      {e.name}
+                      <span className="font-medium text-slate-900">{e.name}</span>
+                      <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                        {CATEGORY_LABEL[e.category]}
+                      </span>
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{e.trade || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{e.passportNumber || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">{e.emiratesId || "—"}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {e.nationality || "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {e.supplierName || "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{e.projectName || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{e.bedLabel || "—"}</td>
                   <td className="px-4 py-3">
                     <Badge color={badge.color}>{badge.label}</Badge>
                   </td>
