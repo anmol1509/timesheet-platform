@@ -23,6 +23,8 @@ import {
   PenSquare,
   Receipt,
   Package,
+  Landmark,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,11 +53,13 @@ const NAV: Entry[] = [
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/sponsorship-companies", label: "Sponsorship Companies", icon: Landmark },
       { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
       { href: "/transport", label: "Transport", icon: Bus },
       { href: "/inventory", label: "Inventory", icon: Package },
+      { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },
   {

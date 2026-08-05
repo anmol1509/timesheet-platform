@@ -4,11 +4,12 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
-import { isOutsideBranch } from "@/lib/branch";
+import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
+import { VaccinationsSection } from "./vaccinations-section";
 import { AccommodationSection } from "./accommodation-section";
 
 const STATUS_BADGE = {
@@ -25,7 +26,7 @@ export default async function EmployeeDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [employee, projects, vehicles, vacantBeds] = await Promise.all([
+  const [employee, projects, vehicles, vacantBeds, sponsorshipCompanies] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
       include: {
@@ -33,6 +34,7 @@ export default async function EmployeeDetailPage({
         project: { include: { client: true } },
         documents: { orderBy: { uploadedAt: "desc" } },
         skills: { include: { skill: true } },
+        vaccinations: { orderBy: { date: "desc" } },
         bed: { include: { room: { include: { camp: true } } } },
       },
     }),
@@ -43,6 +45,7 @@ export default async function EmployeeDetailPage({
       include: { room: { include: { camp: true } } },
       orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
     }),
+    prisma.sponsorshipCompany.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
 
@@ -125,11 +128,32 @@ export default async function EmployeeDetailPage({
         }))}
       />
 
-      <EditForm employee={employee} projects={projects} vehicles={vehicles} />
+      <EditForm
+        employee={employee}
+        projects={projects}
+        vehicles={vehicles}
+        sponsorshipCompanies={sponsorshipCompanies}
+      />
 
       <SkillsSection
         employeeId={employee.id}
-        skills={employee.skills.map((s) => ({ id: s.skill.id, name: s.skill.name }))}
+        skills={employee.skills.map((s) => ({
+          id: s.skill.id,
+          name: s.skill.name,
+          proficiencyPercent: s.proficiencyPercent,
+          rate: s.rate,
+        }))}
+      />
+
+      <VaccinationsSection
+        employeeId={employee.id}
+        vaccinations={employee.vaccinations.map((v) => ({
+          id: v.id,
+          vaccineName: v.vaccineName,
+          doseNumber: v.doseNumber,
+          date: v.date,
+          expiryDate: v.expiryDate,
+        }))}
       />
 
       <DocumentsSection
@@ -141,6 +165,9 @@ export default async function EmployeeDetailPage({
           LABOR_CARD: employee.laborCardExpiry,
           MEDICAL: employee.medicalExpiry,
           EMIRATES_ID: employee.emiratesIdExpiry,
+          CICPA: employee.cicpaExpiry,
+          INSURANCE: employee.insuranceExpiry,
+          DRIVING_LICENCE: employee.drivingLicenceExpiry,
         }}
       />
     </div>

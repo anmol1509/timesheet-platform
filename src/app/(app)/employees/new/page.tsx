@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { EmployeeWizard } from "./wizard";
 
 export default async function AddEmployeePage() {
-  const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
+  const { branchId } = await requireUserWithBranch();
+  const [projects, sponsorshipCompanies] = await Promise.all([
+    prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    prisma.sponsorshipCompany.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -19,7 +25,7 @@ export default async function AddEmployeePage() {
         <h2 className="mb-4 text-base font-semibold text-slate-900">
           Employee Registration
         </h2>
-        <EmployeeWizard projects={projects} />
+        <EmployeeWizard projects={projects} sponsorshipCompanies={sponsorshipCompanies} />
       </div>
     </div>
   );

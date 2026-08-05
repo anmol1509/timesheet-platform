@@ -11,20 +11,20 @@ export type EmployeeTypeCounts = {
 };
 
 // Mirrors the competitor dashboard's "Employee Count" breakdown
-// (Site Staff / Staff / Supplier Labour / Idle / Vacation).
+// (Site Staff / Staff / Supplier Labour / Idle / Vacation). Buckets are
+// mutually exclusive: supplier-sourced labour is counted once regardless of
+// its `category`; the remaining own-branch employees split by `category`.
 export async function getEmployeeTypeCounts(
   branchId: string | null
 ): Promise<EmployeeTypeCounts> {
   const where = branchWhere(branchId);
-  const [supplierLabour, ownStaffOnProject, ownStaffOffProject, statusCounts] = await Promise.all([
+  const [supplierLabour, siteStaff, officeStaff, statusCounts] = await Promise.all([
     prisma.employee.count({ where: { ...where, supplierId: { not: null } } }),
-    // Own (non-supplier) staff currently deployed to a project site.
     prisma.employee.count({
-      where: { ...where, supplierId: null, projectId: { not: null } },
+      where: { ...where, supplierId: null, category: "SITE_STAFF" },
     }),
-    // Own staff not on a project — office/bench staff.
     prisma.employee.count({
-      where: { ...where, supplierId: null, projectId: null },
+      where: { ...where, supplierId: null, category: "STAFF" },
     }),
     prisma.employee.groupBy({
       by: ["status"],
@@ -36,8 +36,8 @@ export async function getEmployeeTypeCounts(
   const byStatus = Object.fromEntries(statusCounts.map((s) => [s.status, s._count._all]));
 
   return {
-    siteStaff: ownStaffOnProject,
-    officeStaff: ownStaffOffProject,
+    siteStaff,
+    officeStaff,
     supplierLabour,
     idle: byStatus.IDLE ?? 0,
     onVacation: byStatus.ON_VACATION ?? 0,

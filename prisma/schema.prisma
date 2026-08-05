@@ -23,16 +23,66 @@ model Branch {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  users     User[]
+  // Company master-data fields (address/contact details of this operating entity).
+  address  String?
+  country  String?
+  currency String?
+  phone    String?
+  email    String?
+
+  users                User[]
+  employees            Employee[]
+  clients              Client[]
+  suppliers            Supplier[]
+  projects             Project[]
+  uploads              Upload[]
+  invoices             ClientInvoice[]
+  sheets               GeneratedSheet[]
+  items                InventoryItem[]
+  entries              TimesheetEntry[]
+  sponsorshipCompanies SponsorshipCompany[]
+  banks                Bank[]
+}
+
+// The visa-issuing legal entity for an employee — distinct from Branch (the
+// operating company). A manpower supplier's workers are often sponsored
+// under a different trade license than the one running day-to-day ops.
+model SponsorshipCompany {
+  id                 String   @id @default(cuid())
+  name               String
+  shortName          String?
+  address            String?
+  country            String?
+  currency           String?
+  phone              String?
+  email              String?
+  tradeLicenseNumber String?
+  createdAt          DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
   employees Employee[]
-  clients   Client[]
-  suppliers Supplier[]
-  projects  Project[]
-  uploads   Upload[]
-  invoices  ClientInvoice[]
-  sheets    GeneratedSheet[]
-  items     InventoryItem[]
-  entries   TimesheetEntry[]
+}
+
+// Company bank-account master, needed before Payroll/WPS can pay from a
+// real account.
+model Bank {
+  id           String  @id @default(cuid())
+  accountName  String
+  bankName     String
+  abbreviation String?
+  accountNo    String?
+  ibanNo       String?
+  routingCode  String?
+  swiftCode    String?
+  bankBranch   String? // the bank's own branch name, not our Branch model
+  address      String?
+  remarks      String?
+  status       String  @default("ACTIVE")
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
 }
 
 model User {
@@ -325,17 +375,23 @@ enum EmployeeStatus {
   TERMINATED
 }
 
+enum EmployeeCategory {
+  STAFF // office/corporate roster
+  SITE_STAFF // field/manpower roster
+}
+
 // Employee master record — auto-created/refreshed from uploads (name, trade,
 // supplier) and manually enriched here (photo, compliance dates, etc). The
 // upload flow never touches the manually-owned fields.
 model Employee {
-  id               String         @id @default(cuid())
-  employeeIdNo     String         @unique
+  id               String           @id @default(cuid())
+  employeeIdNo     String           @unique
   name             String
   trade            String?
   // Kept alongside the legacy `active` boolean during the transition — existing
   // dashboard/list queries still read `active`; new code should prefer `status`.
-  status           EmployeeStatus @default(ACTIVE)
+  status           EmployeeStatus   @default(ACTIVE)
+  category         EmployeeCategory @default(SITE_STAFF)
   photoData        Bytes?
   photoMimeType    String?
   nationality      String?
@@ -363,6 +419,53 @@ model Employee {
   emergencyContactPhone String?
   wpsBankName           String? // Wage Protection System bank / exchange house
   wpsIban               String?
+  wpsPaymentMode        String?
+  wpsRoutingCode        String?
+  wpsAccountHolderName  String?
+  wpsAccountNumber      String?
+
+  // Visa (visaExpiry above is the terminal expiry date already tracked)
+  visaNumber       String?
+  visaType         String?
+  visaStatus       String?
+  visaDesignation  String?
+  visaStampingDate DateTime?
+  molPersonCode    String?
+
+  // Passport (passportNumber/passportExpiry above already exist)
+  passportStatus      String?
+  passportReleaseDate DateTime?
+  passportReturnDate  DateTime?
+
+  // Labour Card (laborCardNumber/laborCardExpiry above already exist)
+  laborCardPersonalNo String?
+  laborCardStatus     String?
+
+  // CICPA — Abu Dhabi critical-infrastructure/coastal-protection site clearance
+  cicpaNumber    String?
+  cicpaIssueDate DateTime?
+  cicpaExpiry    DateTime?
+  cicpaStatus    String?
+  cicpaLocation  String?
+
+  // Insurance
+  insuranceCardType        String?
+  insuranceCardNumber      String?
+  insuranceIssueDate       DateTime?
+  insuranceExpiry          DateTime?
+  insuranceStatus          String?
+  insuranceServiceProvider String?
+
+  // Driving Licence
+  drivingLicenceNumber    String?
+  drivingLicenceIssueDate DateTime?
+  drivingLicenceExpiry    DateTime?
+  drivingLicenceType      String?
+  drivingLicenceStatus    String?
+
+  // Medical (medicalExpiry above already exists)
+  medicalStatus String?
+  eidStatus     String?
 
   active              Boolean   @default(true)
   inactiveReason      String?
@@ -388,19 +491,39 @@ model Employee {
   vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
   vehicleId String?
 
-  documents Document[]
-  skills    EmployeeSkill[]
-  bed       Bed?
+  sponsorshipCompany   SponsorshipCompany? @relation(fields: [sponsorshipCompanyId], references: [id])
+  sponsorshipCompanyId String?
+
+  documents    Document[]
+  skills       EmployeeSkill[]
+  vaccinations EmployeeVaccination[]
+  bed          Bed?
+}
+
+// Repeatable vaccination record per employee (from the competitor's Medical
+// Details tab).
+model EmployeeVaccination {
+  id          String    @id @default(cuid())
+  vaccineName String
+  doseNumber  Int?
+  date        DateTime?
+  expiryDate  DateTime?
+  notes       String?
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
 }
 
 model Document {
-  id         String    @id @default(cuid())
-  type       String // "PASSPORT" | "VISA" | "LABOR_CARD" | "MEDICAL" | "EMIRATES_ID" | "OTHER"
-  filename   String
-  fileData   Bytes
-  mimeType   String
-  expiryDate DateTime?
-  uploadedAt DateTime  @default(now())
+  id           String    @id @default(cuid())
+  type         String // "PASSPORT" | "VISA" | "LABOR_CARD" | "MEDICAL" | "EMIRATES_ID" | "CICPA" | "INSURANCE" | "DRIVING_LICENCE" | "OTHER"
+  status       String    @default("ACTIVE")
+  displayInEss Boolean   @default(false)
+  filename     String
+  fileData     Bytes
+  mimeType     String
+  expiryDate   DateTime?
+  uploadedAt   DateTime  @default(now())
 
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
@@ -543,6 +666,10 @@ model EmployeeSkill {
   employeeId String
   skill      Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
   skillId    String
+
+  // "Known Trade Details" — proficiency and a trade-specific pay rate.
+  proficiencyPercent Int?
+  rate               Float?
 
   @@id([employeeId, skillId])
 }

@@ -40,6 +40,9 @@ export async function getDocumentExpiryCounts(
         medicalExpiry: true,
         passportExpiry: true,
         emiratesIdExpiry: true,
+        cicpaExpiry: true,
+        insuranceExpiry: true,
+        drivingLicenceExpiry: true,
       },
     }),
     prisma.clientDocument.findMany({
@@ -62,6 +65,9 @@ export async function getDocumentExpiryCounts(
     e.medicalExpiry,
     e.passportExpiry,
     e.emiratesIdExpiry,
+    e.cicpaExpiry,
+    e.insuranceExpiry,
+    e.drivingLicenceExpiry,
   ]);
 
   return [

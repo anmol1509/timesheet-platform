@@ -12,6 +12,8 @@ import { DeleteButton } from "@/components/DeleteButton";
 type Doc = {
   id: string;
   type: string;
+  status: string;
+  displayInEss: boolean;
   filename: string;
   expiryDate: Date | null;
   uploadedAt: Date;
@@ -24,7 +26,17 @@ const STATUS_BADGE = {
   not_set: { label: "No expiry set", color: "slate" as const },
 };
 
-const DOC_TYPES = ["PASSPORT", "VISA", "LABOR_CARD", "MEDICAL", "EMIRATES_ID", "OTHER"];
+const DOC_TYPES = [
+  "PASSPORT",
+  "VISA",
+  "LABOR_CARD",
+  "MEDICAL",
+  "EMIRATES_ID",
+  "CICPA",
+  "INSURANCE",
+  "DRIVING_LICENCE",
+  "OTHER",
+];
 
 // Types whose expiry already lives on the employee's Compliance section — don't ask again.
 const COMPLIANCE_LINKED: Record<string, string> = {
@@ -33,6 +45,9 @@ const COMPLIANCE_LINKED: Record<string, string> = {
   LABOR_CARD: "Labor card expiry",
   MEDICAL: "Medical certificate expiry",
   EMIRATES_ID: "Emirates ID expiry",
+  CICPA: "CICPA expiry",
+  INSURANCE: "Insurance expiry",
+  DRIVING_LICENCE: "Driving licence expiry",
 };
 
 function toDateInput(d: Date | null) {
@@ -53,6 +68,7 @@ export function DocumentsSection({
   const fileRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState("PASSPORT");
   const [expiryDate, setExpiryDate] = useState("");
+  const [displayInEss, setDisplayInEss] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedDocumentFields | null>(null);
@@ -78,6 +94,7 @@ export function DocumentsSection({
     formData.append("employeeId", employeeId);
     formData.append("type", type);
     formData.append("expiryDate", effectiveExpiry);
+    if (displayInEss) formData.append("displayInEss", "on");
     formData.append("file", file);
     startTransition(() => {
       uploadDocumentAction(formData);
@@ -102,6 +119,7 @@ export function DocumentsSection({
 
     if (fileRef.current) fileRef.current.value = "";
     setExpiryDate("");
+    setDisplayInEss(false);
   }
 
   return (
@@ -138,6 +156,15 @@ export function DocumentsSection({
               />
             </label>
           )}
+          <label className="flex items-center gap-1.5 pb-2 text-xs font-medium text-slate-500">
+            <input
+              type="checkbox"
+              checked={displayInEss}
+              onChange={(e) => setDisplayInEss(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            Display in ESS
+          </label>
           <input
             ref={fileRef}
             type="file"
@@ -236,7 +263,10 @@ export function DocumentsSection({
                       {d.type.replace("_", " ")}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge color={badge.color}>{badge.label}</Badge>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge color={badge.color}>{badge.label}</Badge>
+                        {d.displayInEss && <Badge color="blue">ESS</Badge>}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <DeleteButton

@@ -37,9 +37,19 @@ export async function updateEmployeeAction(formData: FormData) {
   if (!id) return;
   if (!(await assertEmployeeInBranch(id, branchId, isSuperAdmin))) return;
 
+  const active = formData.get("active") === "on";
+  const inactiveReasonPreset = stringOrNull(formData.get("inactiveReasonPreset"));
+  const inactiveReason = active
+    ? null
+    : inactiveReasonPreset === "Other"
+      ? stringOrNull(formData.get("inactiveReasonCustom"))
+      : inactiveReasonPreset;
+
   await prisma.employee.update({
     where: { id },
     data: {
+      category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+      sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
       nationality: stringOrNull(formData.get("nationality")),
       position: stringOrNull(formData.get("position")),
       passportNumber: stringOrNull(formData.get("passportNumber")),
@@ -66,14 +76,54 @@ export async function updateEmployeeAction(formData: FormData) {
       laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
       wpsBankName: stringOrNull(formData.get("wpsBankName")),
       wpsIban: stringOrNull(formData.get("wpsIban")),
-      active: formData.get("active") === "on",
-      inactiveReason: stringOrNull(formData.get("inactiveReason")),
+      wpsPaymentMode: stringOrNull(formData.get("wpsPaymentMode")),
+      wpsRoutingCode: stringOrNull(formData.get("wpsRoutingCode")),
+      wpsAccountHolderName: stringOrNull(formData.get("wpsAccountHolderName")),
+      wpsAccountNumber: stringOrNull(formData.get("wpsAccountNumber")),
+      active,
+      inactiveReason,
       lastDemobilizedDate: dateOrNull(formData.get("lastDemobilizedDate")),
       religion: stringOrNull(formData.get("religion")),
       state: stringOrNull(formData.get("state")),
       accommodationType: stringOrNull(formData.get("accommodationType")),
       previousId: stringOrNull(formData.get("previousId")),
       nameInIdCard: stringOrNull(formData.get("nameInIdCard")),
+
+      medicalStatus: stringOrNull(formData.get("medicalStatus")),
+      eidStatus: stringOrNull(formData.get("eidStatus")),
+
+      visaNumber: stringOrNull(formData.get("visaNumber")),
+      visaType: stringOrNull(formData.get("visaType")),
+      visaStatus: stringOrNull(formData.get("visaStatus")),
+      visaDesignation: stringOrNull(formData.get("visaDesignation")),
+      visaStampingDate: dateOrNull(formData.get("visaStampingDate")),
+      molPersonCode: stringOrNull(formData.get("molPersonCode")),
+
+      passportStatus: stringOrNull(formData.get("passportStatus")),
+      passportReleaseDate: dateOrNull(formData.get("passportReleaseDate")),
+      passportReturnDate: dateOrNull(formData.get("passportReturnDate")),
+
+      laborCardPersonalNo: stringOrNull(formData.get("laborCardPersonalNo")),
+      laborCardStatus: stringOrNull(formData.get("laborCardStatus")),
+
+      cicpaNumber: stringOrNull(formData.get("cicpaNumber")),
+      cicpaIssueDate: dateOrNull(formData.get("cicpaIssueDate")),
+      cicpaExpiry: dateOrNull(formData.get("cicpaExpiry")),
+      cicpaStatus: stringOrNull(formData.get("cicpaStatus")),
+      cicpaLocation: stringOrNull(formData.get("cicpaLocation")),
+
+      insuranceCardType: stringOrNull(formData.get("insuranceCardType")),
+      insuranceCardNumber: stringOrNull(formData.get("insuranceCardNumber")),
+      insuranceIssueDate: dateOrNull(formData.get("insuranceIssueDate")),
+      insuranceExpiry: dateOrNull(formData.get("insuranceExpiry")),
+      insuranceStatus: stringOrNull(formData.get("insuranceStatus")),
+      insuranceServiceProvider: stringOrNull(formData.get("insuranceServiceProvider")),
+
+      drivingLicenceNumber: stringOrNull(formData.get("drivingLicenceNumber")),
+      drivingLicenceIssueDate: dateOrNull(formData.get("drivingLicenceIssueDate")),
+      drivingLicenceExpiry: dateOrNull(formData.get("drivingLicenceExpiry")),
+      drivingLicenceType: stringOrNull(formData.get("drivingLicenceType")),
+      drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
     },
   });
 
@@ -184,6 +234,7 @@ export async function uploadDocumentAction(formData: FormData) {
   const employeeId = String(formData.get("employeeId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
+  const displayInEss = formData.get("displayInEss") === "on";
   const file = formData.get("file");
   if (!employeeId || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
@@ -194,6 +245,7 @@ export async function uploadDocumentAction(formData: FormData) {
     data: {
       employeeId,
       type,
+      displayInEss,
       filename: file.name,
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
@@ -221,6 +273,8 @@ export async function addSkillAction(formData: FormData) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const skillName = String(formData.get("skillName") || "").trim();
+  const proficiencyPercent = numberOrNull(formData.get("proficiencyPercent"));
+  const rate = numberOrNull(formData.get("rate"));
   if (!employeeId || !skillName) return;
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
@@ -230,14 +284,49 @@ export async function addSkillAction(formData: FormData) {
     create: { name: skillName },
   });
 
+  const detail = {
+    proficiencyPercent: proficiencyPercent != null ? Math.round(proficiencyPercent) : null,
+    rate,
+  };
   await prisma.employeeSkill.upsert({
     where: { employeeId_skillId: { employeeId, skillId: skill.id } },
-    update: {},
-    create: { employeeId, skillId: skill.id },
+    update: detail,
+    create: { employeeId, skillId: skill.id, ...detail },
   });
 
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/skills");
+}
+
+export async function addVaccinationAction(formData: FormData) {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const vaccineName = String(formData.get("vaccineName") || "").trim();
+  if (!employeeId || !vaccineName) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  await prisma.employeeVaccination.create({
+    data: {
+      employeeId,
+      vaccineName,
+      doseNumber: numberOrNull(formData.get("doseNumber")),
+      date: dateOrNull(formData.get("date")),
+      expiryDate: dateOrNull(formData.get("expiryDate")),
+      notes: stringOrNull(formData.get("notes")),
+    },
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
+export async function removeVaccinationAction(formData: FormData) {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const vaccinationId = String(formData.get("vaccinationId") || "");
+  if (!employeeId || !vaccinationId) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  await prisma.employeeVaccination.delete({ where: { id: vaccinationId } }).catch(() => {});
+  revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function removeSkillAction(formData: FormData) {

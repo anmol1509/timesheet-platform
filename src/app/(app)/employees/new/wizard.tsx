@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 
 type Project = { id: string; name: string; code: string };
+type SponsorshipCompany = { id: string; name: string };
 
 const STEPS = ["Personal Details", "Compliance", "Documents", "Project & Salary", "Skills"];
 
@@ -27,7 +28,13 @@ const DOC_SLOTS = [
   { type: "EMIRATES_ID", label: "Emirates ID" },
 ] as const;
 
-export function EmployeeWizard({ projects }: { projects: Project[] }) {
+export function EmployeeWizard({
+  projects,
+  sponsorshipCompanies,
+}: {
+  projects: Project[];
+  sponsorshipCompanies: SponsorshipCompany[];
+}) {
   const [state, formAction, pending] = useActionState(createEmployeeAction, {
     error: null,
   });
@@ -164,6 +171,24 @@ export function EmployeeWizard({ projects }: { projects: Project[] }) {
               required
               placeholder="Enter full name"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            />
+          </Field>
+          <Field label="Category">
+            <Select
+              name="category"
+              defaultValue="SITE_STAFF"
+              searchable={false}
+              options={[
+                { value: "SITE_STAFF", label: "Site Staff" },
+                { value: "STAFF", label: "Staff" },
+              ]}
+            />
+          </Field>
+          <Field label="Sponsorship company">
+            <Select
+              name="sponsorshipCompanyId"
+              placeholder="Not set"
+              options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
             />
           </Field>
           <Field label="Nationality">
