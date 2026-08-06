@@ -25,6 +25,8 @@ import {
   Package,
   Landmark,
   Wallet,
+  ListChecks,
+  History,
   type LucideIcon,
 } from "lucide-react";
 
@@ -86,6 +88,16 @@ const NAV: Entry[] = [
 
 const ADMIN_ITEM: Item = { href: "/settings", label: "Settings", icon: SettingsIcon };
 
+const ADMIN_GROUP: Entry = {
+  type: "group",
+  label: "Administration",
+  icon: ListChecks,
+  children: [
+    { href: "/lookups", label: "Lookups", icon: ListChecks },
+    { href: "/audit-log", label: "Audit Log", icon: History },
+  ],
+};
+
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 }
@@ -99,9 +111,10 @@ const ACTIVE_PILL =
 
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
+  const entries = isAdmin ? [...NAV, ADMIN_GROUP] : NAV;
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-    for (const entry of NAV) {
+    for (const entry of entries) {
       if (entry.type === "group" && groupContainsActive(pathname, entry.children)) {
         initial.add(entry.label);
       }
@@ -120,7 +133,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV.map((entry) => {
+      {entries.map((entry) => {
         if (entry.type === "link") {
           const { href, label, icon: Icon } = entry.item;
           const active = isActive(pathname, href);

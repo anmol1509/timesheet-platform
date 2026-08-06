@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
 
 // Every nested mutation (documents, trade rates, holidays, contacts,
 // inventory) takes a projectId rather than looking the project up itself,
@@ -42,7 +43,7 @@ export async function createProjectAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   const clientId = String(formData.get("clientId") || "");
   if (!name || !clientId) {
@@ -56,19 +57,29 @@ export async function createProjectAction(
     };
   }
 
-  const project = await prisma.project.create({
-    data: {
-      code: await nextProjectCode(),
-      name,
-      clientId,
-      branchId,
-      siteId: stringOrNull(formData.get("siteId")),
-      description: stringOrNull(formData.get("description")),
-      manager: stringOrNull(formData.get("manager")),
-      timelineStart: dateOrNull(formData.get("timelineStart")),
-      timelineEnd: dateOrNull(formData.get("timelineEnd")),
-      status: String(formData.get("status") || "PLANNING"),
-    },
+  const data = {
+    code: await nextProjectCode(),
+    name,
+    clientId,
+    branchId,
+    siteId: stringOrNull(formData.get("siteId")),
+    description: stringOrNull(formData.get("description")),
+    manager: stringOrNull(formData.get("manager")),
+    timelineStart: dateOrNull(formData.get("timelineStart")),
+    timelineEnd: dateOrNull(formData.get("timelineEnd")),
+    status: String(formData.get("status") || "PLANNING"),
+  };
+
+  const project = await prisma.project.create({ data });
+
+  await logAudit({
+    entityType: "PROJECT",
+    entityId: project.id,
+    action: "CREATE",
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath("/projects");
@@ -80,44 +91,56 @@ export async function createProjectAction(
 // touches — and can't accidentally null out — fields that live on another
 // tab's form.
 export async function updateProjectAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
   if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
 
   const name = stringOrNull(formData.get("name"));
 
-  await prisma.project.update({
-    where: { id },
-    data: {
-      ...(name ? { name } : {}),
-      clientId: String(formData.get("clientId") || ""),
-      manager: stringOrNull(formData.get("manager")),
-      projectCoordinator: stringOrNull(formData.get("projectCoordinator")),
-      timelineStart: dateOrNull(formData.get("timelineStart")),
-      timelineEnd: dateOrNull(formData.get("timelineEnd")),
-      status: String(formData.get("status") || "PLANNING"),
-      clientProjectNo: stringOrNull(formData.get("clientProjectNo")),
-      jobType: stringOrNull(formData.get("jobType")),
-      mainContractor: stringOrNull(formData.get("mainContractor")),
-      paymentType: stringOrNull(formData.get("paymentType")),
-      lpoNo: stringOrNull(formData.get("lpoNo")),
-      lpoDate: dateOrNull(formData.get("lpoDate")),
-      closedLpo: formData.get("closedLpo") === "on",
-      sponsorshipCompany: stringOrNull(formData.get("sponsorshipCompany")),
-      salesExecutive: stringOrNull(formData.get("salesExecutive")),
-      contactNo: stringOrNull(formData.get("contactNo")),
-      timesheetCollectionDate: dateOrNull(formData.get("timesheetCollectionDate")),
-      noOfEmployeesRequired: formData.get("noOfEmployeesRequired")
-        ? Number(formData.get("noOfEmployeesRequired"))
-        : null,
-      dayShiftStart: stringOrNull(formData.get("dayShiftStart")),
-      dayShiftEnd: stringOrNull(formData.get("dayShiftEnd")),
-      nightShiftStart: stringOrNull(formData.get("nightShiftStart")),
-      nightShiftEnd: stringOrNull(formData.get("nightShiftEnd")),
-      interTransfer: formData.get("interTransfer") === "on",
-      internalUse: formData.get("internalUse") === "on",
-    },
+  const before = await prisma.project.findUnique({ where: { id } });
+
+  const data = {
+    ...(name ? { name } : {}),
+    clientId: String(formData.get("clientId") || ""),
+    manager: stringOrNull(formData.get("manager")),
+    projectCoordinator: stringOrNull(formData.get("projectCoordinator")),
+    timelineStart: dateOrNull(formData.get("timelineStart")),
+    timelineEnd: dateOrNull(formData.get("timelineEnd")),
+    status: String(formData.get("status") || "PLANNING"),
+    clientProjectNo: stringOrNull(formData.get("clientProjectNo")),
+    jobType: stringOrNull(formData.get("jobType")),
+    mainContractor: stringOrNull(formData.get("mainContractor")),
+    paymentType: stringOrNull(formData.get("paymentType")),
+    lpoNo: stringOrNull(formData.get("lpoNo")),
+    lpoDate: dateOrNull(formData.get("lpoDate")),
+    closedLpo: formData.get("closedLpo") === "on",
+    sponsorshipCompany: stringOrNull(formData.get("sponsorshipCompany")),
+    salesExecutive: stringOrNull(formData.get("salesExecutive")),
+    contactNo: stringOrNull(formData.get("contactNo")),
+    timesheetCollectionDate: dateOrNull(formData.get("timesheetCollectionDate")),
+    noOfEmployeesRequired: formData.get("noOfEmployeesRequired")
+      ? Number(formData.get("noOfEmployeesRequired"))
+      : null,
+    dayShiftStart: stringOrNull(formData.get("dayShiftStart")),
+    dayShiftEnd: stringOrNull(formData.get("dayShiftEnd")),
+    nightShiftStart: stringOrNull(formData.get("nightShiftStart")),
+    nightShiftEnd: stringOrNull(formData.get("nightShiftEnd")),
+    interTransfer: formData.get("interTransfer") === "on",
+    internalUse: formData.get("internalUse") === "on",
+  };
+
+  await prisma.project.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "PROJECT",
+    entityId: id,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/projects/${id}`);
@@ -126,19 +149,31 @@ export async function updateProjectAction(formData: FormData) {
 
 // Location Details tab.
 export async function updateProjectLocationAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
   if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
 
-  await prisma.project.update({
-    where: { id },
-    data: {
-      siteId: stringOrNull(formData.get("siteId")),
-      address: stringOrNull(formData.get("address")),
-      latitude: numberOrNull(formData.get("latitude")),
-      longitude: numberOrNull(formData.get("longitude")),
-    },
+  const before = await prisma.project.findUnique({ where: { id } });
+
+  const data = {
+    siteId: stringOrNull(formData.get("siteId")),
+    address: stringOrNull(formData.get("address")),
+    latitude: numberOrNull(formData.get("latitude")),
+    longitude: numberOrNull(formData.get("longitude")),
+  };
+
+  await prisma.project.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "PROJECT",
+    entityId: id,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/projects/${id}`);
@@ -146,16 +181,28 @@ export async function updateProjectLocationAction(formData: FormData) {
 
 // Other Details tab.
 export async function updateProjectOtherDetailsAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
   if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
 
-  await prisma.project.update({
-    where: { id },
-    data: {
-      description: stringOrNull(formData.get("description")),
-    },
+  const before = await prisma.project.findUnique({ where: { id } });
+
+  const data = {
+    description: stringOrNull(formData.get("description")),
+  };
+
+  await prisma.project.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "PROJECT",
+    entityId: id,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/projects/${id}`);
@@ -174,7 +221,7 @@ export async function addProjectDocumentAction(formData: FormData) {
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await prisma.projectDocument.create({
+  const created = await prisma.projectDocument.create({
     data: {
       projectId,
       type,
@@ -186,16 +233,41 @@ export async function addProjectDocumentAction(formData: FormData) {
     },
   });
 
+  await logAudit({
+    entityType: "PROJECT_DOCUMENT",
+    entityId: created.id,
+    action: "CREATE",
+    after: { projectId, type, filename: file.name, expiryDate },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
   revalidatePath(`/projects/${projectId}`);
 }
 
 export async function deleteProjectDocumentAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const projectId = String(formData.get("projectId") || "");
   if (!id) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.projectDocument.findUnique({ where: { id } });
   await prisma.projectDocument.delete({ where: { id } });
+
+  if (existing) {
+    await logAudit({
+      entityType: "PROJECT_DOCUMENT",
+      entityId: id,
+      action: "DELETE",
+      before: { projectId, type: existing.type, filename: existing.filename, expiryDate: existing.expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
   revalidatePath(`/projects/${projectId}`);
 }
 
@@ -364,11 +436,11 @@ export async function removeProjectInventoryAction(formData: FormData) {
 }
 
 export async function deleteProjectAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
 
-  const target = await prisma.project.findUnique({ where: { id }, select: { branchId: true } });
+  const target = await prisma.project.findUnique({ where: { id } });
   if (!target || isOutsideBranch(target.branchId, branchId, isSuperAdmin)) return;
 
   // Unassigning employees is a soft, reversible consequence -- unlike a
@@ -379,6 +451,16 @@ export async function deleteProjectAction(formData: FormData) {
     data: { projectId: null },
   });
   await prisma.project.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "PROJECT",
+    entityId: id,
+    action: "DELETE",
+    before: target as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
 
   revalidatePath("/projects");
   revalidatePath("/employees");

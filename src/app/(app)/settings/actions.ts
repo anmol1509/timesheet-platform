@@ -4,20 +4,36 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 const ROLES = ["SUPER_ADMIN", "BRANCH_ADMIN", "STAFF"] as const;
 type RoleValue = (typeof ROLES)[number];
 
 export async function updateIssuedToAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const issuedTo = String(formData.get("issuedTo") || "").trim();
   const companyTrn = String(formData.get("companyTrn") || "").trim() || null;
   if (!issuedTo) return;
+
+  const before = await prisma.settings.findUnique({ where: { id: "singleton" } });
+
   await prisma.settings.upsert({
     where: { id: "singleton" },
     update: { issuedTo, companyTrn },
     create: { id: "singleton", issuedTo, companyTrn },
   });
+
+  await logAudit({
+    entityType: "SETTINGS",
+    entityId: "singleton",
+    action: before ? "UPDATE" : "CREATE",
+    before: before ? (before as unknown as Record<string, unknown>) : undefined,
+    after: { issuedTo, companyTrn },
+    userId: admin.id,
+    userName: admin.name,
+    branchId: null,
+  });
+
   revalidatePath("/settings");
 }
 
@@ -61,9 +77,20 @@ export async function createUserAction(
     return { error: "A user with that email already exists." };
   }
 
-  await prisma.user.create({
+  const created = await prisma.user.create({
     data: { email, name, passwordHash: hashPassword(password), role, branchId },
   });
+
+  await logAudit({
+    entityType: "USER",
+    entityId: created.id,
+    action: "CREATE",
+    after: { email, name, role, branchId },
+    userId: admin.id,
+    userName: admin.name,
+    branchId,
+  });
+
   revalidatePath("/settings");
   return { error: null };
 }
@@ -77,7 +104,20 @@ export async function deleteUserAction(formData: FormData) {
     if (!target || target.branchId !== admin.branchId) return;
   }
   try {
+    const existing = await prisma.user.findUnique({ where: { id: userId } });
     await prisma.user.delete({ where: { id: userId } });
+
+    if (existing) {
+      await logAudit({
+        entityType: "USER",
+        entityId: userId,
+        action: "DELETE",
+        before: { email: existing.email, name: existing.name, role: existing.role, branchId: existing.branchId },
+        userId: admin.id,
+        userName: admin.name,
+        branchId: existing.branchId,
+      });
+    }
   } catch {
     // User has uploads or generated sheets on record; keep them for history.
   }
@@ -104,7 +144,18 @@ export async function createBranchAction(
     return { error: "A branch with that code already exists." };
   }
 
-  await prisma.branch.create({ data: { code, name, emirate } });
+  const created = await prisma.branch.create({ data: { code, name, emirate } });
+
+  await logAudit({
+    entityType: "BRANCH",
+    entityId: created.id,
+    action: "CREATE",
+    after: { code, name, emirate },
+    userId: admin.id,
+    userName: admin.name,
+    branchId: created.id,
+  });
+
   revalidatePath("/settings");
   return { error: null };
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { logAudit } from "@/lib/audit";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -24,7 +25,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createSupplierAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
   const fullName = String(formData.get("fullName") || "").trim() || null;
@@ -46,55 +47,76 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  await prisma.supplier.create({ data: { name, fullName, branchId } });
+  const created = await prisma.supplier.create({ data: { name, fullName, branchId } });
+
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: created.id,
+    action: "CREATE",
+    after: { name, fullName },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
   revalidatePath("/suppliers");
 }
 
 export async function updateSupplierAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
 
-  const existing = await prisma.supplier.findUnique({ where: { id }, select: { branchId: true } });
+  const existing = await prisma.supplier.findUnique({ where: { id } });
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
 
-  await prisma.supplier.update({
-    where: { id },
-    data: {
-      fullName: stringOrNull(formData.get("fullName")),
-      status: String(formData.get("status") || "ACTIVE"),
-      mohrePermitNumber: stringOrNull(formData.get("mohrePermitNumber")),
-      tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
-      tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
-      contactPerson: stringOrNull(formData.get("contactPerson")),
-      contactPhone: stringOrNull(formData.get("contactPhone")),
-      contactEmail: stringOrNull(formData.get("contactEmail")),
-      bankName: stringOrNull(formData.get("bankName")),
-      iban: stringOrNull(formData.get("iban")),
-      paymentTerms: stringOrNull(formData.get("paymentTerms")),
-      payoutCycleStartDay: Math.min(
-        31,
-        Math.max(1, Number(formData.get("payoutCycleStartDay")) || 1)
-      ),
-      category: stringOrNull(formData.get("category")),
-      previousId: stringOrNull(formData.get("previousId")),
-      allowManualLabourId: formData.get("allowManualLabourId") === "on",
-      overtime: formData.get("overtime") === "on",
-      supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
-      pointOfContact: stringOrNull(formData.get("pointOfContact")),
-      country: stringOrNull(formData.get("country")),
-      emirate: stringOrNull(formData.get("emirate")),
-      account: stringOrNull(formData.get("account")),
-      bankAccountName: stringOrNull(formData.get("bankAccountName")),
-      bankAccountNumber: stringOrNull(formData.get("bankAccountNumber")),
-      bankCompany: stringOrNull(formData.get("bankCompany")),
-      bankEmirate: stringOrNull(formData.get("bankEmirate")),
-      trn: stringOrNull(formData.get("trn")),
-      activeFrom: dateOrNull(formData.get("activeFrom")),
-      poBox: stringOrNull(formData.get("poBox")),
-      location: stringOrNull(formData.get("location")),
-      phone: stringOrNull(formData.get("phone")),
-    },
+  const data = {
+    fullName: stringOrNull(formData.get("fullName")),
+    status: String(formData.get("status") || "ACTIVE"),
+    mohrePermitNumber: stringOrNull(formData.get("mohrePermitNumber")),
+    tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
+    tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
+    contactPerson: stringOrNull(formData.get("contactPerson")),
+    contactPhone: stringOrNull(formData.get("contactPhone")),
+    contactEmail: stringOrNull(formData.get("contactEmail")),
+    bankName: stringOrNull(formData.get("bankName")),
+    iban: stringOrNull(formData.get("iban")),
+    paymentTerms: stringOrNull(formData.get("paymentTerms")),
+    payoutCycleStartDay: Math.min(
+      31,
+      Math.max(1, Number(formData.get("payoutCycleStartDay")) || 1)
+    ),
+    category: stringOrNull(formData.get("category")),
+    previousId: stringOrNull(formData.get("previousId")),
+    allowManualLabourId: formData.get("allowManualLabourId") === "on",
+    overtime: formData.get("overtime") === "on",
+    supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
+    pointOfContact: stringOrNull(formData.get("pointOfContact")),
+    country: stringOrNull(formData.get("country")),
+    emirate: stringOrNull(formData.get("emirate")),
+    account: stringOrNull(formData.get("account")),
+    bankAccountName: stringOrNull(formData.get("bankAccountName")),
+    bankAccountNumber: stringOrNull(formData.get("bankAccountNumber")),
+    bankCompany: stringOrNull(formData.get("bankCompany")),
+    bankEmirate: stringOrNull(formData.get("bankEmirate")),
+    trn: stringOrNull(formData.get("trn")),
+    activeFrom: dateOrNull(formData.get("activeFrom")),
+    poBox: stringOrNull(formData.get("poBox")),
+    location: stringOrNull(formData.get("location")),
+    phone: stringOrNull(formData.get("phone")),
+  };
+
+  await prisma.supplier.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: id,
+    action: "UPDATE",
+    before: existing as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/suppliers/${id}`);
@@ -102,7 +124,7 @@ export async function updateSupplierAction(formData: FormData) {
 }
 
 export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -130,10 +152,30 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
         tradeLicenseNumber: stringOrNull(r["Trade license number"] ?? null),
       };
       if (existing) {
+        const before = existing as unknown as Record<string, unknown>;
         await prisma.supplier.update({ where: { id: existing.id }, data });
+        await logAudit({
+          entityType: "SUPPLIER",
+          entityId: existing.id,
+          action: "UPDATE",
+          before,
+          after: data,
+          userId: user.id,
+          userName: user.name,
+          branchId,
+        });
         results.push({ row: i + 2, status: "updated" });
       } else {
-        await prisma.supplier.create({ data: { name, ...data, branchId } });
+        const created = await prisma.supplier.create({ data: { name, ...data, branchId } });
+        await logAudit({
+          entityType: "SUPPLIER",
+          entityId: created.id,
+          action: "CREATE",
+          after: { name, ...data },
+          userId: user.id,
+          userName: user.name,
+          branchId,
+        });
         results.push({ row: i + 2, status: "created" });
       }
     } catch (e) {
@@ -150,11 +192,11 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
 }
 
 export async function deleteSupplierAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
 
-  const target = await prisma.supplier.findUnique({ where: { id }, select: { branchId: true } });
+  const target = await prisma.supplier.findUnique({ where: { id } });
   if (!target || isOutsideBranch(target.branchId, branchId, isSuperAdmin)) return;
 
   const [entryCount, sheetCount] = await Promise.all([
@@ -179,6 +221,16 @@ export async function deleteSupplierAction(formData: FormData) {
     data: { supplierId: null },
   });
   await prisma.supplier.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: id,
+    action: "DELETE",
+    before: target as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
 
   revalidatePath("/suppliers");
   revalidatePath("/employees");

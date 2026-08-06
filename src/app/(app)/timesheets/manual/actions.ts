@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { importParsedMonths } from "@/lib/importTimesheet";
+import { logAudit } from "@/lib/audit";
 import type { DailyHourCell, ParsedEntry, ParsedMonth } from "@/lib/parseTimesheet";
 
 const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -123,13 +124,22 @@ export async function submitManualEntryAction(
     skippedRowDetails: [],
   };
 
-  const upload = await prisma.upload.create({
-    data: {
-      filename: `Manual Entry — ${monthLabel}`,
-      fileData: null,
-      uploadedById: user.id,
-      branchId,
-    },
+  const uploadData = {
+    filename: `Manual Entry — ${monthLabel}`,
+    fileData: null,
+    uploadedById: user.id,
+    branchId,
+  };
+  const upload = await prisma.upload.create({ data: uploadData });
+
+  await logAudit({
+    entityType: "UPLOAD",
+    entityId: upload.id,
+    action: "CREATE",
+    after: { filename: uploadData.filename, uploadedById: user.id },
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   await importParsedMonths([parsedMonth], upload.id, branchId, projectId);

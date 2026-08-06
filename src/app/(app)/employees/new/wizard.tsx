@@ -31,9 +31,11 @@ const DOC_SLOTS = [
 export function EmployeeWizard({
   projects,
   sponsorshipCompanies,
+  lookups,
 }: {
   projects: Project[];
   sponsorshipCompanies: SponsorshipCompany[];
+  lookups: Record<string, { value: string }[]>;
 }) {
   const [state, formAction, pending] = useActionState(createEmployeeAction, {
     error: null,
@@ -200,10 +202,10 @@ export function EmployeeWizard({
             />
           </Field>
           <Field label="Position / Trade">
-            <input
+            <Select
               name="position"
               placeholder="Select position"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              options={lookups.POSITION.map((o) => ({ value: o.value, label: o.value }))}
             />
           </Field>
           <Field label="Passport number">

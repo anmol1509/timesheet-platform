@@ -92,6 +92,7 @@ type Employee = {
 type Project = { id: string; name: string; code: string };
 type Vehicle = { id: string; plateNumber: string; type: string | null };
 type SponsorshipCompany = { id: string; name: string };
+type LookupsByCategory = Record<string, { value: string }[]>;
 
 const INACTIVE_REASONS = [
   { value: "BlackList", label: "BlackList" },
@@ -114,12 +115,14 @@ export function EditForm({
   vehicles,
   sponsorshipCompanies,
   documents,
+  lookups,
 }: {
   employee: Employee;
   projects: Project[];
   vehicles: Vehicle[];
   sponsorshipCompanies: SponsorshipCompany[];
   documents: Doc[];
+  lookups: LookupsByCategory;
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -215,13 +218,7 @@ export function EditForm({
               options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
             />
           </Field>
-          <Field label="Position">
-            <input
-              name="position"
-              defaultValue={employee.position || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
+          <LookupField label="Position" name="position" defaultValue={employee.position} options={lookups.POSITION} />
           <Field label="Passport number">
             <input
               name="passportNumber"
@@ -256,14 +253,7 @@ export function EditForm({
               ]}
             />
           </Field>
-          <Field label="Blood group">
-            <input
-              name="bloodGroup"
-              placeholder="e.g. O+"
-              defaultValue={employee.bloodGroup || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
+          <LookupField label="Blood group" name="bloodGroup" defaultValue={employee.bloodGroup} options={lookups.BLOOD_GROUP} />
           <Field label="Mobile number">
             <input
               name="mobileNumber"
@@ -308,29 +298,14 @@ export function EditForm({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>
-          <Field label="Religion">
-            <input
-              name="religion"
-              defaultValue={employee.religion || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
-          <Field label="State">
-            <input
-              name="state"
-              placeholder="State/province within nationality"
-              defaultValue={employee.state || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
-          <Field label="Accommodation type">
-            <input
-              name="accommodationType"
-              placeholder="e.g. Staff Accommodation"
-              defaultValue={employee.accommodationType || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </Field>
+          <LookupField label="Religion" name="religion" defaultValue={employee.religion} options={lookups.RELIGION} />
+          <LookupField label="State" name="state" defaultValue={employee.state} options={lookups.STATE} />
+          <LookupField
+            label="Accommodation type"
+            name="accommodationType"
+            defaultValue={employee.accommodationType}
+            options={lookups.ACCOMMODATION_TYPE}
+          />
           <Field label="Previous ID">
             <input
               name="previousId"
@@ -403,7 +378,7 @@ export function EditForm({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>
-          <TextField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} />
+          <LookupField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} options={lookups.MEDICAL_STATUS} />
           <InlineDocumentUpload
             employeeId={employee.id}
             type="MEDICAL"
@@ -418,7 +393,7 @@ export function EditForm({
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </Field>
-          <TextField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} />
+          <LookupField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} options={lookups.EID_STATUS} />
           <InlineDocumentUpload
             employeeId={employee.id}
             type="EMIRATES_ID"
@@ -432,8 +407,8 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Visa</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <TextField label="Visa number" name="visaNumber" defaultValue={employee.visaNumber} />
-          <TextField label="Visa type" name="visaType" defaultValue={employee.visaType} />
-          <TextField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} />
+          <LookupField label="Visa type" name="visaType" defaultValue={employee.visaType} options={lookups.VISA_TYPE} />
+          <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
           <TextField label="Visa designation" name="visaDesignation" defaultValue={employee.visaDesignation} />
           <DateField label="First visa stamping date" name="visaStampingDate" defaultValue={employee.visaStampingDate} />
           <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} />
@@ -451,7 +426,7 @@ export function EditForm({
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Passport</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-          <TextField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} />
+          <LookupField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} options={lookups.PASSPORT_STATUS} />
           <DateField label="Passport expiry date" name="passportExpiry" defaultValue={employee.passportExpiry} />
           <DateField label="Release date" name="passportReleaseDate" defaultValue={employee.passportReleaseDate} />
           <DateField label="Return date" name="passportReturnDate" defaultValue={employee.passportReturnDate} />
@@ -468,7 +443,7 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Labour Card</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <TextField label="Personal No" name="laborCardPersonalNo" defaultValue={employee.laborCardPersonalNo} />
-          <TextField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} />
+          <LookupField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} options={lookups.LABOR_CARD_STATUS} />
           <DateField label="Labor card expiry" name="laborCardExpiry" defaultValue={employee.laborCardExpiry} />
           <div />
           <InlineDocumentUpload
@@ -486,7 +461,7 @@ export function EditForm({
         </h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <TextField label="CICPA number" name="cicpaNumber" defaultValue={employee.cicpaNumber} />
-          <TextField label="CICPA status" name="cicpaStatus" defaultValue={employee.cicpaStatus} />
+          <LookupField label="CICPA status" name="cicpaStatus" defaultValue={employee.cicpaStatus} options={lookups.CICPA_STATUS} />
           <DateField label="Issue date" name="cicpaIssueDate" defaultValue={employee.cicpaIssueDate} />
           <DateField label="Expiry date" name="cicpaExpiry" defaultValue={employee.cicpaExpiry} />
           <TextField label="Location" name="cicpaLocation" defaultValue={employee.cicpaLocation} />
@@ -502,11 +477,11 @@ export function EditForm({
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Insurance</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-          <TextField label="Card type" name="insuranceCardType" defaultValue={employee.insuranceCardType} />
+          <LookupField label="Card type" name="insuranceCardType" defaultValue={employee.insuranceCardType} options={lookups.INSURANCE_CARD_TYPE} />
           <TextField label="Card number" name="insuranceCardNumber" defaultValue={employee.insuranceCardNumber} />
           <DateField label="Issue date" name="insuranceIssueDate" defaultValue={employee.insuranceIssueDate} />
           <DateField label="Expiry date" name="insuranceExpiry" defaultValue={employee.insuranceExpiry} />
-          <TextField label="Status" name="insuranceStatus" defaultValue={employee.insuranceStatus} />
+          <LookupField label="Status" name="insuranceStatus" defaultValue={employee.insuranceStatus} options={lookups.INSURANCE_STATUS} />
           <TextField label="Service provider" name="insuranceServiceProvider" defaultValue={employee.insuranceServiceProvider} />
           <InlineDocumentUpload
             employeeId={employee.id}
@@ -521,10 +496,10 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Driving Licence</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <TextField label="Licence number" name="drivingLicenceNumber" defaultValue={employee.drivingLicenceNumber} />
-          <TextField label="Licence type" name="drivingLicenceType" defaultValue={employee.drivingLicenceType} />
+          <LookupField label="Licence type" name="drivingLicenceType" defaultValue={employee.drivingLicenceType} options={lookups.DRIVING_LICENCE_TYPE} />
           <DateField label="Issue date" name="drivingLicenceIssueDate" defaultValue={employee.drivingLicenceIssueDate} />
           <DateField label="Expiry date" name="drivingLicenceExpiry" defaultValue={employee.drivingLicenceExpiry} />
-          <TextField label="Status" name="drivingLicenceStatus" defaultValue={employee.drivingLicenceStatus} />
+          <LookupField label="Status" name="drivingLicenceStatus" defaultValue={employee.drivingLicenceStatus} options={lookups.DRIVING_LICENCE_STATUS} />
           <InlineDocumentUpload
             employeeId={employee.id}
             type="DRIVING_LICENCE"
@@ -619,6 +594,32 @@ function TextField({
   return (
     <Field label={label}>
       <input name={name} defaultValue={defaultValue || ""} className={INPUT_CLASS} />
+    </Field>
+  );
+}
+
+// Admin-configurable dropdown (Lookups page) instead of free text — falls
+// back to showing the employee's existing raw value even if it isn't in the
+// current lookup list, so older/unmigrated data never gets silently blanked.
+function LookupField({
+  label,
+  name,
+  defaultValue,
+  options,
+}: {
+  label: string;
+  name: string;
+  defaultValue: string | null;
+  options: { value: string }[];
+}) {
+  return (
+    <Field label={label}>
+      <Select
+        name={name}
+        defaultValue={defaultValue || ""}
+        placeholder="Not set"
+        options={options.map((o) => ({ value: o.value, label: o.value }))}
+      />
     </Field>
   );
 }

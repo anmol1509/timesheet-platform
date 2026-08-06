@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
+import { groupLookups } from "@/lib/lookups";
 import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
@@ -26,7 +27,7 @@ export default async function EmployeeDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [employee, projects, vehicles, vacantBeds, sponsorshipCompanies] = await Promise.all([
+  const [employee, projects, vehicles, vacantBeds, sponsorshipCompanies, lookupValues] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
       include: {
@@ -46,6 +47,11 @@ export default async function EmployeeDetailPage({
       orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
     }),
     prisma.sponsorshipCompany.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    prisma.lookupValue.findMany({
+      where: { ...branchWhere(branchId), isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
+      select: { category: true, value: true },
+    }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
 
@@ -134,6 +140,7 @@ export default async function EmployeeDetailPage({
         vehicles={vehicles}
         sponsorshipCompanies={sponsorshipCompanies}
         documents={employee.documents}
+        lookups={groupLookups(lookupValues)}
       />
 
       <SkillsSection

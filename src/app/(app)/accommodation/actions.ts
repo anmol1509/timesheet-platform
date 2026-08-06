@@ -4,17 +4,29 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { logAudit } from "@/lib/audit";
 
 export async function createCampAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
-  await prisma.camp.create({ data: { name } });
+  const created = await prisma.camp.create({ data: { name } });
+
+  await logAudit({
+    entityType: "CAMP",
+    entityId: created.id,
+    action: "CREATE",
+    after: { name },
+    userId: user.id,
+    userName: user.name,
+    branchId: null,
+  });
+
   revalidatePath("/accommodation");
 }
 
 export async function createRoomAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
   const bedCount = Math.max(1, Math.min(20, Number(formData.get("bedCount")) || 1));
@@ -28,24 +40,62 @@ export async function createRoomAction(formData: FormData) {
     })),
   });
 
+  await logAudit({
+    entityType: "ROOM",
+    entityId: room.id,
+    action: "CREATE",
+    after: { campId, name, bedCount },
+    userId: user.id,
+    userName: user.name,
+    branchId: null,
+  });
+
   revalidatePath("/accommodation");
 }
 
 export async function updateCampAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!campId || !name) return;
+
+  const before = await prisma.camp.findUnique({ where: { id: campId } });
   await prisma.camp.update({ where: { id: campId }, data: { name } });
+
+  await logAudit({
+    entityType: "CAMP",
+    entityId: campId,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: { name },
+    userId: user.id,
+    userName: user.name,
+    branchId: null,
+  });
+
   revalidatePath("/accommodation");
 }
 
 export async function updateRoomAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const roomId = String(formData.get("roomId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!roomId || !name) return;
+
+  const before = await prisma.room.findUnique({ where: { id: roomId } });
   await prisma.room.update({ where: { id: roomId }, data: { name } });
+
+  await logAudit({
+    entityType: "ROOM",
+    entityId: roomId,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: { name },
+    userId: user.id,
+    userName: user.name,
+    branchId: null,
+  });
+
   revalidatePath("/accommodation");
 }
 
@@ -95,17 +145,47 @@ export async function unassignBedAction(formData: FormData) {
 }
 
 export async function deleteRoomAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const roomId = String(formData.get("roomId") || "");
   if (!roomId) return;
+
+  const existing = await prisma.room.findUnique({ where: { id: roomId } });
   await prisma.room.delete({ where: { id: roomId } }); // cascades to its beds
+
+  if (existing) {
+    await logAudit({
+      entityType: "ROOM",
+      entityId: roomId,
+      action: "DELETE",
+      before: { campId: existing.campId, name: existing.name },
+      userId: user.id,
+      userName: user.name,
+      branchId: null,
+    });
+  }
+
   revalidatePath("/accommodation");
 }
 
 export async function deleteCampAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   if (!campId) return;
+
+  const existing = await prisma.camp.findUnique({ where: { id: campId } });
   await prisma.camp.delete({ where: { id: campId } }); // cascades to rooms + beds
+
+  if (existing) {
+    await logAudit({
+      entityType: "CAMP",
+      entityId: campId,
+      action: "DELETE",
+      before: { name: existing.name },
+      userId: user.id,
+      userName: user.name,
+      branchId: null,
+    });
+  }
+
   revalidatePath("/accommodation");
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -67,51 +68,72 @@ export async function createEmployeeAction(
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const employee = await prisma.employee.create({
-    data: {
-      employeeIdNo,
-      name,
-      branchId,
-      category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
-      sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
-      nationality: stringOrNull(formData.get("nationality")),
-      position: stringOrNull(formData.get("position")),
-      trade: stringOrNull(formData.get("position")),
-      passportNumber: stringOrNull(formData.get("passportNumber")),
-      emiratesId: stringOrNull(formData.get("emiratesId")),
-      dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
-      visaExpiry: dateOrNull(formData.get("visaExpiry")),
-      laborCardExpiry: dateOrNull(formData.get("laborCardExpiry")),
-      medicalExpiry: dateOrNull(formData.get("medicalExpiry")),
-      passportExpiry: dateOrNull(formData.get("passportExpiry")),
-      emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
-      notes: stringOrNull(formData.get("notes")),
-      projectId: stringOrNull(formData.get("projectId")),
-      salaryType: stringOrNull(formData.get("salaryType")),
-      salaryRate: numberOrNull(formData.get("salaryRate")),
-      photoData:
-        photo instanceof File && photo.size > 0
-          ? Buffer.from(await photo.arrayBuffer())
-          : undefined,
-      photoMimeType:
-        photo instanceof File && photo.size > 0 ? photo.type : undefined,
-    },
+  const data = {
+    employeeIdNo,
+    name,
+    branchId,
+    category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+    sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
+    nationality: stringOrNull(formData.get("nationality")),
+    position: stringOrNull(formData.get("position")),
+    trade: stringOrNull(formData.get("position")),
+    passportNumber: stringOrNull(formData.get("passportNumber")),
+    emiratesId: stringOrNull(formData.get("emiratesId")),
+    dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
+    visaExpiry: dateOrNull(formData.get("visaExpiry")),
+    laborCardExpiry: dateOrNull(formData.get("laborCardExpiry")),
+    medicalExpiry: dateOrNull(formData.get("medicalExpiry")),
+    passportExpiry: dateOrNull(formData.get("passportExpiry")),
+    emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
+    notes: stringOrNull(formData.get("notes")),
+    projectId: stringOrNull(formData.get("projectId")),
+    salaryType: stringOrNull(formData.get("salaryType")),
+    salaryRate: numberOrNull(formData.get("salaryRate")),
+    photoData:
+      photo instanceof File && photo.size > 0
+        ? Buffer.from(await photo.arrayBuffer())
+        : undefined,
+    photoMimeType:
+      photo instanceof File && photo.size > 0 ? photo.type : undefined,
+  };
+
+  const employee = await prisma.employee.create({ data });
+
+  await logAudit({
+    entityType: "EMPLOYEE",
+    entityId: employee.id,
+    action: "CREATE",
+    after: { ...data, photoData: undefined },
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   for (const [type, expiryField] of Object.entries(DOC_TYPE_TO_EXPIRY_FIELD)) {
     const file = formData.get(`docFile_${type}`);
     if (!(file instanceof File) || file.size === 0) continue;
     if (file.size > MAX_UPLOAD_BYTES) continue;
-    await prisma.document.create({
+    const expiryDate = dateOrNull(formData.get(expiryField));
+    const doc = await prisma.document.create({
       data: {
         employeeId: employee.id,
         type,
         filename: file.name,
         fileData: Buffer.from(await file.arrayBuffer()),
         mimeType: file.type || "application/octet-stream",
-        expiryDate: dateOrNull(formData.get(expiryField)),
+        expiryDate,
         uploadedById: user.id,
       },
+    });
+
+    await logAudit({
+      entityType: "DOCUMENT",
+      entityId: doc.id,
+      action: "CREATE",
+      after: { employeeId: employee.id, type, filename: file.name, expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
     });
   }
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { logAudit } from "@/lib/audit";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 // Every nested mutation (documents, skills, photo) takes an employeeId
@@ -32,7 +33,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function updateEmployeeAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   if (!id) return;
   if (!(await assertEmployeeInBranch(id, branchId, isSuperAdmin))) return;
@@ -45,9 +46,9 @@ export async function updateEmployeeAction(formData: FormData) {
       ? stringOrNull(formData.get("inactiveReasonCustom"))
       : inactiveReasonPreset;
 
-  await prisma.employee.update({
-    where: { id },
-    data: {
+  const before = await prisma.employee.findUnique({ where: { id } });
+
+  const data = {
       category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
       sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
       nationality: stringOrNull(formData.get("nationality")),
@@ -124,7 +125,19 @@ export async function updateEmployeeAction(formData: FormData) {
       drivingLicenceExpiry: dateOrNull(formData.get("drivingLicenceExpiry")),
       drivingLicenceType: stringOrNull(formData.get("drivingLicenceType")),
       drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
-    },
+  };
+
+  await prisma.employee.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "EMPLOYEE",
+    entityId: id,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/employees/${id}`);
@@ -245,7 +258,7 @@ export async function uploadDocumentAction(formData: FormData) {
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await prisma.document.create({
+  const created = await prisma.document.create({
     data: {
       employeeId,
       type,
@@ -258,17 +271,42 @@ export async function uploadDocumentAction(formData: FormData) {
     },
   });
 
+  await logAudit({
+    entityType: "DOCUMENT",
+    entityId: created.id,
+    action: "CREATE",
+    after: { employeeId, type, filename: file.name, expiryDate, displayInEss },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/documents");
 }
 
 export async function deleteDocumentAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!id) return;
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.document.findUnique({ where: { id } });
   await prisma.document.delete({ where: { id } });
+
+  if (existing) {
+    await logAudit({
+      entityType: "DOCUMENT",
+      entityId: id,
+      action: "DELETE",
+      before: { employeeId, type: existing.type, filename: existing.filename, expiryDate: existing.expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/documents");
 }

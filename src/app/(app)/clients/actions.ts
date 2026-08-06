@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
 
 // Every nested mutation (contacts, trade rates, documents) takes a clientId
 // rather than looking the client up itself, so this is the one place that
@@ -50,7 +51,7 @@ export async function createClientAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return { error: "Company name is required." };
   if (!branchId) {
@@ -64,19 +65,29 @@ export async function createClientAction(
   const existing = await prisma.client.findUnique({ where: { name } });
   if (existing) return { error: "A client with that name already exists." };
 
-  const client = await prisma.client.create({
-    data: {
-      name,
-      code: await nextClientCode(),
-      branchId,
-      contactPerson: stringOrNull(formData.get("contactPerson")),
-      contactEmail: stringOrNull(formData.get("contactEmail")),
-      contactPhone: stringOrNull(formData.get("contactPhone")),
-      ...billingFields(formData),
-      contractStart: dateOrNull(formData.get("contractStart")),
-      contractEnd: dateOrNull(formData.get("contractEnd")),
-      status: String(formData.get("status") || "ACTIVE"),
-    },
+  const data = {
+    name,
+    code: await nextClientCode(),
+    branchId,
+    contactPerson: stringOrNull(formData.get("contactPerson")),
+    contactEmail: stringOrNull(formData.get("contactEmail")),
+    contactPhone: stringOrNull(formData.get("contactPhone")),
+    ...billingFields(formData),
+    contractStart: dateOrNull(formData.get("contractStart")),
+    contractEnd: dateOrNull(formData.get("contractEnd")),
+    status: String(formData.get("status") || "ACTIVE"),
+  };
+
+  const client = await prisma.client.create({ data });
+
+  await logAudit({
+    entityType: "CLIENT",
+    entityId: client.id,
+    action: "CREATE",
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath("/clients");
@@ -84,43 +95,55 @@ export async function createClientAction(
 }
 
 export async function updateClientAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
   if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return;
 
-  await prisma.client.update({
-    where: { id },
-    data: {
-      contactPerson: stringOrNull(formData.get("contactPerson")),
-      contactEmail: stringOrNull(formData.get("contactEmail")),
-      contactPhone: stringOrNull(formData.get("contactPhone")),
-      ...billingFields(formData),
-      contractStart: dateOrNull(formData.get("contractStart")),
-      contractEnd: dateOrNull(formData.get("contractEnd")),
-      status: String(formData.get("status") || "ACTIVE"),
-      trn: stringOrNull(formData.get("trn")),
-      tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
-      tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
-      billingAddress: stringOrNull(formData.get("billingAddress")),
-      paymentTerms: stringOrNull(formData.get("paymentTerms")),
-      retentionPercent: numberOrNull(formData.get("retentionPercent")),
-      secondContactName: stringOrNull(formData.get("secondContactName")),
-      secondContactPhone: stringOrNull(formData.get("secondContactPhone")),
-      secondContactEmail: stringOrNull(formData.get("secondContactEmail")),
-      country: stringOrNull(formData.get("country")),
-      emirate: stringOrNull(formData.get("emirate")),
-      website: stringOrNull(formData.get("website")),
-      fax: stringOrNull(formData.get("fax")),
-      poBox: stringOrNull(formData.get("poBox")),
-      paymentSchedule: stringOrNull(formData.get("paymentSchedule")),
-      account: stringOrNull(formData.get("account")),
-      vendorCode: stringOrNull(formData.get("vendorCode")),
-      customer: stringOrNull(formData.get("customer")),
-      currency: stringOrNull(formData.get("currency")),
-      grades: stringOrNull(formData.get("grades")),
-      telephone: stringOrNull(formData.get("telephone")),
-    },
+  const before = await prisma.client.findUnique({ where: { id } });
+
+  const data = {
+    contactPerson: stringOrNull(formData.get("contactPerson")),
+    contactEmail: stringOrNull(formData.get("contactEmail")),
+    contactPhone: stringOrNull(formData.get("contactPhone")),
+    ...billingFields(formData),
+    contractStart: dateOrNull(formData.get("contractStart")),
+    contractEnd: dateOrNull(formData.get("contractEnd")),
+    status: String(formData.get("status") || "ACTIVE"),
+    trn: stringOrNull(formData.get("trn")),
+    tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
+    tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
+    billingAddress: stringOrNull(formData.get("billingAddress")),
+    paymentTerms: stringOrNull(formData.get("paymentTerms")),
+    retentionPercent: numberOrNull(formData.get("retentionPercent")),
+    secondContactName: stringOrNull(formData.get("secondContactName")),
+    secondContactPhone: stringOrNull(formData.get("secondContactPhone")),
+    secondContactEmail: stringOrNull(formData.get("secondContactEmail")),
+    country: stringOrNull(formData.get("country")),
+    emirate: stringOrNull(formData.get("emirate")),
+    website: stringOrNull(formData.get("website")),
+    fax: stringOrNull(formData.get("fax")),
+    poBox: stringOrNull(formData.get("poBox")),
+    paymentSchedule: stringOrNull(formData.get("paymentSchedule")),
+    account: stringOrNull(formData.get("account")),
+    vendorCode: stringOrNull(formData.get("vendorCode")),
+    customer: stringOrNull(formData.get("customer")),
+    currency: stringOrNull(formData.get("currency")),
+    grades: stringOrNull(formData.get("grades")),
+    telephone: stringOrNull(formData.get("telephone")),
+  };
+
+  await prisma.client.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "CLIENT",
+    entityId: id,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/clients/${id}`);
@@ -219,7 +242,7 @@ export async function addClientDocumentAction(formData: FormData) {
   if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await prisma.clientDocument.create({
+  const created = await prisma.clientDocument.create({
     data: {
       clientId,
       type,
@@ -231,21 +254,46 @@ export async function addClientDocumentAction(formData: FormData) {
     },
   });
 
+  await logAudit({
+    entityType: "CLIENT_DOCUMENT",
+    entityId: created.id,
+    action: "CREATE",
+    after: { clientId, type, filename: file.name, expiryDate },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
   revalidatePath(`/clients/${clientId}`);
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const clientId = String(formData.get("clientId") || "");
   if (!id) return;
   if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.clientDocument.findUnique({ where: { id } });
   await prisma.clientDocument.delete({ where: { id } });
+
+  if (existing) {
+    await logAudit({
+      entityType: "CLIENT_DOCUMENT",
+      entityId: id,
+      action: "DELETE",
+      before: { clientId, type: existing.type, filename: existing.filename, expiryDate: existing.expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
   revalidatePath(`/clients/${clientId}`);
 }
 
 export async function bulkImportClientsAction(rows: Record<string, string>[]) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -273,11 +321,31 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
         tradeLicenseNumber: stringOrNull(r["Trade license number"] ?? null),
       };
       if (existing) {
+        const before = existing as unknown as Record<string, unknown>;
         await prisma.client.update({ where: { id: existing.id }, data });
+        await logAudit({
+          entityType: "CLIENT",
+          entityId: existing.id,
+          action: "UPDATE",
+          before,
+          after: data,
+          userId: user.id,
+          userName: user.name,
+          branchId,
+        });
         results.push({ row: i + 2, status: "updated" });
       } else {
-        await prisma.client.create({
+        const created = await prisma.client.create({
           data: { name, code: await nextClientCode(), branchId, ...data },
+        });
+        await logAudit({
+          entityType: "CLIENT",
+          entityId: created.id,
+          action: "CREATE",
+          after: { name, ...data },
+          userId: user.id,
+          userName: user.name,
+          branchId,
         });
         results.push({ row: i + 2, status: "created" });
       }
@@ -295,7 +363,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
 }
 
 export async function deleteClientAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
   if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return;
@@ -315,7 +383,21 @@ export async function deleteClientAction(formData: FormData) {
     );
   }
 
+  const existing = await prisma.client.findUnique({ where: { id } });
   await prisma.client.delete({ where: { id } });
+
+  if (existing) {
+    await logAudit({
+      entityType: "CLIENT",
+      entityId: id,
+      action: "DELETE",
+      before: existing as unknown as Record<string, unknown>,
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
   revalidatePath("/clients");
   redirect("/clients");
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { logAudit } from "@/lib/audit";
 
 export async function deleteUploadAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -23,6 +24,16 @@ export async function deleteUploadAction(formData: FormData) {
     await prisma.timesheetEntry.deleteMany({ where: { month: { in: months } } });
   }
   await prisma.upload.delete({ where: { id: uploadId } });
+
+  await logAudit({
+    entityType: "UPLOAD",
+    entityId: uploadId,
+    action: "DELETE",
+    before: { filename: upload.filename, uploadedById: upload.uploadedById, months },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
 
   revalidatePath("/upload");
   revalidatePath("/companies");

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { logAudit } from "@/lib/audit";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -25,7 +26,7 @@ export async function createInventoryItemAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return { error: "Item name is required." };
   if (!branchId) {
@@ -39,13 +40,23 @@ export async function createInventoryItemAction(
   const existing = await prisma.inventoryItem.findUnique({ where: { name } });
   if (existing) return { error: "An item with that name already exists." };
 
-  const item = await prisma.inventoryItem.create({
-    data: {
-      name,
-      branchId,
-      category: stringOrNull(formData.get("category")),
-      notes: stringOrNull(formData.get("notes")),
-    },
+  const data = {
+    name,
+    branchId,
+    category: stringOrNull(formData.get("category")),
+    notes: stringOrNull(formData.get("notes")),
+  };
+
+  const item = await prisma.inventoryItem.create({ data });
+
+  await logAudit({
+    entityType: "INVENTORY_ITEM",
+    entityId: item.id,
+    action: "CREATE",
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath("/inventory");
@@ -53,17 +64,29 @@ export async function createInventoryItemAction(
 }
 
 export async function updateInventoryItemAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
   if (!id) return;
   if (!(await assertItemInBranch(id, branchId, isSuperAdmin))) return;
 
-  await prisma.inventoryItem.update({
-    where: { id },
-    data: {
-      category: stringOrNull(formData.get("category")),
-      notes: stringOrNull(formData.get("notes")),
-    },
+  const before = await prisma.inventoryItem.findUnique({ where: { id } });
+
+  const data = {
+    category: stringOrNull(formData.get("category")),
+    notes: stringOrNull(formData.get("notes")),
+  };
+
+  await prisma.inventoryItem.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "INVENTORY_ITEM",
+    entityId: id,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/inventory/${id}`);
@@ -71,7 +94,7 @@ export async function updateInventoryItemAction(formData: FormData) {
 }
 
 export async function deleteInventoryItemAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
   if (!id) return;
   if (!(await assertItemInBranch(id, branchId, isSuperAdmin))) return;
@@ -87,7 +110,21 @@ export async function deleteInventoryItemAction(formData: FormData) {
     );
   }
 
+  const existing = await prisma.inventoryItem.findUnique({ where: { id } });
   await prisma.inventoryItem.delete({ where: { id } });
+
+  if (existing) {
+    await logAudit({
+      entityType: "INVENTORY_ITEM",
+      entityId: id,
+      action: "DELETE",
+      before: existing as unknown as Record<string, unknown>,
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
   revalidatePath("/inventory");
   redirect("/inventory");
 }

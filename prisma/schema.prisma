@@ -42,6 +42,7 @@ model Branch {
   entries              TimesheetEntry[]
   sponsorshipCompanies SponsorshipCompany[]
   banks                Bank[]
+  lookupValues         LookupValue[]
 }
 
 // The visa-issuing legal entity for an employee — distinct from Branch (the
@@ -762,4 +763,42 @@ model Attachment {
 
   @@index([entityType, entityId])
   @@index([branchId, docType])
+}
+
+// Admin-configurable dropdown values replacing hand-typed free text on
+// pseudo-enum fields (Employee.trade, .position, .bloodGroup, etc). category
+// is one of the fixed keys in src/lib/lookupCategories.ts, not a DB-enforced
+// enum — the category set itself is fixed by code, only the values within a
+// category are admin-editable.
+model LookupValue {
+  id        String   @id @default(cuid())
+  category  String
+  value     String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, category, value])
+  @@index([branchId, category])
+}
+
+// Change history for entity create/update/delete, written by logAudit()
+// (src/lib/audit.ts). entityType/entityId are not DB-enforced FKs, same
+// polymorphic tradeoff as Attachment above.
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String // "CREATE" | "UPDATE" | "DELETE"
+  changes    Json? // UPDATE: { field: { from, to } } for changed fields only. CREATE/DELETE: full snapshot.
+  userId     String
+  userName   String // snapshot at write time
+  branchId   String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([branchId, createdAt])
 }

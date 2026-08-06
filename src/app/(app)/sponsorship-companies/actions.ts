@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { logAudit } from "@/lib/audit";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -12,7 +13,7 @@ function stringOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createSponsorshipCompanyAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
   const shortName = String(formData.get("shortName") || "").trim() || null;
@@ -27,32 +28,50 @@ export async function createSponsorshipCompanyAction(formData: FormData) {
     );
   }
 
-  await prisma.sponsorshipCompany.create({ data: { name, shortName, branchId } });
+  const created = await prisma.sponsorshipCompany.create({ data: { name, shortName, branchId } });
+
+  await logAudit({
+    entityType: "SPONSORSHIP_COMPANY",
+    entityId: created.id,
+    action: "CREATE",
+    after: { name, shortName },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
   revalidatePath("/sponsorship-companies");
 }
 
 export async function updateSponsorshipCompanyAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("sponsorshipCompanyId") || "");
   if (!id) return;
 
-  const existing = await prisma.sponsorshipCompany.findUnique({
-    where: { id },
-    select: { branchId: true },
-  });
+  const existing = await prisma.sponsorshipCompany.findUnique({ where: { id } });
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
 
-  await prisma.sponsorshipCompany.update({
-    where: { id },
-    data: {
-      shortName: stringOrNull(formData.get("shortName")),
-      address: stringOrNull(formData.get("address")),
-      country: stringOrNull(formData.get("country")),
-      currency: stringOrNull(formData.get("currency")),
-      phone: stringOrNull(formData.get("phone")),
-      email: stringOrNull(formData.get("email")),
-      tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
-    },
+  const data = {
+    shortName: stringOrNull(formData.get("shortName")),
+    address: stringOrNull(formData.get("address")),
+    country: stringOrNull(formData.get("country")),
+    currency: stringOrNull(formData.get("currency")),
+    phone: stringOrNull(formData.get("phone")),
+    email: stringOrNull(formData.get("email")),
+    tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
+  };
+
+  await prisma.sponsorshipCompany.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "SPONSORSHIP_COMPANY",
+    entityId: id,
+    action: "UPDATE",
+    before: existing as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
   });
 
   revalidatePath(`/sponsorship-companies/${id}`);
@@ -60,14 +79,11 @@ export async function updateSponsorshipCompanyAction(formData: FormData) {
 }
 
 export async function deleteSponsorshipCompanyAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("sponsorshipCompanyId") || "");
   if (!id) return;
 
-  const target = await prisma.sponsorshipCompany.findUnique({
-    where: { id },
-    select: { branchId: true },
-  });
+  const target = await prisma.sponsorshipCompany.findUnique({ where: { id } });
   if (!target || isOutsideBranch(target.branchId, branchId, isSuperAdmin)) return;
 
   const employeeCount = await prisma.employee.count({ where: { sponsorshipCompanyId: id } });
@@ -80,6 +96,16 @@ export async function deleteSponsorshipCompanyAction(formData: FormData) {
   }
 
   await prisma.sponsorshipCompany.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "SPONSORSHIP_COMPANY",
+    entityId: id,
+    action: "DELETE",
+    before: target as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
 
   revalidatePath("/sponsorship-companies");
 }
