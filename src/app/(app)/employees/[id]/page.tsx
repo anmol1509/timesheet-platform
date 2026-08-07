@@ -11,6 +11,8 @@ import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { VaccinationsSection } from "./vaccinations-section";
+import { VisaHistorySection } from "./visa-history-section";
+import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
 
 const STATUS_BADGE = {
@@ -36,6 +38,8 @@ export default async function EmployeeDetailPage({
         documents: { orderBy: { uploadedAt: "desc" } },
         skills: { include: { skill: true } },
         vaccinations: { orderBy: { date: "desc" } },
+        visaApplications: { orderBy: { createdAt: "desc" } },
+        labourCardApplications: { orderBy: { createdAt: "desc" } },
         bed: { include: { room: { include: { camp: true } } } },
       },
     }),
@@ -54,6 +58,9 @@ export default async function EmployeeDetailPage({
     }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
+
+  const lookups = groupLookups(lookupValues);
+  const documentOptions = employee.documents.map((d) => ({ id: d.id, filename: d.filename }));
 
   const latest = await prisma.timesheetEntry.findFirst({
     where: { employeeIdNo: employee.employeeIdNo },
@@ -140,7 +147,7 @@ export default async function EmployeeDetailPage({
         vehicles={vehicles}
         sponsorshipCompanies={sponsorshipCompanies}
         documents={employee.documents}
-        lookups={groupLookups(lookupValues)}
+        lookups={lookups}
       />
 
       <SkillsSection
@@ -162,6 +169,20 @@ export default async function EmployeeDetailPage({
           date: v.date,
           expiryDate: v.expiryDate,
         }))}
+      />
+
+      <VisaHistorySection
+        employeeId={employee.id}
+        entries={employee.visaApplications}
+        stages={lookups.VISA_APPLICATION_STAGE}
+        documents={documentOptions}
+      />
+
+      <LabourCardHistorySection
+        employeeId={employee.id}
+        entries={employee.labourCardApplications}
+        stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
+        documents={documentOptions}
       />
 
       <DocumentsSection employeeId={employee.id} documents={employee.documents} />

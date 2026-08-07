@@ -495,10 +495,45 @@ model Employee {
   sponsorshipCompany   SponsorshipCompany? @relation(fields: [sponsorshipCompanyId], references: [id])
   sponsorshipCompanyId String?
 
-  documents    Document[]
-  skills       EmployeeSkill[]
-  vaccinations EmployeeVaccination[]
-  bed          Bed?
+  documents              Document[]
+  skills                 EmployeeSkill[]
+  vaccinations           EmployeeVaccination[]
+  visaApplications       VisaApplication[]
+  labourCardApplications LabourCardApplication[]
+  bed                    Bed?
+}
+
+// Stage-tracking history for a visa cycle (submitted -> medical -> stamped ->
+// cancelled -> re-issued, etc). Employee.visaNumber/visaStatus/visaExpiry
+// remain the compliance/dashboard source of truth (the current snapshot);
+// this is a pure audit trail of how that snapshot got there over time.
+model VisaApplication {
+  id        String    @id @default(cuid())
+  stage     String // LookupValue category VISA_APPLICATION_STAGE
+  date      DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  document   Document? @relation(fields: [documentId], references: [id])
+  documentId String?
+}
+
+// Same shape as VisaApplication, for labour card stage history.
+model LabourCardApplication {
+  id        String    @id @default(cuid())
+  stage     String // LookupValue category LABOUR_CARD_APPLICATION_STAGE
+  date      DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  document   Document? @relation(fields: [documentId], references: [id])
+  documentId String?
 }
 
 // Repeatable vaccination record per employee (from the competitor's Medical
@@ -531,6 +566,9 @@ model Document {
 
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])
   uploadedById String
+
+  visaApplications       VisaApplication[]
+  labourCardApplications LabourCardApplication[]
 }
 
 model Project {

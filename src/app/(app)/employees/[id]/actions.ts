@@ -371,6 +371,112 @@ export async function removeVaccinationAction(formData: FormData) {
   revalidatePath(`/employees/${employeeId}`);
 }
 
+export async function addVisaApplicationAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const stage = String(formData.get("stage") || "").trim();
+  if (!employeeId || !stage) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const date = dateOrNull(formData.get("date"));
+  const notes = stringOrNull(formData.get("notes"));
+  const documentId = stringOrNull(formData.get("documentId"));
+
+  const created = await prisma.visaApplication.create({
+    data: { employeeId, stage, date, notes, documentId },
+  });
+
+  await logAudit({
+    entityType: "VISA_APPLICATION",
+    entityId: created.id,
+    action: "CREATE",
+    after: { employeeId, stage, date, notes, documentId },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
+export async function removeVisaApplicationAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const id = String(formData.get("visaApplicationId") || "");
+  if (!employeeId || !id) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.visaApplication.findUnique({ where: { id } });
+  await prisma.visaApplication.delete({ where: { id } }).catch(() => {});
+
+  if (existing) {
+    await logAudit({
+      entityType: "VISA_APPLICATION",
+      entityId: id,
+      action: "DELETE",
+      before: { employeeId, stage: existing.stage, date: existing.date, notes: existing.notes },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
+export async function addLabourCardApplicationAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const stage = String(formData.get("stage") || "").trim();
+  if (!employeeId || !stage) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const date = dateOrNull(formData.get("date"));
+  const notes = stringOrNull(formData.get("notes"));
+  const documentId = stringOrNull(formData.get("documentId"));
+
+  const created = await prisma.labourCardApplication.create({
+    data: { employeeId, stage, date, notes, documentId },
+  });
+
+  await logAudit({
+    entityType: "LABOUR_CARD_APPLICATION",
+    entityId: created.id,
+    action: "CREATE",
+    after: { employeeId, stage, date, notes, documentId },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
+export async function removeLabourCardApplicationAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const id = String(formData.get("labourCardApplicationId") || "");
+  if (!employeeId || !id) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.labourCardApplication.findUnique({ where: { id } });
+  await prisma.labourCardApplication.delete({ where: { id } }).catch(() => {});
+
+  if (existing) {
+    await logAudit({
+      entityType: "LABOUR_CARD_APPLICATION",
+      entityId: id,
+      action: "DELETE",
+      before: { employeeId, stage: existing.stage, date: existing.date, notes: existing.notes },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
 export async function removeSkillAction(formData: FormData) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
