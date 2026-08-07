@@ -27,6 +27,7 @@ import {
   Wallet,
   ListChecks,
   History,
+  FileSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ const NAV: Entry[] = [
     children: [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/new", label: "Add Employee", icon: UserPlus },
+      { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/skills", label: "Skills", icon: Wrench },
       { href: "/documents", label: "Documents", icon: FileText },
     ],

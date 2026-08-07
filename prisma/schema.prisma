@@ -500,7 +500,47 @@ model Employee {
   vaccinations           EmployeeVaccination[]
   visaApplications       VisaApplication[]
   labourCardApplications LabourCardApplication[]
+  assignmentHistory      EmployeeAssignmentHistory[]
+  accommodationHistory   AccommodationHistory[]
   bed                    Bed?
+}
+
+// System-written record of each project placement — opened/closed
+// automatically by updateEmployeeAction when Employee.projectId changes.
+// Employee.projectId remains the live pointer; this is the audit trail of
+// past placements, since there's no other way to know when someone was
+// mobilized/demobilized to a given project.
+model EmployeeAssignmentHistory {
+  id              String    @id @default(cuid())
+  branchName      String? // snapshot; branchId isn't the change trigger here
+  projectId       String?
+  projectName     String? // snapshot — stays readable if the Project is later renamed/deleted
+  mobilizedDate   DateTime  @default(now())
+  demobilizedDate DateTime?
+  createdAt       DateTime  @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  @@index([employeeId])
+}
+
+// System-written record of each bed placement — opened/closed automatically
+// by assignBedAction/unassignBedAction. Bed.employeeId remains the live
+// pointer; this is the audit trail, using string snapshots (not FKs) so
+// history stays readable even after a bed/room/camp is later deleted.
+model AccommodationHistory {
+  id           String    @id @default(cuid())
+  campName     String?
+  roomName     String?
+  bedLabel     String?
+  checkInDate  DateTime  @default(now())
+  checkOutDate DateTime?
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  @@index([employeeId])
 }
 
 // Stage-tracking history for a visa cycle (submitted -> medical -> stamped ->

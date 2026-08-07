@@ -1,0 +1,174 @@
+import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { InstantViewPicker } from "./picker";
+
+function categoryWhere(category: string) {
+  if (category === "SUPPLIER_LABOUR") return { supplierId: { not: null } };
+  if (category === "STAFF") return { supplierId: null, category: "STAFF" as const };
+  return { supplierId: null, category: "SITE_STAFF" as const };
+}
+
+function formatDate(d: Date | null) {
+  return d ? new Date(d).toLocaleDateString() : "—";
+}
+
+export default async function InstantViewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; employeeId?: string }>;
+}) {
+  const { category: rawCategory, employeeId } = await searchParams;
+  const category = ["SITE_STAFF", "STAFF", "SUPPLIER_LABOUR"].includes(rawCategory ?? "")
+    ? rawCategory!
+    : "SITE_STAFF";
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+
+  const employees = await prisma.employee.findMany({
+    where: { ...branchWhere(branchId), ...categoryWhere(category) },
+    select: { id: true, employeeIdNo: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  const employee = employeeId
+    ? await prisma.employee.findUnique({
+        where: { id: employeeId },
+        include: {
+          supplier: true,
+          project: true,
+          branch: true,
+          assignmentHistory: { orderBy: { mobilizedDate: "desc" } },
+          accommodationHistory: { orderBy: { checkInDate: "desc" } },
+        },
+      })
+    : null;
+
+  const validEmployee =
+    employee && !isOutsideBranch(employee.branchId, branchId, isSuperAdmin) ? employee : null;
+
+  return (
+    <div className="max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">Employee Instant View</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.
+        </p>
+      </div>
+
+      <InstantViewPicker category={category} employeeId={employeeId ?? ""} employees={employees} />
+
+      {validEmployee && (
+        <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6">
+          <h2 className="text-lg font-semibold text-slate-900">{validEmployee.name}</h2>
+
+          <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Employee ID</span>
+              {validEmployee.employeeIdNo}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Previous ID</span>
+              {validEmployee.previousId || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Mobile</span>
+              {validEmployee.mobileNumber || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Trade</span>
+              {validEmployee.trade || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Supplier</span>
+              {validEmployee.supplier?.name || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Current Branch</span>
+              {validEmployee.branch?.name || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Passport Number</span>
+              {validEmployee.passportNumber || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Sponsor Name</span>
+              {validEmployee.sponsorName || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Nationality</span>
+              {validEmployee.nationality || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Status</span>
+              {validEmployee.active ? "Active" : "InActive"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-slate-500">Current Project</span>
+              {validEmployee.project?.name || "—"}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-slate-900">Work History</h3>
+            {validEmployee.assignmentHistory.length === 0 ? (
+              <p className="text-sm text-slate-400">No assignment history recorded yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+                  <tr>
+                    <th className="py-2">Branch Name</th>
+                    <th className="py-2">Project</th>
+                    <th className="py-2">Mobilized Date</th>
+                    <th className="py-2">Demobilized Date</th>
+                    <th className="py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {validEmployee.assignmentHistory.map((h) => (
+                    <tr key={h.id}>
+                      <td className="py-2">{h.branchName || "—"}</td>
+                      <td className="py-2">{h.projectName || "—"}</td>
+                      <td className="py-2">{formatDate(h.mobilizedDate)}</td>
+                      <td className="py-2">{formatDate(h.demobilizedDate)}</td>
+                      <td className="py-2">{h.demobilizedDate ? "Demobilized" : "Mobilized"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-slate-900">Accommodation History</h3>
+            {validEmployee.accommodationHistory.length === 0 ? (
+              <p className="text-sm text-slate-400">No accommodation history recorded yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+                  <tr>
+                    <th className="py-2">Camp Name</th>
+                    <th className="py-2">Room</th>
+                    <th className="py-2">Bed</th>
+                    <th className="py-2">Check In Date</th>
+                    <th className="py-2">Check Out Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {validEmployee.accommodationHistory.map((h) => (
+                    <tr key={h.id}>
+                      <td className="py-2">{h.campName || "—"}</td>
+                      <td className="py-2">{h.roomName || "—"}</td>
+                      <td className="py-2">{h.bedLabel || "—"}</td>
+                      <td className="py-2">{formatDate(h.checkInDate)}</td>
+                      <td className="py-2">{formatDate(h.checkOutDate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

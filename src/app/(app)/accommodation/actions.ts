@@ -119,19 +119,44 @@ export async function addBedsToRoomAction(formData: FormData) {
 // Beds/rooms/camps themselves aren't branch-scoped yet — only the employee
 // being assigned/unassigned needs to belong to the caller's branch.
 export async function assignBedAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!bedId || !employeeId) return;
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
-  await prisma.bed.update({ where: { id: bedId }, data: { employeeId } });
+
+  const bed = await prisma.bed.update({
+    where: { id: bedId },
+    data: { employeeId },
+    include: { room: { include: { camp: true } } },
+  });
+
+  await prisma.accommodationHistory.create({
+    data: {
+      employeeId,
+      campName: bed.room.camp.name,
+      roomName: bed.room.name,
+      bedLabel: bed.label,
+    },
+  });
+
+  await logAudit({
+    entityType: "ACCOMMODATION",
+    entityId: bedId,
+    action: "UPDATE",
+    after: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
   revalidatePath("/accommodation");
   revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function unassignBedAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!bedId) return;
@@ -139,7 +164,37 @@ export async function unassignBedAction(formData: FormData) {
     const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
     if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
   }
-  await prisma.bed.update({ where: { id: bedId }, data: { employeeId: null } });
+
+  const bed = await prisma.bed.update({
+    where: { id: bedId },
+    data: { employeeId: null },
+    include: { room: { include: { camp: true } } },
+  });
+
+  if (employeeId) {
+    const openHistory = await prisma.accommodationHistory.findFirst({
+      where: { employeeId, checkOutDate: null },
+      orderBy: { checkInDate: "desc" },
+    });
+    if (openHistory) {
+      await prisma.accommodationHistory.update({
+        where: { id: openHistory.id },
+        data: { checkOutDate: new Date() },
+      });
+    }
+
+    await logAudit({
+      entityType: "ACCOMMODATION",
+      entityId: bedId,
+      action: "UPDATE",
+      before: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label },
+      after: { employeeId: null },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
   revalidatePath("/accommodation");
   if (employeeId) revalidatePath(`/employees/${employeeId}`);
 }

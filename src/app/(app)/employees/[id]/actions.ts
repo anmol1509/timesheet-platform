@@ -129,6 +129,33 @@ export async function updateEmployeeAction(formData: FormData) {
 
   await prisma.employee.update({ where: { id }, data });
 
+  if (before && before.projectId !== data.projectId) {
+    const openHistory = await prisma.employeeAssignmentHistory.findFirst({
+      where: { employeeId: id, demobilizedDate: null },
+      orderBy: { mobilizedDate: "desc" },
+    });
+    if (openHistory) {
+      await prisma.employeeAssignmentHistory.update({
+        where: { id: openHistory.id },
+        data: { demobilizedDate: new Date() },
+      });
+    }
+    if (data.projectId) {
+      const [project, branch] = await Promise.all([
+        prisma.project.findUnique({ where: { id: data.projectId }, select: { name: true } }),
+        before.branchId ? prisma.branch.findUnique({ where: { id: before.branchId }, select: { name: true } }) : null,
+      ]);
+      await prisma.employeeAssignmentHistory.create({
+        data: {
+          employeeId: id,
+          projectId: data.projectId,
+          projectName: project?.name ?? null,
+          branchName: branch?.name ?? null,
+        },
+      });
+    }
+  }
+
   await logAudit({
     entityType: "EMPLOYEE",
     entityId: id,
