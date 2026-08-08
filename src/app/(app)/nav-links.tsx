@@ -60,6 +60,7 @@ const NAV: Entry[] = [
       { href: "/sponsorship-companies", label: "Sponsorship Companies", icon: Landmark },
       { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/projects", label: "Projects", icon: ClipboardList },
+      { href: "/operations/demand-requests", label: "Demand Requests", icon: ListChecks },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
       { href: "/transport", label: "Transport", icon: Bus },
       { href: "/inventory", label: "Inventory", icon: Package },

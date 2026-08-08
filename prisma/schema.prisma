@@ -43,6 +43,7 @@ model Branch {
   sponsorshipCompanies SponsorshipCompany[]
   banks                Bank[]
   lookupValues         LookupValue[]
+  demandRequests       DemandRequest[]
 }
 
 // The visa-issuing legal entity for an employee — distinct from Branch (the
@@ -105,6 +106,7 @@ model User {
   clientDocuments  ClientDocument[]
   projectDocuments ProjectDocument[]
   attachments      Attachment[]
+  demandRequests   DemandRequest[]
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
@@ -223,12 +225,13 @@ model Client {
   grades    String?
   telephone String? // landline, distinct from contactPhone (mobile)
 
-  entries    TimesheetEntry[]
-  projects   Project[]
-  contacts   ClientContact[]
-  invoices   ClientInvoice[]
-  tradeRates ClientTradeRate[]
-  documents  ClientDocument[]
+  entries        TimesheetEntry[]
+  projects       Project[]
+  contacts       ClientContact[]
+  invoices       ClientInvoice[]
+  tradeRates     ClientTradeRate[]
+  documents      ClientDocument[]
+  demandRequests DemandRequest[]
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -502,6 +505,7 @@ model Employee {
   labourCardApplications LabourCardApplication[]
   assignmentHistory      EmployeeAssignmentHistory[]
   accommodationHistory   AccommodationHistory[]
+  demandRequestAllocations DemandRequestAllocation[]
   bed                    Bed?
 }
 
@@ -663,6 +667,7 @@ model Project {
   holidays         ProjectHoliday[]
   contacts         ProjectContact[]
   inventory        ProjectInventoryAssignment[]
+  demandRequests   DemandRequest[]
 }
 
 model ProjectDocument {
@@ -884,4 +889,58 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([branchId, createdAt])
+}
+
+// A staffing request a project raises for more workers, broken down into
+// per-trade line items. Fulfilling a line item (see DemandRequestAllocation)
+// is a real project placement, so it also opens an EmployeeAssignmentHistory
+// row — this model exists alongside that so a line's fulfillment (quantity
+// vs. allocated count) can be queried directly without re-deriving it.
+model DemandRequest {
+  id                   String   @id @default(cuid())
+  requestNo            Int      @unique @default(autoincrement())
+  requestType          String   @default("New") // "New" | "Replacement"
+  status               String   @default("Open") // "Open" | "Approved" | "Rejected" | "Closed"
+  priority             String? // "Low" | "Medium" | "High"
+  salesExecutive       String? // defaults from Project.salesExecutive at creation, independently editable
+  accommodationStatus  String?
+  transportationStatus String?
+  remarks              String?
+  createdAt            DateTime @default(now())
+
+  client    Client @relation(fields: [clientId], references: [id])
+  clientId  String
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+  branch    Branch @relation(fields: [branchId], references: [id])
+  branchId  String
+
+  requestedBy   User?   @relation(fields: [requestedById], references: [id])
+  requestedById String?
+
+  trades DemandRequestTrade[]
+}
+
+model DemandRequestTrade {
+  id       String  @id @default(cuid())
+  trade    String // LookupValue category TRADE
+  quantity Int
+  shift    String? // "Day" | "Night"
+  rate     Float?
+
+  demandRequest   DemandRequest @relation(fields: [demandRequestId], references: [id], onDelete: Cascade)
+  demandRequestId String
+
+  allocations DemandRequestAllocation[]
+}
+
+model DemandRequestAllocation {
+  id          String   @id @default(cuid())
+  allocatedAt DateTime @default(now())
+
+  demandRequestTrade   DemandRequestTrade @relation(fields: [demandRequestTradeId], references: [id], onDelete: Cascade)
+  demandRequestTradeId String
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
 }
