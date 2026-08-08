@@ -22,6 +22,7 @@ export const LOOKUP_CATEGORIES = [
   { key: "EID_STATUS", label: "EID Status" },
   { key: "VISA_APPLICATION_STAGE", label: "Visa Application Stage" },
   { key: "LABOUR_CARD_APPLICATION_STAGE", label: "Labour Card Application Stage" },
+  { key: "ROOM_TYPE", label: "Room Type" },
 ] as const;
 
 export type LookupCategoryKey = (typeof LOOKUP_CATEGORIES)[number]["key"];

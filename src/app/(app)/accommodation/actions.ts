@@ -25,14 +25,32 @@ export async function createCampAction(formData: FormData) {
   revalidatePath("/accommodation");
 }
 
+function stringOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  return s || null;
+}
+
+function intOrNull(value: FormDataEntryValue | null) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
 export async function createRoomAction(formData: FormData) {
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
   const bedCount = Math.max(1, Math.min(20, Number(formData.get("bedCount")) || 1));
+  const bedSpace = intOrNull(formData.get("bedSpace"));
+  const usableBedSpace = intOrNull(formData.get("usableBedSpace"));
+  const roomType = stringOrNull(formData.get("roomType"));
+  const nationality = stringOrNull(formData.get("nationality"));
   if (!campId || !name) return;
 
-  const room = await prisma.room.create({ data: { campId, name } });
+  const room = await prisma.room.create({
+    data: { campId, name, bedSpace, usableBedSpace, roomType, nationality },
+  });
   await prisma.bed.createMany({
     data: Array.from({ length: bedCount }, (_, i) => ({
       roomId: room.id,
@@ -44,7 +62,7 @@ export async function createRoomAction(formData: FormData) {
     entityType: "ROOM",
     entityId: room.id,
     action: "CREATE",
-    after: { campId, name, bedCount },
+    after: { campId, name, bedCount, bedSpace, usableBedSpace, roomType, nationality },
     userId: user.id,
     userName: user.name,
     branchId: null,
@@ -153,6 +171,61 @@ export async function assignBedAction(formData: FormData) {
 
   revalidatePath("/accommodation");
   revalidatePath(`/employees/${employeeId}`);
+}
+
+// Pairs each selected employee (in order) with the room's next vacant bed.
+// More selected employees than vacant beds is a soft cap, not an error —
+// the caller gets back how many actually got assigned so the UI can report
+// "N of M checked in, room is now full" rather than failing the batch.
+export async function bulkCheckInAction(
+  formData: FormData
+): Promise<{ assigned: number; requested: number }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const roomId = String(formData.get("roomId") || "");
+  const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
+  if (!roomId || employeeIds.length === 0) return { assigned: 0, requested: employeeIds.length };
+
+  const vacantBeds = await prisma.bed.findMany({
+    where: { roomId, employeeId: null },
+    include: { room: { include: { camp: true } } },
+    orderBy: { label: "asc" },
+  });
+
+  let assigned = 0;
+  for (const employeeId of employeeIds) {
+    const bed = vacantBeds[assigned];
+    if (!bed) break;
+
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+    if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) continue;
+
+    await prisma.bed.update({ where: { id: bed.id }, data: { employeeId } });
+
+    await prisma.accommodationHistory.create({
+      data: {
+        employeeId,
+        campName: bed.room.camp.name,
+        roomName: bed.room.name,
+        bedLabel: bed.label,
+      },
+    });
+
+    await logAudit({
+      entityType: "ACCOMMODATION",
+      entityId: bed.id,
+      action: "UPDATE",
+      after: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+
+    revalidatePath(`/employees/${employeeId}`);
+    assigned++;
+  }
+
+  revalidatePath("/accommodation");
+  return { assigned, requested: employeeIds.length };
 }
 
 export async function unassignBedAction(formData: FormData) {

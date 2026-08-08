@@ -795,8 +795,13 @@ model VehicleProject {
 }
 
 model Room {
-  id     String @id @default(cuid())
-  name   String
+  id             String  @id @default(cuid())
+  name           String
+  bedSpace       Int? // declared capacity — may exceed actual Bed rows if not all are registered yet
+  usableBedSpace Int? // currently usable subset of bedSpace (e.g. some beds under maintenance)
+  roomType       String? // LookupValue category ROOM_TYPE
+  nationality    String? // targeting hint; matches Employee.nationality free-text country name
+
   camp   Camp   @relation(fields: [campId], references: [id], onDelete: Cascade)
   campId String
   beds   Bed[]

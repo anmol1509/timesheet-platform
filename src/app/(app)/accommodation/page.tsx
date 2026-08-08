@@ -12,6 +12,10 @@ import { OccupancyRing } from "@/components/OccupancyRing";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { Select } from "@/components/ui/Select";
+import { CountrySelect } from "@/components/ui/CountrySelect";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
+import { groupLookups } from "@/lib/lookups";
 
 export default async function AccommodationPage({
   searchParams,
@@ -19,15 +23,24 @@ export default async function AccommodationPage({
   searchParams: Promise<{ campId?: string }>;
 }) {
   const params = await searchParams;
-  const camps = await prisma.camp.findMany({
-    include: {
-      rooms: {
-        include: { beds: { orderBy: { label: "asc" } } },
-        orderBy: { name: "asc" },
+  const { branchId } = await requireUserWithBranch();
+  const [camps, lookupValues] = await Promise.all([
+    prisma.camp.findMany({
+      include: {
+        rooms: {
+          include: { beds: { orderBy: { label: "asc" } } },
+          orderBy: { name: "asc" },
+        },
       },
-    },
-    orderBy: { name: "asc" },
-  });
+      orderBy: { name: "asc" },
+    }),
+    prisma.lookupValue.findMany({
+      where: { ...branchWhere(branchId), category: "ROOM_TYPE", isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
+      select: { category: true, value: true },
+    }),
+  ]);
+  const roomTypeOptions = groupLookups(lookupValues).ROOM_TYPE;
 
   const allBeds = camps.flatMap((c) => c.rooms.flatMap((r) => r.beds));
   const totalBeds = allBeds.length;
@@ -132,6 +145,8 @@ export default async function AccommodationPage({
             rooms={selectedCamp.rooms.map((r) => ({
               id: r.id,
               name: r.name,
+              roomType: r.roomType,
+              nationality: r.nationality,
               beds: r.beds.map((b) => ({
                 id: b.id,
                 label: b.label,
@@ -192,6 +207,38 @@ export default async function AccommodationPage({
               placeholder="Number of beds"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">Bed space</span>
+                <input
+                  name="bedSpace"
+                  type="number"
+                  min={0}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500">Usable bed space</span>
+                <input
+                  name="usableBedSpace"
+                  type="number"
+                  min={0}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                />
+              </label>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Room type</span>
+              <Select
+                name="roomType"
+                placeholder="Not set"
+                options={roomTypeOptions.map((o) => ({ value: o.value, label: o.value }))}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Nationality targeting</span>
+              <CountrySelect name="nationality" placeholder="Not set" />
+            </label>
             <button
               type="submit"
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"

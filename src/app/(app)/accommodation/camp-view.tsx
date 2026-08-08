@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { BedDouble } from "lucide-react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import {
   assignBedAction,
@@ -13,10 +14,17 @@ import {
   updateRoomAction,
   deleteRoomAction,
   addBedsToRoomAction,
+  bulkCheckInAction,
 } from "./actions";
 
 type Bed = { id: string; label: string; employeeId: string | null };
-type Room = { id: string; name: string; beds: Bed[] };
+type Room = {
+  id: string;
+  name: string;
+  beds: Bed[];
+  roomType: string | null;
+  nationality: string | null;
+};
 type EmployeeOption = {
   id: string;
   name: string;
@@ -35,10 +43,15 @@ export function CampView({
 }) {
   const [vacantOnly, setVacantOnly] = useState(false);
   const [assigningBed, setAssigningBed] = useState<string | null>(null);
+  const [bulkCheckInRoomId, setBulkCheckInRoomId] = useState<string | null>(null);
 
   const allBeds = rooms.flatMap((r) => r.beds);
   const vacantCount = allBeds.filter((b) => !b.employeeId).length;
   const assigningBedObj = allBeds.find((b) => b.id === assigningBed) || null;
+  const bulkCheckInRoom = rooms.find((r) => r.id === bulkCheckInRoomId) || null;
+  const bulkCheckInVacantCount = bulkCheckInRoom
+    ? bulkCheckInRoom.beds.filter((b) => !b.employeeId).length
+    : 0;
 
   if (rooms.length === 0) {
     return (
@@ -85,8 +98,26 @@ export function CampView({
                   <span className="text-xs text-slate-400">
                     {occupied}/{room.beds.length} occupied
                   </span>
+                  {room.roomType && (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                      {room.roomType}
+                    </span>
+                  )}
+                  {room.nationality && (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                      {room.nationality}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBulkCheckInRoomId(room.id)}
+                    disabled={room.beds.every((b) => b.employeeId)}
+                    className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Bulk Check-In
+                  </button>
                   <form action={addBedsToRoomAction} className="flex items-center gap-1.5">
                     <input type="hidden" name="roomId" value={room.id} />
                     <input
@@ -187,6 +218,15 @@ export function CampView({
         employees={unassignedEmployees}
         onClose={() => setAssigningBed(null)}
       />
+
+      <BulkCheckInModal
+        roomId={bulkCheckInRoomId}
+        roomName={bulkCheckInRoom?.name || ""}
+        vacantCount={bulkCheckInVacantCount}
+        roomNationality={bulkCheckInRoom?.nationality || null}
+        employees={unassignedEmployees}
+        onClose={() => setBulkCheckInRoomId(null)}
+      />
     </div>
   );
 }
@@ -269,5 +309,140 @@ function AssignForm({
         </button>
       </DialogFooter>
     </form>
+  );
+}
+
+function BulkCheckInModal({
+  roomId,
+  roomName,
+  vacantCount,
+  roomNationality,
+  employees,
+  onClose,
+}: {
+  roomId: string | null;
+  roomName: string;
+  vacantCount: number;
+  roomNationality: string | null;
+  employees: EmployeeOption[];
+  onClose: () => void;
+}) {
+  return (
+    <Dialog modal={false} open={roomId !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        title={`Bulk Check-In to ${roomName}`}
+        description={`Select up to ${vacantCount} employee${vacantCount === 1 ? "" : "s"} to check into this room's vacant beds.`}
+      >
+        {employees.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">No unassigned employees available.</p>
+        ) : (
+          <BulkCheckInForm
+            key={roomId}
+            roomId={roomId}
+            vacantCount={vacantCount}
+            roomNationality={roomNationality}
+            employees={employees}
+            onClose={onClose}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkCheckInForm({
+  roomId,
+  vacantCount,
+  roomNationality,
+  employees,
+  onClose,
+}: {
+  roomId: string | null;
+  vacantCount: number;
+  roomNationality: string | null;
+  employees: EmployeeOption[];
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<string | null>(null);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < vacantCount) {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function handleSubmit() {
+    if (!roomId || selected.size === 0) return;
+    const formData = new FormData();
+    formData.append("roomId", roomId);
+    for (const id of selected) formData.append("employeeId", id);
+    startTransition(async () => {
+      const res = await bulkCheckInAction(formData);
+      if (res.assigned < res.requested) {
+        setResult(`Checked in ${res.assigned} of ${res.requested} — room is now full.`);
+      } else {
+        onClose();
+      }
+    });
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+        {employees.map((e) => {
+          const disabled = !selected.has(e.id) && selected.size >= vacantCount;
+          const matches = roomNationality && e.nationality === roomNationality;
+          return (
+            <label
+              key={e.id}
+              className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
+                disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-slate-50"
+              }`}
+              onClick={(ev) => {
+                ev.preventDefault();
+                if (!disabled) toggle(e.id);
+              }}
+            >
+              <Checkbox checked={selected.has(e.id)} />
+              <span className="flex-1 truncate">
+                {e.name} ({e.employeeIdNo})
+                {e.nationality && <span className="text-slate-400"> — {e.nationality}</span>}
+              </span>
+              {matches && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                  match
+                </span>
+              )}
+            </label>
+          );
+        })}
+      </div>
+      {result && <p className="text-xs text-amber-600">{result}</p>}
+      <DialogFooter>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={selected.size === 0 || pending}
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+        >
+          {pending ? "Checking in…" : `Check in ${selected.size}`}
+        </button>
+      </DialogFooter>
+    </div>
   );
 }
