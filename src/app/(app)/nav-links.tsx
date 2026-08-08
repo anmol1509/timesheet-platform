@@ -82,6 +82,7 @@ const NAV: Entry[] = [
     label: "Billing",
     icon: Receipt,
     children: [
+      { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
       { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/invoices/history", label: "Invoice History", icon: Clock },
     ],
