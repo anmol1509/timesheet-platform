@@ -44,6 +44,8 @@ model Branch {
   banks                Bank[]
   lookupValues         LookupValue[]
   demandRequests       DemandRequest[]
+  letterTemplates      LetterTemplate[]
+  nocs                 Noc[]
 }
 
 // The visa-issuing legal entity for an employee — distinct from Branch (the
@@ -107,6 +109,7 @@ model User {
   projectDocuments ProjectDocument[]
   attachments      Attachment[]
   demandRequests   DemandRequest[]
+  nocs             Noc[]
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
@@ -506,6 +509,7 @@ model Employee {
   assignmentHistory      EmployeeAssignmentHistory[]
   accommodationHistory   AccommodationHistory[]
   demandRequestAllocations DemandRequestAllocation[]
+  nocEmployees           NocEmployee[]
   bed                    Bed?
 }
 
@@ -919,6 +923,7 @@ model DemandRequest {
   requestedById String?
 
   trades DemandRequestTrade[]
+  nocs   Noc[]
 }
 
 model DemandRequestTrade {
@@ -941,6 +946,54 @@ model DemandRequestAllocation {
   demandRequestTrade   DemandRequestTrade @relation(fields: [demandRequestTradeId], references: [id], onDelete: Cascade)
   demandRequestTradeId String
 
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+}
+
+// Admin-managed letter body — freeform text containing %%PLACEHOLDER%% merge
+// fields, substituted at NOC-generation time. Category is a fixed short list,
+// not a Lookup, since it defines the letter TYPE rather than open business data.
+model LetterTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  category    String? // "No Objection Letter" | "Mobilization Letter" | "Undertaking Letter" | "Supplier Undertaking"
+  remarksText String
+  createdAt   DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  nocs Noc[]
+}
+
+// A generated NOC/letter for a subset of a DemandRequest's allocated
+// employees. PDF bytes are not stored — regenerated fresh on each download,
+// matching how invoice generation already works.
+model Noc {
+  id            String    @id @default(cuid())
+  docNo         Int       @unique @default(autoincrement())
+  status        String    @default("Pending") // "Pending" | "Mobilization Complete"
+  mobilizeDate  DateTime?
+  remarks       String?
+  displayFields String? // comma-separated Employee field keys, see src/lib/nocDisplayFields.ts
+  createdAt     DateTime  @default(now())
+
+  demandRequest   DemandRequest  @relation(fields: [demandRequestId], references: [id])
+  demandRequestId String
+  template        LetterTemplate @relation(fields: [templateId], references: [id])
+  templateId      String
+  branch          Branch         @relation(fields: [branchId], references: [id])
+  branchId        String
+  requestedBy     User?          @relation(fields: [requestedById], references: [id])
+  requestedById   String?
+
+  employees NocEmployee[]
+}
+
+model NocEmployee {
+  id         String   @id @default(cuid())
+  noc        Noc      @relation(fields: [nocId], references: [id], onDelete: Cascade)
+  nocId      String
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId String
 }

@@ -61,6 +61,7 @@ const NAV: Entry[] = [
       { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/operations/demand-requests", label: "Demand Requests", icon: ListChecks },
+      { href: "/operations/nocs", label: "NOCs", icon: FileText },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
       { href: "/transport", label: "Transport", icon: Bus },
       { href: "/inventory", label: "Inventory", icon: Package },
@@ -98,6 +99,7 @@ const ADMIN_GROUP: Entry = {
   icon: ListChecks,
   children: [
     { href: "/lookups", label: "Lookups", icon: ListChecks },
+    { href: "/letter-templates", label: "Letter Templates", icon: FileText },
     { href: "/audit-log", label: "Audit Log", icon: History },
   ],
 };

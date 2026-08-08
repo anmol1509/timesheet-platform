@@ -45,13 +45,21 @@ export default async function DemandRequestDetailPage({
           <h1 className="text-2xl font-semibold text-slate-900">
             Request #{request.requestNo} — {request.client.name}
           </h1>
-          <DeleteButton
-            action={deleteDemandRequestAction}
-            hiddenFields={{ requestId: request.id }}
-            confirmMessage={`Delete request #${request.requestNo}?`}
-            label="Delete Request"
-            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-          />
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/operations/nocs/new?demandRequestId=${request.id}`}
+              className="rounded-lg bg-[#166534] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+            >
+              Create NOC
+            </Link>
+            <DeleteButton
+              action={deleteDemandRequestAction}
+              hiddenFields={{ requestId: request.id }}
+              confirmMessage={`Delete request #${request.requestNo}?`}
+              label="Delete Request"
+              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            />
+          </div>
         </div>
         <p className="mt-1 text-sm text-slate-500">
           {request.project.code} — {request.project.name}
