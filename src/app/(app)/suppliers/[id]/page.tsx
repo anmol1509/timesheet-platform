@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EditSupplierForm } from "./edit-form";
+import { SupplierApprovals } from "./supplier-approvals";
 import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -72,6 +73,15 @@ export default async function SupplierDetailPage({
           </p>
         )}
       </div>
+
+      <SupplierApprovals
+        supplierId={supplier.id}
+        values={{
+          approvalStatus: supplier.approvalStatus,
+          labourApprovalStatus: supplier.labourApprovalStatus,
+          invoiceApprovalStatus: supplier.invoiceApprovalStatus,
+        }}
+      />
 
       <EditSupplierForm
         supplier={{

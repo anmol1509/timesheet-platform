@@ -126,6 +126,7 @@ export function EditForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(employee.active);
   const [salaryType, setSalaryType] = useState(employee.salaryType || "");
   const knownReason = INACTIVE_REASONS.some((r) => r.value === employee.inactiveReason);
@@ -138,9 +139,14 @@ export function EditForm({
     <form
       action={(formData) => {
         setSaved(false);
+        setError(null);
         startTransition(async () => {
-          await updateEmployeeAction(formData);
-          setSaved(true);
+          const result = await updateEmployeeAction(formData);
+          if (result?.error) {
+            setError(result.error);
+          } else {
+            setSaved(true);
+          }
         });
       }}
       className="space-y-8"
@@ -570,6 +576,9 @@ export function EditForm({
         </button>
         {saved && !pending && (
           <span className="text-sm text-emerald-600">Saved.</span>
+        )}
+        {error && !pending && (
+          <span className="text-sm text-red-600">{error}</span>
         )}
       </div>
     </form>

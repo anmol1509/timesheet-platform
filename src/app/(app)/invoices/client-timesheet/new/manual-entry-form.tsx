@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { submitManualEntryAction } from "./actions";
+import { submitManualEntryAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
 

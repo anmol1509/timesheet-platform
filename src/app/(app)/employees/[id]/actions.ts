@@ -32,7 +32,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
   return Number.isFinite(n) ? n : null;
 }
 
-export async function updateEmployeeAction(formData: FormData) {
+export async function updateEmployeeAction(formData: FormData): Promise<{ error?: string } | void> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   if (!id) return;
@@ -126,6 +126,16 @@ export async function updateEmployeeAction(formData: FormData) {
       drivingLicenceType: stringOrNull(formData.get("drivingLicenceType")),
       drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
   };
+
+  if (before && data.projectId && before.projectId !== data.projectId && before.supplierId) {
+    const supplier = await prisma.supplier.findUnique({
+      where: { id: before.supplierId },
+      select: { approvalStatus: true },
+    });
+    if (supplier && supplier.approvalStatus !== "Approved") {
+      return { error: "This supplier isn't approved yet — approve it before assigning its employees to a project." };
+    }
+  }
 
   await prisma.employee.update({ where: { id }, data });
 

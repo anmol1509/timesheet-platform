@@ -183,6 +183,10 @@ model Supplier {
   location   String?
   phone      String? // secondary phone, distinct from contactPhone (mobile)
 
+  approvalStatus        String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates attaching labour to a project
+  labourApprovalStatus  String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates allocating labour to a Demand Request
+  invoiceApprovalStatus String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates generating the supplier payout sheet
+
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
   employees       Employee[]

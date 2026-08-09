@@ -32,6 +32,9 @@ export async function POST(request: Request) {
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
   }
+  if (supplier.invoiceApprovalStatus !== "Approved") {
+    return NextResponse.json({ error: "This supplier isn't invoice-approved yet." }, { status: 400 });
+  }
 
   if (!branchId) {
     return NextResponse.json(

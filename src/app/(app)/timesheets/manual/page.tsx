@@ -1,36 +1,5 @@
-import { prisma } from "@/lib/db";
-import { ManualEntryForm } from "./manual-entry-form";
+import { redirect } from "next/navigation";
 
-export default async function ManualTimesheetEntryPage() {
-  const [suppliers, clients, sites, projects] = await Promise.all([
-    prisma.supplier.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.client.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.site.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.project.findMany({
-      select: { id: true, code: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
-          Manual Timesheet Entry
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Add timesheet rows by hand instead of uploading an Excel file. The
-          columns match the Excel format — ID, name, trade, rate, supplier,
-          client, site, and one column per day.
-        </p>
-      </div>
-
-      <ManualEntryForm
-        supplierNames={suppliers.map((s) => s.name)}
-        clientNames={clients.map((c) => c.name)}
-        siteNames={sites.map((s) => s.name)}
-        projects={projects}
-      />
-    </div>
-  );
+export default function ManualTimesheetEntryPage() {
+  redirect("/invoices/client-timesheet/new");
 }

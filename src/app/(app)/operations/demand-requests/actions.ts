@@ -172,8 +172,17 @@ export async function allocateEmployeesAction(
   for (const employeeId of employeeIds) {
     if (allocated >= remaining) break;
 
-    const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { supplier: { select: { approvalStatus: true, labourApprovalStatus: true } } },
+    });
     if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) continue;
+    if (
+      employee.supplier &&
+      (employee.supplier.approvalStatus !== "Approved" || employee.supplier.labourApprovalStatus !== "Approved")
+    ) {
+      continue;
+    }
 
     await prisma.demandRequestAllocation.create({
       data: { demandRequestTradeId: tradeId, employeeId },

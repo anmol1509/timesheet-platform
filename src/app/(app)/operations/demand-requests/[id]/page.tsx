@@ -29,11 +29,24 @@ export default async function DemandRequestDetailPage({
   });
   if (!request || isOutsideBranch(request.branchId, branchId, isSuperAdmin)) notFound();
 
-  const idleEmployees = await prisma.employee.findMany({
+  const idleEmployeesRaw = await prisma.employee.findMany({
     where: { ...branchWhere(branchId), projectId: null },
-    select: { id: true, name: true, employeeIdNo: true, trade: true },
+    select: {
+      id: true,
+      name: true,
+      employeeIdNo: true,
+      trade: true,
+      supplier: { select: { approvalStatus: true, labourApprovalStatus: true } },
+    },
     orderBy: { name: "asc" },
   });
+  // Employees with no supplier (in-house/site staff) are never gated; a
+  // supplier-linked employee needs both the supplier and its labour approved.
+  const idleEmployees = idleEmployeesRaw
+    .filter(
+      (e) => !e.supplier || (e.supplier.approvalStatus === "Approved" && e.supplier.labourApprovalStatus === "Approved")
+    )
+    .map((e) => ({ id: e.id, name: e.name, employeeIdNo: e.employeeIdNo, trade: e.trade }));
 
   return (
     <div className="max-w-4xl space-y-6">

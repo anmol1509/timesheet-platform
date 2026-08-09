@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -52,11 +53,19 @@ export default async function ClientTimesheetPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Client Timesheet</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Review and edit a month&rsquo;s day-by-day hours before invoicing.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Client Timesheet</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Review and edit a month&rsquo;s day-by-day hours before invoicing.
+          </p>
+        </div>
+        <Link
+          href="/invoices/client-timesheet/new"
+          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+        >
+          + New Entry
+        </Link>
       </div>
 
       {months.length > 0 && (

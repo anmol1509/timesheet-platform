@@ -20,7 +20,6 @@ import {
   Truck,
   Bus,
   MapPin,
-  PenSquare,
   Receipt,
   Package,
   Landmark,
@@ -75,7 +74,6 @@ const NAV: Entry[] = [
     icon: FileSpreadsheet,
     children: [
       { href: "/upload", label: "Upload", icon: UploadIcon },
-      { href: "/timesheets/manual", label: "Manual Entry", icon: PenSquare },
       { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },
       { href: "/history", label: "History", icon: Clock },
     ],

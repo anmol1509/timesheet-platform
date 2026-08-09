@@ -123,6 +123,35 @@ export async function updateSupplierAction(formData: FormData) {
   revalidatePath("/suppliers");
 }
 
+const APPROVAL_FIELDS = ["approvalStatus", "labourApprovalStatus", "invoiceApprovalStatus"] as const;
+type ApprovalField = (typeof APPROVAL_FIELDS)[number];
+
+export async function updateSupplierApprovalAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("supplierId") || "");
+  const field = String(formData.get("field") || "") as ApprovalField;
+  const value = String(formData.get("value") || "");
+  if (!id || !APPROVAL_FIELDS.includes(field) || !["Pending", "Approved", "Rejected"].includes(value)) return;
+
+  const existing = await prisma.supplier.findUnique({ where: { id } });
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+
+  await prisma.supplier.update({ where: { id }, data: { [field]: value } });
+
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: id,
+    action: "UPDATE",
+    before: { [field]: existing[field] },
+    after: { [field]: value },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/suppliers/${id}`);
+}
+
 export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
