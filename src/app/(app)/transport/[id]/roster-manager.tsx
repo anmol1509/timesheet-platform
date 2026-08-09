@@ -129,7 +129,7 @@ export function RosterManager({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, ID, trade, or project…"
-              className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-slate-900"
+              className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </div>
 
@@ -192,7 +192,7 @@ export function RosterManager({
                 type="button"
                 disabled={pending}
                 onClick={assignSelected}
-                className="rounded-lg bg-[#166534] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+                className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
               >
                 {pending ? "Assigning…" : `Assign ${selected.size} to roster`}
               </button>

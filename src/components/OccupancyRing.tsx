@@ -22,7 +22,7 @@ export function OccupancyRing({
             cy="90"
             r={radius}
             fill="none"
-            stroke="#D1FAE5"
+            stroke="#DBEAFE"
             strokeWidth={stroke}
           />
           <circle
@@ -30,7 +30,7 @@ export function OccupancyRing({
             cy="90"
             r={radius}
             fill="none"
-            stroke="#166534"
+            stroke="#2563eb"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${occupiedLength} ${circumference - occupiedLength}`}

@@ -191,7 +191,7 @@ export function EditForm({
                   <input
                     name="inactiveReasonCustom"
                     defaultValue={!knownReason ? employee.inactiveReason || "" : ""}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                   />
                 </Field>
               )}
@@ -200,7 +200,7 @@ export function EditForm({
                   name="lastDemobilizedDate"
                   type="date"
                   defaultValue={toDateInput(employee.lastDemobilizedDate)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                 />
               </Field>
             </>
@@ -229,14 +229,14 @@ export function EditForm({
             <input
               name="passportNumber"
               defaultValue={employee.passportNumber || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Emirates ID">
             <input
               name="emiratesId"
               defaultValue={employee.emiratesId || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Date of birth">
@@ -244,7 +244,7 @@ export function EditForm({
               type="date"
               name="dateOfBirth"
               defaultValue={toDateInput(employee.dateOfBirth)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Gender">
@@ -264,14 +264,14 @@ export function EditForm({
             <input
               name="mobileNumber"
               defaultValue={employee.mobileNumber || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="WhatsApp number">
             <input
               name="whatsappNumber"
               defaultValue={employee.whatsappNumber || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Join date">
@@ -279,7 +279,7 @@ export function EditForm({
               type="date"
               name="joinDate"
               defaultValue={toDateInput(employee.joinDate)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Sponsor / visa-holding entity">
@@ -287,21 +287,21 @@ export function EditForm({
               name="sponsorName"
               placeholder="If different from company"
               defaultValue={employee.sponsorName || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Emergency contact name">
             <input
               name="emergencyContactName"
               defaultValue={employee.emergencyContactName || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Emergency contact phone">
             <input
               name="emergencyContactPhone"
               defaultValue={employee.emergencyContactPhone || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <LookupField label="Religion" name="religion" defaultValue={employee.religion} options={lookups.RELIGION} />
@@ -316,14 +316,14 @@ export function EditForm({
             <input
               name="previousId"
               defaultValue={employee.previousId || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Name in ID card">
             <input
               name="nameInIdCard"
               defaultValue={employee.nameInIdCard || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <div className="sm:col-span-2">
@@ -332,7 +332,7 @@ export function EditForm({
                 name="notes"
                 defaultValue={employee.notes || ""}
                 rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </Field>
           </div>
@@ -348,7 +348,7 @@ export function EditForm({
             <input
               name="laborCardNumber"
               defaultValue={employee.laborCardNumber || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <div />
@@ -356,14 +356,14 @@ export function EditForm({
             <input
               name="wpsBankName"
               defaultValue={employee.wpsBankName || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="WPS IBAN">
             <input
               name="wpsIban"
               defaultValue={employee.wpsIban || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <TextField label="Payment mode" name="wpsPaymentMode" defaultValue={employee.wpsPaymentMode} />
@@ -381,7 +381,7 @@ export function EditForm({
               type="date"
               name="medicalExpiry"
               defaultValue={toDateInput(employee.medicalExpiry)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <LookupField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} options={lookups.MEDICAL_STATUS} />
@@ -396,7 +396,7 @@ export function EditForm({
               type="date"
               name="emiratesIdExpiry"
               defaultValue={toDateInput(employee.emiratesIdExpiry)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <LookupField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} options={lookups.EID_STATUS} />
@@ -559,7 +559,7 @@ export function EditForm({
                 step="0.01"
                 name="salaryRate"
                 defaultValue={employee.salaryRate ?? ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </Field>
           )}
@@ -570,7 +570,7 @@ export function EditForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
@@ -586,7 +586,7 @@ export function EditForm({
 }
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]";
 
 // Thin wrappers around Field for the many single-line text/date inputs
 // added in the legal-document sections below, to avoid repeating the same

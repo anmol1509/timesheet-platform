@@ -82,7 +82,7 @@ export function DocumentsSection({
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </label>
           <label className="flex items-center gap-1.5 pb-2 text-xs font-medium text-slate-500">

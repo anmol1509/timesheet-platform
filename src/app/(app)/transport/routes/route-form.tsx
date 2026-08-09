@@ -95,7 +95,7 @@ export function RouteForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Morning Pickup — Al Ain Road"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block">
@@ -127,19 +127,19 @@ export function RouteForm({
                 value={s.location}
                 onChange={(e) => updateStop(s.id, { location: e.target.value })}
                 placeholder="Location"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
               <input
                 value={s.pickupTime}
                 onChange={(e) => updateStop(s.id, { pickupTime: e.target.value })}
                 placeholder="07:30"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
               <input
                 value={s.notes}
                 onChange={(e) => updateStop(s.id, { notes: e.target.value })}
                 placeholder="Notes"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
               <div className="flex items-center gap-1">
                 <button
@@ -183,7 +183,7 @@ export function RouteForm({
         type="button"
         onClick={handleSubmit}
         disabled={pending || !name || !vehicleId}
-        className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
       >
         {pending ? "Saving…" : route ? "Save changes" : "Create Route"}
       </button>

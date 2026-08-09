@@ -121,7 +121,7 @@ export function EmployeeList({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search employees by name, ID, or trade…"
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
           />
           <SegmentedControl
             value={filter}

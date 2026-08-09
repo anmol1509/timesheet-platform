@@ -84,7 +84,7 @@ export function ProjectHolidays({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block min-w-[160px] flex-1">
@@ -93,7 +93,7 @@ export function ProjectHolidays({
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. UAE National Day"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block w-36">
@@ -106,14 +106,14 @@ export function ProjectHolidays({
             value={rateMultiplier}
             onChange={(e) => setRateMultiplier(e.target.value)}
             placeholder="e.g. 1.5"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <button
           type="button"
           disabled={pending}
           onClick={add}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
         >
           + Add
         </button>

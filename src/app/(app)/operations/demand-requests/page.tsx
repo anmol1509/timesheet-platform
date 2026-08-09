@@ -23,7 +23,7 @@ export default async function DemandRequestsPage() {
         </div>
         <Link
           href="/operations/demand-requests/new"
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           + New Request
         </Link>

@@ -56,7 +56,7 @@ export function Select({
           type="button"
           disabled={disabled}
           className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 outline-none transition focus:border-slate-900 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+            "flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 outline-none transition focus:border-[var(--brand-primary)] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
             triggerClassName
           )}
         >
@@ -96,7 +96,7 @@ export function Select({
                   >
                     {o.icon}
                     <span className="flex-1 truncate">{o.label}</span>
-                    {o.value === value && <Check className="h-4 w-4 shrink-0 text-[#166534]" />}
+                    {o.value === value && <Check className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" />}
                   </CommandItem>
                 ))}
               </CommandGroup>

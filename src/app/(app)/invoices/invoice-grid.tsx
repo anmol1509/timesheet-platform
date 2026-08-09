@@ -35,7 +35,7 @@ export function InvoiceGrid({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search clients…"
-        className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+        className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
       />
 
       {filtered.length === 0 && (

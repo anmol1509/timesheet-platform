@@ -26,7 +26,7 @@ export function MobileSidebar({ isAdmin }: { isAdmin: boolean }) {
           <RadixDialog.Title className="sr-only">Navigation</RadixDialog.Title>
           <div className="flex items-center justify-between px-5 py-5">
             <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-800 text-sm font-bold text-white shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-sm font-bold text-white shadow-sm">
                 TS
               </div>
               <div>

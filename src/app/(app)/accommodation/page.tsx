@@ -112,7 +112,7 @@ export default async function AccommodationPage({
             </label>
             <button
               type="submit"
-              className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
+              className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-sm font-medium text-white"
             >
               Go
             </button>
@@ -173,11 +173,11 @@ export default async function AccommodationPage({
             name="name"
             required
             placeholder="Camp name, e.g. Dubai Industrial Camp 1"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
           <button
             type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white"
           >
             Add Camp
           </button>
@@ -196,7 +196,7 @@ export default async function AccommodationPage({
               name="name"
               required
               placeholder="Room name, e.g. Room 103"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
             <input
               name="bedCount"
@@ -205,7 +205,7 @@ export default async function AccommodationPage({
               max={20}
               defaultValue={4}
               placeholder="Number of beds"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
@@ -214,7 +214,7 @@ export default async function AccommodationPage({
                   name="bedSpace"
                   type="number"
                   min={0}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                 />
               </label>
               <label className="block">
@@ -223,7 +223,7 @@ export default async function AccommodationPage({
                   name="usableBedSpace"
                   type="number"
                   min={0}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                 />
               </label>
             </div>
@@ -241,7 +241,7 @@ export default async function AccommodationPage({
             </label>
             <button
               type="submit"
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white"
             >
               Add Room
             </button>

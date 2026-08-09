@@ -96,12 +96,12 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by user or entity ID…"
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
         />
         <select
           value={entityType}
           onChange={(e) => setEntityType(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
         >
           <option value="all">All entities</option>
           {entityTypes.map((t) => (
@@ -113,7 +113,7 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
         <select
           value={action}
           onChange={(e) => setAction(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
         >
           <option value="all">All actions</option>
           <option value="CREATE">Created</option>

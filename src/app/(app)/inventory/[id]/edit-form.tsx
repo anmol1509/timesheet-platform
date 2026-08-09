@@ -22,21 +22,21 @@ export function EditItemForm({
           <input
             name="category"
             defaultValue={item.category ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Notes">
           <input
             name="notes"
             defaultValue={item.notes ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
       <button
         type="submit"
         disabled={pending}
-        className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+        className="mt-3 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save"}
       </button>

@@ -30,7 +30,7 @@ export default async function AppLayout({
     <div className="min-h-screen bg-slate-50 lg:flex">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-100 bg-white lg:fixed lg:inset-y-0 lg:flex">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-800 text-sm font-bold text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-sm font-bold text-white shadow-sm">
             TS
           </div>
           <div>
@@ -65,7 +65,7 @@ export default async function AppLayout({
                 )}
               </button>
               <div className="hidden items-center gap-2.5 md:flex">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-800 text-xs font-semibold text-white">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-xs font-semibold text-white">
                   {initials(user.name)}
                 </div>
                 <div className="text-sm leading-tight">

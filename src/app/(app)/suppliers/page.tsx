@@ -65,7 +65,7 @@ export default async function SuppliersPage({
             name="name"
             required
             placeholder="e.g. Top Peak"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block flex-1 min-w-[220px]">
@@ -75,12 +75,12 @@ export default async function SuppliersPage({
           <input
             name="fullName"
             placeholder="e.g. TOP PEAK GENERAL CONTRACTING"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           + Add Supplier
         </button>

@@ -70,7 +70,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search skills..."
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
         />
         <Select
           value={category}
@@ -109,13 +109,13 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                               value={draftName}
                               onChange={(e) => setDraftName(e.target.value)}
                               autoFocus
-                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
                             />
                             <input
                               value={draftCategory}
                               onChange={(e) => setDraftCategory(e.target.value)}
                               placeholder="Category"
-                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
                             />
                             <button
                               type="button"
@@ -186,7 +186,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
                           <div
-                            className="h-full rounded-full bg-[#166534]"
+                            className="h-full rounded-full bg-[var(--brand-primary)]"
                             style={{ width: `${Math.min(100, s.popularity)}%` }}
                           />
                         </div>

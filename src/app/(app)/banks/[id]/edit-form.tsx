@@ -45,7 +45,7 @@ export function EditBankForm({ bank }: { bank: Bank }) {
           <input
             name="abbreviation"
             defaultValue={bank.abbreviation || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Status">
@@ -63,49 +63,49 @@ export function EditBankForm({ bank }: { bank: Bank }) {
           <input
             name="accountNo"
             defaultValue={bank.accountNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="IBAN number">
           <input
             name="ibanNo"
             defaultValue={bank.ibanNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Routing code">
           <input
             name="routingCode"
             defaultValue={bank.routingCode || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Swift code">
           <input
             name="swiftCode"
             defaultValue={bank.swiftCode || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Bank branch">
           <input
             name="bankBranch"
             defaultValue={bank.bankBranch || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Address">
           <input
             name="address"
             defaultValue={bank.address || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Remarks">
           <input
             name="remarks"
             defaultValue={bank.remarks || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -114,7 +114,7 @@ export function EditBankForm({ bank }: { bank: Bank }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

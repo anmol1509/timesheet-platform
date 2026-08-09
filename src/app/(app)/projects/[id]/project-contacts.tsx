@@ -71,28 +71,28 @@ export function ProjectContacts({
                       value={draft.name}
                       onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                       autoFocus
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
                     />
                   </td>
                   <td className="px-4 py-2">
                     <input
                       value={draft.role}
                       onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value }))}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
                     />
                   </td>
                   <td className="px-4 py-2">
                     <input
                       value={draft.phone}
                       onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
                     />
                   </td>
                   <td className="px-4 py-2">
                     <input
                       value={draft.email}
                       onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                      className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
                     />
                   </td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
@@ -150,7 +150,7 @@ export function ProjectContacts({
           <input
             name="name"
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block min-w-[140px] flex-1">
@@ -158,14 +158,14 @@ export function ProjectContacts({
           <input
             name="role"
             placeholder="e.g. Site Engineer"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block min-w-[140px] flex-1">
           <span className="mb-1 block text-xs font-medium text-slate-500">Phone</span>
           <input
             name="phone"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block min-w-[160px] flex-1">
@@ -173,12 +173,12 @@ export function ProjectContacts({
           <input
             name="email"
             type="email"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           + Add
         </button>

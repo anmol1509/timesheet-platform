@@ -4,7 +4,7 @@ const COLORS = {
   red: "bg-red-50 text-red-700",
   slate: "bg-slate-100 text-slate-600",
   blue: "bg-blue-50 text-blue-700",
-  navy: "bg-[#166534]/10 text-[#166534]",
+  navy: "bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]",
 } as const;
 
 export type BadgeColor = keyof typeof COLORS;

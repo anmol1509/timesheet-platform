@@ -69,7 +69,7 @@ export default async function ClientTimesheetPage({
           </Link>
           <Link
             href="/invoices/client-timesheet/new"
-            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
           >
             + New Entry
           </Link>
@@ -83,7 +83,7 @@ export default async function ClientTimesheetPage({
             <select
               name="month"
               defaultValue={selectedMonth}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
             >
               {months.map((m) => (
                 <option key={m} value={m}>
@@ -97,7 +97,7 @@ export default async function ClientTimesheetPage({
             <select
               name="clientId"
               defaultValue={selectedClientId}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -108,7 +108,7 @@ export default async function ClientTimesheetPage({
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white"
           >
             Go
           </button>

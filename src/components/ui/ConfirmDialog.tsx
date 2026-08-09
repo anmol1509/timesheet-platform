@@ -42,7 +42,7 @@ export function ConfirmDialog({
               className={
                 danger
                   ? "rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
-                  : "rounded-lg bg-[#166534] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+                  : "rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
               }
             >
               {confirmLabel}

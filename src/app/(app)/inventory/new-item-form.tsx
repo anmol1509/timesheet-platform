@@ -19,7 +19,7 @@ export function NewItemForm() {
           name="name"
           required
           placeholder="e.g. Concrete drill"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
         />
       </label>
       <label className="block flex-1 min-w-[160px]">
@@ -27,7 +27,7 @@ export function NewItemForm() {
         <input
           name="category"
           placeholder="e.g. Power tools"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
         />
       </label>
       {state.error && (
@@ -38,7 +38,7 @@ export function NewItemForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
       >
         {pending ? "Adding…" : "+ Add Item"}
       </button>

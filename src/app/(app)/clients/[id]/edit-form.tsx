@@ -66,7 +66,7 @@ export function EditClientForm({ client }: { client: Client }) {
           <input
             name="emirate"
             defaultValue={client.emirate || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Customer">
@@ -74,63 +74,63 @@ export function EditClientForm({ client }: { client: Client }) {
             name="customer"
             placeholder="Parent/umbrella account, if applicable"
             defaultValue={client.customer || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Currency">
           <input
             name="currency"
             defaultValue={client.currency || "AED"}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Grade">
           <input
             name="grades"
             defaultValue={client.grades || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Website">
           <input
             name="website"
             defaultValue={client.website || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Payment schedule">
           <input
             name="paymentSchedule"
             defaultValue={client.paymentSchedule || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Fax">
           <input
             name="fax"
             defaultValue={client.fax || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="P.O. Box">
           <input
             name="poBox"
             defaultValue={client.poBox || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Account (reference only)">
           <input
             name="account"
             defaultValue={client.account || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Vendor code">
           <input
             name="vendorCode"
             defaultValue={client.vendorCode || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -140,7 +140,7 @@ export function EditClientForm({ client }: { client: Client }) {
           <input
             name="contactPerson"
             defaultValue={client.contactPerson || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Contact email">
@@ -148,21 +148,21 @@ export function EditClientForm({ client }: { client: Client }) {
             name="contactEmail"
             type="email"
             defaultValue={client.contactEmail || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Contact phone (mobile)">
           <input
             name="contactPhone"
             defaultValue={client.contactPhone || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Telephone (landline)">
           <input
             name="telephone"
             defaultValue={client.telephone || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Accounts payable contact">
@@ -170,14 +170,14 @@ export function EditClientForm({ client }: { client: Client }) {
             name="secondContactName"
             placeholder="If different from above"
             defaultValue={client.secondContactName || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="AP contact phone">
           <input
             name="secondContactPhone"
             defaultValue={client.secondContactPhone || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="AP contact email">
@@ -185,7 +185,7 @@ export function EditClientForm({ client }: { client: Client }) {
             name="secondContactEmail"
             type="email"
             defaultValue={client.secondContactEmail || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -195,14 +195,14 @@ export function EditClientForm({ client }: { client: Client }) {
           <input
             name="trn"
             defaultValue={client.trn || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Trade license number">
           <input
             name="tradeLicenseNumber"
             defaultValue={client.tradeLicenseNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Trade license expiry">
@@ -210,7 +210,7 @@ export function EditClientForm({ client }: { client: Client }) {
             name="tradeLicenseExpiry"
             type="date"
             defaultValue={client.tradeLicenseExpiry}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Payment terms">
@@ -218,7 +218,7 @@ export function EditClientForm({ client }: { client: Client }) {
             name="paymentTerms"
             placeholder="e.g. Net 30"
             defaultValue={client.paymentTerms || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Retention (%)">
@@ -227,14 +227,14 @@ export function EditClientForm({ client }: { client: Client }) {
             type="number"
             step="0.1"
             defaultValue={client.retentionPercent ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Billing address" className="sm:col-span-2">
           <input
             name="billingAddress"
             defaultValue={client.billingAddress || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -273,7 +273,7 @@ export function EditClientForm({ client }: { client: Client }) {
               defaultValue={
                 billingType === "HOURLY" ? (client.hourlyRate ?? "") : (client.basicRate ?? "")
               }
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
         )}
@@ -282,7 +282,7 @@ export function EditClientForm({ client }: { client: Client }) {
             name="contractStart"
             type="date"
             defaultValue={client.contractStart}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Contract end">
@@ -290,7 +290,7 @@ export function EditClientForm({ client }: { client: Client }) {
             name="contractEnd"
             type="date"
             defaultValue={client.contractEnd}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -299,7 +299,7 @@ export function EditClientForm({ client }: { client: Client }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

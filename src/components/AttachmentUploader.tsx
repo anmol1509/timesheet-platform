@@ -52,7 +52,7 @@ export function AttachmentUploader({
           <span className="mb-1 block text-xs font-medium text-slate-500">Type</span>
           <select
             name="docType"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           >
             {docTypeOptions.map((o) => (
               <option key={o.value} value={o.value}>
@@ -66,7 +66,7 @@ export function AttachmentUploader({
           <input
             type="date"
             name="expiryDate"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block flex-1 min-w-[180px]">
@@ -77,7 +77,7 @@ export function AttachmentUploader({
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           Upload
         </button>

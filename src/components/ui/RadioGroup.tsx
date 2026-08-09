@@ -41,9 +41,9 @@ export function RadioGroup({
         >
           <RadioGroupPrimitive.Item
             value={o.value}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white outline-none transition data-[state=checked]:border-[#166534] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white outline-none transition data-[state=checked]:border-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RadioGroupPrimitive.Indicator className="h-2 w-2 rounded-full bg-[#166534]" />
+            <RadioGroupPrimitive.Indicator className="h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
           </RadioGroupPrimitive.Item>
           {o.label}
         </label>

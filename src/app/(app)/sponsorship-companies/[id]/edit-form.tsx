@@ -43,14 +43,14 @@ export function EditSponsorshipCompanyForm({
           <input
             name="shortName"
             defaultValue={sponsorshipCompany.shortName || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Trade license number">
           <input
             name="tradeLicenseNumber"
             defaultValue={sponsorshipCompany.tradeLicenseNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Country">
@@ -61,14 +61,14 @@ export function EditSponsorshipCompanyForm({
             name="currency"
             placeholder="e.g. AED"
             defaultValue={sponsorshipCompany.currency || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Address">
           <input
             name="address"
             defaultValue={sponsorshipCompany.address || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -78,7 +78,7 @@ export function EditSponsorshipCompanyForm({
           <input
             name="phone"
             defaultValue={sponsorshipCompany.phone || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Email">
@@ -86,7 +86,7 @@ export function EditSponsorshipCompanyForm({
             name="email"
             type="email"
             defaultValue={sponsorshipCompany.email || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -95,7 +95,7 @@ export function EditSponsorshipCompanyForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

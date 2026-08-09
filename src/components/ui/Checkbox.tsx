@@ -38,7 +38,7 @@ export function Checkbox({
       disabled={disabled}
       required={required}
       className={cn(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 bg-white outline-none transition data-[state=checked]:border-[#166534] data-[state=checked]:bg-[#166534] data-[state=indeterminate]:border-[#166534] data-[state=indeterminate]:bg-[#166534] disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-slate-300 bg-white outline-none transition data-[state=checked]:border-[var(--brand-primary)] data-[state=checked]:bg-[var(--brand-primary)] data-[state=indeterminate]:border-[var(--brand-primary)] data-[state=indeterminate]:bg-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
     >

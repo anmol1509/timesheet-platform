@@ -49,14 +49,14 @@ export function NewProjectForm({
               <input
                 name="name"
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </Field>
             <Field label="Description">
               <textarea
                 name="description"
                 rows={2}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </Field>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -71,7 +71,7 @@ export function NewProjectForm({
               <Field label="Project manager">
                 <input
                   name="manager"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                 />
               </Field>
               <Field label="Status">
@@ -91,14 +91,14 @@ export function NewProjectForm({
                 <input
                   name="timelineStart"
                   type="date"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                 />
               </Field>
               <Field label="Timeline end">
                 <input
                   name="timelineEnd"
                   type="date"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
                 />
               </Field>
             </div>
@@ -106,7 +106,7 @@ export function NewProjectForm({
             <button
               type="submit"
               disabled={pending}
-              className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
             >
               {pending ? "Saving…" : "Add Project"}
             </button>

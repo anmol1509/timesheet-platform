@@ -85,7 +85,7 @@ export function LabourCardHistorySection({
             <input
               ref={dateRef}
               type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </div>
           <div>
@@ -104,7 +104,7 @@ export function LabourCardHistorySection({
               type="button"
               onClick={handleAdd}
               disabled={pending}
-              className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+              className="w-full rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
             >
               Add
             </button>
@@ -114,7 +114,7 @@ export function LabourCardHistorySection({
             <textarea
               ref={notesRef}
               rows={2}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </div>
         </div>

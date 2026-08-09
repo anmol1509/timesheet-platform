@@ -57,7 +57,7 @@ export default async function InvoicesPage({
                 id="month"
                 name="month"
                 defaultValue={selectedMonth}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-slate-900"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
               >
                 {months.map((m) => (
                   <option key={m} value={m}>
@@ -124,7 +124,7 @@ function NativeSubmit() {
   return (
     <button
       type="submit"
-      className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800"
+      className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
     >
       Go
     </button>

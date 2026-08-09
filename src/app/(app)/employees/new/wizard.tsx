@@ -108,7 +108,7 @@ export function EmployeeWizard({
             key={label}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               i === step
-                ? "bg-[#166534] text-white"
+                ? "bg-[var(--brand-primary)] text-white"
                 : i < step
                   ? "text-emerald-600"
                   : "text-slate-400"
@@ -163,7 +163,7 @@ export function EmployeeWizard({
               name="employeeIdNo"
               required
               placeholder="e.g. BACC999"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Full name">
@@ -172,7 +172,7 @@ export function EmployeeWizard({
               name="name"
               required
               placeholder="Enter full name"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Category">
@@ -213,7 +213,7 @@ export function EmployeeWizard({
               ref={passportNumberRef}
               name="passportNumber"
               placeholder="Enter passport number"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Emirates ID">
@@ -221,7 +221,7 @@ export function EmployeeWizard({
               ref={emiratesIdRef}
               name="emiratesId"
               placeholder="Enter Emirates ID"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Date of birth">
@@ -229,7 +229,7 @@ export function EmployeeWizard({
               ref={dobRef}
               type="date"
               name="dateOfBirth"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
         </div>
@@ -243,35 +243,35 @@ export function EmployeeWizard({
             <input
               type="date"
               name="visaExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Labor Card Expiry">
             <input
               type="date"
               name="laborCardExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Medical Certificate Expiry">
             <input
               type="date"
               name="medicalExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Passport Expiry Date">
             <input
               type="date"
               name="passportExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
           <Field label="Emirates ID Expiry Date">
             <input
               type="date"
               name="emiratesIdExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
         </div>
@@ -280,7 +280,7 @@ export function EmployeeWizard({
             name="notes"
             rows={3}
             placeholder="Any special requirements, medical conditions, or other important notes..."
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <StepNav onPrev={goPrev} onNext={goNext} nextLabel="Next" />
@@ -374,7 +374,7 @@ export function EmployeeWizard({
                 type="number"
                 step="0.01"
                 name="salaryRate"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </Field>
           )}
@@ -400,12 +400,12 @@ export function EmployeeWizard({
                 }
               }}
               placeholder="Add a skill (e.g., Welding, Carpentry, etc.)"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
             <button
               type="button"
               onClick={() => addSkill(skillInput)}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-primary-hover)]"
             >
               +
             </button>
@@ -491,7 +491,7 @@ function StepNav({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {nextLabel}
         </button>
@@ -499,7 +499,7 @@ function StepNav({
         <button
           type="button"
           onClick={onNext}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           {nextLabel}
         </button>

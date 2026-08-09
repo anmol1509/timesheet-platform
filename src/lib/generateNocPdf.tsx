@@ -22,13 +22,13 @@ export type NocPdfInput = {
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica" },
-  letterhead: { marginBottom: 24, borderBottomWidth: 1, borderColor: "#166534", paddingBottom: 10 },
-  companyName: { fontSize: 16, fontWeight: 700, color: "#166534" },
+  letterhead: { marginBottom: 24, borderBottomWidth: 1, borderColor: "#2563eb", paddingBottom: 10 },
+  companyName: { fontSize: 16, fontWeight: 700, color: "#2563eb" },
   companyAddress: { fontSize: 8, color: "#475569", marginTop: 2 },
   docNo: { fontSize: 8, color: "#475569", marginTop: 6 },
   paragraph: { marginBottom: 8, lineHeight: 1.5 },
   table: { display: "flex", flexDirection: "column", borderWidth: 0.5, borderColor: "#94A3B8", marginTop: 16 },
-  headerRow: { flexDirection: "row", backgroundColor: "#166534" },
+  headerRow: { flexDirection: "row", backgroundColor: "#2563eb" },
   row: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#E2E8F0" },
   cell: { flex: 1, padding: 5, justifyContent: "center" },
   headerCell: { fontSize: 8, fontWeight: 700, color: "#FFFFFF" },

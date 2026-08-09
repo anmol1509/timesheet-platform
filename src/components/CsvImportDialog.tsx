@@ -174,7 +174,7 @@ export function CsvImportDialog({
                   type="button"
                   disabled={importing}
                   onClick={handleImport}
-                  className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+                  className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
                 >
                   {importing ? "Importing…" : `Import ${rows.length} row${rows.length === 1 ? "" : "s"}`}
                 </button>
@@ -208,7 +208,7 @@ export function CsvImportDialog({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534]/90"
+                className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-primary-hover)]"
               >
                 Done
               </button>

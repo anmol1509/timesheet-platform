@@ -81,7 +81,7 @@ export function DocumentBrowser({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search documents by name, type, or employee..."
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
           {filteredEmployee && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">
@@ -99,7 +99,7 @@ export function DocumentBrowser({
         <button
           type="button"
           onClick={() => setShowUpload((v) => !v)}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           {showUpload ? "Cancel" : "Upload Document"}
         </button>
@@ -272,14 +272,14 @@ function UploadForm({
           type="date"
           value={expiryDate}
           onChange={(e) => setExpiryDate(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
         />
       </label>
       <input ref={fileRef} type="file" required className="text-sm" />
       <button
         type="submit"
         disabled={pending || !employeeId}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
       >
         {pending ? "Uploading…" : "Upload"}
       </button>

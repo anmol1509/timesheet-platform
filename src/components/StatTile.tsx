@@ -19,9 +19,9 @@ export function StatTile({
 }) {
   if (hero) {
     return (
-      <div className="rounded-3xl border border-transparent bg-gradient-to-br from-green-600 to-green-900 p-5 text-white shadow-sm">
+      <div className="rounded-3xl border border-transparent bg-gradient-to-br from-blue-600 to-[var(--brand-navy)] p-5 text-white shadow-sm">
         <div className="flex items-start justify-between">
-          <span className="text-xs font-medium tracking-wide text-green-100 uppercase">
+          <span className="text-xs font-medium tracking-wide text-blue-100 uppercase">
             {label}
           </span>
           <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/30">

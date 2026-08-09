@@ -66,7 +66,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search projects by name, code, site, or manager..."
-        className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+        className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
       />
       <div>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">

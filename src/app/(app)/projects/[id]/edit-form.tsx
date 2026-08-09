@@ -63,14 +63,14 @@ export function EditProjectForm({
             name="name"
             required
             defaultValue={project.name}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Client project no.">
           <input
             name="clientProjectNo"
             defaultValue={project.clientProjectNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Status">
@@ -90,21 +90,21 @@ export function EditProjectForm({
           <input
             name="jobType"
             defaultValue={project.jobType || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Main contractor">
           <input
             name="mainContractor"
             defaultValue={project.mainContractor || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Payment type">
           <input
             name="paymentType"
             defaultValue={project.paymentType || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Client">
@@ -118,7 +118,7 @@ export function EditProjectForm({
           <input
             name="lpoNo"
             defaultValue={project.lpoNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="LPO date">
@@ -126,35 +126,35 @@ export function EditProjectForm({
             name="lpoDate"
             type="date"
             defaultValue={project.lpoDate}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Sponsorship company">
           <input
             name="sponsorshipCompany"
             defaultValue={project.sponsorshipCompany || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Sales executive">
           <input
             name="salesExecutive"
             defaultValue={project.salesExecutive || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Project coordinator">
           <input
             name="projectCoordinator"
             defaultValue={project.projectCoordinator || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Project manager">
           <input
             name="manager"
             defaultValue={project.manager || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Start date">
@@ -162,7 +162,7 @@ export function EditProjectForm({
             name="timelineStart"
             type="date"
             defaultValue={project.timelineStart}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="End date">
@@ -170,14 +170,14 @@ export function EditProjectForm({
             name="timelineEnd"
             type="date"
             defaultValue={project.timelineEnd}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Contact no.">
           <input
             name="contactNo"
             defaultValue={project.contactNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Timesheet collection date">
@@ -185,7 +185,7 @@ export function EditProjectForm({
             name="timesheetCollectionDate"
             type="date"
             defaultValue={project.timesheetCollectionDate}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="No. of employees required">
@@ -194,7 +194,7 @@ export function EditProjectForm({
             type="number"
             min={0}
             defaultValue={project.noOfEmployeesRequired ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Day shift start">
@@ -202,7 +202,7 @@ export function EditProjectForm({
             name="dayShiftStart"
             type="time"
             defaultValue={project.dayShiftStart || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Day shift end">
@@ -210,7 +210,7 @@ export function EditProjectForm({
             name="dayShiftEnd"
             type="time"
             defaultValue={project.dayShiftEnd || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Night shift start">
@@ -218,7 +218,7 @@ export function EditProjectForm({
             name="nightShiftStart"
             type="time"
             defaultValue={project.nightShiftStart || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Night shift end">
@@ -226,7 +226,7 @@ export function EditProjectForm({
             name="nightShiftEnd"
             type="time"
             defaultValue={project.nightShiftEnd || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <CheckboxField label="Inter transfer" name="interTransfer" defaultChecked={project.interTransfer} />
@@ -238,7 +238,7 @@ export function EditProjectForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

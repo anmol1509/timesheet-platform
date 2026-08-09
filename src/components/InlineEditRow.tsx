@@ -53,7 +53,7 @@ export function InlineEditRow({
         onChange={(e) => setDraft(e.target.value)}
         placeholder={placeholder}
         autoFocus
-        className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+        className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
       />
       <button
         type="submit"

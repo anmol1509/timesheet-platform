@@ -58,7 +58,7 @@ export function CompanyGrid({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search companies…"
-          className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+          className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
         />
         <div className="flex shrink-0 items-center gap-2">
           <Checkbox
@@ -86,7 +86,7 @@ export function CompanyGrid({
           <div
             key={c.id}
             className={`relative flex flex-col rounded-3xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
-              selected.has(c.id) ? "border-[#166534]" : "border-slate-200 hover:border-slate-300"
+              selected.has(c.id) ? "border-[var(--brand-primary)]" : "border-slate-200 hover:border-slate-300"
             }`}
           >
             <Checkbox

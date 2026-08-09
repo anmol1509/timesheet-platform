@@ -53,7 +53,7 @@ export function TradeAllocationSection({
             type="button"
             onClick={() => setShowAllocate(true)}
             disabled={remaining === 0}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Allocate
           </button>
@@ -212,7 +212,7 @@ function AllocateForm({
           type="button"
           onClick={handleSubmit}
           disabled={selected.size === 0 || pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
         >
           {pending ? "Allocating…" : `Allocate ${selected.size}`}
         </button>

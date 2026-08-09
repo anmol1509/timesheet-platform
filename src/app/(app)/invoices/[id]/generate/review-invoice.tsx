@@ -128,7 +128,7 @@ export function ReviewInvoice({
             <button
               onClick={() => handleGenerate("pdf", true)}
               disabled={generating !== null || issued !== null}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
             >
               {generating === "issue"
                 ? "Issuing…"
@@ -218,7 +218,7 @@ export function ReviewInvoice({
                             [r.id]: parseFloat(ev.target.value) || 0,
                           }))
                         }
-                        className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-slate-900 disabled:opacity-60 ${
+                        className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-60 ${
                           edited ? "border-amber-300 bg-amber-50" : "border-slate-300"
                         }`}
                       />

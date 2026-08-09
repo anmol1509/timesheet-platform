@@ -22,7 +22,7 @@ export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
                     : { height: `${heightPct}%`, backgroundImage: HATCH_BG }
                 }
                 className={`w-full max-w-9 rounded-full transition-all ${
-                  hasData ? "bg-green-700" : "border border-slate-200"
+                  hasData ? "bg-[var(--brand-primary)]" : "border border-slate-200"
                 }`}
               />
             </div>

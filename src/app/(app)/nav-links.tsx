@@ -111,7 +111,7 @@ function groupContainsActive(pathname: string, children: Item[]) {
 }
 
 const ACTIVE_PILL =
-  "relative bg-slate-900 text-white before:absolute before:top-1/2 before:left-0 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-green-500";
+  "relative bg-[var(--brand-primary)] text-white before:absolute before:top-1/2 before:left-0 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-blue-300";
 
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();

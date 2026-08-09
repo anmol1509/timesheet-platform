@@ -28,7 +28,7 @@ export function WorkforcePie({ onWork, bench }: { onWork: number; bench: number 
               cy="80"
               r={RADIUS}
               fill="none"
-              stroke="#166534"
+              stroke="#2563eb"
               strokeWidth={STROKE}
               strokeLinecap="round"
               strokeDasharray={`${onWorkLen} ${circumference}`}
@@ -63,7 +63,7 @@ export function WorkforcePie({ onWork, bench }: { onWork: number; bench: number 
           onClick={() => router.push("/employees?filter=on-work")}
           className="flex items-center gap-2 hover:underline"
         >
-          <span className="h-3 w-3 shrink-0 rounded-full bg-[#166534]" />
+          <span className="h-3 w-3 shrink-0 rounded-full bg-[#2563eb]" />
           <span className="font-medium text-slate-900">{onWork}</span>
           <span className="text-slate-500">on work</span>
         </button>

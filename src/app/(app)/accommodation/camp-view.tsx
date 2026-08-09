@@ -126,7 +126,7 @@ export function CampView({
                       min={1}
                       max={20}
                       defaultValue={1}
-                      className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-slate-900"
+                      className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-[var(--brand-primary)]"
                     />
                     <button
                       type="submit"
@@ -197,7 +197,7 @@ export function CampView({
                           <button
                             type="button"
                             onClick={() => setAssigningBed(bed.id)}
-                            className="mt-2 block w-full rounded-lg bg-emerald-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-emerald-700"
+                            className="mt-2 block w-full rounded-lg bg-[var(--brand-primary)] px-2 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)]"
                           >
                             + Assign
                           </button>
@@ -303,7 +303,7 @@ function AssignForm({
         <button
           type="submit"
           disabled={!employeeId}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
         >
           Assign
         </button>
@@ -438,7 +438,7 @@ function BulkCheckInForm({
           type="button"
           onClick={handleSubmit}
           disabled={selected.size === 0 || pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
         >
           {pending ? "Checking in…" : `Check in ${selected.size}`}
         </button>

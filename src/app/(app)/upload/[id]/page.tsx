@@ -43,7 +43,7 @@ export default async function UploadDetailPage({
           {upload.fileData ? (
             <a
               href={`/api/upload/${upload.id}/download`}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
             >
               Download original file
             </a>

@@ -75,7 +75,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           <input
             name="fullName"
             defaultValue={supplier.fullName || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Status">
@@ -93,7 +93,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           <input
             name="trn"
             defaultValue={supplier.trn || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Active from">
@@ -101,21 +101,21 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="activeFrom"
             type="date"
             defaultValue={supplier.activeFrom}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="MOHRE manpower supply permit #">
           <input
             name="mohrePermitNumber"
             defaultValue={supplier.mohrePermitNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Trade license number">
           <input
             name="tradeLicenseNumber"
             defaultValue={supplier.tradeLicenseNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Trade license expiry">
@@ -123,7 +123,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="tradeLicenseExpiry"
             type="date"
             defaultValue={supplier.tradeLicenseExpiry}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Category">
@@ -131,14 +131,14 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="category"
             placeholder="e.g. Manpower Supply"
             defaultValue={supplier.category || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Previous ID">
           <input
             name="previousId"
             defaultValue={supplier.previousId || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Country">
@@ -148,14 +148,14 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           <input
             name="emirate"
             defaultValue={supplier.emirate || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Point of contact">
           <input
             name="pointOfContact"
             defaultValue={supplier.pointOfContact || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Supplier amount limit (credit limit)">
@@ -164,14 +164,14 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             type="number"
             step="0.01"
             defaultValue={supplier.supplierAmountLimit ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Account (reference only)">
           <input
             name="account"
             defaultValue={supplier.account || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <CheckboxField
@@ -187,14 +187,14 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           <input
             name="contactPerson"
             defaultValue={supplier.contactPerson || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Contact phone">
           <input
             name="contactPhone"
             defaultValue={supplier.contactPhone || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Contact email">
@@ -202,7 +202,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="contactEmail"
             type="email"
             defaultValue={supplier.contactEmail || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Phone">
@@ -210,21 +210,21 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="phone"
             placeholder="Landline, if different from mobile"
             defaultValue={supplier.phone || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Location / address">
           <input
             name="location"
             defaultValue={supplier.location || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="P.O. Box">
           <input
             name="poBox"
             defaultValue={supplier.poBox || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </Section>
@@ -234,42 +234,42 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
           <input
             name="bankName"
             defaultValue={supplier.bankName || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="IBAN">
           <input
             name="iban"
             defaultValue={supplier.iban || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Bank account name">
           <input
             name="bankAccountName"
             defaultValue={supplier.bankAccountName || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Bank account number">
           <input
             name="bankAccountNumber"
             defaultValue={supplier.bankAccountNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Bank beneficiary company">
           <input
             name="bankCompany"
             defaultValue={supplier.bankCompany || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Bank emirate">
           <input
             name="bankEmirate"
             defaultValue={supplier.bankEmirate || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Payment terms">
@@ -277,7 +277,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             name="paymentTerms"
             placeholder="e.g. Net 30"
             defaultValue={supplier.paymentTerms || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Payout cycle start day">
@@ -288,7 +288,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
             max={31}
             value={cycleStartDay}
             onChange={(e) => setCycleStartDay(Number(e.target.value) || 1)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
           <p className="mt-1 text-xs text-slate-500">
             Payout period: {payoutPeriodLabel(cycleStartDay)}
@@ -300,7 +300,7 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

@@ -213,7 +213,7 @@ export default async function DashboardPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-900">Assigned Staff</h2>
-            <Link href="/employees" className="text-xs font-medium text-green-700 hover:underline">
+            <Link href="/employees" className="text-xs font-medium text-blue-600 hover:underline">
               View all
             </Link>
           </div>
@@ -284,7 +284,7 @@ export default async function DashboardPage() {
           </p>
           <Link
             href="/upload"
-            className="mt-3 inline-block text-sm font-medium text-blue-600 hover:underline"
+            className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary)] hover:underline"
           >
             Go to Upload →
           </Link>
@@ -329,7 +329,7 @@ function QuickAction({
       href={href}
       className={`group rounded-3xl border p-5 shadow-sm transition hover:shadow-md ${
         tone === "hero"
-          ? "border-transparent bg-gradient-to-br from-green-600 to-green-900 text-white"
+          ? "border-transparent bg-gradient-to-br from-blue-600 to-[var(--brand-navy)] text-white"
           : "border-slate-200 bg-white hover:border-slate-300"
       }`}
     >
@@ -343,7 +343,7 @@ function QuickAction({
       <h3 className={`mt-3 text-sm font-semibold ${tone === "hero" ? "text-white" : "text-slate-900"}`}>
         {label}
       </h3>
-      <p className={`mt-1 text-xs ${tone === "hero" ? "text-green-100" : "text-slate-500"}`}>
+      <p className={`mt-1 text-xs ${tone === "hero" ? "text-blue-100" : "text-slate-500"}`}>
         {sub}
       </p>
     </Link>

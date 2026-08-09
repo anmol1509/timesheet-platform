@@ -99,7 +99,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search clients by company name, code, or contact person..."
-          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
         />
         <div className="flex shrink-0 items-center gap-2">
           <CsvImportDialog

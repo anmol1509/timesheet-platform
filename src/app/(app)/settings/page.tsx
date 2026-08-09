@@ -52,7 +52,7 @@ export default async function SettingsPage() {
             <input
               name="issuedTo"
               defaultValue={settings.issuedTo}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
             />
           </label>
           <label className="mt-4 block">
@@ -62,12 +62,12 @@ export default async function SettingsPage() {
             <input
               name="companyTrn"
               defaultValue={settings.companyTrn ?? ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
             />
           </label>
           <button
             type="submit"
-            className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            className="mt-3 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
           >
             Save
           </button>

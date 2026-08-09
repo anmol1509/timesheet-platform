@@ -83,7 +83,7 @@ export function ProjectTradeRates({
                         value={draftRate}
                         autoFocus
                         onChange={(e) => setDraftRate(e.target.value)}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-slate-900"
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)]"
                       />
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap">
@@ -140,7 +140,7 @@ export function ProjectTradeRates({
               value={newTrade}
               onChange={(e) => setNewTrade(e.target.value)}
               placeholder="e.g. Carpenter"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </label>
           <label className="block w-32">
@@ -152,14 +152,14 @@ export function ProjectTradeRates({
               step="0.01"
               value={newRate}
               onChange={(e) => setNewRate(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </label>
           <button
             type="button"
             disabled={pending}
             onClick={addNew}
-            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
           >
             + Add
           </button>

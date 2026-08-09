@@ -119,7 +119,7 @@ export function ManualEntryForm({
             value={month}
             onChange={(e) => updateMonth(e.target.value)}
             required
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <label className="block">
@@ -170,7 +170,7 @@ export function ManualEntryForm({
                       updateRow(row.id, { employeeIdNo: e.target.value })
                     }
                     placeholder="ID No"
-                    className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -180,7 +180,7 @@ export function ManualEntryForm({
                       updateRow(row.id, { employeeName: e.target.value })
                     }
                     placeholder="Name"
-                    className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -188,7 +188,7 @@ export function ManualEntryForm({
                     value={row.trade}
                     onChange={(e) => updateRow(row.id, { trade: e.target.value })}
                     placeholder="Trade"
-                    className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -199,7 +199,7 @@ export function ManualEntryForm({
                     min={0}
                     step="0.01"
                     placeholder="Rate"
-                    className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-slate-900"
+                    className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -227,7 +227,7 @@ export function ManualEntryForm({
                       onChange={(e) => updateDay(row.id, dayIndex, e.target.value)}
                       placeholder="—"
                       title="Hours worked, or A for absent, or OFF"
-                      className="w-12 rounded-lg border border-slate-300 px-1 py-1.5 text-center text-xs outline-none focus:border-slate-900"
+                      className="w-12 rounded-lg border border-slate-300 px-1 py-1.5 text-center text-xs outline-none focus:border-[var(--brand-primary)]"
                     />
                   </td>
                 ))}
@@ -258,7 +258,7 @@ export function ManualEntryForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-60"
+        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save Timesheet Entries"}
       </button>

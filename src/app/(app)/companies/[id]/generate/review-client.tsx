@@ -175,7 +175,7 @@ export function ReviewClient({
             <button
               onClick={() => handleDownload("pdf")}
               disabled={generating !== null}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
             >
               {generating === "pdf" ? "Generating…" : "Download PDF"}
             </button>
@@ -193,14 +193,14 @@ export function ReviewClient({
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Issued to">
           <input
             value={issuedTo}
             onChange={(e) => setIssuedTo(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
       </div>
@@ -279,7 +279,7 @@ export function ReviewClient({
                               [e.id]: parseFloat(ev.target.value) || 0,
                             }))
                           }
-                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-slate-900 ${
+                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] ${
                             absentEdited ? "border-amber-300 bg-amber-50" : "border-slate-300"
                           }`}
                         />
@@ -304,7 +304,7 @@ export function ReviewClient({
                               [e.id]: parseFloat(ev.target.value) || 0,
                             }))
                           }
-                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-slate-900 ${
+                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] ${
                             gasEdited ? "border-amber-300 bg-amber-50" : "border-slate-300"
                           }`}
                         />

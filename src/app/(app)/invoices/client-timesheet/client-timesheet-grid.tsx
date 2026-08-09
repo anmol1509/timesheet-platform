@@ -155,7 +155,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                         type="button"
                         disabled={pending}
                         onClick={() => saveRow(e.id)}
-                        className="rounded-lg bg-[#166534] px-2 py-1 text-[10px] font-medium text-white hover:bg-[#166534]/90 disabled:opacity-60"
+                        className="rounded-lg bg-[var(--brand-primary)] px-2 py-1 text-[10px] font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
                       >
                         Save
                       </button>
@@ -216,7 +216,7 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
                 type="date"
                 value={r.fromDate}
                 onChange={(e) => updateRange(r.id, { fromDate: e.target.value })}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </label>
             <label className="block">
@@ -225,7 +225,7 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
                 type="date"
                 value={r.toDate}
                 onChange={(e) => updateRange(r.id, { toDate: e.target.value })}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </label>
             <label className="block">
@@ -234,7 +234,7 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
                 value={r.value}
                 onChange={(e) => updateRange(r.id, { value: e.target.value })}
                 placeholder="e.g. 10, A, OFF"
-                className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
             </label>
             <button
@@ -260,7 +260,7 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
           type="button"
           disabled={pending || validRanges.length === 0}
           onClick={handleApply}
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534]/90 disabled:opacity-50"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
         >
           {pending ? "Applying…" : "Update"}
         </button>

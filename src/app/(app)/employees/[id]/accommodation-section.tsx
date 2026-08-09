@@ -88,7 +88,7 @@ export function AccommodationSection({
           <button
             type="submit"
             disabled={!selected}
-            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90 disabled:opacity-50"
+            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
           >
             Assign
           </button>

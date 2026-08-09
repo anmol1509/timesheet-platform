@@ -41,14 +41,14 @@ export default async function LetterTemplatesPage() {
               name="name"
               required
               placeholder="e.g. Standard NOC"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-slate-500">Category</span>
             <select
               name="category"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             >
               <option value="">Not set</option>
               {CATEGORIES.map((c) => (
@@ -66,12 +66,12 @@ export default async function LetterTemplatesPage() {
             required
             rows={6}
             placeholder="This is to certify that %%SPONSORSHIPCOMPANYNAME%% has no objection to..."
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
         >
           + Add template
         </button>
