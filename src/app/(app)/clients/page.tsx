@@ -56,8 +56,13 @@ export default async function ClientsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Total Clients" value={clients.length} icon={Building2} />
-        <StatTile label="Active Contracts" value={activeCount} icon={FileCheck2} />
+        <StatTile href="/clients" label="Total Clients" value={clients.length} icon={Building2} />
+        <StatTile
+          href="/clients?status=active"
+          label="Active Contracts"
+          value={activeCount}
+          icon={FileCheck2}
+        />
         <StatTile
           label="Avg. Basic Rate"
           value={avgBasicRate ? `AED ${avgBasicRate.toFixed(0)}` : "—"}

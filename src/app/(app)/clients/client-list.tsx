@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Pagination } from "@/components/Pagination";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
@@ -50,23 +51,34 @@ function fmtDate(d: string | null) {
 
 export function ClientList({ clients }: { clients: ClientRow[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get("status");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<"all" | "active" | "inactive">(
+    initialStatus === "active" || initialStatus === "inactive" ? initialStatus : "all"
+  );
+
+  const byStatus = useMemo(() => {
+    if (status === "active") return clients.filter((c) => c.status === "ACTIVE");
+    if (status === "inactive") return clients.filter((c) => c.status !== "ACTIVE");
+    return clients;
+  }, [clients, status]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return clients;
-    return clients.filter(
+    if (!q) return byStatus;
+    return byStatus.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         (c.code || "").toLowerCase().includes(q) ||
         (c.contactPerson || "").toLowerCase().includes(q)
     );
-  }, [clients, query]);
+  }, [byStatus, query]);
 
   useEffect(() => {
     setPage(1);
-  }, [query]);
+  }, [query, status]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -95,12 +107,27 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search clients by company name, code, or contact person..."
-          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search clients by company name, code, or contact person..."
+            className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+          />
+          <SegmentedControl
+            value={status}
+            onChange={(v) => {
+              const next = v as "all" | "active" | "inactive";
+              setStatus(next);
+              router.replace(next === "all" ? "/clients" : `/clients?status=${next}`);
+            }}
+            options={[
+              { value: "all", label: "All" },
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+            ]}
+          />
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <CsvImportDialog
             entityLabel="clients"
@@ -195,7 +222,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
           </table>
           {filtered.length === 0 && (
             <p className="px-4 py-10 text-center text-sm text-slate-500">
-              No clients match &ldquo;{query}&rdquo;.
+              {query ? <>No clients match &ldquo;{query}&rdquo;.</> : "No clients match this filter."}
             </p>
           )}
           <Pagination
