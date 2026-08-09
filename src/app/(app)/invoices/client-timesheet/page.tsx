@@ -60,12 +60,20 @@ export default async function ClientTimesheetPage({
             Review and edit a month&rsquo;s day-by-day hours before invoicing.
           </p>
         </div>
-        <Link
-          href="/invoices/client-timesheet/new"
-          className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
-        >
-          + New Entry
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/invoices/client-timesheet/daily"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Daily Entry
+          </Link>
+          <Link
+            href="/invoices/client-timesheet/new"
+            className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#166534]/90"
+          >
+            + New Entry
+          </Link>
+        </div>
       </div>
 
       {months.length > 0 && (

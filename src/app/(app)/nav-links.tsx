@@ -57,7 +57,6 @@ const NAV: Entry[] = [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
       { href: "/sponsorship-companies", label: "Sponsorship Companies", icon: Landmark },
-      { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/operations/demand-requests", label: "Demand Requests", icon: ListChecks },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },

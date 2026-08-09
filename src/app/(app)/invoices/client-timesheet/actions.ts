@@ -18,7 +18,6 @@ type ManualRow = {
   rate: string;
   supplierName: string;
   clientName: string;
-  site: string;
   days: string[];
 };
 
@@ -49,6 +48,11 @@ export async function submitManualEntryAction(
     return { error: "Pick a valid month." };
   }
   const projectId = String(formData.get("projectId") || "").trim() || null;
+  // Project is now the sole location concept — the legacy free-text `site`
+  // column just mirrors the picked project's name for display consistency
+  // with older Excel-sourced rows that still carry independent site text.
+  const project = projectId ? await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } }) : null;
+  const site = project?.name ?? null;
 
   let rows: ManualRow[];
   try {
@@ -105,7 +109,7 @@ export async function submitManualEntryAction(
       employeeName,
       supplierName,
       clientName: (row.clientName || "").trim() || null,
-      site: (row.site || "").trim() || null,
+      site,
       trade,
       rate,
       dailyHours,
@@ -150,6 +154,153 @@ export async function submitManualEntryAction(
   revalidatePath("/employees");
   revalidatePath("/invoices/client-timesheet");
   redirect(`/invoices/client-timesheet?month=${month}`);
+}
+
+type DailyRow = { employeeId: string; rate: string; value: string };
+
+// Logs one day's hours per employee for a Supplier+Project, without
+// touching any other day already recorded that month. Deliberately does
+// NOT reuse importParsedMonths — that pipeline replaces `dailyHours`
+// wholesale on update, which would silently wipe out other days.
+export async function submitDailyTimesheetAction(
+  formData: FormData
+): Promise<{ saved: number; requested: number; error?: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!branchId) {
+    return {
+      saved: 0,
+      requested: 0,
+      error: isSuperAdmin
+        ? "Pick a branch from the switcher before adding a daily entry."
+        : "Your account has no branch assigned — contact an admin.",
+    };
+  }
+  const date = String(formData.get("date") || "").trim();
+  const supplierId = String(formData.get("supplierId") || "").trim();
+  const projectId = String(formData.get("projectId") || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !supplierId || !projectId) {
+    return { saved: 0, requested: 0, error: "Pick a supplier, a project, and a date." };
+  }
+
+  let rows: DailyRow[];
+  try {
+    rows = JSON.parse(String(formData.get("rowsJson") || "[]"));
+  } catch {
+    return { saved: 0, requested: 0, error: "Could not read the entered rows." };
+  }
+  rows = rows.filter((r) => r.value && r.value.trim());
+  if (rows.length === 0) {
+    return { saved: 0, requested: 0, error: "Enter hours for at least one employee." };
+  }
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { name: true, clientId: true, branchId: true },
+  });
+  if (!project || isOutsideBranch(project.branchId, branchId, isSuperAdmin)) {
+    return { saved: 0, requested: rows.length, error: "Project not found." };
+  }
+
+  const month = date.slice(0, 7);
+  const monthLabel = monthLabelFromKey(month);
+  const [year, monthNum] = month.split("-").map(Number);
+  const daysInMonth = new Date(year, monthNum, 0).getDate();
+
+  let saved = 0;
+  for (const row of rows) {
+    const employee = await prisma.employee.findUnique({ where: { id: row.employeeId } });
+    if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin) || !employee.trade) continue;
+    const rate = Number(row.rate);
+    if (!Number.isFinite(rate) || rate < 0) continue;
+    const trade = employee.trade;
+
+    const existing = await prisma.timesheetEntry.findUnique({
+      where: {
+        month_supplierId_employeeIdNo_trade: { month, supplierId, employeeIdNo: employee.employeeIdNo, trade },
+      },
+    });
+
+    if (existing) {
+      let days: DailyHourCell[];
+      try {
+        days = JSON.parse(existing.dailyHours);
+      } catch {
+        days = [];
+      }
+      const patched = days.map((d) => (d.date === date ? { ...d, value: row.value } : d));
+      const { totalHours, absentCount } = recompute(patched);
+
+      await prisma.timesheetEntry.update({
+        where: { id: existing.id },
+        data: {
+          dailyHours: JSON.stringify(patched),
+          totalHours,
+          absentCount,
+          clientId: existing.clientId ?? project.clientId,
+          projectId: existing.projectId ?? projectId,
+          site: existing.site ?? project.name,
+        },
+      });
+
+      await logAudit({
+        entityType: "TIMESHEET_ENTRY",
+        entityId: existing.id,
+        action: "UPDATE",
+        before: { totalHours: existing.totalHours, absentCount: existing.absentCount },
+        after: { totalHours, absentCount },
+        userId: user.id,
+        userName: user.name,
+        branchId,
+      });
+    } else {
+      const dailyHours: DailyHourCell[] = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cellDate = new Date(Date.UTC(year, monthNum - 1, d));
+        const iso = cellDate.toISOString().slice(0, 10);
+        dailyHours.push({
+          date: iso,
+          label: WEEKDAY_ABBR[cellDate.getUTCDay()],
+          value: iso === date ? row.value : "",
+        });
+      }
+      const { totalHours, absentCount } = recompute(dailyHours);
+
+      const created = await prisma.timesheetEntry.create({
+        data: {
+          month,
+          monthLabel,
+          employeeIdNo: employee.employeeIdNo,
+          employeeName: employee.name,
+          trade,
+          rate,
+          dailyHours: JSON.stringify(dailyHours),
+          totalHours,
+          absentCount,
+          invoiceValue: rate * totalHours,
+          branchId,
+          supplierId,
+          clientId: project.clientId,
+          projectId,
+          site: project.name,
+        },
+      });
+
+      await logAudit({
+        entityType: "TIMESHEET_ENTRY",
+        entityId: created.id,
+        action: "CREATE",
+        after: { month, employeeIdNo: employee.employeeIdNo, trade, date, value: row.value },
+        userId: user.id,
+        userName: user.name,
+        branchId,
+      });
+    }
+
+    saved++;
+  }
+
+  revalidatePath("/invoices/client-timesheet");
+  return { saved, requested: rows.length };
 }
 
 function recompute(days: DailyHourCell[]) {
@@ -201,17 +352,23 @@ export async function updateDailyHoursAction(formData: FormData) {
   revalidatePath("/invoices/client-timesheet");
 }
 
-// Applies one value (numeric hours, "A", or "OFF") to every day within
-// [fromDate, toDate] across all selected entries — mirrors the competitor's
-// "Edit Common Details" batch modal, minus the Official/Raw/Missing radio
-// (deferred, see Phase 9 plan).
+type DateRange = { fromDate: string; toDate: string; value: string };
+
+// Applies one or more (fromDate, toDate, value) ranges across all selected
+// entries — mirrors the competitor's "Edit Common Details" batch modal,
+// minus the Official/Raw/Missing radio (deferred, see Phase 9 plan). Ranges
+// are applied in array order, so a later range wins on overlapping dates.
 export async function batchUpdateHoursAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
-  const fromDate = String(formData.get("fromDate") || "");
-  const toDate = String(formData.get("toDate") || "");
-  const value = String(formData.get("value") || "").trim();
-  if (entryIds.length === 0 || !fromDate || !toDate || !value) return { updated: 0 };
+  let ranges: DateRange[];
+  try {
+    ranges = JSON.parse(String(formData.get("rangesJson") || "[]"));
+  } catch {
+    ranges = [];
+  }
+  ranges = ranges.filter((r) => r.fromDate && r.toDate && r.value);
+  if (entryIds.length === 0 || ranges.length === 0) return { updated: 0, requested: entryIds.length };
 
   let updated = 0;
   for (const entryId of entryIds) {
@@ -225,9 +382,12 @@ export async function batchUpdateHoursAction(formData: FormData) {
       continue;
     }
 
-    const patched = days.map((d) =>
-      d.date && d.date >= fromDate && d.date <= toDate ? { ...d, value } : d
-    );
+    let patched = days;
+    for (const range of ranges) {
+      patched = patched.map((d) =>
+        d.date && d.date >= range.fromDate && d.date <= range.toDate ? { ...d, value: range.value } : d
+      );
+    }
     const { totalHours, absentCount } = recompute(patched);
 
     await prisma.timesheetEntry.update({

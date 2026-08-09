@@ -36,13 +36,12 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [project, sites, clients, inventoryCatalog] = await Promise.all([
+  const [project, clients, inventoryCatalog] = await Promise.all([
     prisma.project.findUnique({
       where: { id },
       include: {
         client: true,
         employees: true,
-        site: true,
         documents: { orderBy: { uploadedAt: "desc" } },
         tradeRates: { where: { projectId: id }, orderBy: { trade: "asc" } },
         holidays: { orderBy: { date: "asc" } },
@@ -50,7 +49,6 @@ export default async function ProjectDetailPage({
         inventory: { include: { item: true }, orderBy: { assignedDate: "desc" } },
       },
     }),
-    prisma.site.findMany({ orderBy: { name: "asc" } }),
     prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.inventoryItem.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
   ]);
@@ -155,11 +153,9 @@ export default async function ProjectDetailPage({
             content: (
               <ProjectLocation
                 projectId={project.id}
-                siteId={project.siteId}
                 address={project.address}
                 latitude={project.latitude}
                 longitude={project.longitude}
-                sites={sites.map((s) => ({ id: s.id, name: s.name }))}
               />
             ),
           },

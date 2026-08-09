@@ -7,10 +7,8 @@ import { Select } from "@/components/ui/Select";
 
 export function NewProjectForm({
   clients,
-  sites,
 }: {
   clients: { id: string; name: string }[];
-  sites: { id: string; name: string }[];
 }) {
   const [state, formAction, pending] = useActionState(createProjectAction, {
     error: null,
@@ -69,23 +67,6 @@ export function NewProjectForm({
                   defaultValue={clients[0]?.id}
                   options={clients.map((c) => ({ value: c.id, label: c.name }))}
                 />
-              </Field>
-              <Field label="Site">
-                {sites.length === 0 ? (
-                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    No sites yet.{" "}
-                    <Link href="/sites" className="underline">
-                      Add a site
-                    </Link>{" "}
-                    to link this project to a location.
-                  </p>
-                ) : (
-                  <Select
-                    name="siteId"
-                    placeholder="No site"
-                    options={sites.map((s) => ({ value: s.id, label: s.name }))}
-                  />
-                )}
               </Field>
               <Field label="Project manager">
                 <input

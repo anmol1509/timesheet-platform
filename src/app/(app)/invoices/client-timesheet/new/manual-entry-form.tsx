@@ -14,7 +14,6 @@ type RowState = {
   rate: string;
   supplierName: string;
   clientName: string;
-  site: string;
   days: string[];
 };
 
@@ -38,7 +37,6 @@ function blankRow(dayCount: number): RowState {
     rate: "",
     supplierName: "",
     clientName: "",
-    site: "",
     days: Array(dayCount).fill(""),
   };
 }
@@ -48,12 +46,10 @@ type ProjectOption = { id: string; code: string; name: string };
 export function ManualEntryForm({
   supplierNames,
   clientNames,
-  siteNames,
   projects,
 }: {
   supplierNames: string[];
   clientNames: string[];
-  siteNames: string[];
   projects: ProjectOption[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
@@ -156,7 +152,6 @@ export function ManualEntryForm({
               <th className="px-3 py-3">Rate</th>
               <th className="px-3 py-3">Supplier</th>
               <th className="px-3 py-3">Client</th>
-              <th className="px-3 py-3">Site</th>
               {Array.from({ length: dayCount }, (_, i) => (
                 <th key={i} className="px-2 py-3 text-center">
                   {i + 1}
@@ -222,15 +217,6 @@ export function ManualEntryForm({
                     onChange={(v) => updateRow(row.id, { clientName: v })}
                     options={clientNames.map((n) => ({ value: n, label: n }))}
                     placeholder="Client"
-                    className="w-32 px-2 py-1.5"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <Combobox
-                    value={row.site}
-                    onChange={(v) => updateRow(row.id, { site: v })}
-                    options={siteNames.map((n) => ({ value: n, label: n }))}
-                    placeholder="Site"
                     className="w-32 px-2 py-1.5"
                   />
                 </td>

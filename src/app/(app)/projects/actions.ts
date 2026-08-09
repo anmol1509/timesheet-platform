@@ -62,7 +62,6 @@ export async function createProjectAction(
     name,
     clientId,
     branchId,
-    siteId: stringOrNull(formData.get("siteId")),
     description: stringOrNull(formData.get("description")),
     manager: stringOrNull(formData.get("manager")),
     timelineStart: dateOrNull(formData.get("timelineStart")),
@@ -157,7 +156,6 @@ export async function updateProjectLocationAction(formData: FormData) {
   const before = await prisma.project.findUnique({ where: { id } });
 
   const data = {
-    siteId: stringOrNull(formData.get("siteId")),
     address: stringOrNull(formData.get("address")),
     latitude: numberOrNull(formData.get("latitude")),
     longitude: numberOrNull(formData.get("longitude")),

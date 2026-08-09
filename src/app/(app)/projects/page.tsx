@@ -8,7 +8,7 @@ export default async function ProjectsPage() {
   const { branchId } = await requireUserWithBranch();
   const projects = await prisma.project.findMany({
     where: branchWhere(branchId),
-    include: { client: true, site: true },
+    include: { client: true },
     orderBy: { name: "asc" },
   });
 
@@ -18,7 +18,7 @@ export default async function ProjectsPage() {
     name: p.name,
     description: p.description,
     clientName: p.client.name,
-    siteName: p.site?.name ?? null,
+    address: p.address,
     manager: p.manager,
     timelineStart: p.timelineStart ? p.timelineStart.toISOString() : null,
     timelineEnd: p.timelineEnd ? p.timelineEnd.toISOString() : null,

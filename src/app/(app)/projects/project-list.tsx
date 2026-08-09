@@ -14,7 +14,7 @@ type ProjectRow = {
   name: string;
   description: string | null;
   clientName: string;
-  siteName: string | null;
+  address: string | null;
   manager: string | null;
   timelineStart: string | null;
   timelineEnd: string | null;
@@ -48,7 +48,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.code.toLowerCase().includes(q) ||
-        (p.siteName || "").toLowerCase().includes(q) ||
+        (p.address || "").toLowerCase().includes(q) ||
         (p.manager || "").toLowerCase().includes(q)
     );
   }, [projects, query]);
@@ -79,7 +79,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                 <th className="px-4 py-3">Project</th>
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Client</th>
-                <th className="px-4 py-3">Site</th>
+                <th className="px-4 py-3">Address</th>
                 <th className="px-4 py-3">Project Manager</th>
                 <th className="px-4 py-3">Timeline</th>
                 <th className="px-4 py-3">Status</th>
@@ -102,7 +102,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                   <td className="px-4 py-3 text-slate-500">{p.code}</td>
                   <td className="px-4 py-3 text-slate-600">{p.clientName}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {p.siteName || "—"}
+                    {p.address || "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {p.manager || "—"}

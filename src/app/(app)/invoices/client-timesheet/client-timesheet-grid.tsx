@@ -171,20 +171,31 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
   );
 }
 
+type RangeRow = { id: string; fromDate: string; toDate: string; value: string };
+
+function blankRange(): RangeRow {
+  return { id: crypto.randomUUID(), fromDate: "", toDate: "", value: "" };
+}
+
 function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: () => void }) {
   const [pending, startTransition] = useTransition();
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [value, setValue] = useState("");
+  const [ranges, setRanges] = useState<RangeRow[]>(() => [blankRange()]);
   const [result, setResult] = useState<string | null>(null);
 
+  const validRanges = ranges.filter((r) => r.fromDate && r.toDate && r.value);
+
+  function updateRange(id: string, patch: Partial<RangeRow>) {
+    setRanges((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
   function handleApply() {
-    if (!fromDate || !toDate || !value) return;
+    if (validRanges.length === 0) return;
     const formData = new FormData();
     for (const id of entryIds) formData.append("entryId", id);
-    formData.append("fromDate", fromDate);
-    formData.append("toDate", toDate);
-    formData.append("value", value);
+    formData.append(
+      "rangesJson",
+      JSON.stringify(validRanges.map(({ fromDate, toDate, value }) => ({ fromDate, toDate, value })))
+    );
     startTransition(async () => {
       const res = await batchUpdateHoursAction(formData);
       setResult(`Updated ${res.updated} of ${res.requested} selected rows.`);
@@ -196,37 +207,58 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
       <h3 className="mb-3 text-sm font-semibold text-slate-900">
         Edit Common Details — {entryIds.length} selected
       </h3>
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">From date</span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">To date</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Update hours</span>
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="e.g. 10, A, OFF"
-            className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-          />
-        </label>
+      <div className="space-y-2">
+        {ranges.map((r) => (
+          <div key={r.id} className="flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">From date</span>
+              <input
+                type="date"
+                value={r.fromDate}
+                onChange={(e) => updateRange(r.id, { fromDate: e.target.value })}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">To date</span>
+              <input
+                type="date"
+                value={r.toDate}
+                onChange={(e) => updateRange(r.id, { toDate: e.target.value })}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-500">Update hours</span>
+              <input
+                value={r.value}
+                onChange={(e) => updateRange(r.id, { value: e.target.value })}
+                placeholder="e.g. 10, A, OFF"
+                className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setRanges((prev) => prev.filter((row) => row.id !== r.id))}
+              disabled={ranges.length === 1}
+              className="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-3">
         <button
           type="button"
-          disabled={pending || !fromDate || !toDate || !value}
+          onClick={() => setRanges((prev) => [...prev, blankRange()])}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+        >
+          + Add range
+        </button>
+        <button
+          type="button"
+          disabled={pending || validRanges.length === 0}
           onClick={handleApply}
           className="rounded-lg bg-[#166534] px-4 py-2 text-sm font-medium text-white hover:bg-[#166534]/90 disabled:opacity-50"
         >
