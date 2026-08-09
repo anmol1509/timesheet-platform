@@ -6,7 +6,6 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
-  UserPlus,
   Building2,
   ClipboardList,
   Wrench,
@@ -43,7 +42,6 @@ const NAV: Entry[] = [
     icon: Users,
     children: [
       { href: "/employees", label: "Employees", icon: Users },
-      { href: "/employees/new", label: "Add Employee", icon: UserPlus },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/skills", label: "Skills", icon: Wrench },
       { href: "/documents", label: "Documents", icon: FileText },
@@ -51,20 +49,34 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
-    label: "Operations",
+    label: "Business Partners",
     icon: Building2,
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
       { href: "/sponsorship-companies", label: "Sponsorship Companies", icon: Landmark },
+      { href: "/banks", label: "Banks", icon: Wallet },
+    ],
+  },
+  {
+    type: "group",
+    label: "Projects",
+    icon: ClipboardList,
+    children: [
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/operations/demand-requests", label: "Demand Requests", icon: ListChecks },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
+    ],
+  },
+  {
+    type: "group",
+    label: "Facilities",
+    icon: BedDouble,
+    children: [
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
       { href: "/transport", label: "Transport", icon: Bus },
       { href: "/transport/routes", label: "Routes", icon: MapPin },
       { href: "/inventory", label: "Inventory", icon: Package },
-      { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },
   {

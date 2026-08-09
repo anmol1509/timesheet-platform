@@ -45,6 +45,7 @@ export default async function EmployeesPage({
       nationality: e.nationality,
       supplierName: e.supplier?.name ?? null,
       onWork: e.active && e.project != null,
+      status: e.status,
       worstStatus,
     };
   });

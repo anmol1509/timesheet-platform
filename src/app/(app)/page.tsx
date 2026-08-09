@@ -106,13 +106,25 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           hero
+          href="/employees"
           label="Total Employees"
           value={employeeCount}
           hint={`${onWorkCount} on active projects`}
         />
-        <StatTile label="Active Projects" value={activeProjectCount} icon={ClipboardList} />
-        <StatTile label="Active Clients" value={activeClientCount} icon={Building2} />
         <StatTile
+          href="/projects"
+          label="Active Projects"
+          value={activeProjectCount}
+          icon={ClipboardList}
+        />
+        <StatTile
+          href="/clients"
+          label="Active Clients"
+          value={activeClientCount}
+          icon={Building2}
+        />
+        <StatTile
+          href="#key-alerts"
           label="Urgent Alerts"
           value={alerts.length}
           icon={AlertTriangle}
@@ -139,18 +151,27 @@ export default async function DashboardPage() {
             Business Associates
           </h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
+            <Link
+              href="/clients"
+              className="flex items-center justify-between rounded-lg text-sm transition hover:bg-slate-50"
+            >
               <span className="text-slate-500">Clients</span>
               <span className="font-semibold text-slate-900">{entityCounts.clients}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
+            </Link>
+            <Link
+              href="/suppliers"
+              className="flex items-center justify-between rounded-lg text-sm transition hover:bg-slate-50"
+            >
               <span className="text-slate-500">Suppliers</span>
               <span className="font-semibold text-slate-900">{entityCounts.suppliers}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
+            </Link>
+            <Link
+              href="/projects"
+              className="flex items-center justify-between rounded-lg text-sm transition hover:bg-slate-50"
+            >
               <span className="text-slate-500">Projects</span>
               <span className="font-semibold text-slate-900">{entityCounts.projects}</span>
-            </div>
+            </Link>
           </div>
         </div>
       </div>
@@ -163,7 +184,7 @@ export default async function DashboardPage() {
           <WeeklyHoursChart days={weeklyHours} />
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+        <div id="key-alerts" className="scroll-mt-20 rounded-3xl border border-slate-200 bg-white p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
             <AlertTriangle className="h-4 w-4 text-amber-500" /> Key Alerts
           </h2>
@@ -222,12 +243,15 @@ export default async function DashboardPage() {
       </div>
 
       {totalBeds > 0 && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+        <Link
+          href="/accommodation"
+          className="block rounded-3xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-md"
+        >
           <h2 className="mb-3 text-sm font-semibold text-slate-900">
             Camp Occupancy
           </h2>
           <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
-        </div>
+        </Link>
       )}
 
       <div>

@@ -27,8 +27,29 @@ type EmployeeRow = {
   nationality: string | null;
   supplierName: string | null;
   onWork: boolean;
+  status: "ACTIVE" | "IDLE" | "ON_VACATION" | "TERMINATED";
   worstStatus: ComplianceStatus;
 };
+
+type Filter =
+  | "all"
+  | "on-work"
+  | "bench"
+  | "site-staff"
+  | "staff"
+  | "supplier-labour"
+  | "idle"
+  | "vacation";
+
+const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
+  "site-staff": "Site Staff",
+  staff: "Staff",
+  "supplier-labour": "Supplier Labour",
+  idle: "Idle",
+  vacation: "On Vacation",
+};
+
+const SEGMENTED_VALUES: Filter[] = ["all", "on-work", "bench"];
 
 const CATEGORY_LABEL: Record<EmployeeRow["category"], string> = {
   SITE_STAFF: "Site Staff",
@@ -64,14 +85,38 @@ export function EmployeeList({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<"all" | "on-work" | "bench">(
-    initialFilter === "on-work" || initialFilter === "bench" ? initialFilter : "all"
+  const validFilters: Filter[] = [
+    "on-work",
+    "bench",
+    "site-staff",
+    "staff",
+    "supplier-labour",
+    "idle",
+    "vacation",
+  ];
+  const [filter, setFilter] = useState<Filter>(
+    validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
   );
 
   const byFilter = useMemo(() => {
-    if (filter === "on-work") return employees.filter((e) => e.onWork);
-    if (filter === "bench") return employees.filter((e) => !e.onWork);
-    return employees;
+    switch (filter) {
+      case "on-work":
+        return employees.filter((e) => e.onWork);
+      case "bench":
+        return employees.filter((e) => !e.onWork);
+      case "site-staff":
+        return employees.filter((e) => !e.supplierName && e.category === "SITE_STAFF");
+      case "staff":
+        return employees.filter((e) => !e.supplierName && e.category === "STAFF");
+      case "supplier-labour":
+        return employees.filter((e) => !!e.supplierName);
+      case "idle":
+        return employees.filter((e) => e.status === "IDLE");
+      case "vacation":
+        return employees.filter((e) => e.status === "ON_VACATION");
+      default:
+        return employees;
+    }
   }, [employees, filter]);
 
   const filtered = useMemo(() => {
@@ -124,9 +169,9 @@ export function EmployeeList({
             className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
           />
           <SegmentedControl
-            value={filter}
+            value={SEGMENTED_VALUES.includes(filter) ? filter : "all"}
             onChange={(f) => {
-              const next = f as "all" | "on-work" | "bench";
+              const next = f as Filter;
               setFilter(next);
               router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`);
             }}
@@ -136,6 +181,21 @@ export function EmployeeList({
               { value: "bench", label: "Bench" },
             ]}
           />
+          {CATEGORY_FILTER_LABEL[filter] && (
+            <div className="flex items-center gap-1.5 rounded-full bg-[var(--brand-primary-soft)] py-1 pr-1 pl-3 text-xs font-medium text-[var(--brand-primary)]">
+              {CATEGORY_FILTER_LABEL[filter]}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilter("all");
+                  router.replace("/employees");
+                }}
+                className="rounded-full px-1.5 py-0.5 hover:bg-white/60"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <CsvImportDialog
@@ -221,7 +281,9 @@ export function EmployeeList({
         </table>
         {filtered.length === 0 && (
           <p className="px-4 py-10 text-center text-sm text-slate-500">
-            No employees match &ldquo;{query}&rdquo;.
+            {query
+              ? <>No employees match &ldquo;{query}&rdquo;.</>
+              : "No employees match this filter."}
           </p>
         )}
         <Pagination

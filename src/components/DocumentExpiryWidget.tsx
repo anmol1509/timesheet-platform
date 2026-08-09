@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FileText, Building2, ClipboardList, Truck } from "lucide-react";
 import type { DocumentExpiryCategory } from "@/lib/documentExpiryCounts";
 import { Badge } from "@/components/Badge";
@@ -7,6 +8,13 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "Client Documents": Building2,
   "Project Documents": ClipboardList,
   "Supplier Documents": Truck,
+};
+
+const HREFS: Record<string, string> = {
+  "Employee Documents": "/documents",
+  "Client Documents": "/clients",
+  "Project Documents": "/projects",
+  "Supplier Documents": "/suppliers",
 };
 
 export function DocumentExpiryWidget({
@@ -20,9 +28,10 @@ export function DocumentExpiryWidget({
         const Icon = ICONS[c.category] ?? FileText;
         const hasIssues = c.expired > 0 || c.expiringSoon > 0;
         return (
-          <div
+          <Link
             key={c.category}
-            className="rounded-2xl border border-slate-200 bg-white p-4"
+            href={HREFS[c.category] ?? "/documents"}
+            className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-md"
           >
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
@@ -39,7 +48,7 @@ export function DocumentExpiryWidget({
                 {c.expiringSoon > 0 && <Badge color="amber">{c.expiringSoon} expiring</Badge>}
               </div>
             )}
-          </div>
+          </Link>
         );
       })}
     </div>
