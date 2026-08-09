@@ -37,6 +37,7 @@ export default async function VehicleDetailPage({
           orderBy: { name: "asc" },
         },
         projects: { include: { project: true } },
+        routes: { include: { stops: true }, orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.project.findMany({ orderBy: { name: "asc" } }),
@@ -110,6 +111,32 @@ export default async function VehicleDetailPage({
         }))}
         allProjects={allProjects.map((p) => ({ id: p.id, name: p.name, code: p.code }))}
       />
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">Routes</h2>
+          <Link
+            href={`/transport/routes/new?vehicleId=${vehicle.id}`}
+            className="text-xs font-medium text-blue-600 hover:underline"
+          >
+            + New Route
+          </Link>
+        </div>
+        {vehicle.routes.length === 0 ? (
+          <p className="text-sm text-slate-500">No routes for this vehicle yet.</p>
+        ) : (
+          <ul className="space-y-1">
+            {vehicle.routes.map((r) => (
+              <li key={r.id} className="text-sm">
+                <Link href={`/transport/routes/${r.id}`} className="font-medium text-slate-900 hover:underline">
+                  {r.name}
+                </Link>{" "}
+                <span className="text-slate-400">{r.stops.length} stop(s)</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <RosterManager
         vehicleId={vehicle.id}

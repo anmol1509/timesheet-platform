@@ -64,6 +64,7 @@ const NAV: Entry[] = [
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
       { href: "/accommodation", label: "Accommodation", icon: BedDouble },
       { href: "/transport", label: "Transport", icon: Bus },
+      { href: "/transport/routes", label: "Routes", icon: MapPin },
       { href: "/inventory", label: "Inventory", icon: Package },
       { href: "/banks", label: "Banks", icon: Wallet },
     ],

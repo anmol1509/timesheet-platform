@@ -672,6 +672,7 @@ model Project {
   contacts         ProjectContact[]
   inventory        ProjectInventoryAssignment[]
   demandRequests   DemandRequest[]
+  routes           Route[]
 }
 
 model ProjectDocument {
@@ -791,6 +792,36 @@ model Vehicle {
 
   employees Employee[]
   projects  VehicleProject[]
+  routes    Route[]
+}
+
+// A named, recurring pickup route driven by a Vehicle — not branch-scoped,
+// same deliberate deferral as Vehicle itself (see Phase 1 notes).
+model Route {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleId String
+
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?
+
+  stops RouteStop[]
+}
+
+model RouteStop {
+  id         String  @id @default(cuid())
+  location   String
+  stopOrder  Int
+  pickupTime String? // free text, e.g. "07:30" — no date component, matches a recurring daily route
+  notes      String?
+
+  route   Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId String
+
+  @@index([routeId])
 }
 
 model VehicleProject {
