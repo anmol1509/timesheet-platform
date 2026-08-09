@@ -56,8 +56,18 @@ export default async function SponsorshipCompanyDetailPage({
           />
         </div>
         <p className="mt-1 text-sm text-slate-500">
-          {sponsorshipCompany._count.employees} employee
-          {sponsorshipCompany._count.employees === 1 ? "" : "s"} sponsored
+          {sponsorshipCompany._count.employees > 0 ? (
+            <Link
+              href={`/employees?sponsor=${sponsorshipCompany.id}`}
+              className="text-[var(--brand-primary)] hover:underline"
+            >
+              {sponsorshipCompany._count.employees} employee
+              {sponsorshipCompany._count.employees === 1 ? "" : "s"}
+            </Link>
+          ) : (
+            `0 employees`
+          )}{" "}
+          sponsored
         </p>
         {error && (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

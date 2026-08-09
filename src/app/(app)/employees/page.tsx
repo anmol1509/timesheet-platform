@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { X } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -10,18 +11,34 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string }>;
+  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string }>;
 }) {
-  const { filter } = await searchParams;
+  const { filter, supplier: supplierId, sponsor: sponsorId } = await searchParams;
   const { branchId } = await requireUserWithBranch();
-  const employees = await prisma.employee.findMany({
-    where: branchWhere(branchId),
-    include: {
-      supplier: true,
-      project: { select: { name: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+
+  const [employees, entityFilter] = await Promise.all([
+    prisma.employee.findMany({
+      where: {
+        ...branchWhere(branchId),
+        ...(supplierId ? { supplierId } : {}),
+        ...(sponsorId ? { sponsorshipCompanyId: sponsorId } : {}),
+      },
+      include: {
+        supplier: true,
+        project: { select: { name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    supplierId
+      ? prisma.supplier.findUnique({ where: { id: supplierId }, select: { name: true } }).then(
+          (s) => (s ? { label: "Supplier", name: s.name } : null)
+        )
+      : sponsorId
+        ? prisma.sponsorshipCompany
+            .findUnique({ where: { id: sponsorId }, select: { name: true } })
+            .then((s) => (s ? { label: "Sponsorship company", name: s.name } : null))
+        : Promise.resolve(null),
+  ]);
 
   const rows = employees.map((e) => {
     const statuses = [
@@ -68,14 +85,33 @@ export default async function EmployeesPage({
         </Link>
       </div>
 
+      {entityFilter && (
+        <div className="flex items-center gap-1.5 self-start rounded-full bg-[var(--brand-primary-soft)] py-1 pr-1 pl-3 text-xs font-medium text-[var(--brand-primary)]">
+          {entityFilter.label}: {entityFilter.name}
+          <Link
+            href="/employees"
+            className="rounded-full p-1 hover:bg-white/60"
+            aria-label="Clear filter"
+          >
+            <X className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
           <p className="text-sm text-slate-500">
-            No employees yet.{" "}
-            <Link href="/upload" className="font-medium text-slate-900 underline">
-              Upload a time sheet
-            </Link>{" "}
-            to populate this list automatically.
+            {entityFilter ? (
+              "No employees match this filter."
+            ) : (
+              <>
+                No employees yet.{" "}
+                <Link href="/upload" className="font-medium text-slate-900 underline">
+                  Upload a time sheet
+                </Link>{" "}
+                to populate this list automatically.
+              </>
+            )}
           </p>
         </div>
       ) : (

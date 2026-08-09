@@ -47,13 +47,20 @@ export default async function DocumentsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Total Documents" value={documents.length} icon={FileText} />
         <StatTile
+          href="/documents?tab=all"
+          label="Total Documents"
+          value={documents.length}
+          icon={FileText}
+        />
+        <StatTile
+          href="/documents?tab=valid"
           label="Valid Documents"
           value={validCount}
           icon={CheckCircle2}
         />
         <StatTile
+          href="/documents?tab=expiring"
           label="Expiring / Expired"
           value={expiringCount}
           icon={AlertTriangle}

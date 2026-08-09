@@ -84,6 +84,7 @@ const NAV: Entry[] = [
     label: "Timesheets",
     icon: FileSpreadsheet,
     children: [
+      { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
       { href: "/upload", label: "Upload", icon: UploadIcon },
       { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },
       { href: "/history", label: "History", icon: Clock },
@@ -94,7 +95,6 @@ const NAV: Entry[] = [
     label: "Billing",
     icon: Receipt,
     children: [
-      { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
       { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/invoices/history", label: "Invoice History", icon: Clock },
     ],

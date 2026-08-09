@@ -64,8 +64,17 @@ export default async function SupplierDetailPage({
           />
         </div>
         <p className="mt-1 text-sm text-slate-500">
-          {supplier._count.employees} employees · {supplier._count.entries}{" "}
-          timesheet rows
+          {supplier._count.employees > 0 ? (
+            <Link
+              href={`/employees?supplier=${supplier.id}`}
+              className="text-[var(--brand-primary)] hover:underline"
+            >
+              {supplier._count.employees} employees
+            </Link>
+          ) : (
+            "0 employees"
+          )}{" "}
+          · {supplier._count.entries} timesheet rows
         </p>
         {error && (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">

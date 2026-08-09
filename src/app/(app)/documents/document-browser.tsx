@@ -43,7 +43,10 @@ export function DocumentBrowser({
 }) {
   const searchParams = useSearchParams();
   const initialEmployeeId = searchParams.get("employee");
-  const [tab, setTab] = useState<"all" | "valid" | "expiring">("all");
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<"all" | "valid" | "expiring">(
+    initialTab === "valid" || initialTab === "expiring" ? initialTab : "all"
+  );
   const [query, setQuery] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [employeeFilter, setEmployeeFilter] = useState<string | null>(initialEmployeeId);

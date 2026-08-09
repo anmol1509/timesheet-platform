@@ -62,7 +62,17 @@ export function SponsorshipCompanyList({
       key: "employeeCount",
       header: "Employees",
       align: "right",
-      render: (c) => c.employeeCount,
+      render: (c) =>
+        c.employeeCount > 0 ? (
+          <Link
+            href={`/employees?sponsor=${c.id}`}
+            className="text-[var(--brand-primary)] hover:underline"
+          >
+            {c.employeeCount}
+          </Link>
+        ) : (
+          0
+        ),
       csvValue: (c) => c.employeeCount,
     },
   ];

@@ -108,7 +108,18 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-3 text-right text-slate-600">{s.employeeCount}</td>
+                <td className="px-4 py-3 text-right">
+                  {s.employeeCount > 0 ? (
+                    <Link
+                      href={`/employees?supplier=${s.id}`}
+                      className="text-[var(--brand-primary)] hover:underline"
+                    >
+                      {s.employeeCount}
+                    </Link>
+                  ) : (
+                    <span className="text-slate-600">0</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right text-slate-600">{s.entryCount}</td>
                 <td className="px-4 py-3">
                   <Badge color={s.status === "ACTIVE" ? "green" : "red"}>{s.status}</Badge>
