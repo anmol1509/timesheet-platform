@@ -62,7 +62,63 @@ export async function createSupplierAction(formData: FormData) {
   revalidatePath("/suppliers");
 }
 
-export async function updateSupplierAction(formData: FormData) {
+// Adds a subsidiary directly under a given parent — used by the chrome-tab
+// "+" control on the supplier detail page, so parentSupplierId is always
+// supplied by the caller (the tab strip's root) rather than picked by hand.
+export async function createSubsidiaryAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const parentSupplierId = String(formData.get("parentSupplierId") || "").trim();
+  const name = String(formData.get("name") || "").trim();
+  if (!parentSupplierId || !name) return;
+
+  if (!branchId) {
+    redirect(
+      `/suppliers/${parentSupplierId}?error=${encodeURIComponent(
+        isSuperAdmin
+          ? "Pick a branch from the switcher before adding a subsidiary."
+          : "Your account has no branch assigned — contact an admin."
+      )}`
+    );
+  }
+
+  const parent = await prisma.supplier.findUnique({ where: { id: parentSupplierId } });
+  if (!parent || isOutsideBranch(parent.branchId, branchId, isSuperAdmin)) {
+    redirect(
+      `/suppliers/${parentSupplierId}?error=${encodeURIComponent("Parent supplier not found.")}`
+    );
+  }
+
+  const existing = await prisma.supplier.findUnique({ where: { name } });
+  if (existing) {
+    redirect(
+      `/suppliers/${parentSupplierId}?error=${encodeURIComponent(
+        "A supplier with that name already exists."
+      )}`
+    );
+  }
+
+  const created = await prisma.supplier.create({
+    data: { name, parentSupplierId, branchId },
+  });
+
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: created.id,
+    action: "CREATE",
+    after: { name, parentSupplierId },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/suppliers/${parentSupplierId}`);
+  revalidatePath("/suppliers");
+  redirect(`/suppliers/${created.id}`);
+}
+
+// Company & Compliance tab — every field this action writes lives in that
+// tab's form, so a save here never touches Contact/Payment fields.
+export async function updateSupplierCompanyAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
@@ -76,37 +132,67 @@ export async function updateSupplierAction(formData: FormData) {
     parentSupplierId: parentSupplierIdRaw === id ? null : parentSupplierIdRaw,
     fullName: stringOrNull(formData.get("fullName")),
     status: String(formData.get("status") || "ACTIVE"),
+    trn: stringOrNull(formData.get("trn")),
+    activeFrom: dateOrNull(formData.get("activeFrom")),
     mohrePermitNumber: stringOrNull(formData.get("mohrePermitNumber")),
     tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")),
     tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")),
+    category: stringOrNull(formData.get("category")),
+    previousId: stringOrNull(formData.get("previousId")),
+    country: stringOrNull(formData.get("country")),
+    emirate: stringOrNull(formData.get("emirate")),
+    pointOfContact: stringOrNull(formData.get("pointOfContact")),
+    supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
+    account: stringOrNull(formData.get("account")),
+    allowManualLabourId: formData.get("allowManualLabourId") === "on",
+    overtime: formData.get("overtime") === "on",
+  };
+
+  await prisma.supplier.update({ where: { id }, data });
+
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: id,
+    action: "UPDATE",
+    before: existing as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/suppliers/${id}`);
+  revalidatePath("/suppliers");
+}
+
+// Contact & Payment tab — every field this action writes lives in that
+// tab's form, so a save here never touches Company/Compliance fields.
+export async function updateSupplierContactPaymentAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("supplierId") || "");
+  if (!id) return;
+
+  const existing = await prisma.supplier.findUnique({ where: { id } });
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+
+  const data = {
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactPhone: stringOrNull(formData.get("contactPhone")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
+    phone: stringOrNull(formData.get("phone")),
+    location: stringOrNull(formData.get("location")),
+    poBox: stringOrNull(formData.get("poBox")),
     bankName: stringOrNull(formData.get("bankName")),
     iban: stringOrNull(formData.get("iban")),
+    bankAccountName: stringOrNull(formData.get("bankAccountName")),
+    bankAccountNumber: stringOrNull(formData.get("bankAccountNumber")),
+    bankCompany: stringOrNull(formData.get("bankCompany")),
+    bankEmirate: stringOrNull(formData.get("bankEmirate")),
     paymentTerms: stringOrNull(formData.get("paymentTerms")),
     payoutCycleStartDay: Math.min(
       31,
       Math.max(1, Number(formData.get("payoutCycleStartDay")) || 1)
     ),
-    category: stringOrNull(formData.get("category")),
-    previousId: stringOrNull(formData.get("previousId")),
-    allowManualLabourId: formData.get("allowManualLabourId") === "on",
-    overtime: formData.get("overtime") === "on",
-    supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
-    pointOfContact: stringOrNull(formData.get("pointOfContact")),
-    country: stringOrNull(formData.get("country")),
-    emirate: stringOrNull(formData.get("emirate")),
-    account: stringOrNull(formData.get("account")),
-    bankAccountName: stringOrNull(formData.get("bankAccountName")),
-    bankAccountNumber: stringOrNull(formData.get("bankAccountNumber")),
-    bankCompany: stringOrNull(formData.get("bankCompany")),
-    bankEmirate: stringOrNull(formData.get("bankEmirate")),
-    trn: stringOrNull(formData.get("trn")),
-    activeFrom: dateOrNull(formData.get("activeFrom")),
-    poBox: stringOrNull(formData.get("poBox")),
-    location: stringOrNull(formData.get("location")),
-    phone: stringOrNull(formData.get("phone")),
   };
 
   await prisma.supplier.update({ where: { id }, data });

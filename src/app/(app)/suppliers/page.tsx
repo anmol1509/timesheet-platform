@@ -11,7 +11,7 @@ export default async function SuppliersPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const suppliers = await prisma.supplier.findMany({
     where: branchWhere(branchId),
     select: {
@@ -52,6 +52,13 @@ export default async function SuppliersPage({
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {error}
+        </p>
+      )}
+
+      {isSuperAdmin && !branchId && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the
+          switcher (top right) before adding a supplier.
         </p>
       )}
 

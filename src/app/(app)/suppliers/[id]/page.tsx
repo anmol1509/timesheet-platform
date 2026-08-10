@@ -3,13 +3,16 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
-import { EditSupplierForm } from "./edit-form";
+import { SupplierCompanyForm } from "./company-form";
+import { SupplierContactPaymentForm } from "./contact-payment-form";
 import { SupplierApprovals } from "./supplier-approvals";
 import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { WorkmenCompImport } from "./workmen-comp-import";
+import { SupplierTabs } from "./supplier-tabs";
+import { SubsidiaryTabs } from "./subsidiary-tabs";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -30,11 +33,20 @@ export default async function SupplierDetailPage({
     where: { id },
     include: {
       _count: { select: { employees: true, entries: true } },
-      parent: { select: { id: true, name: true } },
+      parent: {
+        select: {
+          id: true,
+          name: true,
+          subsidiaries: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+        },
+      },
       subsidiaries: { select: { id: true, name: true }, orderBy: { name: "asc" } },
     },
   });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
+
+  const root = supplier.parent ?? { id: supplier.id, name: supplier.name };
+  const siblings = supplier.parent ? supplier.parent.subsidiaries : supplier.subsidiaries;
 
   const [attachments, parentOptions] = await Promise.all([
     prisma.attachment.findMany({
@@ -55,7 +67,23 @@ export default async function SupplierDetailPage({
         <Link href="/suppliers" className="text-sm text-slate-500 hover:underline">
           ← Suppliers
         </Link>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+      </div>
+
+      <div>
+        <SubsidiaryTabs
+          currentId={supplier.id}
+          rootId={root.id}
+          rootName={root.name}
+          subsidiaries={siblings}
+        />
+        <div className="rounded-b-3xl rounded-tr-3xl border border-slate-200 bg-white p-5">
+          {isSuperAdmin && !branchId && (
+            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from
+              the switcher (top right) before editing or adding a subsidiary here.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-slate-900">
               {supplier.name}
@@ -63,14 +91,6 @@ export default async function SupplierDetailPage({
             <Badge color={supplier.status === "ACTIVE" ? "green" : "red"}>
               {supplier.status}
             </Badge>
-            {supplier.parent && (
-              <Link
-                href={`/suppliers/${supplier.parent.id}`}
-                className="text-xs font-medium text-slate-500 hover:underline"
-              >
-                Subsidiary of {supplier.parent.name}
-              </Link>
-            )}
           </div>
           <DeleteButton
             action={deleteSupplierAction}
@@ -101,99 +121,117 @@ export default async function SupplierDetailPage({
             {error}
           </p>
         )}
+        </div>
       </div>
 
-      <SupplierApprovals
-        supplierId={supplier.id}
-        values={{
-          approvalStatus: supplier.approvalStatus,
-          labourApprovalStatus: supplier.labourApprovalStatus,
-          invoiceApprovalStatus: supplier.invoiceApprovalStatus,
-        }}
+      <SupplierTabs
+        tabs={[
+          {
+            id: "overview",
+            label: "Overview",
+            content: (
+              <SupplierApprovals
+                supplierId={supplier.id}
+                values={{
+                  approvalStatus: supplier.approvalStatus,
+                  labourApprovalStatus: supplier.labourApprovalStatus,
+                  invoiceApprovalStatus: supplier.invoiceApprovalStatus,
+                }}
+              />
+            ),
+          },
+          {
+            id: "company",
+            label: "Company",
+            content: (
+              <SupplierCompanyForm
+                parentOptions={parentOptions}
+                supplier={{
+                  id: supplier.id,
+                  parentSupplierId: supplier.parentSupplierId,
+                  fullName: supplier.fullName,
+                  status: supplier.status,
+                  trn: supplier.trn,
+                  activeFrom: toDateInput(supplier.activeFrom),
+                  mohrePermitNumber: supplier.mohrePermitNumber,
+                  tradeLicenseNumber: supplier.tradeLicenseNumber,
+                  tradeLicenseExpiry: toDateInput(supplier.tradeLicenseExpiry),
+                  category: supplier.category,
+                  previousId: supplier.previousId,
+                  country: supplier.country,
+                  emirate: supplier.emirate,
+                  pointOfContact: supplier.pointOfContact,
+                  supplierAmountLimit: supplier.supplierAmountLimit,
+                  account: supplier.account,
+                  allowManualLabourId: supplier.allowManualLabourId,
+                  overtime: supplier.overtime,
+                }}
+              />
+            ),
+          },
+          {
+            id: "contact-payment",
+            label: "Contact & Payment",
+            content: (
+              <SupplierContactPaymentForm
+                supplier={{
+                  id: supplier.id,
+                  contactPerson: supplier.contactPerson,
+                  contactPhone: supplier.contactPhone,
+                  contactEmail: supplier.contactEmail,
+                  phone: supplier.phone,
+                  location: supplier.location,
+                  poBox: supplier.poBox,
+                  bankName: supplier.bankName,
+                  iban: supplier.iban,
+                  bankAccountName: supplier.bankAccountName,
+                  bankAccountNumber: supplier.bankAccountNumber,
+                  bankCompany: supplier.bankCompany,
+                  bankEmirate: supplier.bankEmirate,
+                  paymentTerms: supplier.paymentTerms,
+                  payoutCycleStartDay: supplier.payoutCycleStartDay,
+                }}
+              />
+            ),
+          },
+          {
+            id: "documents",
+            label: "Documents",
+            content: (
+              <div className="space-y-6">
+                <WorkmenCompImport
+                  supplierId={supplier.id}
+                  supplierName={supplier.name}
+                  entityBranchId={supplier.branchId}
+                />
+                <section>
+                  <h2 className="mb-3 text-sm font-semibold text-slate-900">Other Documents</h2>
+                  <AttachmentUploader
+                    entityType="SUPPLIER"
+                    entityId={supplier.id}
+                    entityBranchId={supplier.branchId}
+                    revalidate={`/suppliers/${supplier.id}`}
+                    docTypeOptions={[
+                      { value: "TRADE_LICENSE", label: "Trade License" },
+                      { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
+                      { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
+                      { value: "CONTRACT", label: "Contract" },
+                      { value: "OTHER", label: "Other" },
+                    ]}
+                    attachments={attachments.map((a) => ({
+                      id: a.id,
+                      docType: a.docType,
+                      filename: a.filename,
+                      expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
+                      uploadedAt: a.uploadedAt.toISOString(),
+                    }))}
+                  />
+                </section>
+              </div>
+            ),
+          },
+        ]}
       />
-
-      {supplier.subsidiaries.length > 0 && (
-        <section className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Subsidiaries</h2>
-          <ul className="space-y-1">
-            {supplier.subsidiaries.map((s) => (
-              <li key={s.id}>
-                <Link href={`/suppliers/${s.id}`} className="text-sm text-[var(--brand-primary)] hover:underline">
-                  {s.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <EditSupplierForm
-        parentOptions={parentOptions}
-        supplier={{
-          id: supplier.id,
-          parentSupplierId: supplier.parentSupplierId,
-          fullName: supplier.fullName,
-          mohrePermitNumber: supplier.mohrePermitNumber,
-          tradeLicenseNumber: supplier.tradeLicenseNumber,
-          tradeLicenseExpiry: toDateInput(supplier.tradeLicenseExpiry),
-          contactPerson: supplier.contactPerson,
-          contactPhone: supplier.contactPhone,
-          contactEmail: supplier.contactEmail,
-          bankName: supplier.bankName,
-          iban: supplier.iban,
-          paymentTerms: supplier.paymentTerms,
-          status: supplier.status,
-          payoutCycleStartDay: supplier.payoutCycleStartDay,
-          category: supplier.category,
-          previousId: supplier.previousId,
-          allowManualLabourId: supplier.allowManualLabourId,
-          overtime: supplier.overtime,
-          supplierAmountLimit: supplier.supplierAmountLimit,
-          pointOfContact: supplier.pointOfContact,
-          country: supplier.country,
-          emirate: supplier.emirate,
-          account: supplier.account,
-          bankAccountName: supplier.bankAccountName,
-          bankAccountNumber: supplier.bankAccountNumber,
-          bankCompany: supplier.bankCompany,
-          bankEmirate: supplier.bankEmirate,
-          trn: supplier.trn,
-          activeFrom: toDateInput(supplier.activeFrom),
-          poBox: supplier.poBox,
-          location: supplier.location,
-          phone: supplier.phone,
-        }}
-      />
-
-      <WorkmenCompImport
-        supplierId={supplier.id}
-        supplierName={supplier.name}
-        entityBranchId={supplier.branchId}
-      />
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
-        <AttachmentUploader
-          entityType="SUPPLIER"
-          entityId={supplier.id}
-          entityBranchId={supplier.branchId}
-          revalidate={`/suppliers/${supplier.id}`}
-          docTypeOptions={[
-            { value: "TRADE_LICENSE", label: "Trade License" },
-            { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
-            { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
-            { value: "CONTRACT", label: "Contract" },
-            { value: "OTHER", label: "Other" },
-          ]}
-          attachments={attachments.map((a) => ({
-            id: a.id,
-            docType: a.docType,
-            filename: a.filename,
-            expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
-            uploadedAt: a.uploadedAt.toISOString(),
-          }))}
-        />
-      </section>
     </div>
   );
 }
