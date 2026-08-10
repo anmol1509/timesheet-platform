@@ -9,7 +9,14 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 type Project = { id: string; name: string; code: string };
 type SponsorshipCompany = { id: string; name: string };
 
-const STEPS = ["Personal Details", "Compliance", "Documents", "Project & Salary", "Skills"];
+const STEPS = [
+  "Upload Documents",
+  "Personal Details",
+  "Compliance",
+  "Additional Document",
+  "Project & Salary",
+  "Skills",
+];
 
 const COMMON_SKILLS = [
   "Welding",
@@ -20,13 +27,20 @@ const COMMON_SKILLS = [
   "Safety Protocols",
 ];
 
-const DOC_SLOTS = [
+const UPLOAD_SLOTS = [
   { type: "PASSPORT", label: "Passport" },
-  { type: "VISA", label: "Visa" },
-  { type: "LABOR_CARD", label: "Labor Card" },
-  { type: "MEDICAL", label: "Medical Certificate" },
   { type: "EMIRATES_ID", label: "Emirates ID" },
+  { type: "LABOR_CARD", label: "Labor Card" },
 ] as const;
+
+const ADDITIONAL_DOC_TYPES = [
+  { value: "VISA", label: "Visa" },
+  { value: "MEDICAL", label: "Medical Certificate" },
+  { value: "CICPA", label: "CICPA" },
+  { value: "INSURANCE", label: "Insurance" },
+  { value: "DRIVING_LICENCE", label: "Driving Licence" },
+  { value: "OTHER", label: "Other" },
+];
 
 export function EmployeeWizard({
   projects,
@@ -46,14 +60,20 @@ export function EmployeeWizard({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [salaryType, setSalaryType] = useState("");
   const [nationality, setNationality] = useState("");
+  const [additionalDocType, setAdditionalDocType] = useState("");
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({});
   const [extracting, setExtracting] = useState<string | null>(null);
-  const [extracted, setExtracted] = useState<ExtractedDocumentFields | null>(null);
+  const [extractedNote, setExtractedNote] = useState<Record<string, string>>({});
 
   const nameRef = useRef<HTMLInputElement>(null);
-  const passportNumberRef = useRef<HTMLInputElement>(null);
-  const emiratesIdRef = useRef<HTMLInputElement>(null);
   const dobRef = useRef<HTMLInputElement>(null);
+  const passportNumberRef = useRef<HTMLInputElement>(null);
+  const passportExpiryRef = useRef<HTMLInputElement>(null);
+  const emiratesIdRef = useRef<HTMLInputElement>(null);
+  const emiratesIdExpiryRef = useRef<HTMLInputElement>(null);
+  const laborCardNumberRef = useRef<HTMLInputElement>(null);
+  const laborCardPersonalNoRef = useRef<HTMLInputElement>(null);
+  const laborCardExpiryRef = useRef<HTMLInputElement>(null);
 
   function addSkill(name: string) {
     const trimmed = name.trim();
@@ -69,33 +89,42 @@ export function EmployeeWizard({
     setStep((s) => Math.max(s - 1, 0));
   }
 
-  async function handleDocFile(type: string, file: File | null) {
+  function applyExtractedFields(fields: ExtractedDocumentFields) {
+    if (fields.name && nameRef.current) nameRef.current.value = fields.name;
+    if (fields.nationality) setNationality(fields.nationality);
+    if (fields.dateOfBirth && dobRef.current) dobRef.current.value = fields.dateOfBirth;
+    if (fields.passportNumber && passportNumberRef.current) passportNumberRef.current.value = fields.passportNumber;
+    if (fields.passportExpiry && passportExpiryRef.current) passportExpiryRef.current.value = fields.passportExpiry;
+    if (fields.emiratesId && emiratesIdRef.current) emiratesIdRef.current.value = fields.emiratesId;
+    if (fields.emiratesIdExpiry && emiratesIdExpiryRef.current) emiratesIdExpiryRef.current.value = fields.emiratesIdExpiry;
+    if (fields.laborCardNumber && laborCardNumberRef.current) laborCardNumberRef.current.value = fields.laborCardNumber;
+    if (fields.laborCardPersonalNo && laborCardPersonalNoRef.current) laborCardPersonalNoRef.current.value = fields.laborCardPersonalNo;
+    if (fields.laborCardExpiry && laborCardExpiryRef.current) laborCardExpiryRef.current.value = fields.laborCardExpiry;
+  }
+
+  async function handleUploadDocFile(type: string, file: File | null) {
     setDocFiles((d) => ({ ...d, [type]: file }));
-    setExtracted(null);
+    setExtractedNote((n) => ({ ...n, [type]: "" }));
     if (!file || (!file.type.startsWith("image/") && file.type !== "application/pdf")) return;
     setExtracting(type);
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("docType", type);
       const res = await fetch("/api/documents/extract", { method: "POST", body: formData });
       if (res.ok) {
-        setExtracted(await res.json());
+        const fields = (await res.json()) as ExtractedDocumentFields;
+        applyExtractedFields(fields);
+        setExtractedNote((n) => ({
+          ...n,
+          [type]: "Auto-filled — check Personal Details / Compliance ahead.",
+        }));
       }
     } catch {
       // Extraction is a convenience — fail silently.
     } finally {
       setExtracting(null);
     }
-  }
-
-  function applyExtracted() {
-    if (!extracted) return;
-    if (extracted.name && nameRef.current) nameRef.current.value = extracted.name;
-    if (extracted.nationality) setNationality(extracted.nationality);
-    if (extracted.passportNumber && passportNumberRef.current) passportNumberRef.current.value = extracted.passportNumber;
-    if (extracted.emiratesId && emiratesIdRef.current) emiratesIdRef.current.value = extracted.emiratesId;
-    if (extracted.dateOfBirth && dobRef.current) dobRef.current.value = extracted.dateOfBirth;
-    setExtracted(null);
   }
 
   return (
@@ -125,8 +154,38 @@ export function EmployeeWizard({
         </p>
       )}
 
-      {/* Step 0: Personal Details */}
+      {/* Step 0: Upload Documents */}
       <div className={step === 0 ? "space-y-4" : "hidden"}>
+        <p className="text-xs text-slate-500">
+          Upload each document to auto-fill its fields ahead — every field
+          stays editable, so you can correct anything before saving.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {UPLOAD_SLOTS.map((slot) => (
+            <Field key={slot.type} label={slot.label}>
+              <input
+                type="file"
+                name={`docFile_${slot.type}`}
+                onChange={(e) => handleUploadDocFile(slot.type, e.target.files?.[0] ?? null)}
+                className="w-full text-sm"
+              />
+              {extracting === slot.type && (
+                <p className="mt-1 text-xs text-slate-400">Reading document…</p>
+              )}
+              {extractedNote[slot.type] && extracting !== slot.type && (
+                <p className="mt-1 text-xs text-emerald-600">✓ {extractedNote[slot.type]}</p>
+              )}
+              {docFiles[slot.type] && !extractedNote[slot.type] && extracting !== slot.type && (
+                <p className="mt-1 text-xs text-slate-500">{docFiles[slot.type]!.name} selected</p>
+              )}
+            </Field>
+          ))}
+        </div>
+        <StepNav onNext={goNext} nextLabel="Next" />
+      </div>
+
+      {/* Step 1: Personal Details */}
+      <div className={step === 1 ? "space-y-4" : "hidden"}>
         <div className="flex items-center gap-4">
           <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
             {photoPreview ? (
@@ -233,23 +292,16 @@ export function EmployeeWizard({
             />
           </Field>
         </div>
-        <StepNav onNext={goNext} nextLabel="Next" />
+        <StepNav onPrev={goPrev} onNext={goNext} nextLabel="Next" />
       </div>
 
-      {/* Step 1: Compliance */}
-      <div className={step === 1 ? "space-y-4" : "hidden"}>
+      {/* Step 2: Compliance */}
+      <div className={step === 2 ? "space-y-4" : "hidden"}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Visa Expiry Date">
             <input
               type="date"
               name="visaExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
-            />
-          </Field>
-          <Field label="Labor Card Expiry">
-            <input
-              type="date"
-              name="laborCardExpiry"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
@@ -262,6 +314,7 @@ export function EmployeeWizard({
           </Field>
           <Field label="Passport Expiry Date">
             <input
+              ref={passportExpiryRef}
               type="date"
               name="passportExpiry"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
@@ -269,8 +322,33 @@ export function EmployeeWizard({
           </Field>
           <Field label="Emirates ID Expiry Date">
             <input
+              ref={emiratesIdExpiryRef}
               type="date"
               name="emiratesIdExpiry"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
+          <Field label="Labor Card Number">
+            <input
+              ref={laborCardNumberRef}
+              name="laborCardNumber"
+              placeholder="Enter labor card number"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
+          <Field label="Labor Card Personal No.">
+            <input
+              ref={laborCardPersonalNoRef}
+              name="laborCardPersonalNo"
+              placeholder="Enter personal number"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
+          <Field label="Labor Card Expiry">
+            <input
+              ref={laborCardExpiryRef}
+              type="date"
+              name="laborCardExpiry"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
             />
           </Field>
@@ -286,67 +364,40 @@ export function EmployeeWizard({
         <StepNav onPrev={goPrev} onNext={goNext} nextLabel="Next" />
       </div>
 
-      {/* Step 2: Documents */}
-      <div className={step === 2 ? "space-y-4" : "hidden"}>
+      {/* Step 3: Additional Document */}
+      <div className={step === 3 ? "space-y-4" : "hidden"}>
         <p className="text-xs text-slate-500">
-          Upload any documents available now — expiry dates are taken from the
-          Compliance step, not asked again here.
+          Passport, Emirates ID, and Labor Card are handled in the Upload
+          Documents step. Use this only for anything else (Visa, Medical,
+          CICPA, etc.) — optional.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {DOC_SLOTS.map((slot) => (
-            <Field key={slot.type} label={slot.label}>
-              <input
-                type="file"
-                name={`docFile_${slot.type}`}
-                onChange={(e) => handleDocFile(slot.type, e.target.files?.[0] ?? null)}
-                className="w-full text-sm"
-              />
-              {extracting === slot.type && (
-                <p className="mt-1 text-xs text-slate-400">Reading document…</p>
-              )}
-              {docFiles[slot.type] && extracting !== slot.type && (
-                <p className="mt-1 text-xs text-emerald-600">
-                  {docFiles[slot.type]!.name} selected
-                </p>
-              )}
-            </Field>
-          ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label="Document type">
+            <Select
+              name="additionalDocType"
+              value={additionalDocType}
+              onChange={setAdditionalDocType}
+              searchable={false}
+              placeholder="Select type"
+              options={ADDITIONAL_DOC_TYPES}
+            />
+          </Field>
+          <Field label="File">
+            <input type="file" name="docFile_ADDITIONAL" className="w-full text-sm" />
+          </Field>
+          <Field label="Expiry date (optional)">
+            <input
+              type="date"
+              name="additionalDocExpiry"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
         </div>
-        {extracted && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
-            <p className="mb-2 text-xs font-medium text-blue-900">
-              Auto-read from the last document — apply to Personal Details?
-            </p>
-            <div className="mb-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-blue-800 sm:grid-cols-4">
-              {extracted.name && <span>Name: {extracted.name}</span>}
-              {extracted.passportNumber && <span>Passport: {extracted.passportNumber}</span>}
-              {extracted.emiratesId && <span>Emirates ID: {extracted.emiratesId}</span>}
-              {extracted.dateOfBirth && <span>DOB: {extracted.dateOfBirth}</span>}
-              {extracted.nationality && <span>Nationality: {extracted.nationality}</span>}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={applyExtracted}
-                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-              >
-                Apply to Personal Details
-              </button>
-              <button
-                type="button"
-                onClick={() => setExtracted(null)}
-                className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
         <StepNav onPrev={goPrev} onNext={goNext} nextLabel="Next" />
       </div>
 
-      {/* Step 3: Project & Salary */}
-      <div className={step === 3 ? "space-y-4" : "hidden"}>
+      {/* Step 4: Project & Salary */}
+      <div className={step === 4 ? "space-y-4" : "hidden"}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Project Assignment (optional)">
             <Select
@@ -386,8 +437,8 @@ export function EmployeeWizard({
         <StepNav onPrev={goPrev} onNext={goNext} nextLabel="Next" />
       </div>
 
-      {/* Step 4: Skills */}
-      <div className={step === 4 ? "space-y-4" : "hidden"}>
+      {/* Step 5: Skills */}
+      <div className={step === 5 ? "space-y-4" : "hidden"}>
         <Field label="Employee Skills">
           <div className="flex gap-2">
             <input

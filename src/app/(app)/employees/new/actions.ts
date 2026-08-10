@@ -81,6 +81,8 @@ export async function createEmployeeAction(
     emiratesId: stringOrNull(formData.get("emiratesId")),
     dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
     visaExpiry: dateOrNull(formData.get("visaExpiry")),
+    laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
+    laborCardPersonalNo: stringOrNull(formData.get("laborCardPersonalNo")),
     laborCardExpiry: dateOrNull(formData.get("laborCardExpiry")),
     medicalExpiry: dateOrNull(formData.get("medicalExpiry")),
     passportExpiry: dateOrNull(formData.get("passportExpiry")),
@@ -131,6 +133,33 @@ export async function createEmployeeAction(
       entityId: doc.id,
       action: "CREATE",
       after: { employeeId: employee.id, type, filename: file.name, expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  const additionalFile = formData.get("docFile_ADDITIONAL");
+  if (additionalFile instanceof File && additionalFile.size > 0 && additionalFile.size <= MAX_UPLOAD_BYTES) {
+    const additionalType = stringOrNull(formData.get("additionalDocType")) || "OTHER";
+    const additionalExpiry = dateOrNull(formData.get("additionalDocExpiry"));
+    const doc = await prisma.document.create({
+      data: {
+        employeeId: employee.id,
+        type: additionalType,
+        filename: additionalFile.name,
+        fileData: Buffer.from(await additionalFile.arrayBuffer()),
+        mimeType: additionalFile.type || "application/octet-stream",
+        expiryDate: additionalExpiry,
+        uploadedById: user.id,
+      },
+    });
+
+    await logAudit({
+      entityType: "DOCUMENT",
+      entityId: doc.id,
+      action: "CREATE",
+      after: { employeeId: employee.id, type: additionalType, filename: additionalFile.name, expiryDate: additionalExpiry },
       userId: user.id,
       userName: user.name,
       branchId,

@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { updateEmployeeAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { InlineDocumentUpload } from "./inline-document-upload";
+import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
 type Employee = {
   id: string;
   category: "STAFF" | "SITE_STAFF";
+  supplierId: string | null;
   sponsorshipCompanyId: string | null;
   nationality: string | null;
   position: string | null;
@@ -114,6 +116,7 @@ export function EditForm({
   projects,
   vehicles,
   sponsorshipCompanies,
+  sponsorOptions,
   documents,
   lookups,
 }: {
@@ -121,6 +124,7 @@ export function EditForm({
   projects: Project[];
   vehicles: Vehicle[];
   sponsorshipCompanies: SponsorshipCompany[];
+  sponsorOptions: { id: string; name: string }[];
   documents: Doc[];
   lookups: LookupsByCategory;
 }) {
@@ -129,11 +133,33 @@ export function EditForm({
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(employee.active);
   const [salaryType, setSalaryType] = useState(employee.salaryType || "");
+  const [nationality, setNationality] = useState(employee.nationality || "");
   const knownReason = INACTIVE_REASONS.some((r) => r.value === employee.inactiveReason);
   const [inactiveReasonPreset, setInactiveReasonPreset] = useState(
     employee.inactiveReason && !knownReason ? "Other" : employee.inactiveReason || ""
   );
   const docsByType = (type: string) => documents.filter((d) => d.type === type);
+
+  const dobRef = useRef<HTMLInputElement>(null);
+  const passportNumberRef = useRef<HTMLInputElement>(null);
+  const passportExpiryRef = useRef<HTMLInputElement>(null);
+  const emiratesIdRef = useRef<HTMLInputElement>(null);
+  const emiratesIdExpiryRef = useRef<HTMLInputElement>(null);
+  const laborCardNumberRef = useRef<HTMLInputElement>(null);
+  const laborCardPersonalNoRef = useRef<HTMLInputElement>(null);
+  const laborCardExpiryRef = useRef<HTMLInputElement>(null);
+
+  function applyExtractedFields(fields: ExtractedDocumentFields) {
+    if (fields.dateOfBirth && dobRef.current) dobRef.current.value = fields.dateOfBirth;
+    if (fields.nationality) setNationality(fields.nationality);
+    if (fields.passportNumber && passportNumberRef.current) passportNumberRef.current.value = fields.passportNumber;
+    if (fields.passportExpiry && passportExpiryRef.current) passportExpiryRef.current.value = fields.passportExpiry;
+    if (fields.emiratesId && emiratesIdRef.current) emiratesIdRef.current.value = fields.emiratesId;
+    if (fields.emiratesIdExpiry && emiratesIdExpiryRef.current) emiratesIdExpiryRef.current.value = fields.emiratesIdExpiry;
+    if (fields.laborCardNumber && laborCardNumberRef.current) laborCardNumberRef.current.value = fields.laborCardNumber;
+    if (fields.laborCardPersonalNo && laborCardPersonalNoRef.current) laborCardPersonalNoRef.current.value = fields.laborCardPersonalNo;
+    if (fields.laborCardExpiry && laborCardExpiryRef.current) laborCardExpiryRef.current.value = fields.laborCardExpiry;
+  }
 
   return (
     <form
@@ -214,7 +240,7 @@ export function EditForm({
         </h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <Field label="Nationality">
-            <CountrySelect name="nationality" defaultValue={employee.nationality || ""} />
+            <CountrySelect name="nationality" value={nationality} onChange={setNationality} />
           </Field>
           <Field label="Sponsorship company">
             <Select
@@ -227,6 +253,7 @@ export function EditForm({
           <LookupField label="Position" name="position" defaultValue={employee.position} options={lookups.POSITION} />
           <Field label="Passport number">
             <input
+              ref={passportNumberRef}
               name="passportNumber"
               defaultValue={employee.passportNumber || ""}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
@@ -234,6 +261,7 @@ export function EditForm({
           </Field>
           <Field label="Emirates ID">
             <input
+              ref={emiratesIdRef}
               name="emiratesId"
               defaultValue={employee.emiratesId || ""}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
@@ -241,6 +269,7 @@ export function EditForm({
           </Field>
           <Field label="Date of birth">
             <input
+              ref={dobRef}
               type="date"
               name="dateOfBirth"
               defaultValue={toDateInput(employee.dateOfBirth)}
@@ -283,12 +312,21 @@ export function EditForm({
             />
           </Field>
           <Field label="Sponsor / visa-holding entity">
-            <input
-              name="sponsorName"
-              placeholder="If different from company"
-              defaultValue={employee.sponsorName || ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
-            />
+            {employee.supplierId && sponsorOptions.length > 0 ? (
+              <Select
+                name="sponsorName"
+                defaultValue={employee.sponsorName || ""}
+                placeholder="Not set"
+                options={sponsorOptions.map((s) => ({ value: s.name, label: s.name }))}
+              />
+            ) : (
+              <input
+                name="sponsorName"
+                placeholder="If different from company"
+                defaultValue={employee.sponsorName || ""}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              />
+            )}
           </Field>
           <Field label="Emergency contact name">
             <input
@@ -346,6 +384,7 @@ export function EditForm({
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <Field label="Labor card number">
             <input
+              ref={laborCardNumberRef}
               name="laborCardNumber"
               defaultValue={employee.laborCardNumber || ""}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
@@ -393,6 +432,7 @@ export function EditForm({
           />
           <Field label="Emirates ID expiry date">
             <input
+              ref={emiratesIdExpiryRef}
               type="date"
               name="emiratesIdExpiry"
               defaultValue={toDateInput(employee.emiratesIdExpiry)}
@@ -405,6 +445,7 @@ export function EditForm({
             type="EMIRATES_ID"
             documents={docsByType("EMIRATES_ID")}
             expiryFieldName="emiratesIdExpiry"
+            onExtracted={applyExtractedFields}
           />
         </div>
       </section>
@@ -433,7 +474,15 @@ export function EditForm({
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Passport</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
           <LookupField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} options={lookups.PASSPORT_STATUS} />
-          <DateField label="Passport expiry date" name="passportExpiry" defaultValue={employee.passportExpiry} />
+          <Field label="Passport expiry date">
+            <input
+              ref={passportExpiryRef}
+              type="date"
+              name="passportExpiry"
+              defaultValue={toDateInput(employee.passportExpiry)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
           <DateField label="Release date" name="passportReleaseDate" defaultValue={employee.passportReleaseDate} />
           <DateField label="Return date" name="passportReturnDate" defaultValue={employee.passportReturnDate} />
           <InlineDocumentUpload
@@ -441,6 +490,7 @@ export function EditForm({
             type="PASSPORT"
             documents={docsByType("PASSPORT")}
             expiryFieldName="passportExpiry"
+            onExtracted={applyExtractedFields}
           />
         </div>
       </section>
@@ -448,15 +498,31 @@ export function EditForm({
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Labour Card</h2>
         <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
-          <TextField label="Personal No" name="laborCardPersonalNo" defaultValue={employee.laborCardPersonalNo} />
+          <Field label="Personal No">
+            <input
+              ref={laborCardPersonalNoRef}
+              name="laborCardPersonalNo"
+              defaultValue={employee.laborCardPersonalNo || ""}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
           <LookupField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} options={lookups.LABOR_CARD_STATUS} />
-          <DateField label="Labor card expiry" name="laborCardExpiry" defaultValue={employee.laborCardExpiry} />
+          <Field label="Labor card expiry">
+            <input
+              ref={laborCardExpiryRef}
+              type="date"
+              name="laborCardExpiry"
+              defaultValue={toDateInput(employee.laborCardExpiry)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            />
+          </Field>
           <div />
           <InlineDocumentUpload
             employeeId={employee.id}
             type="LABOR_CARD"
             documents={docsByType("LABOR_CARD")}
             expiryFieldName="laborCardExpiry"
+            onExtracted={applyExtractedFields}
           />
         </div>
       </section>

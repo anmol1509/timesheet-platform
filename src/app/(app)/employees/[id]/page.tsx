@@ -33,7 +33,18 @@ export default async function EmployeeDetailPage({
     prisma.employee.findUnique({
       where: { id },
       include: {
-        supplier: true,
+        supplier: {
+          include: {
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                subsidiaries: { select: { id: true, name: true } },
+              },
+            },
+            subsidiaries: { select: { id: true, name: true } },
+          },
+        },
         project: { include: { client: true } },
         documents: { orderBy: { uploadedAt: "desc" } },
         skills: { include: { skill: true } },
@@ -61,6 +72,23 @@ export default async function EmployeeDetailPage({
 
   const lookups = groupLookups(lookupValues);
   const documentOptions = employee.documents.map((d) => ({ id: d.id, filename: d.filename }));
+
+  // Scope the "Sponsor / visa-holding entity" dropdown to the employee's
+  // supplier's own corporate family — its parent (or itself, if it is the
+  // parent) plus every sibling subsidiary — same root/siblings pattern as
+  // the Supplier chrome tabs.
+  const sponsorOptions = employee.supplier
+    ? (() => {
+        const root = employee.supplier.parent ?? {
+          id: employee.supplier.id,
+          name: employee.supplier.name,
+        };
+        const siblings = employee.supplier.parent
+          ? employee.supplier.parent.subsidiaries
+          : employee.supplier.subsidiaries;
+        return [{ id: root.id, name: root.name }, ...siblings];
+      })()
+    : [];
 
   const latest = await prisma.timesheetEntry.findFirst({
     where: { employeeIdNo: employee.employeeIdNo },
@@ -146,6 +174,7 @@ export default async function EmployeeDetailPage({
         projects={projects}
         vehicles={vehicles}
         sponsorshipCompanies={sponsorshipCompanies}
+        sponsorOptions={sponsorOptions}
         documents={employee.documents}
         lookups={lookups}
       />

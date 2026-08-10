@@ -31,6 +31,7 @@ export function InlineDocumentUpload({
   documents,
   expiryFieldName,
   enableExtraction = true,
+  onExtracted,
 }: {
   employeeId: string;
   type: string;
@@ -40,6 +41,11 @@ export function InlineDocumentUpload({
   // used even before "Save changes" is clicked.
   expiryFieldName?: string;
   enableExtraction?: boolean;
+  // When provided, a successful extraction calls this directly instead of
+  // showing the read-only preview + "Apply to profile" button — the caller
+  // is expected to write the values straight into its own editable inputs
+  // (see edit-form.tsx for PASSPORT/EMIRATES_ID/LABOR_CARD).
+  onExtracted?: (fields: ExtractedDocumentFields) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -95,8 +101,17 @@ export function InlineDocumentUpload({
       try {
         const extractForm = new FormData();
         extractForm.append("file", file);
+        extractForm.append("docType", type);
         const res = await fetch("/api/documents/extract", { method: "POST", body: extractForm });
-        if (res.ok) setExtracted((await res.json()) as ExtractedDocumentFields);
+        if (res.ok) {
+          const fields = (await res.json()) as ExtractedDocumentFields;
+          if (onExtracted) {
+            onExtracted(fields);
+            setApplied(true);
+          } else {
+            setExtracted(fields);
+          }
+        }
       } catch {
         // Extraction is a convenience — silently skip on failure.
       } finally {
@@ -188,7 +203,13 @@ export function InlineDocumentUpload({
           </div>
         </div>
       )}
-      {applied && <p className="mt-1 text-xs text-emerald-600">Applied to profile.</p>}
+      {applied && (
+        <p className="mt-1 text-xs text-emerald-600">
+          {onExtracted
+            ? "Auto-filled below — review before saving."
+            : "Applied to profile."}
+        </p>
+      )}
     </div>
   );
 }
