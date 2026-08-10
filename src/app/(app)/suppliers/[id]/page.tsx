@@ -61,6 +61,17 @@ export default async function SupplierDetailPage({
     }),
   ]);
 
+  // The current parent might belong to a different branch (e.g. legacy data,
+  // or a subsidiary created before parents always matched branches) — always
+  // include it so the Parent Supplier <select> has a matching option to
+  // display its name instead of falling back to the raw id.
+  const parentOptionsWithCurrent =
+    supplier.parent && !parentOptions.some((p) => p.id === supplier.parent!.id)
+      ? [...parentOptions, { id: supplier.parent.id, name: supplier.parent.name }].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      : parentOptions;
+
   return (
     <div className="max-w-3xl space-y-6">
       <div>
@@ -145,7 +156,7 @@ export default async function SupplierDetailPage({
             label: "Company",
             content: (
               <SupplierCompanyForm
-                parentOptions={parentOptions}
+                parentOptions={parentOptionsWithCurrent}
                 supplier={{
                   id: supplier.id,
                   parentSupplierId: supplier.parentSupplierId,

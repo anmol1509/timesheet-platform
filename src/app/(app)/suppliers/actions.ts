@@ -68,6 +68,15 @@ export async function createSupplierAction(formData: FormData) {
 // Returns a result object (instead of redirecting) so the client popover can
 // show pending/error state inline rather than relying on a full navigation
 // to surface problems.
+//
+// The subsidiary always inherits the parent's own branchId — not the
+// caller's currently-active branch — so it never ends up in a different
+// branch than the company it belongs to (which previously made the Parent
+// Supplier dropdown unable to resolve a matching option and show a name).
+// This also means a Super Admin doesn't need a specific branch selected in
+// the switcher to add a subsidiary: `isOutsideBranch` already allows Super
+// Admins through regardless, so the only real requirement is read access to
+// the parent record.
 export async function createSubsidiaryAction(
   formData: FormData
 ): Promise<{ error: string } | { id: string }> {
@@ -76,14 +85,6 @@ export async function createSubsidiaryAction(
   const name = String(formData.get("name") || "").trim();
   if (!parentSupplierId || !name) {
     return { error: "Enter a subsidiary name." };
-  }
-
-  if (!branchId) {
-    return {
-      error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding a subsidiary."
-        : "Your account has no branch assigned — contact an admin.",
-    };
   }
 
   const parent = await prisma.supplier.findUnique({ where: { id: parentSupplierId } });
@@ -97,7 +98,7 @@ export async function createSubsidiaryAction(
   }
 
   const created = await prisma.supplier.create({
-    data: { name, parentSupplierId, branchId },
+    data: { name, parentSupplierId, branchId: parent.branchId },
   });
 
   await logAudit({
@@ -107,7 +108,7 @@ export async function createSubsidiaryAction(
     after: { name, parentSupplierId },
     userId: user.id,
     userName: user.name,
-    branchId,
+    branchId: parent.branchId,
   });
 
   revalidatePath(`/suppliers/${parentSupplierId}`);
