@@ -18,6 +18,7 @@ type SupplierRow = {
   contactPerson: string | null;
   contactPhone: string | null;
   status: string;
+  parentName: string | null;
   employeeCount: number;
   entryCount: number;
   licenseStatus: ComplianceStatus;
@@ -78,6 +79,7 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
                 <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">Supplier</th>
+              <th className="px-4 py-3">Parent</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3 text-right">Employees</th>
               <th className="px-4 py-3 text-right">Timesheet rows</th>
@@ -96,6 +98,7 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
                     {s.name}
                   </Link>
                 </td>
+                <td className="px-4 py-3 text-slate-600">{s.parentName || "—"}</td>
                 <td className="px-4 py-3 text-slate-600">
                   {s.contactPerson || s.contactPhone ? (
                     <>

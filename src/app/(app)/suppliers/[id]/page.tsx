@@ -7,8 +7,9 @@ import { EditSupplierForm } from "./edit-form";
 import { SupplierApprovals } from "./supplier-approvals";
 import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch } from "@/lib/auth";
-import { isOutsideBranch } from "@/lib/branch";
+import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { WorkmenCompImport } from "./workmen-comp-import";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -27,15 +28,26 @@ export default async function SupplierDetailPage({
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({
     where: { id },
-    include: { _count: { select: { employees: true, entries: true } } },
+    include: {
+      _count: { select: { employees: true, entries: true } },
+      parent: { select: { id: true, name: true } },
+      subsidiaries: { select: { id: true, name: true }, orderBy: { name: "asc" } },
+    },
   });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
-  const attachments = await prisma.attachment.findMany({
-    where: { entityType: "SUPPLIER", entityId: supplier.id },
-    orderBy: { uploadedAt: "desc" },
-    select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
-  });
+  const [attachments, parentOptions] = await Promise.all([
+    prisma.attachment.findMany({
+      where: { entityType: "SUPPLIER", entityId: supplier.id },
+      orderBy: { uploadedAt: "desc" },
+      select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
+    }),
+    prisma.supplier.findMany({
+      where: { ...branchWhere(branchId), parentSupplierId: null, id: { not: supplier.id } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -51,6 +63,14 @@ export default async function SupplierDetailPage({
             <Badge color={supplier.status === "ACTIVE" ? "green" : "red"}>
               {supplier.status}
             </Badge>
+            {supplier.parent && (
+              <Link
+                href={`/suppliers/${supplier.parent.id}`}
+                className="text-xs font-medium text-slate-500 hover:underline"
+              >
+                Subsidiary of {supplier.parent.name}
+              </Link>
+            )}
           </div>
           <DeleteButton
             action={deleteSupplierAction}
@@ -92,9 +112,26 @@ export default async function SupplierDetailPage({
         }}
       />
 
+      {supplier.subsidiaries.length > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Subsidiaries</h2>
+          <ul className="space-y-1">
+            {supplier.subsidiaries.map((s) => (
+              <li key={s.id}>
+                <Link href={`/suppliers/${s.id}`} className="text-sm text-[var(--brand-primary)] hover:underline">
+                  {s.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <EditSupplierForm
+        parentOptions={parentOptions}
         supplier={{
           id: supplier.id,
+          parentSupplierId: supplier.parentSupplierId,
           fullName: supplier.fullName,
           mohrePermitNumber: supplier.mohrePermitNumber,
           tradeLicenseNumber: supplier.tradeLicenseNumber,
@@ -128,6 +165,12 @@ export default async function SupplierDetailPage({
         }}
       />
 
+      <WorkmenCompImport
+        supplierId={supplier.id}
+        supplierName={supplier.name}
+        entityBranchId={supplier.branchId}
+      />
+
       <section>
         <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
         <AttachmentUploader
@@ -138,6 +181,7 @@ export default async function SupplierDetailPage({
           docTypeOptions={[
             { value: "TRADE_LICENSE", label: "Trade License" },
             { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
+            { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
             { value: "CONTRACT", label: "Contract" },
             { value: "OTHER", label: "Other" },
           ]}

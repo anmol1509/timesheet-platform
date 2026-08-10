@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { isEmployeeComplete } from "@/lib/employeeCompleteness";
 import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
@@ -24,8 +25,9 @@ export default async function EmployeesPage({
         ...(sponsorId ? { sponsorshipCompanyId: sponsorId } : {}),
       },
       include: {
-        supplier: true,
+        supplier: { include: { parent: { select: { name: true } } } },
         project: { select: { name: true } },
+        documents: { select: { type: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -60,10 +62,11 @@ export default async function EmployeesPage({
       passportNumber: e.passportNumber,
       emiratesId: e.emiratesId,
       nationality: e.nationality,
-      supplierName: e.supplier?.name ?? null,
+      companyDisplayName: e.supplier?.parent?.name ?? e.supplier?.name ?? null,
       onWork: e.active && e.project != null,
       status: e.status,
       worstStatus,
+      complete: isEmployeeComplete(e),
     };
   });
 

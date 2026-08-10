@@ -187,6 +187,10 @@ model Supplier {
   labourApprovalStatus  String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates allocating labour to a Demand Request
   invoiceApprovalStatus String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates generating the supplier payout sheet
 
+  parent           Supplier?  @relation("SupplierSubsidiaries", fields: [parentSupplierId], references: [id])
+  parentSupplierId String?
+  subsidiaries     Supplier[] @relation("SupplierSubsidiaries")
+
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
   employees       Employee[]

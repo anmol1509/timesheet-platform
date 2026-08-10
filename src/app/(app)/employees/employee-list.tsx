@@ -25,10 +25,11 @@ type EmployeeRow = {
   passportNumber: string | null;
   emiratesId: string | null;
   nationality: string | null;
-  supplierName: string | null;
+  companyDisplayName: string | null;
   onWork: boolean;
   status: "ACTIVE" | "IDLE" | "ON_VACATION" | "TERMINATED";
   worstStatus: ComplianceStatus;
+  complete: boolean;
 };
 
 type Filter =
@@ -39,7 +40,8 @@ type Filter =
   | "staff"
   | "supplier-labour"
   | "idle"
-  | "vacation";
+  | "vacation"
+  | "incomplete";
 
 const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   "site-staff": "Site Staff",
@@ -47,6 +49,7 @@ const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   "supplier-labour": "Supplier Labour",
   idle: "Idle",
   vacation: "On Vacation",
+  incomplete: "Incomplete",
 };
 
 const SEGMENTED_VALUES: Filter[] = ["all", "on-work", "bench"];
@@ -93,6 +96,7 @@ export function EmployeeList({
     "supplier-labour",
     "idle",
     "vacation",
+    "incomplete",
   ];
   const [filter, setFilter] = useState<Filter>(
     validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
@@ -105,15 +109,17 @@ export function EmployeeList({
       case "bench":
         return employees.filter((e) => !e.onWork);
       case "site-staff":
-        return employees.filter((e) => !e.supplierName && e.category === "SITE_STAFF");
+        return employees.filter((e) => !e.companyDisplayName && e.category === "SITE_STAFF");
       case "staff":
-        return employees.filter((e) => !e.supplierName && e.category === "STAFF");
+        return employees.filter((e) => !e.companyDisplayName && e.category === "STAFF");
       case "supplier-labour":
-        return employees.filter((e) => !!e.supplierName);
+        return employees.filter((e) => !!e.companyDisplayName);
       case "idle":
         return employees.filter((e) => e.status === "IDLE");
       case "vacation":
         return employees.filter((e) => e.status === "ON_VACATION");
+      case "incomplete":
+        return employees.filter((e) => !e.complete);
       default:
         return employees;
     }
@@ -127,7 +133,7 @@ export function EmployeeList({
         e.name.toLowerCase().includes(q) ||
         e.employeeIdNo.toLowerCase().includes(q) ||
         (e.trade || "").toLowerCase().includes(q) ||
-        (e.supplierName || "").toLowerCase().includes(q)
+        (e.companyDisplayName || "").toLowerCase().includes(q)
     );
   }, [byFilter, query]);
 
@@ -152,8 +158,9 @@ export function EmployeeList({
       { header: "Passport No", value: (e) => e.passportNumber },
       { header: "Emirates ID", value: (e) => e.emiratesId },
       { header: "Nationality", value: (e) => e.nationality },
-      { header: "Company", value: (e) => e.supplierName },
+      { header: "Company", value: (e) => e.companyDisplayName },
       { header: "Compliance", value: (e) => STATUS_BADGE[e.worstStatus].label },
+      { header: "Profile", value: (e) => (e.complete ? "Complete" : "Incomplete") },
     ]);
     downloadCsv(`employees-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
@@ -230,6 +237,7 @@ export function EmployeeList({
               <th className="px-4 py-3">Nationality</th>
               <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Profile</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -261,10 +269,15 @@ export function EmployeeList({
                     {e.nationality || "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {e.supplierName || "—"}
+                    {e.companyDisplayName || "—"}
                   </td>
                   <td className="px-4 py-3">
                     <Badge color={badge.color}>{badge.label}</Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge color={e.complete ? "green" : "amber"}>
+                      {e.complete ? "Complete" : "Incomplete"}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

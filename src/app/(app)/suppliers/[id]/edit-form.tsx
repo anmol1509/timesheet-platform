@@ -8,6 +8,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 
 type Supplier = {
   id: string;
+  parentSupplierId: string | null;
   fullName: string | null;
   mohrePermitNumber: string | null;
   tradeLicenseNumber: string | null;
@@ -52,7 +53,13 @@ function payoutPeriodLabel(startDay: number) {
   return `${ordinal(startDay)} – ${ordinal(endDay)} of next month`;
 }
 
-export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
+export function EditSupplierForm({
+  supplier,
+  parentOptions,
+}: {
+  supplier: Supplier;
+  parentOptions: { id: string; name: string }[];
+}) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [cycleStartDay, setCycleStartDay] = useState(supplier.payoutCycleStartDay);
@@ -71,6 +78,14 @@ export function EditSupplierForm({ supplier }: { supplier: Supplier }) {
       <input type="hidden" name="supplierId" value={supplier.id} />
 
       <Section title="Company">
+        <Field label="Parent Supplier">
+          <Select
+            name="parentSupplierId"
+            defaultValue={supplier.parentSupplierId || ""}
+            placeholder="None — top-level supplier"
+            options={parentOptions.map((p) => ({ value: p.id, label: p.name }))}
+          />
+        </Field>
         <Field label="Full name (for letterhead)">
           <input
             name="fullName"

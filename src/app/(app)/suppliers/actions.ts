@@ -70,7 +70,10 @@ export async function updateSupplierAction(formData: FormData) {
   const existing = await prisma.supplier.findUnique({ where: { id } });
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
 
+  const parentSupplierIdRaw = stringOrNull(formData.get("parentSupplierId"));
+
   const data = {
+    parentSupplierId: parentSupplierIdRaw === id ? null : parentSupplierIdRaw,
     fullName: stringOrNull(formData.get("fullName")),
     status: String(formData.get("status") || "ACTIVE"),
     mohrePermitNumber: stringOrNull(formData.get("mohrePermitNumber")),
@@ -263,4 +266,79 @@ export async function deleteSupplierAction(formData: FormData) {
 
   revalidatePath("/suppliers");
   revalidatePath("/employees");
+}
+
+type InsuranceEmployeeRow = {
+  employeeIdNo: string;
+  name: string;
+  category: string | null;
+  designation: string | null;
+  salary: string | null;
+};
+
+// Bulk-creates Employee records reviewed from a Workmen Compensation
+// Insurance PDF extraction. Per-row-tolerant, matching
+// bulkImportEmployeesAction's shape — one bad row doesn't abort the batch.
+// Every field besides employeeIdNo/name/trade/position/salary is left null,
+// which is exactly what makes the record show as "Incomplete."
+export async function createEmployeesFromInsuranceAction(
+  supplierId: string,
+  rows: InsuranceEmployeeRow[]
+): Promise<{ created: number; requested: number; errors: { row: number; message: string }[] }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const errors: { row: number; message: string }[] = [];
+  if (!branchId) {
+    return { created: 0, requested: rows.length, errors: [{ row: 0, message: "No branch selected to import into." }] };
+  }
+
+  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
+    return { created: 0, requested: rows.length, errors: [{ row: 0, message: "Supplier not found." }] };
+  }
+
+  let created = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const employeeIdNo = r.employeeIdNo.trim();
+    const name = r.name.trim();
+    if (!employeeIdNo || !name) {
+      errors.push({ row: i + 1, message: "Employee ID and name are required." });
+      continue;
+    }
+    const existing = await prisma.employee.findUnique({ where: { employeeIdNo }, select: { id: true } });
+    if (existing) {
+      errors.push({ row: i + 1, message: `Employee ID ${employeeIdNo} already exists.` });
+      continue;
+    }
+
+    const salary = r.salary ? Number(r.salary.replace(/[^0-9.]/g, "")) : null;
+    const employee = await prisma.employee.create({
+      data: {
+        employeeIdNo,
+        name,
+        trade: r.designation?.trim() || null,
+        position: r.category?.trim() || null,
+        salaryType: salary != null && Number.isFinite(salary) ? "BASIC" : null,
+        salaryRate: salary != null && Number.isFinite(salary) ? salary : null,
+        supplierId,
+        branchId,
+      },
+    });
+
+    await logAudit({
+      entityType: "EMPLOYEE",
+      entityId: employee.id,
+      action: "CREATE",
+      after: { employeeIdNo, name, trade: r.designation, position: r.category, supplierId },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+
+    created++;
+  }
+
+  revalidatePath("/employees");
+  revalidatePath(`/suppliers/${supplierId}`);
+  return { created, requested: rows.length, errors };
 }
