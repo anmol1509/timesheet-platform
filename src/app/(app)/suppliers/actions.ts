@@ -65,36 +65,35 @@ export async function createSupplierAction(formData: FormData) {
 // Adds a subsidiary directly under a given parent — used by the chrome-tab
 // "+" control on the supplier detail page, so parentSupplierId is always
 // supplied by the caller (the tab strip's root) rather than picked by hand.
-export async function createSubsidiaryAction(formData: FormData) {
+// Returns a result object (instead of redirecting) so the client popover can
+// show pending/error state inline rather than relying on a full navigation
+// to surface problems.
+export async function createSubsidiaryAction(
+  formData: FormData
+): Promise<{ error: string } | { id: string }> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parentSupplierId = String(formData.get("parentSupplierId") || "").trim();
   const name = String(formData.get("name") || "").trim();
-  if (!parentSupplierId || !name) return;
+  if (!parentSupplierId || !name) {
+    return { error: "Enter a subsidiary name." };
+  }
 
   if (!branchId) {
-    redirect(
-      `/suppliers/${parentSupplierId}?error=${encodeURIComponent(
-        isSuperAdmin
-          ? "Pick a branch from the switcher before adding a subsidiary."
-          : "Your account has no branch assigned — contact an admin."
-      )}`
-    );
+    return {
+      error: isSuperAdmin
+        ? "Pick a branch from the switcher before adding a subsidiary."
+        : "Your account has no branch assigned — contact an admin.",
+    };
   }
 
   const parent = await prisma.supplier.findUnique({ where: { id: parentSupplierId } });
   if (!parent || isOutsideBranch(parent.branchId, branchId, isSuperAdmin)) {
-    redirect(
-      `/suppliers/${parentSupplierId}?error=${encodeURIComponent("Parent supplier not found.")}`
-    );
+    return { error: "Parent supplier not found." };
   }
 
   const existing = await prisma.supplier.findUnique({ where: { name } });
   if (existing) {
-    redirect(
-      `/suppliers/${parentSupplierId}?error=${encodeURIComponent(
-        "A supplier with that name already exists."
-      )}`
-    );
+    return { error: "A supplier with that name already exists." };
   }
 
   const created = await prisma.supplier.create({
@@ -113,7 +112,7 @@ export async function createSubsidiaryAction(formData: FormData) {
 
   revalidatePath(`/suppliers/${parentSupplierId}`);
   revalidatePath("/suppliers");
-  redirect(`/suppliers/${created.id}`);
+  return { id: created.id };
 }
 
 // Company & Compliance tab — every field this action writes lives in that
