@@ -35,12 +35,14 @@ export function WorkmenCompImport({
   const [pending, startTransition] = useTransition();
   const [extracting, setExtracting] = useState(false);
   const [rows, setRows] = useState<RowState[]>([]);
+  const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
   async function handleFile(file: File) {
     setError(null);
     setResult(null);
+    setStarted(true);
 
     // Archive the certificate itself as a normal Supplier attachment.
     const attachmentForm = new FormData();
@@ -141,10 +143,24 @@ export function WorkmenCompImport({
         className="text-sm"
       />
 
-      {extracting && <p className="text-sm text-slate-500">Reading the certificate…</p>}
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {!started && (
+        <button
+          type="button"
+          onClick={() => setStarted(true)}
+          className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
+        >
+          Or enter employees manually, without uploading a certificate
+        </button>
+      )}
 
-      {rows.length > 0 && (
+      {extracting && <p className="text-sm text-slate-500">Reading the certificate…</p>}
+      {error && (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error} You can still add rows manually below.
+        </p>
+      )}
+
+      {started && (
         <div className="space-y-3">
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-sm">
@@ -221,7 +237,7 @@ export function WorkmenCompImport({
             <button
               type="button"
               onClick={handleSave}
-              disabled={pending}
+              disabled={pending || rows.length === 0}
               className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
             >
               {pending ? "Saving…" : `Save ${rows.length} Employees`}
