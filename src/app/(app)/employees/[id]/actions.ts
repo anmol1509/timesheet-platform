@@ -50,6 +50,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
   const data = {
       category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+      supplierId: stringOrNull(formData.get("supplierId")),
       sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
       nationality: stringOrNull(formData.get("nationality")),
       position: stringOrNull(formData.get("position")),
@@ -126,6 +127,16 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       drivingLicenceType: stringOrNull(formData.get("drivingLicenceType")),
       drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
   };
+
+  if (before && data.supplierId && before.supplierId !== data.supplierId) {
+    const newSupplier = await prisma.supplier.findUnique({
+      where: { id: data.supplierId },
+      select: { approvalStatus: true },
+    });
+    if (newSupplier && newSupplier.approvalStatus !== "Approved") {
+      return { error: "This supplier isn't approved yet — approve it before assigning employees to it." };
+    }
+  }
 
   if (before && data.projectId && before.projectId !== data.projectId && before.supplierId) {
     const supplier = await prisma.supplier.findUnique({

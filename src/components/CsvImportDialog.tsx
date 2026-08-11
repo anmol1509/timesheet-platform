@@ -128,7 +128,7 @@ export function CsvImportDialog({
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
               }}
-              className="mb-4 text-sm"
+              className="mb-4 block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50"
             />
             {error && (
               <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
