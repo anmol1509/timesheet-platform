@@ -17,6 +17,9 @@ type Doc = {
   uploadedAt: Date;
 };
 
+const FILE_INPUT_CLASS =
+  "block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50";
+
 const STATUS_BADGE = {
   valid: { label: "Valid", color: "green" as const },
   expiring: { label: "Expiring soon", color: "amber" as const },
@@ -99,7 +102,7 @@ export function DocumentsSection({
             type="file"
             onChange={handleUpload}
             disabled={pending}
-            className="text-sm"
+            className={FILE_INPUT_CLASS}
           />
         </div>
         {error && (

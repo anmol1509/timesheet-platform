@@ -73,7 +73,12 @@ export function AttachmentUploader({
           <span className="mb-1 block text-xs font-medium text-slate-500">
             File (max {MAX_UPLOAD_LABEL})
           </span>
-          <input name="file" type="file" required className="w-full text-sm" />
+          <input
+            name="file"
+            type="file"
+            required
+            className="block w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50"
+          />
         </label>
         <button
           type="submit"
