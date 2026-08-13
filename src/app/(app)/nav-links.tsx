@@ -84,6 +84,7 @@ const NAV: Entry[] = [
     label: "Timesheets",
     icon: FileSpreadsheet,
     children: [
+      { href: "/attendance", label: "Daily Attendance", icon: Clock },
       { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
       { href: "/upload", label: "Upload", icon: UploadIcon },
       { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },

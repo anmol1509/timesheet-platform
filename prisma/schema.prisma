@@ -47,6 +47,7 @@ model Branch {
   letterTemplates      LetterTemplate[]
   nocs                 Noc[]
   lpos                 Lpo[]
+  attendance           Attendance[]
 }
 
 // The visa-issuing legal entity for an employee — distinct from Branch (the
@@ -195,6 +196,7 @@ model Supplier {
   entries         TimesheetEntry[]
   generatedSheets GeneratedSheet[]
   employees       Employee[]
+  attendance      Attendance[]
 }
 
 model Client {
@@ -531,6 +533,7 @@ model Employee {
   demandRequestAllocations DemandRequestAllocation[]
   nocEmployees           NocEmployee[]
   bed                    Bed?
+  attendance             Attendance[]
 }
 
 // System-written record of each project placement — opened/closed
@@ -689,6 +692,7 @@ model Project {
   routes           Route[]
   sites            Site[]
   lpos             Lpo[]
+  attendance       Attendance[]
 }
 
 // A Local Purchase Order — the client's authorization + funding envelope for
@@ -722,6 +726,62 @@ model Lpo {
   branchId String
 
   @@index([branchId, projectId])
+}
+
+// Daily attendance, distinct from the monthly TimesheetEntry hours grid —
+// one row per employee per calendar day. Once approved (locked=true),
+// direct edits are rejected and any change must go through
+// AttendanceCorrectionRequest instead. Deliberately not wired into
+// TimesheetEntry.dailyHours yet — that JSON pipeline has too many existing
+// consumers (Excel import, xlsx/pdf export, gas-deduction calc) to safely
+// rewire in this pass; a later phase can add a reconcile step once this
+// module has run in production long enough to trust its data.
+model Attendance {
+  id           String    @id @default(cuid())
+  date         DateTime
+  status       String    @default("PRESENT") // "PRESENT" | "ABSENT" | "LEAVE" | "HOLIDAY" | "OFF"
+  normalHours  Float?
+  otHours      Float?
+  locked       Boolean   @default(false)
+  markedById   String
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?
+
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId String?
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  corrections AttendanceCorrectionRequest[]
+
+  @@unique([employeeId, date])
+  @@index([branchId, date])
+  @@index([projectId, date])
+}
+
+model AttendanceCorrectionRequest {
+  id                   String    @id @default(cuid())
+  requestedStatus      String?
+  requestedNormalHours Float?
+  requestedOtHours     Float?
+  reason               String?
+  status               String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  requestedById        String
+  reviewedById         String?
+  reviewedAt           DateTime?
+  createdAt            DateTime  @default(now())
+
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  attendanceId String
 }
 
 // A physical location under a Project — one Project can have multiple Sites
