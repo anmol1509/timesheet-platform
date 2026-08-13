@@ -350,6 +350,12 @@ model TimesheetEntry {
   project   Project? @relation(fields: [projectId], references: [id])
   projectId String?
 
+  // `site` (above) is the legacy free-text column, still populated by Excel
+  // imports independently — this FK is the new optional link to a real Site
+  // record, set only by Daily Timesheet / Manual Entry when one is picked.
+  siteRecord Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId     String?
+
   @@unique([month, supplierId, employeeIdNo, trade])
   @@index([month, supplierId])
   @@index([branchId])
@@ -502,6 +508,9 @@ model Employee {
 
   project   Project? @relation(fields: [projectId], references: [id])
   projectId String?
+
+  site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  siteId String?
 
   vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
   vehicleId String?
@@ -678,6 +687,24 @@ model Project {
   inventory        ProjectInventoryAssignment[]
   demandRequests   DemandRequest[]
   routes           Route[]
+  sites            Site[]
+}
+
+// A physical location under a Project — one Project can have multiple Sites
+// (e.g. separate buildings/plots on one job). Deliberately a child of
+// Project, not a standalone concept (the earlier flat, unrelated Site model
+// was removed for exactly that reason).
+model Site {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  createdAt DateTime @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  employees        Employee[]
+  timesheetEntries TimesheetEntry[]
 }
 
 model ProjectDocument {

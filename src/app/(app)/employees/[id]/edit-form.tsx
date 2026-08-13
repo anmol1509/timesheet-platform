@@ -27,6 +27,7 @@ type Employee = {
   salaryType: string | null;
   salaryRate: number | null;
   projectId: string | null;
+  siteId: string | null;
   vehicleId: string | null;
   notes: string | null;
   dateOfBirth: Date | null;
@@ -37,7 +38,6 @@ type Employee = {
   joinDate: Date | null;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
-  sponsorName: string | null;
   laborCardNumber: string | null;
   wpsBankName: string | null;
   wpsIban: string | null;
@@ -92,6 +92,7 @@ type Employee = {
 };
 
 type Project = { id: string; name: string; code: string };
+type Site = { id: string; name: string; projectId: string };
 type Vehicle = { id: string; plateNumber: string; type: string | null };
 type SponsorshipCompany = { id: string; name: string };
 type Supplier = { id: string; name: string };
@@ -102,6 +103,7 @@ const TABS = [
   { id: "documents", label: "Documents" },
   { id: "payroll", label: "Payroll & WPS" },
   { id: "project", label: "Project & Salary" },
+  { id: "records", label: "Skills & Records" },
 ];
 
 const INACTIVE_REASONS = [
@@ -122,21 +124,27 @@ function toDateInput(d: Date | null) {
 export function EditForm({
   employee,
   projects,
+  sites,
   vehicles,
   sponsorshipCompanies,
   suppliers,
-  sponsorOptions,
   documents,
   lookups,
+  recordsContent,
 }: {
   employee: Employee;
   projects: Project[];
+  sites: Site[];
   vehicles: Vehicle[];
   sponsorshipCompanies: SponsorshipCompany[];
   suppliers: Supplier[];
-  sponsorOptions: { id: string; name: string }[];
   documents: Doc[];
   lookups: LookupsByCategory;
+  // Skills/Visa History/Labour Card History/Other Documents — each of
+  // these owns its own <form>, so they can't live inside this component's
+  // single <form> (nested forms are invalid HTML and silently break).
+  // Rendered as a sibling, still switched by the same tab state.
+  recordsContent: React.ReactNode;
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -145,6 +153,8 @@ export function EditForm({
   const [active, setActive] = useState(employee.active);
   const [salaryType, setSalaryType] = useState(employee.salaryType || "");
   const [nationality, setNationality] = useState(employee.nationality || "");
+  const [projectId, setProjectId] = useState(employee.projectId || "");
+  const [siteId, setSiteId] = useState(employee.siteId || "");
   const knownReason = INACTIVE_REASONS.some((r) => r.value === employee.inactiveReason);
   const [inactiveReasonPreset, setInactiveReasonPreset] = useState(
     employee.inactiveReason && !knownReason ? "Other" : employee.inactiveReason || ""
@@ -173,22 +183,7 @@ export function EditForm({
   }
 
   return (
-    <form
-      action={(formData) => {
-        setSaved(false);
-        setError(null);
-        startTransition(async () => {
-          const result = await updateEmployeeAction(formData);
-          if (result?.error) {
-            setError(result.error);
-          } else {
-            setSaved(true);
-          }
-        });
-      }}
-    >
-      <input type="hidden" name="employeeId" value={employee.id} />
-
+    <div>
       <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
         {TABS.map((t) => (
           <button
@@ -205,6 +200,22 @@ export function EditForm({
           </button>
         ))}
       </div>
+
+      <form
+        action={(formData) => {
+          setSaved(false);
+          setError(null);
+          startTransition(async () => {
+            const result = await updateEmployeeAction(formData);
+            if (result?.error) {
+              setError(result.error);
+            } else {
+              setSaved(true);
+            }
+          });
+        }}
+      >
+        <input type="hidden" name="employeeId" value={employee.id} />
 
       <div className={tab === "overview" ? "space-y-8" : "hidden"}>
         <section>
@@ -330,23 +341,6 @@ export function EditForm({
                 defaultValue={toDateInput(employee.joinDate)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
               />
-            </Field>
-            <Field label="Sponsor / visa-holding entity">
-              {employee.supplierId && sponsorOptions.length > 0 ? (
-                <Select
-                  name="sponsorName"
-                  defaultValue={employee.sponsorName || ""}
-                  placeholder="Not set"
-                  options={sponsorOptions.map((s) => ({ value: s.name, label: s.name }))}
-                />
-              ) : (
-                <input
-                  name="sponsorName"
-                  placeholder="If different from company"
-                  defaultValue={employee.sponsorName || ""}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
-                />
-              )}
             </Field>
             <Field label="Emergency contact name">
               <input
@@ -636,9 +630,25 @@ export function EditForm({
             <Field label="Project assignment">
               <Select
                 name="projectId"
-                defaultValue={employee.projectId || ""}
+                value={projectId}
+                onChange={(v) => {
+                  setProjectId(v);
+                  setSiteId("");
+                }}
                 placeholder="No project assigned"
                 options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+              />
+            </Field>
+            <Field label="Site assignment">
+              <Select
+                name="siteId"
+                value={siteId}
+                onChange={setSiteId}
+                disabled={!projectId}
+                placeholder={projectId ? "No site assigned" : "Select a project first"}
+                options={sites
+                  .filter((s) => s.projectId === projectId)
+                  .map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             <Field label="Vehicle assignment">
@@ -680,22 +690,29 @@ export function EditForm({
         </section>
       </div>
 
-      <div className="mt-8 flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
-        {saved && !pending && (
-          <span className="text-sm text-emerald-600">Saved.</span>
-        )}
-        {error && !pending && (
-          <span className="text-sm text-red-600">{error}</span>
-        )}
+      {tab !== "records" && (
+        <div className="mt-8 flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+          >
+            {pending ? "Saving…" : "Save changes"}
+          </button>
+          {saved && !pending && (
+            <span className="text-sm text-emerald-600">Saved.</span>
+          )}
+          {error && !pending && (
+            <span className="text-sm text-red-600">{error}</span>
+          )}
+        </div>
+      )}
+      </form>
+
+      <div className={tab === "records" ? "space-y-8" : "hidden"}>
+        {recordsContent}
       </div>
-    </form>
+    </div>
   );
 }
 

@@ -5,6 +5,7 @@ import { Select } from "@/components/ui/Select";
 import { submitDailyTimesheetAction } from "../actions";
 
 type Supplier = { id: string; name: string };
+type SiteOption = { id: string; name: string; projectId: string };
 type EmployeeOption = {
   id: string;
   name: string;
@@ -22,14 +23,17 @@ function todayValue() {
 
 export function DailyTimesheetForm({
   suppliers,
+  sites,
   employees,
 }: {
   suppliers: Supplier[];
+  sites: SiteOption[];
   employees: EmployeeOption[];
 }) {
   const [pending, startTransition] = useTransition();
   const [supplierId, setSupplierId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [siteId, setSiteId] = useState("");
   const [date, setDate] = useState(todayValue());
   const [rates, setRates] = useState<Record<string, string>>({});
   const [values, setValues] = useState<Record<string, string>>({});
@@ -43,9 +47,19 @@ export function DailyTimesheetForm({
 
   const rows = employees.filter((e) => e.supplierId === supplierId && e.projectId === projectId);
 
+  const siteOptions = sites
+    .filter((s) => s.projectId === projectId)
+    .map((s) => ({ value: s.id, label: s.name }));
+
   function selectSupplier(id: string) {
     setSupplierId(id);
     setProjectId("");
+    setSiteId("");
+  }
+
+  function selectProject(id: string) {
+    setProjectId(id);
+    setSiteId("");
   }
 
   function handleSubmit() {
@@ -58,6 +72,7 @@ export function DailyTimesheetForm({
     formData.append("date", date);
     formData.append("supplierId", supplierId);
     formData.append("projectId", projectId);
+    formData.append("siteId", siteId);
     formData.append("rowsJson", rowsJson);
     startTransition(async () => {
       const res = await submitDailyTimesheetAction(formData);
@@ -72,7 +87,7 @@ export function DailyTimesheetForm({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-slate-500">Supplier</span>
           <Select
@@ -86,10 +101,20 @@ export function DailyTimesheetForm({
           <span className="mb-1 block text-xs font-medium text-slate-500">Project</span>
           <Select
             value={projectId}
-            onChange={setProjectId}
+            onChange={selectProject}
             placeholder={supplierId ? "Select project" : "Select a supplier first"}
             disabled={!supplierId}
             options={projectOptions}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-slate-500">Site (optional)</span>
+          <Select
+            value={siteId}
+            onChange={setSiteId}
+            placeholder={projectId ? "No site" : "Select a project first"}
+            disabled={!projectId}
+            options={siteOptions}
           />
         </label>
         <label className="block">

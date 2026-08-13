@@ -48,11 +48,19 @@ export async function submitManualEntryAction(
     return { error: "Pick a valid month." };
   }
   const projectId = String(formData.get("projectId") || "").trim() || null;
-  // Project is now the sole location concept — the legacy free-text `site`
-  // column just mirrors the picked project's name for display consistency
-  // with older Excel-sourced rows that still carry independent site text.
+  const siteIdInput = String(formData.get("siteId") || "").trim() || null;
+  // Project is the primary location concept — the legacy free-text `site`
+  // column mirrors the picked project's name for display consistency with
+  // older Excel-sourced rows that still carry independent site text, unless
+  // a specific Site under that project was also picked, which takes
+  // priority.
   const project = projectId ? await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } }) : null;
-  const site = project?.name ?? null;
+  const pickedSite =
+    siteIdInput && projectId
+      ? await prisma.site.findFirst({ where: { id: siteIdInput, projectId } })
+      : null;
+  const site = pickedSite?.name ?? project?.name ?? null;
+  const siteId = pickedSite?.id ?? null;
 
   let rows: ManualRow[];
   try {
@@ -110,6 +118,7 @@ export async function submitManualEntryAction(
       supplierName,
       clientName: (row.clientName || "").trim() || null,
       site,
+      siteId,
       trade,
       rate,
       dailyHours,
@@ -178,9 +187,16 @@ export async function submitDailyTimesheetAction(
   const date = String(formData.get("date") || "").trim();
   const supplierId = String(formData.get("supplierId") || "").trim();
   const projectId = String(formData.get("projectId") || "").trim();
+  const siteId = String(formData.get("siteId") || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !supplierId || !projectId) {
     return { saved: 0, requested: 0, error: "Pick a supplier, a project, and a date." };
   }
+
+  // Site is optional — only set when the chosen project actually has one
+  // picked; a project with no sites defined behaves exactly as before.
+  const site = siteId
+    ? await prisma.site.findFirst({ where: { id: siteId, projectId } })
+    : null;
 
   let rows: DailyRow[];
   try {
@@ -238,7 +254,8 @@ export async function submitDailyTimesheetAction(
           absentCount,
           clientId: existing.clientId ?? project.clientId,
           projectId: existing.projectId ?? projectId,
-          site: existing.site ?? project.name,
+          site: site?.name ?? existing.site ?? project.name,
+          siteId: site ? site.id : existing.siteId,
         },
       });
 
@@ -281,7 +298,8 @@ export async function submitDailyTimesheetAction(
           supplierId,
           clientId: project.clientId,
           projectId,
-          site: project.name,
+          site: site?.name ?? project.name,
+          siteId: site?.id ?? null,
         },
       });
 

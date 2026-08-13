@@ -464,3 +464,58 @@ export async function deleteProjectAction(formData: FormData) {
   revalidatePath("/employees");
   redirect("/projects");
 }
+
+// --- Sites (child of Project — a Project can have multiple physical sites) ---
+
+export async function createSiteAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const projectId = String(formData.get("projectId") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!projectId || !name) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+
+  const site = await prisma.site.create({
+    data: {
+      projectId,
+      name,
+      address: stringOrNull(formData.get("address")),
+    },
+  });
+
+  await logAudit({
+    entityType: "SITE",
+    entityId: site.id,
+    action: "CREATE",
+    after: { projectId, name, address: site.address },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
+export async function deleteSiteAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const projectId = String(formData.get("projectId") || "");
+  const siteId = String(formData.get("siteId") || "");
+  if (!siteId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.site.findUnique({ where: { id: siteId } });
+  await prisma.site.delete({ where: { id: siteId } });
+
+  if (existing) {
+    await logAudit({
+      entityType: "SITE",
+      entityId: siteId,
+      action: "DELETE",
+      before: { projectId, name: existing.name, address: existing.address },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+}

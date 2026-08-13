@@ -42,21 +42,28 @@ function blankRow(dayCount: number): RowState {
 }
 
 type ProjectOption = { id: string; code: string; name: string };
+type SiteOption = { id: string; name: string; projectId: string };
 
 export function ManualEntryForm({
   supplierNames,
   clientNames,
   projects,
+  sites,
 }: {
   supplierNames: string[];
   clientNames: string[];
   projects: ProjectOption[];
+  sites: SiteOption[];
 }) {
   const [state, formAction, pending] = useActionState(submitManualEntryAction, {
     error: null,
   });
   const [month, setMonth] = useState(currentMonthValue());
   const [projectId, setProjectId] = useState("");
+  const [siteId, setSiteId] = useState("");
+  const siteOptions = sites
+    .filter((s) => s.projectId === projectId)
+    .map((s) => ({ value: s.id, label: s.name }));
   const dayCount = useMemo(() => daysInMonth(month), [month]);
   const [rows, setRows] = useState<RowState[]>(() => [blankRow(dayCount)]);
 
@@ -102,6 +109,7 @@ export function ManualEntryForm({
       <input type="hidden" name="month" value={month} />
       <input type="hidden" name="rowsJson" value={rowsJson} readOnly />
       <input type="hidden" name="projectId" value={projectId} />
+      <input type="hidden" name="siteId" value={siteId} />
 
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -128,9 +136,24 @@ export function ManualEntryForm({
           </span>
           <Select
             value={projectId}
-            onChange={setProjectId}
+            onChange={(v) => {
+              setProjectId(v);
+              setSiteId("");
+            }}
             placeholder="No project"
             options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-slate-500">
+            Site (optional)
+          </span>
+          <Select
+            value={siteId}
+            onChange={setSiteId}
+            placeholder={projectId ? "No site" : "Select a project first"}
+            disabled={!projectId}
+            options={siteOptions}
           />
         </label>
         <button

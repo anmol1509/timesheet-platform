@@ -103,6 +103,7 @@ export async function importParsedMonths(
           trade: entry.trade,
           rate: entry.rate,
           site: entry.site,
+          siteId: entry.siteId ?? null,
           dailyHours: JSON.stringify(entry.dailyHours),
           totalHours: entry.totalHours,
           absentCount: entry.absentCount,
@@ -123,10 +124,11 @@ export async function importParsedMonths(
           absentCount: entry.absentCount,
           invoiceValue: entry.invoiceValue,
           clientId,
-          // Only touch projectId when this import explicitly carries one
-          // (manual entry) — a plain Excel re-upload must not clobber a
-          // project tag set on a prior pass for the same row.
+          // Only touch projectId/siteId when this import explicitly carries
+          // one (manual entry) — a plain Excel re-upload must not clobber a
+          // project/site tag set on a prior pass for the same row.
           ...(projectId ? { projectId } : {}),
+          ...(entry.siteId ? { siteId: entry.siteId } : {}),
           // Preserve any manually-entered absent deduction from a prior
           // review unless the recomputed absent count changed.
         },

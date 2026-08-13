@@ -10,6 +10,7 @@ import { ProjectOtherDetails } from "./project-other-details";
 import { ProjectDocuments } from "./project-documents";
 import { ProjectTradeRates } from "./project-trade-rates";
 import { ProjectHolidays } from "./project-holidays";
+import { ProjectSites } from "./project-sites";
 import { ProjectContacts } from "./project-contacts";
 import { ProjectInventory } from "./project-inventory";
 import { ProjectTabs } from "./project-tabs";
@@ -46,6 +47,7 @@ export default async function ProjectDetailPage({
         tradeRates: { where: { projectId: id }, orderBy: { trade: "asc" } },
         holidays: { orderBy: { date: "asc" } },
         contacts: { orderBy: { name: "asc" } },
+        sites: { orderBy: { name: "asc" } },
         inventory: { include: { item: true }, orderBy: { assignedDate: "desc" } },
       },
     }),
@@ -158,6 +160,11 @@ export default async function ProjectDetailPage({
                 longitude={project.longitude}
               />
             ),
+          },
+          {
+            id: "sites",
+            label: "Sites",
+            content: <ProjectSites projectId={project.id} sites={project.sites} />,
           },
           {
             id: "other",

@@ -10,7 +10,6 @@ import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
-import { VaccinationsSection } from "./vaccinations-section";
 import { VisaHistorySection } from "./visa-history-section";
 import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
@@ -29,32 +28,25 @@ export default async function EmployeeDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [employee, projects, vehicles, vacantBeds, sponsorshipCompanies, suppliers, lookupValues] = await Promise.all([
+  const [employee, projects, sites, vehicles, vacantBeds, sponsorshipCompanies, suppliers, lookupValues] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
       include: {
-        supplier: {
-          include: {
-            parent: {
-              select: {
-                id: true,
-                name: true,
-                subsidiaries: { select: { id: true, name: true } },
-              },
-            },
-            subsidiaries: { select: { id: true, name: true } },
-          },
-        },
+        supplier: true,
         project: { include: { client: true } },
         documents: { orderBy: { uploadedAt: "desc" } },
         skills: { include: { skill: true } },
-        vaccinations: { orderBy: { date: "desc" } },
         visaApplications: { orderBy: { createdAt: "desc" } },
         labourCardApplications: { orderBy: { createdAt: "desc" } },
         bed: { include: { room: { include: { camp: true } } } },
       },
     }),
     prisma.project.findMany({ orderBy: { name: "asc" } }),
+    prisma.site.findMany({
+      where: { project: branchWhere(branchId) },
+      select: { id: true, name: true, projectId: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.vehicle.findMany({ orderBy: { plateNumber: "asc" } }),
     prisma.bed.findMany({
       where: { employeeId: null },
@@ -73,23 +65,6 @@ export default async function EmployeeDetailPage({
 
   const lookups = groupLookups(lookupValues);
   const documentOptions = employee.documents.map((d) => ({ id: d.id, filename: d.filename }));
-
-  // Scope the "Sponsor / visa-holding entity" dropdown to the employee's
-  // supplier's own corporate family — its parent (or itself, if it is the
-  // parent) plus every sibling subsidiary — same root/siblings pattern as
-  // the Supplier chrome tabs.
-  const sponsorOptions = employee.supplier
-    ? (() => {
-        const root = employee.supplier.parent ?? {
-          id: employee.supplier.id,
-          name: employee.supplier.name,
-        };
-        const siblings = employee.supplier.parent
-          ? employee.supplier.parent.subsidiaries
-          : employee.supplier.subsidiaries;
-        return [{ id: root.id, name: root.name }, ...siblings];
-      })()
-    : [];
 
   const latest = await prisma.timesheetEntry.findFirst({
     where: { employeeIdNo: employee.employeeIdNo },
@@ -173,50 +148,42 @@ export default async function EmployeeDetailPage({
       <EditForm
         employee={employee}
         projects={projects}
+        sites={sites}
         vehicles={vehicles}
         sponsorshipCompanies={sponsorshipCompanies}
         suppliers={suppliers}
-        sponsorOptions={sponsorOptions}
         documents={employee.documents}
         lookups={lookups}
-      />
+        recordsContent={
+          <>
+            <SkillsSection
+              employeeId={employee.id}
+              skills={employee.skills.map((s) => ({
+                id: s.skill.id,
+                name: s.skill.name,
+                proficiencyPercent: s.proficiencyPercent,
+                rate: s.rate,
+              }))}
+            />
 
-      <SkillsSection
-        employeeId={employee.id}
-        skills={employee.skills.map((s) => ({
-          id: s.skill.id,
-          name: s.skill.name,
-          proficiencyPercent: s.proficiencyPercent,
-          rate: s.rate,
-        }))}
-      />
+            <VisaHistorySection
+              employeeId={employee.id}
+              entries={employee.visaApplications}
+              stages={lookups.VISA_APPLICATION_STAGE}
+              documents={documentOptions}
+            />
 
-      <VaccinationsSection
-        employeeId={employee.id}
-        vaccinations={employee.vaccinations.map((v) => ({
-          id: v.id,
-          vaccineName: v.vaccineName,
-          doseNumber: v.doseNumber,
-          date: v.date,
-          expiryDate: v.expiryDate,
-        }))}
-      />
+            <LabourCardHistorySection
+              employeeId={employee.id}
+              entries={employee.labourCardApplications}
+              stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
+              documents={documentOptions}
+            />
 
-      <VisaHistorySection
-        employeeId={employee.id}
-        entries={employee.visaApplications}
-        stages={lookups.VISA_APPLICATION_STAGE}
-        documents={documentOptions}
+            <DocumentsSection employeeId={employee.id} documents={employee.documents} />
+          </>
+        }
       />
-
-      <LabourCardHistorySection
-        employeeId={employee.id}
-        entries={employee.labourCardApplications}
-        stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
-        documents={documentOptions}
-      />
-
-      <DocumentsSection employeeId={employee.id} documents={employee.documents} />
     </div>
   );
 }

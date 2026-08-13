@@ -27,6 +27,7 @@ export type ParsedEntry = {
   supplierName: string;
   clientName: string | null;
   site: string | null;
+  siteId?: string | null;
   trade: string;
   rate: number;
   dailyHours: DailyHourCell[];

@@ -64,6 +64,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       salaryType: stringOrNull(formData.get("salaryType")),
       salaryRate: numberOrNull(formData.get("salaryRate")),
       projectId: stringOrNull(formData.get("projectId")),
+      siteId: stringOrNull(formData.get("siteId")),
       vehicleId: stringOrNull(formData.get("vehicleId")),
       notes: stringOrNull(formData.get("notes")),
       dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
@@ -72,7 +73,6 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       mobileNumber: stringOrNull(formData.get("mobileNumber")),
       whatsappNumber: stringOrNull(formData.get("whatsappNumber")),
       joinDate: dateOrNull(formData.get("joinDate")),
-      sponsorName: stringOrNull(formData.get("sponsorName")),
       emergencyContactName: stringOrNull(formData.get("emergencyContactName")),
       emergencyContactPhone: stringOrNull(formData.get("emergencyContactPhone")),
       laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
@@ -386,37 +386,6 @@ export async function addSkillAction(formData: FormData) {
 
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/skills");
-}
-
-export async function addVaccinationAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const employeeId = String(formData.get("employeeId") || "");
-  const vaccineName = String(formData.get("vaccineName") || "").trim();
-  if (!employeeId || !vaccineName) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
-
-  await prisma.employeeVaccination.create({
-    data: {
-      employeeId,
-      vaccineName,
-      doseNumber: numberOrNull(formData.get("doseNumber")),
-      date: dateOrNull(formData.get("date")),
-      expiryDate: dateOrNull(formData.get("expiryDate")),
-      notes: stringOrNull(formData.get("notes")),
-    },
-  });
-
-  revalidatePath(`/employees/${employeeId}`);
-}
-
-export async function removeVaccinationAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const employeeId = String(formData.get("employeeId") || "");
-  const vaccinationId = String(formData.get("vaccinationId") || "");
-  if (!employeeId || !vaccinationId) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
-  await prisma.employeeVaccination.delete({ where: { id: vaccinationId } }).catch(() => {});
-  revalidatePath(`/employees/${employeeId}`);
 }
 
 export async function addVisaApplicationAction(formData: FormData) {

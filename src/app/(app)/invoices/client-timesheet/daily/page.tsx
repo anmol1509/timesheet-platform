@@ -6,8 +6,13 @@ import { DailyTimesheetForm } from "./daily-timesheet-form";
 export default async function DailyTimesheetPage() {
   const { branchId } = await requireUserWithBranch();
 
-  const [suppliers, employees] = await Promise.all([
+  const [suppliers, sites, employees] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.site.findMany({
+      where: { project: branchWhere(branchId) },
+      select: { id: true, name: true, projectId: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.employee.findMany({
       where: { ...branchWhere(branchId), projectId: { not: null }, supplierId: { not: null } },
       select: {
@@ -34,6 +39,7 @@ export default async function DailyTimesheetPage() {
 
       <DailyTimesheetForm
         suppliers={suppliers}
+        sites={sites}
         employees={employees.map((e) => ({
           id: e.id,
           name: e.name,
