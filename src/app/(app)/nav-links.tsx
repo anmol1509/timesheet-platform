@@ -26,6 +26,9 @@ import {
   ListChecks,
   History,
   FileSearch,
+  BadgeDollarSign,
+  FileQuestion,
+  FileSignature,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +59,15 @@ const NAV: Entry[] = [
       { href: "/suppliers", label: "Suppliers", icon: Truck },
       { href: "/sponsorship-companies", label: "Sponsorship Companies", icon: Landmark },
       { href: "/banks", label: "Banks", icon: Wallet },
+    ],
+  },
+  {
+    type: "group",
+    label: "Sales",
+    icon: BadgeDollarSign,
+    children: [
+      { href: "/sales/enquiries", label: "Enquiries", icon: FileQuestion },
+      { href: "/sales/quotations", label: "Quotations", icon: FileSignature },
     ],
   },
   {

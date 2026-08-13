@@ -48,6 +48,8 @@ model Branch {
   nocs                 Noc[]
   lpos                 Lpo[]
   attendance           Attendance[]
+  enquiries            Enquiry[]
+  quotations           Quotation[]
 }
 
 // The visa-issuing legal entity for an employee — distinct from Branch (the
@@ -247,6 +249,8 @@ model Client {
   documents      ClientDocument[]
   demandRequests DemandRequest[]
   lpos           Lpo[]
+  enquiries      Enquiry[]
+  quotations     Quotation[]
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -693,6 +697,7 @@ model Project {
   sites            Site[]
   lpos             Lpo[]
   attendance       Attendance[]
+  quotations       Quotation[]
 }
 
 // A Local Purchase Order — the client's authorization + funding envelope for
@@ -782,6 +787,74 @@ model AttendanceCorrectionRequest {
 
   attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
   attendanceId String
+}
+
+// Pre-sales pipeline: Client Enquiry/RFQ, ahead of a Quotation. No Project
+// exists yet at this stage (projectHint is free text only).
+model Enquiry {
+  id            String   @id @default(cuid())
+  enquiryNo     Int      @unique @default(autoincrement())
+  projectHint   String?
+  requiredTrade String?
+  source        String?
+  remarks       String?
+  status        String   @default("Open") // "Open" | "Quoted" | "Lost" | "Converted"
+  createdAt     DateTime @default(now())
+
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  requestedById String?
+
+  quotations Quotation[]
+}
+
+// A formal quotation with trade/quantity/rate line items, moving through
+// negotiation/approval stages before conversion into a real Project (and
+// optionally an Lpo, if Phase A's Lpo model is populated at conversion
+// time). Mirrors the DemandRequest/DemandRequestTrade header+line shape.
+model Quotation {
+  id               String    @id @default(cuid())
+  quotationNumber  String    @unique
+  status           String    @default("DRAFT") // "DRAFT" | "SENT" | "NEGOTIATION" | "APPROVED" | "ACCEPTED" | "REJECTED" | "CONVERTED"
+  validUntil       DateTime?
+  terms            String?
+  accommodationResponsibility  String?
+  transportationResponsibility String?
+  ppeResponsibility            String?
+  createdAt        DateTime  @default(now())
+
+  enquiry   Enquiry? @relation(fields: [enquiryId], references: [id])
+  enquiryId String?
+
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
+
+  project   Project? @relation(fields: [projectId], references: [id])
+  projectId String? // set once converted
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  createdById String
+
+  lines QuotationLine[]
+}
+
+model QuotationLine {
+  id           String  @id @default(cuid())
+  trade        String
+  quantity     Int
+  rate         Float
+  otRate       Float?
+  nationality  String?
+  workingHours String?
+
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId String
 }
 
 // A physical location under a Project — one Project can have multiple Sites
