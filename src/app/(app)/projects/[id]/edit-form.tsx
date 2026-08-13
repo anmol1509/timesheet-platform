@@ -18,9 +18,6 @@ type Project = {
   jobType: string | null;
   mainContractor: string | null;
   paymentType: string | null;
-  lpoNo: string | null;
-  lpoDate: string;
-  closedLpo: boolean;
   sponsorshipCompany: string | null;
   salesExecutive: string | null;
   contactNo: string | null;
@@ -112,21 +109,6 @@ export function EditProjectForm({
             name="clientId"
             defaultValue={project.clientId}
             options={clients.map((c) => ({ value: c.id, label: c.name }))}
-          />
-        </Field>
-        <Field label="LPO no.">
-          <input
-            name="lpoNo"
-            defaultValue={project.lpoNo || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
-          />
-        </Field>
-        <Field label="LPO date">
-          <input
-            name="lpoDate"
-            type="date"
-            defaultValue={project.lpoDate}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
           />
         </Field>
         <Field label="Sponsorship company">
@@ -230,7 +212,6 @@ export function EditProjectForm({
           />
         </Field>
         <CheckboxField label="Inter transfer" name="interTransfer" defaultChecked={project.interTransfer} />
-        <CheckboxField label="Closed LPO" name="closedLpo" defaultChecked={project.closedLpo} />
         <CheckboxField label="Internal use" name="internalUse" defaultChecked={project.internalUse} />
       </Section>
 

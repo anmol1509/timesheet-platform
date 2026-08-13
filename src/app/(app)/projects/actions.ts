@@ -39,6 +39,11 @@ async function nextProjectCode() {
   return `PRJ${String(count + 1).padStart(3, "0")}`;
 }
 
+async function nextLpoNumber() {
+  const count = await prisma.lpo.count();
+  return `LPO-${String(count + 1).padStart(6, "0")}`;
+}
+
 export async function createProjectAction(
   _prevState: { error: string | null },
   formData: FormData
@@ -111,9 +116,6 @@ export async function updateProjectAction(formData: FormData) {
     jobType: stringOrNull(formData.get("jobType")),
     mainContractor: stringOrNull(formData.get("mainContractor")),
     paymentType: stringOrNull(formData.get("paymentType")),
-    lpoNo: stringOrNull(formData.get("lpoNo")),
-    lpoDate: dateOrNull(formData.get("lpoDate")),
-    closedLpo: formData.get("closedLpo") === "on",
     sponsorshipCompany: stringOrNull(formData.get("sponsorshipCompany")),
     salesExecutive: stringOrNull(formData.get("salesExecutive")),
     contactNo: stringOrNull(formData.get("contactNo")),
@@ -487,6 +489,108 @@ export async function createSiteAction(formData: FormData) {
     entityId: site.id,
     action: "CREATE",
     after: { projectId, name, address: site.address },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
+// --- LPOs (a Project can have more than one over its lifetime) ---
+
+export async function addLpoAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const projectId = String(formData.get("projectId") || "");
+  const clientId = String(formData.get("clientId") || "");
+  if (!projectId || !clientId || !branchId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+
+  const lpoNumber = await nextLpoNumber();
+  const data = {
+    lpoNumber,
+    projectId,
+    clientId,
+    branchId,
+    value: numberOrNull(formData.get("value")),
+    quantity: numberOrNull(formData.get("quantity")),
+    trade: stringOrNull(formData.get("trade")),
+    rate: numberOrNull(formData.get("rate")),
+    validFrom: dateOrNull(formData.get("validFrom")),
+    validTo: dateOrNull(formData.get("validTo")),
+    notes: stringOrNull(formData.get("notes")),
+  };
+
+  const lpo = await prisma.lpo.create({ data });
+
+  await logAudit({
+    entityType: "LPO",
+    entityId: lpo.id,
+    action: "CREATE",
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
+export async function updateLpoAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const projectId = String(formData.get("projectId") || "");
+  const lpoId = String(formData.get("lpoId") || "");
+  if (!lpoId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+
+  const before = await prisma.lpo.findUnique({ where: { id: lpoId } });
+  if (!before || before.projectId !== projectId) return;
+
+  const data = {
+    value: numberOrNull(formData.get("value")),
+    quantity: numberOrNull(formData.get("quantity")),
+    trade: stringOrNull(formData.get("trade")),
+    rate: numberOrNull(formData.get("rate")),
+    validFrom: dateOrNull(formData.get("validFrom")),
+    validTo: dateOrNull(formData.get("validTo")),
+    billedAmount: numberOrNull(formData.get("billedAmount")) ?? before.billedAmount,
+    notes: stringOrNull(formData.get("notes")),
+  };
+
+  await prisma.lpo.update({ where: { id: lpoId }, data });
+
+  await logAudit({
+    entityType: "LPO",
+    entityId: lpoId,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: data,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
+export async function closeLpoAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const projectId = String(formData.get("projectId") || "");
+  const lpoId = String(formData.get("lpoId") || "");
+  if (!lpoId) return;
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+
+  const before = await prisma.lpo.findUnique({ where: { id: lpoId } });
+  if (!before || before.projectId !== projectId) return;
+
+  await prisma.lpo.update({ where: { id: lpoId }, data: { status: "CLOSED" } });
+
+  await logAudit({
+    entityType: "LPO",
+    entityId: lpoId,
+    action: "UPDATE",
+    before: { status: before.status },
+    after: { status: "CLOSED" },
     userId: user.id,
     userName: user.name,
     branchId,

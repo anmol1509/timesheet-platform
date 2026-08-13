@@ -9,6 +9,7 @@ import { ProjectLocation } from "./project-location";
 import { ProjectOtherDetails } from "./project-other-details";
 import { ProjectDocuments } from "./project-documents";
 import { ProjectTradeRates } from "./project-trade-rates";
+import { ProjectLpo } from "./project-lpo";
 import { ProjectHolidays } from "./project-holidays";
 import { ProjectSites } from "./project-sites";
 import { ProjectContacts } from "./project-contacts";
@@ -48,6 +49,7 @@ export default async function ProjectDetailPage({
         holidays: { orderBy: { date: "asc" } },
         contacts: { orderBy: { name: "asc" } },
         sites: { orderBy: { name: "asc" } },
+        lpos: { orderBy: { createdAt: "desc" } },
         inventory: { include: { item: true }, orderBy: { assignedDate: "desc" } },
       },
     }),
@@ -108,9 +110,6 @@ export default async function ProjectDetailPage({
                   jobType: project.jobType,
                   mainContractor: project.mainContractor,
                   paymentType: project.paymentType,
-                  lpoNo: project.lpoNo,
-                  lpoDate: toDateInput(project.lpoDate),
-                  closedLpo: project.closedLpo,
                   sponsorshipCompany: project.sponsorshipCompany,
                   salesExecutive: project.salesExecutive,
                   contactNo: project.contactNo,
@@ -141,6 +140,21 @@ export default async function ProjectDetailPage({
                 clientId={project.clientId}
                 clientName={project.client.name}
                 rates={project.tradeRates}
+              />
+            ),
+          },
+          {
+            id: "lpo",
+            label: "LPO",
+            content: (
+              <ProjectLpo
+                projectId={project.id}
+                clientId={project.clientId}
+                lpos={project.lpos.map((l) => ({
+                  ...l,
+                  validFrom: toDateInput(l.validFrom),
+                  validTo: toDateInput(l.validTo),
+                }))}
               />
             ),
           },

@@ -46,6 +46,7 @@ model Branch {
   demandRequests       DemandRequest[]
   letterTemplates      LetterTemplate[]
   nocs                 Noc[]
+  lpos                 Lpo[]
 }
 
 // The visa-issuing legal entity for an employee — distinct from Branch (the
@@ -243,6 +244,7 @@ model Client {
   tradeRates     ClientTradeRate[]
   documents      ClientDocument[]
   demandRequests DemandRequest[]
+  lpos           Lpo[]
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -651,9 +653,6 @@ model Project {
   jobType                 String?
   mainContractor          String?
   paymentType             String?
-  lpoNo                   String?
-  lpoDate                 DateTime?
-  closedLpo               Boolean   @default(false)
   sponsorshipCompany      String?
   salesExecutive          String?
   projectCoordinator      String?
@@ -688,6 +687,40 @@ model Project {
   demandRequests   DemandRequest[]
   routes           Route[]
   sites            Site[]
+  lpos             Lpo[]
+}
+
+// A Local Purchase Order — the client's authorization + funding envelope for
+// a Project. A Project can have more than one Lpo over its lifetime (renewal
+// / amendment); only one is normally ACTIVE at a time, tracked via status
+// rather than enforced by the schema (matches this codebase's convention of
+// plain-string statuses with no state-machine helper). billedAmount is a
+// manually-tracked running total, not derived from ClientInvoice, because
+// ClientInvoice is client+month scoped today with no project/LPO linkage.
+model Lpo {
+  id           String    @id @default(cuid())
+  lpoNumber    String    @unique
+  value        Float?
+  quantity     Int?
+  trade        String?
+  rate         Float?
+  validFrom    DateTime?
+  validTo      DateTime?
+  status       String    @default("ACTIVE") // "ACTIVE" | "EXPIRED" | "CLOSED"
+  billedAmount Float     @default(0)
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId, projectId])
 }
 
 // A physical location under a Project — one Project can have multiple Sites

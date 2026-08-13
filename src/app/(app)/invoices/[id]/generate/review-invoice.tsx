@@ -17,16 +17,25 @@ type Entry = {
 
 const VAT_RATE = 0.05;
 
+type ActiveLpo = {
+  id: string;
+  lpoNumber: string;
+  remaining: number | null;
+  expired: boolean;
+};
+
 export function ReviewInvoice({
   client,
   month,
   monthLabel,
   entries,
+  activeLpos,
 }: {
   client: { id: string; name: string; trn: string | null; billingAddress: string | null };
   month: string;
   monthLabel: string;
   entries: Entry[];
+  activeLpos: ActiveLpo[];
 }) {
   const [rates, setRates] = useState<Record<string, number>>(() =>
     Object.fromEntries(entries.map((e) => [e.id, e.billRate]))
@@ -34,6 +43,7 @@ export function ReviewInvoice({
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | "issue" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ invoiceNumber: string } | null>(null);
+  const [lpoAck, setLpoAck] = useState(false);
 
   function resetRate(id: string) {
     setRates((r) => ({ ...r, [id]: entries.find((e) => e.id === id)!.billRate }));
@@ -56,6 +66,12 @@ export function ReviewInvoice({
   const totalAmount = subtotal + vatAmount;
   const margin = subtotal - totalCost;
   const unratedTrades = [...new Set(rows.filter((r) => !r.rateSet).map((r) => r.trade))];
+
+  const expiredLpos = activeLpos.filter((l) => l.expired);
+  const overLimitLpos = activeLpos.filter(
+    (l) => !l.expired && l.remaining != null && totalAmount > l.remaining
+  );
+  const hasLpoWarning = expiredLpos.length > 0 || overLimitLpos.length > 0;
 
   async function handleGenerate(format: "xlsx" | "pdf", save: boolean) {
     setGenerating(save ? "issue" : format);
@@ -127,7 +143,7 @@ export function ReviewInvoice({
             </button>
             <button
               onClick={() => handleGenerate("pdf", true)}
-              disabled={generating !== null || issued !== null}
+              disabled={generating !== null || issued !== null || (hasLpoWarning && !lpoAck)}
               className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
             >
               {generating === "issue"
@@ -151,6 +167,37 @@ export function ReviewInvoice({
               invoice history
             </Link>
             .
+          </div>
+        )}
+        {hasLpoWarning && !issued && (
+          <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {expiredLpos.length > 0 && (
+              <p>
+                Expired LPO on this project: {expiredLpos.map((l) => l.lpoNumber).join(", ")}.
+              </p>
+            )}
+            {overLimitLpos.length > 0 && (
+              <p>
+                This invoice (AED{" "}
+                {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}) exceeds
+                the remaining balance on{" "}
+                {overLimitLpos
+                  .map(
+                    (l) =>
+                      `${l.lpoNumber} (AED ${l.remaining?.toLocaleString(undefined, { maximumFractionDigits: 2 })} left)`
+                  )
+                  .join(", ")}
+                .
+              </p>
+            )}
+            <label className="mt-2 flex items-center gap-2 text-red-800">
+              <input
+                type="checkbox"
+                checked={lpoAck}
+                onChange={(e) => setLpoAck(e.target.checked)}
+              />
+              I have management authorization to issue this invoice anyway.
+            </label>
           </div>
         )}
         {unratedTrades.length > 0 && !issued && (

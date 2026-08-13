@@ -23,6 +23,12 @@ export default async function GenerateInvoicePage({
   const entries = await getClientMonthEntries(id, month);
   if (entries.length === 0) notFound();
 
+  const activeLpos = await prisma.lpo.findMany({
+    where: { clientId: id, status: "ACTIVE" },
+    select: { id: true, lpoNumber: true, value: true, billedAmount: true, validTo: true },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
     <ReviewInvoice
       client={{
@@ -34,6 +40,12 @@ export default async function GenerateInvoicePage({
       month={month}
       monthLabel={monthLabelFromKey(month)}
       entries={entries}
+      activeLpos={activeLpos.map((l) => ({
+        id: l.id,
+        lpoNumber: l.lpoNumber,
+        remaining: l.value != null ? l.value - l.billedAmount : null,
+        expired: l.validTo ? l.validTo.getTime() < Date.now() : false,
+      }))}
     />
   );
 }

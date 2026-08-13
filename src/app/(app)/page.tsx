@@ -9,6 +9,7 @@ import { AssignedStaffList } from "@/components/AssignedStaffList";
 import { DocumentExpiryWidget } from "@/components/DocumentExpiryWidget";
 import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
+import { getLpoAlerts } from "@/lib/lpoAlerts";
 import { getWeeklyHours } from "@/lib/weeklyHours";
 import { getAssignedStaff } from "@/lib/assignedStaff";
 import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
@@ -50,6 +51,7 @@ export default async function DashboardPage() {
     activeProjectCount,
     activeClientCount,
     alerts,
+    lpoAlerts,
     weeklyHours,
     assignedStaff,
     beds,
@@ -66,6 +68,7 @@ export default async function DashboardPage() {
     prisma.project.count({ where: { ...branchScope, status: "ACTIVE" } }),
     prisma.client.count({ where: { ...branchScope, status: "ACTIVE" } }),
     getComplianceAlerts(branchId),
+    getLpoAlerts(branchId),
     getWeeklyHours(branchId),
     getAssignedStaff(4, branchId),
     // Camp/Room/Bed aren't branch-scoped yet (deferred to a later phase),
@@ -138,6 +141,43 @@ export default async function DashboardPage() {
         </h2>
         <DocumentExpiryWidget categories={documentExpiryCounts} />
       </div>
+
+      {lpoAlerts.length > 0 && (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <AlertTriangle className="h-4 w-4 text-amber-500" /> LPO Alerts
+          </h2>
+          <div className="space-y-3">
+            {lpoAlerts.map((a, i) => (
+              <div key={`${a.lpoId}-${a.kind}`} className="flex items-center gap-3">
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ALERT_CHIP_COLORS[i % ALERT_CHIP_COLORS.length]}`}
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/projects/${a.projectId}`}
+                    className="block truncate text-sm font-medium text-slate-900 hover:underline"
+                  >
+                    {a.lpoNumber} &mdash; {a.projectName}
+                  </Link>
+                  <p className="truncate text-xs text-slate-500">
+                    {a.kind === "EXPIRING"
+                      ? a.days != null && a.days < 0
+                        ? `expired ${Math.abs(a.days)}d ago`
+                        : `expires in ${a.days}d`
+                      : `AED ${a.remaining?.toLocaleString(undefined, { maximumFractionDigits: 2 })} remaining`}
+                  </p>
+                </div>
+                <Badge color={a.kind === "EXPIRING" && a.days != null && a.days < 0 ? "red" : "amber"}>
+                  {a.kind === "EXPIRING" ? "Expiring" : "Low balance"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 lg:col-span-2">
