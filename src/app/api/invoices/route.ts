@@ -80,22 +80,28 @@ export async function POST(request: Request) {
   if (save) {
     invoiceNumber = await nextInvoiceNumber();
     try {
-      await prisma.clientInvoice.create({
-        data: {
-          invoiceNumber,
-          month,
-          monthLabel,
-          subtotal,
-          vatAmount,
-          totalAmount,
-          status: "SENT",
-          issueDate,
-          dueDate,
-          clientId,
-          generatedById: user.id,
-          branchId: branchId!,
-        },
-      });
+      await prisma.$transaction([
+        prisma.clientInvoice.create({
+          data: {
+            invoiceNumber,
+            month,
+            monthLabel,
+            subtotal,
+            vatAmount,
+            totalAmount,
+            status: "SENT",
+            issueDate,
+            dueDate,
+            clientId,
+            generatedById: user.id,
+            branchId: branchId!,
+          },
+        }),
+        prisma.timesheetEntry.updateMany({
+          where: { id: { in: [...entryIds] } },
+          data: { status: "LOCKED" },
+        }),
+      ]);
     } catch {
       return NextResponse.json(
         { error: "Could not issue invoice number. Try again." },

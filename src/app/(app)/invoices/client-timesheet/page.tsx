@@ -46,6 +46,7 @@ export default async function ClientTimesheetPage({
             dailyHours: true,
             totalHours: true,
             absentCount: true,
+            status: true,
           },
           orderBy: [{ trade: "asc" }, { employeeName: "asc" }],
         })

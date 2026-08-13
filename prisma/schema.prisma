@@ -333,6 +333,7 @@ model TimesheetEntry {
   absentCount     Int      @default(0)
   absentDeduction Float    @default(0) // editable before export
   invoiceValue    Float    @default(0) // rate * totalHours, as in source sheet
+  status          String   @default("DRAFT") // "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "CLIENT_APPROVED" | "REJECTED" | "LOCKED"
   updatedAt       DateTime @updatedAt
   createdAt       DateTime @default(now())
 

@@ -86,6 +86,14 @@ export async function importParsedMonths(
         },
       });
 
+      // A re-upload must never silently overwrite hours on an entry that's
+      // already locked (invoiced) — skip it entirely and count it as
+      // unchanged rather than clobbering billed data.
+      if (existing?.status === "LOCKED") {
+        stats.rowsSkipped++;
+        continue;
+      }
+
       await prisma.timesheetEntry.upsert({
         where: {
           month_supplierId_employeeIdNo_trade: {

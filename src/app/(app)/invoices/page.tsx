@@ -27,11 +27,11 @@ export default async function InvoicesPage({
   const clients = selectedMonth
     ? await prisma.client.findMany({
         where: {
-          entries: { some: { month: selectedMonth } },
+          entries: { some: { month: selectedMonth, status: "CLIENT_APPROVED" } },
           ...branchWhere(branchId),
         },
         include: {
-          entries: { where: { month: selectedMonth } },
+          entries: { where: { month: selectedMonth, status: "CLIENT_APPROVED" } },
           tradeRates: true,
         },
         orderBy: { name: "asc" },

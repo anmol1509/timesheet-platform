@@ -237,6 +237,7 @@ export async function submitDailyTimesheetAction(
     });
 
     if (existing) {
+      if (existing.status === "LOCKED" && !isSuperAdmin) continue;
       let days: DailyHourCell[];
       try {
         days = JSON.parse(existing.dailyHours);
@@ -321,6 +322,110 @@ export async function submitDailyTimesheetAction(
   return { saved, requested: rows.length };
 }
 
+// Legal forward transitions for the timesheet status workflow. No
+// state-machine helper exists elsewhere in this codebase (statuses are
+// plain strings + inline checks throughout) — a small const map here keeps
+// the transition table readable without introducing a new pattern.
+const TIMESHEET_TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ["SUBMITTED"],
+  SUBMITTED: ["UNDER_REVIEW", "CLIENT_APPROVED", "REJECTED"],
+  UNDER_REVIEW: ["CLIENT_APPROVED", "REJECTED"],
+  CLIENT_APPROVED: ["LOCKED"],
+  REJECTED: ["DRAFT", "SUBMITTED"],
+  LOCKED: [],
+};
+
+async function transitionTimesheetEntries(
+  entryIds: string[],
+  toStatus: string,
+  branchId: string | null,
+  isSuperAdmin: boolean,
+  userId: string,
+  userName: string
+) {
+  let updated = 0;
+  for (const entryId of entryIds) {
+    const entry = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
+    if (!entry || isOutsideBranch(entry.branchId, branchId, isSuperAdmin)) continue;
+    if (!TIMESHEET_TRANSITIONS[entry.status]?.includes(toStatus)) continue;
+
+    await prisma.timesheetEntry.update({ where: { id: entryId }, data: { status: toStatus } });
+
+    await logAudit({
+      entityType: "TIMESHEET_ENTRY",
+      entityId: entryId,
+      action: "UPDATE",
+      before: { status: entry.status },
+      after: { status: toStatus },
+      userId,
+      userName,
+      branchId,
+    });
+    updated++;
+  }
+  return updated;
+}
+
+export async function submitTimesheetForReviewAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
+  const updated = await transitionTimesheetEntries(
+    entryIds,
+    "SUBMITTED",
+    branchId,
+    isSuperAdmin,
+    user.id,
+    user.name
+  );
+  revalidatePath("/invoices/client-timesheet");
+  return { updated, requested: entryIds.length };
+}
+
+export async function approveTimesheetAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
+  const updated = await transitionTimesheetEntries(
+    entryIds,
+    "CLIENT_APPROVED",
+    branchId,
+    isSuperAdmin,
+    user.id,
+    user.name
+  );
+  revalidatePath("/invoices/client-timesheet");
+  return { updated, requested: entryIds.length };
+}
+
+export async function rejectTimesheetAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
+  const updated = await transitionTimesheetEntries(
+    entryIds,
+    "REJECTED",
+    branchId,
+    isSuperAdmin,
+    user.id,
+    user.name
+  );
+  revalidatePath("/invoices/client-timesheet");
+  return { updated, requested: entryIds.length };
+}
+
+export async function lockTimesheetAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
+  const updated = await transitionTimesheetEntries(
+    entryIds,
+    "LOCKED",
+    branchId,
+    isSuperAdmin,
+    user.id,
+    user.name
+  );
+  revalidatePath("/invoices/client-timesheet");
+  return { updated, requested: entryIds.length };
+}
+
 function recompute(days: DailyHourCell[]) {
   let totalHours = 0;
   let absentCount = 0;
@@ -340,6 +445,7 @@ export async function updateDailyHoursAction(formData: FormData) {
 
   const before = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
   if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return;
+  if (before.status === "LOCKED" && !isSuperAdmin) return;
 
   let days: DailyHourCell[];
   try {
@@ -392,6 +498,7 @@ export async function batchUpdateHoursAction(formData: FormData) {
   for (const entryId of entryIds) {
     const entry = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
     if (!entry || isOutsideBranch(entry.branchId, branchId, isSuperAdmin)) continue;
+    if (entry.status === "LOCKED" && !isSuperAdmin) continue;
 
     let days: DailyHourCell[];
     try {

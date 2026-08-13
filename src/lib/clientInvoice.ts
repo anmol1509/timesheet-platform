@@ -5,7 +5,7 @@ export const VAT_RATE = 0.05; // UAE standard VAT
 export async function getClientMonthEntries(clientId: string, month: string) {
   const [entries, client, tradeRates] = await Promise.all([
     prisma.timesheetEntry.findMany({
-      where: { clientId, month },
+      where: { clientId, month, status: "CLIENT_APPROVED" },
       include: { supplier: true },
       orderBy: [{ trade: "asc" }, { employeeName: "asc" }],
     }),
