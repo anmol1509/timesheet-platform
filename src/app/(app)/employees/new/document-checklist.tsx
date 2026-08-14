@@ -12,6 +12,8 @@ export type ChecklistItem = {
   detail?: string | null;
   /** Something is wrong with the value even though it exists (e.g. expired). */
   warning?: string | null;
+  /** Raw value for the editable input, when `detail` is formatted for display. */
+  editValue?: string;
 };
 
 /**
@@ -27,6 +29,8 @@ export function DocumentChecklist({
   onFix,
   fixLabel = "Add",
   columns = 2,
+  onEdit,
+  editType,
 }: {
   title: string;
   items: ChecklistItem[];
@@ -34,6 +38,14 @@ export function DocumentChecklist({
   onFix?: (key: string) => void;
   fixLabel?: string;
   columns?: 1 | 2;
+  /**
+   * Makes each row's value editable in place. Documents are misread often
+   * enough that correcting a value where you spot it beats hunting for the
+   * field it came from.
+   */
+  onEdit?: (key: string, value: string) => void;
+  /** Per-item input type, e.g. "date" for expiry rows. */
+  editType?: (key: string) => "text" | "date";
 }) {
   const done = items.filter((i) => i.done).length;
   const complete = done === items.length;
@@ -86,7 +98,23 @@ export function DocumentChecklist({
               >
                 {item.label}
               </span>
-              {item.warning ? (
+              {onEdit ? (
+                <>
+                  <input
+                    type={editType?.(item.key) ?? "text"}
+                    value={item.editValue ?? item.detail ?? ""}
+                    onChange={(e) => onEdit(item.key, e.target.value)}
+                    placeholder="Not read — type it in"
+                    aria-label={item.label}
+                    className="tabular mt-0.5 w-full rounded-sm border border-transparent bg-transparent px-1 py-0.5 text-xs text-secondary transition hover:border-default focus:border-[var(--brand-primary)] focus:bg-surface focus:outline-none"
+                  />
+                  {item.warning && (
+                    <span className="block px-1 text-xs text-[var(--warning)]">
+                      {item.warning}
+                    </span>
+                  )}
+                </>
+              ) : item.warning ? (
                 <span className="block text-xs text-[var(--warning)]">
                   {item.warning}
                 </span>
@@ -97,7 +125,7 @@ export function DocumentChecklist({
               ) : null}
             </span>
 
-            {!item.done && onFix && (
+            {!item.done && !onEdit && onFix && (
               <button
                 type="button"
                 onClick={() => onFix(item.key)}

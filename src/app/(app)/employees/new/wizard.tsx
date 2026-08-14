@@ -18,6 +18,8 @@ import { DocumentChecklist, type ChecklistItem } from "./document-checklist";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
+import { PhoneInput } from "@/components/ui/PhoneInput";
+import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { cn } from "@/lib/cn";
 
 type Project = { id: string; name: string; code: string };
@@ -266,6 +268,26 @@ export function EmployeeWizard({
     return payload as ExtractedDocumentFields;
   }
 
+  /**
+   * Lifts the worker's photo out of a pack that contains one, so registering
+   * doesn't silently leave the profile picture empty. Never overrides a photo
+   * the user picked themselves.
+   */
+  async function adoptPackPhoto(file: File, photoPage: string | null | undefined) {
+    const page = Number(photoPage);
+    if (!photoPage || !Number.isFinite(page) || page < 1) return;
+    if (photo) return;
+    try {
+      const image = await pdfPageToImage(file, page);
+      if (!image) return;
+      setPhoto(image);
+      setPhotoPreview(URL.createObjectURL(image));
+      setFound((prev) => [...new Set([...prev, "PHOTO"])]);
+    } catch {
+      // A failed render just leaves the photo slot empty for a manual upload.
+    }
+  }
+
   async function readPack(files: File[]) {
     const readable = files.filter(
       (f) => f.type.startsWith("image/") || f.type === "application/pdf"
@@ -278,6 +300,7 @@ export function EmployeeWizard({
       for (const file of readable) {
         const data = await extract(file, "COMBINED");
         total += applyExtractedFields(data);
+        await adoptPackPhoto(file, data.photoPage);
       }
       setPackStatus({
         kind: "filled",
@@ -424,8 +447,15 @@ export function EmployeeWizard({
       {
         key: "PHOTO",
         label: "Profile photo",
-        done: !!photo || found.includes("PHOTO"),
-        detail: photo ? photo.name : found.includes("PHOTO") ? "In document pack" : null,
+        // Only a real file counts. The pack reporting that it *contains* a
+        // photograph isn't the same as having one saved against the employee,
+        // and ticking on that basis hid the fact that no photo was stored.
+        done: !!photo,
+        detail: photo
+          ? photo.name
+          : found.includes("PHOTO")
+            ? "Found in the pack — extracting…"
+            : null,
       },
     ];
   }, [found, docFiles, photo, fields]);
@@ -476,9 +506,22 @@ export function EmployeeWizard({
           f.expiry && f.value && isPast(f.value)
             ? `Expired ${new Date(f.value).toLocaleDateString("en-GB")}`
             : null,
+        editValue: (f.value as string) || "",
       }))
     );
   }, [fields]);
+
+  /**
+   * Maps a checklist row back to the field it came from. The Emirates ID rows
+   * switch targets depending on whether this worker has a card or the
+   * residency form, so the mapping can't just be the key.
+   */
+  function checklistFieldFor(key: string): keyof Fields {
+    const onResidency = !fields.emiratesId && !!fields.visaNumber;
+    if (key === "emiratesId") return onResidency ? "visaNumber" : "emiratesId";
+    if (key === "emiratesIdExpiry") return onResidency ? "visaExpiry" : "emiratesIdExpiry";
+    return key as keyof Fields;
+  }
 
   const completed = useMemo(() => {
     const done = new Set<number>();
@@ -914,11 +957,9 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Mobile number">
-              <input
+              <PhoneInput
                 value={fields.mobileNumber}
-                onChange={(e) => set("mobileNumber", e.target.value)}
-                placeholder="+9715…"
-                className="input w-full"
+                onChange={(v) => set("mobileNumber", v)}
               />
             </Field>
           </div>
@@ -931,8 +972,8 @@ export function EmployeeWizard({
           <DocumentChecklist
             title="Details read from documents"
             items={fieldItems}
-            fixLabel="Fill"
-            onFix={focusField}
+            onEdit={(key, value) => set(checklistFieldFor(key), value)}
+            editType={(key) => (key.toLowerCase().includes("expiry") || key === "dateOfBirth" ? "date" : "text")}
           />
 
           <Group title="Passport">
@@ -1206,37 +1247,81 @@ export function EmployeeWizard({
             onFix={focusField}
           />
 
+          {/* Editable rather than a read-only recap: this is the last place to
+              catch a wrong supplier or project, and walking back through the
+              wizard to change one is friction nobody needs. */}
           <div className="card divide-y divide-[var(--border)]">
-            {(
-              [
-                ["Employee ID", fields.employeeIdNo],
-                ["Supplier", supplierName ?? null],
-                [
-                  "Sponsorship company",
-                  sponsorshipCompanies.find((s) => s.id === fields.sponsorshipCompanyId)?.name ??
-                    null,
-                ],
-                [
-                  "Project",
-                  projects.find((p) => p.id === fields.projectId)
-                    ? `${projects.find((p) => p.id === fields.projectId)!.code} — ${projects.find((p) => p.id === fields.projectId)!.name}`
-                    : null,
-                ],
-                ["Skills", skills.join(", ") || null],
-              ] as [string, string | null][]
-            ).map(([label, value]) => (
-              <div key={label} className="flex items-baseline gap-4 px-4 py-2">
-                <span className="w-40 shrink-0 text-xs text-muted">{label}</span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 text-sm",
-                    value ? "text-primary" : "text-subtle"
-                  )}
-                >
-                  {value || "Not set"}
+            <ReviewRow label="Employee ID">
+              <input
+                value={fields.employeeIdNo}
+                onChange={(e) => set("employeeIdNo", e.target.value)}
+                aria-invalid={idTaken.taken || undefined}
+                className="input w-full"
+              />
+              {idTaken.taken && (
+                <span className="field-error block">
+                  Already used by {idTaken.name}.
                 </span>
+              )}
+            </ReviewRow>
+
+            <ReviewRow label="Supplier">
+              <Select
+                value={fields.supplierId}
+                onChange={(v) => set("supplierId", v)}
+                placeholder="No supplier assigned"
+                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </ReviewRow>
+
+            <ReviewRow label="Sponsorship company">
+              <Select
+                value={fields.sponsorshipCompanyId}
+                onChange={(v) => set("sponsorshipCompanyId", v)}
+                placeholder="Not set"
+                options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </ReviewRow>
+
+            <ReviewRow label="Project">
+              <Select
+                value={fields.projectId}
+                onChange={(v) => set("projectId", v)}
+                placeholder="Not deployed yet"
+                options={projects.map((p) => ({
+                  value: p.id,
+                  label: `${p.code} — ${p.name}`,
+                }))}
+              />
+            </ReviewRow>
+
+            <ReviewRow label="Skills">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {skills.map((skill) => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => setSkills((arr) => arr.filter((x) => x !== skill))}
+                    aria-label={`Remove ${skill}`}
+                    className="inline-flex items-center gap-1.5 rounded-control bg-surface-sunken px-2.5 py-1 text-xs font-medium text-secondary transition hover:bg-[var(--border)]"
+                  >
+                    {skill} <span className="text-subtle">×</span>
+                  </button>
+                ))}
+                <input
+                  value={skillInput}
+                  onChange={(e) => setSkillInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addSkill(skillInput);
+                    }
+                  }}
+                  placeholder={skills.length ? "Add another…" : "Add a skill and press Enter"}
+                  className="input h-8 flex-1 py-1 text-xs"
+                />
               </div>
-            ))}
+            </ReviewRow>
           </div>
 
           <div className="card card-padded">
@@ -1280,6 +1365,21 @@ export function EmployeeWizard({
         )}
       </div>
     </form>
+  );
+}
+
+function ReviewRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-4">
+      <span className="w-40 shrink-0 text-xs text-muted">{label}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
   );
 }
 

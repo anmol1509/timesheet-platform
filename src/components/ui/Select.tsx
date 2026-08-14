@@ -19,6 +19,7 @@ export function Select({
   searchable = true,
   emptyText = "No results.",
   triggerClassName,
+  renderTrigger,
   disabled,
   required,
 }: {
@@ -32,6 +33,8 @@ export function Select({
   searchable?: boolean;
   emptyText?: string;
   triggerClassName?: string;
+  /** Replaces the trigger's label, for triggers too narrow for the full text. */
+  renderTrigger?: (selected: SelectOption | undefined) => React.ReactNode;
   disabled?: boolean;
   required?: boolean;
 }) {
@@ -60,10 +63,14 @@ export function Select({
             triggerClassName
           )}
         >
-          <span className={cn("flex min-w-0 items-center gap-2 truncate", !value && "text-subtle")}>
-            {selected?.icon}
-            <span className="truncate">{selected ? selected.label : value || placeholder}</span>
-          </span>
+          {renderTrigger ? (
+            renderTrigger(selected)
+          ) : (
+            <span className={cn("flex min-w-0 items-center gap-2 truncate", !value && "text-subtle")}>
+              {selected?.icon}
+              <span className="truncate">{selected ? selected.label : value || placeholder}</span>
+            </span>
+          )}
           <ChevronDown className="h-4 w-4 shrink-0 text-subtle" />
         </button>
       </Popover.Trigger>

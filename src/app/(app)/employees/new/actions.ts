@@ -310,5 +310,7 @@ export async function createEmployeeAction(
   }
 
   revalidatePath("/employees");
-  redirect(`/employees/${employee.id}`);
+  // Back to the roster rather than the new employee's own page — registering
+  // is usually one of a batch, so the list is where the next one starts.
+  redirect("/employees");
 }

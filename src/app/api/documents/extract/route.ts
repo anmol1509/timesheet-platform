@@ -178,6 +178,11 @@ const COMBINED_SCHEMA = {
     },
     unifiedNo: { type: "string" as const, description: "UNIFIED NO / U.I.D." },
     mobileNumber: { type: "string" as const, description: "Phone number as printed" },
+    photoPage: {
+      type: "string" as const,
+      description:
+        "1-based page number of a page that is mostly a portrait photograph of the worker (a passport-style headshot on its own page). Empty if no such page exists.",
+    },
     documentsFound: {
       type: "array" as const,
       description: "Which document types were actually present",
@@ -203,13 +208,14 @@ const COMBINED_SCHEMA = {
     "sponsorName",
     "unifiedNo",
     "mobileNumber",
+    "photoPage",
     "documentsFound",
   ],
   additionalProperties: false,
 };
 
 const COMBINED_PROMPT =
-  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. Return an empty string for anything you cannot read with confidence — never guess.";
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. In photoPage, give the 1-based page number of any page that is mostly a portrait headshot of the worker, so it can be used as their profile picture; leave it empty if no page is a standalone photograph. Return an empty string for anything you cannot read with confidence — never guess.";
 
 export type ExtractedDocumentFields = {
   name?: string | null;
@@ -226,6 +232,7 @@ export type ExtractedDocumentFields = {
   position?: string | null;
   /** Employer printed on the labour card — used to suggest a matching Supplier. */
   establishment?: string | null;
+  photoPage?: string | null;
   visaNumber?: string | null;
   visaExpiry?: string | null;
   sponsorName?: string | null;
