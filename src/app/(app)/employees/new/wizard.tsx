@@ -1,9 +1,20 @@
 "use client";
 
-import { startTransition, useActionState, useMemo, useRef, useState } from "react";
-import { Check, FileUp, Sparkles } from "lucide-react";
-import { createEmployeeAction } from "./actions";
-import { UploadSlot, type UploadStatus } from "./upload-slot";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { AlertTriangle, Check, Loader2, Sparkles, Wand2 } from "lucide-react";
+import {
+  checkEmployeeIdAction,
+  createEmployeeAction,
+  generateEmployeeIdAction,
+} from "./actions";
+import { MultiUploadSlot, PhotoSlot, UploadSlot, type UploadStatus } from "./upload-slot";
+import { DocumentChecklist, type ChecklistItem } from "./document-checklist";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
@@ -14,17 +25,21 @@ type SponsorshipCompany = { id: string; name: string };
 type Supplier = { id: string; name: string };
 
 const STEPS = [
+  { key: "company", label: "Company" },
   { key: "documents", label: "Documents" },
   { key: "identity", label: "Identity" },
   { key: "expiry", label: "Numbers & expiry" },
-  { key: "assignment", label: "Assignment" },
+  { key: "deployment", label: "Deployment" },
   { key: "extras", label: "Skills & notes" },
   { key: "review", label: "Review" },
 ] as const;
 
+type StepKey = (typeof STEPS)[number]["key"];
+
 const COMMON_SKILLS = [
   "Welding",
   "Carpentry",
+  "Masonry",
   "Electrical Work",
   "Plumbing",
   "Heavy Machinery",
@@ -33,6 +48,7 @@ const COMMON_SKILLS = [
 
 const ADDITIONAL_DOC_TYPES = [
   { value: "VISA", label: "Visa" },
+  { value: "RESIDENCY_ISSUANCE", label: "Residency & Identity Issuance" },
   { value: "MEDICAL", label: "Medical Certificate" },
   { value: "CICPA", label: "CICPA" },
   { value: "INSURANCE", label: "Insurance" },
@@ -45,10 +61,10 @@ const DOC_LABEL: Record<string, string> = {
   EMIRATES_ID: "Emirates ID",
   LABOR_CARD: "Labour card",
   VISA: "Visa",
+  RESIDENCY_ISSUANCE: "Residency issuance",
   PHOTO: "Photo",
 };
 
-/** Text fields the wizard owns, so extraction and review can both read them. */
 type Fields = {
   employeeIdNo: string;
   name: string;
@@ -66,7 +82,10 @@ type Fields = {
   laborCardNumber: string;
   laborCardPersonalNo: string;
   laborCardExpiry: string;
+  visaNumber: string;
   visaExpiry: string;
+  unifiedNo: string;
+  sponsorName: string;
   medicalExpiry: string;
   supplierId: string;
   sponsorshipCompanyId: string;
@@ -95,7 +114,10 @@ const EMPTY_FIELDS: Fields = {
   laborCardNumber: "",
   laborCardPersonalNo: "",
   laborCardExpiry: "",
+  visaNumber: "",
   visaExpiry: "",
+  unifiedNo: "",
+  sponsorName: "",
   medicalExpiry: "",
   supplierId: "",
   sponsorshipCompanyId: "",
@@ -107,7 +129,28 @@ const EMPTY_FIELDS: Fields = {
   additionalDocExpiry: "",
 };
 
-type DocSlot = "PASSPORT" | "EMIRATES_ID" | "LABOR_CARD" | "ADDITIONAL" | "COMBINED";
+/** Checklist fields that live on the Identity step; the rest are on Numbers & expiry. */
+const IDENTITY_FIELDS = new Set(["name", "dateOfBirth", "nationality", "position"]);
+
+type DocSlot =
+  | "PASSPORT"
+  | "EMIRATES_ID"
+  | "LABOR_CARD"
+  | "RESIDENCY_ISSUANCE"
+  | "ADDITIONAL";
+
+/** ICP forms print numbers as 00971556885010; store them in +971 form. */
+function normalizePhone(value: string | null | undefined) {
+  if (!value) return value;
+  const digits = value.replace(/[^\d+]/g, "");
+  return digits.startsWith("00") ? `+${digits.slice(2)}` : digits;
+}
+
+function isPast(iso: string) {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return !Number.isNaN(d.getTime()) && d.getTime() < Date.now();
+}
 
 export function EmployeeWizard({
   projects,
@@ -128,23 +171,47 @@ export function EmployeeWizard({
   const [fields, setFields] = useState<Fields>(EMPTY_FIELDS);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [stepError, setStepError] = useState<string | null>(null);
 
-  // Files live in state, not in the DOM, and are attached to the FormData on
-  // submit — a re-render can never discard them.
+  // Files live in state, not in the DOM, so a re-render can never discard them.
+  const [packFiles, setPackFiles] = useState<File[]>([]);
+  const [packStatus, setPackStatus] = useState<UploadStatus>({ kind: "idle" });
   const [docFiles, setDocFiles] = useState<Partial<Record<DocSlot, File>>>({});
-  const [status, setStatus] = useState<Partial<Record<DocSlot, UploadStatus>>>({});
-  const [autofilled, setAutofilled] = useState<string[]>([]);
+  const [docStatus, setDocStatus] = useState<Partial<Record<DocSlot, UploadStatus>>>({});
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
-  const formRef = useRef<HTMLFormElement>(null);
+  const [found, setFound] = useState<string[]>([]);
+  const [autofilled, setAutofilled] = useState<string[]>([]);
+  const [establishment, setEstablishment] = useState<string | null>(null);
+
+  const [idBusy, setIdBusy] = useState(false);
+  const [idNote, setIdNote] = useState<string | null>(null);
+  const [idTaken, setIdTaken] = useState<{ taken: boolean; name: string | null }>({
+    taken: false,
+    name: null,
+  });
 
   function set<K extends keyof Fields>(key: K, value: Fields[K]) {
     setFields((f) => ({ ...f, [key]: value }));
   }
 
-  const statusOf = (slot: DocSlot): UploadStatus => status[slot] ?? { kind: "idle" };
+  // Flag a clashing employee ID while it's being typed, not on save.
+  useEffect(() => {
+    const id = fields.employeeIdNo.trim();
+    if (!id) {
+      setIdTaken({ taken: false, name: null });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setIdTaken(await checkEmployeeIdAction(id));
+      } catch {
+        // A failed check must never block the form.
+      }
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [fields.employeeIdNo]);
 
   /** Writes extracted values into any field the user hasn't already filled. */
   function applyExtractedFields(data: ExtractedDocumentFields) {
@@ -153,8 +220,7 @@ export function EmployeeWizard({
       const next = { ...prev };
       const put = (key: keyof Fields, value: string | null | undefined, label: string) => {
         if (!value) return;
-        // Never clobber something the user typed themselves.
-        if (next[key]) return;
+        if (next[key]) return; // never clobber something already there
         next[key] = value;
         filled.push(label);
       };
@@ -170,73 +236,108 @@ export function EmployeeWizard({
       put("laborCardNumber", data.laborCardNumber, "Labour card no.");
       put("laborCardPersonalNo", data.laborCardPersonalNo, "Personal no.");
       put("laborCardExpiry", data.laborCardExpiry, "Labour card expiry");
+      put("visaNumber", data.visaNumber, "Residency file no.");
+      put("visaExpiry", data.visaExpiry, "Residency expiry");
+      put("unifiedNo", data.unifiedNo, "Unified no.");
+      put("sponsorName", data.sponsorName ?? data.establishment, "Sponsor");
+      put("mobileNumber", normalizePhone(data.mobileNumber), "Mobile number");
       return next;
     });
+    if (data.establishment) setEstablishment(data.establishment);
+    if (data.documentsFound?.length) {
+      setFound((prev) => [...new Set([...prev, ...data.documentsFound!])]);
+    }
     setAutofilled((prev) => [...new Set([...prev, ...filled])]);
     return filled.length;
   }
 
-  async function readDocument(slot: DocSlot, file: File) {
-    const readable =
-      file.type.startsWith("image/") || file.type === "application/pdf";
-    if (!readable) {
-      setStatus((s) => ({ ...s, [slot]: { kind: "idle" } }));
-      return;
+  async function extract(file: File, docType: string) {
+    const body = new FormData();
+    body.append("file", file);
+    body.append("docType", docType);
+    const res = await fetch("/api/documents/extract", { method: "POST", body });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(
+        (payload && typeof payload.error === "string" && payload.error) ||
+          `Couldn't read this document (${res.status}).`
+      );
     }
+    return payload as ExtractedDocumentFields;
+  }
 
-    setStatus((s) => ({ ...s, [slot]: { kind: "reading" } }));
+  async function readPack(files: File[]) {
+    const readable = files.filter(
+      (f) => f.type.startsWith("image/") || f.type === "application/pdf"
+    );
+    if (readable.length === 0) return;
+
+    setPackStatus({ kind: "reading" });
+    let total = 0;
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("docType", slot === "ADDITIONAL" ? "" : slot);
-      const res = await fetch("/api/documents/extract", { method: "POST", body });
-      const payload = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        // Surfaced, not swallowed — a silent failure is why this looked broken.
-        const message =
-          (payload && typeof payload.error === "string" && payload.error) ||
-          `Couldn't read this document (${res.status}).`;
-        setStatus((s) => ({ ...s, [slot]: { kind: "error", message } }));
-        return;
+      for (const file of readable) {
+        const data = await extract(file, "COMBINED");
+        total += applyExtractedFields(data);
       }
+      setPackStatus({
+        kind: "filled",
+        message:
+          total > 0
+            ? `Read ${readable.length} file${readable.length === 1 ? "" : "s"} and filled ${total} field${total === 1 ? "" : "s"}.`
+            : `Read ${readable.length} file${readable.length === 1 ? "" : "s"} — nothing new to add.`,
+      });
+    } catch (e) {
+      setPackStatus({
+        kind: "error",
+        message: e instanceof Error ? e.message : "Couldn't read these documents.",
+      });
+    }
+  }
 
-      const count = applyExtractedFields(payload as ExtractedDocumentFields);
-      const found = (payload as ExtractedDocumentFields).documentsFound ?? [];
-      const foundLabel = found.length
-        ? ` Found ${found.map((f) => DOC_LABEL[f] ?? f).join(", ")}.`
-        : "";
-      setStatus((s) => ({
+  async function readSingle(slot: DocSlot, file: File) {
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") return;
+    setDocStatus((s) => ({ ...s, [slot]: { kind: "reading" } }));
+    try {
+      const data = await extract(file, slot === "ADDITIONAL" ? "" : slot);
+      const count = applyExtractedFields(data);
+      setDocStatus((s) => ({
         ...s,
         [slot]: {
           kind: "filled",
-          message: count
-            ? `Filled ${count} field${count === 1 ? "" : "s"}.${foundLabel} Review before saving.`
-            : `Nothing new to fill — existing values kept.${foundLabel}`,
+          message:
+            count > 0
+              ? `Filled ${count} field${count === 1 ? "" : "s"}.`
+              : "Nothing new to add — existing values kept.",
         },
       }));
-    } catch {
-      setStatus((s) => ({
+    } catch (e) {
+      setDocStatus((s) => ({
         ...s,
-        [slot]: { kind: "error", message: "Couldn't reach the extraction service." },
+        [slot]: {
+          kind: "error",
+          message: e instanceof Error ? e.message : "Couldn't read this document.",
+        },
       }));
     }
   }
 
-  function selectDoc(slot: DocSlot, file: File | null) {
-    if (!file) return;
-    setDocFiles((d) => ({ ...d, [slot]: file }));
-    setStatus((s) => ({ ...s, [slot]: { kind: "idle" } }));
-    void readDocument(slot, file);
-  }
-
-  function clearDoc(slot: DocSlot) {
-    setDocFiles((d) => {
-      const next = { ...d };
-      delete next[slot];
-      return next;
-    });
-    setStatus((s) => ({ ...s, [slot]: { kind: "idle" } }));
+  async function generateId() {
+    setIdBusy(true);
+    setIdNote(null);
+    try {
+      const res = await generateEmployeeIdAction(
+        fields.supplierId || null,
+        fields.sponsorshipCompanyId || null
+      );
+      if (res.error || !res.id) {
+        setIdNote(res.error ?? "Couldn't generate an ID.");
+        return;
+      }
+      set("employeeIdNo", res.id);
+      setIdNote(`Generated from ${res.source}.`);
+    } finally {
+      setIdBusy(false);
+    }
   }
 
   function addSkill(name: string) {
@@ -246,17 +347,18 @@ export function EmployeeWizard({
     setSkillInput("");
   }
 
-  /** Blocks Next only on things the server would reject anyway. */
   function validate(index: number): string | null {
     if (STEPS[index].key === "identity") {
       if (!fields.employeeIdNo.trim()) return "Employee ID is required.";
       if (!fields.name.trim()) return "Full name is required.";
+      if (idTaken.taken) {
+        return `Employee ID ${fields.employeeIdNo} already belongs to ${idTaken.name}.`;
+      }
     }
     return null;
   }
 
   function goTo(index: number) {
-    // Moving forward validates every step in between; going back never does.
     if (index > step) {
       for (let i = step; i < index; i++) {
         const error = validate(i);
@@ -268,26 +370,137 @@ export function EmployeeWizard({
       }
     }
     setStepError(null);
-    setStep(index);
+    setStep(Math.max(0, Math.min(index, STEPS.length - 1)));
   }
+
+  function goToKey(key: StepKey) {
+    goTo(STEPS.findIndex((s) => s.key === key));
+  }
+
+  /** Jumps to whichever step owns a checklist field and puts the cursor in it. */
+  function focusField(field: string) {
+    goToKey(IDENTITY_FIELDS.has(field) ? "identity" : "expiry");
+    // The step renders on this tick; focus once it's in the DOM.
+    requestAnimationFrame(() => {
+      const input = document.querySelector<HTMLElement>(`[data-field="${field}"]`);
+      input?.scrollIntoView({ behavior: "smooth", block: "center" });
+      input?.focus();
+    });
+  }
+
+  // Checklist of the documents a complete file is expected to contain.
+  const documentItems: ChecklistItem[] = useMemo(() => {
+    const has = (type: string, file?: File) => found.includes(type) || !!file;
+    return [
+      {
+        key: "PASSPORT",
+        label: "Passport",
+        done: has("PASSPORT", docFiles.PASSPORT),
+        detail: fields.passportNumber || null,
+      },
+      // The residency issuance notice is what a worker has *before* the
+      // Emirates ID card is printed, so either one satisfies this row —
+      // demanding both would flag every newly-sponsored worker as incomplete.
+      {
+        key: "EMIRATES_ID",
+        label: "Emirates ID or residency issuance",
+        done:
+          has("EMIRATES_ID", docFiles.EMIRATES_ID) ||
+          has("RESIDENCY_ISSUANCE", docFiles.RESIDENCY_ISSUANCE),
+        detail: fields.emiratesId
+          ? fields.emiratesId
+          : has("RESIDENCY_ISSUANCE", docFiles.RESIDENCY_ISSUANCE)
+            ? fields.visaNumber
+              ? `Residency issuance — file ${fields.visaNumber}`
+              : "Residency issuance — card not issued yet"
+            : null,
+      },
+      {
+        key: "LABOR_CARD",
+        label: "Labour card",
+        done: has("LABOR_CARD", docFiles.LABOR_CARD),
+        detail: fields.laborCardNumber || null,
+      },
+      {
+        key: "PHOTO",
+        label: "Profile photo",
+        done: !!photo || found.includes("PHOTO"),
+        detail: photo ? photo.name : found.includes("PHOTO") ? "In document pack" : null,
+      },
+    ];
+  }, [found, docFiles, photo, fields]);
+
+  // Checklist of the values that matter downstream (compliance, invoicing).
+  const fieldItems: ChecklistItem[] = useMemo(() => {
+    // Before the card is printed the residency file number and its expiry are
+    // what stand in for the Emirates ID pair, so those rows follow whichever
+    // document this worker actually has.
+    const onResidency = !fields.emiratesId && !!fields.visaNumber;
+    return (
+      [
+        { key: "name", label: "Full name", value: fields.name },
+        { key: "dateOfBirth", label: "Date of birth", value: fields.dateOfBirth },
+        { key: "nationality", label: "Nationality", value: fields.nationality },
+        { key: "position", label: "Position / trade", value: fields.position },
+        { key: "passportNumber", label: "Passport number", value: fields.passportNumber },
+        {
+          key: "passportExpiry",
+          label: "Passport expiry",
+          value: fields.passportExpiry,
+          expiry: true,
+        },
+        {
+          key: "emiratesId",
+          label: onResidency ? "Residency file no." : "Emirates ID",
+          value: onResidency ? fields.visaNumber : fields.emiratesId,
+        },
+        {
+          key: "emiratesIdExpiry",
+          label: onResidency ? "Residency expiry" : "Emirates ID expiry",
+          value: onResidency ? fields.visaExpiry : fields.emiratesIdExpiry,
+          expiry: true,
+        },
+        { key: "laborCardNumber", label: "Labour card no.", value: fields.laborCardNumber },
+        {
+          key: "laborCardExpiry",
+          label: "Labour card expiry",
+          value: fields.laborCardExpiry,
+          expiry: true,
+        },
+      ].map((f) => ({
+        key: f.key,
+        label: f.label,
+        done: !!f.value,
+        detail: f.value || null,
+        warning:
+          f.expiry && f.value && isPast(f.value)
+            ? `Expired ${new Date(f.value).toLocaleDateString("en-GB")}`
+            : null,
+      }))
+    );
+  }, [fields]);
 
   const completed = useMemo(() => {
     const done = new Set<number>();
     STEPS.forEach((s, i) => {
-      if (s.key === "identity" && fields.employeeIdNo && fields.name) done.add(i);
-      if (s.key === "documents" && Object.keys(docFiles).length > 0) done.add(i);
+      if (s.key === "company" && (fields.supplierId || fields.sponsorshipCompanyId)) done.add(i);
+      if (s.key === "documents" && (packFiles.length > 0 || Object.keys(docFiles).length > 0))
+        done.add(i);
+      if (s.key === "identity" && fields.employeeIdNo && fields.name && !idTaken.taken)
+        done.add(i);
       if (s.key === "expiry" && (fields.passportNumber || fields.emiratesId)) done.add(i);
-      if (s.key === "assignment" && (fields.supplierId || fields.projectId)) done.add(i);
+      if (s.key === "deployment" && (fields.projectId || fields.joinDate)) done.add(i);
       if (s.key === "extras" && (skills.length > 0 || fields.notes)) done.add(i);
     });
     return done;
-  }, [fields, docFiles, skills]);
+  }, [fields, packFiles, docFiles, skills, idTaken]);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const error = validate(STEPS.findIndex((s) => s.key === "identity"));
+    const identityIndex = STEPS.findIndex((s) => s.key === "identity");
+    const error = validate(identityIndex);
     if (error) {
-      setStep(STEPS.findIndex((s) => s.key === "identity"));
+      setStep(identityIndex);
       setStepError(error);
       return;
     }
@@ -297,22 +510,35 @@ export function EmployeeWizard({
       if (value) body.set(key, value);
     }
     body.set("skills", skills.join(","));
+    // Residency granted but no card number yet — record that explicitly rather
+    // than leaving the Emirates ID silently blank.
+    const hasResidency =
+      found.includes("RESIDENCY_ISSUANCE") || !!docFiles.RESIDENCY_ISSUANCE;
+    if (hasResidency && !fields.emiratesId) body.set("eidStatus", "APPLIED");
     if (photo) body.set("photo", photo);
+    packFiles.forEach((file, i) => {
+      body.append("docFile_PACK", file);
+      // Label the first pack file with whatever the pack resolved to.
+      body.set(`packType_${i}`, i === 0 ? (found[0] ?? "OTHER") : "OTHER");
+    });
     for (const [slot, file] of Object.entries(docFiles)) {
-      if (!file) continue;
-      // The combined pack is filed under the first document type it contains.
-      body.set(slot === "COMBINED" ? "docFile_PASSPORT" : `docFile_${slot}`, file);
+      if (file) body.set(`docFile_${slot}`, file);
     }
-    // Must run inside a transition: dispatching a useActionState action
-    // directly outside one leaves `pending` stale and React warns.
     startTransition(() => formAction(body));
   }
 
   const isLast = step === STEPS.length - 1;
+  const stepKey = STEPS[step].key;
+
+  const supplierName = suppliers.find((s) => s.id === fields.supplierId)?.name;
+  const establishmentUnmatched =
+    establishment &&
+    !suppliers.some(
+      (s) => s.name.toLowerCase().replace(/\s+/g, "") === establishment.toLowerCase().replace(/\s+/g, "")
+    );
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-      {/* Step rail */}
+    <form onSubmit={handleSubmit} className="space-y-5">
       <nav aria-label="Progress" className="border-b border-default pb-3">
         <ol className="flex flex-wrap gap-1.5">
           {STEPS.map((s, i) => {
@@ -329,7 +555,7 @@ export function EmployeeWizard({
                     active
                       ? "bg-[var(--brand-primary)] text-white"
                       : done
-                        ? "bg-[var(--success-soft)] text-[var(--success)] hover:bg-surface-hover"
+                        ? "bg-[var(--success-soft)] text-[var(--success)] hover:brightness-95"
                         : "text-muted hover:bg-surface-hover hover:text-primary"
                   )}
                 >
@@ -352,8 +578,52 @@ export function EmployeeWizard({
         </p>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {STEPS[step].key === "documents" && (
+      {/* ---------------- Company ---------------- */}
+      {stepKey === "company" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Chosen first because the employee ID is generated from the
+            company&rsquo;s initials. The supplier employs the worker; the
+            sponsorship company holds their visa.
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Supplier">
+              <Select
+                value={fields.supplierId}
+                onChange={(v) => set("supplierId", v)}
+                placeholder="No supplier assigned"
+                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </Field>
+            <Field label="Sponsorship company">
+              <Select
+                value={fields.sponsorshipCompanyId}
+                onChange={(v) => set("sponsorshipCompanyId", v)}
+                placeholder="Not set"
+                options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </Field>
+          </div>
+
+          {establishmentUnmatched && (
+            <div className="flex items-start gap-2.5 rounded-control border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2.5">
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]"
+                aria-hidden
+              />
+              <p className="text-sm text-secondary">
+                The labour card lists{" "}
+                <span className="font-medium text-primary">{establishment}</span> as
+                the employer, but there&rsquo;s no matching supplier. Add it under
+                Business Partners first, or pick the closest match above.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---------------- Documents ---------------- */}
+      {stepKey === "documents" && (
         <div className="space-y-4">
           <div className="rounded-card border border-[var(--brand-primary-border)] bg-brand-soft p-4">
             <div className="flex items-start gap-2.5">
@@ -363,146 +633,230 @@ export function EmployeeWizard({
               />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-primary">
-                  Upload the whole document pack
+                  Upload the document pack
                 </p>
                 <p className="mt-0.5 text-xs text-secondary">
-                  One PDF or image containing the passport, Emirates ID and
-                  labour card together. Every field it can read is filled in for
-                  you — you review it on the next steps.
+                  Passport, Emirates ID and labour card — as one PDF or as
+                  several files. Everything readable is filled in for you.
                 </p>
                 <div className="mt-3">
-                  <UploadSlot
-                    id="doc-combined"
-                    label="Combined document pack"
-                    file={docFiles.COMBINED ?? null}
-                    status={statusOf("COMBINED")}
-                    onSelect={(f) => selectDoc("COMBINED", f)}
-                    onClear={() => clearDoc("COMBINED")}
+                  <MultiUploadSlot
+                    id="doc-pack"
+                    label="Document pack"
+                    files={packFiles}
+                    status={packStatus}
+                    onAdd={(picked) => {
+                      setPackFiles((prev) => [...prev, ...picked]);
+                      void readPack(picked);
+                    }}
+                    onRemove={(i) =>
+                      setPackFiles((prev) => prev.filter((_, idx) => idx !== i))
+                    }
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <details className="rounded-card border border-default">
+          <DocumentChecklist
+            title="Documents found"
+            items={documentItems}
+            fixLabel="Upload"
+            onFix={() => {
+              const details = document.getElementById("separate-uploads");
+              if (details instanceof HTMLDetailsElement) details.open = true;
+              details?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
+
+          <details id="separate-uploads" className="rounded-card border border-default">
             <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-secondary">
-              Or upload documents separately
+              Upload documents individually
             </summary>
             <div className="grid grid-cols-1 gap-4 border-t border-default p-4 sm:grid-cols-2">
               <UploadSlot
                 id="doc-passport"
                 label="Passport"
                 file={docFiles.PASSPORT ?? null}
-                status={statusOf("PASSPORT")}
-                onSelect={(f) => selectDoc("PASSPORT", f)}
-                onClear={() => clearDoc("PASSPORT")}
+                status={docStatus.PASSPORT ?? { kind: "idle" }}
+                onSelect={(f) => {
+                  if (!f) return;
+                  setDocFiles((d) => ({ ...d, PASSPORT: f }));
+                  void readSingle("PASSPORT", f);
+                }}
+                onClear={() =>
+                  setDocFiles((d) => {
+                    const n = { ...d };
+                    delete n.PASSPORT;
+                    return n;
+                  })
+                }
               />
               <UploadSlot
                 id="doc-eid"
                 label="Emirates ID"
                 file={docFiles.EMIRATES_ID ?? null}
-                status={statusOf("EMIRATES_ID")}
-                onSelect={(f) => selectDoc("EMIRATES_ID", f)}
-                onClear={() => clearDoc("EMIRATES_ID")}
+                status={docStatus.EMIRATES_ID ?? { kind: "idle" }}
+                onSelect={(f) => {
+                  if (!f) return;
+                  setDocFiles((d) => ({ ...d, EMIRATES_ID: f }));
+                  void readSingle("EMIRATES_ID", f);
+                }}
+                onClear={() =>
+                  setDocFiles((d) => {
+                    const n = { ...d };
+                    delete n.EMIRATES_ID;
+                    return n;
+                  })
+                }
               />
               <UploadSlot
                 id="doc-labour"
                 label="Labour card"
                 file={docFiles.LABOR_CARD ?? null}
-                status={statusOf("LABOR_CARD")}
-                onSelect={(f) => selectDoc("LABOR_CARD", f)}
-                onClear={() => clearDoc("LABOR_CARD")}
+                status={docStatus.LABOR_CARD ?? { kind: "idle" }}
+                onSelect={(f) => {
+                  if (!f) return;
+                  setDocFiles((d) => ({ ...d, LABOR_CARD: f }));
+                  void readSingle("LABOR_CARD", f);
+                }}
+                onClear={() =>
+                  setDocFiles((d) => {
+                    const n = { ...d };
+                    delete n.LABOR_CARD;
+                    return n;
+                  })
+                }
               />
-              <div className="space-y-3">
-                <UploadSlot
-                  id="doc-additional"
-                  label="Another document"
-                  hint="Visa, medical, CICPA, insurance…"
-                  file={docFiles.ADDITIONAL ?? null}
-                  status={statusOf("ADDITIONAL")}
-                  onSelect={(f) => selectDoc("ADDITIONAL", f)}
-                  onClear={() => clearDoc("ADDITIONAL")}
+              <UploadSlot
+                id="doc-residency"
+                label="Residency & identity issuance"
+                hint="Use this when the Emirates ID card hasn't been printed yet."
+                file={docFiles.RESIDENCY_ISSUANCE ?? null}
+                status={docStatus.RESIDENCY_ISSUANCE ?? { kind: "idle" }}
+                onSelect={(f) => {
+                  if (!f) return;
+                  setDocFiles((d) => ({ ...d, RESIDENCY_ISSUANCE: f }));
+                  void readSingle("RESIDENCY_ISSUANCE", f);
+                }}
+                onClear={() =>
+                  setDocFiles((d) => {
+                    const n = { ...d };
+                    delete n.RESIDENCY_ISSUANCE;
+                    return n;
+                  })
+                }
+              />
+              <PhotoSlot
+                id="doc-photo"
+                file={photo}
+                preview={photoPreview}
+                onSelect={(f) => {
+                  setPhoto(f);
+                  setPhotoPreview(f ? URL.createObjectURL(f) : null);
+                }}
+                onClear={() => {
+                  setPhoto(null);
+                  setPhotoPreview(null);
+                }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 border-t border-default p-4 sm:grid-cols-3">
+              <UploadSlot
+                id="doc-additional"
+                label="Another document"
+                hint="Visa, medical, CICPA, insurance…"
+                file={docFiles.ADDITIONAL ?? null}
+                status={docStatus.ADDITIONAL ?? { kind: "idle" }}
+                onSelect={(f) => {
+                  if (!f) return;
+                  setDocFiles((d) => ({ ...d, ADDITIONAL: f }));
+                  void readSingle("ADDITIONAL", f);
+                }}
+                onClear={() =>
+                  setDocFiles((d) => {
+                    const n = { ...d };
+                    delete n.ADDITIONAL;
+                    return n;
+                  })
+                }
+              />
+              <Field label="Type">
+                <Select
+                  value={fields.additionalDocType}
+                  onChange={(v) => set("additionalDocType", v)}
+                  searchable={false}
+                  placeholder="Select type"
+                  options={ADDITIONAL_DOC_TYPES}
                 />
-                {docFiles.ADDITIONAL && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Type">
-                      <Select
-                        value={fields.additionalDocType}
-                        onChange={(v) => set("additionalDocType", v)}
-                        searchable={false}
-                        placeholder="Select type"
-                        options={ADDITIONAL_DOC_TYPES}
-                      />
-                    </Field>
-                    <Field label="Expiry">
-                      <input
-                        type="date"
-                        value={fields.additionalDocExpiry}
-                        onChange={(e) => set("additionalDocExpiry", e.target.value)}
-                        className="input w-full"
-                      />
-                    </Field>
-                  </div>
-                )}
-              </div>
+              </Field>
+              <Field label="Expiry">
+                <input
+                  type="date"
+                  value={fields.additionalDocExpiry}
+                  onChange={(e) => set("additionalDocExpiry", e.target.value)}
+                  className="input w-full"
+                />
+              </Field>
             </div>
           </details>
 
           {autofilled.length > 0 && (
             <p className="text-xs text-muted">
-              <span className="font-medium text-[var(--success)]">
-                Auto-filled:
-              </span>{" "}
+              <span className="font-medium text-[var(--success)]">Auto-filled:</span>{" "}
               {autofilled.join(", ")}
             </p>
           )}
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {STEPS[step].key === "identity" && (
+      {/* ---------------- Identity ---------------- */}
+      {stepKey === "identity" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken">
-              {photoPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={photoPreview}
-                  alt="Employee photo preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-subtle">
-                  <FileUp className="h-5 w-5" aria-hidden />
-                </span>
-              )}
-            </div>
-            <label className="btn btn-secondary btn-sm cursor-pointer">
-              {photo ? "Change photo" : "Upload photo"}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setPhoto(file);
-                  setPhotoPreview(file ? URL.createObjectURL(file) : null);
-                }}
-              />
-            </label>
-          </div>
-
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Employee ID No" required>
-              <input
-                value={fields.employeeIdNo}
-                onChange={(e) => set("employeeIdNo", e.target.value)}
-                placeholder="e.g. PTTFC112"
-                className="input w-full"
-              />
+              <div className="flex gap-2">
+                <input
+                  value={fields.employeeIdNo}
+                  onChange={(e) => set("employeeIdNo", e.target.value)}
+                  placeholder="e.g. PTTFC112"
+                  aria-invalid={idTaken.taken || undefined}
+                  className="input w-full"
+                />
+                <button
+                  type="button"
+                  onClick={generateId}
+                  disabled={idBusy}
+                  title="Generate from the selected company"
+                  className="btn btn-secondary shrink-0"
+                >
+                  {idBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                  )}
+                  Generate
+                </button>
+              </div>
+              {idTaken.taken ? (
+                <span className="field-error block">
+                  Already used by {idTaken.name}. Pick another or generate one.
+                </span>
+              ) : idNote ? (
+                <span className="field-help block">{idNote}</span>
+              ) : (
+                <span className="field-help block">
+                  {supplierName
+                    ? `Generate builds it from “${supplierName}”.`
+                    : "Pick a company on the first step to generate this."}
+                </span>
+              )}
             </Field>
+
             <Field label="Full name" required>
               <input
+                data-field="name"
                 value={fields.name}
                 onChange={(e) => set("name", e.target.value)}
                 placeholder="Enter full name"
@@ -553,6 +907,7 @@ export function EmployeeWizard({
             <Field label="Date of birth">
               <input
                 type="date"
+                data-field="dateOfBirth"
                 value={fields.dateOfBirth}
                 onChange={(e) => set("dateOfBirth", e.target.value)}
                 className="input w-full"
@@ -570,12 +925,20 @@ export function EmployeeWizard({
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {STEPS[step].key === "expiry" && (
+      {/* ---------------- Numbers & expiry ---------------- */}
+      {stepKey === "expiry" && (
         <div className="space-y-5">
+          <DocumentChecklist
+            title="Details read from documents"
+            items={fieldItems}
+            fixLabel="Fill"
+            onFix={focusField}
+          />
+
           <Group title="Passport">
             <Field label="Passport number">
               <input
+                data-field="passportNumber"
                 value={fields.passportNumber}
                 onChange={(e) => set("passportNumber", e.target.value)}
                 className="input w-full"
@@ -584,6 +947,7 @@ export function EmployeeWizard({
             <Field label="Passport expiry">
               <input
                 type="date"
+                data-field="passportExpiry"
                 value={fields.passportExpiry}
                 onChange={(e) => set("passportExpiry", e.target.value)}
                 className="input w-full"
@@ -594,6 +958,7 @@ export function EmployeeWizard({
           <Group title="Emirates ID">
             <Field label="Emirates ID number">
               <input
+                data-field="emiratesId"
                 value={fields.emiratesId}
                 onChange={(e) => set("emiratesId", e.target.value)}
                 className="input w-full"
@@ -602,6 +967,7 @@ export function EmployeeWizard({
             <Field label="Emirates ID expiry">
               <input
                 type="date"
+                data-field="emiratesIdExpiry"
                 value={fields.emiratesIdExpiry}
                 onChange={(e) => set("emiratesIdExpiry", e.target.value)}
                 className="input w-full"
@@ -612,6 +978,7 @@ export function EmployeeWizard({
           <Group title="Labour card">
             <Field label="Labour card number">
               <input
+                data-field="laborCardNumber"
                 value={fields.laborCardNumber}
                 onChange={(e) => set("laborCardNumber", e.target.value)}
                 className="input w-full"
@@ -627,6 +994,7 @@ export function EmployeeWizard({
             <Field label="Labour card expiry">
               <input
                 type="date"
+                data-field="laborCardExpiry"
                 value={fields.laborCardExpiry}
                 onChange={(e) => set("laborCardExpiry", e.target.value)}
                 className="input w-full"
@@ -634,8 +1002,25 @@ export function EmployeeWizard({
             </Field>
           </Group>
 
-          <Group title="Other expiry dates">
-            <Field label="Visa expiry">
+          <Group
+            title="Residency / visa"
+            description="Filled from the residency issuance notice when the Emirates ID card hasn't been printed yet."
+          >
+            <Field label="Residency file number">
+              <input
+                value={fields.visaNumber}
+                onChange={(e) => set("visaNumber", e.target.value)}
+                className="input w-full"
+              />
+            </Field>
+            <Field label="Unified number">
+              <input
+                value={fields.unifiedNo}
+                onChange={(e) => set("unifiedNo", e.target.value)}
+                className="input w-full"
+              />
+            </Field>
+            <Field label="Residency / visa expiry">
               <input
                 type="date"
                 value={fields.visaExpiry}
@@ -643,6 +1028,16 @@ export function EmployeeWizard({
                 className="input w-full"
               />
             </Field>
+            <Field label="Sponsor">
+              <input
+                value={fields.sponsorName}
+                onChange={(e) => set("sponsorName", e.target.value)}
+                className="input w-full"
+              />
+            </Field>
+          </Group>
+
+          <Group title="Other expiry dates">
             <Field label="Medical certificate expiry">
               <input
                 type="date"
@@ -655,34 +1050,9 @@ export function EmployeeWizard({
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {STEPS[step].key === "assignment" && (
+      {/* ---------------- Deployment ---------------- */}
+      {stepKey === "deployment" && (
         <div className="space-y-5">
-          <Group
-            title="Company"
-            description="The supplier employs the worker; the sponsorship company holds their visa. They're often different entities, so both are recorded."
-          >
-            <Field label="Supplier">
-              <Select
-                value={fields.supplierId}
-                onChange={(v) => set("supplierId", v)}
-                placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
-              />
-            </Field>
-            <Field label="Sponsorship company">
-              <Select
-                value={fields.sponsorshipCompanyId}
-                onChange={(v) => set("sponsorshipCompanyId", v)}
-                placeholder="Not set"
-                options={sponsorshipCompanies.map((s) => ({
-                  value: s.id,
-                  label: s.name,
-                }))}
-              />
-            </Field>
-          </Group>
-
           <Group title="Deployment">
             <Field label="Project">
               <Select
@@ -742,8 +1112,8 @@ export function EmployeeWizard({
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {STEPS[step].key === "extras" && (
+      {/* ---------------- Skills & notes ---------------- */}
+      {stepKey === "extras" && (
         <div className="space-y-4">
           <Field label="Skills">
             <div className="flex gap-2">
@@ -813,21 +1183,83 @@ export function EmployeeWizard({
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {STEPS[step].key === "review" && (
-        <ReviewStep
-          fields={fields}
-          skills={skills}
-          docFiles={docFiles}
-          photo={photo}
-          suppliers={suppliers}
-          sponsorshipCompanies={sponsorshipCompanies}
-          projects={projects}
-          onEdit={(key) => goTo(STEPS.findIndex((s) => s.key === key))}
-        />
+      {/* ---------------- Review ---------------- */}
+      {stepKey === "review" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Check the details before saving. Anything blank can be filled in
+            later from the employee&rsquo;s page.
+          </p>
+
+          <DocumentChecklist
+            title="Documents"
+            items={documentItems}
+            columns={2}
+            fixLabel="Upload"
+            onFix={() => goToKey("documents")}
+          />
+          <DocumentChecklist
+            title="Details"
+            items={fieldItems}
+            columns={2}
+            fixLabel="Fill"
+            onFix={focusField}
+          />
+
+          <div className="card divide-y divide-[var(--border)]">
+            {(
+              [
+                ["Employee ID", fields.employeeIdNo],
+                ["Supplier", supplierName ?? null],
+                [
+                  "Sponsorship company",
+                  sponsorshipCompanies.find((s) => s.id === fields.sponsorshipCompanyId)?.name ??
+                    null,
+                ],
+                [
+                  "Project",
+                  projects.find((p) => p.id === fields.projectId)
+                    ? `${projects.find((p) => p.id === fields.projectId)!.code} — ${projects.find((p) => p.id === fields.projectId)!.name}`
+                    : null,
+                ],
+                ["Skills", skills.join(", ") || null],
+              ] as [string, string | null][]
+            ).map(([label, value]) => (
+              <div key={label} className="flex items-baseline gap-4 px-4 py-2">
+                <span className="w-40 shrink-0 text-xs text-muted">{label}</span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 text-sm",
+                    value ? "text-primary" : "text-subtle"
+                  )}
+                >
+                  {value || "Not set"}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card card-padded">
+            <h3 className="text-sm font-semibold text-primary">Files to attach</h3>
+            {packFiles.length === 0 && Object.keys(docFiles).length === 0 && !photo ? (
+              <p className="mt-2 text-sm text-subtle">No files attached.</p>
+            ) : (
+              <ul className="mt-2 space-y-1 text-sm text-secondary">
+                {photo && <li>Profile photo — {photo.name}</li>}
+                {packFiles.map((f, i) => (
+                  <li key={`pack-${i}`}>Document pack — {f.name}</li>
+                ))}
+                {Object.entries(docFiles).map(([slot, f]) => (
+                  <li key={slot}>
+                    {DOC_LABEL[slot] ?? slot} — {f.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Footer nav */}
       <div className="flex items-center justify-between border-t border-default pt-4">
         <button
           type="button"
@@ -842,129 +1274,12 @@ export function EmployeeWizard({
             {pending ? "Registering…" : "Register employee"}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => goTo(step + 1)}
-            className="btn btn-primary"
-          >
+          <button type="button" onClick={() => goTo(step + 1)} className="btn btn-primary">
             Next
           </button>
         )}
       </div>
     </form>
-  );
-}
-
-function ReviewStep({
-  fields,
-  skills,
-  docFiles,
-  photo,
-  suppliers,
-  sponsorshipCompanies,
-  projects,
-  onEdit,
-}: {
-  fields: Fields;
-  skills: string[];
-  docFiles: Partial<Record<DocSlot, File>>;
-  photo: File | null;
-  suppliers: Supplier[];
-  sponsorshipCompanies: SponsorshipCompany[];
-  projects: Project[];
-  onEdit: (key: (typeof STEPS)[number]["key"]) => void;
-}) {
-  const supplier = suppliers.find((s) => s.id === fields.supplierId);
-  const sponsor = sponsorshipCompanies.find((s) => s.id === fields.sponsorshipCompanyId);
-  const project = projects.find((p) => p.id === fields.projectId);
-  const files = Object.entries(docFiles);
-
-  const rows: [string, string | null][] = [
-    ["Employee ID", fields.employeeIdNo],
-    ["Name", fields.name],
-    ["Category", fields.category === "STAFF" ? "Staff" : "Site Staff"],
-    ["Position", fields.position],
-    ["Nationality", fields.nationality],
-    ["Date of birth", fields.dateOfBirth],
-    ["Passport no.", fields.passportNumber],
-    ["Emirates ID", fields.emiratesId],
-    ["Labour card no.", fields.laborCardNumber],
-    ["Supplier", supplier?.name ?? null],
-    ["Sponsorship company", sponsor?.name ?? null],
-    ["Project", project ? `${project.code} — ${project.name}` : null],
-  ];
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted">
-        Check the details before saving. Anything blank can be filled in later
-        from the employee&rsquo;s page.
-      </p>
-
-      <div className="card divide-y divide-[var(--border)]">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex items-baseline gap-4 px-4 py-2">
-            <span className="w-40 shrink-0 text-xs text-muted">{label}</span>
-            <span
-              className={cn(
-                "min-w-0 flex-1 text-sm",
-                value ? "text-primary" : "text-subtle"
-              )}
-            >
-              {value || "Not set"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="card card-padded">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-primary">Documents</h3>
-            <button
-              type="button"
-              onClick={() => onEdit("documents")}
-              className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
-            >
-              Edit
-            </button>
-          </div>
-          {files.length === 0 && !photo ? (
-            <p className="mt-2 text-sm text-subtle">No files attached.</p>
-          ) : (
-            <ul className="mt-2 space-y-1 text-sm text-secondary">
-              {photo && <li>Photo — {photo.name}</li>}
-              {files.map(([slot, file]) => (
-                <li key={slot}>
-                  {slot === "COMBINED"
-                    ? "Document pack"
-                    : (DOC_LABEL[slot] ?? slot)}{" "}
-                  — {file.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="card card-padded">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-primary">Skills</h3>
-            <button
-              type="button"
-              onClick={() => onEdit("extras")}
-              className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
-            >
-              Edit
-            </button>
-          </div>
-          {skills.length === 0 ? (
-            <p className="mt-2 text-sm text-subtle">None added.</p>
-          ) : (
-            <p className="mt-2 text-sm text-secondary">{skills.join(", ")}</p>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 

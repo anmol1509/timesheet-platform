@@ -455,6 +455,8 @@ model Employee {
   wpsAccountNumber      String?
 
   // Visa (visaExpiry above is the terminal expiry date already tracked)
+  // ICP unified number — stable across visa renewals, unlike the file number.
+  unifiedNo        String?
   visaNumber       String?
   visaType         String?
   visaStatus       String?

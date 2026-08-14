@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 
@@ -30,7 +31,95 @@ const DOC_TYPE_TO_EXPIRY_FIELD: Record<string, string> = {
   LABOR_CARD: "laborCardExpiry",
   MEDICAL: "medicalExpiry",
   EMIRATES_ID: "emiratesIdExpiry",
+  // Issued in place of the Emirates ID card until the card is printed; its
+  // expiry is the residency's, so it lands on visaExpiry.
+  RESIDENCY_ISSUANCE: "visaExpiry",
 };
+
+/**
+ * Initials of every word in the company name, which is the convention already
+ * in use — "Peak Tower Tiles Fixing Cont" gives PTTFC, matching PTTFC112.
+ */
+function initialsOf(name: string) {
+  return name
+    .split(/[\s\-/&.]+/)
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join("")
+    .replace(/[^A-Za-z]/g, "")
+    .toUpperCase()
+    .slice(0, 6);
+}
+
+/**
+ * Next free employee ID for a company: its initials followed by a serial that
+ * continues from the highest existing number under the same prefix, so IDs
+ * stay grouped by employer.
+ */
+export async function generateEmployeeIdAction(
+  supplierId: string | null,
+  sponsorshipCompanyId: string | null
+): Promise<{ id: string | null; error: string | null; source: string | null }> {
+  const { branchId } = await requireUserWithBranch();
+
+  const company = supplierId
+    ? await prisma.supplier.findUnique({
+        where: { id: supplierId },
+        select: { name: true },
+      })
+    : sponsorshipCompanyId
+      ? await prisma.sponsorshipCompany.findUnique({
+          where: { id: sponsorshipCompanyId },
+          select: { name: true },
+        })
+      : null;
+
+  if (!company) {
+    return {
+      id: null,
+      source: null,
+      error: "Pick a supplier or sponsorship company first — the ID is based on it.",
+    };
+  }
+
+  const prefix = initialsOf(company.name);
+  if (!prefix) {
+    return { id: null, source: null, error: `Can't build a prefix from "${company.name}".` };
+  }
+
+  // Scan existing IDs under this prefix and continue from the highest serial.
+  const existing = await prisma.employee.findMany({
+    where: { ...branchWhere(branchId), employeeIdNo: { startsWith: prefix } },
+    select: { employeeIdNo: true },
+  });
+
+  let highest = 0;
+  for (const row of existing) {
+    const match = row.employeeIdNo.slice(prefix.length).match(/^(\d+)/);
+    if (match) highest = Math.max(highest, Number(match[1]));
+  }
+
+  const width = Math.max(3, String(highest + 1).length);
+  return {
+    id: `${prefix}${String(highest + 1).padStart(width, "0")}`,
+    source: company.name,
+    error: null,
+  };
+}
+
+/** Flags a clash while the ID is being typed, rather than on save. */
+export async function checkEmployeeIdAction(
+  employeeIdNo: string
+): Promise<{ taken: boolean; name: string | null }> {
+  const trimmed = employeeIdNo.trim();
+  if (!trimmed) return { taken: false, name: null };
+  await requireUserWithBranch();
+  const existing = await prisma.employee.findUnique({
+    where: { employeeIdNo: trimmed },
+    select: { name: true },
+  });
+  return { taken: !!existing, name: existing?.name ?? null };
+}
 
 export async function createEmployeeAction(
   _prevState: { error: string | null },
@@ -88,6 +177,12 @@ export async function createEmployeeAction(
     emiratesId: stringOrNull(formData.get("emiratesId")),
     dateOfBirth: dateOrNull(formData.get("dateOfBirth")),
     visaExpiry: dateOrNull(formData.get("visaExpiry")),
+    visaNumber: stringOrNull(formData.get("visaNumber")),
+    unifiedNo: stringOrNull(formData.get("unifiedNo")),
+    sponsorName: stringOrNull(formData.get("sponsorName")),
+    // "APPLIED" when only the ICP registration form is on file — residency is
+    // granted but the card hasn't been printed, so there's no number to store.
+    eidStatus: stringOrNull(formData.get("eidStatus")),
     laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
     laborCardPersonalNo: stringOrNull(formData.get("laborCardPersonalNo")),
     laborCardExpiry: dateOrNull(formData.get("laborCardExpiry")),
@@ -140,6 +235,36 @@ export async function createEmployeeAction(
       entityId: doc.id,
       action: "CREATE",
       after: { employeeId: employee.id, type, filename: file.name, expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  // The document pack can be several files at once (passport scan, ID card
+  // photos, labour card). Each is stored against the employee; the type is
+  // whatever the client resolved it to, defaulting to OTHER.
+  const packFiles = formData.getAll("docFile_PACK");
+  for (const [index, file] of packFiles.entries()) {
+    if (!(file instanceof File) || file.size === 0) continue;
+    if (file.size > MAX_UPLOAD_BYTES) continue;
+    const type = stringOrNull(formData.get(`packType_${index}`)) || "OTHER";
+    const doc = await prisma.document.create({
+      data: {
+        employeeId: employee.id,
+        type,
+        filename: file.name,
+        fileData: Buffer.from(await file.arrayBuffer()),
+        mimeType: file.type || "application/octet-stream",
+        expiryDate: null,
+        uploadedById: user.id,
+      },
+    });
+    await logAudit({
+      entityType: "DOCUMENT",
+      entityId: doc.id,
+      action: "CREATE",
+      after: { employeeId: employee.id, type, filename: file.name },
       userId: user.id,
       userName: user.name,
       branchId,

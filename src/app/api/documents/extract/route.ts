@@ -67,12 +67,71 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
         laborCardNumber: { type: ["string", "null"] },
         laborCardPersonalNo: { type: ["string", "null"], description: "MOHRE personal number" },
         laborCardExpiry: { type: ["string", "null"], description: "ISO 8601 date of expiry" },
+        position: { type: ["string", "null"], description: "Profession as printed" },
+        nationality: { type: ["string", "null"] },
+        establishment: {
+          type: ["string", "null"],
+          description: "Employer/establishment name in English",
+        },
       },
-      required: ["name", "laborCardNumber", "laborCardPersonalNo", "laborCardExpiry"],
+      required: [
+        "name",
+        "laborCardNumber",
+        "laborCardPersonalNo",
+        "laborCardExpiry",
+        "position",
+        "nationality",
+        "establishment",
+      ],
       additionalProperties: false,
     },
     prompt:
-      "This is a UAE MOHRE labour card for a construction-industry worker. Extract the full name, labour card number, personal number, and expiry date exactly as printed. Use null for any field you cannot read with confidence — do not guess.",
+      "This is a UAE MOHRE labour card for a construction-industry worker. Extract the full name, the work permit number (labour card number), the personal number, the expiry date, the profession, the nationality, and the establishment/employer name — all in English, exactly as printed. Dates must be ISO 8601 (YYYY-MM-DD): convert formats like 19/Apr/2028 to 2028-04-19. Use null for any field you cannot read with confidence — do not guess.",
+  },
+  // The ICP "Registration ID Card Form" is the receipt for an Emirates ID
+  // application — printed when residency is issued, before the card itself
+  // exists. A worker has either this or the card, so it must be readable in
+  // its own right. It carries no Emirates ID number and no expiry date; what
+  // it does carry is the residency file number and the unified number.
+  RESIDENCY_ISSUANCE: {
+    schema: {
+      type: "object" as const,
+      properties: {
+        name: { type: ["string", "null"], description: "NAME, in English" },
+        dateOfBirth: { type: ["string", "null"], description: "DATE OF BIRTH as ISO 8601" },
+        nationality: { type: ["string", "null"], description: "NATIONALITY, in English" },
+        gender: { type: ["string", "null"], description: "MALE or FEMALE" },
+        mobileNumber: { type: ["string", "null"], description: "PHONE NO. as printed" },
+        emiratesId: {
+          type: ["string", "null"],
+          description:
+            "Only if a 15-digit Emirates ID number is actually printed; this form usually has none, so expect null",
+        },
+        visaNumber: {
+          type: ["string", "null"],
+          description: "IDENTITY NUMBER — the residency file number, e.g. 301/2026/2/82612",
+        },
+        unifiedNo: { type: ["string", "null"], description: "UNIFIED NO" },
+        establishment: {
+          type: ["string", "null"],
+          description: "Establishment under 'Submitted By', in English",
+        },
+      },
+      required: [
+        "name",
+        "dateOfBirth",
+        "nationality",
+        "gender",
+        "mobileNumber",
+        "emiratesId",
+        "visaNumber",
+        "unifiedNo",
+        "establishment",
+      ],
+      additionalProperties: false,
+    },
+    prompt:
+      "This is a UAE ICP 'Registration ID Card Form' — the Emirates ID application receipt issued to a construction-industry worker once residency is granted, before the physical card is printed. Read the printed labels: NAME, DATE OF BIRTH, NATIONALITY, GENDER, PHONE NO., IDENTITY NUMBER (a residency file number such as 301/2026/2/82612 — return it in visaNumber), UNIFIED NO, and the establishment shown under 'Submitted By'. Dates must be ISO 8601 (YYYY-MM-DD): convert 28/06/1985 to 1985-06-28. This form does not print a 15-digit Emirates ID number, a passport number or a card expiry date — return null for emiratesId unless such a number genuinely appears. Use null for anything you cannot read with confidence — do not guess.",
   },
 };
 
@@ -95,6 +154,22 @@ const COMBINED_SCHEMA = {
     laborCardPersonalNo: { type: ["string", "null"], description: "MOHRE personal number" },
     laborCardExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
     position: { type: ["string", "null"], description: "Profession or job title as printed" },
+    establishment: {
+      type: ["string", "null"],
+      description: "Employer/establishment name on the labour card, in English",
+    },
+    visaNumber: {
+      type: ["string", "null"],
+      description:
+        "Residence file number — the visa's file number, or IDENTITY NUMBER on an ICP registration form",
+    },
+    visaExpiry: { type: ["string", "null"], description: "ISO 8601 residency/visa expiry date" },
+    sponsorName: {
+      type: ["string", "null"],
+      description: "Sponsor named on the visa or residency issuance page, in English",
+    },
+    unifiedNo: { type: ["string", "null"], description: "UNIFIED NO / U.I.D." },
+    mobileNumber: { type: ["string", "null"], description: "Phone number as printed" },
     documentsFound: {
       type: "array" as const,
       description: "Which document types were actually present",
@@ -114,13 +189,19 @@ const COMBINED_SCHEMA = {
     "laborCardPersonalNo",
     "laborCardExpiry",
     "position",
+    "establishment",
+    "visaNumber",
+    "visaExpiry",
+    "sponsorName",
+    "unifiedNo",
+    "mobileNumber",
     "documentsFound",
   ],
   additionalProperties: false,
 };
 
 const COMBINED_PROMPT =
-  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA or PHOTO. Use null for anything you cannot read with confidence — never guess.";
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. Use null for anything you cannot read with confidence — never guess.";
 
 export type ExtractedDocumentFields = {
   name?: string | null;
@@ -135,6 +216,13 @@ export type ExtractedDocumentFields = {
   nationality?: string | null;
   gender?: string | null;
   position?: string | null;
+  /** Employer printed on the labour card — used to suggest a matching Supplier. */
+  establishment?: string | null;
+  visaNumber?: string | null;
+  visaExpiry?: string | null;
+  sponsorName?: string | null;
+  unifiedNo?: string | null;
+  mobileNumber?: string | null;
   documentsFound?: string[];
 };
 
