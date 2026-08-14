@@ -20,13 +20,13 @@ export function EmployeeTypeBreakdown({ counts }: { counts: EmployeeTypeCounts }
           <Link
             key={r.key}
             href={`/employees?filter=${r.filter}`}
-            className="flex items-center gap-3 rounded-lg text-sm transition hover:bg-slate-50"
+            className="flex items-center gap-3 rounded-lg text-sm transition hover:bg-surface-hover"
           >
-            <span className="w-28 shrink-0 text-slate-500">{r.label}</span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <span className="w-28 shrink-0 text-muted">{r.label}</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
               <div className={`h-full ${r.color}`} style={{ width: `${pct}%` }} />
             </div>
-            <span className="w-10 shrink-0 text-right font-medium text-slate-900">
+            <span className="w-10 shrink-0 text-right font-medium text-primary">
               {value}
             </span>
           </Link>

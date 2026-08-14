@@ -112,7 +112,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search clients by company name, code, or contact person..."
-            className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full max-w-md"
           />
           <SegmentedControl
             value={status}
@@ -138,7 +138,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
           <button
             type="button"
             onClick={exportCsv}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="btn btn-secondary flex gap-1.5 px-3"
           >
             <Download className="h-4 w-4" />
             {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
@@ -147,12 +147,12 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+        <h2 className="mb-3 text-sm font-semibold text-primary">
           All Clients
         </h2>
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 px-4 py-3">
                   <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
@@ -167,38 +167,38 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {pageRows.map((c) => (
-                <tr key={c.id} className={complianceRowClass(c.licenseStatus) || "hover:bg-slate-50"}>
+                <tr key={c.id} className={complianceRowClass(c.licenseStatus) || "hover:bg-surface-hover"}>
                   <td className="px-4 py-3">
                     <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} />
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td className="px-4 py-3 font-medium text-primary">
                     <Link href={`/clients/${c.id}`}>{c.name}</Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{c.code || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-muted">{c.code || "—"}</td>
+                  <td className="px-4 py-3 text-secondary">
                     {c.contactPerson || "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">
                     {c.contactEmail && <div>{c.contactEmail}</div>}
                     {c.contactPhone && (
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-subtle">
                         {c.contactPhone}
                       </div>
                     )}
                     {!c.contactEmail && !c.contactPhone && "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">
                     {c.basicRate != null && <div>Basic: AED {c.basicRate}</div>}
                     {c.hourlyRate != null && (
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-subtle">
                         Hourly: AED {c.hourlyRate}
                       </div>
                     )}
                     {c.basicRate == null && c.hourlyRate == null && "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-muted">
                     {c.contractStart || c.contractEnd
                       ? `${fmtDate(c.contractStart)} – ${fmtDate(c.contractEnd)}`
                       : "—"}
@@ -221,7 +221,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <p className="px-4 py-10 text-center text-sm text-slate-500">
+            <p className="px-4 py-10 text-center text-sm text-muted">
               {query ? <>No clients match &ldquo;{query}&rdquo;.</> : "No clients match this filter."}
             </p>
           )}
@@ -238,7 +238,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
         <button
           type="button"
           onClick={clear}
-          className="text-xs font-medium text-slate-500 hover:underline"
+          className="text-xs font-medium text-muted hover:underline"
         >
           Clear selection ({selected.size})
         </button>

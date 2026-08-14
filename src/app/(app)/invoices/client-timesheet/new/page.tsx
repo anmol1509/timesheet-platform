@@ -18,8 +18,8 @@ export default async function NewClientTimesheetEntryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New Timesheet Entry</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">New Timesheet Entry</h1>
+        <p className="mt-1 text-sm text-muted">
           Add timesheet rows by hand instead of uploading an Excel file. The
           columns match the Excel format — ID, name, trade, rate, supplier,
           client, and one column per day. Pick a Project to tag the location.

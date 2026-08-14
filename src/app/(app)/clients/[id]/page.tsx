@@ -40,12 +40,12 @@ export default async function ClientDetailPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/clients" className="text-sm text-slate-500 hover:underline">
+        <Link href="/clients" className="text-sm text-muted hover:underline">
           ← Clients
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">
               {client.name}
             </h1>
             <Badge color={client.status === "ACTIVE" ? "green" : "slate"}>
@@ -59,7 +59,7 @@ export default async function ClientDetailPage({
             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
           />
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           {client.code || "No code assigned"}
         </p>
         {error && (
@@ -111,9 +111,9 @@ export default async function ClientDetailPage({
       <ClientDocuments clientId={client.id} documents={client.documents} />
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Projects</h2>
+        <h2 className="mb-3 text-sm font-semibold text-primary">Projects</h2>
         {client.projects.length === 0 ? (
-          <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-8 text-center text-sm text-slate-500">
+          <p className="empty-state py-8 text-sm text-muted">
             No projects for this client yet.{" "}
             <Link href="/projects/new" className="underline">
               Add one
@@ -121,15 +121,15 @@ export default async function ClientDetailPage({
             .
           </p>
         ) : (
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {client.projects.map((p) => (
                   <tr key={p.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                    <td className="px-4 py-3 font-medium text-primary">
                       <Link href={`/projects/${p.id}`}>{p.name}</Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-500">{p.code}</td>
+                    <td className="px-4 py-3 text-muted">{p.code}</td>
                     <td className="px-4 py-3">
                       <Badge color={p.status === "ACTIVE" ? "green" : "amber"}>
                         {p.status}

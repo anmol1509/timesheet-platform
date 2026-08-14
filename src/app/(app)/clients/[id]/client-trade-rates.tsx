@@ -50,28 +50,28 @@ export function ClientTradeRates({
 
   return (
     <section>
-      <h2 className="mb-1 text-sm font-semibold text-slate-900">
+      <h2 className="mb-1 text-sm font-semibold text-primary">
         Billing rates by trade ({rates.length})
       </h2>
-      <p className="mb-3 text-xs text-slate-500">
+      <p className="mb-3 text-xs text-muted">
         Used when generating client invoices. Trades without a rate here fall
         back to the flat Hourly/Basic rate above.
       </p>
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+      <div className="card overflow-hidden">
         {rates.length > 0 && (
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Trade</th>
                 <th className="px-4 py-3 text-right">Rate (AED/hr)</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {rates.map((r) =>
                 editingId === r.id ? (
                   <tr key={r.id}>
-                    <td className="px-4 py-2 font-medium text-slate-900">{r.trade}</td>
+                    <td className="px-4 py-2 font-medium text-primary">{r.trade}</td>
                     <td className="px-4 py-2 text-right">
                       <input
                         type="number"
@@ -79,7 +79,7 @@ export function ClientTradeRates({
                         value={draftRate}
                         autoFocus
                         onChange={(e) => setDraftRate(e.target.value)}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-24 px-2 py-1 text-right"
                       />
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap">
@@ -94,7 +94,7 @@ export function ClientTradeRates({
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="text-xs font-medium text-slate-400 hover:underline"
+                        className="text-xs font-medium text-subtle hover:underline"
                       >
                         Cancel
                       </button>
@@ -102,15 +102,15 @@ export function ClientTradeRates({
                   </tr>
                 ) : (
                   <tr key={r.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">{r.trade}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">
+                    <td className="px-4 py-3 font-medium text-primary">{r.trade}</td>
+                    <td className="px-4 py-3 text-right text-secondary">
                       {r.rate.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => startEdit(r)}
-                        className="mr-2 text-xs font-medium text-slate-500 hover:underline"
+                        className="mr-2 text-xs font-medium text-muted hover:underline"
                       >
                         Edit
                       </button>
@@ -127,20 +127,20 @@ export function ClientTradeRates({
             </tbody>
           </table>
         )}
-        <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 p-4 first:border-t-0">
+        <div className="flex flex-wrap items-end gap-3 border-t border-default p-4 first:border-t-0">
           <label className="block min-w-[160px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Trade (must match timesheet trade)
             </span>
             <input
               value={newTrade}
               onChange={(e) => setNewTrade(e.target.value)}
               placeholder="e.g. Carpenter"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <label className="block w-32">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Rate (AED/hr)
             </span>
             <input
@@ -148,14 +148,14 @@ export function ClientTradeRates({
               step="0.01"
               value={newRate}
               onChange={(e) => setNewRate(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <button
             type="button"
             disabled={pending}
             onClick={addNew}
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+            className="btn btn-primary"
           >
             + Add
           </button>

@@ -15,7 +15,7 @@ import {
   FileText,
   Clock,
   Settings as SettingsIcon,
-  ChevronDown,
+  ChevronRight,
   Truck,
   Bus,
   MapPin,
@@ -31,6 +31,8 @@ import {
   FileSignature,
   type LucideIcon,
 } from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { cn } from "@/lib/cn";
 
 type Item = { href: string; label: string; icon: LucideIcon };
 type Entry =
@@ -135,113 +137,149 @@ function groupContainsActive(pathname: string, children: Item[]) {
   return children.some((c) => isActive(pathname, c.href));
 }
 
-const ACTIVE_PILL =
-  "relative bg-[var(--brand-primary)] text-white before:absolute before:top-1/2 before:left-0 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-r-full before:bg-blue-300";
+// Active state reads as "selected", not as a coloured button: a tinted surface
+// plus a brand rail, so a long nav doesn't turn into a stack of blue blocks.
+const ROW =
+  "group/row relative flex items-center rounded-control text-sm transition-colors";
+const ACTIVE = "bg-brand-soft font-medium text-[var(--brand-primary)]";
+const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
 
-export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
+export function NavLinks({
+  isAdmin,
+  collapsed = false,
+}: {
+  isAdmin: boolean;
+  /** Icon-rail mode. Groups flatten to their icon with a hover tooltip. */
+  collapsed?: boolean;
+}) {
   const pathname = usePathname();
   const entries = isAdmin ? [...NAV, ADMIN_GROUP] : NAV;
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    for (const entry of entries) {
-      if (entry.type === "group" && groupContainsActive(pathname, entry.children)) {
-        initial.add(entry.label);
-      }
-    }
-    return initial;
-  });
 
-  function toggle(label: string) {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
+  // Only records groups the user explicitly toggled. Whether a group is *open*
+  // is derived below, so navigating into a group (via search or a deep link)
+  // reveals it without an effect syncing state back after the fact.
+  const [overrides, setOverrides] = useState<Map<string, boolean>>(new Map());
+
+  function isOpen(label: string, children: Item[]) {
+    const override = overrides.get(label);
+    if (override !== undefined) return override;
+    return groupContainsActive(pathname, children);
+  }
+
+  function toggle(label: string, children: Item[]) {
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(label, !isOpen(label, children));
       return next;
     });
   }
 
+  function renderLeaf(item: Item, depth: 0 | 1) {
+    const active = isActive(pathname, item.href);
+    const Icon = item.icon;
+
+    if (collapsed) {
+      return (
+        <Tooltip key={item.href} label={item.label} className="w-full">
+          <Link
+            href={item.href}
+            aria-label={item.label}
+            aria-current={active ? "page" : undefined}
+            className={cn(ROW, "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+          </Link>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          ROW,
+          "gap-2.5 py-1.5",
+          depth === 0 ? "px-2.5" : "px-2.5",
+          active ? ACTIVE : INACTIVE
+        )}
+      >
+        {active && (
+          <span
+            className="absolute top-1/2 -left-3 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
+            aria-hidden
+          />
+        )}
+        <Icon className={cn("shrink-0", depth === 0 ? "h-4 w-4" : "h-3.5 w-3.5")} />
+        <span className="truncate">{item.label}</span>
+      </Link>
+    );
+  }
+
   return (
-    <nav className="flex flex-col gap-0.5">
+    <nav className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
       {entries.map((entry) => {
-        if (entry.type === "link") {
-          const { href, label, icon: Icon } = entry.item;
-          const active = isActive(pathname, href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                active
-                  ? ACTIVE_PILL
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </Link>
-          );
-        }
+        if (entry.type === "link") return renderLeaf(entry.item, 0);
 
         const GroupIcon = entry.icon;
-        const open = openGroups.has(entry.label);
+        const open = isOpen(entry.label, entry.children);
         const hasActiveChild = groupContainsActive(pathname, entry.children);
+
+        // Collapsed rail: show each group's children as bare icons, since a
+        // disclosure control has nothing to disclose into at 56px wide.
+        if (collapsed) {
+          return (
+            <div key={entry.label} className="flex w-full flex-col items-center gap-0.5">
+              <span
+                className="my-1 h-px w-5 bg-[var(--border)]"
+                aria-hidden
+              />
+              {entry.children.map((child) => renderLeaf(child, 1))}
+            </div>
+          );
+        }
 
         return (
           <div key={entry.label}>
             <button
               type="button"
-              onClick={() => toggle(entry.label)}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                hasActiveChild
-                  ? "text-slate-900"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
+              onClick={() => toggle(entry.label, entry.children)}
+              aria-expanded={open}
+              className={cn(
+                ROW,
+                "w-full gap-2.5 px-2.5 py-1.5",
+                hasActiveChild && !open
+                  ? "font-medium text-primary"
+                  : "text-secondary hover:bg-surface-hover hover:text-primary"
+              )}
             >
               <GroupIcon className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left">{entry.label}</span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+              <span className="flex-1 truncate text-left">{entry.label}</span>
+              {hasActiveChild && !open && (
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-primary)]"
+                  aria-hidden
+                />
+              )}
+              <ChevronRight
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0 text-subtle transition-transform",
+                  open && "rotate-90"
+                )}
+                aria-hidden
               />
             </button>
             {open && (
-              <div className="mt-0.5 ml-4 flex flex-col gap-0.5 border-l border-slate-100 pl-3">
-                {entry.children.map((child) => {
-                  const active = isActive(pathname, child.href);
-                  const ChildIcon = child.icon;
-                  return (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      className={`flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-sm font-medium transition ${
-                        active
-                          ? ACTIVE_PILL
-                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                      }`}
-                    >
-                      <ChildIcon className="h-3.5 w-3.5 shrink-0" />
-                      {child.label}
-                    </Link>
-                  );
-                })}
+              <div className="mt-0.5 ml-[1.0625rem] flex flex-col gap-0.5 border-l border-default pl-3">
+                {entry.children.map((child) => renderLeaf(child, 1))}
               </div>
             )}
           </div>
         );
       })}
 
-      {isAdmin && (
-        <Link
-          href={ADMIN_ITEM.href}
-          className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
-            isActive(pathname, ADMIN_ITEM.href)
-              ? ACTIVE_PILL
-              : "text-slate-600 hover:bg-slate-100"
-          }`}
-        >
-          <ADMIN_ITEM.icon className="h-4 w-4 shrink-0" />
-          {ADMIN_ITEM.label}
-        </Link>
-      )}
+      {isAdmin && renderLeaf(ADMIN_ITEM, 0)}
     </nav>
   );
 }

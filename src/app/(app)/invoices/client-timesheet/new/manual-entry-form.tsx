@@ -117,9 +117,9 @@ export function ManualEntryForm({
         </p>
       )}
 
-      <div className="flex flex-wrap items-end justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4">
+      <div className="card flex flex-wrap items-end justify-between gap-3 p-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Month
           </span>
           <input
@@ -127,11 +127,11 @@ export function ManualEntryForm({
             value={month}
             onChange={(e) => updateMonth(e.target.value)}
             required
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Project (optional — enables Approved Rates on the invoice)
           </span>
           <Select
@@ -145,7 +145,7 @@ export function ManualEntryForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Site (optional)
           </span>
           <Select
@@ -159,17 +159,17 @@ export function ManualEntryForm({
         <button
           type="button"
           onClick={addRow}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="btn btn-secondary flex gap-1.5 px-3"
         >
           <Plus className="h-4 w-4" /> Add Row
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
+      <div className="card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
-              <th className="sticky left-0 z-10 bg-slate-50 px-3 py-3">ID No</th>
+              <th className="sticky left-0 z-10 bg-surface-subtle px-3 py-3">ID No</th>
               <th className="px-3 py-3">Employee Name</th>
               <th className="px-3 py-3">Trade</th>
               <th className="px-3 py-3">Rate</th>
@@ -183,7 +183,7 @@ export function ManualEntryForm({
               <th className="px-2 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[var(--border)]">
             {rows.map((row) => (
               <tr key={row.id}>
                 <td className="sticky left-0 z-10 bg-white px-3 py-2">
@@ -193,7 +193,7 @@ export function ManualEntryForm({
                       updateRow(row.id, { employeeIdNo: e.target.value })
                     }
                     placeholder="ID No"
-                    className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                    className="input w-24 px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -203,7 +203,7 @@ export function ManualEntryForm({
                       updateRow(row.id, { employeeName: e.target.value })
                     }
                     placeholder="Name"
-                    className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                    className="input w-40 px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -211,7 +211,7 @@ export function ManualEntryForm({
                     value={row.trade}
                     onChange={(e) => updateRow(row.id, { trade: e.target.value })}
                     placeholder="Trade"
-                    className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                    className="input w-28 px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -222,7 +222,7 @@ export function ManualEntryForm({
                     min={0}
                     step="0.01"
                     placeholder="Rate"
-                    className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                    className="input w-20 px-2 py-1.5"
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -250,7 +250,7 @@ export function ManualEntryForm({
                       onChange={(e) => updateDay(row.id, dayIndex, e.target.value)}
                       placeholder="—"
                       title="Hours worked, or A for absent, or OFF"
-                      className="w-12 rounded-lg border border-slate-300 px-1 py-1.5 text-center text-xs outline-none focus:border-[var(--brand-primary)]"
+                      className="input w-12 px-1 py-1.5 text-center text-xs"
                     />
                   </td>
                 ))}
@@ -259,7 +259,7 @@ export function ManualEntryForm({
                     type="button"
                     onClick={() => removeRow(row.id)}
                     disabled={rows.length === 1}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
                     title="Remove row"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -271,7 +271,7 @@ export function ManualEntryForm({
         </table>
       </div>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-subtle">
         Enter hours worked per day, &ldquo;A&rdquo; for absent, or leave blank
         / &ldquo;OFF&rdquo; for a day off. Employees, suppliers, and clients
         that don&rsquo;t exist yet are created automatically, same as an
@@ -281,7 +281,7 @@ export function ManualEntryForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+        className="btn btn-primary"
       >
         {pending ? "Saving…" : "Save Timesheet Entries"}
       </button>

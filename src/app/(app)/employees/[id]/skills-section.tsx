@@ -40,11 +40,11 @@ export function SkillsSection({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Known Trade Details</h2>
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-3 text-sm font-semibold text-primary">Known Trade Details</h2>
+      <div className="card p-5">
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-[180px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Trade</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Trade</span>
             <input
               ref={nameRef}
               placeholder="e.g. Welding, Carpentry"
@@ -54,44 +54,44 @@ export function SkillsSection({
                   handleAdd();
                 }
               }}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </div>
           <div className="w-24">
-            <span className="mb-1 block text-xs font-medium text-slate-500">% Known</span>
+            <span className="mb-1 block text-xs font-medium text-muted">% Known</span>
             <input
               ref={proficiencyRef}
               type="number"
               min={0}
               max={100}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </div>
           <div className="w-28">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Rate (AED)</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
             <input
               ref={rateRef}
               type="number"
               step="0.01"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </div>
           <button
             type="button"
             onClick={handleAdd}
             disabled={pending}
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+            className="btn btn-primary"
           >
             Add
           </button>
         </div>
 
         {skills.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-400">No known trades added yet.</p>
+          <p className="mt-4 text-sm text-subtle">No known trades added yet.</p>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-default">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
                   <th className="px-3 py-2">Trade</th>
                   <th className="px-3 py-2 text-right">% Known</th>
@@ -99,14 +99,14 @@ export function SkillsSection({
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {skills.map((s) => (
                   <tr key={s.id}>
-                    <td className="px-3 py-2 font-medium text-slate-900">{s.name}</td>
-                    <td className="px-3 py-2 text-right text-slate-600">
+                    <td className="px-3 py-2 font-medium text-primary">{s.name}</td>
+                    <td className="px-3 py-2 text-right text-secondary">
                       {s.proficiencyPercent != null ? `${s.proficiencyPercent}%` : "—"}
                     </td>
-                    <td className="px-3 py-2 text-right text-slate-600">
+                    <td className="px-3 py-2 text-right text-secondary">
                       {s.rate != null ? `AED ${s.rate.toFixed(2)}` : "—"}
                     </td>
                     <td className="px-3 py-2 text-right">

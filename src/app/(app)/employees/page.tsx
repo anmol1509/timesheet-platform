@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { X } from "lucide-react";
+import { UserPlus, X } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -71,29 +73,29 @@ export default async function EmployeesPage({
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Employees</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {employees.length} workers on record. New employees appear here
-            automatically when their ID shows up in an upload.
-          </p>
-        </div>
-        <Link
-          href="/employees/new"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
-        >
-          + Add Employee
-        </Link>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Employees"
+        description="Workers on record, with compliance status and current deployment. New employees are created automatically when their ID appears in a timesheet upload."
+        meta={
+          <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
+            {employees.length}
+          </span>
+        }
+        actions={
+          <Button href="/employees/new" size="sm">
+            <UserPlus className="h-3.5 w-3.5" aria-hidden />
+            Add employee
+          </Button>
+        }
+      />
 
       {entityFilter && (
-        <div className="flex items-center gap-1.5 self-start rounded-full bg-[var(--brand-primary-soft)] py-1 pr-1 pl-3 text-xs font-medium text-[var(--brand-primary)]">
+        <div className="flex items-center gap-1.5 self-start rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
           {entityFilter.label}: {entityFilter.name}
           <Link
             href="/employees"
-            className="rounded-full p-1 hover:bg-white/60"
+            className="rounded-xs p-0.5 transition hover:bg-white/70"
             aria-label="Clear filter"
           >
             <X className="h-3 w-3" />
@@ -101,25 +103,7 @@ export default async function EmployeesPage({
         </div>
       )}
 
-      {rows.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <p className="text-sm text-slate-500">
-            {entityFilter ? (
-              "No employees match this filter."
-            ) : (
-              <>
-                No employees yet.{" "}
-                <Link href="/upload" className="font-medium text-slate-900 underline">
-                  Upload a time sheet
-                </Link>{" "}
-                to populate this list automatically.
-              </>
-            )}
-          </p>
-        </div>
-      ) : (
-        <EmployeeList employees={rows} initialFilter={filter} />
-      )}
+      <EmployeeList employees={rows} initialFilter={filter} />
     </div>
   );
 }

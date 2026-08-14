@@ -56,13 +56,13 @@ export function ClientContacts({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">
+      <h2 className="mb-3 text-sm font-semibold text-primary">
         Contacts ({contacts.length})
       </h2>
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+      <div className="card overflow-hidden">
         {contacts.length > 0 && (
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Designation</th>
@@ -71,7 +71,7 @@ export function ClientContacts({
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {contacts.map((c) =>
                 editingId === c.id ? (
                   <tr key={c.id}>
@@ -82,7 +82,7 @@ export function ClientContacts({
                           setDraft((d) => ({ ...d, name: e.target.value }))
                         }
                         autoFocus
-                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-full px-2 py-1"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -91,7 +91,7 @@ export function ClientContacts({
                         onChange={(e) =>
                           setDraft((d) => ({ ...d, designation: e.target.value }))
                         }
-                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-full px-2 py-1"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -100,7 +100,7 @@ export function ClientContacts({
                         onChange={(e) =>
                           setDraft((d) => ({ ...d, phone: e.target.value }))
                         }
-                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-full px-2 py-1"
                       />
                     </td>
                     <td className="px-4 py-2">
@@ -109,7 +109,7 @@ export function ClientContacts({
                         onChange={(e) =>
                           setDraft((d) => ({ ...d, email: e.target.value }))
                         }
-                        className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-full px-2 py-1"
                       />
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap">
@@ -124,7 +124,7 @@ export function ClientContacts({
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="text-xs font-medium text-slate-400 hover:underline"
+                        className="text-xs font-medium text-subtle hover:underline"
                       >
                         Cancel
                       </button>
@@ -132,19 +132,19 @@ export function ClientContacts({
                   </tr>
                 ) : (
                   <tr key={c.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                    <td className="px-4 py-3 font-medium text-primary">
                       {c.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-secondary">
                       {c.designation || "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{c.phone || "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{c.email || "—"}</td>
+                    <td className="px-4 py-3 text-secondary">{c.phone || "—"}</td>
+                    <td className="px-4 py-3 text-secondary">{c.email || "—"}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => startEdit(c)}
-                        className="mr-2 text-xs font-medium text-slate-500 hover:underline"
+                        className="mr-2 text-xs font-medium text-muted hover:underline"
                       >
                         Edit
                       </button>
@@ -163,50 +163,50 @@ export function ClientContacts({
         )}
         <form
           action={addClientContactAction}
-          className="flex flex-wrap items-end gap-3 border-t border-slate-100 p-4 first:border-t-0"
+          className="flex flex-wrap items-end gap-3 border-t border-default p-4 first:border-t-0"
         >
           <input type="hidden" name="clientId" value={clientId} />
           <label className="block min-w-[140px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Name
             </span>
             <input
               name="name"
               required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <label className="block min-w-[140px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Designation
             </span>
             <input
               name="designation"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <label className="block min-w-[140px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Phone
             </span>
             <input
               name="phone"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <label className="block min-w-[160px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Email
             </span>
             <input
               name="email"
               type="email"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+            className="btn btn-primary"
           >
             + Add
           </button>

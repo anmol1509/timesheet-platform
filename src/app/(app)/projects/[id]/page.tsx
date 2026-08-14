@@ -61,12 +61,12 @@ export default async function ProjectDetailPage({
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <Link href="/projects" className="text-sm text-slate-500 hover:underline">
+        <Link href="/projects" className="text-sm text-muted hover:underline">
           ← Projects
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">
               {project.name}
             </h1>
             <Badge color={STATUS_COLOR[project.status] || "slate"}>
@@ -84,7 +84,7 @@ export default async function ProjectDetailPage({
             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
           />
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           {project.code} · {project.client.name} ·{" "}
           {project.employees.length} employees assigned
         </p>
@@ -208,21 +208,21 @@ export default async function ProjectDetailPage({
 
       {project.employees.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Assigned employees
           </h2>
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {project.employees.map((e) => (
                   <tr key={e.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                    <td className="px-4 py-3 font-medium text-primary">
                       <Link href={`/employees/${e.id}`}>{e.name}</Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-muted">
                       {e.employeeIdNo}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{e.trade}</td>
+                    <td className="px-4 py-3 text-secondary">{e.trade}</td>
                   </tr>
                 ))}
               </tbody>

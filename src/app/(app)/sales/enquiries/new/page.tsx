@@ -14,8 +14,8 @@ export default async function NewEnquiryPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New Enquiry</h1>
-        <p className="mt-1 text-sm text-slate-500">Capture a client enquiry or RFQ.</p>
+        <h1 className="text-xl tracking-tight text-primary font-semibold">New Enquiry</h1>
+        <p className="mt-1 text-sm text-muted">Capture a client enquiry or RFQ.</p>
       </div>
       <NewEnquiryForm clients={clients} />
     </div>

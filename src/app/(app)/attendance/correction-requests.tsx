@@ -28,17 +28,17 @@ export function CorrectionRequests({ corrections }: { corrections: Correction[] 
 
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">
+      <h2 className="mb-3 text-sm font-semibold text-primary">
         Pending correction requests ({corrections.length})
       </h2>
       <div className="space-y-3">
         {corrections.map((c) => (
-          <div key={c.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-sm font-medium text-slate-900">
-              {c.employeeName} <span className="text-slate-400">{c.employeeIdNo}</span> —{" "}
+          <div key={c.id} className="rounded-2xl border border-default bg-surface p-4">
+            <p className="text-sm font-medium text-primary">
+              {c.employeeName} <span className="text-subtle">{c.employeeIdNo}</span> —{" "}
               {c.date}
             </p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-secondary">
               Requested:{" "}
               {[
                 c.requestedStatus,
@@ -48,7 +48,7 @@ export function CorrectionRequests({ corrections }: { corrections: Correction[] 
                 .filter(Boolean)
                 .join(", ") || "no field changes"}
             </p>
-            {c.reason && <p className="mt-1 text-xs text-slate-500">Reason: {c.reason}</p>}
+            {c.reason && <p className="mt-1 text-xs text-muted">Reason: {c.reason}</p>}
             <div className="mt-2 flex gap-2">
               <button
                 type="button"

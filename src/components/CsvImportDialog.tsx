@@ -101,7 +101,7 @@ export function CsvImportDialog({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="btn btn-secondary px-3"
         >
           Import CSV
         </button>
@@ -109,7 +109,7 @@ export function CsvImportDialog({
       <DialogContent title={`Import ${entityLabel}`} className="max-h-[85vh] max-w-2xl overflow-y-auto">
         {!results && (
           <>
-            <p className="mt-3 mb-3 text-sm text-slate-500">
+            <p className="mt-3 mb-3 text-sm text-muted">
               Upload a CSV with a header row. Existing records are matched and
               updated; new ones are created.
             </p>
@@ -128,7 +128,7 @@ export function CsvImportDialog({
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
               }}
-              className="mb-4 block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50"
+              className="mb-4 file-input"
             />
             {error && (
               <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -137,13 +137,13 @@ export function CsvImportDialog({
             )}
             {rows.length > 0 && (
               <>
-                <p className="mb-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">{fileName}</span> —{" "}
+                <p className="mb-2 text-sm text-secondary">
+                  <span className="font-medium text-primary">{fileName}</span> —{" "}
                   {rows.length} row{rows.length === 1 ? "" : "s"} ready to import.
                 </p>
-                <div className="mb-4 max-h-48 overflow-auto rounded-lg border border-slate-200">
+                <div className="mb-4 max-h-48 overflow-auto rounded-lg border border-default">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-50 text-left text-slate-500">
+                    <thead className="bg-surface-subtle text-left text-muted">
                       <tr>
                         {columns.map((c) => (
                           <th key={c.key} className="px-2 py-1.5">
@@ -152,11 +152,11 @@ export function CsvImportDialog({
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[var(--border)]">
                       {rows.slice(0, 5).map((r, i) => (
                         <tr key={i}>
                           {columns.map((c) => (
-                            <td key={c.key} className="px-2 py-1.5 text-slate-600">
+                            <td key={c.key} className="px-2 py-1.5 text-secondary">
                               {r[c.label] ?? ""}
                             </td>
                           ))}
@@ -165,7 +165,7 @@ export function CsvImportDialog({
                     </tbody>
                   </table>
                   {rows.length > 5 && (
-                    <p className="px-2 py-1.5 text-xs text-slate-400">
+                    <p className="px-2 py-1.5 text-xs text-subtle">
                       + {rows.length - 5} more
                     </p>
                   )}
@@ -174,7 +174,7 @@ export function CsvImportDialog({
                   type="button"
                   disabled={importing}
                   onClick={handleImport}
-                  className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+                  className="btn btn-primary"
                 >
                   {importing ? "Importing…" : `Import ${rows.length} row${rows.length === 1 ? "" : "s"}`}
                 </button>
@@ -185,7 +185,7 @@ export function CsvImportDialog({
 
         {results && (
           <div className="mt-3 space-y-3">
-            <p className="text-sm text-slate-700">
+            <p className="text-sm text-secondary">
               {createdCount} created, {updatedCount} updated, {errorRows.length} failed.
             </p>
             {errorRows.length > 0 && (
@@ -201,14 +201,14 @@ export function CsvImportDialog({
               <button
                 type="button"
                 onClick={reset}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="btn btn-secondary"
               >
                 Import another file
               </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-primary-hover)]"
+                className="btn btn-primary"
               >
                 Done
               </button>

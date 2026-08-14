@@ -24,12 +24,12 @@ export default async function BankDetailPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/banks" className="text-sm text-slate-500 hover:underline">
+        <Link href="/banks" className="text-sm text-muted hover:underline">
           ← Banks
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">
               {bank.accountName}
             </h1>
             <Badge color={bank.status === "ACTIVE" ? "green" : "red"}>
@@ -43,7 +43,7 @@ export default async function BankDetailPage({
             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
           />
         </div>
-        <p className="mt-1 text-sm text-slate-500">{bank.bankName}</p>
+        <p className="mt-1 text-sm text-muted">{bank.bankName}</p>
         {error && (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}

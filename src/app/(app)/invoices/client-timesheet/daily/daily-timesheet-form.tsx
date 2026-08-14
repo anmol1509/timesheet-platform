@@ -87,9 +87,9 @@ export function DailyTimesheetForm({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Supplier</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Supplier</span>
           <Select
             value={supplierId}
             onChange={selectSupplier}
@@ -98,7 +98,7 @@ export function DailyTimesheetForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Project</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Project</span>
           <Select
             value={projectId}
             onChange={selectProject}
@@ -108,7 +108,7 @@ export function DailyTimesheetForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Site (optional)</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Site (optional)</span>
           <Select
             value={siteId}
             onChange={setSiteId}
@@ -118,26 +118,26 @@ export function DailyTimesheetForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Date</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Date</span>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Employees</h2>
+      <div className="card p-5">
+        <h2 className="mb-3 text-sm font-semibold text-primary">Employees</h2>
         {!supplierId || !projectId ? (
-          <p className="text-sm text-slate-500">Select a supplier and a project first.</p>
+          <p className="text-sm text-muted">Select a supplier and a project first.</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-slate-500">No employees for this supplier on this project.</p>
+          <p className="text-sm text-muted">No employees for this supplier on this project.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
                   <th className="px-2 py-2">Employee</th>
                   <th className="px-2 py-2">Trade</th>
@@ -145,13 +145,13 @@ export function DailyTimesheetForm({
                   <th className="px-2 py-2">Hours</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {rows.map((e) => (
                   <tr key={e.id}>
-                    <td className="px-2 py-2 text-slate-900">
-                      {e.name} <span className="text-slate-400">{e.employeeIdNo}</span>
+                    <td className="px-2 py-2 text-primary">
+                      {e.name} <span className="text-subtle">{e.employeeIdNo}</span>
                     </td>
-                    <td className="px-2 py-2 text-slate-600">{e.trade || "—"}</td>
+                    <td className="px-2 py-2 text-secondary">{e.trade || "—"}</td>
                     <td className="px-2 py-2">
                       <input
                         value={rates[e.id] || ""}
@@ -160,7 +160,7 @@ export function DailyTimesheetForm({
                         min={0}
                         step="0.01"
                         placeholder="Rate"
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-24 px-2 py-1.5"
                       />
                     </td>
                     <td className="px-2 py-2">
@@ -168,7 +168,7 @@ export function DailyTimesheetForm({
                         value={values[e.id] || ""}
                         onChange={(ev) => setValues((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                         placeholder="e.g. 8, A, OFF"
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                        className="input w-24 px-2 py-1.5"
                       />
                     </td>
                   </tr>
@@ -179,13 +179,13 @@ export function DailyTimesheetForm({
         )}
       </div>
 
-      {result && <p className="text-sm text-slate-600">{result}</p>}
+      {result && <p className="text-sm text-secondary">{result}</p>}
 
       <button
         type="button"
         onClick={handleSubmit}
         disabled={pending || !supplierId || !projectId || rows.length === 0}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+        className="btn btn-primary"
       >
         {pending ? "Saving…" : "Save Daily Timesheet"}
       </button>

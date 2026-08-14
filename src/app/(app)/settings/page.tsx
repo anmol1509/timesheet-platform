@@ -29,45 +29,45 @@ export default async function SettingsPage() {
   ]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Settings</h1>
+        <p className="mt-1 text-sm text-muted">
           Defaults used when generating company timesheets, and who can sign in.
         </p>
       </div>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+        <h2 className="mb-3 text-sm font-semibold text-primary">
           Billing entity
         </h2>
         <form
           action={updateIssuedToAction}
-          className="max-w-md rounded-3xl border border-slate-200 bg-white p-5"
+          className="card max-w-md p-5"
         >
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               &ldquo;Issued To&rdquo; name (your company, as billed by suppliers)
             </span>
             <input
               name="issuedTo"
               defaultValue={settings.issuedTo}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <label className="mt-4 block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Company TRN (printed on client invoices)
             </span>
             <input
               name="companyTrn"
               defaultValue={settings.companyTrn ?? ""}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <button
             type="submit"
-            className="mt-3 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+            className="btn btn-primary mt-3"
           >
             Save
           </button>
@@ -76,30 +76,30 @@ export default async function SettingsPage() {
 
       {isSuperAdmin && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Branches</h2>
+          <h2 className="mb-3 text-sm font-semibold text-primary">Branches</h2>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+            <div className="card overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                   <tr>
                     <th className="px-4 py-3">Code</th>
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Emirate</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[var(--border)]">
                   {branches.map((b) => (
                     <tr key={b.id}>
-                      <td className="px-4 py-3 font-medium text-slate-900">{b.code}</td>
-                      <td className="px-4 py-3 text-slate-600">{b.name}</td>
-                      <td className="px-4 py-3 text-slate-600">{b.emirate ?? "—"}</td>
+                      <td className="px-4 py-3 font-medium text-primary">{b.code}</td>
+                      <td className="px-4 py-3 text-secondary">{b.name}</td>
+                      <td className="px-4 py-3 text-secondary">{b.emirate ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-5">
-              <h3 className="mb-3 text-sm font-medium text-slate-900">Add branch</h3>
+            <div className="card p-5">
+              <h3 className="mb-3 text-sm font-medium text-primary">Add branch</h3>
               <CreateBranchForm />
             </div>
           </div>
@@ -107,11 +107,11 @@ export default async function SettingsPage() {
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Team</h2>
+        <h2 className="mb-3 text-sm font-semibold text-primary">Team</h2>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Email</th>
@@ -120,16 +120,16 @@ export default async function SettingsPage() {
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {users.map((u) => (
                   <tr key={u.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                    <td className="px-4 py-3 font-medium text-primary">
                       {u.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                    <td className="px-4 py-3 text-slate-600">{u.role}</td>
+                    <td className="px-4 py-3 text-secondary">{u.email}</td>
+                    <td className="px-4 py-3 text-secondary">{u.role}</td>
                     {isSuperAdmin && (
-                      <td className="px-4 py-3 text-slate-600">
+                      <td className="px-4 py-3 text-secondary">
                         {u.branch?.code ?? "— (all)"}
                       </td>
                     )}
@@ -149,8 +149,8 @@ export default async function SettingsPage() {
             </table>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h3 className="mb-3 text-sm font-medium text-slate-900">
+          <div className="card p-5">
+            <h3 className="mb-3 text-sm font-medium text-primary">
               Add team member
             </h3>
             <CreateUserForm isSuperAdmin={isSuperAdmin} branches={branches} />

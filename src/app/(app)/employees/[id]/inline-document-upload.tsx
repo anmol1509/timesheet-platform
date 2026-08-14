@@ -134,7 +134,7 @@ export function InlineDocumentUpload({
                   href={`/api/documents/${d.id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="min-w-0 flex-1 truncate text-slate-900 hover:underline"
+                  className="min-w-0 flex-1 truncate text-primary hover:underline"
                 >
                   {d.filename}
                 </a>
@@ -157,10 +157,10 @@ export function InlineDocumentUpload({
         type="file"
         onChange={handleUpload}
         disabled={pending}
-        className="block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50 disabled:opacity-60"
+        className="file-input"
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      {extracting && <p className="mt-1 text-xs text-slate-500">Reading document details…</p>}
+      {extracting && <p className="mt-1 text-xs text-muted">Reading document details…</p>}
       {extracted && !applied && (
         <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
           <p className="mb-2 text-xs font-medium text-blue-900">

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 type SearchResults = {
   employees: { id: string; name: string; employeeIdNo: string; trade: string | null }[];
@@ -13,22 +14,31 @@ type SearchResults = {
 
 const EMPTY_RESULTS: SearchResults = { employees: [], projects: [], clients: [], documents: [] };
 
+type Flat = { key: string; href: string; group: string; primary: string; secondary?: string };
+
 export function GlobalSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [highlight, setHighlight] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
-      setResults(EMPTY_RESULTS);
-      return;
-    }
+    if (q.length < 2) return;
+    // The spinner is raised inside the timer rather than synchronously here,
+    // so a keystroke doesn't cost an extra render before the debounce elapses.
     const timer = setTimeout(async () => {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      if (res.ok) setResults(await res.json());
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) setResults(await res.json());
+      } finally {
+        setLoading(false);
+      }
     }, 250);
     return () => clearTimeout(timer);
   }, [query]);
@@ -43,11 +53,57 @@ export function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const hasResults =
-    results.employees.length > 0 ||
-    results.projects.length > 0 ||
-    results.clients.length > 0 ||
-    results.documents.length > 0;
+  // ⌘K / Ctrl-K focuses search from anywhere in the app.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // One flat list so arrow keys can walk across group boundaries.
+  const flat = useMemo<Flat[]>(
+    () => [
+      ...results.employees.map((e) => ({
+        key: `e-${e.id}`,
+        href: `/employees/${e.id}`,
+        group: "Employees",
+        primary: e.name,
+        secondary: [e.employeeIdNo, e.trade].filter(Boolean).join(" · "),
+      })),
+      ...results.projects.map((p) => ({
+        key: `p-${p.id}`,
+        href: `/projects/${p.id}`,
+        group: "Projects",
+        primary: p.name,
+        secondary: p.code,
+      })),
+      ...results.clients.map((c) => ({
+        key: `c-${c.id}`,
+        href: `/clients/${c.id}`,
+        group: "Clients",
+        primary: c.name,
+        secondary: c.code || undefined,
+      })),
+      ...results.documents.map((d) => ({
+        key: `d-${d.id}`,
+        href: `/employees/${d.employeeId}`,
+        group: "Documents",
+        primary: d.filename,
+        secondary: `${d.type} · ${d.employee.name}`,
+      })),
+    ],
+    [results]
+  );
+
+  // Clamped during render instead of reset in an effect — results shrink as the
+  // user types, and the highlight must never point past the end of the list.
+  const activeIndex = flat.length === 0 ? 0 : Math.min(highlight, flat.length - 1);
 
   function go(href: string) {
     setOpen(false);
@@ -55,108 +111,113 @@ export function GlobalSearch() {
     router.push(href);
   }
 
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") {
+      setOpen(false);
+      inputRef.current?.blur();
+      return;
+    }
+    if (!flat.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((activeIndex + 1) % flat.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((activeIndex - 1 + flat.length) % flat.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const target = flat[activeIndex];
+      if (target) go(target.href);
+    }
+  }
+
+  const showPanel = open && query.trim().length >= 2;
+  let renderedGroup = "";
+
   return (
-    <div ref={containerRef} className="relative max-w-md flex-1">
-      <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <div ref={containerRef} className="relative w-full max-w-md">
+      <Search
+        className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-subtle"
+        aria-hidden
+      />
       <input
+        ref={inputRef}
+        type="search"
+        role="combobox"
+        aria-expanded={showPanel}
+        aria-controls="global-search-results"
+        aria-label="Search employees, projects, clients and documents"
         value={query}
         onChange={(e) => {
-          setQuery(e.target.value);
+          const next = e.target.value;
+          setQuery(next);
           setOpen(true);
+          // Drop stale matches immediately below the 2-char threshold, so
+          // clearing and retyping never flashes the previous query's results.
+          if (next.trim().length < 2) {
+            setResults(EMPTY_RESULTS);
+            setHighlight(0);
+          }
         }}
         onFocus={() => setOpen(true)}
-        placeholder="Search employees, projects, or documents..."
-        className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pr-3 pl-9 text-sm text-slate-700 outline-none focus:border-slate-400"
+        onKeyDown={onKeyDown}
+        placeholder="Search…"
+        className="h-9 w-full rounded-control border border-default bg-surface-subtle pr-14 pl-8 text-sm text-primary transition outline-none placeholder:text-subtle hover:bg-surface focus:border-[var(--brand-primary)] focus:bg-surface focus:shadow-[0_0_0_3px_rgb(37_99_235_/_0.12)]"
       />
-      {open && query.trim().length >= 2 && (
-        <div className="absolute top-full left-0 z-20 mt-1 w-full max-h-96 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
-          {!hasResults && (
-            <p className="px-4 py-6 text-center text-sm text-slate-500">
-              No matches for &quot;{query}&quot;.
+      <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2">
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-subtle" aria-hidden />
+        ) : (
+          <kbd className="hidden rounded border border-default bg-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-subtle sm:block">
+            ⌘K
+          </kbd>
+        )}
+      </span>
+
+      {showPanel && (
+        <div
+          id="global-search-results"
+          role="listbox"
+          className="absolute top-full left-0 z-40 mt-1.5 max-h-96 w-full overflow-y-auto rounded-card border border-default bg-surface py-1 shadow-popover"
+        >
+          {flat.length === 0 && !loading && (
+            <p className="px-3.5 py-6 text-center text-sm text-muted">
+              No matches for &ldquo;{query}&rdquo;.
             </p>
           )}
-          {results.employees.length > 0 && (
-            <SearchGroup label="Employees">
-              {results.employees.map((e) => (
-                <SearchRow
-                  key={e.id}
-                  onClick={() => go(`/employees/${e.id}`)}
-                  primary={e.name}
-                  secondary={[e.employeeIdNo, e.trade].filter(Boolean).join(" · ")}
-                />
-              ))}
-            </SearchGroup>
-          )}
-          {results.projects.length > 0 && (
-            <SearchGroup label="Projects">
-              {results.projects.map((p) => (
-                <SearchRow
-                  key={p.id}
-                  onClick={() => go(`/projects/${p.id}`)}
-                  primary={p.name}
-                  secondary={p.code}
-                />
-              ))}
-            </SearchGroup>
-          )}
-          {results.clients.length > 0 && (
-            <SearchGroup label="Clients">
-              {results.clients.map((c) => (
-                <SearchRow
-                  key={c.id}
-                  onClick={() => go(`/clients/${c.id}`)}
-                  primary={c.name}
-                  secondary={c.code || undefined}
-                />
-              ))}
-            </SearchGroup>
-          )}
-          {results.documents.length > 0 && (
-            <SearchGroup label="Documents">
-              {results.documents.map((d) => (
-                <SearchRow
-                  key={d.id}
-                  onClick={() => go(`/employees/${d.employeeId}`)}
-                  primary={d.filename}
-                  secondary={`${d.type} · ${d.employee.name}`}
-                />
-              ))}
-            </SearchGroup>
-          )}
+          {flat.map((item, i) => {
+            const newGroup = item.group !== renderedGroup;
+            renderedGroup = item.group;
+            return (
+              <div key={item.key}>
+                {newGroup && (
+                  <p className="px-3.5 pt-2 pb-1 text-[10px] font-semibold tracking-wider text-subtle uppercase">
+                    {item.group}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={i === activeIndex}
+                  onMouseEnter={() => setHighlight(i)}
+                  onClick={() => go(item.href)}
+                  className={cn(
+                    "flex w-full flex-col items-start px-3.5 py-1.5 text-left transition",
+                    i === activeIndex && "bg-surface-hover"
+                  )}
+                >
+                  <span className="truncate text-sm font-medium text-primary">
+                    {item.primary}
+                  </span>
+                  {item.secondary && (
+                    <span className="truncate text-xs text-muted">{item.secondary}</span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
-  );
-}
-
-function SearchGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="border-b border-slate-100 py-1.5 last:border-0">
-      <p className="px-4 pt-1 pb-1 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
-        {label}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function SearchRow({
-  primary,
-  secondary,
-  onClick,
-}: {
-  primary: string;
-  secondary?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-slate-50"
-    >
-      <span className="text-sm font-medium text-slate-900">{primary}</span>
-      {secondary && <span className="text-xs text-slate-500">{secondary}</span>}
-    </button>
   );
 }

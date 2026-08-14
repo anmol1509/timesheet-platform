@@ -1,17 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Pencil } from "lucide-react";
+import { Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
-import { Pagination } from "@/components/Pagination";
-import { CsvImportDialog } from "@/components/CsvImportDialog";
+import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
-import { Checkbox } from "@/components/ui/Checkbox";
-import { toCsv, downloadCsv } from "@/lib/csv";
+import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
-import { useRowSelection } from "@/lib/useRowSelection";
 import { bulkImportEmployeesAction } from "./[id]/actions";
 
 const PAGE_SIZE = 25;
@@ -59,11 +57,14 @@ const CATEGORY_LABEL: Record<EmployeeRow["category"], string> = {
   STAFF: "Staff",
 };
 
-const STATUS_BADGE: Record<ComplianceStatus, { label: string; color: "green" | "amber" | "red" | "slate" }> = {
-  valid: { label: "Compliant", color: "green" },
-  expiring: { label: "Expiring soon", color: "amber" },
-  expired: { label: "Expired", color: "red" },
-  not_set: { label: "No records", color: "slate" },
+const STATUS_BADGE: Record<
+  ComplianceStatus,
+  { label: string; color: "green" | "amber" | "red" | "slate"; rank: number }
+> = {
+  expired: { label: "Expired", color: "red", rank: 0 },
+  expiring: { label: "Expiring soon", color: "amber", rank: 1 },
+  not_set: { label: "No records", color: "slate", rank: 2 },
+  valid: { label: "Compliant", color: "green", rank: 3 },
 };
 
 const IMPORT_COLUMNS = [
@@ -86,8 +87,6 @@ export function EmployeeList({
   initialFilter?: string;
 }) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
   const validFilters: Filter[] = [
     "on-work",
     "bench",
@@ -102,7 +101,7 @@ export function EmployeeList({
     validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
   );
 
-  const byFilter = useMemo(() => {
+  const rows = useMemo(() => {
     switch (filter) {
       case "on-work":
         return employees.filter((e) => e.onWork);
@@ -125,56 +124,144 @@ export function EmployeeList({
     }
   }, [employees, filter]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return byFilter;
-    return byFilter.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.employeeIdNo.toLowerCase().includes(q) ||
-        (e.trade || "").toLowerCase().includes(q) ||
-        (e.companyDisplayName || "").toLowerCase().includes(q)
-    );
-  }, [byFilter, query]);
+  const columns: DataTableColumn<EmployeeRow>[] = [
+    {
+      key: "employeeIdNo",
+      header: "ID No",
+      locked: true,
+      sortValue: (e) => e.employeeIdNo,
+      csvValue: (e) => e.employeeIdNo,
+      render: (e) => (
+        <span className="tabular text-xs text-muted">{e.employeeIdNo}</span>
+      ),
+    },
+    {
+      key: "name",
+      header: "Employee",
+      locked: true,
+      sortValue: (e) => e.name,
+      csvValue: (e) => e.name,
+      render: (e) => (
+        <Link href={`/employees/${e.id}`} className="group/name flex items-center gap-2.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold text-secondary">
+            {e.name
+              .split(/\s+/)
+              .slice(0, 2)
+              .map((p) => p[0])
+              .join("")
+              .toUpperCase()}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-primary group-hover/name:underline">
+              {e.name}
+            </span>
+            <span className="block truncate text-[11px] text-subtle">
+              {CATEGORY_LABEL[e.category]}
+            </span>
+          </span>
+        </Link>
+      ),
+    },
+    {
+      key: "trade",
+      header: "Trade",
+      sortValue: (e) => e.trade,
+      csvValue: (e) => e.trade,
+      render: (e) => e.trade || <span className="text-subtle">—</span>,
+    },
+    {
+      key: "passportNumber",
+      header: "Passport No",
+      sortValue: (e) => e.passportNumber,
+      csvValue: (e) => e.passportNumber,
+      render: (e) =>
+        e.passportNumber ? (
+          <span className="tabular">{e.passportNumber}</span>
+        ) : (
+          <span className="text-subtle">—</span>
+        ),
+    },
+    {
+      key: "emiratesId",
+      header: "Emirates ID",
+      sortValue: (e) => e.emiratesId,
+      csvValue: (e) => e.emiratesId,
+      render: (e) =>
+        e.emiratesId ? (
+          <span className="tabular">{e.emiratesId}</span>
+        ) : (
+          <span className="text-subtle">—</span>
+        ),
+    },
+    {
+      key: "nationality",
+      header: "Nationality",
+      sortValue: (e) => e.nationality,
+      csvValue: (e) => e.nationality,
+      render: (e) => e.nationality || <span className="text-subtle">—</span>,
+    },
+    {
+      key: "company",
+      header: "Company",
+      sortValue: (e) => e.companyDisplayName,
+      csvValue: (e) => e.companyDisplayName,
+      render: (e) => e.companyDisplayName || <span className="text-subtle">—</span>,
+    },
+    {
+      key: "status",
+      header: "Compliance",
+      // Sorts by severity, not alphabetically — expired first is what matters.
+      sortValue: (e) => STATUS_BADGE[e.worstStatus].rank,
+      csvValue: (e) => STATUS_BADGE[e.worstStatus].label,
+      render: (e) => {
+        const badge = STATUS_BADGE[e.worstStatus];
+        return (
+          <Badge color={badge.color} dot>
+            {badge.label}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "profile",
+      header: "Profile",
+      sortValue: (e) => (e.complete ? 1 : 0),
+      csvValue: (e) => (e.complete ? "Complete" : "Incomplete"),
+      render: (e) => (
+        <Badge color={e.complete ? "green" : "amber"}>
+          {e.complete ? "Complete" : "Incomplete"}
+        </Badge>
+      ),
+    },
+  ];
 
-  useEffect(() => {
-    setPage(1);
-  }, [query, filter]);
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const { selected, toggle, toggleAll, allSelected, clear } = useRowSelection(
-    filtered.map((e) => e.id)
-  );
-
-  function exportCsv() {
-    const rows = selected.size > 0 ? filtered.filter((e) => selected.has(e.id)) : filtered;
-    const csv = toCsv(rows, [
-      { header: "ID No", value: (e) => e.employeeIdNo },
-      { header: "Employee", value: (e) => e.name },
-      { header: "Category", value: (e) => CATEGORY_LABEL[e.category] },
-      { header: "Trade", value: (e) => e.trade },
-      { header: "Passport No", value: (e) => e.passportNumber },
-      { header: "Emirates ID", value: (e) => e.emiratesId },
-      { header: "Nationality", value: (e) => e.nationality },
-      { header: "Company", value: (e) => e.companyDisplayName },
-      { header: "Compliance", value: (e) => STATUS_BADGE[e.worstStatus].label },
-      { header: "Profile", value: (e) => (e.complete ? "Complete" : "Incomplete") },
-    ]);
-    downloadCsv(`employees-${new Date().toISOString().slice(0, 10)}.csv`, csv);
-  }
+  const activeChip = CATEGORY_FILTER_LABEL[filter];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search employees by name, ID, or trade…"
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
-          />
+    <DataTable
+      rows={rows}
+      columns={columns}
+      selectable
+      searchable
+      searchPlaceholder="Filter by name, ID, trade…"
+      pageSize={PAGE_SIZE}
+      csvFilename={`employees-${new Date().toISOString().slice(0, 10)}.csv`}
+      importConfig={{
+        entityLabel: "employees",
+        columns: IMPORT_COLUMNS,
+        importAction: bulkImportEmployeesAction,
+      }}
+      getRowClassName={(e) => complianceRowClass(e.worstStatus)}
+      renderRowActions={(e) => (
+        <Link
+          href={`/employees/${e.id}`}
+          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+        </Link>
+      )}
+      toolbarExtra={
+        <>
           <SegmentedControl
             value={SEGMENTED_VALUES.includes(filter) ? filter : "all"}
             onChange={(f) => {
@@ -188,134 +275,61 @@ export function EmployeeList({
               { value: "bench", label: "Bench" },
             ]}
           />
-          {CATEGORY_FILTER_LABEL[filter] && (
-            <div className="flex items-center gap-1.5 rounded-full bg-[var(--brand-primary-soft)] py-1 pr-1 pl-3 text-xs font-medium text-[var(--brand-primary)]">
-              {CATEGORY_FILTER_LABEL[filter]}
+          {activeChip && (
+            <span className="inline-flex items-center gap-1 rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
+              {activeChip}
               <button
                 type="button"
                 onClick={() => {
                   setFilter("all");
                   router.replace("/employees");
                 }}
-                className="rounded-full px-1.5 py-0.5 hover:bg-white/60"
+                aria-label={`Clear ${activeChip} filter`}
+                className="rounded-xs p-0.5 transition hover:bg-white/70"
               >
-                ✕
+                <X className="h-3 w-3" />
               </button>
-            </div>
+            </span>
           )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <CsvImportDialog
-            entityLabel="employees"
-            columns={IMPORT_COLUMNS}
-            importAction={bulkImportEmployeesAction}
-            onDone={() => router.refresh()}
-          />
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-          >
-            <Download className="h-4 w-4" />
-            {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
-          </button>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
-            <tr>
-              <th className="w-10 px-4 py-3">
-                <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
-              </th>
-              <th className="px-4 py-3">ID No</th>
-              <th className="px-4 py-3">Employee</th>
-              <th className="px-4 py-3">Trade</th>
-              <th className="px-4 py-3">Passport No</th>
-              <th className="px-4 py-3">Emirates ID</th>
-              <th className="px-4 py-3">Nationality</th>
-              <th className="px-4 py-3">Company</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Profile</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {pageRows.map((e) => {
-              const badge = STATUS_BADGE[e.worstStatus];
-              return (
-                <tr key={e.id} className={complianceRowClass(e.worstStatus)}>
-                  <td className="px-4 py-3">
-                    <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggle(e.id)} />
-                  </td>
-                  <td className="px-4 py-3 text-slate-500">
-                    <Link href={`/employees/${e.id}`} className="block">
-                      {e.employeeIdNo}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/employees/${e.id}`} className="block">
-                      <span className="font-medium text-slate-900">{e.name}</span>
-                      <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-                        {CATEGORY_LABEL[e.category]}
-                      </span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{e.trade || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{e.passportNumber || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{e.emiratesId || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.nationality || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {e.companyDisplayName || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge color={badge.color}>{badge.label}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge color={e.complete ? "green" : "amber"}>
-                      {e.complete ? "Complete" : "Incomplete"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/employees/${e.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      <Pencil className="h-3.5 w-3.5" /> Edit
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {filtered.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-slate-500">
-            {query
-              ? <>No employees match &ldquo;{query}&rdquo;.</>
-              : "No employees match this filter."}
-          </p>
-        )}
-        <Pagination
-          page={page}
-          pageCount={pageCount}
-          onPageChange={setPage}
-          totalItems={filtered.length}
-          pageSize={PAGE_SIZE}
+        </>
+      }
+      emptyState={
+        <EmptyState
+          icon={Users}
+          title={activeChip ? `No ${activeChip.toLowerCase()} employees` : "No employees yet"}
+          description={
+            activeChip
+              ? "Nothing matches this filter right now. Clear it to see the full roster."
+              : "Add your first worker to start tracking compliance documents, project deployment, and timesheets. Employees are also created automatically when their ID appears in a timesheet upload."
+          }
+          action={
+            activeChip ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setFilter("all");
+                  router.replace("/employees");
+                }}
+              >
+                Clear filter
+              </Button>
+            ) : (
+              <Button href="/employees/new" size="sm">
+                <UserPlus className="h-3.5 w-3.5" aria-hidden />
+                Add employee
+              </Button>
+            )
+          }
+          secondaryAction={
+            !activeChip && (
+              <Button href="/upload" variant="secondary" size="sm">
+                Upload a timesheet
+              </Button>
+            )
+          }
         />
-      </div>
-      {selected.size > 0 && (
-        <button
-          type="button"
-          onClick={clear}
-          className="text-xs font-medium text-slate-500 hover:underline"
-        >
-          Clear selection ({selected.size})
-        </button>
-      )}
-    </div>
+      }
+    />
   );
 }

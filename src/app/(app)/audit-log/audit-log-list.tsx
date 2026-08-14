@@ -30,16 +30,16 @@ function formatValue(v: unknown) {
 
 function ChangesDetail({ action, changes }: { action: string; changes: Record<string, unknown> | null }) {
   if (!changes || Object.keys(changes).length === 0) {
-    return <p className="px-4 py-2 text-xs text-slate-500">No field details recorded.</p>;
+    return <p className="px-4 py-2 text-xs text-muted">No field details recorded.</p>;
   }
   if (action === "UPDATE") {
     return (
-      <ul className="space-y-1 px-4 py-2 text-xs text-slate-600">
+      <ul className="space-y-1 px-4 py-2 text-xs text-secondary">
         {Object.entries(changes).map(([field, diff]) => {
           const d = diff as { from: unknown; to: unknown };
           return (
             <li key={field}>
-              <span className="font-medium text-slate-900">{field}</span>: {formatValue(d.from)} →{" "}
+              <span className="font-medium text-primary">{field}</span>: {formatValue(d.from)} →{" "}
               {formatValue(d.to)}
             </li>
           );
@@ -48,10 +48,10 @@ function ChangesDetail({ action, changes }: { action: string; changes: Record<st
     );
   }
   return (
-    <ul className="space-y-1 px-4 py-2 text-xs text-slate-600">
+    <ul className="space-y-1 px-4 py-2 text-xs text-secondary">
       {Object.entries(changes).map(([field, value]) => (
         <li key={field}>
-          <span className="font-medium text-slate-900">{field}</span>: {formatValue(value)}
+          <span className="font-medium text-primary">{field}</span>: {formatValue(value)}
         </li>
       ))}
     </ul>
@@ -96,12 +96,12 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by user or entity ID…"
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+          className="input w-full max-w-sm"
         />
         <select
           value={entityType}
           onChange={(e) => setEntityType(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+          className="input"
         >
           <option value="all">All entities</option>
           {entityTypes.map((t) => (
@@ -113,7 +113,7 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
         <select
           value={action}
           onChange={(e) => setAction(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+          className="input"
         >
           <option value="all">All actions</option>
           <option value="CREATE">Created</option>
@@ -122,9 +122,9 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
               <th className="px-4 py-3">Timestamp</th>
               <th className="px-4 py-3">User</th>
@@ -133,19 +133,19 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[var(--border)]">
             {pageRows.map((e) => {
               const badge = ACTION_BADGE[e.action] ?? { label: e.action, color: "amber" as const };
               const expanded = expandedId === e.id;
               return (
                 <Fragment key={e.id}>
                   <tr>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-muted">
                       {new Date(e.createdAt).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-slate-900">{e.userName}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {e.entityType} <span className="text-slate-400">· {e.entityId.slice(0, 8)}</span>
+                    <td className="px-4 py-3 text-primary">{e.userName}</td>
+                    <td className="px-4 py-3 text-secondary">
+                      {e.entityType} <span className="text-subtle">· {e.entityId.slice(0, 8)}</span>
                     </td>
                     <td className="px-4 py-3">
                       <Badge color={badge.color}>{badge.label}</Badge>
@@ -161,7 +161,7 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
                     </td>
                   </tr>
                   {expanded && (
-                    <tr className="bg-slate-50">
+                    <tr className="bg-surface-subtle">
                       <td colSpan={5}>
                         <ChangesDetail action={e.action} changes={e.changes} />
                       </td>
@@ -173,7 +173,7 @@ export function AuditLogList({ entries }: { entries: Entry[] }) {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-slate-500">
+          <p className="px-4 py-10 text-center text-sm text-muted">
             No audit entries match your filters.
           </p>
         )}

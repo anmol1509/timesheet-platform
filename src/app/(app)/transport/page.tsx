@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Bus } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -22,10 +24,10 @@ export default async function TransportPage({
   });
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Transport</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Transport</h1>
+        <p className="mt-1 text-sm text-muted">
           Manage vehicles, their driver, and which employees and projects
           they serve.
         </p>
@@ -39,45 +41,47 @@ export default async function TransportPage({
 
       <form
         action={createVehicleAction}
-        className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+        className="card flex flex-wrap items-end gap-3 p-4"
       >
         <label className="block flex-1 min-w-[160px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Plate number
           </span>
           <input
             name="plateNumber"
             required
             placeholder="e.g. DXB A 12345"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block flex-1 min-w-[160px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Type
           </span>
           <input
             name="type"
             placeholder="e.g. 30-seater bus"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           + Add Vehicle
         </button>
       </form>
 
       {vehicles.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
-          No vehicles yet. Add one above.
-        </p>
+        <EmptyState
+          icon={Bus}
+          title="No vehicles yet"
+          description="Vehicles carry workers between the camp and site. Add one above to record its plate, capacity and driver, then build pickup routes around it."
+        />
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Plate</th>
                 <th className="px-4 py-3">Type</th>
@@ -88,23 +92,23 @@ export default async function TransportPage({
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {vehicles.map((v) => (
                 <tr key={v.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td className="px-4 py-3 font-medium text-primary">
                     <Link href={`/transport/${v.id}`} className="hover:underline">
                       {v.plateNumber}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{v.type || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">{v.type || "—"}</td>
+                  <td className="px-4 py-3 text-secondary">
                     {v.driverName || "—"}
                   </td>
-                  <td className="px-4 py-3 text-right text-slate-600">
+                  <td className="px-4 py-3 text-right text-secondary">
                     {v._count.employees}
                     {v.capacity ? ` / ${v.capacity}` : ""}
                   </td>
-                  <td className="px-4 py-3 text-right text-slate-600">
+                  <td className="px-4 py-3 text-right text-secondary">
                     {v._count.projects}
                   </td>
                   <td className="px-4 py-3">

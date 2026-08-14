@@ -39,23 +39,23 @@ export function OccupancyRing({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-3xl font-semibold text-slate-900">{pct}%</p>
-          <p className="text-xs text-slate-500">Occupied</p>
+          <p className="text-3xl font-semibold text-primary">{pct}%</p>
+          <p className="text-xs text-muted">Occupied</p>
         </div>
       </div>
 
       <div className="flex gap-6 text-center">
         <div>
-          <p className="text-2xl font-semibold text-slate-900">{occupied}</p>
-          <p className="text-xs text-slate-500">Occupied Beds</p>
+          <p className="text-xl tracking-tight text-primary font-semibold">{occupied}</p>
+          <p className="text-xs text-muted">Occupied Beds</p>
         </div>
         <div>
-          <p className="text-2xl font-semibold text-slate-900">{vacant}</p>
-          <p className="text-xs text-slate-500">Available Beds</p>
+          <p className="text-xl tracking-tight text-primary font-semibold">{vacant}</p>
+          <p className="text-xs text-muted">Available Beds</p>
         </div>
         <div>
-          <p className="text-2xl font-semibold text-slate-900">{total}</p>
-          <p className="text-xs text-slate-500">Total Beds</p>
+          <p className="text-xl tracking-tight text-primary font-semibold">{total}</p>
+          <p className="text-xs text-muted">Total Beds</p>
         </div>
       </div>
     </div>

@@ -59,12 +59,12 @@ export default async function VehicleDetailPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/transport" className="text-sm text-slate-500 hover:underline">
+        <Link href="/transport" className="text-sm text-muted hover:underline">
           ← Transport
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">
               {vehicle.plateNumber}
             </h1>
             <Badge color={STATUS_COLOR[vehicle.status as keyof typeof STATUS_COLOR] || "slate"}>
@@ -82,7 +82,7 @@ export default async function VehicleDetailPage({
             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
           />
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           {vehicle.type || "No type set"} · {vehicle.employees.length}
           {vehicle.capacity ? ` / ${vehicle.capacity}` : ""} on roster
         </p>
@@ -112,9 +112,9 @@ export default async function VehicleDetailPage({
         allProjects={allProjects.map((p) => ({ id: p.id, name: p.name, code: p.code }))}
       />
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Routes</h2>
+          <h2 className="text-sm font-semibold text-primary">Routes</h2>
           <Link
             href={`/transport/routes/new?vehicleId=${vehicle.id}`}
             className="text-xs font-medium text-blue-600 hover:underline"
@@ -123,15 +123,15 @@ export default async function VehicleDetailPage({
           </Link>
         </div>
         {vehicle.routes.length === 0 ? (
-          <p className="text-sm text-slate-500">No routes for this vehicle yet.</p>
+          <p className="text-sm text-muted">No routes for this vehicle yet.</p>
         ) : (
           <ul className="space-y-1">
             {vehicle.routes.map((r) => (
               <li key={r.id} className="text-sm">
-                <Link href={`/transport/routes/${r.id}`} className="font-medium text-slate-900 hover:underline">
+                <Link href={`/transport/routes/${r.id}`} className="font-medium text-primary hover:underline">
                   {r.name}
                 </Link>{" "}
-                <span className="text-slate-400">{r.stops.length} stop(s)</span>
+                <span className="text-subtle">{r.stops.length} stop(s)</span>
               </li>
             ))}
           </ul>

@@ -29,7 +29,7 @@ export function ConfirmDialog({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+              className="btn btn-secondary px-3"
             >
               Cancel
             </button>
@@ -42,7 +42,7 @@ export function ConfirmDialog({
               className={
                 danger
                   ? "rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
-                  : "rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+                  : "btn btn-primary px-3"
               }
             >
               {confirmLabel}

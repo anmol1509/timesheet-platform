@@ -56,33 +56,33 @@ export function Select({
           type="button"
           disabled={disabled}
           className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 outline-none transition focus:border-[var(--brand-primary)] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+            "input flex w-full items-center justify-between gap-2 text-left data-[state=open]:border-[var(--brand-primary)]",
             triggerClassName
           )}
         >
-          <span className={cn("flex min-w-0 items-center gap-2 truncate", !value && "text-slate-400")}>
+          <span className={cn("flex min-w-0 items-center gap-2 truncate", !value && "text-subtle")}>
             {selected?.icon}
             <span className="truncate">{selected ? selected.label : value || placeholder}</span>
           </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-subtle" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           align="start"
           sideOffset={4}
-          className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+          className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-control border border-default bg-surface shadow-popover"
         >
           <Command loop>
             {searchable && (
               <CommandInput
                 autoFocus
                 placeholder={searchPlaceholder}
-                className="w-full border-b border-slate-100 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                className="w-full border-b border-default px-3 py-2 text-sm text-primary outline-none placeholder:text-subtle"
               />
             )}
             <CommandList className="max-h-64 overflow-y-auto p-1">
-              <CommandEmpty className="px-3 py-6 text-center text-sm text-slate-500">
+              <CommandEmpty className="px-3 py-6 text-center text-sm text-muted">
                 {emptyText}
               </CommandEmpty>
               <CommandGroup>
@@ -92,7 +92,7 @@ export function Select({
                     value={o.label}
                     onMouseDown={(e) => e.preventDefault()}
                     onSelect={() => handleSelect(o.value)}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm text-slate-700 outline-none data-[selected=true]:bg-slate-100"
+                    className="flex cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1.5 text-sm text-secondary outline-none data-[selected=true]:bg-surface-hover data-[selected=true]:text-primary"
                   >
                     {o.icon}
                     <span className="flex-1 truncate">{o.label}</span>

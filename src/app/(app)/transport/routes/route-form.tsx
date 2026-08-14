@@ -88,18 +88,18 @@ export function RouteForm({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+      <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
         <label className="block sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Route Name</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Route Name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Morning Pickup — Al Ain Road"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Vehicle</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Vehicle</span>
           <Select
             value={vehicleId}
             onChange={setVehicleId}
@@ -108,7 +108,7 @@ export function RouteForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Project (optional)</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Project (optional)</span>
           <Select
             value={projectId}
             onChange={setProjectId}
@@ -118,8 +118,8 @@ export function RouteForm({
         </label>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Stops</h2>
+      <div className="card p-5">
+        <h2 className="mb-3 text-sm font-semibold text-primary">Stops</h2>
         <div className="space-y-2">
           {stops.map((s, i) => (
             <div key={s.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_1fr_auto]">
@@ -127,26 +127,26 @@ export function RouteForm({
                 value={s.location}
                 onChange={(e) => updateStop(s.id, { location: e.target.value })}
                 placeholder="Location"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input"
               />
               <input
                 value={s.pickupTime}
                 onChange={(e) => updateStop(s.id, { pickupTime: e.target.value })}
                 placeholder="07:30"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input"
               />
               <input
                 value={s.notes}
                 onChange={(e) => updateStop(s.id, { notes: e.target.value })}
                 placeholder="Notes"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input"
               />
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => moveStop(i, -1)}
                   disabled={i === 0}
-                  className="rounded-lg border border-slate-300 px-2 py-2 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-strong px-2 py-2 text-xs text-secondary hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ↑
                 </button>
@@ -154,7 +154,7 @@ export function RouteForm({
                   type="button"
                   onClick={() => moveStop(i, 1)}
                   disabled={i === stops.length - 1}
-                  className="rounded-lg border border-slate-300 px-2 py-2 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-strong px-2 py-2 text-xs text-secondary hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ↓
                 </button>
@@ -173,7 +173,7 @@ export function RouteForm({
         <button
           type="button"
           onClick={() => setStops((prev) => [...prev, blankStopRow()])}
-          className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          className="btn btn-secondary btn-sm mt-3"
         >
           + Add stop
         </button>
@@ -183,7 +183,7 @@ export function RouteForm({
         type="button"
         onClick={handleSubmit}
         disabled={pending || !name || !vehicleId}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+        className="btn btn-primary"
       >
         {pending ? "Saving…" : route ? "Save changes" : "Create Route"}
       </button>

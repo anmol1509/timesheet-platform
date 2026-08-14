@@ -61,13 +61,13 @@ export function InvoiceHistoryList({ invoices }: { invoices: InvoiceRow[] }) {
       />
 
       {filtered.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
+        <p className="empty-state text-sm text-muted">
           No invoices match this filter.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-3">Invoice #</th>
                 <th className="px-4 py-3">Client</th>
@@ -79,22 +79,22 @@ export function InvoiceHistoryList({ invoices }: { invoices: InvoiceRow[] }) {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {filtered.map((inv) => {
                 const s = statusInfo(inv.status, inv.dueDate);
                 return (
                   <tr key={inv.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">{inv.invoiceNumber}</td>
-                    <td className="px-4 py-3 text-slate-600">{inv.clientName}</td>
-                    <td className="px-4 py-3 text-slate-600">{inv.monthLabel}</td>
-                    <td className="px-4 py-3 text-right text-slate-900">{fmt(inv.totalAmount)}</td>
+                    <td className="px-4 py-3 font-medium text-primary">{inv.invoiceNumber}</td>
+                    <td className="px-4 py-3 text-secondary">{inv.clientName}</td>
+                    <td className="px-4 py-3 text-secondary">{inv.monthLabel}</td>
+                    <td className="px-4 py-3 text-right text-primary">{fmt(inv.totalAmount)}</td>
                     <td className="px-4 py-3">
                       <Badge color={s.color}>{s.label}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-muted">
                       {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{inv.generatedByName}</td>
+                    <td className="px-4 py-3 text-secondary">{inv.generatedByName}</td>
                     <td className="px-4 py-3 text-right">
                       {inv.status !== "PAID" && (
                         <MarkPaidButton

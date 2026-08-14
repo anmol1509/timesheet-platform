@@ -14,17 +14,17 @@ export default async function AuditLogPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Audit Log</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Audit Log</h1>
+        <p className="mt-1 text-sm text-muted">
           Who changed what, across every module. Showing the most recent {MAX_ROWS} entries.
         </p>
       </div>
 
       {entries.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <p className="text-sm text-slate-500">No audit entries yet.</p>
+        <div className="empty-state">
+          <p className="text-sm text-muted">No audit entries yet.</p>
         </div>
       ) : (
         <AuditLogList

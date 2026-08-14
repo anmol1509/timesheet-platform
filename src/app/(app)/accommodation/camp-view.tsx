@@ -55,7 +55,7 @@ export function CampView({
 
   if (rooms.length === 0) {
     return (
-      <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
+      <p className="empty-state py-10 text-sm text-muted">
         This camp has no rooms yet — add one below.
       </p>
     );
@@ -72,7 +72,7 @@ export function CampView({
             { value: "vacant", label: `Vacant only (${vacantCount})` },
           ]}
         />
-        <div className="flex items-center gap-4 text-xs text-slate-500">
+        <div className="flex items-center gap-4 text-xs text-muted">
           <span className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded bg-emerald-500" /> Vacant
           </span>
@@ -87,7 +87,7 @@ export function CampView({
           const beds = vacantOnly ? room.beds.filter((b) => !b.employeeId) : room.beds;
           const occupied = room.beds.filter((b) => b.employeeId).length;
           return (
-            <div key={room.id} className="rounded-3xl border border-slate-200 bg-white p-4">
+            <div key={room.id} className="card p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <InlineEditRow
@@ -95,16 +95,16 @@ export function CampView({
                     action={updateRoomAction}
                     hiddenFields={{ roomId: room.id }}
                   />
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-subtle">
                     {occupied}/{room.beds.length} occupied
                   </span>
                   {room.roomType && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] font-medium text-muted">
                       {room.roomType}
                     </span>
                   )}
                   {room.nationality && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                    <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] font-medium text-muted">
                       {room.nationality}
                     </span>
                   )}
@@ -114,7 +114,7 @@ export function CampView({
                     type="button"
                     onClick={() => setBulkCheckInRoomId(room.id)}
                     disabled={room.beds.every((b) => b.employeeId)}
-                    className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-lg border border-strong px-2 py-1 text-xs font-medium text-secondary hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Bulk Check-In
                   </button>
@@ -126,11 +126,11 @@ export function CampView({
                       min={1}
                       max={20}
                       defaultValue={1}
-                      className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-[var(--brand-primary)]"
+                      className="input w-14 px-2 py-1 text-xs"
                     />
                     <button
                       type="submit"
-                      className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      className="rounded-lg border border-strong px-2 py-1 text-xs font-medium text-secondary hover:bg-surface-hover"
                     >
                       + Beds
                     </button>
@@ -145,7 +145,7 @@ export function CampView({
               </div>
 
               {beds.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
+                <p className="rounded-lg border border-dashed border-default px-3 py-4 text-center text-xs text-subtle">
                   No vacant beds in this room.
                 </p>
               ) : (
@@ -173,15 +173,15 @@ export function CampView({
                             {occupant ? "occupied" : "vacant"}
                           </span>
                         </div>
-                        <p className="mt-1.5 text-sm font-semibold text-slate-900">
+                        <p className="mt-1.5 text-sm font-semibold text-primary">
                           {bed.label}
                         </p>
                         {occupant ? (
                           <>
-                            <p className="mt-1 truncate text-xs text-slate-700" title={occupant.name}>
+                            <p className="mt-1 truncate text-xs text-secondary" title={occupant.name}>
                               {occupant.name}
                             </p>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[10px] text-subtle">
                               {occupant.employeeIdNo}
                             </p>
                             <div className="mt-1.5">
@@ -249,7 +249,7 @@ function AssignModal({
         description="Select an unassigned employee to assign to this bed."
       >
         {employees.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-muted">
             No unassigned employees available.
           </p>
         ) : (
@@ -296,14 +296,14 @@ function AssignForm({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="btn btn-secondary"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!employeeId}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+          className="btn btn-primary"
         >
           Assign
         </button>
@@ -334,7 +334,7 @@ function BulkCheckInModal({
         description={`Select up to ${vacantCount} employee${vacantCount === 1 ? "" : "s"} to check into this room's vacant beds.`}
       >
         {employees.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">No unassigned employees available.</p>
+          <p className="mt-3 text-sm text-muted">No unassigned employees available.</p>
         ) : (
           <BulkCheckInForm
             key={roomId}
@@ -396,7 +396,7 @@ function BulkCheckInForm({
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+      <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-default p-2">
         {employees.map((e) => {
           const disabled = !selected.has(e.id) && selected.size >= vacantCount;
           const matches = roomNationality && e.nationality === roomNationality;
@@ -404,7 +404,7 @@ function BulkCheckInForm({
             <label
               key={e.id}
               className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-slate-50"
+                disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-surface-hover"
               }`}
               onClick={(ev) => {
                 ev.preventDefault();
@@ -414,7 +414,7 @@ function BulkCheckInForm({
               <Checkbox checked={selected.has(e.id)} />
               <span className="flex-1 truncate">
                 {e.name} ({e.employeeIdNo})
-                {e.nationality && <span className="text-slate-400"> — {e.nationality}</span>}
+                {e.nationality && <span className="text-subtle"> — {e.nationality}</span>}
               </span>
               {matches && (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
@@ -430,7 +430,7 @@ function BulkCheckInForm({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="btn btn-secondary"
         >
           Cancel
         </button>
@@ -438,7 +438,7 @@ function BulkCheckInForm({
           type="button"
           onClick={handleSubmit}
           disabled={selected.size === 0 || pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+          className="btn btn-primary"
         >
           {pending ? "Checking in…" : `Check in ${selected.size}`}
         </button>

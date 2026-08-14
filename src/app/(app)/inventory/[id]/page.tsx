@@ -40,11 +40,11 @@ export default async function InventoryItemPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/inventory" className="text-sm text-slate-500 hover:underline">
+        <Link href="/inventory" className="text-sm text-muted hover:underline">
           ← Inventory
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">{item.name}</h1>
+          <h1 className="text-xl tracking-tight text-primary font-semibold">{item.name}</h1>
           <DeleteButton
             action={deleteInventoryItemAction}
             hiddenFields={{ itemId: item.id }}

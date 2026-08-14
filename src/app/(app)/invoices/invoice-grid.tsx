@@ -35,11 +35,11 @@ export function InvoiceGrid({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search clients…"
-        className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+        className="input w-full max-w-xs"
       />
 
       {filtered.length === 0 && (
-        <p className="text-sm text-slate-500">No clients match &ldquo;{query}&rdquo;.</p>
+        <p className="text-sm text-muted">No clients match &ldquo;{query}&rdquo;.</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -47,19 +47,19 @@ export function InvoiceGrid({
           <Link
             key={c.id}
             href={`/invoices/${c.id}/generate?month=${month}`}
-            className="group flex flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+            className="card group flex flex-col p-5 shadow-sm transition hover:border-strong hover:shadow-md"
           >
-            <h2 className="text-base font-semibold text-slate-900">{c.name}</h2>
+            <h2 className="text-base font-semibold text-primary">{c.name}</h2>
             {!c.billRateSet && (
               <p className="mt-1 text-xs font-medium text-amber-600">
                 No rate for: {c.unratedTrades.join(", ")}
               </p>
             )}
-            <div className="mt-4 flex items-center gap-4 text-sm text-slate-600">
+            <div className="mt-4 flex items-center gap-4 text-sm text-secondary">
               <span>{c.employeeCount} employees</span>
               <span>{c.totalHours.toFixed(1)} hrs</span>
             </div>
-            <div className="mt-1 text-sm font-medium text-slate-900">
+            <div className="mt-1 text-sm font-medium text-primary">
               AED {c.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
             <div

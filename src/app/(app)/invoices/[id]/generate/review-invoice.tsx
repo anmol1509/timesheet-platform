@@ -116,13 +116,13 @@ export function ReviewInvoice({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/invoices" className="text-sm text-slate-500 hover:underline">
+        <Link href="/invoices" className="text-sm text-muted hover:underline">
           ← Invoices
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{client.name}</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">{client.name}</h1>
+            <p className="mt-1 text-sm text-muted">
               {monthLabel} · {entries.length} employees
             </p>
           </div>
@@ -130,21 +130,21 @@ export function ReviewInvoice({
             <button
               onClick={() => handleGenerate("xlsx", false)}
               disabled={generating !== null}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              className="btn btn-secondary"
             >
               {generating === "xlsx" ? "Generating…" : "Download draft (XLSX)"}
             </button>
             <button
               onClick={() => handleGenerate("pdf", false)}
               disabled={generating !== null}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              className="btn btn-secondary"
             >
               {generating === "pdf" ? "Generating…" : "Download draft (PDF)"}
             </button>
             <button
               onClick={() => handleGenerate("pdf", true)}
               disabled={generating !== null || issued !== null || (hasLpoWarning && !lpoAck)}
-              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+              className="btn btn-primary"
             >
               {generating === "issue"
                 ? "Issuing…"
@@ -213,10 +213,10 @@ export function ReviewInvoice({
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Line items</h2>
-        <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
+        <h2 className="mb-3 text-sm font-semibold text-primary">Line items</h2>
+        <div className="card overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-3">ID No</th>
                 <th className="px-4 py-3">Employee</th>
@@ -230,16 +230,16 @@ export function ReviewInvoice({
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {rows.map((r) => {
                 const edited = rates[r.id] !== r.billRate;
                 return (
                   <tr key={r.id} className={!r.rateSet ? "bg-amber-50/60" : undefined}>
-                    <td className="px-4 py-2.5 text-slate-500">{r.employeeIdNo}</td>
-                    <td className="px-4 py-2.5 font-medium text-slate-900">
+                    <td className="px-4 py-2.5 text-muted">{r.employeeIdNo}</td>
+                    <td className="px-4 py-2.5 font-medium text-primary">
                       {r.employeeName}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">
+                    <td className="px-4 py-2.5 text-secondary">
                       {r.trade}
                       {!r.rateSet && (
                         <span
@@ -248,8 +248,8 @@ export function ReviewInvoice({
                         />
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-500">{r.supplierName}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
+                    <td className="px-4 py-2.5 text-muted">{r.supplierName}</td>
+                    <td className="px-4 py-2.5 text-right text-secondary">
                       {r.totalHours}
                     </td>
                     <td className="px-4 py-2.5 text-right">
@@ -266,14 +266,14 @@ export function ReviewInvoice({
                           }))
                         }
                         className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-60 ${
-                          edited ? "border-amber-300 bg-amber-50" : "border-slate-300"
+                          edited ? "border-amber-300 bg-amber-50" : "border-strong"
                         }`}
                       />
                     </td>
-                    <td className="px-4 py-2.5 text-right font-medium text-slate-900">
+                    <td className="px-4 py-2.5 text-right font-medium text-primary">
                       {r.amount.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-slate-500">
+                    <td className="px-4 py-2.5 text-right text-muted">
                       {r.cost.toFixed(2)}
                     </td>
                     <td
@@ -303,19 +303,19 @@ export function ReviewInvoice({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Margin</h2>
+        <div className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Margin</h2>
           <SummaryRow label="Billable amount" value={subtotal} />
           <SummaryRow label="Supplier cost" value={totalCost} />
-          <div className="border-t border-slate-200 pt-3">
+          <div className="border-t border-default pt-3">
             <SummaryRow label="Margin" value={margin} bold />
           </div>
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Invoice total</h2>
+        <div className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Invoice total</h2>
           <SummaryRow label="Subtotal" value={subtotal} />
           <SummaryRow label="VAT (5%)" value={vatAmount} />
-          <div className="border-t border-slate-200 pt-3">
+          <div className="border-t border-default pt-3">
             <SummaryRow label="Total due (AED)" value={totalAmount} bold />
           </div>
         </div>
@@ -335,10 +335,10 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between py-1 text-sm">
-      <span className={bold ? "font-semibold text-slate-900" : "text-slate-500"}>
+      <span className={bold ? "font-semibold text-primary" : "text-muted"}>
         {label}
       </span>
-      <span className={bold ? "text-lg font-semibold text-slate-900" : "text-slate-700"}>
+      <span className={bold ? "text-lg font-semibold text-primary" : "text-secondary"}>
         {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
     </div>

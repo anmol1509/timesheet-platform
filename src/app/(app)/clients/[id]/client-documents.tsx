@@ -61,11 +61,11 @@ export function ClientDocuments({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
-      <div className="rounded-3xl border border-slate-200 bg-white">
-        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+      <h2 className="mb-3 text-sm font-semibold text-primary">Documents</h2>
+      <div className="card">
+        <div className="flex flex-wrap items-end gap-3 border-b border-default p-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Type
             </span>
             <Select
@@ -77,14 +77,14 @@ export function ClientDocuments({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Expiry date (optional)
             </span>
             <input
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input"
             />
           </label>
           <input
@@ -92,7 +92,7 @@ export function ClientDocuments({
             type="file"
             onChange={handleUpload}
             disabled={pending}
-            className="block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50 disabled:opacity-60"
+            className="file-input"
           />
         </div>
         {error && (
@@ -102,12 +102,12 @@ export function ClientDocuments({
         )}
 
         {documents.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">
+          <p className="px-4 py-8 text-center text-sm text-muted">
             No documents uploaded yet.
           </p>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Document</th>
                 <th className="px-4 py-3">Type</th>
@@ -115,13 +115,13 @@ export function ClientDocuments({
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {documents.map((d) => {
                 const status = complianceStatus(d.expiryDate);
                 const badge = STATUS_BADGE[status];
                 return (
                   <tr key={d.id}>
-                    <td className="px-4 py-3 text-slate-900">
+                    <td className="px-4 py-3 text-primary">
                       <a
                         href={`/api/client-documents/${d.id}`}
                         className="hover:underline"
@@ -129,7 +129,7 @@ export function ClientDocuments({
                         {d.filename}
                       </a>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-secondary">
                       {d.type.replace(/_/g, " ")}
                     </td>
                     <td className="px-4 py-3">

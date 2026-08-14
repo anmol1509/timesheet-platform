@@ -47,8 +47,8 @@ export default async function NewNocPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New NOC</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">New NOC</h1>
+        <p className="mt-1 text-sm text-muted">
           Generate a no-objection/mobilization letter for a subset of a Demand Request&apos;s allocated employees.
         </p>
       </div>

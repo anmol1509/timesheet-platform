@@ -60,10 +60,10 @@ export function ProjectDocuments({
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">
+    <div className="card">
+      <div className="flex flex-wrap items-end gap-3 border-b border-default p-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Type</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Type</span>
           <Select
             value={type}
             onChange={setType}
@@ -73,14 +73,14 @@ export function ProjectDocuments({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Expiry date (optional)
           </span>
           <input
             type="date"
             value={expiryDate}
             onChange={(e) => setExpiryDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input"
           />
         </label>
         <input
@@ -88,7 +88,7 @@ export function ProjectDocuments({
           type="file"
           onChange={handleUpload}
           disabled={pending}
-          className="block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50 disabled:opacity-60"
+          className="file-input"
         />
       </div>
       {error && (
@@ -98,12 +98,12 @@ export function ProjectDocuments({
       )}
 
       {documents.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-slate-500">
+        <p className="px-4 py-8 text-center text-sm text-muted">
           No documents uploaded yet.
         </p>
       ) : (
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
               <th className="px-4 py-3">Document</th>
               <th className="px-4 py-3">Type</th>
@@ -111,18 +111,18 @@ export function ProjectDocuments({
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[var(--border)]">
             {documents.map((d) => {
               const status = complianceStatus(d.expiryDate);
               const badge = STATUS_BADGE[status];
               return (
                 <tr key={d.id}>
-                  <td className="px-4 py-3 text-slate-900">
+                  <td className="px-4 py-3 text-primary">
                     <a href={`/api/project-documents/${d.id}`} className="hover:underline">
                       {d.filename}
                     </a>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{d.type}</td>
+                  <td className="px-4 py-3 text-secondary">{d.type}</td>
                   <td className="px-4 py-3">
                     <Badge color={badge.color}>{badge.label}</Badge>
                   </td>

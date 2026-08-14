@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { Badge } from "@/components/Badge";
+import { PageHeader } from "@/components/PageHeader";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { WorkforcePie } from "@/components/WorkforcePie";
 import { WeeklyHoursChart } from "@/components/WeeklyHoursChart";
@@ -17,28 +18,64 @@ import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { cn } from "@/lib/cn";
 import {
   ClipboardList,
-  Building2,
   AlertTriangle,
+  ArrowRight,
+  BedDouble,
+  CheckCircle2,
+  Users,
   UserPlus,
   Upload as UploadIcon,
   FileText,
   Stethoscope,
 } from "lucide-react";
 
-const ALERT_CHIP_COLORS = [
-  "bg-blue-100 text-blue-600",
-  "bg-amber-100 text-amber-600",
-  "bg-rose-100 text-rose-600",
-  "bg-violet-100 text-violet-600",
-  "bg-emerald-100 text-emerald-600",
-];
-
 function formatMonthLabel(month: string) {
   const [y, m] = month.split("-");
   const date = new Date(Number(y), Number(m) - 1, 1);
   return date.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+/** Card wrapper for dashboard widgets — title bar, optional link, body. */
+function Panel({
+  title,
+  icon: Icon,
+  href,
+  linkLabel = "View all",
+  children,
+  className,
+  bodyClassName,
+}: {
+  title: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  href?: string;
+  linkLabel?: string;
+  children: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}) {
+  return (
+    <section className={cn("card flex flex-col", className)}>
+      <div className="card-header">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-primary">
+          {Icon && <Icon className="h-4 w-4 text-subtle" />}
+          {title}
+        </h2>
+        {href && (
+          <Link
+            href={href}
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--brand-primary)] transition hover:underline"
+          >
+            {linkLabel}
+            <ArrowRight className="h-3 w-3" aria-hidden />
+          </Link>
+        )}
+      </div>
+      <div className={cn("flex-1 p-5", bodyClassName)}>{children}</div>
+    </section>
+  );
 }
 
 export default async function DashboardPage() {
@@ -89,288 +126,296 @@ export default async function DashboardPage() {
     getEmployeeTypeCounts(branchId),
     getEntityCounts(branchId),
   ]);
+
   const benchCount = employeeCount - onWorkCount;
-  const topAlerts = alerts.slice(0, 5);
+  const deployedPct =
+    employeeCount > 0 ? Math.round((onWorkCount / employeeCount) * 100) : 0;
+  const expiredCount = alerts.filter((a) => a.days < 0).length;
 
   const totalBeds = beds.length;
   const occupiedBeds = beds.filter((b) => b.employeeId).length;
   const vacantBeds = totalBeds - occupiedBeds;
   const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Overview of your labor management system.
-        </p>
-      </div>
+  // Compliance and LPO warnings share one "needs attention" queue — they're the
+  // same job for the user (something is about to lapse), just different sources.
+  const attention = [
+    ...alerts.slice(0, 6).map((a) => ({
+      key: `c-${a.employeeId}-${a.field}`,
+      href: `/documents?employee=${a.employeeId}`,
+      title: `${a.field} — ${a.name}`,
+      sub:
+        a.days < 0
+          ? `expired ${Math.abs(a.days)} days ago`
+          : a.days === 0
+            ? "expires today"
+            : `expires in ${a.days} days`,
+      overdue: a.days < 0,
+      badge: a.days < 0 ? "Expired" : `${a.days}d`,
+    })),
+    ...lpoAlerts.map((a) => ({
+      key: `l-${a.lpoId}-${a.kind}`,
+      href: `/projects/${a.projectId}`,
+      title: `${a.lpoNumber} — ${a.projectName}`,
+      sub:
+        a.kind === "EXPIRING"
+          ? a.days != null && a.days < 0
+            ? `expired ${Math.abs(a.days)} days ago`
+            : `expires in ${a.days} days`
+          : `AED ${a.remaining?.toLocaleString(undefined, { maximumFractionDigits: 0 })} remaining`,
+      overdue: a.kind === "EXPIRING" && a.days != null && a.days < 0,
+      badge: a.kind === "EXPIRING" ? "LPO expiring" : "Low balance",
+    })),
+  ].slice(0, 8);
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Dashboard"
+        description="Workforce, compliance and billing at a glance."
+        actions={
+          <>
+            <Link
+              href="/upload"
+              className="inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary"
+            >
+              <UploadIcon className="h-3.5 w-3.5" aria-hidden />
+              Upload timesheet
+            </Link>
+            <Link
+              href="/employees/new"
+              className="btn btn-primary btn-sm h-8 gap-1.5 rounded-control shadow-xs"
+            >
+              <UserPlus className="h-3.5 w-3.5" aria-hidden />
+              Add employee
+            </Link>
+          </>
+        }
+      />
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
-          hero
           href="/employees"
-          label="Total Employees"
+          label="Total workforce"
           value={employeeCount}
-          hint={`${onWorkCount} on active projects`}
+          icon={Users}
+          hint={`${onWorkCount} deployed · ${benchCount} on bench`}
+        />
+        <StatTile
+          href="/employees?filter=on-work"
+          label="Deployed"
+          value={`${deployedPct}%`}
+          icon={ClipboardList}
+          hint={`${onWorkCount} of ${employeeCount} workers`}
         />
         <StatTile
           href="/projects"
-          label="Active Projects"
+          label="Active projects"
           value={activeProjectCount}
           icon={ClipboardList}
+          hint={`${activeClientCount} active clients`}
         />
         <StatTile
-          href="/clients"
-          label="Active Clients"
-          value={activeClientCount}
-          icon={Building2}
-        />
-        <StatTile
-          href="#key-alerts"
-          label="Urgent Alerts"
-          value={alerts.length}
+          href="#needs-attention"
+          label="Needs attention"
+          value={alerts.length + lpoAlerts.length}
           icon={AlertTriangle}
-          tone={alerts.length > 0 ? "warning" : "default"}
+          tone={expiredCount > 0 ? "warning" : "default"}
+          hint={
+            expiredCount > 0
+              ? `${expiredCount} already expired`
+              : "expiring within 30 days"
+          }
         />
       </div>
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
-          Notification for Expiry
+      {/* Primary working area: trend + the queue of things to act on */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel
+          title="Hours this month by weekday"
+          className="lg:col-span-2"
+          href="/history"
+          linkLabel="History"
+        >
+          <WeeklyHoursChart days={weeklyHours} />
+        </Panel>
+
+        <Panel
+          title="Needs attention"
+          icon={AlertTriangle}
+          href="/documents"
+          className="scroll-mt-20"
+          bodyClassName="p-0"
+        >
+          <div id="needs-attention" />
+          {attention.length === 0 ? (
+            <div className="flex flex-col items-center px-5 py-10 text-center">
+              <CheckCircle2
+                className="mb-2 h-5 w-5 text-[var(--success)]"
+                aria-hidden
+              />
+              <p className="text-sm font-medium text-primary">All clear</p>
+              <p className="mt-1 text-xs text-muted">
+                Nothing expires in the next 30 days.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-[var(--border)]">
+              {attention.map((item) => (
+                <li key={item.key}>
+                  <Link
+                    href={item.href}
+                    className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-surface-hover"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                        item.overdue
+                          ? "bg-[var(--error-soft)] text-[var(--error)]"
+                          : "bg-[var(--warning-soft)] text-[var(--warning)]"
+                      )}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-primary">
+                        {item.title}
+                      </span>
+                      <span className="block truncate text-xs text-muted">
+                        {item.sub}
+                      </span>
+                    </span>
+                    <Badge color={item.overdue ? "red" : "amber"}>{item.badge}</Badge>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      {/* Document expiry counters */}
+      <section>
+        <h2 className="mb-2.5 text-sm font-semibold text-primary">
+          Document expiry
         </h2>
         <DocumentExpiryWidget categories={documentExpiryCounts} />
-      </div>
+      </section>
 
-      {lpoAlerts.length > 0 && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> LPO Alerts
-          </h2>
-          <div className="space-y-3">
-            {lpoAlerts.map((a, i) => (
-              <div key={`${a.lpoId}-${a.kind}`} className="flex items-center gap-3">
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ALERT_CHIP_COLORS[i % ALERT_CHIP_COLORS.length]}`}
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/projects/${a.projectId}`}
-                    className="block truncate text-sm font-medium text-slate-900 hover:underline"
-                  >
-                    {a.lpoNumber} &mdash; {a.projectName}
-                  </Link>
-                  <p className="truncate text-xs text-slate-500">
-                    {a.kind === "EXPIRING"
-                      ? a.days != null && a.days < 0
-                        ? `expired ${Math.abs(a.days)}d ago`
-                        : `expires in ${a.days}d`
-                      : `AED ${a.remaining?.toLocaleString(undefined, { maximumFractionDigits: 2 })} remaining`}
-                  </p>
-                </div>
-                <Badge color={a.kind === "EXPIRING" && a.days != null && a.days < 0 ? "red" : "amber"}>
-                  {a.kind === "EXPIRING" ? "Expiring" : "Low balance"}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {/* Composition + occupancy */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 lg:col-span-2">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
-            Employee Count
-          </h2>
+        <Panel title="Workforce by type" className="lg:col-span-2" href="/employees">
           <EmployeeTypeBreakdown counts={employeeTypeCounts} />
-        </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
-            Business Associates
-          </h2>
-          <div className="space-y-3">
-            <Link
-              href="/clients"
-              className="flex items-center justify-between rounded-lg text-sm transition hover:bg-slate-50"
-            >
-              <span className="text-slate-500">Clients</span>
-              <span className="font-semibold text-slate-900">{entityCounts.clients}</span>
-            </Link>
-            <Link
-              href="/suppliers"
-              className="flex items-center justify-between rounded-lg text-sm transition hover:bg-slate-50"
-            >
-              <span className="text-slate-500">Suppliers</span>
-              <span className="font-semibold text-slate-900">{entityCounts.suppliers}</span>
-            </Link>
-            <Link
-              href="/projects"
-              className="flex items-center justify-between rounded-lg text-sm transition hover:bg-slate-50"
-            >
-              <span className="text-slate-500">Projects</span>
-              <span className="font-semibold text-slate-900">{entityCounts.projects}</span>
-            </Link>
-          </div>
-        </div>
+        </Panel>
+
+        <Panel title="Deployment" href="/employees?filter=bench" linkLabel="View bench">
+          <WorkforcePie onWork={onWorkCount} bench={benchCount} />
+        </Panel>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 lg:col-span-2">
-          <h2 className="mb-4 text-sm font-semibold text-slate-900">
-            This month&rsquo;s hours by weekday
-          </h2>
-          <WeeklyHoursChart days={weeklyHours} />
-        </div>
-
-        <div id="key-alerts" className="scroll-mt-20 rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <AlertTriangle className="h-4 w-4 text-amber-500" /> Key Alerts
-          </h2>
-          {topAlerts.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              No compliance items expiring in the next 30 days.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {topAlerts.map((a, i) => (
-                <div key={`${a.employeeId}-${a.field}-${i}`} className="flex items-center gap-3">
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${ALERT_CHIP_COLORS[i % ALERT_CHIP_COLORS.length]}`}
-                  >
-                    <AlertTriangle className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/documents?employee=${a.employeeId}`}
-                      className="block truncate text-sm font-medium text-slate-900 hover:underline"
-                    >
-                      {a.field} &mdash; {a.name}
-                    </Link>
-                    <p className="truncate text-xs text-slate-500">
-                      {a.days < 0 ? "expired" : "expires"}{" "}
-                      {a.days < 0 ? `${Math.abs(a.days)}d ago` : `in ${a.days}d`}
-                    </p>
-                  </div>
-                  <Badge color={a.days < 0 ? "red" : a.days <= 7 ? "red" : "amber"}>
-                    {a.days < 0 ? "expired" : `${a.days}d`}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
-            Workforce status
-          </h2>
-          <WorkforcePie onWork={onWorkCount} bench={benchCount} />
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">Assigned Staff</h2>
-            <Link href="/employees" className="text-xs font-medium text-blue-600 hover:underline">
-              View all
-            </Link>
-          </div>
+        <Panel title="Assigned staff" href="/employees">
           <AssignedStaffList staff={assignedStaff} />
-        </div>
+        </Panel>
+
+        <Panel title="Business associates">
+          <ul className="space-y-1">
+            {[
+              { label: "Clients", value: entityCounts.clients, href: "/clients" },
+              { label: "Suppliers", value: entityCounts.suppliers, href: "/suppliers" },
+              { label: "Projects", value: entityCounts.projects, href: "/projects" },
+            ].map((row) => (
+              <li key={row.label}>
+                <Link
+                  href={row.href}
+                  className="-mx-2 flex items-center justify-between rounded-control px-2 py-1.5 text-sm transition hover:bg-surface-hover"
+                >
+                  <span className="text-muted">{row.label}</span>
+                  <span className="tabular font-semibold text-primary">{row.value}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+
+        {totalBeds > 0 ? (
+          <Panel title="Camp occupancy" icon={BedDouble} href="/accommodation">
+            <OccupancyRing
+              occupied={occupiedBeds}
+              vacant={vacantBeds}
+              pct={occupancyPct}
+            />
+          </Panel>
+        ) : (
+          <Panel title="Timesheet activity" href="/upload" linkLabel="Upload">
+            <p className="text-sm text-secondary">
+              Last upload:{" "}
+              {latestUpload ? (
+                <span className="font-medium text-primary">
+                  {new Date(latestUpload.uploadedAt).toLocaleString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  by {latestUpload.uploadedBy.name}
+                </span>
+              ) : (
+                <span className="text-subtle">No uploads yet</span>
+              )}
+            </p>
+          </Panel>
+        )}
       </div>
 
-      {totalBeds > 0 && (
-        <Link
-          href="/accommodation"
-          className="block rounded-3xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-md"
-        >
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
-            Camp Occupancy
-          </h2>
-          <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
-        </Link>
-      )}
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Quick actions */}
+      <section>
+        <h2 className="mb-2.5 text-sm font-semibold text-primary">Quick actions</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <QuickAction
             href="/employees/new"
             icon={UserPlus}
-            label="Add Employee"
-            sub="Register new worker"
-            tone="hero"
+            label="Add employee"
+            sub="Register a new worker"
           />
           <QuickAction
             href="/upload"
             icon={UploadIcon}
-            label="Submit Timesheet"
+            label="Submit timesheet"
             sub="Record work hours"
           />
           <QuickAction
             href="/documents"
             icon={FileText}
-            label="Upload Documents"
+            label="Upload documents"
             sub="Add worker documents"
           />
           <QuickAction
             href="/employees"
             icon={Stethoscope}
-            label="Schedule Medical"
-            sub="Book health checkups"
+            label="Medical checks"
+            sub="Review medical expiry"
           />
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Timesheet activity
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Last upload:{" "}
-            {latestUpload ? (
-              <>
-                {new Date(latestUpload.uploadedAt).toLocaleString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-                by {latestUpload.uploadedBy.name}
-              </>
-            ) : (
-              "No uploads yet"
-            )}
-          </p>
-          <Link
-            href="/upload"
-            className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary)] hover:underline"
-          >
-            Go to Upload →
-          </Link>
-        </div>
-        {months.length > 0 && (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5">
-            <h2 className="mb-2 text-sm font-semibold text-slate-900">
-              Months with data
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {months.map((m) => (
-                <span
-                  key={m.month}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
-                >
-                  {formatMonthLabel(m.month)}
-                </span>
-              ))}
-            </div>
+      {/* Footer strip: months with recorded data */}
+      {months.length > 0 && (
+        <section className="card card-padded">
+          <h2 className="text-sm font-semibold text-primary">Months with data</h2>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {months.map((m) => (
+              <span
+                key={m.month}
+                className="rounded-md border border-default bg-surface-subtle px-2 py-0.5 text-xs font-medium text-secondary"
+              >
+                {formatMonthLabel(m.month)}
+              </span>
+            ))}
           </div>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -380,36 +425,24 @@ function QuickAction({
   icon: Icon,
   label,
   sub,
-  tone,
 }: {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   sub: string;
-  tone?: "hero";
 }) {
   return (
     <Link
       href={href}
-      className={`group rounded-3xl border p-5 shadow-sm transition hover:shadow-md ${
-        tone === "hero"
-          ? "border-transparent bg-gradient-to-br from-blue-600 to-[var(--brand-navy)] text-white"
-          : "border-slate-200 bg-white hover:border-slate-300"
-      }`}
+      className="group card flex items-start gap-3 p-3.5 transition hover:border-strong hover:shadow-sm"
     >
-      <div
-        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-          tone === "hero" ? "bg-white/10" : "bg-slate-100"
-        }`}
-      >
-        <Icon className={`h-5 w-5 ${tone === "hero" ? "text-white" : "text-slate-600"}`} />
-      </div>
-      <h3 className={`mt-3 text-sm font-semibold ${tone === "hero" ? "text-white" : "text-slate-900"}`}>
-        {label}
-      </h3>
-      <p className={`mt-1 text-xs ${tone === "hero" ? "text-blue-100" : "text-slate-500"}`}>
-        {sub}
-      </p>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-secondary transition group-hover:bg-brand-soft group-hover:text-[var(--brand-primary)]">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-primary">{label}</span>
+        <span className="block truncate text-xs text-muted">{sub}</span>
+      </span>
     </Link>
   );
 }

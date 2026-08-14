@@ -16,10 +16,10 @@ export default async function UploadPage() {
   const isAdmin = user.role === "SUPER_ADMIN" || user.role === "BRANCH_ADMIN";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Upload</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Upload</h1>
+        <p className="mt-1 text-sm text-muted">
           Upload the consolidated time sheet workbook. Each month tab (e.g.
           &ldquo;MAY-25&rdquo;) is detected automatically, and re-uploading the
           same month just refreshes the hours already on file.
@@ -30,12 +30,12 @@ export default async function UploadPage() {
 
       {recentUploads.length > 0 && (
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Recent uploads
           </h2>
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">File</th>
                   <th className="px-4 py-3">Months</th>
@@ -44,19 +44,19 @@ export default async function UploadPage() {
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {recentUploads.map((u) => (
                   <tr key={u.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                    <td className="px-4 py-3 font-medium text-primary">
                       {u.filename}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-secondary">
                       {u.months.map((m) => m.monthLabel).join(", ")}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3 text-secondary">
                       {u.uploadedBy.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-muted">
                       {new Date(u.uploadedAt).toLocaleString("en-GB", {
                         day: "2-digit",
                         month: "short",
@@ -82,7 +82,7 @@ export default async function UploadPage() {
                         ) : (
                           <span
                             title="Original file not saved for this upload"
-                            className="text-xs font-medium text-slate-300"
+                            className="text-xs font-medium text-subtle"
                           >
                             Download
                           </span>

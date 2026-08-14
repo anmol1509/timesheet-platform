@@ -32,22 +32,22 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/sales/quotations" className="text-sm text-slate-500 hover:underline">
+        <Link href="/sales/quotations" className="text-sm text-muted hover:underline">
           ← Quotations
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">{quotation.quotationNumber}</h1>
+            <h1 className="text-xl tracking-tight text-primary font-semibold">{quotation.quotationNumber}</h1>
             <Badge color={STATUS_COLOR[quotation.status] ?? "slate"}>{quotation.status}</Badge>
           </div>
           <a
             href={`/api/quotations/${quotation.id}`}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="btn btn-secondary"
           >
             Download PDF
           </a>
         </div>
-        <p className="mt-1 text-sm text-slate-500">{quotation.client.name}</p>
+        <p className="mt-1 text-sm text-muted">{quotation.client.name}</p>
         {quotation.project && (
           <p className="mt-1 text-sm text-emerald-600">
             Converted to{" "}
@@ -62,11 +62,11 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
 
       {quotation.status === "ACCEPTED" && <ConvertToProjectForm quotationId={quotation.id} />}
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Line Items</h2>
+      <div className="card p-5">
+        <h2 className="mb-3 text-sm font-semibold text-primary">Line Items</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-2 py-2">Trade</th>
                 <th className="px-2 py-2 text-right">Quantity</th>
@@ -77,16 +77,16 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 <th className="px-2 py-2 text-right">Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {quotation.lines.map((l) => (
                 <tr key={l.id}>
-                  <td className="px-2 py-2 font-medium text-slate-900">{l.trade}</td>
-                  <td className="px-2 py-2 text-right text-slate-600">{l.quantity}</td>
-                  <td className="px-2 py-2 text-right text-slate-600">{l.rate.toFixed(2)}</td>
-                  <td className="px-2 py-2 text-right text-slate-500">{l.otRate?.toFixed(2) || "—"}</td>
-                  <td className="px-2 py-2 text-slate-500">{l.nationality || "—"}</td>
-                  <td className="px-2 py-2 text-slate-500">{l.workingHours || "—"}</td>
-                  <td className="px-2 py-2 text-right font-medium text-slate-900">
+                  <td className="px-2 py-2 font-medium text-primary">{l.trade}</td>
+                  <td className="px-2 py-2 text-right text-secondary">{l.quantity}</td>
+                  <td className="px-2 py-2 text-right text-secondary">{l.rate.toFixed(2)}</td>
+                  <td className="px-2 py-2 text-right text-muted">{l.otRate?.toFixed(2) || "—"}</td>
+                  <td className="px-2 py-2 text-muted">{l.nationality || "—"}</td>
+                  <td className="px-2 py-2 text-muted">{l.workingHours || "—"}</td>
+                  <td className="px-2 py-2 text-right font-medium text-primary">
                     {(l.quantity * l.rate).toFixed(2)}
                   </td>
                 </tr>
@@ -94,7 +94,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             </tbody>
           </table>
         </div>
-        <div className="mt-3 border-t border-slate-200 pt-3 text-right text-sm font-semibold text-slate-900">
+        <div className="mt-3 border-t border-default pt-3 text-right text-sm font-semibold text-primary">
           Subtotal: AED {subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </div>
       </div>
@@ -103,31 +103,31 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
         quotation.accommodationResponsibility ||
         quotation.transportationResponsibility ||
         quotation.ppeResponsibility) && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Terms</h2>
+        <div className="card p-5 text-sm">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Terms</h2>
           <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {quotation.accommodationResponsibility && (
               <div>
-                <dt className="text-xs text-slate-400">Accommodation</dt>
-                <dd className="text-slate-700">{quotation.accommodationResponsibility}</dd>
+                <dt className="text-xs text-subtle">Accommodation</dt>
+                <dd className="text-secondary">{quotation.accommodationResponsibility}</dd>
               </div>
             )}
             {quotation.transportationResponsibility && (
               <div>
-                <dt className="text-xs text-slate-400">Transportation</dt>
-                <dd className="text-slate-700">{quotation.transportationResponsibility}</dd>
+                <dt className="text-xs text-subtle">Transportation</dt>
+                <dd className="text-secondary">{quotation.transportationResponsibility}</dd>
               </div>
             )}
             {quotation.ppeResponsibility && (
               <div>
-                <dt className="text-xs text-slate-400">PPE</dt>
-                <dd className="text-slate-700">{quotation.ppeResponsibility}</dd>
+                <dt className="text-xs text-subtle">PPE</dt>
+                <dd className="text-secondary">{quotation.ppeResponsibility}</dd>
               </div>
             )}
             {quotation.terms && (
               <div className="sm:col-span-2">
-                <dt className="text-xs text-slate-400">Other terms</dt>
-                <dd className="text-slate-700">{quotation.terms}</dd>
+                <dt className="text-xs text-subtle">Other terms</dt>
+                <dd className="text-secondary">{quotation.terms}</dd>
               </div>
             )}
           </dl>

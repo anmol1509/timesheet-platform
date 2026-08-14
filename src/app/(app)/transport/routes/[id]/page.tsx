@@ -21,11 +21,11 @@ export default async function RouteDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/transport/routes" className="text-sm text-slate-500 hover:underline">
+        <Link href="/transport/routes" className="text-sm text-muted hover:underline">
           ← Routes
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">{route.name}</h1>
+          <h1 className="text-xl tracking-tight text-primary font-semibold">{route.name}</h1>
           <DeleteButton
             action={deleteRouteAction}
             hiddenFields={{ routeId: route.id }}

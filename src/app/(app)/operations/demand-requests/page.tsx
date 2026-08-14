@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ListChecks } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -13,26 +15,31 @@ export default async function DemandRequestsPage() {
   });
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Demand Requests</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">Demand Requests</h1>
+          <p className="mt-1 text-sm text-muted">
             Staffing requests raised against a client project, tracked through allocation.
           </p>
         </div>
         <Link
           href="/operations/demand-requests/new"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           + New Request
         </Link>
       </div>
 
       {requests.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
-          No demand requests yet.
-        </p>
+        <EmptyState
+          icon={ListChecks}
+          title="No demand requests yet"
+          description="A demand request captures how many workers of each trade a project needs, then tracks allocation against it."
+          action={
+            <Link href="/operations/demand-requests/new" className="btn btn-primary btn-sm">New demand request</Link>
+          }
+        />
       ) : (
         <DemandRequestList
           requests={requests.map((r) => ({

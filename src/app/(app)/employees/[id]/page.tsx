@@ -74,7 +74,7 @@ export default async function EmployeeDetailPage({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/employees" className="text-sm text-slate-500 hover:underline">
+        <Link href="/employees" className="text-sm text-muted hover:underline">
           ← Employees
         </Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
@@ -86,14 +86,14 @@ export default async function EmployeeDetailPage({
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-slate-900">
+                <h1 className="text-xl tracking-tight text-primary font-semibold">
                   {employee.name}
                 </h1>
                 <Badge color={employee.active ? "green" : "slate"}>
                   {employee.active ? "Active" : "Inactive"}
                 </Badge>
               </div>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-muted">
                 {employee.employeeIdNo} · {employee.trade || "No trade set"} ·{" "}
                 {employee.supplier?.name || "No company"}
               </p>
@@ -116,9 +116,9 @@ export default async function EmployeeDetailPage({
       </div>
 
       {latest && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        <div className="card p-5 text-sm text-secondary">
           Latest on-record rate:{" "}
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-primary">
             AED {latest.rate.toFixed(2)}
           </span>{" "}
           ({latest.monthLabel}, from uploaded timesheets — not editable here)

@@ -41,7 +41,7 @@ export function AttachmentUploader({
           await uploadAttachmentAction(formData);
           formRef.current?.reset();
         }}
-        className="flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-slate-300 p-4"
+        className="flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-strong p-4"
       >
         <input type="hidden" name="entityType" value={entityType} />
         <input type="hidden" name="entityId" value={entityId} />
@@ -49,10 +49,10 @@ export function AttachmentUploader({
         <input type="hidden" name="revalidate" value={revalidate} />
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Type</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Type</span>
           <select
             name="docType"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input"
           >
             {docTypeOptions.map((o) => (
               <option key={o.value} value={o.value}>
@@ -62,47 +62,47 @@ export function AttachmentUploader({
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Expiry (optional)</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Expiry (optional)</span>
           <input
             type="date"
             name="expiryDate"
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input"
           />
         </label>
         <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             File (max {MAX_UPLOAD_LABEL})
           </span>
           <input
             name="file"
             type="file"
             required
-            className="block w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50"
+            className="file-input"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           Upload
         </button>
       </form>
 
       {attachments.length > 0 && (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-default bg-surface">
           {attachments.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
               <a
                 href={`/api/attachments/${a.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="min-w-0 flex-1 truncate font-medium text-slate-900 hover:underline"
+                className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
               >
                 {a.filename}
               </a>
-              <span className="shrink-0 text-xs text-slate-500">{a.docType}</span>
+              <span className="shrink-0 text-xs text-muted">{a.docType}</span>
               {a.expiryDate && (
-                <span className="shrink-0 text-xs text-slate-400">
+                <span className="shrink-0 text-xs text-subtle">
                   expires {new Date(a.expiryDate).toLocaleDateString()}
                 </span>
               )}

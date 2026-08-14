@@ -26,37 +26,37 @@ export default async function SkillsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Skills</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Skills</h1>
+        <p className="mt-1 text-sm text-muted">
           Track the skills your workforce has, and where demand is highest.
         </p>
       </div>
 
       <form
         action={createSkillAction}
-        className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+        className="card flex flex-wrap items-end gap-3 p-4"
       >
         <label className="block flex-1 min-w-[160px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Skill name
           </span>
           <input
             name="name"
             required
             placeholder="e.g. Welding"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block flex-1 min-w-[160px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Category
           </span>
           <input
             name="category"
             placeholder="e.g. Technical"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <div className="pb-2">
@@ -64,14 +64,14 @@ export default async function SkillsPage() {
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           + Add Skill
         </button>
       </form>
 
       {rows.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
+        <p className="empty-state text-sm text-muted">
           No skills tracked yet. Add one above, or tag skills from an
           employee&rsquo;s profile.
         </p>

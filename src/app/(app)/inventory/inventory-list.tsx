@@ -21,7 +21,7 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
       key: "name",
       header: "Item",
       render: (i) => (
-        <Link href={`/inventory/${i.id}`} className="font-medium text-slate-900 hover:underline">
+        <Link href={`/inventory/${i.id}`} className="font-medium text-primary hover:underline">
           {i.name}
         </Link>
       ),

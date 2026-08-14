@@ -70,7 +70,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search skills..."
-          className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+          className="input w-full max-w-sm"
         />
         <Select
           value={category}
@@ -81,12 +81,12 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
       </div>
 
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+        <h2 className="mb-3 text-sm font-semibold text-primary">
           Skills Overview ({filtered.length} skills)
         </h2>
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Skill Name</th>
                 <th className="px-4 py-3">Category</th>
@@ -96,7 +96,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {filtered.map((s) => {
                 const demand = demandLevel(s.popularity);
                 return (
@@ -109,13 +109,13 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                               value={draftName}
                               onChange={(e) => setDraftName(e.target.value)}
                               autoFocus
-                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+                              className="input px-2 py-1"
                             />
                             <input
                               value={draftCategory}
                               onChange={(e) => setDraftCategory(e.target.value)}
                               placeholder="Category"
-                              className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+                              className="input px-2 py-1"
                             />
                             <button
                               type="button"
@@ -128,7 +128,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                             <button
                               type="button"
                               onClick={() => setEditingId(null)}
-                              className="text-xs font-medium text-slate-400 hover:underline"
+                              className="text-xs font-medium text-subtle hover:underline"
                             >
                               Cancel
                             </button>
@@ -137,7 +137,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                       </>
                     ) : (
                       <>
-                        <td className="px-4 py-3 font-medium text-slate-900">
+                        <td className="px-4 py-3 font-medium text-primary">
                           <div className="flex items-center gap-2">
                             {s.name}
                             <form action={toggleTrendingAction}>
@@ -152,7 +152,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                                   s.trending
                                     ? "bg-blue-100 text-blue-700"
-                                    : "bg-slate-50 text-slate-300 hover:text-slate-500"
+                                    : "bg-surface-subtle text-subtle hover:text-muted"
                                 }`}
                                 title="Toggle trending"
                               >
@@ -162,15 +162,15 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                             <button
                               type="button"
                               onClick={() => startEdit(s)}
-                              className="text-xs font-medium text-slate-400 hover:text-slate-700 hover:underline"
+                              className="text-xs font-medium text-subtle hover:text-secondary hover:underline"
                             >
                               Edit
                             </button>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-4 py-3 text-secondary">
                           {s.category ? (
-                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs">
+                            <span className="rounded-full bg-surface-sunken px-2 py-1 text-xs">
                               {s.category}
                             </span>
                           ) : (
@@ -179,18 +179,18 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                         </td>
                       </>
                     )}
-                    <td className="px-4 py-3 text-right text-slate-600">
+                    <td className="px-4 py-3 text-right text-secondary">
                       {s.employeeCount}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-sunken">
                           <div
                             className="h-full rounded-full bg-[var(--brand-primary)]"
                             style={{ width: `${Math.min(100, s.popularity)}%` }}
                           />
                         </div>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted">
                           {s.popularity.toFixed(0)}% of workforce
                         </span>
                       </div>
@@ -211,7 +211,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <p className="px-4 py-10 text-center text-sm text-slate-500">
+            <p className="px-4 py-10 text-center text-sm text-muted">
               No skills match.
             </p>
           )}

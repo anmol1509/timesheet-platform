@@ -22,7 +22,7 @@ export function BankList({ banks }: { banks: BankRow[] }) {
       key: "accountName",
       header: "Account Name",
       render: (b) => (
-        <Link href={`/banks/${b.id}`} className="font-medium text-slate-900 hover:underline">
+        <Link href={`/banks/${b.id}`} className="font-medium text-primary hover:underline">
           {b.accountName}
         </Link>
       ),

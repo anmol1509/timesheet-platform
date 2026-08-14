@@ -73,9 +73,9 @@ export function DemandRequestForm({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+      <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Client</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Client</span>
           <Select
             value={clientId}
             onChange={(v) => {
@@ -87,7 +87,7 @@ export function DemandRequestForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Project</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Project</span>
           <Select
             value={projectId}
             onChange={selectProject}
@@ -97,15 +97,15 @@ export function DemandRequestForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Sales Executive</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Sales Executive</span>
           <input
             value={salesExecutive}
             onChange={(e) => setSalesExecutive(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Priority</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Priority</span>
           <Select
             value={priority}
             onChange={setPriority}
@@ -119,38 +119,38 @@ export function DemandRequestForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Accommodation Status</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Accommodation Status</span>
           <input
             value={accommodationStatus}
             onChange={(e) => setAccommodationStatus(e.target.value)}
             placeholder="e.g. Own"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Transportation Status</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Transportation Status</span>
           <input
             value={transportationStatus}
             onChange={(e) => setTransportationStatus(e.target.value)}
             placeholder="e.g. Own"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <div className="sm:col-span-2">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Remarks</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Remarks</span>
             <textarea
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Trades</h2>
+      <div className="card p-5">
+        <h2 className="mb-3 text-sm font-semibold text-primary">Trades</h2>
         <div className="space-y-2">
           {trades.map((t) => (
             <div key={t.id} className="grid grid-cols-1 gap-2 sm:grid-cols-5">
@@ -166,7 +166,7 @@ export function DemandRequestForm({
                 value={t.quantity}
                 onChange={(e) => updateTrade(t.id, { quantity: e.target.value })}
                 placeholder="Quantity"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input"
               />
               <Select
                 value={t.shift}
@@ -183,7 +183,7 @@ export function DemandRequestForm({
                 value={t.rate}
                 onChange={(e) => updateTrade(t.id, { rate: e.target.value })}
                 placeholder="Rate"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input"
               />
               <button
                 type="button"
@@ -199,7 +199,7 @@ export function DemandRequestForm({
         <button
           type="button"
           onClick={() => setTrades((prev) => [...prev, blankTradeRow()])}
-          className="mt-3 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          className="btn btn-secondary btn-sm mt-3"
         >
           + Add trade
         </button>
@@ -209,7 +209,7 @@ export function DemandRequestForm({
         type="button"
         onClick={handleSubmit}
         disabled={pending || !clientId || !projectId}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+        className="btn btn-primary"
       >
         {pending ? "Creating…" : "Create Request"}
       </button>

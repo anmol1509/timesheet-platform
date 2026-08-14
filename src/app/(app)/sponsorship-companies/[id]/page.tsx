@@ -37,11 +37,11 @@ export default async function SponsorshipCompanyDetailPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/sponsorship-companies" className="text-sm text-slate-500 hover:underline">
+        <Link href="/sponsorship-companies" className="text-sm text-muted hover:underline">
           ← Sponsorship Companies
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">
             {sponsorshipCompany.name}
           </h1>
           <DeleteButton
@@ -55,7 +55,7 @@ export default async function SponsorshipCompanyDetailPage({
             className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
           />
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           {sponsorshipCompany._count.employees > 0 ? (
             <Link
               href={`/employees?sponsor=${sponsorshipCompany.id}`}
@@ -90,7 +90,7 @@ export default async function SponsorshipCompanyDetailPage({
       />
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Documents</h2>
+        <h2 className="mb-3 text-sm font-semibold text-primary">Documents</h2>
         <AttachmentUploader
           entityType="SPONSORSHIP_COMPANY"
           entityId={sponsorshipCompany.id}

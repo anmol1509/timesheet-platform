@@ -22,11 +22,11 @@ export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
                     : { height: `${heightPct}%`, backgroundImage: HATCH_BG }
                 }
                 className={`w-full max-w-9 rounded-full transition-all ${
-                  hasData ? "bg-[var(--brand-primary)]" : "border border-slate-200"
+                  hasData ? "bg-[var(--brand-primary)]" : "border border-default"
                 }`}
               />
             </div>
-            <span className="text-xs font-medium text-slate-400">{d.label}</span>
+            <span className="text-xs font-medium text-subtle">{d.label}</span>
           </div>
         );
       })}

@@ -56,8 +56,8 @@ export function SubsidiaryTabs({
           href={`/suppliers/${t.id}`}
           className={`rounded-t-xl border border-b-0 px-4 py-2 text-sm font-medium transition ${
             t.id === currentId
-              ? "border-slate-200 bg-white text-slate-900"
-              : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200"
+              ? "border-default bg-surface text-primary"
+              : "border-transparent bg-surface-sunken text-muted hover:bg-[var(--border)]"
           }`}
         >
           {t.name}
@@ -69,18 +69,18 @@ export function SubsidiaryTabs({
           onClick={() => setAdding((v) => !v)}
           aria-label="Add subsidiary"
           title="Add subsidiary"
-          className="rounded-t-xl px-3 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-t-xl px-3 py-2 text-sm font-medium text-subtle transition hover:bg-surface-hover hover:text-secondary"
         >
           +
         </button>
         {adding && (
           <form
             action={submitAdd}
-            className="absolute left-0 top-full z-10 mt-1 flex w-64 flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg"
+            className="absolute left-0 top-full z-10 mt-1 flex w-64 flex-col gap-2 rounded-xl border border-default bg-surface p-3 shadow-lg"
           >
             <input type="hidden" name="parentSupplierId" value={rootId} />
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">
+              <span className="mb-1 block text-xs font-medium text-muted">
                 Subsidiary name
               </span>
               <input
@@ -89,7 +89,7 @@ export function SubsidiaryTabs({
                 autoFocus
                 disabled={pending}
                 placeholder="e.g. Top Peak - Sharjah"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-60"
+                className="input w-full disabled:opacity-60"
               />
             </label>
             {error && <p className="text-xs text-red-600">{error}</p>}
@@ -98,14 +98,14 @@ export function SubsidiaryTabs({
                 type="button"
                 onClick={() => setAdding(false)}
                 disabled={pending}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-60"
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={pending}
-                className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+                className="btn btn-primary btn-sm"
               >
                 {pending ? "Adding…" : "Add"}
               </button>

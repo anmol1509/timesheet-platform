@@ -38,7 +38,7 @@ const ADDITIONAL_DOC_TYPES = [
 ];
 
 const FILE_INPUT_CLASS =
-  "block w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50";
+  "file-input";
 
 export function EmployeeWizard({
   projects,
@@ -125,19 +125,19 @@ export function EmployeeWizard({
   function UploadSlot({ type, label }: { type: string; label: string }) {
     return (
       <div>
-        <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+        <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
         <input
           type="file"
           name={`docFile_${type}`}
           onChange={(e) => handleUploadDocFile(type, e.target.files?.[0] ?? null)}
           className={FILE_INPUT_CLASS}
         />
-        {extracting === type && <p className="mt-1 text-xs text-slate-400">Reading document…</p>}
+        {extracting === type && <p className="mt-1 text-xs text-subtle">Reading document…</p>}
         {extractedNote[type] && extracting !== type && (
           <p className="mt-1 text-xs text-emerald-600">✓ {extractedNote[type]}</p>
         )}
         {docFiles[type] && !extractedNote[type] && extracting !== type && (
-          <p className="mt-1 text-xs text-slate-500">{docFiles[type]!.name} selected</p>
+          <p className="mt-1 text-xs text-muted">{docFiles[type]!.name} selected</p>
         )}
       </div>
     );
@@ -147,7 +147,7 @@ export function EmployeeWizard({
     <form action={formAction} className="space-y-6">
       <input type="hidden" name="skills" value={skills.join(",")} />
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-default pb-3">
         {STEPS.map((label, i) => (
           <span
             key={label}
@@ -156,7 +156,7 @@ export function EmployeeWizard({
                 ? "bg-[var(--brand-primary)] text-white"
                 : i < step
                   ? "text-emerald-600"
-                  : "text-slate-400"
+                  : "text-subtle"
             }`}
           >
             {label}
@@ -179,7 +179,7 @@ export function EmployeeWizard({
               ref={passportNumberRef}
               name="passportNumber"
               placeholder="Enter passport number"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Passport expiry date">
@@ -187,7 +187,7 @@ export function EmployeeWizard({
               ref={passportExpiryRef}
               type="date"
               name="passportExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
         </div>
@@ -203,7 +203,7 @@ export function EmployeeWizard({
               ref={emiratesIdRef}
               name="emiratesId"
               placeholder="Enter Emirates ID"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Emirates ID expiry date">
@@ -211,7 +211,7 @@ export function EmployeeWizard({
               ref={emiratesIdExpiryRef}
               type="date"
               name="emiratesIdExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
         </div>
@@ -227,7 +227,7 @@ export function EmployeeWizard({
               ref={laborCardNumberRef}
               name="laborCardNumber"
               placeholder="Enter labor card number"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Labor card personal no.">
@@ -235,7 +235,7 @@ export function EmployeeWizard({
               ref={laborCardPersonalNoRef}
               name="laborCardPersonalNo"
               placeholder="Enter personal number"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Labor card expiry">
@@ -243,7 +243,7 @@ export function EmployeeWizard({
               ref={laborCardExpiryRef}
               type="date"
               name="laborCardExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
         </div>
@@ -253,7 +253,7 @@ export function EmployeeWizard({
       {/* Step 3: Personal Details */}
       <div className={step === 3 ? "space-y-4" : "hidden"}>
         <div className="flex items-center gap-4">
-          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken">
             {photoPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -262,12 +262,12 @@ export function EmployeeWizard({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-2xl text-slate-400">
+              <span className="flex h-full w-full items-center justify-center text-2xl text-subtle">
                 +
               </span>
             )}
           </div>
-          <label className="cursor-pointer rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <label className="btn btn-secondary cursor-pointer px-3">
             Upload Photo
             <input
               type="file"
@@ -288,7 +288,7 @@ export function EmployeeWizard({
               name="employeeIdNo"
               required
               placeholder="e.g. BACC999"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Full name">
@@ -297,7 +297,7 @@ export function EmployeeWizard({
               name="name"
               required
               placeholder="Enter full name"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Category">
@@ -338,7 +338,7 @@ export function EmployeeWizard({
               ref={dobRef}
               type="date"
               name="dateOfBirth"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
         </div>
@@ -352,14 +352,14 @@ export function EmployeeWizard({
             <input
               type="date"
               name="visaExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Medical Certificate Expiry">
             <input
               type="date"
               name="medicalExpiry"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
         </div>
@@ -368,12 +368,12 @@ export function EmployeeWizard({
             name="notes"
             rows={3}
             placeholder="Any special requirements, medical conditions, or other important notes..."
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
 
-        <div className="rounded-lg border border-slate-200 p-4">
-          <p className="mb-3 text-xs text-slate-500">
+        <div className="rounded-lg border border-default p-4">
+          <p className="mb-3 text-xs text-muted">
             Passport, Emirates ID, and Labor Card are already handled above.
             Use this only for anything else (Visa, Medical, CICPA, etc.) — optional.
           </p>
@@ -395,7 +395,7 @@ export function EmployeeWizard({
               <input
                 type="date"
                 name="additionalDocExpiry"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
           </div>
@@ -432,12 +432,12 @@ export function EmployeeWizard({
                 type="number"
                 step="0.01"
                 name="salaryRate"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
           )}
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-subtle">
           Hours, rate, and invoice value are managed through the timesheet
           upload flow, not set manually here.
         </p>
@@ -458,12 +458,12 @@ export function EmployeeWizard({
                 }
               }}
               placeholder="Add a skill (e.g., Welding, Carpentry, etc.)"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input flex-1"
             />
             <button
               type="button"
               onClick={() => addSkill(skillInput)}
-              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--brand-primary-hover)]"
+              className="btn btn-primary"
             >
               +
             </button>
@@ -472,7 +472,7 @@ export function EmployeeWizard({
 
         {skills.length > 0 && (
           <div>
-            <p className="mb-1 text-xs font-medium text-slate-500">
+            <p className="mb-1 text-xs font-medium text-muted">
               Added skills:
             </p>
             <div className="flex flex-wrap gap-2">
@@ -481,9 +481,9 @@ export function EmployeeWizard({
                   key={s}
                   type="button"
                   onClick={() => setSkills((arr) => arr.filter((x) => x !== s))}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-medium text-secondary hover:bg-[var(--border)]"
                 >
-                  {s} <span className="text-slate-400">×</span>
+                  {s} <span className="text-subtle">×</span>
                 </button>
               ))}
             </div>
@@ -491,7 +491,7 @@ export function EmployeeWizard({
         )}
 
         <div>
-          <p className="mb-1 text-xs text-slate-400">
+          <p className="mb-1 text-xs text-subtle">
             Common skills for construction workers:
           </p>
           <div className="flex flex-wrap gap-2">
@@ -500,7 +500,7 @@ export function EmployeeWizard({
                 key={s}
                 type="button"
                 onClick={() => addSkill(s)}
-                className="text-xs text-slate-400 hover:text-slate-700 hover:underline"
+                className="text-xs text-subtle hover:text-secondary hover:underline"
               >
                 + {s}
               </button>
@@ -538,7 +538,7 @@ function StepNav({
         <button
           type="button"
           onClick={onPrev}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="btn btn-secondary"
         >
           Previous
         </button>
@@ -549,7 +549,7 @@ function StepNav({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+          className="btn btn-primary"
         >
           {nextLabel}
         </button>
@@ -557,7 +557,7 @@ function StepNav({
         <button
           type="button"
           onClick={onNext}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           {nextLabel}
         </button>
@@ -569,7 +569,7 @@ function StepNav({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">
+      <span className="mb-1 block text-xs font-medium text-muted">
         {label}
       </span>
       {children}

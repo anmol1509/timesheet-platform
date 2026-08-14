@@ -32,10 +32,10 @@ export default async function AttendancePage() {
   ]);
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Daily Attendance</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Daily Attendance</h1>
+        <p className="mt-1 text-sm text-muted">
           Mark Present/Absent/Leave/Holiday/Off per employee per day, then submit the day for
           approval to lock it.
         </p>

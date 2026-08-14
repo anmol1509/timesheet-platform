@@ -26,23 +26,23 @@ export function ProjectLocation({
           setSaved(true);
         });
       }}
-      className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
+      className="card space-y-4 p-6"
     >
       <input type="hidden" name="projectId" value={projectId} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Address
           </span>
           <input
             name="address"
             defaultValue={address || ""}
             placeholder="Free-text location"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Latitude
           </span>
           <input
@@ -50,11 +50,11 @@ export function ProjectLocation({
             type="number"
             step="any"
             defaultValue={latitude ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Longitude
           </span>
           <input
@@ -62,7 +62,7 @@ export function ProjectLocation({
             type="number"
             step="any"
             defaultValue={longitude ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
       </div>
@@ -70,7 +70,7 @@ export function ProjectLocation({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

@@ -46,7 +46,7 @@ export function SupplierCompanyForm({
           setSaved(true);
         });
       }}
-      className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
+      className="card space-y-4 p-6"
     >
       <input type="hidden" name="supplierId" value={supplier.id} />
 
@@ -63,7 +63,7 @@ export function SupplierCompanyForm({
           <input
             name="fullName"
             defaultValue={supplier.fullName || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Status">
@@ -82,14 +82,14 @@ export function SupplierCompanyForm({
             name="category"
             placeholder="e.g. Manpower Supply"
             defaultValue={supplier.category || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="TRN (Tax Registration Number)">
           <input
             name="trn"
             defaultValue={supplier.trn || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Active from">
@@ -97,21 +97,21 @@ export function SupplierCompanyForm({
             name="activeFrom"
             type="date"
             defaultValue={supplier.activeFrom}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="MOHRE manpower supply permit #">
           <input
             name="mohrePermitNumber"
             defaultValue={supplier.mohrePermitNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Trade license number">
           <input
             name="tradeLicenseNumber"
             defaultValue={supplier.tradeLicenseNumber || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Trade license expiry">
@@ -119,14 +119,14 @@ export function SupplierCompanyForm({
             name="tradeLicenseExpiry"
             type="date"
             defaultValue={supplier.tradeLicenseExpiry}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Previous ID">
           <input
             name="previousId"
             defaultValue={supplier.previousId || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Country">
@@ -136,14 +136,14 @@ export function SupplierCompanyForm({
           <input
             name="emirate"
             defaultValue={supplier.emirate || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Point of contact">
           <input
             name="pointOfContact"
             defaultValue={supplier.pointOfContact || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Supplier amount limit (credit limit)">
@@ -152,14 +152,14 @@ export function SupplierCompanyForm({
             type="number"
             step="0.01"
             defaultValue={supplier.supplierAmountLimit ?? ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Account (reference only)">
           <input
             name="account"
             defaultValue={supplier.account || ""}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <CheckboxField
@@ -174,7 +174,7 @@ export function SupplierCompanyForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
@@ -187,7 +187,7 @@ export function SupplierCompanyForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
       {children}
     </label>
   );

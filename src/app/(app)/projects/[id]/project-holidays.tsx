@@ -40,10 +40,10 @@ export function ProjectHolidays({
   const sorted = [...holidays].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+    <div className="card overflow-hidden">
       {sorted.length > 0 && (
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Label</th>
@@ -51,12 +51,12 @@ export function ProjectHolidays({
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[var(--border)]">
             {sorted.map((h) => (
               <tr key={h.id}>
-                <td className="px-4 py-3 text-slate-900">{fmtDate(h.date)}</td>
-                <td className="px-4 py-3 text-slate-600">{h.label}</td>
-                <td className="px-4 py-3 text-right text-slate-600">
+                <td className="px-4 py-3 text-primary">{fmtDate(h.date)}</td>
+                <td className="px-4 py-3 text-secondary">{h.label}</td>
+                <td className="px-4 py-3 text-right text-secondary">
                   {h.rateMultiplier ? `${h.rateMultiplier}x` : "—"}
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -73,31 +73,31 @@ export function ProjectHolidays({
         </table>
       )}
       {sorted.length === 0 && (
-        <p className="px-4 py-8 text-center text-sm text-slate-500">
+        <p className="px-4 py-8 text-center text-sm text-muted">
           No holidays added yet.
         </p>
       )}
-      <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 p-4">
+      <div className="flex flex-wrap items-end gap-3 border-t border-default p-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Date</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Date</span>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input"
           />
         </label>
         <label className="block min-w-[160px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Label</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Label</span>
           <input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. UAE National Day"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block w-36">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Rate multiplier (optional)
           </span>
           <input
@@ -106,14 +106,14 @@ export function ProjectHolidays({
             value={rateMultiplier}
             onChange={(e) => setRateMultiplier(e.target.value)}
             placeholder="e.g. 1.5"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <button
           type="button"
           disabled={pending}
           onClick={add}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+          className="btn btn-primary"
         >
           + Add
         </button>
