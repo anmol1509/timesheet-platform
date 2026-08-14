@@ -5,6 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
 import type { BadgeColor } from "@/components/Badge";
 import { Pagination } from "@/components/Pagination";
+import { Pencil } from "lucide-react";
+import { DeleteButton } from "@/components/DeleteButton";
+import { deleteProjectAction } from "./actions";
 
 const PAGE_SIZE = 25;
 
@@ -83,6 +86,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                 <th className="px-4 py-3">Project Manager</th>
                 <th className="px-4 py-3">Timeline</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -114,6 +118,19 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                     <Badge color={STATUS_COLOR[p.status] || "slate"}>
                       {p.status.replace("_", " ").toLowerCase()}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <Link
+                      href={`/projects/${p.id}`}
+                      className="mr-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Link>
+                    <DeleteButton
+                      action={deleteProjectAction}
+                      hiddenFields={{ projectId: p.id }}
+                      confirmMessage={`Delete project "${p.name}"? Anyone assigned to it is unassigned. Projects with timesheet, attendance or LPO history can't be deleted — you'll be told which.`}
+                    />
                   </td>
                 </tr>
               ))}

@@ -6,7 +6,12 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ProjectList } from "./project-list";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const { branchId } = await requireUserWithBranch();
   const projects = await prisma.project.findMany({
     where: branchWhere(branchId),
@@ -29,6 +34,11 @@ export default async function ProjectsPage() {
 
   return (
     <div className="space-y-5">
+      {error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl tracking-tight text-primary font-semibold">Projects</h1>

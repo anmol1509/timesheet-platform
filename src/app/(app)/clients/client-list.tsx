@@ -13,6 +13,8 @@ import { toCsv, downloadCsv } from "@/lib/csv";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { bulkImportClientsAction } from "./actions";
+import { DeleteButton } from "@/components/DeleteButton";
+import { deleteClientAction } from "./actions";
 
 const PAGE_SIZE = 25;
 
@@ -208,13 +210,18 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                       {c.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link
                       href={`/clients/${c.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                      className="mr-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
                     >
                       <Pencil className="h-3.5 w-3.5" /> Edit
                     </Link>
+                    <DeleteButton
+                      action={deleteClientAction}
+                      hiddenFields={{ clientId: c.id }}
+                      confirmMessage={`Delete client "${c.name}"? Clients with projects or timesheet history can't be deleted — you'll be told which.`}
+                    />
                   </td>
                 </tr>
               ))}

@@ -443,8 +443,29 @@ export async function deleteProjectAction(formData: FormData) {
   const target = await prisma.project.findUnique({ where: { id } });
   if (!target || isOutsideBranch(target.branchId, branchId, isSuperAdmin)) return;
 
-  // Unassigning employees is a soft, reversible consequence -- unlike a
-  // Client with real timesheet history, it's safe to do automatically
+  // Timesheet rows and attendance keep a nullable link to their project, so
+  // deleting one doesn't fail — it quietly blanks the project on billing
+  // history that was already invoiced. LPOs point at a project outright and
+  // would raise a raw foreign-key error. Both are refused with a reason.
+  const [entryCount, lpoCount, attendanceCount] = await Promise.all([
+    prisma.timesheetEntry.count({ where: { projectId: id } }),
+    prisma.lpo.count({ where: { projectId: id } }),
+    prisma.attendance.count({ where: { projectId: id } }),
+  ]);
+  if (entryCount > 0 || lpoCount > 0 || attendanceCount > 0) {
+    const parts: string[] = [];
+    if (entryCount > 0) parts.push(`${entryCount} timesheet row(s)`);
+    if (lpoCount > 0) parts.push(`${lpoCount} LPO(s)`);
+    if (attendanceCount > 0) parts.push(`${attendanceCount} attendance record(s)`);
+    redirect(
+      `/projects?error=${encodeURIComponent(
+        `Can't delete "${target.name}" — still linked to ${parts.join(", ")}.`
+      )}`
+    );
+  }
+
+  // Unassigning employees is a soft, reversible consequence -- unlike the
+  // timesheet history checked above, it's safe to do automatically
   // rather than blocking the delete.
   await prisma.employee.updateMany({
     where: { projectId: id },
