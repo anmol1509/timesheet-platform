@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser } from "@/lib/auth";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-5",
+      model: DOCUMENT_MODEL,
       max_tokens: 8192,
       output_config: { format: { type: "json_schema", schema: EXTRACT_EMPLOYEES_SCHEMA } },
       messages: [

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser } from "@/lib/auth";
-import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -139,7 +139,7 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
       additionalProperties: false,
     },
     prompt:
-      "This is a UAE ICP 'Registration ID Card Form' — the Emirates ID application receipt issued to a construction-industry worker once residency is granted, before the physical card is printed. Read the printed labels: NAME, DATE OF BIRTH, NATIONALITY, GENDER, PHONE NO., IDENTITY NUMBER (a residency file number such as 301/2026/2/82612 — return it in visaNumber), UNIFIED NO, and the establishment shown under 'Submitted By'. Dates must be ISO 8601 (YYYY-MM-DD): convert 28/06/1985 to 1985-06-28. This form does not print a 15-digit Emirates ID number, a passport number or a card expiry date — return an empty string for emiratesId unless such a number genuinely appears. Return an empty string for anything you cannot read with confidence — do not guess.",
+      "This is a UAE ICP 'Registration ID Card Form' — the Emirates ID application receipt issued to a construction-industry worker once residency is granted, before the physical card is printed. Read the printed labels: NAME, DATE OF BIRTH, NATIONALITY, GENDER, PHONE NO., IDENTITY NUMBER (a residency file number such as 301/2026/2/82612 — return it in visaNumber), UNIFIED NO, and the establishment shown under 'Submitted By' — copy that employer name in full, including trailing words like CONT, CONTRACTING or LLC, exactly as printed. Dates must be ISO 8601 (YYYY-MM-DD): convert 28/06/1985 to 1985-06-28. This form does not print a 15-digit Emirates ID number, a passport number or a card expiry date — return an empty string for emiratesId unless such a number genuinely appears. Return an empty string for anything you cannot read with confidence — do not guess.",
   },
 };
 
@@ -209,7 +209,7 @@ const COMBINED_SCHEMA = {
 };
 
 const COMBINED_PROMPT =
-  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. Return an empty string for anything you cannot read with confidence — never guess.";
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. Return an empty string for anything you cannot read with confidence — never guess.";
 
 export type ExtractedDocumentFields = {
   name?: string | null;
@@ -233,6 +233,35 @@ export type ExtractedDocumentFields = {
   mobileNumber?: string | null;
   documentsFound?: string[];
 };
+
+/**
+ * Drops a claimed document type when the number that defines it wasn't read.
+ *
+ * The checklist exists to show what's *missing*, so a false "found" is worse
+ * than a false "missing" — it tells the user to stop looking for a document
+ * they still need. The back of an Emirates ID prints an occupation and
+ * employer and reads a lot like a labour card, which is exactly the confusion
+ * this catches, whichever model is behind DOCUMENT_MODEL.
+ */
+function withConsistentDocumentsFound(
+  parsed: ExtractedDocumentFields
+): ExtractedDocumentFields {
+  if (!parsed.documentsFound?.length) return parsed;
+
+  const evidence: Record<string, string | null | undefined> = {
+    LABOR_CARD: parsed.laborCardNumber || parsed.laborCardPersonalNo,
+    PASSPORT: parsed.passportNumber,
+    EMIRATES_ID: parsed.emiratesId,
+    RESIDENCY_ISSUANCE: parsed.visaNumber || parsed.unifiedNo,
+  };
+
+  return {
+    ...parsed,
+    documentsFound: parsed.documentsFound.filter((type) =>
+      type in evidence ? !!evidence[type] : true
+    ),
+  };
+}
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -281,7 +310,7 @@ export async function POST(request: Request) {
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-5",
+      model: DOCUMENT_MODEL,
       max_tokens: 1024,
       output_config: { format: { type: "json_schema", schema: config.schema as Record<string, unknown> } },
       messages: [
@@ -310,7 +339,7 @@ export async function POST(request: Request) {
     }
 
     const parsed = JSON.parse(textBlock.text) as ExtractedDocumentFields;
-    return NextResponse.json(parsed);
+    return NextResponse.json(withConsistentDocumentsFound(parsed));
   } catch (e) {
     // Map provider failures onto something a user can act on, and keep the raw
     // SDK message in the server log rather than putting it on screen.
