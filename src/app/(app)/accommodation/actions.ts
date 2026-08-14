@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUser, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -270,6 +271,47 @@ export async function unassignBedAction(formData: FormData) {
 
   revalidatePath("/accommodation");
   if (employeeId) revalidatePath(`/employees/${employeeId}`);
+}
+
+/**
+ * Removes a single bed. Beds could only be added, so a room created with the
+ * wrong count had to be deleted and rebuilt.
+ *
+ * An occupied bed is kept: deleting it would drop the occupant's place without
+ * closing their accommodation history, leaving them housed nowhere. Check the
+ * worker out first, then the bed can go.
+ */
+export async function deleteBedAction(formData: FormData) {
+  const user = await requireUser();
+  const bedId = String(formData.get("bedId") || "");
+  if (!bedId) return;
+
+  const bed = await prisma.bed.findUnique({
+    where: { id: bedId },
+    include: { employee: { select: { name: true } }, room: { select: { name: true } } },
+  });
+  if (!bed) return;
+  if (bed.employeeId) {
+    redirect(
+      `/accommodation?error=${encodeURIComponent(
+        `Can't delete bed ${bed.label} — ${bed.employee?.name ?? "someone"} is housed there. Check them out first.`
+      )}`
+    );
+  }
+
+  await prisma.bed.delete({ where: { id: bedId } });
+
+  await logAudit({
+    entityType: "BED",
+    entityId: bedId,
+    action: "DELETE",
+    before: { roomId: bed.roomId, roomName: bed.room.name, label: bed.label },
+    userId: user.id,
+    userName: user.name,
+    branchId: null,
+  });
+
+  revalidatePath("/accommodation");
 }
 
 export async function deleteRoomAction(formData: FormData) {

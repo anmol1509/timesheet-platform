@@ -20,7 +20,7 @@ import { groupLookups } from "@/lib/lookups";
 export default async function AccommodationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campId?: string }>;
+  searchParams: Promise<{ campId?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const { branchId } = await requireUserWithBranch();
@@ -76,6 +76,11 @@ export default async function AccommodationPage({
 
   return (
     <div className="space-y-5">
+      {params.error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {params.error}
+        </p>
+      )}
       <div>
         <h1 className="text-xl tracking-tight text-primary font-semibold">
           Accommodation Management

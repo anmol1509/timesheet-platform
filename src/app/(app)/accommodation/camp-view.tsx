@@ -14,6 +14,7 @@ import {
   updateRoomAction,
   deleteRoomAction,
   addBedsToRoomAction,
+  deleteBedAction,
   bulkCheckInAction,
 } from "./actions";
 
@@ -194,13 +195,25 @@ export function CampView({
                             </div>
                           </>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => setAssigningBed(bed.id)}
-                            className="mt-2 block w-full rounded-lg bg-[var(--brand-primary)] px-2 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)]"
-                          >
-                            + Assign
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setAssigningBed(bed.id)}
+                              className="mt-2 block w-full rounded-lg bg-[var(--brand-primary)] px-2 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)]"
+                            >
+                              + Assign
+                            </button>
+                            {/* Only on an empty bed — an occupied one has to be
+                                checked out first, which the action enforces. */}
+                            <div className="mt-1.5 text-center">
+                              <DeleteButton
+                                action={deleteBedAction}
+                                hiddenFields={{ bedId: bed.id }}
+                                confirmMessage={`Delete bed ${bed.label} from ${room.name}?`}
+                                label="Delete bed"
+                              />
+                            </div>
+                          </>
                         )}
                       </div>
                     );
