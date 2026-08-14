@@ -25,8 +25,8 @@ type SponsorshipCompany = { id: string; name: string };
 type Supplier = { id: string; name: string };
 
 const STEPS = [
-  { key: "company", label: "Company" },
   { key: "documents", label: "Documents" },
+  { key: "company", label: "Company" },
   { key: "identity", label: "Identity" },
   { key: "expiry", label: "Numbers & expiry" },
   { key: "deployment", label: "Deployment" },
@@ -582,7 +582,7 @@ export function EmployeeWizard({
       {stepKey === "company" && (
         <div className="space-y-4">
           <p className="text-sm text-muted">
-            Chosen first because the employee ID is generated from the
+            The employee ID on the next step is generated from this
             company&rsquo;s initials. The supplier employs the worker; the
             sponsorship company holds their visa.
           </p>
