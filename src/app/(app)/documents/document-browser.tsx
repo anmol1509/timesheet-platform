@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { Badge } from "@/components/Badge";
-import { uploadDocumentAction } from "@/app/(app)/employees/[id]/actions";
+import {
+  deleteDocumentAction,
+  uploadDocumentAction,
+} from "@/app/(app)/employees/[id]/actions";
+import { DeleteButton } from "@/components/DeleteButton";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { Select } from "@/components/ui/Select";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
@@ -169,13 +173,18 @@ export function DocumentBrowser({
                   <td className="px-4 py-3">
                     <Badge color={badge.color}>{badge.label}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <a
                       href={`/api/documents/${d.id}`}
-                      className="text-xs font-medium text-blue-600 hover:underline"
+                      className="mr-3 text-xs font-medium text-blue-600 hover:underline"
                     >
                       Download
                     </a>
+                    <DeleteButton
+                      action={deleteDocumentAction}
+                      hiddenFields={{ documentId: d.id, employeeId: d.employeeId }}
+                      confirmMessage={`Delete "${d.filename}" from ${d.employeeName}'s file? The file itself is removed and can't be recovered.`}
+                    />
                   </td>
                 </tr>
               );

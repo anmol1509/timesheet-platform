@@ -11,6 +11,7 @@ import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { bulkImportEmployeesAction } from "./[id]/actions";
+import { DeleteEmployeesButton } from "./delete-employees-button";
 
 const PAGE_SIZE = 25;
 
@@ -253,12 +254,23 @@ export function EmployeeList({
       }}
       getRowClassName={(e) => complianceRowClass(e.worstStatus)}
       renderRowActions={(e) => (
-        <Link
-          href={`/employees/${e.id}`}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
-        >
-          <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
-        </Link>
+        <div className="flex items-center justify-end gap-3">
+          <Link
+            href={`/employees/${e.id}`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
+          >
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+          </Link>
+          <DeleteEmployeesButton ids={[e.id]} label={e.name} />
+        </div>
+      )}
+      renderBulkActions={(ids, clear) => (
+        <DeleteEmployeesButton
+          ids={ids}
+          label={`${ids.length} employee${ids.length === 1 ? "" : "s"}`}
+          variant="bulk"
+          onDone={clear}
+        />
       )}
       toolbarExtra={
         <>

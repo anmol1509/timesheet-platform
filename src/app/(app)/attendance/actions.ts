@@ -267,3 +267,51 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
 
   revalidatePath("/attendance");
 }
+
+/**
+ * Removes an attendance mark entirely, for the case where a day was recorded
+ * against the wrong employee — setting a status can't express "this shouldn't
+ * exist". Locked days stay put unless a super admin does it, matching the
+ * edit rule in markAttendanceAction.
+ */
+export async function deleteAttendanceAction(
+  formData: FormData
+): Promise<{ deleted: number; error?: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("attendanceId") || "").trim();
+  if (!id) return { deleted: 0 };
+
+  const existing = await prisma.attendance.findUnique({
+    where: { id },
+    include: { employee: { select: { name: true } } },
+  });
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
+    return { deleted: 0 };
+  }
+  if (existing.locked && !isSuperAdmin) {
+    return { deleted: 0, error: "That day is approved and locked — ask an admin." };
+  }
+
+  // Correction requests against this mark cascade from the schema.
+  await prisma.attendance.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "ATTENDANCE",
+    entityId: id,
+    action: "DELETE",
+    before: {
+      employeeId: existing.employeeId,
+      employeeName: existing.employee.name,
+      date: existing.date,
+      status: existing.status,
+      normalHours: existing.normalHours,
+      otHours: existing.otHours,
+    },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath("/attendance");
+  return { deleted: 1 };
+}

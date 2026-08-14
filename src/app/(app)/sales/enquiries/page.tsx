@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
+import { DeleteButton } from "@/components/DeleteButton";
+import { deleteEnquiryAction } from "./actions";
 
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   Open: "amber",
@@ -13,7 +15,12 @@ const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   Converted: "green",
 };
 
-export default async function EnquiriesPage() {
+export default async function EnquiriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const { branchId } = await requireUserWithBranch();
   const enquiries = await prisma.enquiry.findMany({
     where: branchWhere(branchId),
@@ -37,6 +44,12 @@ export default async function EnquiriesPage() {
           + New Enquiry
         </Link>
       </div>
+
+      {error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       {enquiries.length === 0 ? (
         <EmptyState
@@ -82,6 +95,13 @@ export default async function EnquiriesPage() {
                         ({e.quotations.length} quote{e.quotations.length > 1 ? "s" : ""})
                       </span>
                     )}
+                    <span className="ml-3 inline-block">
+                      <DeleteButton
+                        action={deleteEnquiryAction}
+                        hiddenFields={{ enquiryId: e.id }}
+                        confirmMessage={`Delete enquiry ENQ-${e.enquiryNo} from ${e.client.name}?`}
+                      />
+                    </span>
                   </td>
                 </tr>
               ))}

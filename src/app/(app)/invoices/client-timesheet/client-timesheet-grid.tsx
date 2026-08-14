@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { useRouter } from "next/navigation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
+  deleteTimesheetEntryAction,
   updateDailyHoursAction,
   batchUpdateHoursAction,
   submitTimesheetForReviewAction,
@@ -40,6 +43,7 @@ function badgeClass(value: string) {
 }
 
 export function ClientTimesheetGrid({ month, entries }: { month: string; entries: Entry[] }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [edited, setEdited] = useState<Record<string, DailyHourCell[]>>({});
@@ -99,6 +103,16 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
   }
 
   const [statusResult, setStatusResult] = useState<string | null>(null);
+
+  function deleteRow(entryId: string) {
+    const formData = new FormData();
+    formData.append("entryId", entryId);
+    startTransition(async () => {
+      const res = await deleteTimesheetEntryAction(formData);
+      setStatusResult(res.error ?? (res.deleted ? "Row deleted." : null));
+      if (res.deleted) router.refresh();
+    });
+  }
 
   function runTransition(action: typeof submitTimesheetForReviewAction) {
     if (selected.size === 0) return;
@@ -213,16 +227,35 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                       />
                     </td>
                   ))}
-                  <td className="px-2 py-1.5">
+                  <td className="px-2 py-1.5 whitespace-nowrap">
                     {hasEdits && (
                       <button
                         type="button"
                         disabled={pending}
                         onClick={() => saveRow(e.id)}
-                        className="rounded-lg bg-[var(--brand-primary)] px-2 py-1 text-[10px] font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+                        className="mr-2 rounded-lg bg-[var(--brand-primary)] px-2 py-1 text-[10px] font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
                       >
                         Save
                       </button>
+                    )}
+                    {!locked && (
+                      <ConfirmDialog
+                        title="Delete this row?"
+                        description={`Remove ${e.employeeName} (${e.trade}) from this timesheet? The row and its hours go for good.`}
+                        confirmLabel="Delete"
+                        onConfirm={() => deleteRow(e.id)}
+                        trigger={(open) => (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={open}
+                            aria-label={`Delete ${e.employeeName}'s row`}
+                            className="text-[10px] font-medium text-[var(--error)] hover:underline disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      />
                     )}
                   </td>
                 </tr>

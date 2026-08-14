@@ -63,3 +63,60 @@ export async function toggleLookupValueActiveAction(formData: FormData) {
 
   revalidatePath("/lookups");
 }
+
+// Lookup values are stored on records as plain strings, not foreign keys, so
+// deleting one never breaks a row — it just stops being offered in dropdowns.
+// The count is still worth showing: it's the difference between removing a
+// typo nobody used and removing a value that 40 employees carry.
+const LOOKUP_USAGE: Partial<
+  Record<string, (value: string, branchId: string) => Promise<number>>
+> = {
+  TRADE: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, trade: value } }),
+  POSITION: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, position: value } }),
+  BLOOD_GROUP: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, bloodGroup: value } }),
+  RELIGION: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, religion: value } }),
+  ACCOMMODATION_TYPE: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, accommodationType: value } }),
+  VISA_TYPE: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, visaType: value } }),
+  VISA_STATUS: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, visaStatus: value } }),
+};
+
+/** How many records still carry a lookup value, for the confirm message. */
+export async function countLookupValueUsageAction(id: string): Promise<number> {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const row = await prisma.lookupValue.findUnique({ where: { id } });
+  if (!row || isOutsideBranch(row.branchId, branchId, isSuperAdmin)) return 0;
+
+  const counter = LOOKUP_USAGE[row.category];
+  return counter ? counter(row.value, row.branchId) : 0;
+}
+
+export async function deleteLookupValueAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("lookupValueId") || "");
+  if (!id) return;
+  if (!(await assertLookupInBranch(id, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.lookupValue.findUnique({ where: { id } });
+  if (!existing) return;
+
+  await prisma.lookupValue.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "LOOKUP_VALUE",
+    entityId: id,
+    action: "DELETE",
+    before: { category: existing.category, value: existing.value },
+    userId: user.id,
+    userName: user.name,
+    branchId: existing.branchId,
+  });
+
+  revalidatePath("/lookups");
+}

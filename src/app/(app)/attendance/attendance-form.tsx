@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
+  deleteAttendanceAction,
   markAttendanceAction,
   approveAttendanceDayAction,
   requestAttendanceCorrectionAction,
@@ -45,6 +47,8 @@ export function AttendanceForm({
   const [existing, setExisting] = useState<Record<string, ExistingRow>>({});
   const [correctionFor, setCorrectionFor] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  // Bumped after a mark is deleted, to re-pull the day from the server.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const projectOptions = [
     ...new Map(
@@ -76,11 +80,32 @@ export function AttendanceForm({
       setNormalHours(nextNormal);
       setOtHours(nextOt);
     });
-  }, [projectId, date]);
+  }, [projectId, date, reloadKey]);
 
   function selectSupplier(id: string) {
     setSupplierId(id);
     setProjectId("");
+  }
+
+  // Clears a saved mark outright, for a day recorded against the wrong worker
+  // — a status can't express "this shouldn't exist".
+  function clearMark(employeeId: string) {
+    const row = existing[employeeId];
+    if (!row) return;
+    const formData = new FormData();
+    formData.append("attendanceId", row.id);
+    startTransition(async () => {
+      const res = await deleteAttendanceAction(formData);
+      setResult(res.error ?? (res.deleted ? "Mark cleared." : null));
+      if (res.deleted) {
+        setStatuses((prev) => {
+          const next = { ...prev };
+          delete next[employeeId];
+          return next;
+        });
+        setReloadKey((k) => k + 1);
+      }
+    });
   }
 
   function statusFor(employeeId: string) {
@@ -247,7 +272,7 @@ export function AttendanceForm({
                         />
                       </td>
                       <td className="px-2 py-2">
-                        {locked && (
+                        {locked ? (
                           <button
                             type="button"
                             onClick={() => setCorrectionFor(e.id)}
@@ -255,6 +280,25 @@ export function AttendanceForm({
                           >
                             Request correction
                           </button>
+                        ) : (
+                          existing[e.id] && (
+                            <ConfirmDialog
+                              title="Clear this mark?"
+                              description={`Remove ${e.name}'s attendance for ${date}? The day goes back to unmarked.`}
+                              confirmLabel="Clear"
+                              onConfirm={() => clearMark(e.id)}
+                              trigger={(open) => (
+                                <button
+                                  type="button"
+                                  disabled={pending}
+                                  onClick={open}
+                                  className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-50"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            />
+                          )
                         )}
                       </td>
                     </tr>

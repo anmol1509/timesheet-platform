@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { MarkPaidButton } from "./mark-paid-button";
+import { DeleteButton } from "@/components/DeleteButton";
+import { deleteInvoiceAction } from "./actions";
 import { markInvoicePaidAction } from "./actions";
 
 export type InvoiceRow = {
@@ -95,12 +97,22 @@ export function InvoiceHistoryList({ invoices }: { invoices: InvoiceRow[] }) {
                       {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB") : "—"}
                     </td>
                     <td className="px-4 py-3 text-secondary">{inv.generatedByName}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {inv.status !== "PAID" && (
-                        <MarkPaidButton
-                          action={markInvoicePaidAction}
-                          invoiceId={inv.id}
-                          invoiceNumber={inv.invoiceNumber}
+                        <span className="mr-3 inline-block">
+                          <MarkPaidButton
+                            action={markInvoicePaidAction}
+                            invoiceId={inv.id}
+                            invoiceNumber={inv.invoiceNumber}
+                          />
+                        </span>
+                      )}
+                      {/* Only drafts can go — anything sent is an external record. */}
+                      {inv.status === "DRAFT" && (
+                        <DeleteButton
+                          action={deleteInvoiceAction}
+                          hiddenFields={{ invoiceId: inv.id }}
+                          confirmMessage={`Delete draft invoice ${inv.invoiceNumber} for ${inv.clientName}?`}
                         />
                       )}
                     </td>

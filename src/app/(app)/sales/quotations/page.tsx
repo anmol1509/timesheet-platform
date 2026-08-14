@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
+import { DeleteButton } from "@/components/DeleteButton";
+import { deleteQuotationAction } from "./actions";
 
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   DRAFT: "slate",
@@ -16,7 +18,12 @@ const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   CONVERTED: "green",
 };
 
-export default async function QuotationsPage() {
+export default async function QuotationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const { branchId } = await requireUserWithBranch();
   const quotations = await prisma.quotation.findMany({
     where: branchWhere(branchId),
@@ -41,6 +48,12 @@ export default async function QuotationsPage() {
         </Link>
       </div>
 
+      {error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
       {quotations.length === 0 ? (
         <EmptyState
           icon={FileSignature}
@@ -61,6 +74,7 @@ export default async function QuotationsPage() {
                 <th className="px-4 py-3">Client</th>
                 <th className="px-4 py-3">Lines</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -75,6 +89,13 @@ export default async function QuotationsPage() {
                   <td className="px-4 py-3 text-secondary">{q.lines.length}</td>
                   <td className="px-4 py-3">
                     <Badge color={STATUS_COLOR[q.status] ?? "slate"}>{q.status}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <DeleteButton
+                      action={deleteQuotationAction}
+                      hiddenFields={{ quotationId: q.id }}
+                      confirmMessage={`Delete quotation ${q.quotationNumber} for ${q.client.name}? Its ${q.lines.length} line item(s) go too.`}
+                    />
                   </td>
                 </tr>
               ))}

@@ -537,3 +537,51 @@ export async function batchUpdateHoursAction(formData: FormData) {
   revalidatePath("/invoices/client-timesheet");
   return { updated, requested: entryIds.length };
 }
+
+/**
+ * Removes a timesheet row outright — for a line entered against the wrong
+ * employee or a duplicate upload, where zeroing the hours would still leave a
+ * phantom row on the client's sheet.
+ *
+ * A locked row has been through approval and may already sit on an invoice,
+ * so it stays unless a super admin removes it, matching the edit rule in
+ * updateDailyHoursAction.
+ */
+export async function deleteTimesheetEntryAction(
+  formData: FormData
+): Promise<{ deleted: number; error?: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const entryId = String(formData.get("entryId") || "");
+  if (!entryId) return { deleted: 0 };
+
+  const before = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) {
+    return { deleted: 0 };
+  }
+  if (before.status === "LOCKED" && !isSuperAdmin) {
+    return { deleted: 0, error: "That row is locked — only an admin can remove it." };
+  }
+
+  await prisma.timesheetEntry.delete({ where: { id: entryId } });
+
+  await logAudit({
+    entityType: "TIMESHEET_ENTRY",
+    entityId: entryId,
+    action: "DELETE",
+    before: {
+      month: before.month,
+      employeeIdNo: before.employeeIdNo,
+      employeeName: before.employeeName,
+      trade: before.trade,
+      totalHours: before.totalHours,
+      invoiceValue: before.invoiceValue,
+      status: before.status,
+    },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath("/invoices/client-timesheet");
+  return { deleted: 1 };
+}

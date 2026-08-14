@@ -8,7 +8,12 @@ function fmt(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default async function InvoiceHistoryPage() {
+export default async function InvoiceHistoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   const { branchId } = await requireUserWithBranch();
   const invoices = await prisma.clientInvoice.findMany({
     where: branchWhere(branchId),
@@ -34,6 +39,11 @@ export default async function InvoiceHistoryPage() {
 
   return (
     <div className="space-y-5">
+      {error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl tracking-tight text-primary font-semibold">Invoice history</h1>

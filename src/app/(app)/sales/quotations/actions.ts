@@ -249,3 +249,38 @@ export async function convertQuotationToProjectAction(formData: FormData) {
   revalidatePath("/projects");
   redirect(`/projects/${result.id}`);
 }
+
+export async function deleteQuotationAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("quotationId") || "");
+  if (!id) return;
+  if (!(await assertQuotationInBranch(id, branchId, isSuperAdmin))) return;
+
+  const before = await prisma.quotation.findUnique({ where: { id } });
+  if (!before) return;
+
+  // Once a quotation has become a project it's the origin record for real
+  // work, so it stays — reject it instead if it's no longer wanted.
+  if (before.projectId || before.status === "CONVERTED") {
+    redirect(
+      `/sales/quotations?error=${encodeURIComponent(
+        "Can't delete — this quotation was already converted into a project."
+      )}`
+    );
+  }
+
+  // Lines cascade from the schema.
+  await prisma.quotation.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "QUOTATION",
+    entityId: id,
+    action: "DELETE",
+    before: before as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath("/sales/quotations");
+}

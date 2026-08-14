@@ -82,3 +82,38 @@ export async function updateEnquiryAction(formData: FormData) {
 
   revalidatePath("/sales/enquiries");
 }
+
+export async function deleteEnquiryAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("enquiryId") || "");
+  if (!id) return;
+  if (!(await assertEnquiryInBranch(id, branchId, isSuperAdmin))) return;
+
+  const before = await prisma.enquiry.findUnique({ where: { id } });
+  if (!before) return;
+
+  // Quotations point back at the enquiry they came from; dropping it would
+  // orphan that trail, so the quotations have to go (or be deleted) first.
+  const quotationCount = await prisma.quotation.count({ where: { enquiryId: id } });
+  if (quotationCount > 0) {
+    redirect(
+      `/sales/enquiries?error=${encodeURIComponent(
+        `Can't delete — ${quotationCount} quotation(s) came from this enquiry.`
+      )}`
+    );
+  }
+
+  await prisma.enquiry.delete({ where: { id } });
+
+  await logAudit({
+    entityType: "ENQUIRY",
+    entityId: id,
+    action: "DELETE",
+    before: before as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath("/sales/enquiries");
+}
