@@ -14,18 +14,18 @@ export function CreateBranchForm() {
         name="code"
         placeholder="Code, e.g. DXB"
         required
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+        className="input w-full"
       />
       <input
         name="name"
         placeholder="Branch name"
         required
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+        className="input w-full"
       />
       <input
         name="emirate"
         placeholder="Emirate (optional)"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+        className="input w-full"
       />
       {state.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
@@ -35,7 +35,7 @@ export function CreateBranchForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+        className="btn btn-primary w-full px-3"
       >
         {pending ? "Adding…" : "Add branch"}
       </button>

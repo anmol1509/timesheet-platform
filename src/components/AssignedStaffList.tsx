@@ -24,7 +24,7 @@ function initials(name: string) {
 export function AssignedStaffList({ staff }: { staff: AssignedStaffRow[] }) {
   if (staff.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-muted">
         No employees currently assigned to a project.
       </p>
     );
@@ -48,10 +48,10 @@ export function AssignedStaffList({ staff }: { staff: AssignedStaffRow[] }) {
               {initials(s.name)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-900">{s.name}</p>
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate text-sm font-medium text-primary">{s.name}</p>
+              <p className="truncate text-xs text-muted">
                 Working on{" "}
-                <span className="font-medium text-slate-700">{s.projectName}</span>
+                <span className="font-medium text-secondary">{s.projectName}</span>
               </p>
             </div>
             <Badge color={badge.color}>{badge.label}</Badge>

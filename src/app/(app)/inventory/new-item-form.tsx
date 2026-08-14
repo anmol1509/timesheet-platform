@@ -11,23 +11,23 @@ export function NewItemForm() {
   return (
     <form
       action={formAction}
-      className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+      className="card flex flex-wrap items-end gap-3 p-4"
     >
       <label className="block flex-1 min-w-[180px]">
-        <span className="mb-1 block text-xs font-medium text-slate-500">Item name</span>
+        <span className="mb-1 block text-xs font-medium text-muted">Item name</span>
         <input
           name="name"
           required
           placeholder="e.g. Concrete drill"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+          className="input w-full"
         />
       </label>
       <label className="block flex-1 min-w-[160px]">
-        <span className="mb-1 block text-xs font-medium text-slate-500">Category</span>
+        <span className="mb-1 block text-xs font-medium text-muted">Category</span>
         <input
           name="category"
           placeholder="e.g. Power tools"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+          className="input w-full"
         />
       </label>
       {state.error && (
@@ -38,7 +38,7 @@ export function NewItemForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+        className="btn btn-primary"
       >
         {pending ? "Adding…" : "+ Add Item"}
       </button>

@@ -51,17 +51,17 @@ export default async function DemandRequestDetailPage({
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <Link href="/operations/demand-requests" className="text-sm text-slate-500 hover:underline">
+        <Link href="/operations/demand-requests" className="text-sm text-muted hover:underline">
           ← Demand Requests
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">
             Request #{request.requestNo} — {request.client.name}
           </h1>
           <div className="flex items-center gap-2">
             <Link
               href={`/operations/nocs/new?demandRequestId=${request.id}`}
-              className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+              className="btn btn-primary px-3"
             >
               Create NOC
             </Link>
@@ -74,7 +74,7 @@ export default async function DemandRequestDetailPage({
             />
           </div>
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           {request.project.code} — {request.project.name}
         </p>
       </div>
@@ -96,7 +96,7 @@ export default async function DemandRequestDetailPage({
       />
 
       <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-slate-900">Trades</h2>
+        <h2 className="text-sm font-semibold text-primary">Trades</h2>
         {request.trades.map((t) => (
           <TradeAllocationSection
             key={t.id}

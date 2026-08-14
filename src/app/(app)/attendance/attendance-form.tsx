@@ -135,9 +135,9 @@ export function AttendanceForm({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-3">
+      <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Supplier</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Supplier</span>
           <Select
             value={supplierId}
             onChange={selectSupplier}
@@ -146,7 +146,7 @@ export function AttendanceForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Project</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Project</span>
           <Select
             value={projectId}
             onChange={setProjectId}
@@ -156,33 +156,33 @@ export function AttendanceForm({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Date</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Date</span>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Employees</h2>
+          <h2 className="text-sm font-semibold text-primary">Employees</h2>
           {rows.length > 0 && !allLocked && (
             <button
               type="button"
               onClick={markAllPresent}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              className="btn btn-secondary btn-sm"
             >
               Mark all Present
             </button>
           )}
         </div>
         {!supplierId || !projectId ? (
-          <p className="text-sm text-slate-500">Select a supplier and a project first.</p>
+          <p className="text-sm text-muted">Select a supplier and a project first.</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-slate-500">No employees for this supplier on this project.</p>
+          <p className="text-sm text-muted">No employees for this supplier on this project.</p>
         ) : (
           <div className="overflow-x-auto">
             {allLocked && (
@@ -191,7 +191,7 @@ export function AttendanceForm({
               </p>
             )}
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
                   <th className="px-2 py-2">Employee</th>
                   <th className="px-2 py-2">Trade</th>
@@ -201,21 +201,21 @@ export function AttendanceForm({
                   <th className="px-2 py-2" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {rows.map((e) => {
                   const locked = isLocked(e.id);
                   return (
                     <tr key={e.id}>
-                      <td className="px-2 py-2 text-slate-900">
-                        {e.name} <span className="text-slate-400">{e.employeeIdNo}</span>
+                      <td className="px-2 py-2 text-primary">
+                        {e.name} <span className="text-subtle">{e.employeeIdNo}</span>
                       </td>
-                      <td className="px-2 py-2 text-slate-600">{e.trade || "—"}</td>
+                      <td className="px-2 py-2 text-secondary">{e.trade || "—"}</td>
                       <td className="px-2 py-2">
                         <select
                           value={statusFor(e.id)}
                           disabled={locked}
                           onChange={(ev) => setStatuses((prev) => ({ ...prev, [e.id]: ev.target.value }))}
-                          className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-50"
+                          className="input px-2 py-1.5 disabled:opacity-50"
                         >
                           {STATUS_OPTIONS.map((s) => (
                             <option key={s} value={s}>
@@ -232,7 +232,7 @@ export function AttendanceForm({
                           type="number"
                           min={0}
                           step="0.5"
-                          className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-50"
+                          className="input w-20 px-2 py-1.5 disabled:opacity-50"
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -243,7 +243,7 @@ export function AttendanceForm({
                           type="number"
                           min={0}
                           step="0.5"
-                          className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-50"
+                          className="input w-20 px-2 py-1.5 disabled:opacity-50"
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -266,7 +266,7 @@ export function AttendanceForm({
         )}
       </div>
 
-      {result && <p className="text-sm text-slate-600">{result}</p>}
+      {result && <p className="text-sm text-secondary">{result}</p>}
 
       {!allLocked && (
         <div className="flex flex-wrap items-center gap-3">
@@ -274,7 +274,7 @@ export function AttendanceForm({
             type="button"
             onClick={handleSave}
             disabled={pending || !supplierId || !projectId || rows.length === 0}
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+            className="btn btn-primary"
           >
             {pending ? "Saving…" : "Save Attendance"}
           </button>
@@ -330,19 +330,19 @@ function CorrectionRequestPanel({
   }
 
   return (
-    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-4">
-      <h3 className="mb-2 text-sm font-semibold text-slate-900">Request correction — {employeeName}</h3>
+    <div className="empty-state p-4">
+      <h3 className="mb-2 text-sm font-semibold text-primary">Request correction — {employeeName}</h3>
       {done ? (
         <p className="text-sm text-emerald-600">Correction request submitted for manager review.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Requested status</span>
+              <span className="mb-1 block text-xs font-medium text-muted">Requested status</span>
               <select
                 value={requestedStatus}
                 onChange={(e) => setRequestedStatus(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full px-2 py-1.5"
               >
                 <option value="">No change</option>
                 {STATUS_OPTIONS.map((s) => (
@@ -353,31 +353,31 @@ function CorrectionRequestPanel({
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Normal hrs</span>
+              <span className="mb-1 block text-xs font-medium text-muted">Normal hrs</span>
               <input
                 value={requestedNormalHours}
                 onChange={(e) => setRequestedNormalHours(e.target.value)}
                 type="number"
-                className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full px-2 py-1.5"
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">OT hrs</span>
+              <span className="mb-1 block text-xs font-medium text-muted">OT hrs</span>
               <input
                 value={requestedOtHours}
                 onChange={(e) => setRequestedOtHours(e.target.value)}
                 type="number"
-                className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full px-2 py-1.5"
               />
             </label>
           </div>
           <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Reason</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Reason</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Reason for correction"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <div className="mt-2 flex gap-2">
@@ -385,11 +385,11 @@ function CorrectionRequestPanel({
               type="button"
               disabled={pending || !reason.trim()}
               onClick={submit}
-              className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+              className="btn btn-primary btn-sm"
             >
               {pending ? "Submitting…" : "Submit request"}
             </button>
-            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-400 hover:underline">
+            <button type="button" onClick={onClose} className="text-xs font-medium text-subtle hover:underline">
               Cancel
             </button>
           </div>

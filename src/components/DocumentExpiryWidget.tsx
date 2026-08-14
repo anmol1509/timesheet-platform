@@ -31,15 +31,15 @@ export function DocumentExpiryWidget({
           <Link
             key={c.category}
             href={HREFS[c.category] ?? "/documents"}
-            className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-md"
+            className="block rounded-2xl border border-default bg-surface p-4 transition hover:border-strong hover:shadow-md"
           >
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-muted">
                 <Icon className="h-4 w-4" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-slate-500">{c.category}</p>
-                <p className="text-lg font-semibold text-slate-900">{c.total}</p>
+                <p className="truncate text-xs font-medium text-muted">{c.category}</p>
+                <p className="text-lg font-semibold text-primary">{c.total}</p>
               </div>
             </div>
             {hasIssues && (

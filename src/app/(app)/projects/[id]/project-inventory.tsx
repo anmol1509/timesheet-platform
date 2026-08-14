@@ -59,10 +59,10 @@ export function ProjectInventory({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+      <div className="card overflow-hidden">
         {active.length > 0 ? (
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3 text-right">Qty</th>
@@ -71,13 +71,13 @@ export function ProjectInventory({
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {active.map((a) => (
                 <tr key={a.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">{a.item.name}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{a.quantity}</td>
-                  <td className="px-4 py-3 text-slate-600">{fmtDate(a.assignedDate)}</td>
-                  <td className="px-4 py-3 text-slate-600">{a.condition || "—"}</td>
+                  <td className="px-4 py-3 font-medium text-primary">{a.item.name}</td>
+                  <td className="px-4 py-3 text-right text-secondary">{a.quantity}</td>
+                  <td className="px-4 py-3 text-secondary">{fmtDate(a.assignedDate)}</td>
+                  <td className="px-4 py-3 text-secondary">{a.condition || "—"}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <form action={returnProjectInventoryAction} className="mr-3 inline">
                       <input type="hidden" name="projectId" value={projectId} />
@@ -101,13 +101,13 @@ export function ProjectInventory({
             </tbody>
           </table>
         ) : (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">
+          <p className="px-4 py-8 text-center text-sm text-muted">
             No equipment currently assigned.
           </p>
         )}
-        <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 p-4">
+        <div className="flex flex-wrap items-end gap-3 border-t border-default p-4">
           <label className="block min-w-[160px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Item</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Item</span>
             <Combobox
               value={itemName}
               onChange={setItemName}
@@ -116,42 +116,42 @@ export function ProjectInventory({
             />
           </label>
           <label className="block w-20">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Qty</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
             <input
               type="number"
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Assigned date
             </span>
             <input
               type="date"
               value={assignedDate}
               onChange={(e) => setAssignedDate(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input"
             />
           </label>
           <label className="block min-w-[140px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Condition (optional)
             </span>
             <input
               value={condition}
               onChange={(e) => setCondition(e.target.value)}
               placeholder="e.g. Good"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </label>
           <button
             type="button"
             disabled={pending}
             onClick={add}
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+            className="btn btn-primary"
           >
             + Add
           </button>
@@ -160,17 +160,17 @@ export function ProjectInventory({
 
       {returned.length > 0 && (
         <div>
-          <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+          <h3 className="mb-2 text-xs font-semibold tracking-wide text-subtle uppercase">
             Returned
           </h3>
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {returned.map((a) => (
                   <tr key={a.id}>
-                    <td className="px-4 py-3 text-slate-600">{a.item.name}</td>
-                    <td className="px-4 py-3 text-right text-slate-500">{a.quantity}</td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-secondary">{a.item.name}</td>
+                    <td className="px-4 py-3 text-right text-muted">{a.quantity}</td>
+                    <td className="px-4 py-3 text-muted">
                       Returned {fmtDate(a.returnDate!)}
                     </td>
                     <td className="px-4 py-3 text-right">

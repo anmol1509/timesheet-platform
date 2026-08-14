@@ -33,24 +33,24 @@ export default async function CompaniesPage({
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Companies</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">Companies</h1>
+          <p className="mt-1 text-sm text-muted">
             Pick a month, then generate a timesheet for any company.
           </p>
         </div>
         {months.length > 0 && (
           <form className="flex items-center gap-2">
-            <label htmlFor="month" className="text-sm text-slate-500">
+            <label htmlFor="month" className="text-sm text-muted">
               Month
             </label>
             <select
               id="month"
               name="month"
               defaultValue={selectedMonth}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+              className="input py-1.5"
             >
               {months.map((m) => (
                 <option key={m} value={m}>
@@ -64,10 +64,10 @@ export default async function CompaniesPage({
       </div>
 
       {suppliers.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="empty-state">
+          <p className="text-sm text-muted">
             No data yet.{" "}
-            <Link href="/upload" className="font-medium text-slate-900 underline">
+            <Link href="/upload" className="font-medium text-primary underline">
               Upload a time sheet
             </Link>{" "}
             to get started.
@@ -96,7 +96,7 @@ function NativeSubmit() {
   return (
     <button
       type="submit"
-      className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+      className="btn btn-primary btn-sm"
     >
       Go
     </button>

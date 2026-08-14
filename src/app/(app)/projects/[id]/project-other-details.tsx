@@ -22,11 +22,11 @@ export function ProjectOtherDetails({
           setSaved(true);
         });
       }}
-      className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
+      className="card space-y-4 p-6"
     >
       <input type="hidden" name="projectId" value={projectId} />
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-slate-500">
+        <span className="mb-1 block text-xs font-medium text-muted">
           Notes / description
         </span>
         <textarea
@@ -34,14 +34,14 @@ export function ProjectOtherDetails({
           rows={6}
           defaultValue={description || ""}
           placeholder="Anything else worth recording about this project."
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+          className="input w-full"
         />
       </label>
       <div className="flex items-center gap-3">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Saving…" : "Save changes"}
         </button>

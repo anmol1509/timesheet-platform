@@ -66,11 +66,11 @@ export function LabourCardHistorySection({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Labour Card History</h2>
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <h2 className="mb-3 text-sm font-semibold text-primary">Labour Card History</h2>
+      <div className="card p-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <div>
-            <span className="mb-1 block text-xs font-medium text-slate-500">Stage</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Stage</span>
             <Select
               key={`stage-${formKey}`}
               placeholder="Select stage"
@@ -81,15 +81,15 @@ export function LabourCardHistorySection({
             />
           </div>
           <div>
-            <span className="mb-1 block text-xs font-medium text-slate-500">Date</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Date</span>
             <input
               ref={dateRef}
               type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </div>
           <div>
-            <span className="mb-1 block text-xs font-medium text-slate-500">Link document</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Link document</span>
             <Select
               key={`doc-${formKey}`}
               placeholder="None"
@@ -104,26 +104,26 @@ export function LabourCardHistorySection({
               type="button"
               onClick={handleAdd}
               disabled={pending}
-              className="w-full rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+              className="btn btn-primary w-full"
             >
               Add
             </button>
           </div>
           <div className="sm:col-span-4">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Notes</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Notes</span>
             <textarea
               ref={notesRef}
               rows={2}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </div>
         </div>
 
         {entries.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-400">No labour card history recorded yet.</p>
+          <p className="mt-4 text-sm text-subtle">No labour card history recorded yet.</p>
         ) : (
           <table className="mt-4 w-full text-sm">
-            <thead className="border-b border-slate-100 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="py-2">Stage</th>
                 <th className="py-2">Date</th>
@@ -132,15 +132,15 @@ export function LabourCardHistorySection({
                 <th className="py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {entries.map((e) => {
                 const doc = documents.find((d) => d.id === e.documentId);
                 return (
                   <tr key={e.id}>
-                    <td className="py-2 font-medium text-slate-900">{e.stage}</td>
-                    <td className="py-2 text-slate-600">{formatDate(e.date)}</td>
-                    <td className="py-2 text-slate-600">{e.notes || "—"}</td>
-                    <td className="py-2 text-slate-600">
+                    <td className="py-2 font-medium text-primary">{e.stage}</td>
+                    <td className="py-2 text-secondary">{formatDate(e.date)}</td>
+                    <td className="py-2 text-secondary">{e.notes || "—"}</td>
+                    <td className="py-2 text-secondary">
                       {doc ? (
                         <a
                           href={`/api/documents/${doc.id}`}

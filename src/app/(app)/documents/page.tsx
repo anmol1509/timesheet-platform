@@ -36,12 +36,12 @@ export default async function DocumentsPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">
           Document Management
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           Track employee documents and expiry dates.
         </p>
       </div>

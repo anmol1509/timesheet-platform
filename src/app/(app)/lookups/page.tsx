@@ -23,15 +23,15 @@ export default async function LookupsPage({
   });
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Lookups</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Lookups</h1>
+        <p className="mt-1 text-sm text-muted">
           Manage the dropdown values used across employee forms.
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-200 bg-white p-2">
+      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-default bg-surface p-2">
         {LOOKUP_CATEGORIES.map((c) => (
           <Link
             key={c.key}
@@ -39,7 +39,7 @@ export default async function LookupsPage({
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               c.key === category
                 ? "bg-[var(--brand-primary)] text-white"
-                : "text-slate-600 hover:bg-slate-100"
+                : "text-secondary hover:bg-surface-hover"
             }`}
           >
             {c.label}
@@ -49,28 +49,28 @@ export default async function LookupsPage({
 
       <form
         action={createLookupValueAction}
-        className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+        className="card flex flex-wrap items-end gap-3 p-4"
       >
         <input type="hidden" name="category" value={category} />
         <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">New value</span>
+          <span className="mb-1 block text-xs font-medium text-muted">New value</span>
           <input
             name="value"
             required
             placeholder="e.g. Welder"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           + Add value
         </button>
       </form>
 
       {values.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
+        <p className="empty-state text-sm text-muted">
           No values yet for this category. Add one above.
         </p>
       ) : (

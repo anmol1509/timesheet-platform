@@ -152,15 +152,15 @@ export function ReviewClient({
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/companies" className="text-sm text-slate-500 hover:underline">
+        <Link href="/companies" className="text-sm text-muted hover:underline">
           ← Companies
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">
               {supplier.name}
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-muted">
               {monthLabel} · {entries.length} employees
             </p>
           </div>
@@ -168,14 +168,14 @@ export function ReviewClient({
             <button
               onClick={() => handleDownload("xlsx")}
               disabled={generating !== null}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+              className="btn btn-secondary"
             >
               {generating === "xlsx" ? "Generating…" : "Download XLSX"}
             </button>
             <button
               onClick={() => handleDownload("pdf")}
               disabled={generating !== null}
-              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+              className="btn btn-primary"
             >
               {generating === "pdf" ? "Generating…" : "Download PDF"}
             </button>
@@ -193,21 +193,21 @@ export function ReviewClient({
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
         <Field label="Issued to">
           <input
             value={issuedTo}
             onChange={(e) => setIssuedTo(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
       </div>
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-900">Employees</h2>
+          <h2 className="text-sm font-semibold text-primary">Employees</h2>
           {anyEdited && (
             <button
               type="button"
@@ -218,9 +218,9 @@ export function ReviewClient({
             </button>
           )}
         </div>
-        <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-3">ID No</th>
                 <th className="px-4 py-3">Employee</th>
@@ -233,7 +233,7 @@ export function ReviewClient({
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {entries.map((e) => {
                 const absentEdited =
                   deductions[e.id] !== defaultAbsentDeductions[e.id];
@@ -241,23 +241,23 @@ export function ReviewClient({
                 const rowEdited = absentEdited || gasEdited;
                 return (
                   <tr key={e.id}>
-                    <td className="px-4 py-2.5 text-slate-500">{e.employeeIdNo}</td>
-                    <td className="px-4 py-2.5 font-medium text-slate-900">
+                    <td className="px-4 py-2.5 text-muted">{e.employeeIdNo}</td>
+                    <td className="px-4 py-2.5 font-medium text-primary">
                       {e.employeeName}
                       {e.clientName && (
-                        <span className="ml-2 text-xs font-normal text-slate-400">
+                        <span className="ml-2 text-xs font-normal text-subtle">
                           {e.clientName}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">{e.trade}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
+                    <td className="px-4 py-2.5 text-secondary">{e.trade}</td>
+                    <td className="px-4 py-2.5 text-right text-secondary">
                       {e.rate.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
+                    <td className="px-4 py-2.5 text-right text-secondary">
                       {e.totalHours}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
+                    <td className="px-4 py-2.5 text-right text-secondary">
                       {e.absentCount}
                     </td>
                     <td className="px-4 py-2.5 text-right">
@@ -280,7 +280,7 @@ export function ReviewClient({
                             }))
                           }
                           className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] ${
-                            absentEdited ? "border-amber-300 bg-amber-50" : "border-slate-300"
+                            absentEdited ? "border-amber-300 bg-amber-50" : "border-strong"
                           }`}
                         />
                       </span>
@@ -305,7 +305,7 @@ export function ReviewClient({
                             }))
                           }
                           className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] ${
-                            gasEdited ? "border-amber-300 bg-amber-50" : "border-slate-300"
+                            gasEdited ? "border-amber-300 bg-amber-50" : "border-strong"
                           }`}
                         />
                       </span>
@@ -331,12 +331,12 @@ export function ReviewClient({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Trade summary
           </h2>
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+          <div className="card overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">Trade</th>
                   <th className="px-4 py-3 text-right">Hours</th>
@@ -344,17 +344,17 @@ export function ReviewClient({
                   <th className="px-4 py-3 text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {tradeSummary.map((row) => (
                   <tr key={`${row.trade}-${row.rate}`}>
-                    <td className="px-4 py-2.5 text-slate-900">{row.trade}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
+                    <td className="px-4 py-2.5 text-primary">{row.trade}</td>
+                    <td className="px-4 py-2.5 text-right text-secondary">
                       {row.hours}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-slate-600">
+                    <td className="px-4 py-2.5 text-right text-secondary">
                       {row.rate.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-medium text-slate-900">
+                    <td className="px-4 py-2.5 text-right font-medium text-primary">
                       {row.amount.toFixed(2)}
                     </td>
                   </tr>
@@ -365,15 +365,15 @@ export function ReviewClient({
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Payment summary
           </h2>
-          <div className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5">
+          <div className="card space-y-3 p-5">
             <SummaryRow label="Total amount" value={totalAmount} />
             <SummaryRow label="Absent deduction" value={totalAbsentDeduction} />
             <SummaryRow label="Gas deduction" value={totalGasDeduction} />
             <SummaryRow label="Total deduction" value={totalDeduction} />
-            <div className="border-t border-slate-200 pt-3">
+            <div className="border-t border-default pt-3">
               <SummaryRow
                 label="Net amount payable (AED)"
                 value={netPayable}
@@ -396,7 +396,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">
+      <span className="mb-1 block text-xs font-medium text-muted">
         {label}
       </span>
       {children}
@@ -415,10 +415,10 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className={bold ? "font-semibold text-slate-900" : "text-slate-500"}>
+      <span className={bold ? "font-semibold text-primary" : "text-muted"}>
         {label}
       </span>
-      <span className={bold ? "text-lg font-semibold text-slate-900" : "text-slate-700"}>
+      <span className={bold ? "text-lg font-semibold text-primary" : "text-secondary"}>
         {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
     </div>

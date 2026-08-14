@@ -19,16 +19,16 @@ export default async function AddEmployeePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">
           Add New Employee
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           Register a new worker with all required documentation.
         </p>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-base font-semibold text-slate-900">
+      <div className="card p-6">
+        <h2 className="mb-4 text-base font-semibold text-primary">
           Employee Registration
         </h2>
         <EmployeeWizard

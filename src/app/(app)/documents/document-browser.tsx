@@ -84,15 +84,15 @@ export function DocumentBrowser({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search documents by name, type, or employee..."
-            className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full max-w-sm"
           />
           {filteredEmployee && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-medium text-secondary">
               {filteredEmployee.name}
               <button
                 type="button"
                 onClick={() => setEmployeeFilter(null)}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-subtle hover:text-secondary"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -102,7 +102,7 @@ export function DocumentBrowser({
         <button
           type="button"
           onClick={() => setShowUpload((v) => !v)}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           {showUpload ? "Cancel" : "Upload Document"}
         </button>
@@ -122,9 +122,9 @@ export function DocumentBrowser({
         ]}
       />
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+      <div className="card overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+          <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
               <th className="px-4 py-3">Document</th>
               <th className="px-4 py-3">Type</th>
@@ -134,32 +134,32 @@ export function DocumentBrowser({
               <th className="px-4 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[var(--border)]">
             {filtered.map((d) => {
               const badge = STATUS_BADGE[d.status];
               return (
                 <tr key={d.id}>
-                  <td className="px-4 py-3 text-slate-900">
+                  <td className="px-4 py-3 text-primary">
                     <a href={`/api/documents/${d.id}`} className="hover:underline">
                       {d.filename}
                     </a>
-                    <p className="text-xs text-slate-400">by {d.uploadedByName}</p>
+                    <p className="text-xs text-subtle">by {d.uploadedByName}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">
                     {d.type.replace("_", " ")}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">
                     <Link
                       href={`/employees/${d.employeeId}`}
                       className="hover:underline"
                     >
                       {d.employeeName}
                     </Link>
-                    <span className="ml-1 text-xs text-slate-400">
+                    <span className="ml-1 text-xs text-subtle">
                       {d.employeeIdNo}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-muted">
                     {new Date(d.uploadedAt).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "short",
@@ -183,7 +183,7 @@ export function DocumentBrowser({
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-slate-500">
+          <p className="px-4 py-10 text-center text-sm text-muted">
             No documents match.
           </p>
         )}
@@ -241,10 +241,10 @@ function UploadForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+      className="card flex flex-wrap items-end gap-3 p-4"
     >
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-slate-500">
+        <span className="mb-1 block text-xs font-medium text-muted">
           Employee
         </span>
         <Select
@@ -259,7 +259,7 @@ function UploadForm({
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-slate-500">Type</span>
+        <span className="mb-1 block text-xs font-medium text-muted">Type</span>
         <Select
           value={type}
           onChange={setType}
@@ -268,26 +268,26 @@ function UploadForm({
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-slate-500">
+        <span className="mb-1 block text-xs font-medium text-muted">
           Expiry date (optional)
         </span>
         <input
           type="date"
           value={expiryDate}
           onChange={(e) => setExpiryDate(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+          className="input"
         />
       </label>
       <input
         ref={fileRef}
         type="file"
         required
-        className="block text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 file:transition hover:file:bg-slate-50"
+        className="file-input"
       />
       <button
         type="submit"
         disabled={pending || !employeeId}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+        className="btn btn-primary"
       >
         {pending ? "Uploading…" : "Upload"}
       </button>

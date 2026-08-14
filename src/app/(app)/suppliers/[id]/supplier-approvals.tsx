@@ -38,19 +38,19 @@ export function SupplierApprovals({
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Approvals</h2>
+    <section className="card p-5">
+      <h2 className="mb-3 text-sm font-semibold text-primary">Approvals</h2>
       <div className="space-y-2">
         {ROWS.map((r) => (
           <div key={r.field} className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm text-slate-700">{r.label}</span>
+            <span className="text-sm text-secondary">{r.label}</span>
             <div className="flex items-center gap-2">
               <Badge color={BADGE_COLOR[values[r.field]] || "slate"}>{values[r.field]}</Badge>
               <button
                 type="button"
                 disabled={pending || values[r.field] === "Approved"}
                 onClick={() => setValue(r.field, "Approved")}
-                className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-strong px-2 py-1 text-xs font-medium text-secondary hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Approve
               </button>

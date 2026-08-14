@@ -22,12 +22,12 @@ export function ProjectRoutes({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">
+      <h2 className="mb-3 text-sm font-semibold text-primary">
         Projects serviced
       </h2>
-      <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="card p-5">
         {assignedProjects.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             Not linked to any project yet.
           </p>
         ) : (
@@ -35,11 +35,11 @@ export function ProjectRoutes({
             {assignedProjects.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-lg border border-default bg-surface-subtle px-3 py-2 text-sm"
               >
                 <span>
-                  <span className="font-medium text-slate-900">{p.name}</span>{" "}
-                  <span className="text-slate-400">{p.code}</span>
+                  <span className="font-medium text-primary">{p.name}</span>{" "}
+                  <span className="text-subtle">{p.code}</span>
                 </span>
                 <DeleteButton
                   action={removeVehicleProjectAction}
@@ -62,7 +62,7 @@ export function ProjectRoutes({
           >
             <input type="hidden" name="vehicleId" value={vehicleId} />
             <label className="block flex-1 min-w-[200px]">
-              <span className="mb-1 block text-xs font-medium text-slate-500">
+              <span className="mb-1 block text-xs font-medium text-muted">
                 Add a project
               </span>
               <Select
@@ -76,7 +76,7 @@ export function ProjectRoutes({
             <button
               type="submit"
               disabled={!selected}
-              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+              className="btn btn-primary"
             >
               Add
             </button>

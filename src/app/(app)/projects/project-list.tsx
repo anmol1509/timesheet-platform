@@ -66,15 +66,15 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search projects by name, code, site, or manager..."
-        className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+        className="input w-full max-w-md"
       />
       <div>
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+        <h2 className="mb-3 text-sm font-semibold text-primary">
           All Projects
         </h2>
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Project</th>
                 <th className="px-4 py-3">Code</th>
@@ -85,29 +85,29 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {pageRows.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50">
+                <tr key={p.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
                     <Link
                       href={`/projects/${p.id}`}
-                      className="font-medium text-slate-900"
+                      className="font-medium text-primary"
                     >
                       {p.name}
                     </Link>
                     {p.description && (
-                      <p className="text-xs text-slate-400">{p.description}</p>
+                      <p className="text-xs text-subtle">{p.description}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{p.code}</td>
-                  <td className="px-4 py-3 text-slate-600">{p.clientName}</td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-muted">{p.code}</td>
+                  <td className="px-4 py-3 text-secondary">{p.clientName}</td>
+                  <td className="px-4 py-3 text-secondary">
                     {p.address || "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">
                     {p.manager || "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-muted">
                     {fmtDate(p.timelineStart)} – {fmtDate(p.timelineEnd)}
                   </td>
                   <td className="px-4 py-3">
@@ -120,7 +120,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
             </tbody>
           </table>
           {filtered.length === 0 && (
-            <p className="px-4 py-10 text-center text-sm text-slate-500">
+            <p className="px-4 py-10 text-center text-sm text-muted">
               No projects match &ldquo;{query}&rdquo;.
             </p>
           )}

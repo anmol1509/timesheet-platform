@@ -75,12 +75,12 @@ export default async function AccommodationPage({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">
           Accommodation Management
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           Manage bed assignments and accommodation status.
         </p>
       </div>
@@ -92,16 +92,16 @@ export default async function AccommodationPage({
       </div>
 
       {totalBeds > 0 && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="card p-5">
           <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
         </div>
       )}
 
       {camps.length > 0 && (
-        <div className="flex flex-wrap items-end gap-2 rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="card flex flex-wrap items-end gap-2 p-5">
           <form className="flex flex-1 items-end gap-2">
             <label className="block max-w-xs flex-1">
-              <span className="mb-1 block text-xs font-medium text-slate-500">
+              <span className="mb-1 block text-xs font-medium text-muted">
                 Camp
               </span>
               <Select
@@ -112,7 +112,7 @@ export default async function AccommodationPage({
             </label>
             <button
               type="submit"
-              className="rounded-lg bg-[var(--brand-primary)] px-3 py-2 text-sm font-medium text-white"
+              className="btn btn-primary px-3"
             >
               Go
             </button>
@@ -138,7 +138,7 @@ export default async function AccommodationPage({
 
       {selectedCamp ? (
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             {selectedCamp.name} — All Rooms
           </h2>
           <CampView
@@ -158,7 +158,7 @@ export default async function AccommodationPage({
           />
         </div>
       ) : (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center text-sm text-slate-500">
+        <p className="empty-state py-10 text-sm text-muted">
           No camps yet — add one below to get started.
         </p>
       )}
@@ -166,18 +166,18 @@ export default async function AccommodationPage({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <form
           action={createCampAction}
-          className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5"
+          className="card space-y-3 p-5"
         >
-          <h3 className="text-sm font-semibold text-slate-900">Add Camp</h3>
+          <h3 className="text-sm font-semibold text-primary">Add Camp</h3>
           <input
             name="name"
             required
             placeholder="Camp name, e.g. Dubai Industrial Camp 1"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
           <button
             type="submit"
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white"
+            className="btn btn-primary"
           >
             Add Camp
           </button>
@@ -186,9 +186,9 @@ export default async function AccommodationPage({
         {selectedCamp && (
           <form
             action={createRoomAction}
-            className="space-y-3 rounded-3xl border border-slate-200 bg-white p-5"
+            className="card space-y-3 p-5"
           >
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-primary">
               Add Room to {selectedCamp.name}
             </h3>
             <input type="hidden" name="campId" value={selectedCamp.id} />
@@ -196,7 +196,7 @@ export default async function AccommodationPage({
               name="name"
               required
               placeholder="Room name, e.g. Room 103"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
             <input
               name="bedCount"
@@ -205,30 +205,30 @@ export default async function AccommodationPage({
               max={20}
               defaultValue={4}
               placeholder="Number of beds"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Bed space</span>
+                <span className="mb-1 block text-xs font-medium text-muted">Bed space</span>
                 <input
                   name="bedSpace"
                   type="number"
                   min={0}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                  className="input w-full"
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500">Usable bed space</span>
+                <span className="mb-1 block text-xs font-medium text-muted">Usable bed space</span>
                 <input
                   name="usableBedSpace"
                   type="number"
                   min={0}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                  className="input w-full"
                 />
               </label>
             </div>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Room type</span>
+              <span className="mb-1 block text-xs font-medium text-muted">Room type</span>
               <Select
                 name="roomType"
                 placeholder="Not set"
@@ -236,12 +236,12 @@ export default async function AccommodationPage({
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500">Nationality targeting</span>
+              <span className="mb-1 block text-xs font-medium text-muted">Nationality targeting</span>
               <CountrySelect name="nationality" placeholder="Not set" />
             </label>
             <button
               type="submit"
-              className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white"
+              className="btn btn-primary"
             >
               Add Room
             </button>

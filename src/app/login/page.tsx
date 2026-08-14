@@ -27,14 +27,14 @@ export default async function LoginPage() {
               <div className="text-lg font-bold leading-tight text-[#1E2A6E]">
                 Burj Al Aweer
               </div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                 Construction Manpower
               </div>
             </div>
           </div>
 
-          <h1 className="text-2xl font-semibold text-slate-900">Login</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">Login</h1>
+          <p className="mt-2 text-sm text-muted">
             Need workforce or site access? Contact your site administrator.
           </p>
 
@@ -42,7 +42,7 @@ export default async function LoginPage() {
             <LoginForm />
           </div>
 
-          <p className="mt-10 text-xs text-slate-400">
+          <p className="mt-10 text-xs text-subtle">
             Copyright © {new Date().getFullYear()} Burj Al Aweer. All rights
             reserved.
           </p>

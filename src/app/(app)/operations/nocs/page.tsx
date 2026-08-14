@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FileText } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -13,26 +15,31 @@ export default async function NocsPage() {
   });
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">NOCs</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">NOCs</h1>
+          <p className="mt-1 text-sm text-muted">
             No-objection and mobilization letters generated from Demand Requests.
           </p>
         </div>
         <Link
           href="/operations/nocs/new"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           + New NOC
         </Link>
       </div>
 
       {nocs.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
-          No NOCs yet.
-        </p>
+        <EmptyState
+          icon={FileText}
+          title="No NOCs yet"
+          description="Generate No Objection Certificates and other letters for employees from your saved letter templates."
+          action={
+            <Link href="/operations/nocs/new" className="btn btn-primary btn-sm">New NOC</Link>
+          }
+        />
       ) : (
         <NocList
           nocs={nocs.map((n) => ({

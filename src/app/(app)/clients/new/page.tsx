@@ -14,20 +14,20 @@ export default function NewClientPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <Link href="/clients" className="text-sm text-slate-500 hover:underline">
+        <Link href="/clients" className="text-sm text-muted hover:underline">
           ← Clients
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+        <h1 className="text-xl tracking-tight text-primary mt-2 font-semibold">
           Add Client
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted">
           Register a client company and its rate card.
         </p>
       </div>
 
       <form
         action={formAction}
-        className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6"
+        className="card space-y-4 p-6"
       >
         {state.error && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -39,7 +39,7 @@ export default function NewClientPage() {
           <input
             name="name"
             required
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </Field>
 
@@ -47,20 +47,20 @@ export default function NewClientPage() {
           <Field label="Contact person">
             <input
               name="contactPerson"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Contact email">
             <input
               name="contactEmail"
               type="email"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Contact phone">
             <input
               name="contactPhone"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Status">
@@ -93,7 +93,7 @@ export default function NewClientPage() {
                 name="billingRate"
                 type="number"
                 step="0.01"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
           )}
@@ -101,14 +101,14 @@ export default function NewClientPage() {
             <input
               name="contractStart"
               type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
           <Field label="Contract end">
             <input
               name="contractEnd"
               type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full"
             />
           </Field>
         </div>
@@ -116,7 +116,7 @@ export default function NewClientPage() {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+          className="btn btn-primary"
         >
           {pending ? "Saving…" : "Add Client"}
         </button>
@@ -128,7 +128,7 @@ export default function NewClientPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">
+      <span className="mb-1 block text-xs font-medium text-muted">
         {label}
       </span>
       {children}

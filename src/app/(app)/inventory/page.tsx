@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { Package } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NewItemForm } from "./new-item-form";
@@ -28,10 +30,10 @@ export default async function InventoryPage() {
   }));
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Inventory</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Inventory</h1>
+        <p className="mt-1 text-sm text-muted">
           Tools and equipment issued to project sites.
         </p>
       </div>
@@ -39,9 +41,11 @@ export default async function InventoryPage() {
       <NewItemForm />
 
       {rows.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
-          No inventory items yet. Add one above.
-        </p>
+        <EmptyState
+          icon={Package}
+          title="No inventory items yet"
+          description="Track tools, PPE and equipment here. Add an item above to record stock levels and assign units to employees."
+        />
       ) : (
         <InventoryList items={rows} />
       )}

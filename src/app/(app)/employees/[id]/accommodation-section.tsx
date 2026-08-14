@@ -27,14 +27,14 @@ export function AccommodationSection({
   const bedsInCamp = vacantBeds.filter((b) => b.campName === camp);
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-2 text-sm font-semibold text-slate-900">
+    <div className="card p-5">
+      <h2 className="mb-2 text-sm font-semibold text-primary">
         Accommodation
       </h2>
       {currentBed ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">
-            <span className="font-medium text-slate-900">
+          <p className="text-sm text-secondary">
+            <span className="font-medium text-primary">
               {currentBed.campName} · {currentBed.roomName} · {currentBed.label}
             </span>
           </p>
@@ -46,7 +46,7 @@ export function AccommodationSection({
           />
         </div>
       ) : vacantBeds.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted">
           Not housed yet, and no vacant beds available right now.
         </p>
       ) : (
@@ -59,7 +59,7 @@ export function AccommodationSection({
         >
           <input type="hidden" name="employeeId" value={employeeId} />
           <label className="block min-w-[200px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Camp
             </span>
             <Select
@@ -73,7 +73,7 @@ export function AccommodationSection({
             />
           </label>
           <label className="block min-w-[240px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-slate-500">
+            <span className="mb-1 block text-xs font-medium text-muted">
               Bed
             </span>
             <Select
@@ -88,7 +88,7 @@ export function AccommodationSection({
           <button
             type="submit"
             disabled={!selected}
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+            className="btn btn-primary"
           >
             Assign
           </button>

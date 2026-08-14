@@ -68,7 +68,7 @@ export function Combobox({
           required={required}
           autoComplete="off"
           className={cn(
-            "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[var(--brand-primary)] disabled:cursor-not-allowed disabled:bg-slate-50",
+            "input w-full",
             className
           )}
         />
@@ -78,12 +78,12 @@ export function Combobox({
           align="start"
           sideOffset={4}
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+          className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border border-default bg-surface shadow-lg"
         >
           <Command shouldFilter={false}>
             <CommandList className="max-h-56 overflow-y-auto p-1">
               {filtered.length === 0 && (
-                <CommandEmpty className="px-3 py-4 text-center text-sm text-slate-500">
+                <CommandEmpty className="px-3 py-4 text-center text-sm text-muted">
                   {emptyText}
                 </CommandEmpty>
               )}
@@ -98,11 +98,11 @@ export function Combobox({
                       onSelectOption?.(o);
                       setOpen(false);
                     }}
-                    className="flex cursor-pointer flex-col items-start rounded-md px-2.5 py-2 text-sm text-slate-700 outline-none data-[selected=true]:bg-slate-100"
+                    className="flex cursor-pointer flex-col items-start rounded-md px-2.5 py-2 text-sm text-secondary outline-none data-[selected=true]:bg-surface-hover"
                   >
                     <span className="truncate">{o.label}</span>
                     {o.description && (
-                      <span className="text-xs text-slate-400">{o.description}</span>
+                      <span className="text-xs text-subtle">{o.description}</span>
                     )}
                   </CommandItem>
                 ))}

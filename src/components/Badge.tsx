@@ -1,10 +1,16 @@
+import { cn } from "@/lib/cn";
+
+// Soft fill + matching text, with a hairline border so badges keep their shape
+// against both white cards and tinted table rows.
 const COLORS = {
-  green: "bg-emerald-50 text-emerald-700",
-  amber: "bg-amber-50 text-amber-700",
-  red: "bg-red-50 text-red-700",
-  slate: "bg-slate-100 text-slate-600",
-  blue: "bg-blue-50 text-blue-700",
-  navy: "bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]",
+  green:
+    "bg-[var(--success-soft)] text-[var(--success)] ring-1 ring-[var(--success-border)]",
+  amber:
+    "bg-[var(--warning-soft)] text-[var(--warning)] ring-1 ring-[var(--warning-border)]",
+  red: "bg-[var(--error-soft)] text-[var(--error)] ring-1 ring-[var(--error-border)]",
+  blue: "bg-[var(--info-soft)] text-[var(--info)] ring-1 ring-[var(--info-border)]",
+  slate: "bg-surface-sunken text-secondary ring-1 ring-[var(--border)]",
+  navy: "bg-brand-soft text-[var(--brand-primary)] ring-1 ring-[var(--brand-primary-border)]",
 } as const;
 
 export type BadgeColor = keyof typeof COLORS;
@@ -12,14 +18,26 @@ export type BadgeColor = keyof typeof COLORS;
 export function Badge({
   children,
   color = "slate",
+  /** Leading status dot — useful when the same column carries several states. */
+  dot = false,
+  className,
 }: {
   children: React.ReactNode;
   color?: BadgeColor;
+  dot?: boolean;
+  className?: string;
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${COLORS[color]}`}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium whitespace-nowrap",
+        COLORS[color],
+        className
+      )}
     >
+      {dot && (
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+      )}
       {children}
     </span>
   );

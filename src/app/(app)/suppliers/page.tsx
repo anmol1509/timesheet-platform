@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { Truck } from "lucide-react";
+import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -40,10 +43,10 @@ export default async function SuppliersPage({
   }));
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Suppliers</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Suppliers</h1>
+        <p className="mt-1 text-sm text-muted">
           Manage the manpower suppliers/subcontractors referenced across
           timesheets and employees.
         </p>
@@ -64,42 +67,48 @@ export default async function SuppliersPage({
 
       <form
         action={createSupplierAction}
-        className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+        className="card flex flex-wrap items-end gap-3 p-4"
       >
         <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Supplier name
           </span>
           <input
             name="name"
             required
             placeholder="e.g. Top Peak"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <label className="block flex-1 min-w-[220px]">
-          <span className="mb-1 block text-xs font-medium text-slate-500">
+          <span className="mb-1 block text-xs font-medium text-muted">
             Full name (for letterhead)
           </span>
           <input
             name="fullName"
             placeholder="e.g. TOP PEAK GENERAL CONTRACTING"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+            className="input w-full"
           />
         </label>
         <button
           type="submit"
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+          className="btn btn-primary"
         >
           + Add Supplier
         </button>
       </form>
 
       {rows.length === 0 ? (
-        <p className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center text-sm text-slate-500">
-          No suppliers yet. Add one above, or upload a timesheet to create
-          them automatically.
-        </p>
+        <EmptyState
+          icon={Truck}
+          title="No suppliers yet"
+          description="Suppliers provide the manpower you deploy. Add one above to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
+          action={
+            <Link href="/upload" className="btn btn-secondary btn-sm">
+              Upload a timesheet
+            </Link>
+          }
+        />
       ) : (
         <SupplierList suppliers={rows} />
       )}

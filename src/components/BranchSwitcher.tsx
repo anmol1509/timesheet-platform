@@ -24,13 +24,16 @@ export function BranchSwitcher({
   }
 
   return (
-    <div className="flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1.5 text-sm text-slate-600">
-      <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
+    <div className="flex h-9 min-w-0 items-center gap-1.5 rounded-control border border-default bg-surface-subtle px-2 text-sm text-secondary transition hover:bg-surface-hover">
+      <Building2 className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
       <select
+        aria-label="Active branch"
         value={activeBranchId ?? "ALL"}
         onChange={(e) => onChange(e.target.value)}
         disabled={pending}
-        className="bg-transparent text-sm font-medium text-slate-700 outline-none disabled:opacity-60"
+        // Caps the control so a long branch name can't push the account menu
+        // off a narrow header.
+        className="min-w-0 max-w-28 cursor-pointer truncate bg-transparent text-xs font-medium text-secondary outline-none disabled:opacity-60 sm:max-w-40 sm:text-sm"
       >
         <option value="ALL">All branches</option>
         {branches.map((b) => (

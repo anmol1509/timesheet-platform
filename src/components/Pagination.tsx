@@ -21,31 +21,40 @@ export function Pagination({
   const end = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-      <p className="text-xs text-slate-500">
-        Showing {start}–{end} of {totalItems}
+    <nav
+      aria-label="Pagination"
+      className="flex items-center justify-between gap-3 border-t border-default bg-surface-subtle px-3 py-2"
+    >
+      <p className="text-xs text-muted">
+        <span className="tabular font-medium text-secondary">
+          {start}–{end}
+        </span>{" "}
+        of <span className="tabular">{totalItems}</span>
       </p>
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Previous page"
+          className="rounded-control border border-strong bg-surface p-1.5 text-muted shadow-xs transition hover:bg-surface-hover hover:text-primary disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <span className="px-2 text-xs text-slate-600">
-          Page {page} of {pageCount}
+        <span className="px-2 text-xs text-secondary" aria-current="page">
+          Page <span className="tabular font-medium">{page}</span> of{" "}
+          <span className="tabular">{pageCount}</span>
         </span>
         <button
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= pageCount}
-          className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Next page"
+          className="rounded-control border border-strong bg-surface p-1.5 text-muted shadow-xs transition hover:bg-surface-hover hover:text-primary disabled:pointer-events-none disabled:opacity-40"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
-    </div>
+    </nav>
   );
 }

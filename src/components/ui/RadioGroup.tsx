@@ -37,11 +37,11 @@ export function RadioGroup({
       {options.map((o) => (
         <label
           key={o.value}
-          className={cn("flex items-center gap-2 text-sm text-slate-600", itemClassName)}
+          className={cn("flex items-center gap-2 text-sm text-secondary", itemClassName)}
         >
           <RadioGroupPrimitive.Item
             value={o.value}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white outline-none transition data-[state=checked]:border-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-strong bg-surface outline-none transition data-[state=checked]:border-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RadioGroupPrimitive.Indicator className="h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
           </RadioGroupPrimitive.Item>
@@ -75,7 +75,7 @@ export function SegmentedControl({
       defaultValue={defaultValue}
       onValueChange={onChange}
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1",
+        "inline-flex items-center gap-1 rounded-lg border border-default bg-surface-subtle p-1",
         className
       )}
     >
@@ -83,7 +83,7 @@ export function SegmentedControl({
         <RadioGroupPrimitive.Item
           key={o.value}
           value={o.value}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-500 outline-none transition data-[state=checked]:bg-white data-[state=checked]:text-slate-900 data-[state=checked]:shadow-sm hover:text-slate-700"
+          className="rounded-md px-3 py-1.5 text-sm font-medium text-muted outline-none transition data-[state=checked]:bg-surface data-[state=checked]:text-primary data-[state=checked]:shadow-sm hover:text-secondary"
         >
           {o.label}
         </RadioGroupPrimitive.Item>

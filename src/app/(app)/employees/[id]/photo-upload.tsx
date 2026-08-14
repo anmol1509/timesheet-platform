@@ -43,7 +43,7 @@ export function PhotoUpload({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={pending}
-        className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100"
+        className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken"
         title="Click to upload photo"
       >
         {hasPhoto ? (
@@ -54,7 +54,7 @@ export function PhotoUpload({
             className="h-full w-full object-cover"
           />
         ) : (
-          <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500">
+          <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted">
             {initials || "?"}
           </span>
         )}

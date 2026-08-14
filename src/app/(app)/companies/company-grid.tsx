@@ -58,18 +58,18 @@ export function CompanyGrid({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search companies…"
-          className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+          className="input w-full max-w-xs"
         />
         <div className="flex shrink-0 items-center gap-2">
           <Checkbox
             checked={allSelected}
             onCheckedChange={() => toggleAll()}
-            label={<span className="text-xs font-medium text-slate-500">Select all</span>}
+            label={<span className="text-xs font-medium text-muted">Select all</span>}
           />
           <button
             type="button"
             onClick={exportCsv}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="btn btn-secondary flex gap-1.5 px-3"
           >
             <Download className="h-4 w-4" />
             {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
@@ -78,15 +78,17 @@ export function CompanyGrid({
       </div>
 
       {filtered.length === 0 && (
-        <p className="text-sm text-slate-500">No companies match &ldquo;{query}&rdquo;.</p>
+        <p className="text-sm text-muted">No companies match &ldquo;{query}&rdquo;.</p>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((c) => (
           <div
             key={c.id}
-            className={`relative flex flex-col rounded-3xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
-              selected.has(c.id) ? "border-[var(--brand-primary)]" : "border-slate-200 hover:border-slate-300"
+            className={`relative flex flex-col rounded-card border bg-surface p-5 transition hover:shadow-md ${
+              selected.has(c.id)
+                ? "border-brand ring-1 ring-[var(--brand-primary)]"
+                : "border-default hover:border-strong"
             }`}
           >
             <Checkbox
@@ -94,15 +96,15 @@ export function CompanyGrid({
               onCheckedChange={() => toggle(c.id)}
               className="absolute top-4 right-4"
             />
-            <h2 className="pr-8 text-base font-semibold text-slate-900">{c.name}</h2>
-            <p className="mt-1 text-xs text-slate-400">
+            <h2 className="pr-8 text-base font-semibold text-primary">{c.name}</h2>
+            <p className="mt-1 text-xs text-subtle">
               {c.fullName || "No letterhead name set"}
             </p>
-            <div className="mt-4 flex items-center gap-4 text-sm text-slate-600">
+            <div className="mt-4 flex items-center gap-4 text-sm text-secondary">
               <span>{c.employeeCount} employees</span>
               <span>{c.totalHours.toFixed(1)} hrs</span>
             </div>
-            <div className="mt-1 text-sm font-medium text-slate-900">
+            <div className="mt-1 text-sm font-medium text-primary">
               AED {c.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
             <Link
@@ -118,7 +120,7 @@ export function CompanyGrid({
         <button
           type="button"
           onClick={clear}
-          className="text-xs font-medium text-slate-500 hover:underline"
+          className="text-xs font-medium text-muted hover:underline"
         >
           Clear selection ({selected.size})
         </button>

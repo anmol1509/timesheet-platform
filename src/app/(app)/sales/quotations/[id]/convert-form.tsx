@@ -16,9 +16,9 @@ export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
   }
 
   return (
-    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-      <h2 className="mb-2 text-sm font-semibold text-slate-900">Convert to Project</h2>
-      <p className="mb-3 text-sm text-slate-600">
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+      <h2 className="mb-2 text-sm font-semibold text-primary">Convert to Project</h2>
+      <p className="mb-3 text-sm text-secondary">
         Creates a Project for this client and marks the quotation as converted.
       </p>
       <div className="mb-3">
@@ -32,7 +32,7 @@ export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
         type="button"
         disabled={pending}
         onClick={submit}
-        className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+        className="btn btn-primary"
       >
         {pending ? "Converting…" : "Convert to Project"}
       </button>

@@ -27,7 +27,7 @@ export function SponsorshipCompanyList({
       render: (c) => (
         <Link
           href={`/sponsorship-companies/${c.id}`}
-          className="font-medium text-slate-900 hover:underline"
+          className="font-medium text-primary hover:underline"
         >
           {c.name}
         </Link>

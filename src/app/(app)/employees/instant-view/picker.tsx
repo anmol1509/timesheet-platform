@@ -23,12 +23,12 @@ export function InstantViewPicker({
   const router = useRouter();
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">Instant View</h2>
+    <div className="card p-5">
+      <h2 className="mb-3 text-sm font-semibold text-primary">Instant View</h2>
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex gap-4">
           {CATEGORIES.map((c) => (
-            <label key={c.value} className="flex items-center gap-1.5 text-sm text-slate-700">
+            <label key={c.value} className="flex items-center gap-1.5 text-sm text-secondary">
               <input
                 type="radio"
                 name="category"
@@ -40,7 +40,7 @@ export function InstantViewPicker({
           ))}
         </div>
         <div className="min-w-[260px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-slate-500">Employee Selection</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Employee Selection</span>
           <Select
             value={employeeId}
             onChange={(v) =>
@@ -54,7 +54,7 @@ export function InstantViewPicker({
           <button
             type="button"
             onClick={() => window.print()}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 print:hidden"
+            className="btn btn-secondary print:hidden"
           >
             Print
           </button>

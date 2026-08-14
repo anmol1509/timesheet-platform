@@ -14,29 +14,29 @@ export default async function HistoryPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">History</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">History</h1>
+        <p className="mt-1 text-sm text-muted">
           Every timesheet generated, most recent first. Reopen a company&rsquo;s
           review screen to regenerate with the latest figures.
         </p>
       </div>
 
       {sheets.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="empty-state">
+          <p className="text-sm text-muted">
             Nothing generated yet.{" "}
-            <Link href="/companies" className="font-medium text-slate-900 underline">
+            <Link href="/companies" className="font-medium text-primary underline">
               Go to Companies
             </Link>{" "}
             to generate a sheet.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Month</th>
@@ -48,29 +48,29 @@ export default async function HistoryPage() {
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[var(--border)]">
               {sheets.map((s) => (
                 <tr key={s.id}>
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td className="px-4 py-3 font-medium text-primary">
                     {s.supplier.name}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">
                     {monthLabelFromKey(s.month)}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 uppercase">
+                  <td className="px-4 py-3 text-secondary uppercase">
                     {s.format}
                   </td>
-                  <td className="px-4 py-3 text-right text-slate-600">
+                  <td className="px-4 py-3 text-right text-secondary">
                     {s.gasDeduction.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{s.issuedTo}</td>
-                  <td className="px-4 py-3 text-slate-600">
+                  <td className="px-4 py-3 text-secondary">{s.issuedTo}</td>
+                  <td className="px-4 py-3 text-secondary">
                     {s.generatedBy.name}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
+                  <td className="px-4 py-3 text-muted">
                     {new Date(s.generatedAt).toLocaleString("en-GB", {
                       day: "2-digit",
                       month: "short",

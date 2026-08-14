@@ -184,7 +184,7 @@ export function EditForm({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+      <div className="mb-4 flex flex-wrap gap-1 border-b border-default">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -193,7 +193,7 @@ export function EditForm({
             className={`border-b-2 px-3 py-2 text-sm font-medium transition ${
               tab === t.id
                 ? "border-[var(--brand-primary)] text-[var(--brand-primary)]"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                : "border-transparent text-muted hover:text-primary"
             }`}
           >
             {t.label}
@@ -219,8 +219,8 @@ export function EditForm({
 
       <div className={tab === "overview" ? "space-y-8" : "hidden"}>
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Status</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Status</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Category">
               <Select
                 name="category"
@@ -256,7 +256,7 @@ export function EditForm({
                     <input
                       name="inactiveReasonCustom"
                       defaultValue={!knownReason ? employee.inactiveReason || "" : ""}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                      className="input w-full"
                     />
                   </Field>
                 )}
@@ -265,7 +265,7 @@ export function EditForm({
                     name="lastDemobilizedDate"
                     type="date"
                     defaultValue={toDateInput(employee.lastDemobilizedDate)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                    className="input w-full"
                   />
                 </Field>
               </>
@@ -274,10 +274,10 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Personal details
           </h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Supplier">
               <Select
                 name="supplierId"
@@ -304,7 +304,7 @@ export function EditForm({
                 type="date"
                 name="dateOfBirth"
                 defaultValue={toDateInput(employee.dateOfBirth)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Gender">
@@ -324,14 +324,14 @@ export function EditForm({
               <input
                 name="mobileNumber"
                 defaultValue={employee.mobileNumber || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="WhatsApp number">
               <input
                 name="whatsappNumber"
                 defaultValue={employee.whatsappNumber || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Join date">
@@ -339,21 +339,21 @@ export function EditForm({
                 type="date"
                 name="joinDate"
                 defaultValue={toDateInput(employee.joinDate)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Emergency contact name">
               <input
                 name="emergencyContactName"
                 defaultValue={employee.emergencyContactName || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Emergency contact phone">
               <input
                 name="emergencyContactPhone"
                 defaultValue={employee.emergencyContactPhone || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <LookupField label="Religion" name="religion" defaultValue={employee.religion} options={lookups.RELIGION} />
@@ -368,14 +368,14 @@ export function EditForm({
               <input
                 name="previousId"
                 defaultValue={employee.previousId || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Name in ID card">
               <input
                 name="nameInIdCard"
                 defaultValue={employee.nameInIdCard || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <div className="sm:col-span-2">
@@ -384,7 +384,7 @@ export function EditForm({
                   name="notes"
                   defaultValue={employee.notes || ""}
                   rows={3}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                  className="input w-full"
                 />
               </Field>
             </div>
@@ -394,14 +394,14 @@ export function EditForm({
 
       <div className={tab === "documents" ? "space-y-8" : "hidden"}>
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Passport</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Passport</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Passport number">
               <input
                 ref={passportNumberRef}
                 name="passportNumber"
                 defaultValue={employee.passportNumber || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <LookupField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} options={lookups.PASSPORT_STATUS} />
@@ -411,7 +411,7 @@ export function EditForm({
                 type="date"
                 name="passportExpiry"
                 defaultValue={toDateInput(employee.passportExpiry)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <DateField label="Release date" name="passportReleaseDate" defaultValue={employee.passportReleaseDate} />
@@ -427,14 +427,14 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Emirates ID</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Emirates ID</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Emirates ID number">
               <input
                 ref={emiratesIdRef}
                 name="emiratesId"
                 defaultValue={employee.emiratesId || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Emirates ID expiry date">
@@ -443,7 +443,7 @@ export function EditForm({
                 type="date"
                 name="emiratesIdExpiry"
                 defaultValue={toDateInput(employee.emiratesIdExpiry)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <LookupField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} options={lookups.EID_STATUS} />
@@ -459,14 +459,14 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Labour Card</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Labour Card</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Labor card number">
               <input
                 ref={laborCardNumberRef}
                 name="laborCardNumber"
                 defaultValue={employee.laborCardNumber || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="Personal No">
@@ -474,7 +474,7 @@ export function EditForm({
                 ref={laborCardPersonalNoRef}
                 name="laborCardPersonalNo"
                 defaultValue={employee.laborCardPersonalNo || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <LookupField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} options={lookups.LABOR_CARD_STATUS} />
@@ -484,7 +484,7 @@ export function EditForm({
                 type="date"
                 name="laborCardExpiry"
                 defaultValue={toDateInput(employee.laborCardExpiry)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <InlineDocumentUpload
@@ -498,8 +498,8 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Visa</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Visa</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="Visa number" name="visaNumber" defaultValue={employee.visaNumber} />
             <LookupField label="Visa type" name="visaType" defaultValue={employee.visaType} options={lookups.VISA_TYPE} />
             <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
@@ -518,14 +518,14 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Medical Certificate</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Medical Certificate</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Medical certificate expiry">
               <input
                 type="date"
                 name="medicalExpiry"
                 defaultValue={toDateInput(employee.medicalExpiry)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <LookupField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} options={lookups.MEDICAL_STATUS} />
@@ -539,10 +539,10 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
-            CICPA <span className="font-normal text-slate-400">(Abu Dhabi critical-infrastructure clearance)</span>
+          <h2 className="mb-3 text-sm font-semibold text-primary">
+            CICPA <span className="font-normal text-subtle">(Abu Dhabi critical-infrastructure clearance)</span>
           </h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="CICPA number" name="cicpaNumber" defaultValue={employee.cicpaNumber} />
             <LookupField label="CICPA status" name="cicpaStatus" defaultValue={employee.cicpaStatus} options={lookups.CICPA_STATUS} />
             <DateField label="Issue date" name="cicpaIssueDate" defaultValue={employee.cicpaIssueDate} />
@@ -558,8 +558,8 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Insurance</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Insurance</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <LookupField label="Card type" name="insuranceCardType" defaultValue={employee.insuranceCardType} options={lookups.INSURANCE_CARD_TYPE} />
             <TextField label="Card number" name="insuranceCardNumber" defaultValue={employee.insuranceCardNumber} />
             <DateField label="Issue date" name="insuranceIssueDate" defaultValue={employee.insuranceIssueDate} />
@@ -576,8 +576,8 @@ export function EditForm({
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Driving Licence</h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Driving Licence</h2>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="Licence number" name="drivingLicenceNumber" defaultValue={employee.drivingLicenceNumber} />
             <LookupField label="Licence type" name="drivingLicenceType" defaultValue={employee.drivingLicenceType} options={lookups.DRIVING_LICENCE_TYPE} />
             <DateField label="Issue date" name="drivingLicenceIssueDate" defaultValue={employee.drivingLicenceIssueDate} />
@@ -595,22 +595,22 @@ export function EditForm({
 
       <div className={tab === "payroll" ? "space-y-8" : "hidden"}>
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Payroll & WPS
           </h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="WPS bank / exchange house name">
               <input
                 name="wpsBankName"
                 defaultValue={employee.wpsBankName || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <Field label="WPS IBAN">
               <input
                 name="wpsIban"
                 defaultValue={employee.wpsIban || ""}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                className="input w-full"
               />
             </Field>
             <TextField label="Payment mode" name="wpsPaymentMode" defaultValue={employee.wpsPaymentMode} />
@@ -623,10 +623,10 @@ export function EditForm({
 
       <div className={tab === "project" ? "space-y-8" : "hidden"}>
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-primary">
             Project & salary
           </h2>
-          <div className="grid grid-cols-1 gap-4 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Project assignment">
               <Select
                 name="projectId"
@@ -682,7 +682,7 @@ export function EditForm({
                   step="0.01"
                   name="salaryRate"
                   defaultValue={employee.salaryRate ?? ""}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]"
+                  className="input w-full"
                 />
               </Field>
             )}
@@ -695,7 +695,7 @@ export function EditForm({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+            className="btn btn-primary"
           >
             {pending ? "Saving…" : "Save changes"}
           </button>
@@ -717,7 +717,7 @@ export function EditForm({
 }
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]";
+  "w-full rounded-lg border border-strong px-3 py-2 text-sm outline-none focus:border-[var(--brand-primary)]";
 
 // Thin wrappers around Field for the many single-line text/date inputs
 // added in the legal-document sections below, to avoid repeating the same
@@ -788,7 +788,7 @@ function DateField({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500">
+      <span className="mb-1 block text-xs font-medium text-muted">
         {label}
       </span>
       {children}

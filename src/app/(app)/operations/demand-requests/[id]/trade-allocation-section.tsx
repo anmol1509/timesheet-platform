@@ -36,24 +36,24 @@ export function TradeAllocationSection({
   }
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4">
+    <div className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <span className="font-medium text-slate-900">{trade.trade}</span>
-          <span className="ml-2 text-xs text-slate-500">
+          <span className="font-medium text-primary">{trade.trade}</span>
+          <span className="ml-2 text-xs text-muted">
             {trade.shift ? `${trade.shift} shift` : "No shift set"}
             {trade.rate != null ? ` · AED ${trade.rate}` : ""}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-slate-600">
+          <span className="text-xs font-medium text-secondary">
             {trade.allocations.length} / {trade.quantity} allocated
           </span>
           <button
             type="button"
             onClick={() => setShowAllocate(true)}
             disabled={remaining === 0}
-            className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn btn-primary btn-sm"
           >
             Allocate
           </button>
@@ -65,7 +65,7 @@ export function TradeAllocationSection({
           {trade.allocations.map((a) => (
             <li key={a.id} className="flex items-center justify-between text-sm">
               <span>
-                {a.employeeName} <span className="text-slate-400">{a.employeeIdNo}</span>
+                {a.employeeName} <span className="text-subtle">{a.employeeIdNo}</span>
               </span>
               <button
                 type="button"
@@ -111,7 +111,7 @@ function AllocateModal({
         description={`Select up to ${remaining} idle employee${remaining === 1 ? "" : "s"}. Employees matching this trade are listed first.`}
       >
         {idleEmployees.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">No idle employees available.</p>
+          <p className="mt-3 text-sm text-muted">No idle employees available.</p>
         ) : (
           <AllocateForm key={trade.id} trade={trade} remaining={remaining} idleEmployees={idleEmployees} onClose={onClose} />
         )}
@@ -170,7 +170,7 @@ function AllocateForm({
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+      <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-default p-2">
         {sorted.map((e) => {
           const disabled = !selected.has(e.id) && selected.size >= remaining;
           const matches = e.trade === trade.trade;
@@ -178,7 +178,7 @@ function AllocateForm({
             <label
               key={e.id}
               className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-slate-50"
+                disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-surface-hover"
               }`}
               onClick={(ev) => {
                 ev.preventDefault();
@@ -188,7 +188,7 @@ function AllocateForm({
               <Checkbox checked={selected.has(e.id)} />
               <span className="flex-1 truncate">
                 {e.name} ({e.employeeIdNo})
-                {e.trade && <span className="text-slate-400"> — {e.trade}</span>}
+                {e.trade && <span className="text-subtle"> — {e.trade}</span>}
               </span>
               {matches && (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
@@ -204,7 +204,7 @@ function AllocateForm({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="btn btn-secondary"
         >
           Cancel
         </button>
@@ -212,7 +212,7 @@ function AllocateForm({
           type="button"
           onClick={handleSubmit}
           disabled={selected.size === 0 || pending}
-          className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-50"
+          className="btn btn-primary"
         >
           {pending ? "Allocating…" : `Allocate ${selected.size}`}
         </button>

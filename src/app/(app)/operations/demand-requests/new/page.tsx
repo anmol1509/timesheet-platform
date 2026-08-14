@@ -23,8 +23,8 @@ export default async function NewDemandRequestPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">New Demand Request</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl tracking-tight text-primary font-semibold">New Demand Request</h1>
+        <p className="mt-1 text-sm text-muted">
           Request staffing for a client project, broken down by trade.
         </p>
       </div>

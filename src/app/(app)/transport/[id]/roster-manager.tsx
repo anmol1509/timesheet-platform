@@ -72,18 +72,18 @@ export function RosterManager({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-slate-900">
+      <h2 className="mb-3 text-sm font-semibold text-primary">
         Roster ({roster.length})
       </h2>
-      <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="card space-y-4 p-5">
         {roster.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+          <p className="rounded-lg border border-dashed border-strong px-4 py-6 text-center text-sm text-muted">
             No employees assigned yet. Pick from the list below.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="overflow-hidden rounded-lg border border-default">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
                   <th className="px-4 py-2.5">Employee</th>
                   <th className="px-4 py-2.5">ID No</th>
@@ -93,16 +93,16 @@ export function RosterManager({
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {roster.map((e) => (
                   <tr key={e.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                    <td className="px-4 py-3 font-medium text-primary">
                       <Link href={`/employees/${e.id}`}>{e.name}</Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-500">{e.employeeIdNo}</td>
-                    <td className="px-4 py-3 text-slate-600">{e.trade || "—"}</td>
-                    <td className="px-4 py-3 text-slate-600">{e.projectName || "—"}</td>
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="px-4 py-3 text-muted">{e.employeeIdNo}</td>
+                    <td className="px-4 py-3 text-secondary">{e.trade || "—"}</td>
+                    <td className="px-4 py-3 text-secondary">{e.projectName || "—"}</td>
+                    <td className="px-4 py-3 text-muted">
                       {e.skills.length > 0 ? e.skills.join(", ") : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -122,20 +122,20 @@ export function RosterManager({
 
         <div>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+            <h3 className="text-xs font-semibold tracking-wide text-subtle uppercase">
               Add employees ({available.length} available)
             </h3>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, ID, trade, or project…"
-              className="w-full max-w-xs rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-[var(--brand-primary)]"
+              className="input w-full max-w-xs py-1.5"
             />
           </div>
 
-          <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200">
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-default">
             {available.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-slate-500">
+              <p className="px-3 py-4 text-sm text-muted">
                 {query ? `No matches for “${query}”.` : "Everyone is already on this roster."}
               </p>
             ) : (
@@ -143,16 +143,16 @@ export function RosterManager({
                 <div
                   key={e.id}
                   onClick={() => toggle(e.id)}
-                  className="flex cursor-pointer items-center gap-2.5 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0 hover:bg-slate-50"
+                  className="flex cursor-pointer items-center gap-2.5 border-b border-default px-3 py-2 text-sm last:border-b-0 hover:bg-surface-hover"
                 >
                   <Checkbox checked={selected.has(e.id)} />
                   <span className="min-w-0 flex-1">
-                    <span className="font-medium text-slate-900">{e.name}</span>{" "}
-                    <span className="text-slate-400">
+                    <span className="font-medium text-primary">{e.name}</span>{" "}
+                    <span className="text-subtle">
                       {e.employeeIdNo}
                       {e.trade ? ` · ${e.trade}` : ""}
                     </span>
-                    <span className="block truncate text-xs text-slate-500">
+                    <span className="block truncate text-xs text-muted">
                       {e.projectName ? `Project: ${e.projectName}` : "No project"}
                       {e.skills.length > 0 ? ` · Skills: ${e.skills.join(", ")}` : ""}
                     </span>
@@ -175,13 +175,13 @@ export function RosterManager({
                 return (
                   <span
                     key={id}
-                    className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-700"
+                    className="flex items-center gap-1 rounded-full bg-surface-sunken px-2.5 py-1 text-xs text-secondary"
                   >
                     {emp.name}
                     <button
                       type="button"
                       onClick={() => toggle(id)}
-                      className="text-slate-400 hover:text-slate-700"
+                      className="text-subtle hover:text-secondary"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -192,7 +192,7 @@ export function RosterManager({
                 type="button"
                 disabled={pending}
                 onClick={assignSelected}
-                className="rounded-lg bg-[var(--brand-primary)] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
+                className="btn btn-primary btn-sm"
               >
                 {pending ? "Assigning…" : `Assign ${selected.size} to roster`}
               </button>

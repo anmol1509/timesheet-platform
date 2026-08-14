@@ -22,11 +22,11 @@ export function InlineEditRow({
   if (!editing) {
     return (
       <div className="flex items-center gap-2">
-        <span>{value || <span className="text-slate-400">—</span>}</span>
+        <span>{value || <span className="text-subtle">—</span>}</span>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-xs font-medium text-slate-400 hover:text-slate-700 hover:underline"
+          className="text-xs font-medium text-subtle hover:text-secondary hover:underline"
         >
           Edit
         </button>
@@ -53,7 +53,7 @@ export function InlineEditRow({
         onChange={(e) => setDraft(e.target.value)}
         placeholder={placeholder}
         autoFocus
-        className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-[var(--brand-primary)]"
+        className="input px-2 py-1"
       />
       <button
         type="submit"
@@ -68,7 +68,7 @@ export function InlineEditRow({
           setEditing(false);
           setDraft(value);
         }}
-        className="text-xs font-medium text-slate-400 hover:underline"
+        className="text-xs font-medium text-subtle hover:underline"
       >
         Cancel
       </button>

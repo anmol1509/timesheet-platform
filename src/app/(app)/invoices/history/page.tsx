@@ -33,28 +33,28 @@ export default async function InvoiceHistoryPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Invoice history</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">Invoice history</h1>
+          <p className="mt-1 text-sm text-muted">
             Every client invoice issued, most recent first.
           </p>
         </div>
         <Link
           href="/invoices/history?status=outstanding"
-          className="block rounded-3xl border border-slate-200 bg-white px-5 py-3 transition hover:border-slate-300 hover:shadow-md"
+          className="card block px-5 py-3 transition hover:border-strong hover:shadow-md"
         >
-          <p className="text-xs font-medium text-slate-500">Outstanding (AED)</p>
-          <p className="text-lg font-semibold text-slate-900">{fmt(outstanding)}</p>
+          <p className="text-xs font-medium text-muted">Outstanding (AED)</p>
+          <p className="text-lg font-semibold text-primary">{fmt(outstanding)}</p>
         </Link>
       </div>
 
       {invoices.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="empty-state">
+          <p className="text-sm text-muted">
             Nothing issued yet.{" "}
-            <Link href="/invoices" className="font-medium text-slate-900 underline">
+            <Link href="/invoices" className="font-medium text-primary underline">
               Go to Invoices
             </Link>{" "}
             to generate one.

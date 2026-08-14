@@ -53,24 +53,24 @@ export default async function ClientTimesheetPage({
       : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Client Timesheet</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-xl tracking-tight text-primary font-semibold">Client Timesheet</h1>
+          <p className="mt-1 text-sm text-muted">
             Review and edit a month&rsquo;s day-by-day hours before invoicing.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/invoices/client-timesheet/daily"
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="btn btn-secondary"
           >
             Daily Entry
           </Link>
           <Link
             href="/invoices/client-timesheet/new"
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[var(--brand-primary-hover)]"
+            className="btn btn-primary"
           >
             + New Entry
           </Link>
@@ -78,13 +78,13 @@ export default async function ClientTimesheetPage({
       </div>
 
       {months.length > 0 && (
-        <form className="flex flex-wrap items-end gap-3 rounded-3xl border border-slate-200 bg-white p-4">
+        <form className="card flex flex-wrap items-end gap-3 p-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Month</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Month</span>
             <select
               name="month"
               defaultValue={selectedMonth}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+              className="input"
             >
               {months.map((m) => (
                 <option key={m} value={m}>
@@ -94,11 +94,11 @@ export default async function ClientTimesheetPage({
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Client</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Client</span>
             <select
               name="clientId"
               defaultValue={selectedClientId}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[var(--brand-primary)]"
+              className="input"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -109,7 +109,7 @@ export default async function ClientTimesheetPage({
           </label>
           <button
             type="submit"
-            className="rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white"
+            className="btn btn-primary"
           >
             Go
           </button>
@@ -117,8 +117,8 @@ export default async function ClientTimesheetPage({
       )}
 
       {entries.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="empty-state">
+          <p className="text-sm text-muted">
             No billable timesheet entries for this client/month.
           </p>
         </div>

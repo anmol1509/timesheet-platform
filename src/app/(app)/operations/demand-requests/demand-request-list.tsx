@@ -27,7 +27,7 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
       key: "requestNo",
       header: "Request No",
       render: (r) => (
-        <Link href={`/operations/demand-requests/${r.id}`} className="font-medium text-slate-900 hover:underline">
+        <Link href={`/operations/demand-requests/${r.id}`} className="font-medium text-primary hover:underline">
           {r.requestNo}
         </Link>
       ),

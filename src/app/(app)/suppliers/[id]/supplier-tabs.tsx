@@ -11,7 +11,7 @@ export function SupplierTabs({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+      <div className="mb-4 flex flex-wrap gap-1 border-b border-default">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -20,7 +20,7 @@ export function SupplierTabs({
             className={`border-b-2 px-3 py-2 text-sm font-medium transition ${
               active === t.id
                 ? "border-[var(--brand-primary)] text-[var(--brand-primary)]"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                : "border-transparent text-muted hover:text-primary"
             }`}
           >
             {t.label}

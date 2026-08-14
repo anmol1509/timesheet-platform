@@ -7,7 +7,7 @@ export function WorkforcePie({ onWork, bench }: { onWork: number; bench: number 
   const total = onWork + bench;
 
   if (total === 0) {
-    return <p className="text-sm text-slate-500">No employees on record yet.</p>;
+    return <p className="text-sm text-muted">No employees on record yet.</p>;
   }
 
   const RADIUS = 60;
@@ -53,8 +53,8 @@ export function WorkforcePie({ onWork, bench }: { onWork: number; bench: number 
           )}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-3xl font-semibold text-slate-900">{pct}%</p>
-          <p className="text-xs text-slate-500">On work</p>
+          <p className="text-3xl font-semibold text-primary">{pct}%</p>
+          <p className="text-xs text-muted">On work</p>
         </div>
       </div>
       <div className="space-y-3 text-sm">
@@ -64,8 +64,8 @@ export function WorkforcePie({ onWork, bench }: { onWork: number; bench: number 
           className="flex items-center gap-2 hover:underline"
         >
           <span className="h-3 w-3 shrink-0 rounded-full bg-[#2563eb]" />
-          <span className="font-medium text-slate-900">{onWork}</span>
-          <span className="text-slate-500">on work</span>
+          <span className="font-medium text-primary">{onWork}</span>
+          <span className="text-muted">on work</span>
         </button>
         <button
           type="button"
@@ -73,8 +73,8 @@ export function WorkforcePie({ onWork, bench }: { onWork: number; bench: number 
           className="flex items-center gap-2 hover:underline"
         >
           <span className="h-3 w-3 shrink-0 rounded-full bg-amber-500" />
-          <span className="font-medium text-slate-900">{bench}</span>
-          <span className="text-slate-500">on bench</span>
+          <span className="font-medium text-primary">{bench}</span>
+          <span className="text-muted">on bench</span>
         </button>
       </div>
     </div>

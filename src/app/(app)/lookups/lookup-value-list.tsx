@@ -18,19 +18,19 @@ export function LookupValueList({ values }: { values: Row[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+    <div className="card overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs font-medium tracking-wide text-slate-500 uppercase">
+        <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
           <tr>
             <th className="px-4 py-3">Value</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-[var(--border)]">
           {values.map((v) => (
             <tr key={v.id}>
-              <td className="px-4 py-3 text-slate-900">{v.value}</td>
+              <td className="px-4 py-3 text-primary">{v.value}</td>
               <td className="px-4 py-3">
                 <Badge color={v.isActive ? "green" : "slate"}>
                   {v.isActive ? "Active" : "Inactive"}
