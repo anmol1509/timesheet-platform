@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { passwordlessLoginEnabled } from "@/lib/devLogin";
 import { LoginForm } from "./login-form";
 
 // The root layout's title template already appends "• Burj Al Aweer ERP",
@@ -42,7 +41,7 @@ export default async function LoginPage() {
           </p>
 
           <div className="mt-8">
-            <LoginForm allowPasswordless={passwordlessLoginEnabled()} />
+            <LoginForm />
           </div>
 
           <p className="mt-10 text-xs text-subtle">
