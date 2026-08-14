@@ -73,10 +73,17 @@ export async function createEmployeeAction(
     name,
     branchId,
     category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+    // Supplier and sponsorship are interrelated but distinct: the supplier
+    // employs the worker, the sponsorship company holds the visa. Supplier was
+    // previously only settable from the edit form, never at creation.
+    supplierId: stringOrNull(formData.get("supplierId")),
     sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
     nationality: stringOrNull(formData.get("nationality")),
     position: stringOrNull(formData.get("position")),
     trade: stringOrNull(formData.get("position")),
+    gender: stringOrNull(formData.get("gender")),
+    mobileNumber: stringOrNull(formData.get("mobileNumber")),
+    joinDate: dateOrNull(formData.get("joinDate")),
     passportNumber: stringOrNull(formData.get("passportNumber")),
     emiratesId: stringOrNull(formData.get("emiratesId")),
     dateOfBirth: dateOrNull(formData.get("dateOfBirth")),

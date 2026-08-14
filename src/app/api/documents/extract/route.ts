@@ -76,6 +76,52 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
   },
 };
 
+// A single upload is very often one PDF holding the passport page, the
+// Emirates ID, the labour card and a photo together — which is how these
+// packets actually arrive. This reads every document present in one pass
+// rather than making the user split the file and upload it four times.
+const COMBINED_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    name: { type: ["string", "null"], description: "Full name, preferring the passport spelling" },
+    dateOfBirth: { type: ["string", "null"], description: "ISO 8601 date, e.g. 1990-05-14" },
+    nationality: { type: ["string", "null"] },
+    gender: { type: ["string", "null"], description: "MALE or FEMALE" },
+    passportNumber: { type: ["string", "null"] },
+    passportExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
+    emiratesId: { type: ["string", "null"], description: "15-digit UAE Emirates ID, digits and hyphens as printed" },
+    emiratesIdExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
+    laborCardNumber: { type: ["string", "null"], description: "MOHRE work permit number" },
+    laborCardPersonalNo: { type: ["string", "null"], description: "MOHRE personal number" },
+    laborCardExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
+    position: { type: ["string", "null"], description: "Profession or job title as printed" },
+    documentsFound: {
+      type: "array" as const,
+      description: "Which document types were actually present",
+      items: { type: "string" as const },
+    },
+  },
+  required: [
+    "name",
+    "dateOfBirth",
+    "nationality",
+    "gender",
+    "passportNumber",
+    "passportExpiry",
+    "emiratesId",
+    "emiratesIdExpiry",
+    "laborCardNumber",
+    "laborCardPersonalNo",
+    "laborCardExpiry",
+    "position",
+    "documentsFound",
+  ],
+  additionalProperties: false,
+};
+
+const COMBINED_PROMPT =
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA or PHOTO. Use null for anything you cannot read with confidence — never guess.";
+
 export type ExtractedDocumentFields = {
   name?: string | null;
   passportNumber?: string | null;
@@ -87,6 +133,9 @@ export type ExtractedDocumentFields = {
   laborCardExpiry?: string | null;
   dateOfBirth?: string | null;
   nationality?: string | null;
+  gender?: string | null;
+  position?: string | null;
+  documentsFound?: string[];
 };
 
 export async function POST(request: Request) {
@@ -124,7 +173,10 @@ export async function POST(request: Request) {
   }
 
   const docType = String(formData.get("docType") || "");
-  const config = DOC_TYPE_CONFIG[docType] ?? { schema: GENERIC_SCHEMA, prompt: GENERIC_PROMPT };
+  const config =
+    docType === "COMBINED"
+      ? { schema: COMBINED_SCHEMA, prompt: COMBINED_PROMPT }
+      : (DOC_TYPE_CONFIG[docType] ?? { schema: GENERIC_SCHEMA, prompt: GENERIC_PROMPT });
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const data = bytes.toString("base64");
@@ -164,7 +216,35 @@ export async function POST(request: Request) {
     const parsed = JSON.parse(textBlock.text) as ExtractedDocumentFields;
     return NextResponse.json(parsed);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Extraction failed.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Map provider failures onto something a user can act on, and keep the raw
+    // SDK message in the server log rather than putting it on screen.
+    console.error("Document extraction failed:", e);
+    const status =
+      typeof e === "object" && e !== null && "status" in e
+        ? Number((e as { status: unknown }).status)
+        : 0;
+
+    if (status === 401 || status === 403) {
+      return NextResponse.json(
+        { error: "Document auto-fill is misconfigured — the API key was rejected." },
+        { status: 502 }
+      );
+    }
+    if (status === 429) {
+      return NextResponse.json(
+        { error: "Auto-fill is rate limited right now — try again in a moment." },
+        { status: 502 }
+      );
+    }
+    if (status === 413) {
+      return NextResponse.json(
+        { error: "That document is too large to read. Try a smaller or split file." },
+        { status: 502 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Couldn't read this document. Enter the details manually." },
+      { status: 502 }
+    );
   }
 }
