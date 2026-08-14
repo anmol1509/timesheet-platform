@@ -14,6 +14,8 @@
  * is used. Remove the env var (and ideally this file) before go-live.
  */
 export function passwordlessLoginEnabled(): boolean {
-  if (process.env.ALLOW_PASSWORDLESS_LOGIN === "1") return true;
+  // Tolerant of the usual ways a truthy env var gets typed into a dashboard.
+  const flag = process.env.ALLOW_PASSWORDLESS_LOGIN?.trim().toLowerCase();
+  if (flag && ["1", "true", "yes", "on"].includes(flag)) return true;
   return process.env.NODE_ENV !== "production";
 }
