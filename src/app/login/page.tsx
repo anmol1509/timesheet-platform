@@ -1,10 +1,13 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { passwordlessLoginEnabled } from "@/lib/devLogin";
 import { LoginForm } from "./login-form";
 
+// The root layout's title template already appends "• Burj Al Aweer ERP",
+// so this must carry the page name only.
 export const metadata = {
-  title: "Login • Burj Al Aweer",
+  title: "Login",
 };
 
 export default async function LoginPage() {
@@ -39,7 +42,7 @@ export default async function LoginPage() {
           </p>
 
           <div className="mt-8">
-            <LoginForm />
+            <LoginForm allowPasswordless={passwordlessLoginEnabled()} />
           </div>
 
           <p className="mt-10 text-xs text-subtle">
