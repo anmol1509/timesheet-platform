@@ -10,67 +10,75 @@ const SUPPORTED_IMAGE_TYPES = new Set([
   "image/webp",
 ]);
 
+// Every field below is a plain `string`, never `["string", "null"]`, and the
+// prompts ask for "" when a value can't be read. Structured output rejects a
+// schema with more than 16 union-typed parameters ("exponential compilation
+// cost"), and the combined schema quietly crossed that line at 18 fields —
+// which failed the whole extraction with a 400. Empty strings cost one union
+// each of zero, so the schema can keep growing. Callers already treat "" and
+// null alike, since both are falsy.
+
 const GENERIC_SCHEMA = {
   type: "object" as const,
   properties: {
-    name: { type: ["string", "null"], description: "Full name as printed on the document" },
-    passportNumber: { type: ["string", "null"] },
-    emiratesId: { type: ["string", "null"], description: "15-digit UAE Emirates ID number" },
-    dateOfBirth: { type: ["string", "null"], description: "ISO 8601 date, e.g. 1990-05-14" },
-    nationality: { type: ["string", "null"] },
+    name: { type: "string" as const, description: "Full name as printed on the document" },
+    passportNumber: { type: "string" as const },
+    emiratesId: { type: "string" as const, description: "15-digit UAE Emirates ID number" },
+    dateOfBirth: { type: "string" as const, description: "ISO 8601 date, e.g. 1990-05-14" },
+    nationality: { type: "string" as const },
   },
   required: ["name", "passportNumber", "emiratesId", "dateOfBirth", "nationality"],
   additionalProperties: false,
 };
 
 const GENERIC_PROMPT =
-  "This is an identity document (passport, Emirates ID, or visa page) for a construction-industry worker. Extract the full name, passport number, Emirates ID number, date of birth, and nationality exactly as printed. Use null for any field you cannot read with confidence — do not guess.";
+  "This is an identity document (passport, Emirates ID, or visa page) for a construction-industry worker. Extract the full name, passport number, Emirates ID number, date of birth, and nationality exactly as printed. Return an empty string for any field you cannot read with confidence — do not guess.";
 
 const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
   PASSPORT: {
     schema: {
       type: "object" as const,
       properties: {
-        name: { type: ["string", "null"], description: "Full name as printed on the passport" },
-        dateOfBirth: { type: ["string", "null"], description: "ISO 8601 date, e.g. 1990-05-14" },
-        nationality: { type: ["string", "null"] },
-        passportNumber: { type: ["string", "null"] },
-        passportExpiry: { type: ["string", "null"], description: "ISO 8601 date of expiry" },
+        name: { type: "string" as const, description: "Full name as printed on the passport" },
+        dateOfBirth: { type: "string" as const, description: "ISO 8601 date, e.g. 1990-05-14" },
+        nationality: { type: "string" as const },
+        passportNumber: { type: "string" as const },
+        passportExpiry: { type: "string" as const, description: "ISO 8601 date of expiry" },
       },
       required: ["name", "dateOfBirth", "nationality", "passportNumber", "passportExpiry"],
       additionalProperties: false,
     },
     prompt:
-      "This is a passport's bio-data page for a construction-industry worker. Extract the full name, date of birth, nationality, passport number, and passport expiry date exactly as printed. Use null for any field you cannot read with confidence — do not guess.",
+      "This is a passport's bio-data page for a construction-industry worker. Extract the full name, date of birth, nationality, passport number, and passport expiry date exactly as printed. Return an empty string for any field you cannot read with confidence — do not guess.",
   },
   EMIRATES_ID: {
     schema: {
       type: "object" as const,
       properties: {
-        name: { type: ["string", "null"], description: "Full name as printed on the Emirates ID" },
-        dateOfBirth: { type: ["string", "null"], description: "ISO 8601 date, e.g. 1990-05-14" },
-        nationality: { type: ["string", "null"] },
-        emiratesId: { type: ["string", "null"], description: "15-digit UAE Emirates ID number" },
-        emiratesIdExpiry: { type: ["string", "null"], description: "ISO 8601 date of expiry" },
+        name: { type: "string" as const, description: "Full name as printed on the Emirates ID" },
+        dateOfBirth: { type: "string" as const, description: "ISO 8601 date, e.g. 1990-05-14" },
+        nationality: { type: "string" as const },
+        emiratesId: { type: "string" as const, description: "15-digit UAE Emirates ID number" },
+        emiratesIdExpiry: { type: "string" as const, description: "ISO 8601 date of expiry" },
       },
       required: ["name", "dateOfBirth", "nationality", "emiratesId", "emiratesIdExpiry"],
       additionalProperties: false,
     },
     prompt:
-      "This is a UAE Emirates ID card for a construction-industry worker. Extract the full name, date of birth, nationality, the 15-digit Emirates ID number, and the card's expiry date exactly as printed. Use null for any field you cannot read with confidence — do not guess.",
+      "This is a UAE Emirates ID card for a construction-industry worker. Extract the full name, date of birth, nationality, the 15-digit Emirates ID number, and the card's expiry date exactly as printed. Return an empty string for any field you cannot read with confidence — do not guess.",
   },
   LABOR_CARD: {
     schema: {
       type: "object" as const,
       properties: {
-        name: { type: ["string", "null"], description: "Full name as printed on the labour card" },
-        laborCardNumber: { type: ["string", "null"] },
-        laborCardPersonalNo: { type: ["string", "null"], description: "MOHRE personal number" },
-        laborCardExpiry: { type: ["string", "null"], description: "ISO 8601 date of expiry" },
-        position: { type: ["string", "null"], description: "Profession as printed" },
-        nationality: { type: ["string", "null"] },
+        name: { type: "string" as const, description: "Full name as printed on the labour card" },
+        laborCardNumber: { type: "string" as const },
+        laborCardPersonalNo: { type: "string" as const, description: "MOHRE personal number" },
+        laborCardExpiry: { type: "string" as const, description: "ISO 8601 date of expiry" },
+        position: { type: "string" as const, description: "Profession as printed" },
+        nationality: { type: "string" as const },
         establishment: {
-          type: ["string", "null"],
+          type: "string" as const,
           description: "Employer/establishment name in English",
         },
       },
@@ -86,7 +94,7 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
       additionalProperties: false,
     },
     prompt:
-      "This is a UAE MOHRE labour card for a construction-industry worker. Extract the full name, the work permit number (labour card number), the personal number, the expiry date, the profession, the nationality, and the establishment/employer name — all in English, exactly as printed. Dates must be ISO 8601 (YYYY-MM-DD): convert formats like 19/Apr/2028 to 2028-04-19. Use null for any field you cannot read with confidence — do not guess.",
+      "This is a UAE MOHRE labour card for a construction-industry worker. Extract the full name, the work permit number (labour card number), the personal number, the expiry date, the profession, the nationality, and the establishment/employer name — all in English, exactly as printed. Dates must be ISO 8601 (YYYY-MM-DD): convert formats like 19/Apr/2028 to 2028-04-19. Return an empty string for any field you cannot read with confidence — do not guess.",
   },
   // The ICP "Registration ID Card Form" is the receipt for an Emirates ID
   // application — printed when residency is issued, before the card itself
@@ -97,23 +105,23 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
     schema: {
       type: "object" as const,
       properties: {
-        name: { type: ["string", "null"], description: "NAME, in English" },
-        dateOfBirth: { type: ["string", "null"], description: "DATE OF BIRTH as ISO 8601" },
-        nationality: { type: ["string", "null"], description: "NATIONALITY, in English" },
-        gender: { type: ["string", "null"], description: "MALE or FEMALE" },
-        mobileNumber: { type: ["string", "null"], description: "PHONE NO. as printed" },
+        name: { type: "string" as const, description: "NAME, in English" },
+        dateOfBirth: { type: "string" as const, description: "DATE OF BIRTH as ISO 8601" },
+        nationality: { type: "string" as const, description: "NATIONALITY, in English" },
+        gender: { type: "string" as const, description: "MALE or FEMALE" },
+        mobileNumber: { type: "string" as const, description: "PHONE NO. as printed" },
         emiratesId: {
-          type: ["string", "null"],
+          type: "string" as const,
           description:
-            "Only if a 15-digit Emirates ID number is actually printed; this form usually has none, so expect null",
+            "Only if a 15-digit Emirates ID number is actually printed; this form usually has none, so expect an empty string",
         },
         visaNumber: {
-          type: ["string", "null"],
+          type: "string" as const,
           description: "IDENTITY NUMBER — the residency file number, e.g. 301/2026/2/82612",
         },
-        unifiedNo: { type: ["string", "null"], description: "UNIFIED NO" },
+        unifiedNo: { type: "string" as const, description: "UNIFIED NO" },
         establishment: {
-          type: ["string", "null"],
+          type: "string" as const,
           description: "Establishment under 'Submitted By', in English",
         },
       },
@@ -131,7 +139,7 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
       additionalProperties: false,
     },
     prompt:
-      "This is a UAE ICP 'Registration ID Card Form' — the Emirates ID application receipt issued to a construction-industry worker once residency is granted, before the physical card is printed. Read the printed labels: NAME, DATE OF BIRTH, NATIONALITY, GENDER, PHONE NO., IDENTITY NUMBER (a residency file number such as 301/2026/2/82612 — return it in visaNumber), UNIFIED NO, and the establishment shown under 'Submitted By'. Dates must be ISO 8601 (YYYY-MM-DD): convert 28/06/1985 to 1985-06-28. This form does not print a 15-digit Emirates ID number, a passport number or a card expiry date — return null for emiratesId unless such a number genuinely appears. Use null for anything you cannot read with confidence — do not guess.",
+      "This is a UAE ICP 'Registration ID Card Form' — the Emirates ID application receipt issued to a construction-industry worker once residency is granted, before the physical card is printed. Read the printed labels: NAME, DATE OF BIRTH, NATIONALITY, GENDER, PHONE NO., IDENTITY NUMBER (a residency file number such as 301/2026/2/82612 — return it in visaNumber), UNIFIED NO, and the establishment shown under 'Submitted By'. Dates must be ISO 8601 (YYYY-MM-DD): convert 28/06/1985 to 1985-06-28. This form does not print a 15-digit Emirates ID number, a passport number or a card expiry date — return an empty string for emiratesId unless such a number genuinely appears. Return an empty string for anything you cannot read with confidence — do not guess.",
   },
 };
 
@@ -142,34 +150,34 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
 const COMBINED_SCHEMA = {
   type: "object" as const,
   properties: {
-    name: { type: ["string", "null"], description: "Full name, preferring the passport spelling" },
-    dateOfBirth: { type: ["string", "null"], description: "ISO 8601 date, e.g. 1990-05-14" },
-    nationality: { type: ["string", "null"] },
-    gender: { type: ["string", "null"], description: "MALE or FEMALE" },
-    passportNumber: { type: ["string", "null"] },
-    passportExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
-    emiratesId: { type: ["string", "null"], description: "15-digit UAE Emirates ID, digits and hyphens as printed" },
-    emiratesIdExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
-    laborCardNumber: { type: ["string", "null"], description: "MOHRE work permit number" },
-    laborCardPersonalNo: { type: ["string", "null"], description: "MOHRE personal number" },
-    laborCardExpiry: { type: ["string", "null"], description: "ISO 8601 date" },
-    position: { type: ["string", "null"], description: "Profession or job title as printed" },
+    name: { type: "string" as const, description: "Full name, preferring the passport spelling" },
+    dateOfBirth: { type: "string" as const, description: "ISO 8601 date, e.g. 1990-05-14" },
+    nationality: { type: "string" as const },
+    gender: { type: "string" as const, description: "MALE or FEMALE" },
+    passportNumber: { type: "string" as const },
+    passportExpiry: { type: "string" as const, description: "ISO 8601 date" },
+    emiratesId: { type: "string" as const, description: "15-digit UAE Emirates ID, digits and hyphens as printed" },
+    emiratesIdExpiry: { type: "string" as const, description: "ISO 8601 date" },
+    laborCardNumber: { type: "string" as const, description: "MOHRE work permit number" },
+    laborCardPersonalNo: { type: "string" as const, description: "MOHRE personal number" },
+    laborCardExpiry: { type: "string" as const, description: "ISO 8601 date" },
+    position: { type: "string" as const, description: "Profession or job title as printed" },
     establishment: {
-      type: ["string", "null"],
+      type: "string" as const,
       description: "Employer/establishment name on the labour card, in English",
     },
     visaNumber: {
-      type: ["string", "null"],
+      type: "string" as const,
       description:
         "Residence file number — the visa's file number, or IDENTITY NUMBER on an ICP registration form",
     },
-    visaExpiry: { type: ["string", "null"], description: "ISO 8601 residency/visa expiry date" },
+    visaExpiry: { type: "string" as const, description: "ISO 8601 residency/visa expiry date" },
     sponsorName: {
-      type: ["string", "null"],
+      type: "string" as const,
       description: "Sponsor named on the visa or residency issuance page, in English",
     },
-    unifiedNo: { type: ["string", "null"], description: "UNIFIED NO / U.I.D." },
-    mobileNumber: { type: ["string", "null"], description: "Phone number as printed" },
+    unifiedNo: { type: "string" as const, description: "UNIFIED NO / U.I.D." },
+    mobileNumber: { type: "string" as const, description: "Phone number as printed" },
     documentsFound: {
       type: "array" as const,
       description: "Which document types were actually present",
@@ -201,7 +209,7 @@ const COMBINED_SCHEMA = {
 };
 
 const COMBINED_PROMPT =
-  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. Use null for anything you cannot read with confidence — never guess.";
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. Return an empty string for anything you cannot read with confidence — never guess.";
 
 export type ExtractedDocumentFields = {
   name?: string | null;
