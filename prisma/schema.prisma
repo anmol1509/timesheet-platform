@@ -507,6 +507,10 @@ model Employee {
   accommodationType   String?
   previousId          String?
   nameInIdCard        String?
+  // Free-text background captured at registration: prior employer, why they
+  // left, anything the PRO wants on record. Distinct from `notes`, which is
+  // the general-purpose field on the Skills & notes step.
+  historyRemarks      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -135,6 +135,7 @@ export function MultiUploadSlot({
   accept = "image/*,application/pdf",
   onAdd,
   onRemove,
+  hint,
 }: {
   id: string;
   label: string;
@@ -143,6 +144,8 @@ export function MultiUploadSlot({
   accept?: string;
   onAdd: (files: File[]) => void;
   onRemove: (index: number) => void;
+  /** Overrides the document-pack wording for other multi-file slots. */
+  hint?: string;
 }) {
   return (
     <div>
@@ -190,8 +193,7 @@ export function MultiUploadSlot({
       />
 
       <p className="mt-1 text-xs text-subtle">
-        You can select several files at once — passport, Emirates ID and labour
-        card together.
+        {hint ?? "You can select several files at once — passport, Emirates ID and labour card together."}
       </p>
 
       {status.kind === "reading" && (

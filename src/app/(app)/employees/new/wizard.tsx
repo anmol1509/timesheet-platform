@@ -33,6 +33,7 @@ const STEPS = [
   { key: "expiry", label: "Numbers & expiry" },
   { key: "deployment", label: "Deployment" },
   { key: "extras", label: "Skills & notes" },
+  { key: "history", label: "History" },
   { key: "review", label: "Review" },
 ] as const;
 
@@ -97,6 +98,7 @@ type Fields = {
   notes: string;
   additionalDocType: string;
   additionalDocExpiry: string;
+  historyRemarks: string;
 };
 
 const EMPTY_FIELDS: Fields = {
@@ -129,6 +131,7 @@ const EMPTY_FIELDS: Fields = {
   notes: "",
   additionalDocType: "",
   additionalDocExpiry: "",
+  historyRemarks: "",
 };
 
 /** Checklist fields that live on the Identity step; the rest are on Numbers & expiry. */
@@ -181,6 +184,9 @@ export function EmployeeWizard({
   const [docFiles, setDocFiles] = useState<Partial<Record<DocSlot, File>>>({});
   const [docStatus, setDocStatus] = useState<Partial<Record<DocSlot, UploadStatus>>>({});
   const [photo, setPhoto] = useState<File | null>(null);
+  // Experience letters, previous contracts, service certificates — several
+  // files, none of which expire.
+  const [historyFiles, setHistoryFiles] = useState<File[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [found, setFound] = useState<string[]>([]);
@@ -204,6 +210,7 @@ export function EmployeeWizard({
   const hasWork =
     packFiles.length > 0 ||
     Object.keys(docFiles).length > 0 ||
+    historyFiles.length > 0 ||
     !!photo ||
     fields.name !== "" ||
     fields.employeeIdNo !== "";
@@ -575,14 +582,11 @@ export function EmployeeWizard({
       found.includes("RESIDENCY_ISSUANCE") || !!docFiles.RESIDENCY_ISSUANCE;
     if (hasResidency && !fields.emiratesId) body.set("eidStatus", "APPLIED");
     if (photo) body.set("photo", photo);
-    packFiles.forEach((file, i) => {
-      body.append("docFile_PACK", file);
-      // Label the first pack file with whatever the pack resolved to.
-      body.set(`packType_${i}`, i === 0 ? (found[0] ?? "OTHER") : "OTHER");
-    });
+    packFiles.forEach((file) => body.append("docFile_PACK", file));
     for (const [slot, file] of Object.entries(docFiles)) {
       if (file) body.set(`docFile_${slot}`, file);
     }
+    historyFiles.forEach((file) => body.append("docFile_HISTORY", file));
     startTransition(() => formAction(body));
   }
 
@@ -1245,6 +1249,43 @@ export function EmployeeWizard({
       )}
 
       {/* ---------------- Review ---------------- */}
+      {stepKey === "history" && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Where this worker has been before. Optional — nothing here blocks
+            registration.
+          </p>
+
+          <Field label="Previous employment & background">
+            <MultiUploadSlot
+              id="doc-history"
+              label="Experience letters, previous contracts, service certificates"
+              files={historyFiles}
+              status={{ kind: "idle" }}
+              onAdd={(picked) => setHistoryFiles((prev) => [...prev, ...picked])}
+              onRemove={(i) =>
+                setHistoryFiles((prev) => prev.filter((_, idx) => idx !== i))
+              }
+              hint="Add as many as you have — each is stored against the worker."
+            />
+            <p className="mt-1.5 text-xs text-subtle">
+              Filed under the worker&rsquo;s documents as History — not read
+              automatically, and no expiry tracked.
+            </p>
+          </Field>
+
+          <Field label="Remarks">
+            <textarea
+              value={fields.historyRemarks}
+              onChange={(e) => set("historyRemarks", e.target.value)}
+              rows={5}
+              placeholder="Prior employer, reason for leaving, re-hire notes, anything worth recording…"
+              className="input w-full"
+            />
+          </Field>
+        </div>
+      )}
+
       {stepKey === "review" && (
         <div className="space-y-4">
           <p className="text-sm text-muted">
@@ -1342,11 +1383,22 @@ export function EmployeeWizard({
                 />
               </div>
             </ReviewRow>
+
+            {fields.historyRemarks && (
+              <ReviewRow label="History remarks">
+                <p className="text-sm whitespace-pre-wrap text-secondary">
+                  {fields.historyRemarks}
+                </p>
+              </ReviewRow>
+            )}
           </div>
 
           <div className="card card-padded">
             <h3 className="text-sm font-semibold text-primary">Files to attach</h3>
-            {packFiles.length === 0 && Object.keys(docFiles).length === 0 && !photo ? (
+            {packFiles.length === 0 &&
+            Object.keys(docFiles).length === 0 &&
+            historyFiles.length === 0 &&
+            !photo ? (
               <p className="mt-2 text-sm text-subtle">No files attached.</p>
             ) : (
               <ul className="mt-2 space-y-1 text-sm text-secondary">
@@ -1358,6 +1410,9 @@ export function EmployeeWizard({
                   <li key={slot}>
                     {DOC_LABEL[slot] ?? slot} — {f.name}
                   </li>
+                ))}
+                {historyFiles.map((f, i) => (
+                  <li key={`history-${i}`}>History — {f.name}</li>
                 ))}
               </ul>
             )}

@@ -230,6 +230,7 @@ export async function createEmployeeAction(
     passportExpiry: dateOrNull(formData.get("passportExpiry")),
     emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
     notes: stringOrNull(formData.get("notes")),
+    historyRemarks: stringOrNull(formData.get("historyRemarks")),
     projectId,
     salaryType: stringOrNull(formData.get("salaryType")),
     salaryRate: numberOrNull(formData.get("salaryRate")),
@@ -276,6 +277,36 @@ export async function createEmployeeAction(
       entityId: doc.id,
       action: "CREATE",
       after: { employeeId: employee.id, type, filename: file.name, expiryDate },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  // Background paperwork from the History step: experience letters, previous
+  // contracts, service certificates. Several files, and no expiry to track —
+  // these are a record of where the worker has been, not something that lapses.
+  const historyFiles = formData.getAll("docFile_HISTORY");
+  for (const file of historyFiles) {
+    if (!(file instanceof File) || file.size === 0) continue;
+    if (file.size > MAX_UPLOAD_BYTES) continue;
+    if (!isAcceptedUploadType(file.type)) continue;
+    const doc = await prisma.document.create({
+      data: {
+        employeeId: employee.id,
+        type: "HISTORY",
+        filename: safeFilename(file.name),
+        fileData: Buffer.from(await file.arrayBuffer()),
+        mimeType: file.type || "application/octet-stream",
+        uploadedById: user.id,
+      },
+    });
+
+    await logAudit({
+      entityType: "DOCUMENT",
+      entityId: doc.id,
+      action: "CREATE",
+      after: { employeeId: employee.id, type: "HISTORY", filename: file.name },
       userId: user.id,
       userName: user.name,
       branchId,
