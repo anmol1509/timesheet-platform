@@ -29,6 +29,7 @@ import {
   BadgeDollarSign,
   FileQuestion,
   FileSignature,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -48,6 +49,7 @@ const NAV: Entry[] = [
     children: [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
+      { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
       { href: "/skills", label: "Skills", icon: Wrench },
       { href: "/documents", label: "Documents", icon: FileText },
     ],

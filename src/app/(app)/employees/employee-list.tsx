@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, UserPlus, Users, X } from "lucide-react";
+import { Check, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,8 @@ import { DataTable, type DataTableColumn } from "@/components/data-table/DataTab
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { bulkImportEmployeesAction } from "./[id]/actions";
 import { DeleteEmployeesButton } from "./delete-employees-button";
+import { DeactivateEmployeesButton } from "./deactivate-employees-button";
+import { cn } from "@/lib/cn";
 
 const PAGE_SIZE = 25;
 
@@ -83,9 +85,12 @@ const IMPORT_COLUMNS = [
 export function EmployeeList({
   employees,
   initialFilter,
+  registeredId,
 }: {
   employees: EmployeeRow[];
   initialFilter?: string;
+  /** Set right after a registration, to confirm it and point at the new row. */
+  registeredId?: string;
 }) {
   const router = useRouter();
   const validFilters: Filter[] = [
@@ -101,6 +106,10 @@ export function EmployeeList({
   const [filter, setFilter] = useState<Filter>(
     validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
   );
+
+  const registered = registeredId
+    ? employees.find((e) => e.id === registeredId)
+    : undefined;
 
   const rows = useMemo(() => {
     switch (filter) {
@@ -172,6 +181,8 @@ export function EmployeeList({
     },
     {
       key: "passportNumber",
+      // Blank for most of the roster today; still available from Columns.
+      defaultHidden: true,
       header: "Passport No",
       sortValue: (e) => e.passportNumber,
       csvValue: (e) => e.passportNumber,
@@ -184,6 +195,8 @@ export function EmployeeList({
     },
     {
       key: "emiratesId",
+      // Blank for most of the roster today; still available from Columns.
+      defaultHidden: true,
       header: "Emirates ID",
       sortValue: (e) => e.emiratesId,
       csvValue: (e) => e.emiratesId,
@@ -239,6 +252,22 @@ export function EmployeeList({
   const activeChip = CATEGORY_FILTER_LABEL[filter];
 
   return (
+    <>
+    {registered && (
+      <p className="mb-3 flex items-center gap-2 rounded-control border border-[var(--success-border)] bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">
+        <Check className="h-4 w-4 shrink-0" aria-hidden />
+        <span>
+          <span className="font-medium">{registered.name}</span> registered as{" "}
+          <span className="tabular">{registered.employeeIdNo}</span>.
+        </span>
+        <Link
+          href={`/employees/${registered.id}`}
+          className="ml-auto shrink-0 font-medium underline"
+        >
+          Open profile
+        </Link>
+      </p>
+    )}
     <DataTable
       rows={rows}
       columns={columns}
@@ -252,7 +281,12 @@ export function EmployeeList({
         columns: IMPORT_COLUMNS,
         importAction: bulkImportEmployeesAction,
       }}
-      getRowClassName={(e) => complianceRowClass(e.worstStatus)}
+      getRowClassName={(e) =>
+        cn(
+          complianceRowClass(e.worstStatus),
+          e.id === registeredId && "ring-2 ring-inset ring-[var(--success)]"
+        )
+      }
       renderRowActions={(e) => (
         <div className="flex items-center justify-end gap-3">
           <Link
@@ -265,12 +299,15 @@ export function EmployeeList({
         </div>
       )}
       renderBulkActions={(ids, clear) => (
-        <DeleteEmployeesButton
-          ids={ids}
-          label={`${ids.length} employee${ids.length === 1 ? "" : "s"}`}
-          variant="bulk"
-          onDone={clear}
-        />
+        <div className="flex items-center gap-2">
+          <DeactivateEmployeesButton ids={ids} onDone={clear} />
+          <DeleteEmployeesButton
+            ids={ids}
+            label={`${ids.length} employee${ids.length === 1 ? "" : "s"}`}
+            variant="bulk"
+            onDone={clear}
+          />
+        </div>
       )}
       toolbarExtra={
         <>
@@ -343,5 +380,6 @@ export function EmployeeList({
         />
       }
     />
+    </>
   );
 }

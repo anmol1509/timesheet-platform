@@ -286,7 +286,7 @@ export async function createEmployeeAction(
   // photos, labour card). Each is stored against the employee; the type is
   // whatever the client resolved it to, defaulting to OTHER.
   const packFiles = formData.getAll("docFile_PACK");
-  for (const [index, file] of packFiles.entries()) {
+  for (const file of packFiles) {
     if (!(file instanceof File) || file.size === 0) continue;
     if (file.size > MAX_UPLOAD_BYTES) continue;
     if (!isAcceptedUploadType(file.type)) continue;
@@ -360,6 +360,8 @@ export async function createEmployeeAction(
 
   revalidatePath("/employees");
   // Back to the roster rather than the new employee's own page — registering
-  // is usually one of a batch, so the list is where the next one starts.
-  redirect("/employees");
+  // is usually one of a batch, so the list is where the next one starts. The
+  // id rides along so the list can confirm the save and highlight the row;
+  // landing on 200+ unchanged rows otherwise gives no sign it worked.
+  redirect(`/employees?registered=${employee.id}`);
 }

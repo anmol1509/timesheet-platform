@@ -117,7 +117,10 @@ export function AppShell({
 
       <div
         className={cn(
-          "flex min-h-screen flex-1 flex-col transition-[padding] duration-200",
+          // `min-w-0` matters: without it this flex child refuses to shrink
+          // below its content's min-content width, so a wide table pushed the
+          // whole page sideways instead of scrolling inside its own card.
+          "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-200",
           collapsed ? "lg:pl-14" : "lg:pl-60"
         )}
       >

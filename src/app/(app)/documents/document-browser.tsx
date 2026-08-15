@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { Pagination } from "@/components/Pagination";
 import {
   deleteDocumentAction,
   uploadDocumentAction,
@@ -29,6 +30,10 @@ type DocRow = {
 
 type EmployeeOption = { id: string; name: string; employeeIdNo: string };
 
+type Tab = "all" | "valid" | "expiring" | "no_expiry";
+
+const PAGE_SIZE = 25;
+
 const STATUS_BADGE = {
   valid: { label: "Valid", color: "green" as const },
   expiring: { label: "Expiring soon", color: "amber" as const },
@@ -48,9 +53,12 @@ export function DocumentBrowser({
   const searchParams = useSearchParams();
   const initialEmployeeId = searchParams.get("employee");
   const initialTab = searchParams.get("tab");
-  const [tab, setTab] = useState<"all" | "valid" | "expiring">(
+  const [tab, setTab] = useState<Tab>(
     initialTab === "valid" || initialTab === "expiring" ? initialTab : "all"
   );
+  // Reset to the first page whenever the visible set changes, so you're never
+  // left looking at an empty page 3.
+  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [employeeFilter, setEmployeeFilter] = useState<string | null>(initialEmployeeId);
@@ -61,6 +69,7 @@ export function DocumentBrowser({
     let rows = documents;
     if (employeeFilter) rows = rows.filter((d) => d.employeeId === employeeFilter);
     if (tab === "valid") rows = rows.filter((d) => d.status === "valid");
+    if (tab === "no_expiry") rows = rows.filter((d) => d.status === "not_set");
     if (tab === "expiring")
       rows = rows.filter((d) => d.status === "expiring" || d.status === "expired");
     const q = query.trim().toLowerCase();
@@ -75,7 +84,12 @@ export function DocumentBrowser({
     return rows;
   }, [documents, tab, query, employeeFilter]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const validCount = documents.filter((d) => d.status === "valid").length;
+  const noExpiryCount = documents.filter((d) => d.status === "not_set").length;
   const expiringCount = documents.filter(
     (d) => d.status === "expiring" || d.status === "expired"
   ).length;
@@ -86,8 +100,8 @@ export function DocumentBrowser({
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search documents by name, type, or employee..."
+            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+            placeholder="Search name, type or employee…"
             className="input w-full max-w-sm"
           />
           {filteredEmployee && (
@@ -118,16 +132,20 @@ export function DocumentBrowser({
 
       <SegmentedControl
         value={tab}
-        onChange={(v) => setTab(v as "all" | "valid" | "expiring")}
+        onChange={(v) => { setTab(v as Tab); setPage(1); }}
         options={[
           { value: "all", label: `All (${documents.length})` },
           { value: "valid", label: `Valid (${validCount})` },
           { value: "expiring", label: `Expiring (${expiringCount})` },
+          // Documents with no expiry date matched no tab before, so two of six
+          // were unreachable from the filter bar.
+          { value: "no_expiry", label: `No expiry (${noExpiryCount})` },
         ]}
       />
 
       <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[54rem] text-sm">
           <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
               <th className="px-4 py-3">Document</th>
@@ -139,7 +157,7 @@ export function DocumentBrowser({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {filtered.map((d) => {
+            {visible.map((d) => {
               const badge = STATUS_BADGE[d.status];
               return (
                 <tr key={d.id}>
@@ -173,28 +191,40 @@ export function DocumentBrowser({
                   <td className="px-4 py-3">
                     <Badge color={badge.color}>{badge.label}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <a
-                      href={`/api/documents/${d.id}`}
-                      className="mr-3 text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      Download
-                    </a>
-                    <DeleteButton
-                      action={deleteDocumentAction}
-                      hiddenFields={{ documentId: d.id, employeeId: d.employeeId }}
-                      confirmMessage={`Delete "${d.filename}" from ${d.employeeName}'s file? The file itself is removed and can't be recovered.`}
-                    />
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-3">
+                      <a
+                        href={`/api/documents/${d.id}`}
+                        className="text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        Download
+                      </a>
+                      <DeleteButton
+                        action={deleteDocumentAction}
+                        hiddenFields={{ documentId: d.id, employeeId: d.employeeId }}
+                        confirmMessage={`Delete "${d.filename}" from ${d.employeeName}'s file? The file itself is removed and can't be recovered.`}
+                      />
+                    </div>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        </div>
         {filtered.length === 0 && (
           <p className="px-4 py-10 text-center text-sm text-muted">
             No documents match.
           </p>
+        )}
+        {filtered.length > 0 && (
+          <Pagination
+            page={currentPage}
+            pageCount={pageCount}
+            onPageChange={setPage}
+            totalItems={filtered.length}
+            pageSize={PAGE_SIZE}
+          />
         )}
       </div>
     </div>

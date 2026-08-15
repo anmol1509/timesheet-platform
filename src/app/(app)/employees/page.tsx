@@ -14,9 +14,9 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string }>;
+  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string }>;
 }) {
-  const { filter, supplier: supplierId, sponsor: sponsorId } = await searchParams;
+  const { filter, supplier: supplierId, sponsor: sponsorId, registered } = await searchParams;
   const { branchId } = await requireUserWithBranch();
 
   const [employees, entityFilter] = await Promise.all([
@@ -103,7 +103,7 @@ export default async function EmployeesPage({
         </div>
       )}
 
-      <EmployeeList employees={rows} initialFilter={filter} />
+      <EmployeeList employees={rows} initialFilter={filter} registeredId={registered} />
     </div>
   );
 }

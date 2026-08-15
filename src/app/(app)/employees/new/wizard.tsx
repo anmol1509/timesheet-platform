@@ -198,6 +198,22 @@ export function EmployeeWizard({
     setFields((f) => ({ ...f, [key]: value }));
   }
 
+  // A pack upload plus a round of corrections is real work, and the wizard
+  // holds all of it in memory — a stray refresh or back-click used to bin it
+  // silently, including the cost of re-reading the documents.
+  const hasWork =
+    packFiles.length > 0 ||
+    Object.keys(docFiles).length > 0 ||
+    !!photo ||
+    fields.name !== "" ||
+    fields.employeeIdNo !== "";
+  useEffect(() => {
+    if (!hasWork || pending) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasWork, pending]);
+
   // Flag a clashing employee ID while it's being typed, not on save.
   useEffect(() => {
     const id = fields.employeeIdNo.trim();
@@ -570,6 +586,10 @@ export function EmployeeWizard({
     startTransition(() => formAction(body));
   }
 
+  // Advancing mid-read shows empty fields that then fill in behind you.
+  const reading =
+    packStatus.kind === "reading" ||
+    Object.values(docStatus).some((st) => st?.kind === "reading");
   const isLast = step === STEPS.length - 1;
   const stepKey = STEPS[step].key;
 
@@ -1359,8 +1379,20 @@ export function EmployeeWizard({
             {pending ? "Registering…" : "Register employee"}
           </button>
         ) : (
-          <button type="button" onClick={() => goTo(step + 1)} className="btn btn-primary">
-            Next
+          <button
+            type="button"
+            onClick={() => goTo(step + 1)}
+            disabled={reading}
+            title={reading ? "Still reading the documents…" : undefined}
+            className="btn btn-primary"
+          >
+            {reading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Reading…
+              </>
+            ) : (
+              "Next"
+            )}
           </button>
         )}
       </div>

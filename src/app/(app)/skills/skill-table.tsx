@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { TrendingUp } from "lucide-react";
 import { toggleTrendingAction, deleteSkillAction, updateSkillAction } from "./actions";
@@ -91,8 +90,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                 <th className="px-4 py-3">Skill Name</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-right">Employee Count</th>
-                <th className="px-4 py-3">Popularity</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Share of workforce</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -183,20 +181,23 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                       {s.employeeCount}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-sunken">
-                          <div
-                            className="h-full rounded-full bg-[var(--brand-primary)]"
-                            style={{ width: `${Math.min(100, s.popularity)}%` }}
-                          />
+                      {s.employeeCount === 0 ? (
+                        <span className="text-xs text-subtle">Unused</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-sunken">
+                            <div
+                              className="h-full rounded-full bg-[var(--brand-primary)]"
+                              // Floor at a visible sliver so a real but small
+                              // share doesn't render as an empty bar.
+                              style={{ width: `${Math.max(4, Math.min(100, s.popularity))}%` }}
+                            />
+                          </div>
+                          <span className="tabular text-xs text-muted">
+                            {s.popularity < 1 ? "<1" : s.popularity.toFixed(0)}%
+                          </span>
                         </div>
-                        <span className="text-xs text-muted">
-                          {s.popularity.toFixed(0)}% of workforce
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge color={demand.color}>{demand.label}</Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <DeleteButton
