@@ -2,15 +2,36 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { InstantViewPicker } from "./picker";
+import { Badge } from "@/components/Badge";
+import {
+  COMPLIANCE_FIELDS,
+  complianceStatus,
+  daysUntil,
+  type ComplianceStatus,
+} from "@/lib/compliance";
+
+const STATUS_COLOR: Record<ComplianceStatus, "green" | "amber" | "red" | "slate"> = {
+  valid: "green",
+  expiring: "amber",
+  expired: "red",
+  not_set: "slate",
+};
 
 function categoryWhere(category: string) {
+  if (category === "ALL") return {};
   if (category === "SUPPLIER_LABOUR") return { supplierId: { not: null } };
   if (category === "STAFF") return { supplierId: null, category: "STAFF" as const };
   return { supplierId: null, category: "SITE_STAFF" as const };
 }
 
 function formatDate(d: Date | null) {
-  return d ? new Date(d).toLocaleDateString() : "—";
+  return d
+    ? new Date(d).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
 }
 
 export default async function InstantViewPage({
@@ -19,9 +40,11 @@ export default async function InstantViewPage({
   searchParams: Promise<{ category?: string; employeeId?: string }>;
 }) {
   const { category: rawCategory, employeeId } = await searchParams;
-  const category = ["SITE_STAFF", "STAFF", "SUPPLIER_LABOUR"].includes(rawCategory ?? "")
+  // Defaults to everyone: the old default hid most of the roster behind a
+  // filter nobody had chosen.
+  const category = ["ALL", "SITE_STAFF", "STAFF", "SUPPLIER_LABOUR"].includes(rawCategory ?? "")
     ? rawCategory!
-    : "SITE_STAFF";
+    : "ALL";
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const employees = await prisma.employee.findMany({
@@ -59,7 +82,72 @@ export default async function InstantViewPage({
 
       {validEmployee && (
         <div className="card space-y-6 p-6">
-          <h2 className="text-lg font-semibold text-primary">{validEmployee.name}</h2>
+          <div className="flex items-center gap-4">
+            {/* A snapshot used to identify someone at a gate needs the face. */}
+            <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken">
+              {validEmployee.photoData ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/employees/${validEmployee.id}/photo`}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-subtle">
+                  {validEmployee.name
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((part) => part[0])
+                    .join("")
+                    .toUpperCase()}
+                </span>
+              )}
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-primary">{validEmployee.name}</h2>
+              <p className="tabular text-sm text-muted">
+                {validEmployee.employeeIdNo}
+                {validEmployee.trade ? ` · ${validEmployee.trade}` : ""}
+                {validEmployee.supplier?.name ? ` · ${validEmployee.supplier.name}` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-primary">Documents &amp; expiry</h3>
+            <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              {COMPLIANCE_FIELDS.map((field) => {
+                const value = validEmployee[field.key as keyof typeof validEmployee] as
+                  | Date
+                  | null;
+                const status = complianceStatus(value);
+                const days = value ? daysUntil(value) : null;
+                return (
+                  <div
+                    key={field.key}
+                    className="flex items-center justify-between gap-3 border-b border-default py-1.5"
+                  >
+                    <span className="text-muted">{field.label}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="tabular text-primary">{formatDate(value)}</span>
+                      {value && (
+                        <Badge color={STATUS_COLOR[status]}>
+                          {days === null
+                            ? "Valid"
+                            : days < 0
+                              ? `${Math.abs(days)}d overdue`
+                              : days <= 90
+                                ? `${days}d left`
+                                : "Valid"}
+                        </Badge>
+                      )}
+                      {!value && <Badge color="slate">Not recorded</Badge>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <div>

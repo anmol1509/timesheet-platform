@@ -99,16 +99,26 @@ export default async function EmployeeDetailPage({
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          {/* The colour was the whole message and nothing explained it — a
+              grey chip read as a label rather than "no date on file". */}
+          <div className="flex flex-wrap items-center gap-2">
             {COMPLIANCE_FIELDS.map((f) => {
-              const status = complianceStatus(
-                employee[f.key as keyof typeof employee] as Date | null
-              );
+              const value = employee[f.key as keyof typeof employee] as Date | null;
+              const status = complianceStatus(value);
               const badge = STATUS_BADGE[status];
               return (
-                <div key={f.key} className="text-center">
-                  <Badge color={badge.color}>{f.label}</Badge>
-                </div>
+                <Badge key={f.key} color={badge.color}>
+                  {f.label}
+                  <span className="ml-1 opacity-75">
+                    {value
+                      ? new Date(value).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "2-digit",
+                        })
+                      : "not set"}
+                  </span>
+                </Badge>
               );
             })}
           </div>
@@ -125,25 +135,6 @@ export default async function EmployeeDetailPage({
         </div>
       )}
 
-      <AccommodationSection
-        employeeId={employee.id}
-        currentBed={
-          employee.bed
-            ? {
-                id: employee.bed.id,
-                label: employee.bed.label,
-                roomName: employee.bed.room.name,
-                campName: employee.bed.room.camp.name,
-              }
-            : null
-        }
-        vacantBeds={vacantBeds.map((b) => ({
-          id: b.id,
-          label: b.label,
-          roomName: b.room.name,
-          campName: b.room.camp.name,
-        }))}
-      />
 
       <EditForm
         employee={employee}
@@ -165,6 +156,28 @@ export default async function EmployeeDetailPage({
                 rate: s.rate,
               }))}
             />
+
+      {/* Below the identity form, not above it: a camp and bed matter less
+          than who this is, and this card is empty for most workers. */}
+      <AccommodationSection
+        employeeId={employee.id}
+        currentBed={
+          employee.bed
+            ? {
+                id: employee.bed.id,
+                label: employee.bed.label,
+                roomName: employee.bed.room.name,
+                campName: employee.bed.room.camp.name,
+              }
+            : null
+        }
+        vacantBeds={vacantBeds.map((b) => ({
+          id: b.id,
+          label: b.label,
+          roomName: b.room.name,
+          campName: b.room.camp.name,
+        }))}
+      />
 
             <VisaHistorySection
               employeeId={employee.id}

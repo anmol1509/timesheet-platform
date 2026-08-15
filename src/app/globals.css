@@ -433,3 +433,49 @@ summary:focus-visible,
     background: transparent;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Print
+
+   Instant View offers a Print button, but only that button was hidden from the
+   printout — the sidebar, header, search box and nav all landed on the paper.
+   Anything a printed page can't act on is dropped here, and the content is
+   given the full width it no longer has to share.
+   --------------------------------------------------------------------------- */
+@media print {
+  aside,
+  header,
+  nav,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* The shell offsets content by the sidebar width; there's no sidebar now.
+     Scoped to that one element — a blanket rule would strip the padding out
+     of every table cell too. */
+  [data-shell-main] {
+    padding-left: 0 !important;
+  }
+
+  main,
+  body {
+    background: #fff !important;
+  }
+
+  /* Cards read as boxes on screen; on paper the borders are just noise. */
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Never break a worker's row or a section heading across two sheets. */
+  tr,
+  h2,
+  h3 {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+}

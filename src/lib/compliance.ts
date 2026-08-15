@@ -16,7 +16,7 @@ export function complianceStatus(date: Date | null): ComplianceStatus {
 
 export const COMPLIANCE_FIELDS = [
   { key: "visaExpiry", label: "Visa" },
-  { key: "laborCardExpiry", label: "Labor Card" },
+  { key: "laborCardExpiry", label: "Labour Card" },
   { key: "medicalExpiry", label: "Medical Certificate" },
   { key: "passportExpiry", label: "Passport" },
   { key: "emiratesIdExpiry", label: "Emirates ID" },

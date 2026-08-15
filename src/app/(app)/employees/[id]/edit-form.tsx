@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { updateEmployeeAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -148,6 +148,15 @@ export function EditForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  // ~100 fields sit in this form; leaving the page used to bin every edit
+  // without a word.
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
@@ -202,9 +211,14 @@ export function EditForm({
       </div>
 
       <form
+        onInput={() => {
+          if (!dirty) setDirty(true);
+          if (saved) setSaved(false);
+        }}
         action={(formData) => {
           setSaved(false);
           setError(null);
+          setDirty(false);
           startTransition(async () => {
             const result = await updateEmployeeAction(formData);
             if (result?.error) {
@@ -691,14 +705,15 @@ export function EditForm({
       </div>
 
       {tab !== "records" && (
-        <div className="mt-8 flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={pending}
-            className="btn btn-primary"
-          >
+        // Sticky: this form is ~100 fields deep, so a correction made at the
+        // top used to mean scrolling the whole page to find Save.
+        <div className="sticky bottom-0 z-10 mt-8 -mx-4 flex items-center gap-3 border-t border-default bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          <button type="submit" disabled={pending} className="btn btn-primary">
             {pending ? "Saving…" : "Save changes"}
           </button>
+          {dirty && !pending && !saved && (
+            <span className="text-sm text-[var(--warning)]">Unsaved changes</span>
+          )}
           {saved && !pending && (
             <span className="text-sm text-emerald-600">Saved.</span>
           )}

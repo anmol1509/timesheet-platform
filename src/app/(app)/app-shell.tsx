@@ -116,6 +116,7 @@ export function AppShell({
       </aside>
 
       <div
+        data-shell-main
         className={cn(
           // `min-w-0` matters: without it this flex child refuses to shrink
           // below its content's min-content width, so a wide table pushed the
