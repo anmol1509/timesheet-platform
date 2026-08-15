@@ -401,3 +401,51 @@ export async function deleteClientAction(formData: FormData) {
   revalidatePath("/clients");
   redirect("/clients");
 }
+
+/**
+ * Deletes a selection, skipping any client that's still referenced.
+ *
+ * The lists have had row selection all along, but the only thing selecting
+ * changed was the Export button's label. Refusals are reported per client
+ * rather than failing the whole batch, since a mixed selection is normal.
+ */
+export async function deleteClientsAction(
+  ids: string[]
+): Promise<{ deleted: number; blocked: { name: string; reason: string }[] }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const blocked: { name: string; reason: string }[] = [];
+  let deleted = 0;
+
+  for (const id of ids) {
+    if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) continue;
+    const existing = await prisma.client.findUnique({ where: { id } });
+    if (!existing) continue;
+
+    const [entryCount, projectCount] = await Promise.all([
+      prisma.timesheetEntry.count({ where: { clientId: id } }),
+      prisma.project.count({ where: { clientId: id } }),
+    ]);
+    if (entryCount > 0 || projectCount > 0) {
+      const parts: string[] = [];
+      if (entryCount > 0) parts.push(`${entryCount} timesheet row(s)`);
+      if (projectCount > 0) parts.push(`${projectCount} project(s)`);
+      blocked.push({ name: existing.name, reason: parts.join(" and ") });
+      continue;
+    }
+
+    await prisma.client.delete({ where: { id } });
+    deleted += 1;
+    await logAudit({
+      entityType: "CLIENT",
+      entityId: id,
+      action: "DELETE",
+      before: existing as unknown as Record<string, unknown>,
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+  }
+
+  revalidatePath("/clients");
+  return { deleted, blocked };
+}

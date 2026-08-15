@@ -138,6 +138,42 @@ export default async function SupplierDetailPage({
       <SupplierTabs
         tabs={[
           {
+            id: "documents",
+            label: "Documents",
+            content: (
+              <div className="space-y-6">
+                <WorkmenCompImport
+                  supplierId={supplier.id}
+                  supplierName={supplier.name}
+                  entityBranchId={supplier.branchId}
+                />
+                <section>
+                  <h2 className="mb-3 text-sm font-semibold text-primary">Other Documents</h2>
+                  <AttachmentUploader
+                    entityType="SUPPLIER"
+                    entityId={supplier.id}
+                    entityBranchId={supplier.branchId}
+                    revalidate={`/suppliers/${supplier.id}`}
+                    docTypeOptions={[
+                      { value: "TRADE_LICENSE", label: "Trade License" },
+                      { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
+                      { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
+                      { value: "CONTRACT", label: "Contract" },
+                      { value: "OTHER", label: "Other" },
+                    ]}
+                    attachments={attachments.map((a) => ({
+                      id: a.id,
+                      docType: a.docType,
+                      filename: a.filename,
+                      expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
+                      uploadedAt: a.uploadedAt.toISOString(),
+                    }))}
+                  />
+                </section>
+              </div>
+            ),
+          },
+          {
             id: "overview",
             label: "Overview",
             content: (
@@ -203,42 +239,6 @@ export default async function SupplierDetailPage({
                   payoutCycleStartDay: supplier.payoutCycleStartDay,
                 }}
               />
-            ),
-          },
-          {
-            id: "documents",
-            label: "Documents",
-            content: (
-              <div className="space-y-6">
-                <WorkmenCompImport
-                  supplierId={supplier.id}
-                  supplierName={supplier.name}
-                  entityBranchId={supplier.branchId}
-                />
-                <section>
-                  <h2 className="mb-3 text-sm font-semibold text-primary">Other Documents</h2>
-                  <AttachmentUploader
-                    entityType="SUPPLIER"
-                    entityId={supplier.id}
-                    entityBranchId={supplier.branchId}
-                    revalidate={`/suppliers/${supplier.id}`}
-                    docTypeOptions={[
-                      { value: "TRADE_LICENSE", label: "Trade License" },
-                      { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
-                      { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
-                      { value: "CONTRACT", label: "Contract" },
-                      { value: "OTHER", label: "Other" },
-                    ]}
-                    attachments={attachments.map((a) => ({
-                      id: a.id,
-                      docType: a.docType,
-                      filename: a.filename,
-                      expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
-                      uploadedAt: a.uploadedAt.toISOString(),
-                    }))}
-                  />
-                </section>
-              </div>
             ),
           },
         ]}

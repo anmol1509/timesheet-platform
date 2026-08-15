@@ -13,9 +13,13 @@ export default async function ClientsPage() {
   const clients = await prisma.client.findMany({
     where: branchWhere(branchId),
     orderBy: { name: "asc" },
+    include: { _count: { select: { projects: true } } },
   });
 
   const activeCount = clients.filter((c) => c.status === "ACTIVE").length;
+  // The tile said "Active Contracts" but counted active *clients* — which is
+  // why it always matched Total Clients exactly.
+  const projectCount = clients.reduce((sum, c) => sum + c._count.projects, 0);
   const basicRates = clients.map((c) => c.basicRate).filter((r): r is number => r != null);
   const avgBasicRate =
     basicRates.length > 0
@@ -56,17 +60,23 @@ export default async function ClientsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile href="/clients" label="Total Clients" value={clients.length} icon={Building2} />
         <StatTile
           href="/clients?status=active"
-          label="Active Contracts"
+          label="Active Clients"
           value={activeCount}
           icon={FileCheck2}
         />
         <StatTile
+          href="/projects"
+          label="Live Projects"
+          value={projectCount}
+          icon={FileCheck2}
+        />
+        <StatTile
           label="Avg. Basic Rate"
-          value={avgBasicRate ? `AED ${avgBasicRate.toFixed(0)}` : "—"}
+          value={avgBasicRate ? `AED ${avgBasicRate.toFixed(0)}` : "Not set"}
           icon={DollarSign}
         />
       </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -35,12 +36,26 @@ const IMPORT_COLUMNS = [
 
 export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
   const router = useRouter();
+  // Clients had a search box and these two didn't, so the same job worked
+  // differently depending on which partner you were looking at.
+  const [query, setQuery] = useState("");
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return suppliers;
+    return suppliers.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.contactPerson || "").toLowerCase().includes(q) ||
+        (s.parentName || "").toLowerCase().includes(q)
+    );
+  }, [suppliers, query]);
+
   const { selected, toggle, toggleAll, allSelected, clear } = useRowSelection(
-    suppliers.map((s) => s.id)
+    visible.map((s) => s.id)
   );
 
   function exportCsv() {
-    const rows = selected.size > 0 ? suppliers.filter((s) => selected.has(s.id)) : suppliers;
+    const rows = selected.size > 0 ? suppliers.filter((s) => selected.has(s.id)) : visible;
     const csv = toCsv(rows, [
       { header: "Supplier", value: (s) => s.name },
       { header: "Contact Person", value: (s) => s.contactPerson },
@@ -54,7 +69,17 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search supplier, parent or contact…"
+          className="input w-full max-w-sm"
+        />
+        <span className="text-xs text-muted">
+          {visible.length} of {suppliers.length}
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
         <CsvImportDialog
           entityLabel="suppliers"
           columns={IMPORT_COLUMNS}
@@ -69,6 +94,7 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
           <Download className="h-4 w-4" />
           {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
         </button>
+        </div>
       </div>
 
       <div className="card overflow-hidden">
@@ -88,7 +114,7 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {suppliers.map((s) => (
+            {visible.map((s) => (
               <tr key={s.id} className={complianceRowClass(s.licenseStatus)}>
                 <td className="px-4 py-3">
                   <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} />
@@ -127,10 +153,11 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
                 <td className="px-4 py-3">
                   <Badge color={s.status === "ACTIVE" ? "green" : "red"}>{s.status}</Badge>
                 </td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <div className="flex items-center justify-end gap-3">
                   <Link
                     href={`/suppliers/${s.id}`}
-                    className="mr-3 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
                   >
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Link>
@@ -143,11 +170,17 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
                         : ""
                     }`}
                   />
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {visible.length === 0 && (
+          <p className="px-4 py-10 text-center text-sm text-muted">
+            No supplier matches “{query}”.
+          </p>
+        )}
       </div>
       {selected.size > 0 && (
         <button

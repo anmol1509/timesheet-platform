@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { DeleteButton } from "@/components/DeleteButton";
 import { deleteSponsorshipCompanyAction } from "./actions";
@@ -81,9 +82,20 @@ export function SponsorshipCompanyList({
     <DataTable
       rows={sponsorshipCompanies}
       columns={columns}
+      // The table already supported a filter; this list just never enabled it,
+      // so it was the one partner list you couldn't search.
+      searchable
+      searchPlaceholder="Search name, short name or licence…"
       rowHref={(c) => `/sponsorship-companies/${c.id}`}
       csvFilename={`sponsorship-companies-${new Date().toISOString().slice(0, 10)}.csv`}
       renderRowActions={(c) => (
+        <div className="flex items-center justify-end gap-3">
+        <Link
+          href={`/sponsorship-companies/${c.id}`}
+          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+        >
+          <Pencil className="h-3.5 w-3.5" /> Edit
+        </Link>
         <DeleteButton
           action={deleteSponsorshipCompanyAction}
           hiddenFields={{ sponsorshipCompanyId: c.id }}
@@ -93,6 +105,7 @@ export function SponsorshipCompanyList({
               : ""
           }`}
         />
+        </div>
       )}
     />
   );

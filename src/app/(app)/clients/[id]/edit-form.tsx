@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateClientAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
@@ -41,14 +42,17 @@ type Client = {
 export function EditClientForm({ client }: { client: Client }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const guard = useUnsavedGuard();
   const [billingType, setBillingType] = useState(
     client.hourlyRate != null ? "HOURLY" : client.basicRate != null ? "BASIC" : ""
   );
 
   return (
     <form
+      onInput={guard.onInput}
       action={(formData) => {
         setSaved(false);
+        guard.markSaved();
         startTransition(async () => {
           await updateClientAction(formData);
           setSaved(true);
@@ -295,18 +299,7 @@ export function EditClientForm({ client }: { client: Client }) {
         </Field>
       </Section>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
-        {saved && !pending && (
-          <span className="text-sm text-emerald-600">Saved.</span>
-        )}
-      </div>
+      <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
     </form>
   );
 }

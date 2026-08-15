@@ -38,7 +38,7 @@ export default async function ClientDetailPage({
   if (!client || isOutsideBranch(client.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <Link href="/clients" className="text-sm text-muted hover:underline">
           ← Clients
@@ -68,6 +68,11 @@ export default async function ClientDetailPage({
           </p>
         )}
       </div>
+
+      {/* Documents lead here as they do in the add-employee wizard: a trade
+          licence carries an expiry that stops work, and it used to sit below a
+          49-field form where nobody scrolled to it. */}
+      <ClientDocuments clientId={client.id} documents={client.documents} />
 
       <EditClientForm
         client={{
@@ -108,7 +113,6 @@ export default async function ClientDetailPage({
 
       <ClientTradeRates clientId={client.id} rates={client.tradeRates} />
 
-      <ClientDocuments clientId={client.id} documents={client.documents} />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-primary">Projects</h2>
