@@ -4,8 +4,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
-import { branchWhere } from "@/lib/branch";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import {
+  isAcceptedPhotoType,
+  isAcceptedUploadType,
+  safeFilename,
+} from "@/lib/uploads";
 import { logAudit } from "@/lib/audit";
 
 function dateOrNull(value: FormDataEntryValue | null) {
@@ -62,14 +67,16 @@ export async function generateEmployeeIdAction(
 ): Promise<{ id: string | null; error: string | null; source: string | null }> {
   const { branchId } = await requireUserWithBranch();
 
+  // Scoped to the branch, so the generated prefix can't disclose the name of
+  // another branch's company.
   const company = supplierId
-    ? await prisma.supplier.findUnique({
-        where: { id: supplierId },
+    ? await prisma.supplier.findFirst({
+        where: { id: supplierId, ...branchWhere(branchId) },
         select: { name: true },
       })
     : sponsorshipCompanyId
-      ? await prisma.sponsorshipCompany.findUnique({
-          where: { id: sponsorshipCompanyId },
+      ? await prisma.sponsorshipCompany.findFirst({
+          where: { id: sponsorshipCompanyId, ...branchWhere(branchId) },
           select: { name: true },
         })
       : null;
@@ -113,12 +120,17 @@ export async function checkEmployeeIdAction(
 ): Promise<{ taken: boolean; name: string | null }> {
   const trimmed = employeeIdNo.trim();
   if (!trimmed) return { taken: false, name: null };
-  await requireUserWithBranch();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  // employeeIdNo is unique across the whole table, so the clash check has to
+  // look everywhere — but the name behind an out-of-branch clash isn't ours
+  // to show.
   const existing = await prisma.employee.findUnique({
     where: { employeeIdNo: trimmed },
-    select: { name: true },
+    select: { name: true, branchId: true },
   });
-  return { taken: !!existing, name: existing?.name ?? null };
+  if (!existing) return { taken: false, name: null };
+  const visible = !isOutsideBranch(existing.branchId, branchId, isSuperAdmin);
+  return { taken: true, name: visible ? existing.name : "another branch" };
 }
 
 export async function createEmployeeAction(
@@ -148,9 +160,37 @@ export async function createEmployeeAction(
   }
 
   const photo = formData.get("photo");
-  if (photo instanceof File && photo.size > MAX_UPLOAD_BYTES) {
-    return { error: `Photo is too large — max ${MAX_UPLOAD_LABEL}.` };
+  if (photo instanceof File && photo.size > 0) {
+    if (photo.size > MAX_UPLOAD_BYTES) {
+      return { error: `Photo is too large — max ${MAX_UPLOAD_LABEL}.` };
+    }
+    if (!isAcceptedPhotoType(photo.type)) {
+      return { error: "That photo isn't an image file we can store." };
+    }
   }
+  // Ids arrive from the form, so they're checked against this branch rather
+  // than trusted — otherwise an employee could be filed under another
+  // branch's supplier, sponsor or project.
+  const supplierId = stringOrNull(formData.get("supplierId"));
+  const sponsorshipCompanyId = stringOrNull(formData.get("sponsorshipCompanyId"));
+  const projectId = stringOrNull(formData.get("projectId"));
+  const [supplierOk, sponsorshipOk, projectOk] = await Promise.all([
+    supplierId
+      ? prisma.supplier.count({ where: { id: supplierId, ...branchWhere(branchId) } })
+      : Promise.resolve(1),
+    sponsorshipCompanyId
+      ? prisma.sponsorshipCompany.count({
+          where: { id: sponsorshipCompanyId, ...branchWhere(branchId) },
+        })
+      : Promise.resolve(1),
+    projectId
+      ? prisma.project.count({ where: { id: projectId, ...branchWhere(branchId) } })
+      : Promise.resolve(1),
+  ]);
+  if (!supplierOk || !sponsorshipOk || !projectOk) {
+    return { error: "That supplier, sponsorship company or project isn't in your branch." };
+  }
+
   const skillsRaw = String(formData.get("skills") || "");
   const skillNames = skillsRaw
     .split(",")
@@ -165,8 +205,8 @@ export async function createEmployeeAction(
     // Supplier and sponsorship are interrelated but distinct: the supplier
     // employs the worker, the sponsorship company holds the visa. Supplier was
     // previously only settable from the edit form, never at creation.
-    supplierId: stringOrNull(formData.get("supplierId")),
-    sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
+    supplierId,
+    sponsorshipCompanyId,
     nationality: stringOrNull(formData.get("nationality")),
     position: stringOrNull(formData.get("position")),
     trade: stringOrNull(formData.get("position")),
@@ -190,7 +230,7 @@ export async function createEmployeeAction(
     passportExpiry: dateOrNull(formData.get("passportExpiry")),
     emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
     notes: stringOrNull(formData.get("notes")),
-    projectId: stringOrNull(formData.get("projectId")),
+    projectId,
     salaryType: stringOrNull(formData.get("salaryType")),
     salaryRate: numberOrNull(formData.get("salaryRate")),
     photoData:
@@ -217,12 +257,13 @@ export async function createEmployeeAction(
     const file = formData.get(`docFile_${type}`);
     if (!(file instanceof File) || file.size === 0) continue;
     if (file.size > MAX_UPLOAD_BYTES) continue;
+    if (!isAcceptedUploadType(file.type)) continue;
     const expiryDate = dateOrNull(formData.get(expiryField));
     const doc = await prisma.document.create({
       data: {
         employeeId: employee.id,
         type,
-        filename: file.name,
+        filename: safeFilename(file.name),
         fileData: Buffer.from(await file.arrayBuffer()),
         mimeType: file.type || "application/octet-stream",
         expiryDate,
@@ -248,12 +289,15 @@ export async function createEmployeeAction(
   for (const [index, file] of packFiles.entries()) {
     if (!(file instanceof File) || file.size === 0) continue;
     if (file.size > MAX_UPLOAD_BYTES) continue;
-    const type = stringOrNull(formData.get(`packType_${index}`)) || "OTHER";
+    if (!isAcceptedUploadType(file.type)) continue;
+    // A pack is a bundle of several documents, so it gets its own type rather
+    // than borrowing whichever one happened to be listed first.
+    const type = "DOCUMENT_PACK";
     const doc = await prisma.document.create({
       data: {
         employeeId: employee.id,
         type,
-        filename: file.name,
+        filename: safeFilename(file.name),
         fileData: Buffer.from(await file.arrayBuffer()),
         mimeType: file.type || "application/octet-stream",
         expiryDate: null,
@@ -272,14 +316,19 @@ export async function createEmployeeAction(
   }
 
   const additionalFile = formData.get("docFile_ADDITIONAL");
-  if (additionalFile instanceof File && additionalFile.size > 0 && additionalFile.size <= MAX_UPLOAD_BYTES) {
+  if (
+    additionalFile instanceof File &&
+    additionalFile.size > 0 &&
+    additionalFile.size <= MAX_UPLOAD_BYTES &&
+    isAcceptedUploadType(additionalFile.type)
+  ) {
     const additionalType = stringOrNull(formData.get("additionalDocType")) || "OTHER";
     const additionalExpiry = dateOrNull(formData.get("additionalDocExpiry"));
     const doc = await prisma.document.create({
       data: {
         employeeId: employee.id,
         type: additionalType,
-        filename: additionalFile.name,
+        filename: safeFilename(additionalFile.name),
         fileData: Buffer.from(await additionalFile.arrayBuffer()),
         mimeType: additionalFile.type || "application/octet-stream",
         expiryDate: additionalExpiry,

@@ -1,16 +1,35 @@
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { StatTile } from "@/components/StatTile";
 import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
 import { DocumentBrowser } from "./document-browser";
 
 export default async function DocumentsPage() {
+  // This page previously queried every branch's documents with `include`,
+  // which also dragged each file's `fileData` bytes across just to render a
+  // filename. Scoped to the caller's branch, and selecting only what the table
+  // shows.
+  const { branchId } = await requireUserWithBranch();
+
   const [documents, employees] = await Promise.all([
     prisma.document.findMany({
-      include: { employee: true, uploadedBy: true },
+      where: { employee: branchWhere(branchId) },
+      select: {
+        id: true,
+        filename: true,
+        type: true,
+        employeeId: true,
+        uploadedAt: true,
+        expiryDate: true,
+        employee: { select: { name: true, employeeIdNo: true } },
+        uploadedBy: { select: { name: true } },
+      },
       orderBy: { uploadedAt: "desc" },
     }),
     prisma.employee.findMany({
+      where: branchWhere(branchId),
       select: { id: true, name: true, employeeIdNo: true },
       orderBy: { name: "asc" },
     }),

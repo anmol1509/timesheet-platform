@@ -6,6 +6,11 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+import {
+  isAcceptedPhotoType,
+  isAcceptedUploadType,
+  safeFilename,
+} from "@/lib/uploads";
 
 // Every nested mutation (documents, skills, photo) takes an employeeId
 // rather than looking the employee up itself, so this is the one place
@@ -253,6 +258,7 @@ export async function uploadPhotoAction(formData: FormData) {
   const file = formData.get("photo");
   if (!id || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
+  if (!isAcceptedPhotoType(file.type)) return;
   if (!(await assertEmployeeInBranch(id, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -303,6 +309,10 @@ export async function uploadDocumentAction(formData: FormData) {
   const file = formData.get("file");
   if (!employeeId || !(file instanceof File) || file.size === 0) return;
   if (file.size > MAX_UPLOAD_BYTES) return;
+  // The browser's type is client-controlled, and these files are served back
+  // from our own origin — an HTML or SVG upload would run as first-party
+  // script. See src/lib/uploads.ts.
+  if (!isAcceptedUploadType(file.type)) return;
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -311,7 +321,7 @@ export async function uploadDocumentAction(formData: FormData) {
       employeeId,
       type,
       displayInEss,
-      filename: file.name,
+      filename: safeFilename(file.name),
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
       expiryDate,
@@ -340,7 +350,10 @@ export async function deleteDocumentAction(formData: FormData) {
   if (!id) return;
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
+  // Guarding `employeeId` alone would let a valid employee id be paired with
+  // any other branch's document id, so the target is checked against it.
   const existing = await prisma.document.findUnique({ where: { id } });
+  if (!existing || existing.employeeId !== employeeId) return;
   await prisma.document.delete({ where: { id } });
 
   if (existing) {
@@ -424,6 +437,7 @@ export async function removeVisaApplicationAction(formData: FormData) {
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const existing = await prisma.visaApplication.findUnique({ where: { id } });
+  if (!existing || existing.employeeId !== employeeId) return;
   await prisma.visaApplication.delete({ where: { id } }).catch(() => {});
 
   if (existing) {
@@ -477,6 +491,7 @@ export async function removeLabourCardApplicationAction(formData: FormData) {
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
   const existing = await prisma.labourCardApplication.findUnique({ where: { id } });
+  if (!existing || existing.employeeId !== employeeId) return;
   await prisma.labourCardApplication.delete({ where: { id } }).catch(() => {});
 
   if (existing) {
