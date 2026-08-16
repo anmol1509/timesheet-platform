@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AlertTriangle, Check, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Plus, Sparkles, Wand2, X } from "lucide-react";
 import {
   checkEmployeeIdAction,
   createEmployeeAction,
@@ -33,7 +33,7 @@ const STEPS = [
   { key: "expiry", label: "Numbers & expiry" },
   { key: "deployment", label: "Deployment" },
   { key: "extras", label: "Skills & notes" },
-  { key: "history", label: "History" },
+  { key: "notes", label: "Notes" },
   { key: "review", label: "Review" },
 ] as const;
 
@@ -98,7 +98,6 @@ type Fields = {
   notes: string;
   additionalDocType: string;
   additionalDocExpiry: string;
-  historyRemarks: string;
 };
 
 const EMPTY_FIELDS: Fields = {
@@ -131,11 +130,29 @@ const EMPTY_FIELDS: Fields = {
   notes: "",
   additionalDocType: "",
   additionalDocExpiry: "",
-  historyRemarks: "",
 };
 
 /** Checklist fields that live on the Identity step; the rest are on Numbers & expiry. */
 const IDENTITY_FIELDS = new Set(["name", "dateOfBirth", "nationality", "position"]);
+
+type SkillEntry = { name: string; level: number };
+
+type NoteDraft = { id: string; remarks: string; files: File[] };
+
+/** Range the slider offers; 10 is the floor, not zero — a skill at 0 isn't a skill. */
+const SKILL_LEVEL_MIN = 10;
+const SKILL_LEVEL_MAX = 100;
+const SKILL_LEVEL_STEP = 10;
+const DEFAULT_SKILL_LEVEL = 50;
+
+/** Plain-language label so the number means something consistent to everyone. */
+function skillLevelLabel(level: number) {
+  if (level <= 20) return "Beginner";
+  if (level <= 40) return "Basic";
+  if (level <= 60) return "Competent";
+  if (level <= 80) return "Skilled";
+  return "Expert";
+}
 
 type DocSlot =
   | "PASSPORT"
@@ -174,7 +191,9 @@ export function EmployeeWizard({
 
   const [step, setStep] = useState(0);
   const [fields, setFields] = useState<Fields>(EMPTY_FIELDS);
-  const [skills, setSkills] = useState<string[]>([]);
+  // Each skill carries a proficiency level — EmployeeSkill.proficiencyPercent
+  // already existed on the join, it just had no way to be set at registration.
+  const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -184,9 +203,9 @@ export function EmployeeWizard({
   const [docFiles, setDocFiles] = useState<Partial<Record<DocSlot, File>>>({});
   const [docStatus, setDocStatus] = useState<Partial<Record<DocSlot, UploadStatus>>>({});
   const [photo, setPhoto] = useState<File | null>(null);
-  // Experience letters, previous contracts, service certificates — several
-  // files, none of which expire.
-  const [historyFiles, setHistoryFiles] = useState<File[]>([]);
+  // Repeatable notes, each with its own remarks and attachments — a worker
+  // accumulates these over time, so one overwritable field wouldn't do.
+  const [notes, setNotes] = useState<NoteDraft[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [found, setFound] = useState<string[]>([]);
@@ -210,7 +229,7 @@ export function EmployeeWizard({
   const hasWork =
     packFiles.length > 0 ||
     Object.keys(docFiles).length > 0 ||
-    historyFiles.length > 0 ||
+    notes.length > 0 ||
     !!photo ||
     fields.name !== "" ||
     fields.employeeIdNo !== "";
@@ -387,10 +406,57 @@ export function EmployeeWizard({
   }
 
   function addSkill(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed || skills.includes(trimmed)) return;
-    setSkills((s) => [...s, trimmed]);
+    const trimmed = name.trim().replace(/\s+/g, " ");
+    // Case-insensitive, so "Carpentry" and "carpentry" don't both get added.
+    if (
+      trimmed.length < 3 ||
+      skills.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())
+    ) {
+      return;
+    }
+    setSkills((s) => [...s, { name: trimmed, level: DEFAULT_SKILL_LEVEL }]);
     setSkillInput("");
+  }
+
+  function setSkillLevel(name: string, level: number) {
+    setSkills((s) => s.map((x) => (x.name === name ? { ...x, level } : x)));
+  }
+
+  function addNote() {
+    setNotes((n) => [
+      ...n,
+      { id: `note-${Date.now()}-${n.length}`, remarks: "", files: [] },
+    ]);
+  }
+
+  function removeNote(id: string) {
+    setNotes((n) => n.filter((note) => note.id !== id));
+  }
+
+  function setNoteRemarks(id: string, remarks: string) {
+    setNotes((n) => n.map((note) => (note.id === id ? { ...note, remarks } : note)));
+  }
+
+  function addNoteFiles(id: string, picked: File[]) {
+    setNotes((n) =>
+      n.map((note) =>
+        note.id === id ? { ...note, files: [...note.files, ...picked] } : note
+      )
+    );
+  }
+
+  function removeNoteFile(id: string, index: number) {
+    setNotes((n) =>
+      n.map((note) =>
+        note.id === id
+          ? { ...note, files: note.files.filter((_, i) => i !== index) }
+          : note
+      )
+    );
+  }
+
+  function removeSkill(name: string) {
+    setSkills((s) => s.filter((x) => x.name !== name));
   }
 
   function validate(index: number): string | null {
@@ -575,7 +641,7 @@ export function EmployeeWizard({
     for (const [key, value] of Object.entries(fields)) {
       if (value) body.set(key, value);
     }
-    body.set("skills", skills.join(","));
+    body.set("skills", JSON.stringify(skills));
     // Residency granted but no card number yet — record that explicitly rather
     // than leaving the Emirates ID silently blank.
     const hasResidency =
@@ -586,7 +652,13 @@ export function EmployeeWizard({
     for (const [slot, file] of Object.entries(docFiles)) {
       if (file) body.set(`docFile_${slot}`, file);
     }
-    historyFiles.forEach((file) => body.append("docFile_HISTORY", file));
+    // Each note's remarks are indexed, and its files ride along under the same
+    // index so the server can put them back together.
+    body.set("noteCount", String(notes.length));
+    notes.forEach((note, i) => {
+      body.set(`noteRemarks_${i}`, note.remarks);
+      note.files.forEach((file) => body.append(`noteFile_${i}`, file));
+    });
     startTransition(() => formAction(body));
   }
 
@@ -1205,25 +1277,52 @@ export function EmployeeWizard({
           </Field>
 
           {skills.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {skills.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSkills((arr) => arr.filter((x) => x !== s))}
-                  aria-label={`Remove ${s}`}
-                  className="inline-flex items-center gap-1.5 rounded-control bg-surface-sunken px-2.5 py-1 text-xs font-medium text-secondary transition hover:bg-[var(--border)]"
+            <ul className="space-y-2">
+              {skills.map((skill) => (
+                <li
+                  key={skill.name}
+                  className="rounded-control border border-default bg-surface px-3 py-2.5"
                 >
-                  {s} <span className="text-subtle">×</span>
-                </button>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-primary">{skill.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted">
+                        {skillLevelLabel(skill.level)}
+                      </span>
+                      <span className="tabular w-9 text-right text-xs font-medium text-secondary">
+                        {skill.level}%
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill.name)}
+                        aria-label={`Remove ${skill.name}`}
+                        className="rounded-sm p-1 text-subtle transition hover:bg-surface-hover hover:text-secondary"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={SKILL_LEVEL_MIN}
+                    max={SKILL_LEVEL_MAX}
+                    step={SKILL_LEVEL_STEP}
+                    value={skill.level}
+                    onChange={(e) => setSkillLevel(skill.name, Number(e.target.value))}
+                    aria-label={`${skill.name} level`}
+                    className="mt-2 w-full accent-[var(--brand-primary)]"
+                  />
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
           <div>
             <p className="mb-1.5 text-xs text-subtle">Common trades:</p>
             <div className="flex flex-wrap gap-2">
-              {COMMON_SKILLS.filter((s) => !skills.includes(s)).map((s) => (
+              {COMMON_SKILLS.filter(
+                (c) => !skills.some((s) => s.name.toLowerCase() === c.toLowerCase())
+              ).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -1249,40 +1348,65 @@ export function EmployeeWizard({
       )}
 
       {/* ---------------- Review ---------------- */}
-      {stepKey === "history" && (
+      {stepKey === "notes" && (
         <div className="space-y-4">
           <p className="text-sm text-muted">
-            Where this worker has been before. Optional — nothing here blocks
-            registration.
+            Anything worth keeping on file — prior employment, a warning, a site
+            incident. Each note has its own remarks and attachments. Optional.
           </p>
 
-          <Field label="Previous employment & background">
-            <MultiUploadSlot
-              id="doc-history"
-              label="Experience letters, previous contracts, service certificates"
-              files={historyFiles}
-              status={{ kind: "idle" }}
-              onAdd={(picked) => setHistoryFiles((prev) => [...prev, ...picked])}
-              onRemove={(i) =>
-                setHistoryFiles((prev) => prev.filter((_, idx) => idx !== i))
-              }
-              hint="Add as many as you have — each is stored against the worker."
-            />
-            <p className="mt-1.5 text-xs text-subtle">
-              Filed under the worker&rsquo;s documents as History — not read
-              automatically, and no expiry tracked.
+          {notes.length === 0 ? (
+            <p className="empty-state py-8 text-center text-sm text-muted">
+              No notes yet.
             </p>
-          </Field>
+          ) : (
+            <ul className="space-y-3">
+              {notes.map((note, index) => (
+                <li key={note.id} className="rounded-card border border-default p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-secondary">
+                      Note {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeNote(note.id)}
+                      aria-label={`Remove note ${index + 1}`}
+                      className="rounded-sm p-1 text-subtle transition hover:bg-surface-hover hover:text-secondary"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
 
-          <Field label="Remarks">
-            <textarea
-              value={fields.historyRemarks}
-              onChange={(e) => set("historyRemarks", e.target.value)}
-              rows={5}
-              placeholder="Prior employer, reason for leaving, re-hire notes, anything worth recording…"
-              className="input w-full"
-            />
-          </Field>
+                  <Field label="Remarks">
+                    <textarea
+                      value={note.remarks}
+                      onChange={(e) => setNoteRemarks(note.id, e.target.value)}
+                      rows={3}
+                      placeholder="What happened, or what should the next person know?"
+                      className="input w-full"
+                    />
+                  </Field>
+
+                  <div className="mt-3">
+                    <MultiUploadSlot
+                      id={`note-files-${note.id}`}
+                      label="Attachments"
+                      files={note.files}
+                      status={{ kind: "idle" }}
+                      onAdd={(picked) => addNoteFiles(note.id, picked)}
+                      onRemove={(i) => removeNoteFile(note.id, i)}
+                      hint="Experience letters, contracts, certificates — as many as you have."
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <button type="button" onClick={addNote} className="btn btn-secondary">
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add note
+          </button>
         </div>
       )}
 
@@ -1360,13 +1484,15 @@ export function EmployeeWizard({
               <div className="flex flex-wrap items-center gap-1.5">
                 {skills.map((skill) => (
                   <button
-                    key={skill}
+                    key={skill.name}
                     type="button"
-                    onClick={() => setSkills((arr) => arr.filter((x) => x !== skill))}
-                    aria-label={`Remove ${skill}`}
+                    onClick={() => removeSkill(skill.name)}
+                    aria-label={`Remove ${skill.name}`}
                     className="inline-flex items-center gap-1.5 rounded-control bg-surface-sunken px-2.5 py-1 text-xs font-medium text-secondary transition hover:bg-[var(--border)]"
                   >
-                    {skill} <span className="text-subtle">×</span>
+                    {skill.name}
+                    <span className="tabular text-subtle">{skill.level}%</span>
+                    <span className="text-subtle">×</span>
                   </button>
                 ))}
                 <input
@@ -1384,11 +1510,22 @@ export function EmployeeWizard({
               </div>
             </ReviewRow>
 
-            {fields.historyRemarks && (
-              <ReviewRow label="History remarks">
-                <p className="text-sm whitespace-pre-wrap text-secondary">
-                  {fields.historyRemarks}
-                </p>
+            {notes.length > 0 && (
+              <ReviewRow label={`Notes (${notes.length})`}>
+                <ul className="space-y-1.5">
+                  {notes.map((note) => (
+                    <li key={note.id} className="text-sm text-secondary">
+                      <span className="whitespace-pre-wrap">
+                        {note.remarks.trim() || <em className="text-subtle">No remarks</em>}
+                      </span>
+                      {note.files.length > 0 && (
+                        <span className="ml-1 text-xs text-subtle">
+                          ({note.files.length} file{note.files.length === 1 ? "" : "s"})
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </ReviewRow>
             )}
           </div>
@@ -1397,7 +1534,7 @@ export function EmployeeWizard({
             <h3 className="text-sm font-semibold text-primary">Files to attach</h3>
             {packFiles.length === 0 &&
             Object.keys(docFiles).length === 0 &&
-            historyFiles.length === 0 &&
+            notes.every((n) => n.files.length === 0) &&
             !photo ? (
               <p className="mt-2 text-sm text-subtle">No files attached.</p>
             ) : (
@@ -1411,9 +1548,13 @@ export function EmployeeWizard({
                     {DOC_LABEL[slot] ?? slot} — {f.name}
                   </li>
                 ))}
-                {historyFiles.map((f, i) => (
-                  <li key={`history-${i}`}>History — {f.name}</li>
-                ))}
+                {notes.flatMap((note, ni) =>
+                  note.files.map((f, fi) => (
+                    <li key={`note-${ni}-${fi}`}>
+                      Note {ni + 1} — {f.name}
+                    </li>
+                  ))
+                )}
               </ul>
             )}
           </div>

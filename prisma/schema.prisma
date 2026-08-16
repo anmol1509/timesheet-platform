@@ -114,6 +114,7 @@ model User {
   attachments      Attachment[]
   demandRequests   DemandRequest[]
   nocs             Noc[]
+  employeeNotes EmployeeNote[]
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
@@ -507,10 +508,6 @@ model Employee {
   accommodationType   String?
   previousId          String?
   nameInIdCard        String?
-  // Free-text background captured at registration: prior employer, why they
-  // left, anything the PRO wants on record. Distinct from `notes`, which is
-  // the general-purpose field on the Skills & notes step.
-  historyRemarks      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -538,6 +535,7 @@ model Employee {
   vaccinations           EmployeeVaccination[]
   visaApplications       VisaApplication[]
   labourCardApplications LabourCardApplication[]
+  noteEntries            EmployeeNote[]
   assignmentHistory      EmployeeAssignmentHistory[]
   accommodationHistory   AccommodationHistory[]
   demandRequestAllocations DemandRequestAllocation[]
@@ -551,6 +549,25 @@ model Employee {
 // Employee.projectId remains the live pointer; this is the audit trail of
 // past placements, since there's no other way to know when someone was
 // mobilized/demobilized to a given project.
+// A dated note about a worker with its own attachments — prior employment,
+// a warning, a site incident, anything worth keeping on file. Repeatable, so
+// the record builds up over time instead of one field being overwritten.
+model EmployeeNote {
+  id        String   @id @default(cuid())
+  remarks   String
+  createdAt DateTime @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  documents Document[]
+
+  @@index([employeeId, createdAt])
+}
+
 model EmployeeAssignmentHistory {
   id              String    @id @default(cuid())
   branchName      String? // snapshot; branchId isn't the change trigger here
@@ -647,6 +664,9 @@ model Document {
 
   uploadedBy   User   @relation(fields: [uploadedById], references: [id])
   uploadedById String
+  // Set when the file was attached to a note rather than filed on its own.
+  note   EmployeeNote? @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId String?
 
   visaApplications       VisaApplication[]
   labourCardApplications LabourCardApplication[]

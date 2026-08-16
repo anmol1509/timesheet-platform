@@ -13,6 +13,31 @@ import {
 } from "@/lib/uploads";
 import { logAudit } from "@/lib/audit";
 
+/**
+ * Skills arrive as JSON so each can carry its proficiency level. Anything
+ * malformed is treated as "no skills" rather than failing the registration —
+ * a bad level shouldn't cost the operator the whole form.
+ */
+function parseSkills(raw: FormDataEntryValue | null): { name: string; level: number }[] {
+  try {
+    const parsed = JSON.parse(String(raw || "[]"));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.flatMap((entry) => {
+      const name = String(entry?.name ?? "").trim();
+      if (!name) return [];
+      const level = Number(entry?.level);
+      return [
+        {
+          name,
+          level: Number.isFinite(level) ? Math.min(100, Math.max(10, Math.round(level))) : 50,
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+}
+
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
   return s ? new Date(s) : null;
@@ -191,11 +216,7 @@ export async function createEmployeeAction(
     return { error: "That supplier, sponsorship company or project isn't in your branch." };
   }
 
-  const skillsRaw = String(formData.get("skills") || "");
-  const skillNames = skillsRaw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const skillEntries = parseSkills(formData.get("skills"));
 
   const data = {
     employeeIdNo,
@@ -230,7 +251,6 @@ export async function createEmployeeAction(
     passportExpiry: dateOrNull(formData.get("passportExpiry")),
     emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
     notes: stringOrNull(formData.get("notes")),
-    historyRemarks: stringOrNull(formData.get("historyRemarks")),
     projectId,
     salaryType: stringOrNull(formData.get("salaryType")),
     salaryRate: numberOrNull(formData.get("salaryRate")),
@@ -277,36 +297,6 @@ export async function createEmployeeAction(
       entityId: doc.id,
       action: "CREATE",
       after: { employeeId: employee.id, type, filename: file.name, expiryDate },
-      userId: user.id,
-      userName: user.name,
-      branchId,
-    });
-  }
-
-  // Background paperwork from the History step: experience letters, previous
-  // contracts, service certificates. Several files, and no expiry to track —
-  // these are a record of where the worker has been, not something that lapses.
-  const historyFiles = formData.getAll("docFile_HISTORY");
-  for (const file of historyFiles) {
-    if (!(file instanceof File) || file.size === 0) continue;
-    if (file.size > MAX_UPLOAD_BYTES) continue;
-    if (!isAcceptedUploadType(file.type)) continue;
-    const doc = await prisma.document.create({
-      data: {
-        employeeId: employee.id,
-        type: "HISTORY",
-        filename: safeFilename(file.name),
-        fileData: Buffer.from(await file.arrayBuffer()),
-        mimeType: file.type || "application/octet-stream",
-        uploadedById: user.id,
-      },
-    });
-
-    await logAudit({
-      entityType: "DOCUMENT",
-      entityId: doc.id,
-      action: "CREATE",
-      after: { employeeId: employee.id, type: "HISTORY", filename: file.name },
       userId: user.id,
       userName: user.name,
       branchId,
@@ -378,14 +368,65 @@ export async function createEmployeeAction(
     });
   }
 
-  for (const skillName of skillNames) {
-    const skill = await prisma.skill.upsert({
-      where: { name: skillName },
-      update: {},
-      create: { name: skillName },
+  for (const entry of skillEntries) {
+    // Matched case-insensitively so "Carpentry" and "carpentry" don't become
+    // two skills — the same rule the Skills module uses.
+    const existingSkill = await prisma.skill.findFirst({
+      where: { name: { equals: entry.name, mode: "insensitive" } },
     });
+    const skill =
+      existingSkill ?? (await prisma.skill.create({ data: { name: entry.name } }));
     await prisma.employeeSkill.create({
-      data: { employeeId: employee.id, skillId: skill.id },
+      data: {
+        employeeId: employee.id,
+        skillId: skill.id,
+        proficiencyPercent: entry.level,
+      },
+    });
+  }
+
+  // Notes are indexed on the form; each carries its own remarks and files.
+  const noteCount = Number(formData.get("noteCount") || 0);
+  for (let i = 0; i < noteCount; i += 1) {
+    const remarks = String(formData.get(`noteRemarks_${i}`) || "").trim();
+    const files = formData
+      .getAll(`noteFile_${i}`)
+      .filter(
+        (f): f is File =>
+          f instanceof File &&
+          f.size > 0 &&
+          f.size <= MAX_UPLOAD_BYTES &&
+          isAcceptedUploadType(f.type)
+      );
+    // An empty note with no attachment is nothing to record.
+    if (!remarks && files.length === 0) continue;
+
+    const note = await prisma.employeeNote.create({
+      data: { employeeId: employee.id, remarks, createdById: user.id },
+    });
+
+    for (const file of files) {
+      await prisma.document.create({
+        data: {
+          employeeId: employee.id,
+          noteId: note.id,
+          type: "NOTE",
+          filename: safeFilename(file.name),
+          fileData: Buffer.from(await file.arrayBuffer()),
+          mimeType: file.type || "application/octet-stream",
+          uploadedById: user.id,
+        },
+      });
+    }
+
+    await logAudit({
+      entityType: "EMPLOYEE_NOTE",
+      entityId: note.id,
+      action: "CREATE",
+      after: { employeeId: employee.id, remarks, files: files.length },
+      userId: user.id,
+      userName: user.name,
+      branchId,
     });
   }
 
