@@ -32,17 +32,12 @@ export default async function DemandRequestDetailPage({
 
   // Shared with the mobilisation screen so both agree on what "idle" means.
   const idleWorkers = await getIdleWorkers(branchId);
-  const idleEmployees = idleWorkers.map((w) => ({
-    id: w.id,
-    name: w.name,
-    employeeIdNo: w.employeeIdNo,
-    trade: w.trade,
-  }));
+
 
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <Link href="/operations/demand-requests" className="text-sm text-muted hover:underline">
+        <Link href="/demand" className="text-sm text-muted hover:underline">
           ← Demand Requests
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
@@ -105,7 +100,6 @@ export default async function DemandRequestDetailPage({
                 employeeIdNo: a.employee.employeeIdNo,
               })),
             }}
-            idleEmployees={idleEmployees}
           />
         ))}
       </div>

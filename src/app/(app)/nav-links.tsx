@@ -30,12 +30,25 @@ import {
   FileQuestion,
   FileSignature,
   CalendarClock,
+  FilePlus2,
+  HardHat,
+  FileStack,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 
-type Item = { href: string; label: string; icon: LucideIcon };
+type Item = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /**
+   * Match this path only, not its descendants. Needed where one entry's href is
+   * a prefix of its siblings' — /demand would otherwise light up alongside
+   * /demand/new and /demand/mobilisation.
+   */
+  exact?: boolean;
+};
 type Entry =
   | { type: "link"; item: Item }
   | { type: "group"; label: string; icon: LucideIcon; children: Item[] };
@@ -80,8 +93,18 @@ const NAV: Entry[] = [
     icon: ClipboardList,
     children: [
       { href: "/projects", label: "Projects", icon: ClipboardList },
-      { href: "/operations/demand-requests", label: "Demand Requests", icon: ListChecks },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
+    ],
+  },
+  {
+    type: "group",
+    label: "Demand",
+    icon: ListChecks,
+    children: [
+      { href: "/demand/new", label: "Create Demand", icon: FilePlus2 },
+      { href: "/demand", label: "View Demands", icon: ListChecks, exact: true },
+      { href: "/demand/mobilisation", label: "Mobilization", icon: HardHat },
+      { href: "/demand/documents", label: "Generate Doc", icon: FileStack },
     ],
   },
   {
@@ -131,11 +154,14 @@ const ADMIN_GROUP: Entry = {
   ],
 };
 
-function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+function isActive(pathname: string, href: string, exact = false) {
+  if (href === "/" || exact) return pathname === href;
+  return pathname === href || pathname.startsWith(href + "/");
 }
 
 function groupContainsActive(pathname: string, children: Item[]) {
+  // Deliberately ignores `exact`: a group should stay open anywhere inside its
+  // section, including detail pages like /demand/<id> that no child matches.
   return children.some((c) => isActive(pathname, c.href));
 }
 
@@ -177,7 +203,7 @@ export function NavLinks({
   }
 
   function renderLeaf(item: Item, depth: 0 | 1) {
-    const active = isActive(pathname, item.href);
+    const active = isActive(pathname, item.href, item.exact);
     const Icon = item.icon;
 
     if (collapsed) {

@@ -27,7 +27,7 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
       key: "requestNo",
       header: "Request No",
       render: (r) => (
-        <Link href={`/operations/demand-requests/${r.id}`} className="font-medium text-primary hover:underline">
+        <Link href={`/demand/${r.id}`} className="font-medium text-primary hover:underline">
           {r.requestNo}
         </Link>
       ),
@@ -54,7 +54,7 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
     <DataTable
       rows={requests}
       columns={columns}
-      rowHref={(r) => `/operations/demand-requests/${r.id}`}
+      rowHref={(r) => `/demand/${r.id}`}
       csvFilename={`demand-requests-${new Date().toISOString().slice(0, 10)}.csv`}
     />
   );

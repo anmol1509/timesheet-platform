@@ -24,7 +24,7 @@ export default async function DemandRequestsPage() {
           </p>
         </div>
         <Link
-          href="/operations/demand-requests/new"
+          href="/demand/new"
           className="btn btn-primary"
         >
           + New Request
@@ -37,7 +37,7 @@ export default async function DemandRequestsPage() {
           title="No demand requests yet"
           description="A demand request captures how many workers of each trade a project needs, then tracks allocation against it."
           action={
-            <Link href="/operations/demand-requests/new" className="btn btn-primary btn-sm">New demand request</Link>
+            <Link href="/demand/new" className="btn btn-primary btn-sm">New demand request</Link>
           }
         />
       ) : (

@@ -21,7 +21,6 @@ type TradeInput = {
   trade: string;
   quantity: number;
   shift: string | null;
-  rate: number | null;
 };
 
 export async function createDemandRequestAction(formData: FormData) {
@@ -81,7 +80,6 @@ export async function createDemandRequestAction(formData: FormData) {
           trade: t.trade.trim(),
           quantity: t.quantity,
           shift: t.shift,
-          rate: t.rate,
         })),
       },
     },
@@ -97,8 +95,8 @@ export async function createDemandRequestAction(formData: FormData) {
     branchId,
   });
 
-  revalidatePath("/operations/demand-requests");
-  redirect(`/operations/demand-requests/${created.id}`);
+  revalidatePath("/demand");
+  redirect(`/demand/${created.id}`);
 }
 
 export async function updateDemandRequestAction(formData: FormData) {
@@ -131,8 +129,8 @@ export async function updateDemandRequestAction(formData: FormData) {
     branchId,
   });
 
-  revalidatePath(`/operations/demand-requests/${id}`);
-  revalidatePath("/operations/demand-requests");
+  revalidatePath(`/demand/${id}`);
+  revalidatePath("/demand");
 }
 
 export async function deleteDemandRequestAction(formData: FormData) {
@@ -146,7 +144,7 @@ export async function deleteDemandRequestAction(formData: FormData) {
   });
   if (allocationCount > 0) {
     redirect(
-      `/operations/demand-requests/${id}?error=${encodeURIComponent(
+      `/demand/${id}?error=${encodeURIComponent(
         "Unallocate all employees from this request before deleting it."
       )}`
     );
@@ -167,8 +165,8 @@ export async function deleteDemandRequestAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/operations/demand-requests");
-  redirect("/operations/demand-requests");
+  revalidatePath("/demand");
+  redirect("/demand");
 }
 
 // Pairs each selected employee (in order) with this trade line, soft-capped
@@ -251,7 +249,13 @@ export async function allocateEmployeesAction(
     allocated++;
   }
 
-  revalidatePath(`/operations/demand-requests/${trade.demandRequestId}`);
+  // revalidatePath only invalidates the exact path, so the mobilise and
+  // documents screens have to be named explicitly — otherwise they re-render
+  // from stale cache and an assignment appears not to have happened.
+  revalidatePath(`/demand/${trade.demandRequestId}`);
+  revalidatePath(`/demand/${trade.demandRequestId}/mobilise`);
+  revalidatePath(`/demand/${trade.demandRequestId}/documents`);
+  revalidatePath("/demand/mobilisation");
   return { allocated, requested: employeeIds.length };
 }
 
@@ -293,5 +297,69 @@ export async function unallocateEmployeeAction(formData: FormData) {
   });
 
   revalidatePath(`/employees/${allocation.employeeId}`);
-  revalidatePath(`/operations/demand-requests/${allocation.demandRequestTrade.demandRequestId}`);
+  const demandId = allocation.demandRequestTrade.demandRequestId;
+  revalidatePath(`/demand/${demandId}`);
+  revalidatePath(`/demand/${demandId}/mobilise`);
+  revalidatePath(`/demand/${demandId}/documents`);
+  revalidatePath("/demand/mobilisation");
+}
+
+/**
+ * Changes a worker's recorded trade, from the mobilisation screen.
+ *
+ * A demand often can't be filled from the exact trade — 84 idle Helpers and no
+ * idle Carpenters — and in practice a worker gets re-designated rather than the
+ * demand going unfilled. This writes the worker's profile (Employee.trade), so
+ * the change is permanent and visible everywhere, not a per-demand override.
+ */
+export async function changeEmployeeTradeAction(
+  formData: FormData
+): Promise<{ error?: string } | void> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const trade = String(formData.get("trade") || "").trim();
+  if (!employeeId || !trade) return;
+
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { id: true, branchId: true, trade: true, name: true },
+  });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
+
+  // Keep the Trades taxonomy in step with what's actually recorded, the same
+  // way raising a demand does.
+  const existingSkill = await prisma.skill.findFirst({
+    where: { name: { equals: trade, mode: "insensitive" } },
+    select: { id: true },
+  });
+  const skill = existingSkill ?? (await prisma.skill.create({ data: { name: trade } }));
+
+  await prisma.employee.update({
+    where: { id: employeeId },
+    // `position` mirrors trade elsewhere in the app, so it moves together.
+    data: { trade, position: trade },
+  });
+
+  // Record it against the worker too, so the taxonomy join stops being empty.
+  await prisma.employeeSkill.upsert({
+    where: { employeeId_skillId: { employeeId, skillId: skill.id } },
+    update: {},
+    create: { employeeId, skillId: skill.id },
+  });
+
+  await logAudit({
+    entityType: "EMPLOYEE",
+    entityId: employeeId,
+    action: "UPDATE",
+    before: { trade: employee.trade },
+    after: { trade },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+  // A re-designation changes who matches which trade line, so the whole module
+  // is invalidated rather than one path.
+  revalidatePath("/demand", "layout");
 }

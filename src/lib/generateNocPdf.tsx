@@ -12,6 +12,11 @@ export type NocPdfEmployee = {
 };
 
 export type NocPdfInput = {
+  /**
+   * Letter reference prefix. Defaults to NOC; the Undertaking reuses this same
+   * renderer, and its reference shouldn't read "NOC-".
+   */
+  docPrefix?: string;
   branchName: string;
   branchAddress: string | null;
   docNo: number;
@@ -44,7 +49,9 @@ export async function generateNocLetterPdf(input: NocPdfInput): Promise<Buffer> 
         <View style={styles.letterhead}>
           <Text style={styles.companyName}>{input.branchName}</Text>
           {input.branchAddress && <Text style={styles.companyAddress}>{input.branchAddress}</Text>}
-          <Text style={styles.docNo}>Doc No: NOC-{input.docNo}</Text>
+          <Text style={styles.docNo}>
+            Doc No: {input.docPrefix ?? "NOC"}-{input.docNo}
+          </Text>
         </View>
 
         {paragraphs.map((p, i) => (

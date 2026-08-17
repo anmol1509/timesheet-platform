@@ -12,12 +12,11 @@ type TradeRow = {
   trade: string;
   quantity: string;
   shift: string;
-  rate: string;
 };
 
 function blankTradeRow(): TradeRow {
   // Day is the common case, so the toggle starts there rather than unset.
-  return { id: crypto.randomUUID(), trade: "", quantity: "1", shift: "Day", rate: "" };
+  return { id: crypto.randomUUID(), trade: "", quantity: "1", shift: "Day" };
 }
 
 export function DemandRequestForm({
@@ -70,7 +69,6 @@ export function DemandRequestForm({
             trade: t.trade,
             quantity: Number(t.quantity),
             shift: t.shift || null,
-            rate: t.rate ? Number(t.rate) : null,
           }))
       )
     );
@@ -161,7 +159,7 @@ export function DemandRequestForm({
         <h2 className="mb-3 text-sm font-semibold text-primary">Trades</h2>
         <div className="space-y-2">
           {trades.map((t) => (
-            <div key={t.id} className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+            <div key={t.id} className="grid grid-cols-1 gap-2 sm:grid-cols-4">
               <Select
                 value={t.trade}
                 onChange={(v) => updateTrade(t.id, { trade: v })}
@@ -200,13 +198,6 @@ export function DemandRequestForm({
                   </button>
                 ))}
               </div>
-              <input
-                type="number"
-                value={t.rate}
-                onChange={(e) => updateTrade(t.id, { rate: e.target.value })}
-                placeholder="Rate"
-                className="input"
-              />
               <button
                 type="button"
                 onClick={() => setTrades((prev) => prev.filter((r) => r.id !== t.id))}
