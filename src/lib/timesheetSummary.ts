@@ -8,7 +8,7 @@ export type EntryWithDaily = Awaited<
 export async function getSupplierMonthEntries(supplierId: string, month: string) {
   const entries = await prisma.timesheetEntry.findMany({
     where: { supplierId, month },
-    include: { client: true },
+    include: { client: true, project: { select: { code: true } } },
     orderBy: [{ trade: "asc" }, { employeeName: "asc" }],
   });
   return entries.map((e) => ({

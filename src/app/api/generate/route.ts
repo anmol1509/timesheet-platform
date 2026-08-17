@@ -5,7 +5,11 @@ import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateSupplierXlsx } from "@/lib/generateXlsx";
-import { generateSupplierPdf } from "@/lib/generatePdf";
+import {
+  generateTimesheetPdf,
+  DEFAULT_TIMESHEET_NOTES,
+} from "@/lib/generateTimesheetPdf";
+import { buildLetterhead } from "@/lib/letterhead";
 
 const bodySchema = z.object({
   supplierId: z.string().min(1),
@@ -96,7 +100,42 @@ export async function POST(request: Request) {
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   } else {
-    buffer = await generateSupplierPdf(genInput);
+    // The PDF now follows the letterhead format the client's contractors issue
+    // and accept; the XLSX above is unchanged.
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    const [year, monthNo] = month.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
+    const dmy = (day: number) =>
+      `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
+
+    buffer = await generateTimesheetPdf({
+      letterhead: await buildLetterhead({
+        name: branch?.name ?? fullName,
+        address: branch?.address ?? null,
+        emirate: branch?.emirate ?? null,
+        country: branch?.country ?? null,
+        phone: branch?.phone ?? null,
+        fax: branch?.fax ?? null,
+        email: branch?.email ?? null,
+        poBox: branch?.poBox ?? null,
+        trn: branch?.trn ?? null,
+      }),
+      subContractor: issuedTo,
+      subContractorCode: supplier.mohrePermitNumber ?? null,
+      periodFrom: dmy(1),
+      periodTo: dmy(lastDay),
+      entries: genInput.entries.map((e, i) => ({
+        ...e,
+        projectCode: entries[i]?.project?.code ?? null,
+      })),
+      additions: 0,
+      safetyDeduction: gasDeduction,
+      otherDeduction: 0,
+      vatPercent: 5,
+      preparedBy: user.name,
+      preparedByRole: null,
+      notes: DEFAULT_TIMESHEET_NOTES,
+    });
     contentType = "application/pdf";
   }
 

@@ -29,6 +29,10 @@ model Branch {
   currency String?
   phone    String?
   email    String?
+  // Letterhead details printed on generated timesheets and invoices.
+  fax      String?
+  poBox    String?
+  trn      String? // Tax Registration Number
 
   users                User[]
   employees            Employee[]
