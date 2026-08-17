@@ -107,7 +107,7 @@ const TABS = [
   { id: "documents", label: "Documents" },
   { id: "payroll", label: "Payroll & WPS" },
   { id: "project", label: "Project & Salary" },
-  { id: "records", label: "Skills & Records" },
+  { id: "records", label: "Trades & Records" },
 ];
 
 const INACTIVE_REASONS = [

@@ -426,7 +426,7 @@ export async function addSkillAction(formData: FormData) {
   });
 
   revalidatePath(`/employees/${employeeId}`);
-  revalidatePath("/skills");
+  revalidatePath("/trades");
 }
 
 export async function addVisaApplicationAction(formData: FormData) {
@@ -547,7 +547,7 @@ export async function removeSkillAction(formData: FormData) {
     .delete({ where: { employeeId_skillId: { employeeId, skillId } } })
     .catch(() => {});
   revalidatePath(`/employees/${employeeId}`);
-  revalidatePath("/skills");
+  revalidatePath("/trades");
 }
 
 /**

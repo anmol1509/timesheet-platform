@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { createSkillAction } from "./actions";
-import { SkillTable } from "./skill-table";
+import { TradeTable } from "./trade-table";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 export default async function SkillsPage() {
@@ -28,9 +28,9 @@ export default async function SkillsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Skills</h1>
+        <h1 className="text-xl tracking-tight text-primary font-semibold">Trades</h1>
         <p className="mt-1 text-sm text-muted">
-          Track the skills your workforce has, and where demand is highest.
+          The trades your workforce holds, and where demand is highest.
         </p>
       </div>
 
@@ -40,7 +40,7 @@ export default async function SkillsPage() {
       >
         <label className="block flex-1 min-w-[160px]">
           <span className="mb-1 block text-xs font-medium text-muted">
-            Skill name
+            Trade name
           </span>
           <input
             name="name"
@@ -66,7 +66,7 @@ export default async function SkillsPage() {
           type="submit"
           className="btn btn-primary"
         >
-          + Add Skill
+          + Add Trade
         </button>
       </form>
 
@@ -76,7 +76,7 @@ export default async function SkillsPage() {
           employee&rsquo;s profile.
         </p>
       ) : (
-        <SkillTable skills={rows} />
+        <TradeTable trades={rows} />
       )}
     </div>
   );

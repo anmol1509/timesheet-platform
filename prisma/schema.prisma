@@ -973,6 +973,7 @@ model Skill {
   trending Boolean @default(false)
 
   employees EmployeeSkill[]
+  demandTrades DemandRequestTrade[]
 }
 
 model EmployeeSkill {
@@ -1176,10 +1177,17 @@ model DemandRequest {
 
 model DemandRequestTrade {
   id       String  @id @default(cuid())
-  trade    String // LookupValue category TRADE
+  // Kept as the display/legacy value. New rows also carry `skillId` below.
+  trade    String
   quantity Int
   shift    String? // "Day" | "Night"
   rate     Float?
+
+  // The trade as an entry in the Trades taxonomy (the Skill table), so the
+  // idle-worker count for a line is an exact join rather than a name match.
+  // Nullable for rows created before the link existed.
+  skill   Skill?  @relation(fields: [skillId], references: [id])
+  skillId String?
 
   demandRequest   DemandRequest @relation(fields: [demandRequestId], references: [id], onDelete: Cascade)
   demandRequestId String

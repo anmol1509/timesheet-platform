@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { allocateEmployeesAction, unallocateEmployeeAction } from "../actions";
+import { cn } from "@/lib/cn";
+import type { TradeSupply } from "@/lib/demandSupply";
 
 type Allocation = { id: string; employeeId: string; employeeName: string; employeeIdNo: string };
 type Trade = {
@@ -19,13 +21,18 @@ type IdleEmployee = { id: string; name: string; employeeIdNo: string; trade: str
 export function TradeAllocationSection({
   trade,
   idleEmployees,
+  supply,
 }: {
   trade: Trade;
   idleEmployees: IdleEmployee[];
+  supply: TradeSupply;
 }) {
   const [pending, startTransition] = useTransition();
   const [showAllocate, setShowAllocate] = useState(false);
   const remaining = Math.max(0, trade.quantity - trade.allocations.length);
+  // Assignment is gated on having enough idle workers *of this trade* — other
+  // trades are shown for context but can't fill the line.
+  const short = remaining > 0 && supply.matching < remaining;
 
   function handleUnallocate(allocationId: string) {
     const formData = new FormData();
@@ -45,17 +52,38 @@ export function TradeAllocationSection({
             {trade.rate != null ? ` · AED ${trade.rate}` : ""}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-secondary">
-            {trade.allocations.length} / {trade.quantity} allocated
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="tabular text-xs font-medium text-secondary">
+            {trade.allocations.length} / {trade.quantity} assigned
           </span>
+
+          {/* Counts, not names: at this stage the question is only whether the
+              trade can be covered. Picking the actual workers happens during
+              mobilisation. */}
+          <span
+            className={cn(
+              "rounded-control px-2 py-1 text-xs font-medium",
+              short
+                ? "bg-[var(--warning-soft)] text-[var(--warning)]"
+                : "bg-[var(--success-soft)] text-[var(--success)]"
+            )}
+          >
+            {supply.matching} idle {trade.trade}
+          </span>
+          <span className="text-xs text-muted">{supply.other} idle in other trades</span>
+
           <button
             type="button"
             onClick={() => setShowAllocate(true)}
-            disabled={remaining === 0}
+            disabled={remaining === 0 || short}
+            title={
+              short
+                ? `Only ${supply.matching} idle ${trade.trade} available for ${remaining} still needed`
+                : undefined
+            }
             className="btn btn-primary btn-sm"
           >
-            Allocate
+            Assign
           </button>
         </div>
       </div>
@@ -173,7 +201,10 @@ function AllocateForm({
       <div className="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-default p-2">
         {sorted.map((e) => {
           const disabled = !selected.has(e.id) && selected.size >= remaining;
-          const matches = e.trade === trade.trade;
+          // Same loose comparison the counts use, so the badge and this list
+          // never disagree about who holds the trade.
+          const matches =
+            (e.trade ?? "").trim().toLowerCase() === trade.trade.trim().toLowerCase();
           return (
             <label
               key={e.id}

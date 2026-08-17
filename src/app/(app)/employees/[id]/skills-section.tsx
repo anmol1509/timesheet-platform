@@ -80,7 +80,7 @@ export function SkillsSection({
               step={SKILL_LEVEL_STEP}
               value={level}
               onChange={(e) => setLevel(Number(e.target.value))}
-              aria-label="Skill level"
+              aria-label="Trade level"
               className="mt-2.5 w-full accent-[var(--brand-primary)]"
             />
           </div>

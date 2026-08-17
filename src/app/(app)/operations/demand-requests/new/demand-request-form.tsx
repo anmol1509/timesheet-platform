@@ -2,14 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
+import { cn } from "@/lib/cn";
 import { createDemandRequestAction } from "../actions";
 
 type Client = { id: string; name: string };
 type Project = { id: string; name: string; code: string; clientId: string; salesExecutive: string | null };
-type TradeRow = { id: string; trade: string; quantity: string; shift: string; rate: string };
+type TradeRow = {
+  id: string;
+  trade: string;
+  quantity: string;
+  shift: string;
+  rate: string;
+};
 
 function blankTradeRow(): TradeRow {
-  return { id: crypto.randomUUID(), trade: "", quantity: "1", shift: "", rate: "" };
+  // Day is the common case, so the toggle starts there rather than unset.
+  return { id: crypto.randomUUID(), trade: "", quantity: "1", shift: "Day", rate: "" };
 }
 
 export function DemandRequestForm({
@@ -19,7 +27,7 @@ export function DemandRequestForm({
 }: {
   clients: Client[];
   projects: Project[];
-  tradeOptions: { value: string }[];
+  tradeOptions: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [clientId, setClientId] = useState("");
@@ -158,7 +166,7 @@ export function DemandRequestForm({
                 value={t.trade}
                 onChange={(v) => updateTrade(t.id, { trade: v })}
                 placeholder="Trade"
-                options={tradeOptions.map((o) => ({ value: o.value, label: o.value }))}
+                options={tradeOptions.map((name) => ({ value: name, label: name }))}
               />
               <input
                 type="number"
@@ -168,16 +176,30 @@ export function DemandRequestForm({
                 placeholder="Quantity"
                 className="input"
               />
-              <Select
-                value={t.shift}
-                onChange={(v) => updateTrade(t.id, { shift: v })}
-                placeholder="Shift"
-                searchable={false}
-                options={[
-                  { value: "Day", label: "Day" },
-                  { value: "Night", label: "Night" },
-                ]}
-              />
+              {/* Two states, so a toggle beats a dropdown — one click, and
+                  which shift is set is readable without opening anything. */}
+              <div
+                role="group"
+                aria-label="Shift"
+                className="flex overflow-hidden rounded-control border border-default"
+              >
+                {(["Day", "Night"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={t.shift === option}
+                    onClick={() => updateTrade(t.id, { shift: option })}
+                    className={cn(
+                      "flex-1 px-3 py-2 text-xs font-medium transition",
+                      t.shift === option
+                        ? "bg-brand-soft text-[var(--brand-primary)]"
+                        : "bg-surface text-secondary hover:bg-surface-hover"
+                    )}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
               <input
                 type="number"
                 value={t.rate}
@@ -211,7 +233,7 @@ export function DemandRequestForm({
         disabled={pending || !clientId || !projectId}
         className="btn btn-primary"
       >
-        {pending ? "Creating…" : "Create Request"}
+        {pending ? "Raising…" : "Raise Demand"}
       </button>
     </div>
   );

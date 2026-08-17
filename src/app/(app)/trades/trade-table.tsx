@@ -6,7 +6,7 @@ import { TrendingUp } from "lucide-react";
 import { toggleTrendingAction, deleteSkillAction, updateSkillAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 
-type SkillRow = {
+type TradeRow = {
   id: string;
   name: string;
   category: string | null;
@@ -15,13 +15,8 @@ type SkillRow = {
   popularity: number;
 };
 
-function demandLevel(pct: number): { label: string; color: "green" | "amber" | "slate" } {
-  if (pct >= 15) return { label: "High Demand", color: "green" };
-  if (pct >= 5) return { label: "Moderate", color: "amber" };
-  return { label: "Low Demand", color: "slate" };
-}
 
-export function SkillTable({ skills }: { skills: SkillRow[] }) {
+export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -29,7 +24,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
   const [draftCategory, setDraftCategory] = useState("");
   const [pending, startTransition] = useTransition();
 
-  function startEdit(s: SkillRow) {
+  function startEdit(s: TradeRow) {
     setEditingId(s.id);
     setDraftName(s.name);
     setDraftCategory(s.category || "");
@@ -68,7 +63,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search skills..."
+          placeholder="Search trades…"
           className="input w-full max-w-sm"
         />
         <Select
@@ -81,13 +76,13 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-primary">
-          Skills Overview ({filtered.length} skills)
+          Trades ({filtered.length})
         </h2>
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
-                <th className="px-4 py-3">Skill Name</th>
+                <th className="px-4 py-3">Trade Name</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-right">Employee Count</th>
                 <th className="px-4 py-3">Share of workforce</th>
@@ -96,7 +91,6 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               {filtered.map((s) => {
-                const demand = demandLevel(s.popularity);
                 return (
                   <tr key={s.id}>
                     {editingId === s.id ? (
@@ -203,7 +197,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
                       <DeleteButton
                         action={deleteSkillAction}
                         hiddenFields={{ skillId: s.id }}
-                        confirmMessage={`Delete the "${s.name}" skill? It will be removed from ${s.employeeCount} employee(s).`}
+                        confirmMessage={`Delete the "${s.name}" trade? It will be removed from ${s.employeeCount} employee(s).`}
                       />
                     </td>
                   </tr>
@@ -213,7 +207,7 @@ export function SkillTable({ skills }: { skills: SkillRow[] }) {
           </table>
           {filtered.length === 0 && (
             <p className="px-4 py-10 text-center text-sm text-muted">
-              No skills match.
+              No trades match.
             </p>
           )}
         </div>

@@ -17,7 +17,12 @@ async function assertRequestInBranch(id: string, branchId: string | null, isSupe
   return !!request && !isOutsideBranch(request.branchId, branchId, isSuperAdmin);
 }
 
-type TradeInput = { trade: string; quantity: number; shift: string | null; rate: number | null };
+type TradeInput = {
+  trade: string;
+  quantity: number;
+  shift: string | null;
+  rate: number | null;
+};
 
 export async function createDemandRequestAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -42,6 +47,20 @@ export async function createDemandRequestAction(formData: FormData) {
     trades = [];
   }
   trades = trades.filter((t) => t.trade && t.quantity > 0);
+
+  // The dropdown offers trades from the taxonomy *and* trades only present as
+  // strings on the roster, so a name may not have a taxonomy entry yet. Resolve
+  // case-insensitively and create what's missing, which keeps the Trades list
+  // converging on what the workforce actually does rather than drifting apart.
+  const skillIdByTrade = new Map<string, string>();
+  for (const name of new Set(trades.map((t) => t.trade.trim()))) {
+    const existing = await prisma.skill.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } },
+      select: { id: true },
+    });
+    const skill = existing ?? (await prisma.skill.create({ data: { name } }));
+    skillIdByTrade.set(name.toLowerCase(), skill.id);
+  }
   if (trades.length === 0) return;
 
   const created = await prisma.demandRequest.create({
@@ -56,7 +75,15 @@ export async function createDemandRequestAction(formData: FormData) {
       transportationStatus,
       remarks,
       requestedById: user.id,
-      trades: { create: trades.map((t) => ({ trade: t.trade, quantity: t.quantity, shift: t.shift, rate: t.rate })) },
+      trades: {
+        create: trades.map((t) => ({
+          skillId: skillIdByTrade.get(t.trade.trim().toLowerCase()),
+          trade: t.trade.trim(),
+          quantity: t.quantity,
+          shift: t.shift,
+          rate: t.rate,
+        })),
+      },
     },
   });
 

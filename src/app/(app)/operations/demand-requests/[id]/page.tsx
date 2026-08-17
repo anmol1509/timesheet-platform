@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
-import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
 import { RequestDetailsForm } from "./request-details-form";
 import { TradeAllocationSection } from "./trade-allocation-section";
+import { getIdleWorkers, supplyForTrade } from "@/lib/demandSupply";
 import { deleteDemandRequestAction } from "../actions";
 
 export default async function DemandRequestDetailPage({
@@ -29,24 +30,14 @@ export default async function DemandRequestDetailPage({
   });
   if (!request || isOutsideBranch(request.branchId, branchId, isSuperAdmin)) notFound();
 
-  const idleEmployeesRaw = await prisma.employee.findMany({
-    where: { ...branchWhere(branchId), projectId: null },
-    select: {
-      id: true,
-      name: true,
-      employeeIdNo: true,
-      trade: true,
-      supplier: { select: { approvalStatus: true, labourApprovalStatus: true } },
-    },
-    orderBy: { name: "asc" },
-  });
-  // Employees with no supplier (in-house/site staff) are never gated; a
-  // supplier-linked employee needs both the supplier and its labour approved.
-  const idleEmployees = idleEmployeesRaw
-    .filter(
-      (e) => !e.supplier || (e.supplier.approvalStatus === "Approved" && e.supplier.labourApprovalStatus === "Approved")
-    )
-    .map((e) => ({ id: e.id, name: e.name, employeeIdNo: e.employeeIdNo, trade: e.trade }));
+  // Shared with the mobilisation screen so both agree on what "idle" means.
+  const idleWorkers = await getIdleWorkers(branchId);
+  const idleEmployees = idleWorkers.map((w) => ({
+    id: w.id,
+    name: w.name,
+    employeeIdNo: w.employeeIdNo,
+    trade: w.trade,
+  }));
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -100,6 +91,7 @@ export default async function DemandRequestDetailPage({
         {request.trades.map((t) => (
           <TradeAllocationSection
             key={t.id}
+            supply={supplyForTrade(idleWorkers, t.trade)}
             trade={{
               id: t.id,
               trade: t.trade,

@@ -39,7 +39,7 @@ const STEPS = [
   { key: "identity", label: "Identity" },
   { key: "expiry", label: "Numbers & expiry" },
   { key: "deployment", label: "Deployment" },
-  { key: "extras", label: "Skills & notes" },
+  { key: "extras", label: "Trades & notes" },
   { key: "notes", label: "Notes" },
   { key: "review", label: "Review" },
 ] as const;
@@ -1245,7 +1245,7 @@ export function EmployeeWizard({
       {/* ---------------- Skills & notes ---------------- */}
       {stepKey === "extras" && (
         <div className="space-y-4">
-          <Field label="Skills">
+          <Field label="Trades">
             <div className="flex gap-2">
               <input
                 value={skillInput}
@@ -1256,7 +1256,7 @@ export function EmployeeWizard({
                     addSkill(skillInput);
                   }
                 }}
-                placeholder="Add a skill and press Enter"
+                placeholder="Add a trade and press Enter"
                 className="input flex-1"
               />
               <button
@@ -1473,7 +1473,7 @@ export function EmployeeWizard({
               />
             </ReviewRow>
 
-            <ReviewRow label="Skills">
+            <ReviewRow label="Trades">
               <div className="flex flex-wrap items-center gap-1.5">
                 {skills.map((skill) => (
                   <button
@@ -1497,7 +1497,7 @@ export function EmployeeWizard({
                       addSkill(skillInput);
                     }
                   }}
-                  placeholder={skills.length ? "Add another…" : "Add a skill and press Enter"}
+                  placeholder={skills.length ? "Add another…" : "Add a trade and press Enter"}
                   className="input h-8 flex-1 py-1 text-xs"
                 />
               </div>
