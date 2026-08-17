@@ -16,6 +16,8 @@ import {
 type Line = {
   id: string;
   trade: string;
+  /** Only approved lines can be filled; approval is per trade, not per demand. */
+  approved: boolean;
   quantity: number;
   shift: string | null;
   assigned: { id: string; employeeId: string; name: string; employeeIdNo: string }[];
@@ -57,13 +59,10 @@ export function MobilisationBoard({
   lines,
   workers,
   tradeOptions,
-  locked,
 }: {
   lines: Line[];
   workers: Worker[];
   tradeOptions: string[];
-  /** Set when the demand isn't approved — nothing here should commit workers. */
-  locked: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -101,6 +100,7 @@ export function MobilisationBoard({
   }
 
   const remaining = Math.max(0, activeLine.quantity - activeLine.assigned.length);
+  const locked = !activeLine.approved;
 
   function toggle(id: string) {
     setPicked((prev) => {
@@ -175,6 +175,7 @@ export function MobilisationBoard({
                 {done && <Check className="h-4 w-4 text-[var(--success)]" aria-hidden />}
               </span>
               <span className="mt-0.5 block text-xs text-muted">
+                {line.approved ? "" : "Not approved · "}
                 {line.shift ? `${line.shift} shift · ` : ""}
                 <span className="tabular">
                   {line.assigned.length}/{line.quantity}
@@ -244,7 +245,11 @@ export function MobilisationBoard({
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
-                {remaining === 0 ? "Line is full" : `${remaining} still needed`}
+                {locked
+                  ? "Approve this trade to mobilise"
+                  : remaining === 0
+                    ? "Line is full"
+                    : `${remaining} still needed`}
               </span>
               <button
                 type="button"

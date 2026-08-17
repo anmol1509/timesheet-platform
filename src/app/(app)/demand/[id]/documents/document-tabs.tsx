@@ -43,6 +43,18 @@ export function DocumentTabs({
   const [sections, setSections] = useState<Set<string>>(
     () => new Set(PACK_SECTIONS.map((s) => s.key))
   );
+  // Everyone mobilised is included by default; deselect to leave someone out
+  // (a worker whose papers aren't ready shouldn't hold up the rest of the pack).
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set(workers.map((w) => w.id)));
+
+  function toggleWorker(id: string) {
+    setChosen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function toggle(key: string) {
     setSections((prev) => {
@@ -53,9 +65,10 @@ export function DocumentTabs({
     });
   }
 
-  const packHref = `/api/demand-requests/${demandId}/pack?${[...sections]
-    .map((s) => `section=${encodeURIComponent(s)}`)
-    .join("&")}`;
+  const packHref = `/api/demand-requests/${demandId}/pack?${[
+    ...[...sections].map((s) => `section=${encodeURIComponent(s)}`),
+    ...[...chosen].map((id) => `employee=${encodeURIComponent(id)}`),
+  ].join("&")}`;
 
   return (
     <div className="space-y-4">
@@ -144,11 +157,52 @@ export function DocumentTabs({
           <p className="mb-3 text-sm text-muted">
             {workers.length === 0
               ? "Nobody is mobilised on this demand yet — mobilise workers first."
-              : `Builds a zip for the ${workers.length} mobilised worker${
-                  workers.length === 1 ? "" : "s"
-                }, foldered per person. Anything not on file is listed in the manifest rather than silently skipped.`}
+              : "Builds a zip foldered per worker. Anything not on file is listed in the manifest rather than silently skipped."}
           </p>
 
+          {workers.length > 0 && (
+            <div className="mb-5">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
+                  Workers ({chosen.size} of {workers.length})
+                </h3>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setChosen(
+                      chosen.size === workers.length
+                        ? new Set()
+                        : new Set(workers.map((w) => w.id))
+                    )
+                  }
+                  className="text-xs font-medium text-blue-600 hover:underline"
+                >
+                  {chosen.size === workers.length ? "Deselect all" : "Select all"}
+                </button>
+              </div>
+              <ul className="max-h-64 divide-y divide-[var(--border)] overflow-y-auto rounded-card border border-default">
+                {workers.map((w) => (
+                  <li key={w.id} className="flex items-center gap-2.5 px-3 py-2">
+                    <Checkbox
+                      checked={chosen.has(w.id)}
+                      onCheckedChange={() => toggleWorker(w.id)}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-primary">
+                      {w.name}
+                      <span className="tabular ml-2 text-xs text-subtle">
+                        {w.employeeIdNo}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted">{w.trade || "No trade"}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
+            Documents
+          </h3>
           <ul className="space-y-2">
             {PACK_SECTIONS.map((section) => (
               <li key={section.key} className="flex items-start gap-2.5">
@@ -168,16 +222,17 @@ export function DocumentTabs({
 
           <a
             href={packHref}
-            aria-disabled={sections.size === 0 || workers.length === 0}
+            aria-disabled={sections.size === 0 || chosen.size === 0}
             className={cn(
               "btn btn-primary mt-4",
-              (sections.size === 0 || workers.length === 0) &&
+              (sections.size === 0 || chosen.size === 0) &&
                 "pointer-events-none opacity-50"
             )}
           >
             <Download className="h-3.5 w-3.5" aria-hidden />
-            Download {sections.size} document{sections.size === 1 ? "" : "s"} ·{" "}
-            mobilisation-{requestNo}.zip
+            Download {sections.size} document{sections.size === 1 ? "" : "s"} for{" "}
+            {chosen.size} worker{chosen.size === 1 ? "" : "s"} · mobilisation-
+            {requestNo}.zip
           </a>
         </div>
       )}

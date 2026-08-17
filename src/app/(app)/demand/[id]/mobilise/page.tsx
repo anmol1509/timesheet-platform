@@ -76,13 +76,16 @@ export default async function MobilisePage({
         </div>
       </div>
 
-      {request.status !== "Approved" && request.status !== "Closed" && (
-        // Mobilising an unapproved demand would commit workers to something
-        // nobody has agreed to, so this states the position rather than
-        // silently allowing it.
+      {request.trades.every((t) => !t.approved) && (
+        // Approval is per trade line, so this is only shown when *nothing* is
+        // approved; a partly-approved demand is mobilised line by line.
         <p className="rounded-control border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
-          This demand is <span className="font-medium">{request.status}</span>. Approve it
-          on the demand page before mobilising.
+          No trade on this demand is approved yet — approve the lines you want to
+          fill on the{" "}
+          <Link href={`/demand/${request.id}`} className="font-medium underline">
+            demand page
+          </Link>
+          .
         </p>
       )}
 
@@ -90,6 +93,7 @@ export default async function MobilisePage({
         lines={request.trades.map((t) => ({
           id: t.id,
           trade: t.trade,
+          approved: t.approved,
           quantity: t.quantity,
           shift: t.shift,
           assigned: t.allocations.map((a) => ({
@@ -107,7 +111,6 @@ export default async function MobilisePage({
           skillNames: w.skillNames,
         }))}
         tradeOptions={tradeOptions}
-        locked={request.status !== "Approved" && request.status !== "Closed"}
       />
     </div>
   );

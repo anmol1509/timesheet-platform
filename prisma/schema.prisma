@@ -1183,6 +1183,12 @@ model DemandRequestTrade {
   shift    String? // "Day" | "Night"
   rate     Float?
 
+  // Approval is per trade line, not per request: a client may sign off on the
+  // masons and hold the carpenters. Deliberately independent of whether idle
+  // workers of that trade exist — mobilisation can re-designate someone from
+  // another trade, so a shortage today shouldn't block approval.
+  approved Boolean @default(false)
+
   // The trade as an entry in the Trades taxonomy (the Skill table), so the
   // idle-worker count for a line is an exact join rather than a name match.
   // Nullable for rows created before the link existed.

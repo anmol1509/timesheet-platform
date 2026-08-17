@@ -28,10 +28,6 @@ export async function createDemandRequestAction(formData: FormData) {
   const clientId = String(formData.get("clientId") || "");
   const projectId = String(formData.get("projectId") || "");
   const requestType = stringOrNull(formData.get("requestType")) || "New";
-  const priority = stringOrNull(formData.get("priority"));
-  const salesExecutive = stringOrNull(formData.get("salesExecutive"));
-  const accommodationStatus = stringOrNull(formData.get("accommodationStatus"));
-  const transportationStatus = stringOrNull(formData.get("transportationStatus"));
   const remarks = stringOrNull(formData.get("remarks"));
   const tradesJson = String(formData.get("tradesJson") || "[]");
   if (!clientId || !projectId || !branchId) return;
@@ -68,10 +64,6 @@ export async function createDemandRequestAction(formData: FormData) {
       projectId,
       branchId,
       requestType,
-      priority,
-      salesExecutive,
-      accommodationStatus,
-      transportationStatus,
       remarks,
       requestedById: user.id,
       trades: {
@@ -89,7 +81,7 @@ export async function createDemandRequestAction(formData: FormData) {
     entityType: "DEMAND_REQUEST",
     entityId: created.id,
     action: "CREATE",
-    after: { clientId, projectId, requestType, priority, trades },
+    after: { clientId, projectId, requestType, trades },
     userId: user.id,
     userName: user.name,
     branchId,
@@ -109,10 +101,6 @@ export async function updateDemandRequestAction(formData: FormData) {
 
   const data = {
     status: stringOrNull(formData.get("status")) || "Open",
-    priority: stringOrNull(formData.get("priority")),
-    salesExecutive: stringOrNull(formData.get("salesExecutive")),
-    accommodationStatus: stringOrNull(formData.get("accommodationStatus")),
-    transportationStatus: stringOrNull(formData.get("transportationStatus")),
     remarks: stringOrNull(formData.get("remarks")),
   };
 
@@ -362,4 +350,56 @@ export async function changeEmployeeTradeAction(
   // A re-designation changes who matches which trade line, so the whole module
   // is invalidated rather than one path.
   revalidatePath("/demand", "layout");
+}
+
+/**
+ * Approves or un-approves a single trade line.
+ *
+ * Approval sits on the line rather than the request because a client signs off
+ * trade by trade. It is deliberately not gated on whether idle workers of that
+ * trade exist: mobilisation can re-designate someone from another trade, so a
+ * shortage today is not a reason to refuse approval.
+ */
+export async function setTradeApprovalAction(
+  formData: FormData
+): Promise<{ error?: string } | void> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const tradeId = String(formData.get("tradeId") || "");
+  const approved = formData.get("approved") === "true";
+  if (!tradeId) return;
+
+  const trade = await prisma.demandRequestTrade.findUnique({
+    where: { id: tradeId },
+    include: { demandRequest: { select: { id: true, branchId: true } }, allocations: true },
+  });
+  if (!trade || isOutsideBranch(trade.demandRequest.branchId, branchId, isSuperAdmin)) return;
+
+  // Withdrawing approval while people are already mobilised would leave workers
+  // committed to something no longer agreed, so it's refused with a reason.
+  if (!approved && trade.allocations.length > 0) {
+    return {
+      error: `${trade.trade} has ${trade.allocations.length} worker(s) mobilised — remove them first.`,
+    };
+  }
+
+  await prisma.demandRequestTrade.update({
+    where: { id: tradeId },
+    data: { approved },
+  });
+
+  await logAudit({
+    entityType: "DEMAND_REQUEST",
+    entityId: trade.demandRequest.id,
+    action: "UPDATE",
+    before: { trade: trade.trade, approved: trade.approved },
+    after: { trade: trade.trade, approved },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/demand/${trade.demandRequest.id}`);
+  revalidatePath(`/demand/${trade.demandRequest.id}/mobilise`);
+  revalidatePath("/demand/mobilisation");
+  revalidatePath("/demand");
 }

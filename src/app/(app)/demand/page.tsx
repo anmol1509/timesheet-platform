@@ -48,8 +48,6 @@ export default async function DemandRequestsPage() {
             clientName: r.client.name,
             projectName: r.project.name,
             status: r.status,
-            priority: r.priority,
-            salesExecutive: r.salesExecutive,
           }))}
         />
       )}

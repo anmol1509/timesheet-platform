@@ -22,6 +22,9 @@ export async function GET(
 
   const url = new URL(request.url);
   const wanted = new Set(url.searchParams.getAll("section"));
+  // Whose documents to include. Empty means everyone mobilised, so an older
+  // link without the parameter still behaves as it did.
+  const chosenIds = new Set(url.searchParams.getAll("employee"));
   const sections = PACK_SECTIONS.filter((s) => wanted.has(s.key));
   if (sections.length === 0) {
     return NextResponse.json({ error: "Pick at least one document." }, { status: 400 });
@@ -54,10 +57,17 @@ export async function GET(
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee));
+  const allWorkers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee));
+  const workers =
+    chosenIds.size > 0 ? allWorkers.filter((w) => chosenIds.has(w.id)) : allWorkers;
   if (workers.length === 0) {
     return NextResponse.json(
-      { error: "Nobody is mobilised on this demand yet." },
+      {
+        error:
+          allWorkers.length === 0
+            ? "Nobody is mobilised on this demand yet."
+            : "None of the selected workers are mobilised on this demand.",
+      },
       { status: 400 }
     );
   }

@@ -9,7 +9,7 @@ export default async function NewDemandRequestPage() {
     prisma.client.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({
       where: branchWhere(branchId),
-      select: { id: true, name: true, code: true, clientId: true, salesExecutive: true },
+      select: { id: true, name: true, code: true, clientId: true },
       orderBy: { name: "asc" },
     }),
     prisma.skill.findMany({ select: { name: true }, orderBy: { name: "asc" } }),

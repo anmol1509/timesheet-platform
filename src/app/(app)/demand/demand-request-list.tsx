@@ -10,8 +10,6 @@ type Row = {
   clientName: string;
   projectName: string;
   status: string;
-  priority: string | null;
-  salesExecutive: string | null;
 };
 
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
@@ -40,13 +38,6 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
       header: "Status",
       render: (r) => <Badge color={STATUS_COLOR[r.status] ?? "slate"}>{r.status}</Badge>,
       csvValue: (r) => r.status,
-    },
-    { key: "priority", header: "Priority", render: (r) => r.priority || "—", csvValue: (r) => r.priority },
-    {
-      key: "salesExecutive",
-      header: "Sales Executive",
-      render: (r) => r.salesExecutive || "—",
-      csvValue: (r) => r.salesExecutive,
     },
   ];
 

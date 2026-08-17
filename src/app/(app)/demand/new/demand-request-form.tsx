@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { createDemandRequestAction } from "../actions";
 
 type Client = { id: string; name: string };
-type Project = { id: string; name: string; code: string; clientId: string; salesExecutive: string | null };
+type Project = { id: string; name: string; code: string; clientId: string };
 type TradeRow = {
   id: string;
   trade: string;
@@ -31,20 +31,10 @@ export function DemandRequestForm({
   const [pending, startTransition] = useTransition();
   const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
-  const [salesExecutive, setSalesExecutive] = useState("");
-  const [priority, setPriority] = useState("");
-  const [accommodationStatus, setAccommodationStatus] = useState("");
-  const [transportationStatus, setTransportationStatus] = useState("");
   const [remarks, setRemarks] = useState("");
   const [trades, setTrades] = useState<TradeRow[]>([blankTradeRow()]);
 
   const availableProjects = projects.filter((p) => p.clientId === clientId);
-
-  function selectProject(id: string) {
-    setProjectId(id);
-    const project = projects.find((p) => p.id === id);
-    if (project?.salesExecutive) setSalesExecutive(project.salesExecutive);
-  }
 
   function updateTrade(id: string, patch: Partial<TradeRow>) {
     setTrades((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -55,10 +45,6 @@ export function DemandRequestForm({
     const formData = new FormData();
     formData.append("clientId", clientId);
     formData.append("projectId", projectId);
-    formData.append("salesExecutive", salesExecutive);
-    formData.append("priority", priority);
-    formData.append("accommodationStatus", accommodationStatus);
-    formData.append("transportationStatus", transportationStatus);
     formData.append("remarks", remarks);
     formData.append(
       "tradesJson",
@@ -96,50 +82,10 @@ export function DemandRequestForm({
           <span className="mb-1 block text-xs font-medium text-muted">Project</span>
           <Select
             value={projectId}
-            onChange={selectProject}
+            onChange={setProjectId}
             placeholder={clientId ? "Select project" : "Select a client first"}
             disabled={!clientId}
             options={availableProjects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Sales Executive</span>
-          <input
-            value={salesExecutive}
-            onChange={(e) => setSalesExecutive(e.target.value)}
-            className="input w-full"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Priority</span>
-          <Select
-            value={priority}
-            onChange={setPriority}
-            placeholder="Not set"
-            searchable={false}
-            options={[
-              { value: "Low", label: "Low" },
-              { value: "Medium", label: "Medium" },
-              { value: "High", label: "High" },
-            ]}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Accommodation Status</span>
-          <input
-            value={accommodationStatus}
-            onChange={(e) => setAccommodationStatus(e.target.value)}
-            placeholder="e.g. Own"
-            className="input w-full"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Transportation Status</span>
-          <input
-            value={transportationStatus}
-            onChange={(e) => setTransportationStatus(e.target.value)}
-            placeholder="e.g. Own"
-            className="input w-full"
           />
         </label>
         <div className="sm:col-span-2">

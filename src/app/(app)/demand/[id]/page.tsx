@@ -72,11 +72,6 @@ export default async function DemandRequestDetailPage({
       <RequestDetailsForm
         request={{
           id: request.id,
-          status: request.status,
-          priority: request.priority,
-          salesExecutive: request.salesExecutive,
-          accommodationStatus: request.accommodationStatus,
-          transportationStatus: request.transportationStatus,
           remarks: request.remarks,
         }}
       />
@@ -90,6 +85,7 @@ export default async function DemandRequestDetailPage({
             trade={{
               id: t.id,
               trade: t.trade,
+              approved: t.approved,
               quantity: t.quantity,
               shift: t.shift,
               rate: t.rate,
