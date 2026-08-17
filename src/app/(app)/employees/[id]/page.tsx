@@ -13,6 +13,7 @@ import { SkillsSection } from "./skills-section";
 import { VisaHistorySection } from "./visa-history-section";
 import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
+import { NotesSection } from "./notes-section";
 
 const STATUS_BADGE = {
   valid: { label: "Valid", color: "green" as const },
@@ -39,6 +40,13 @@ export default async function EmployeeDetailPage({
         visaApplications: { orderBy: { createdAt: "desc" } },
         labourCardApplications: { orderBy: { createdAt: "desc" } },
         bed: { include: { room: { include: { camp: true } } } },
+        noteEntries: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            createdBy: { select: { name: true } },
+            documents: { select: { id: true, filename: true } },
+          },
+        },
       },
     }),
     prisma.project.findMany({ orderBy: { name: "asc" } }),
@@ -157,27 +165,38 @@ export default async function EmployeeDetailPage({
               }))}
             />
 
-      {/* Below the identity form, not above it: a camp and bed matter less
-          than who this is, and this card is empty for most workers. */}
-      <AccommodationSection
-        employeeId={employee.id}
-        currentBed={
-          employee.bed
-            ? {
-                id: employee.bed.id,
-                label: employee.bed.label,
-                roomName: employee.bed.room.name,
-                campName: employee.bed.room.camp.name,
+<NotesSection
+              employeeId={employee.id}
+              notes={employee.noteEntries.map((note) => ({
+                id: note.id,
+                remarks: note.remarks,
+                createdAt: note.createdAt.toISOString(),
+                createdByName: note.createdBy.name,
+                documents: note.documents,
+              }))}
+            />
+
+            {/* Below the identity form, not above it: a camp and bed matter less
+                than who this is, and this card is empty for most workers. */}
+            <AccommodationSection
+              employeeId={employee.id}
+              currentBed={
+                employee.bed
+                  ? {
+                      id: employee.bed.id,
+                      label: employee.bed.label,
+                      roomName: employee.bed.room.name,
+                      campName: employee.bed.room.camp.name,
+                    }
+                  : null
               }
-            : null
-        }
-        vacantBeds={vacantBeds.map((b) => ({
-          id: b.id,
-          label: b.label,
-          roomName: b.room.name,
-          campName: b.room.camp.name,
-        }))}
-      />
+              vacantBeds={vacantBeds.map((b) => ({
+                id: b.id,
+                label: b.label,
+                roomName: b.room.name,
+                campName: b.room.camp.name,
+              }))}
+            />
 
             <VisaHistorySection
               employeeId={employee.id}

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { clampSkillLevel } from "@/lib/skillLevel";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import {
   isAcceptedPhotoType,
@@ -53,11 +54,34 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
   const before = await prisma.employee.findUnique({ where: { id } });
 
+  // Name and employee ID were captured at registration and then frozen — a
+  // typo in either was permanent without database access.
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return { error: "Name can't be empty." };
+
+  const employeeIdNo = String(formData.get("employeeIdNo") || "").trim();
+  if (!employeeIdNo) return { error: "Employee ID can't be empty." };
+  if (employeeIdNo !== before?.employeeIdNo) {
+    // Unique across the whole table, so a clash has to be caught here rather
+    // than surfacing as a Prisma constraint error.
+    const clash = await prisma.employee.findUnique({
+      where: { employeeIdNo },
+      select: { id: true },
+    });
+    if (clash && clash.id !== id) {
+      return { error: `Employee ID ${employeeIdNo} is already taken.` };
+    }
+  }
+
   const data = {
+      name,
+      employeeIdNo,
       category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
       supplierId: stringOrNull(formData.get("supplierId")),
       sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
       nationality: stringOrNull(formData.get("nationality")),
+      sponsorName: stringOrNull(formData.get("sponsorName")),
+      unifiedNo: stringOrNull(formData.get("unifiedNo")),
       position: stringOrNull(formData.get("position")),
       passportNumber: stringOrNull(formData.get("passportNumber")),
       emiratesId: stringOrNull(formData.get("emiratesId")),
@@ -381,14 +405,18 @@ export async function addSkillAction(formData: FormData) {
   if (!employeeId || !skillName) return;
   if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
 
-  const skill = await prisma.skill.upsert({
-    where: { name: skillName },
-    update: {},
-    create: { name: skillName },
+  // Case-insensitive, so adding "carpenter" here folds into an existing
+  // "Carpentry" rather than creating a second skill — the third and last place
+  // this upsert was still exact-matching.
+  const existingSkill = await prisma.skill.findFirst({
+    where: { name: { equals: skillName, mode: "insensitive" } },
   });
+  const skill =
+    existingSkill ?? (await prisma.skill.create({ data: { name: skillName } }));
 
   const detail = {
-    proficiencyPercent: proficiencyPercent != null ? Math.round(proficiencyPercent) : null,
+    proficiencyPercent:
+      proficiencyPercent != null ? clampSkillLevel(proficiencyPercent) : null,
     rate,
   };
   await prisma.employeeSkill.upsert({
@@ -520,4 +548,88 @@ export async function removeSkillAction(formData: FormData) {
     .catch(() => {});
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/skills");
+}
+
+/**
+ * Adds a note to an employee, with optional attachments.
+ *
+ * Notes could be written during registration and then never seen again — the
+ * detail page had no way to read or add them, so anything recorded at
+ * onboarding was effectively write-only.
+ */
+export async function addEmployeeNoteAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  if (!employeeId) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const remarks = String(formData.get("remarks") || "").trim();
+  const files = formData
+    .getAll("files")
+    .filter(
+      (f): f is File =>
+        f instanceof File &&
+        f.size > 0 &&
+        f.size <= MAX_UPLOAD_BYTES &&
+        isAcceptedUploadType(f.type)
+    );
+  if (!remarks && files.length === 0) return;
+
+  const note = await prisma.employeeNote.create({
+    data: { employeeId, remarks, createdById: user.id },
+  });
+
+  for (const file of files) {
+    await prisma.document.create({
+      data: {
+        employeeId,
+        noteId: note.id,
+        type: "NOTE",
+        filename: safeFilename(file.name),
+        fileData: Buffer.from(await file.arrayBuffer()),
+        mimeType: file.type || "application/octet-stream",
+        uploadedById: user.id,
+      },
+    });
+  }
+
+  await logAudit({
+    entityType: "EMPLOYEE_NOTE",
+    entityId: note.id,
+    action: "CREATE",
+    after: { employeeId, remarks, files: files.length },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+}
+
+export async function deleteEmployeeNoteAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const noteId = String(formData.get("noteId") || "");
+  if (!employeeId || !noteId) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  // The note id is checked against the employee it was guarded under, so a
+  // valid employee can't be paired with someone else's note.
+  const existing = await prisma.employeeNote.findUnique({ where: { id: noteId } });
+  if (!existing || existing.employeeId !== employeeId) return;
+
+  // Attachments cascade via Document.noteId.
+  await prisma.employeeNote.delete({ where: { id: noteId } });
+
+  await logAudit({
+    entityType: "EMPLOYEE_NOTE",
+    entityId: noteId,
+    action: "DELETE",
+    before: existing as unknown as Record<string, unknown>,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
 }

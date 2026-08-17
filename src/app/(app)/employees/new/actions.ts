@@ -12,6 +12,7 @@ import {
   safeFilename,
 } from "@/lib/uploads";
 import { logAudit } from "@/lib/audit";
+import { clampSkillLevel } from "@/lib/skillLevel";
 
 /**
  * Skills arrive as JSON so each can carry its proficiency level. Anything
@@ -25,11 +26,10 @@ function parseSkills(raw: FormDataEntryValue | null): { name: string; level: num
     return parsed.flatMap((entry) => {
       const name = String(entry?.name ?? "").trim();
       if (!name) return [];
-      const level = Number(entry?.level);
       return [
         {
           name,
-          level: Number.isFinite(level) ? Math.min(100, Math.max(10, Math.round(level))) : 50,
+          level: clampSkillLevel(entry?.level),
         },
       ];
     });

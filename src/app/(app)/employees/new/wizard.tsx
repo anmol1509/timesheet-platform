@@ -21,6 +21,13 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { cn } from "@/lib/cn";
+import {
+  DEFAULT_SKILL_LEVEL,
+  SKILL_LEVEL_MAX,
+  SKILL_LEVEL_MIN,
+  SKILL_LEVEL_STEP,
+  skillLevelLabel,
+} from "@/lib/skillLevel";
 
 type Project = { id: string; name: string; code: string };
 type SponsorshipCompany = { id: string; name: string };
@@ -139,20 +146,6 @@ type SkillEntry = { name: string; level: number };
 
 type NoteDraft = { id: string; remarks: string; files: File[] };
 
-/** Range the slider offers; 10 is the floor, not zero — a skill at 0 isn't a skill. */
-const SKILL_LEVEL_MIN = 10;
-const SKILL_LEVEL_MAX = 100;
-const SKILL_LEVEL_STEP = 10;
-const DEFAULT_SKILL_LEVEL = 50;
-
-/** Plain-language label so the number means something consistent to everyone. */
-function skillLevelLabel(level: number) {
-  if (level <= 20) return "Beginner";
-  if (level <= 40) return "Basic";
-  if (level <= 60) return "Competent";
-  if (level <= 80) return "Skilled";
-  return "Expert";
-}
 
 type DocSlot =
   | "PASSPORT"

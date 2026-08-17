@@ -12,6 +12,10 @@ type Doc = { id: string; type: string; filename: string; expiryDate: Date | null
 
 type Employee = {
   id: string;
+  name: string;
+  employeeIdNo: string;
+  sponsorName: string | null;
+  unifiedNo: string | null;
   category: "STAFF" | "SITE_STAFF";
   supplierId: string | null;
   sponsorshipCompanyId: string | null;
@@ -292,6 +296,24 @@ export function EditForm({
             Personal details
           </h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            {/* Both were set once at registration and then unchangeable, so a
+                mistyped name or ID could only be fixed in the database. */}
+            <Field label="Full name">
+              <input
+                name="name"
+                defaultValue={employee.name}
+                required
+                className="input w-full"
+              />
+            </Field>
+            <Field label="Employee ID No">
+              <input
+                name="employeeIdNo"
+                defaultValue={employee.employeeIdNo}
+                required
+                className="input tabular w-full"
+              />
+            </Field>
             <Field label="Supplier">
               <Select
                 name="supplierId"
@@ -515,6 +537,8 @@ export function EditForm({
           <h2 className="mb-3 text-sm font-semibold text-primary">Visa</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="Visa number" name="visaNumber" defaultValue={employee.visaNumber} />
+            <TextField label="Unified No" name="unifiedNo" defaultValue={employee.unifiedNo} />
+            <TextField label="Sponsor name" name="sponsorName" defaultValue={employee.sponsorName} />
             <LookupField label="Visa type" name="visaType" defaultValue={employee.visaType} options={lookups.VISA_TYPE} />
             <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
             <TextField label="Visa designation" name="visaDesignation" defaultValue={employee.visaDesignation} />
