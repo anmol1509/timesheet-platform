@@ -33,10 +33,18 @@ let cachedLogo: string | null | undefined;
  */
 export async function loadLogoDataUri(): Promise<string | null> {
   if (cachedLogo !== undefined) return cachedLogo;
-  for (const file of ["timesheet-logo.png", "logo.png", "logo.jpg"]) {
+  // Order matters: the real artwork wins as soon as it's dropped in, and the
+  // placeholder derived from the repo's brand mark is only a fallback so a
+  // document is never issued with an empty letterhead.
+  for (const file of [
+    "timesheet-logo.png",
+    "timesheet-logo.jpg",
+    "logo.png",
+    "logo-placeholder.png",
+  ]) {
     try {
       const buffer = await readFile(path.join(process.cwd(), "public", "brand", file));
-      const mime = file.endsWith(".png") ? "image/png" : "image/jpeg";
+      const mime = file.endsWith(".jpg") ? "image/jpeg" : "image/png";
       cachedLogo = `data:${mime};base64,${buffer.toString("base64")}`;
       return cachedLogo;
     } catch {
