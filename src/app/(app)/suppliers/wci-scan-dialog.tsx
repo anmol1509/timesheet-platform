@@ -7,6 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { UPLOAD_ACCEPT_ATTR } from "@/lib/uploads";
+import { matchTrade } from "@/lib/trades";
 import type { ExtractedEmployeeRow } from "@/app/api/documents/extract-employees/route";
 import { EmployeeWizard } from "@/app/(app)/employees/new/wizard";
 
@@ -151,11 +152,16 @@ export function WciScanDialog({
                       <span className="block truncate text-sm text-primary">
                         {row.name || <span className="text-subtle">Unnamed</span>}
                       </span>
-                      {(row.designation || row.salary) && (
-                        <span className="block truncate text-xs text-subtle">
-                          {[row.designation, row.salary].filter(Boolean).join(" · ")}
-                        </span>
-                      )}
+                      <span className="block truncate text-xs text-subtle">
+                        {matchTrade(row.designation) ?? (
+                          <span className="text-[var(--warning)]">
+                            {row.designation
+                              ? `"${row.designation}" — not one of our trades, will be blank`
+                              : "No trade on the certificate"}
+                          </span>
+                        )}
+                        {row.salary ? ` · ${row.salary}` : ""}
+                      </span>
                     </span>
                     <button
                       type="button"
@@ -195,7 +201,8 @@ export function WciScanDialog({
                 prefill={{
                   name: adding.name ?? "",
                   supplierId,
-                  position: adding.designation ?? "",
+                  // Blank when the printed designation isn't one of ours.
+                  position: matchTrade(adding.designation) ?? "",
                 }}
                 onRegistered={() => {
                   // Tick the name off the list rather than leaving it looking

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Download, Pencil } from "lucide-react";
+import { ChevronRight, Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { cn } from "@/lib/cn";
 import { DeleteButton } from "@/components/DeleteButton";
 import { WciScanDialog } from "./wci-scan-dialog";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
@@ -21,6 +22,7 @@ type SupplierRow = {
   contactPhone: string | null;
   status: string;
   parentName: string | null;
+  parentId: string | null;
   employeeCount: number;
   entryCount: number;
   licenseStatus: ComplianceStatus;
@@ -57,6 +59,38 @@ export function SupplierList({
         (s.parentName || "").toLowerCase().includes(q)
     );
   }, [suppliers, query]);
+
+  // A subsidiary belongs under its parent, not loose in an alphabetical list.
+  // Searching flattens the tree, since hiding a match inside a collapsed parent
+  // would look like the search found nothing.
+  const searching = query.trim().length > 0;
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, SupplierRow[]>();
+    for (const row of visible) {
+      if (!row.parentId) continue;
+      if (!map.has(row.parentId)) map.set(row.parentId, []);
+      map.get(row.parentId)!.push(row);
+    }
+    return map;
+  }, [visible]);
+
+  const topLevel = useMemo(
+    () =>
+      searching
+        ? visible
+        : visible.filter((row) => !row.parentId || !childrenByParent.has(row.parentId)),
+    [visible, searching, childrenByParent]
+  );
+
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const { selected, toggle, toggleAll, allSelected, clear } = useRowSelection(
     visible.map((s) => s.id)
@@ -122,23 +156,53 @@ export function SupplierList({
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {visible.map((s) => (
-              <tr key={s.id} className={complianceRowClass(s.licenseStatus)}>
+            {topLevel.flatMap((s) => {
+              const children = childrenByParent.get(s.id) ?? [];
+              const isOpen = expanded.has(s.id);
+              return [s, ...(isOpen && !searching ? children : [])].map((row) => {
+              const isChild = row.id !== s.id;
+              return (
+              <tr key={row.id} className={complianceRowClass(row.licenseStatus)}>
                 <td className="px-4 py-3">
-                  <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggle(s.id)} />
+                  <Checkbox checked={selected.has(row.id)} onCheckedChange={() => toggle(row.id)} />
                 </td>
                 <td className="px-4 py-3 font-medium text-primary">
-                  <Link href={`/suppliers/${s.id}`} className="hover:underline">
-                    {s.name}
-                  </Link>
+                  <span
+                    className="flex items-center gap-1.5"
+                    style={isChild ? { paddingLeft: 18 } : undefined}
+                  >
+                    {!isChild && children.length > 0 && !searching ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(s.id)}
+                        aria-expanded={isOpen}
+                        aria-label={`${isOpen ? "Hide" : "Show"} ${children.length} subsidiaries of ${s.name}`}
+                        className="rounded-sm p-0.5 text-subtle transition hover:bg-surface-hover hover:text-secondary"
+                      >
+                        <ChevronRight
+                          className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")}
+                        />
+                      </button>
+                    ) : (
+                      <span className="w-[18px]" />
+                    )}
+                    <Link href={`/suppliers/${row.id}`} className="hover:underline">
+                      {row.name}
+                    </Link>
+                    {!isChild && children.length > 0 && (
+                      <span className="text-xs font-normal text-subtle">
+                        {children.length} subsidiar{children.length === 1 ? "y" : "ies"}
+                      </span>
+                    )}
+                  </span>
                 </td>
-                <td className="px-4 py-3 text-secondary">{s.parentName || "—"}</td>
+                <td className="px-4 py-3 text-secondary">{row.parentName || "—"}</td>
                 <td className="px-4 py-3 text-secondary">
-                  {s.contactPerson || s.contactPhone ? (
+                  {row.contactPerson || row.contactPhone ? (
                     <>
-                      {s.contactPerson && <div>{s.contactPerson}</div>}
-                      {s.contactPhone && (
-                        <div className="text-xs text-subtle">{s.contactPhone}</div>
+                      {row.contactPerson && <div>{row.contactPerson}</div>}
+                      {row.contactPhone && (
+                        <div className="text-xs text-subtle">{row.contactPhone}</div>
                       )}
                     </>
                   ) : (
@@ -146,47 +210,51 @@ export function SupplierList({
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {s.employeeCount > 0 ? (
+                  {row.employeeCount > 0 ? (
                     <Link
-                      href={`/employees?supplier=${s.id}`}
+                      href={`/employees?supplier=${row.id}`}
                       className="text-[var(--brand-primary)] hover:underline"
                     >
-                      {s.employeeCount}
+                      {row.employeeCount}
                     </Link>
                   ) : (
                     <span className="text-secondary">0</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right text-secondary">{s.entryCount}</td>
+                <td className="px-4 py-3 text-right text-secondary">{row.entryCount}</td>
                 <td className="px-4 py-3">
-                  <Badge color={s.status === "ACTIVE" ? "green" : "red"}>{s.status}</Badge>
+                  <Badge color={row.status === "ACTIVE" ? "green" : "red"}>{row.status}</Badge>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center justify-end gap-3">
+                  {/* Every company insures its own people, so a subsidiary
+                      needs its own certificate upload, not the parent's. */}
                   <WciScanDialog
-                    supplierId={s.id}
-                    supplierName={s.name}
+                    supplierId={row.id}
+                    supplierName={row.name}
                     wizardData={wizardData}
                   />
                   <Link
-                    href={`/suppliers/${s.id}`}
+                    href={`/suppliers/${row.id}`}
                     className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
                   >
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Link>
                   <DeleteButton
                     action={deleteSupplierAction}
-                    hiddenFields={{ supplierId: s.id }}
-                    confirmMessage={`Delete supplier "${s.name}"?${
-                      s.employeeCount > 0
-                        ? ` ${s.employeeCount} employee(s) will be unassigned.`
+                    hiddenFields={{ supplierId: row.id }}
+                    confirmMessage={`Delete supplier "${row.name}"?${
+                      row.employeeCount > 0
+                        ? ` ${row.employeeCount} employee(s) will be unassigned.`
                         : ""
                     }`}
                   />
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+              });
+            })}
           </tbody>
         </table>
         {visible.length === 0 && (

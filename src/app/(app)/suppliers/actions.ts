@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { matchTrade } from "@/lib/trades";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -398,12 +399,17 @@ export async function createEmployeesFromInsuranceAction(
     }
 
     const salary = r.salary ? Number(r.salary.replace(/[^0-9.]/g, "")) : null;
+    // The insurer prints whatever designation they like. Only a trade from our
+    // list is accepted; anything unrecognised or ambiguous ("Carpenter" fits
+    // three of ours) is left blank to be set by hand, rather than inventing a
+    // trade that nothing else in the app knows about.
+    const trade = matchTrade(r.designation);
     const employee = await prisma.employee.create({
       data: {
         employeeIdNo,
         name,
-        trade: r.designation?.trim() || null,
-        position: r.category?.trim() || null,
+        trade,
+        position: trade,
         salaryType: salary != null && Number.isFinite(salary) ? "BASIC" : null,
         salaryRate: salary != null && Number.isFinite(salary) ? salary : null,
         supplierId,
@@ -415,7 +421,14 @@ export async function createEmployeesFromInsuranceAction(
       entityType: "EMPLOYEE",
       entityId: employee.id,
       action: "CREATE",
-      after: { employeeIdNo, name, trade: r.designation, position: r.category, supplierId },
+      after: {
+        employeeIdNo,
+        name,
+        trade,
+        // Kept so an unmatched designation can be traced back to the source.
+        designationOnCertificate: r.designation,
+        supplierId,
+      },
       userId: user.id,
       userName: user.name,
       branchId,

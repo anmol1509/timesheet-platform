@@ -45,3 +45,40 @@ export const RATE_TYPES = [
 ] as const;
 
 export type RateType = (typeof RATE_TYPES)[number]["value"];
+
+/** Lowercase, punctuation collapsed to single spaces, for comparison only. */
+function normalise(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/**
+ * Best-effort mapping of a free-text designation onto the trade list.
+ *
+ * Used when names arrive from a document — a workmen's-compensation schedule
+ * prints whatever the insurer typed. An exact match wins; otherwise a trade
+ * qualifies if one name contains the other as whole words, which catches
+ * "Civil Helper" -> Helper and "Welder" -> ARC Welder.
+ *
+ * Ambiguity returns null on purpose. "Carpenter" fits Shuttering, Finishing
+ * and Gypsum Carpenter equally, and guessing one would put a worker on the
+ * wrong trade — a blank is honest and gets corrected, a wrong trade doesn't
+ * get noticed.
+ */
+export function matchTrade(value: string | null | undefined): Trade | null {
+  if (!value) return null;
+  const input = normalise(value);
+  if (!input) return null;
+
+  const exact = TRADES.find((t) => normalise(t) === input);
+  if (exact) return exact;
+
+  const contains = (haystack: string, needle: string) =>
+    ` ${haystack} `.includes(` ${needle} `);
+
+  const candidates = TRADES.filter((t) => {
+    const trade = normalise(t);
+    return contains(trade, input) || contains(input, trade);
+  });
+
+  return candidates.length === 1 ? candidates[0] : null;
+}
