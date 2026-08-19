@@ -21,6 +21,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { cn } from "@/lib/cn";
+import { TRADES, RATE_TYPES, type RateType } from "@/lib/trades";
 import {
   DEFAULT_SKILL_LEVEL,
   SKILL_LEVEL_MAX,
@@ -38,8 +39,8 @@ const STEPS = [
   { key: "company", label: "Company" },
   { key: "identity", label: "Identity" },
   { key: "expiry", label: "Numbers & expiry" },
-  { key: "deployment", label: "Deployment" },
   { key: "extras", label: "Trades & notes" },
+  { key: "deployment", label: "Deployment" },
   { key: "notes", label: "Notes" },
   { key: "review", label: "Review" },
 ] as const;
@@ -142,7 +143,14 @@ const EMPTY_FIELDS: Fields = {
 /** Checklist fields that live on the Identity step; the rest are on Numbers & expiry. */
 const IDENTITY_FIELDS = new Set(["name", "dateOfBirth", "nationality", "position"]);
 
-type SkillEntry = { name: string; level: number };
+type SkillEntry = {
+  name: string;
+  level: number;
+  /** The trade the worker is deployed as; exactly one can hold it. */
+  isActive: boolean;
+  rateType: RateType | "";
+  rate: string;
+};
 
 type NoteDraft = { id: string; remarks: string; files: File[] };
 
@@ -407,12 +415,32 @@ export function EmployeeWizard({
     ) {
       return;
     }
-    setSkills((s) => [...s, { name: trimmed, level: DEFAULT_SKILL_LEVEL }]);
+    setSkills((s) => [
+      ...s,
+      {
+        name: trimmed,
+        level: DEFAULT_SKILL_LEVEL,
+        // First trade added becomes the active one; there's nothing to choose
+        // between when it's the only one.
+        isActive: s.length === 0,
+        rateType: "",
+        rate: "",
+      },
+    ]);
     setSkillInput("");
   }
 
   function setSkillLevel(name: string, level: number) {
     setSkills((s) => s.map((x) => (x.name === name ? { ...x, level } : x)));
+  }
+
+  function patchSkill(name: string, patch: Partial<SkillEntry>) {
+    setSkills((s) => s.map((x) => (x.name === name ? { ...x, ...patch } : x)));
+  }
+
+  /** Exactly one active trade, so selecting one clears the rest. */
+  function setActiveSkill(name: string) {
+    setSkills((s) => s.map((x) => ({ ...x, isActive: x.name === name })));
   }
 
   function addNote() {
@@ -1245,28 +1273,17 @@ export function EmployeeWizard({
       {/* ---------------- Skills & notes ---------------- */}
       {stepKey === "extras" && (
         <div className="space-y-4">
+          {/* A closed list, not free text: typed trades are what produced
+              "Carpentry", "carpenter" and "car" as three separate trades. */}
           <Field label="Trades">
-            <div className="flex gap-2">
-              <input
-                value={skillInput}
-                onChange={(e) => setSkillInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addSkill(skillInput);
-                  }
-                }}
-                placeholder="Add a trade and press Enter"
-                className="input flex-1"
-              />
-              <button
-                type="button"
-                onClick={() => addSkill(skillInput)}
-                className="btn btn-secondary"
-              >
-                Add
-              </button>
-            </div>
+            <Select
+              value=""
+              onChange={(v) => addSkill(v)}
+              placeholder="Add a trade…"
+              options={TRADES.filter(
+                (t) => !skills.some((s) => s.name.toLowerCase() === t.toLowerCase())
+              ).map((t) => ({ value: t, label: t }))}
+            />
           </Field>
 
           {skills.length > 0 && (
@@ -1277,7 +1294,23 @@ export function EmployeeWizard({
                   className="rounded-control border border-default bg-surface px-3 py-2.5"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium text-primary">{skill.name}</span>
+                    <label className="flex items-center gap-2">
+                      {/* Radio, not a checkbox: a worker is deployed as one
+                          trade at a time even when they hold several. */}
+                      <input
+                        type="radio"
+                        name="activeTrade"
+                        checked={skill.isActive}
+                        onChange={() => setActiveSkill(skill.name)}
+                        aria-label={`Set ${skill.name} as the active trade`}
+                      />
+                      <span className="text-sm font-medium text-primary">{skill.name}</span>
+                      {skill.isActive && (
+                        <span className="rounded-control bg-brand-soft px-1.5 py-0.5 text-[10px] font-medium text-[var(--brand-primary)]">
+                          Active
+                        </span>
+                      )}
+                    </label>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted">
                         {skillLevelLabel(skill.level)}
@@ -1305,6 +1338,39 @@ export function EmployeeWizard({
                     aria-label={`${skill.name} level`}
                     className="mt-2 w-full accent-[var(--brand-primary)]"
                   />
+
+                  {skill.isActive && (
+                    <div className="mt-2.5 flex flex-wrap items-end gap-2 border-t border-default pt-2.5">
+                      <label className="w-36">
+                        <span className="mb-1 block text-xs font-medium text-muted">
+                          Rate type
+                        </span>
+                        <Select
+                          value={skill.rateType}
+                          onChange={(v) =>
+                            patchSkill(skill.name, { rateType: v as RateType })
+                          }
+                          placeholder="Hourly or fixed"
+                          searchable={false}
+                          options={RATE_TYPES.map((r) => ({ value: r.value, label: r.label }))}
+                        />
+                      </label>
+                      <label className="w-32">
+                        <span className="mb-1 block text-xs font-medium text-muted">
+                          Rate (AED)
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={skill.rate}
+                          onChange={(e) => patchSkill(skill.name, { rate: e.target.value })}
+                          placeholder={skill.rateType === "FIXED" ? "Per month" : "Per hour"}
+                          className="input w-full"
+                        />
+                      </label>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

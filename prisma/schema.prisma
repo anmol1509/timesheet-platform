@@ -989,6 +989,12 @@ model EmployeeSkill {
   // "Known Trade Details" — proficiency and a trade-specific pay rate.
   proficiencyPercent Int?
   rate               Float?
+  // "HOURLY" | "FIXED" — how `rate` is applied for this trade.
+  rateType           String?
+  // The trade the worker is currently deployed as. A worker can hold several
+  // trades but works one at a time, and it's the active one that a demand
+  // matches against and that the timesheet bills.
+  isActive           Boolean @default(false)
 
   @@id([employeeId, skillId])
 }

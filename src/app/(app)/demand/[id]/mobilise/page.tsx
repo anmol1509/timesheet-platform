@@ -2,9 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
-import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { isOutsideBranch } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { getIdleWorkers } from "@/lib/demandSupply";
+import { TRADES } from "@/lib/trades";
 import { MobilisationBoard } from "./mobilisation-board";
 
 export default async function MobilisePage({
@@ -28,24 +29,11 @@ export default async function MobilisePage({
   });
   if (!request || isOutsideBranch(request.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [idleWorkers, taxonomy, rosterTrades] = await Promise.all([
-    getIdleWorkers(branchId),
-    prisma.skill.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.employee.findMany({
-      where: { ...branchWhere(branchId), active: true, NOT: { trade: null } },
-      select: { trade: true },
-      distinct: ["trade"],
-    }),
-  ]);
+  const idleWorkers = await getIdleWorkers(branchId);
 
-  // Same union the demand form offers, so a re-designation can't introduce a
-  // trade the rest of the module doesn't know about.
-  const seen = new Map<string, string>();
-  for (const name of [...taxonomy.map((t) => t.name), ...rosterTrades.map((r) => r.trade!)]) {
-    const key = name.trim().toLowerCase();
-    if (key && !seen.has(key)) seen.set(key, name.trim());
-  }
-  const tradeOptions = [...seen.values()].sort((a, b) => a.localeCompare(b));
+  // Same closed list the demand form offers, so a re-designation can't invent
+  // a trade the rest of the module doesn't know about.
+  const tradeOptions = [...TRADES];
 
   const totalNeeded = request.trades.reduce((sum, t) => sum + t.quantity, 0);
   const totalAssigned = request.trades.reduce((sum, t) => sum + t.allocations.length, 0);

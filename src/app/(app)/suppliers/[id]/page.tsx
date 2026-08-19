@@ -10,7 +10,6 @@ import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
-import { WorkmenCompImport } from "./workmen-comp-import";
 import { SupplierTabs } from "./supplier-tabs";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 
@@ -142,20 +141,19 @@ export default async function SupplierDetailPage({
             label: "Documents",
             content: (
               <div className="space-y-6">
-                <WorkmenCompImport
-                  supplierId={supplier.id}
-                  supplierName={supplier.name}
-                  entityBranchId={supplier.branchId}
-                />
                 <section>
-                  <h2 className="mb-3 text-sm font-semibold text-primary">Other Documents</h2>
+                  <h2 className="mb-3 text-sm font-semibold text-primary">Documents</h2>
+                  <p className="mb-3 text-sm text-muted">
+                    Trade licence and MOHRE permit first — those decide whether this
+                    supplier can be used at all.
+                  </p>
                   <AttachmentUploader
                     entityType="SUPPLIER"
                     entityId={supplier.id}
                     entityBranchId={supplier.branchId}
                     revalidate={`/suppliers/${supplier.id}`}
                     docTypeOptions={[
-                      { value: "TRADE_LICENSE", label: "Trade License" },
+                      { value: "TRADE_LICENSE", label: "Trade Licence" },
                       { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
                       { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
                       { value: "CONTRACT", label: "Contract" },

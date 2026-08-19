@@ -19,17 +19,29 @@ import { clampSkillLevel } from "@/lib/skillLevel";
  * malformed is treated as "no skills" rather than failing the registration —
  * a bad level shouldn't cost the operator the whole form.
  */
-function parseSkills(raw: FormDataEntryValue | null): { name: string; level: number }[] {
+function parseSkills(raw: FormDataEntryValue | null): {
+  name: string;
+  level: number;
+  isActive: boolean;
+  rateType: string | null;
+  rate: number | null;
+}[] {
   try {
     const parsed = JSON.parse(String(raw || "[]"));
     if (!Array.isArray(parsed)) return [];
     return parsed.flatMap((entry) => {
       const name = String(entry?.name ?? "").trim();
       if (!name) return [];
+      const rate = Number(entry?.rate);
       return [
         {
           name,
           level: clampSkillLevel(entry?.level),
+          isActive: !!entry?.isActive,
+          rateType: entry?.rateType === "HOURLY" || entry?.rateType === "FIXED"
+            ? entry.rateType
+            : null,
+          rate: Number.isFinite(rate) && rate > 0 ? rate : null,
         },
       ];
     });
@@ -381,7 +393,20 @@ export async function createEmployeeAction(
         employeeId: employee.id,
         skillId: skill.id,
         proficiencyPercent: entry.level,
+        isActive: entry.isActive,
+        rateType: entry.rateType,
+        rate: entry.rate,
       },
+    });
+  }
+
+  // `Employee.trade` is what the roster, demands and timesheets read, so the
+  // active trade is mirrored onto it rather than living only on the join.
+  const activeTrade = skillEntries.find((e) => e.isActive);
+  if (activeTrade) {
+    await prisma.employee.update({
+      where: { id: employee.id },
+      data: { trade: activeTrade.name, position: activeTrade.name },
     });
   }
 
