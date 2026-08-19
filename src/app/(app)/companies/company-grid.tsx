@@ -14,6 +14,7 @@ type CompanyRow = {
   employeeCount: number;
   totalHours: number;
   totalAmount: number;
+  invoiceApproved: boolean;
 };
 
 export function CompanyGrid({
@@ -107,6 +108,13 @@ export function CompanyGrid({
             <div className="mt-1 text-sm font-medium text-primary">
               AED {c.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
+            {/* Flagged on the card so an unapprovable company is obvious
+                before its sheet is opened and reviewed. */}
+            {!c.invoiceApproved && (
+              <p className="mt-3 text-xs font-medium text-[var(--warning)]">
+                Not invoice-approved
+              </p>
+            )}
             <Link
               href={`/companies/${c.id}/generate?month=${month}`}
               className="mt-4 text-sm font-medium text-blue-600 hover:underline"

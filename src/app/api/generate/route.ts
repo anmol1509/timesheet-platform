@@ -37,7 +37,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
   }
   if (supplier.invoiceApprovalStatus !== "Approved") {
-    return NextResponse.json({ error: "This supplier isn't invoice-approved yet." }, { status: 400 });
+    // Naming the supplier and where to change it — the bare message left you
+    // guessing which of the two approval fields was blocking, and where.
+    return NextResponse.json(
+      {
+        error: `${supplier.name} is not invoice-approved (currently ${
+          supplier.invoiceApprovalStatus || "unset"
+        }). Set Invoice Approval to Approved on the supplier's Overview tab.`,
+        supplierId: supplier.id,
+      },
+      { status: 400 }
+    );
   }
 
   if (!branchId) {
@@ -76,6 +86,18 @@ export async function POST(request: Request) {
   if (entries.length === 0) {
     return NextResponse.json({ error: "No employees for this month." }, { status: 404 });
   }
+
+  // Timesheet rows are matched to the roster by employee ID so a project can
+  // be resolved for uploads that carry none.
+  const rosterProjects = await prisma.employee.findMany({
+    where: { employeeIdNo: { in: entries.map((e) => e.employeeIdNo) } },
+    select: { employeeIdNo: true, project: { select: { code: true } } },
+  });
+  const projectByEmployeeId = new Map(
+    rosterProjects
+      .filter((r) => r.project)
+      .map((r) => [r.employeeIdNo, r.project!.code] as const)
+  );
 
   const monthLabel = monthLabelFromKey(month);
   const genInput = {
@@ -126,7 +148,10 @@ export async function POST(request: Request) {
       periodTo: dmy(lastDay),
       entries: genInput.entries.map((e, i) => ({
         ...e,
-        projectCode: entries[i]?.project?.code ?? null,
+        // The entry's own project first; Excel uploads have none, so fall back
+        // to the project the worker is currently deployed on.
+        projectCode:
+          entries[i]?.project?.code ?? projectByEmployeeId.get(e.employeeIdNo) ?? null,
       })),
       additions: 0,
       safetyDeduction: gasDeduction,
@@ -134,6 +159,10 @@ export async function POST(request: Request) {
       vatPercent: 5,
       preparedBy: user.name,
       preparedByRole: null,
+      // Left blank so the verifier signs by hand; preparing and verifying are
+      // deliberately not the same person.
+      verifiedBy: null,
+      verifiedByRole: null,
       notes: DEFAULT_TIMESHEET_NOTES,
     });
     contentType = "application/pdf";

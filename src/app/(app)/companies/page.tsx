@@ -85,6 +85,7 @@ export default async function CompaniesPage({
             employeeCount: s.entries.length,
             totalHours: s.entries.reduce((sum, e) => sum + e.totalHours, 0),
             totalAmount: s.entries.reduce((sum, e) => sum + e.invoiceValue, 0),
+            invoiceApproved: s.invoiceApprovalStatus === "Approved",
           }))}
         />
       )}

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { ReviewClient } from "./review-client";
@@ -28,7 +29,22 @@ export default async function GeneratePage({
   if (entries.length === 0) notFound();
 
   return (
-    <ReviewClient
+    <>
+      {supplier.invoiceApprovalStatus !== "Approved" && (
+        // Said up front rather than after the whole sheet has been reviewed:
+        // generation is refused for an unapproved supplier, and the reason
+        // used to appear only once you pressed the button.
+        <p className="mb-4 rounded-control border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
+          <span className="font-medium">{supplier.name}</span> is not
+          invoice-approved (currently {supplier.invoiceApprovalStatus || "unset"}),
+          so generating will be refused. Set Invoice Approval to Approved on the{" "}
+          <Link href={`/suppliers/${supplier.id}`} className="font-medium underline">
+            supplier&rsquo;s Overview tab
+          </Link>
+          .
+        </p>
+      )}
+      <ReviewClient
       supplier={{ id: supplier.id, name: supplier.name, fullName: supplier.fullName }}
       month={month}
       monthLabel={monthLabelFromKey(month)}
@@ -45,6 +61,7 @@ export default async function GeneratePage({
         dailyHours: e.dailyHours,
         clientName: e.client?.name ?? null,
       }))}
-    />
+      />
+    </>
   );
 }

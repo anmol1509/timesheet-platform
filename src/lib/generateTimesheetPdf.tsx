@@ -44,8 +44,11 @@ export type TimesheetPdfInput = {
   safetyDeduction: number;
   otherDeduction: number;
   vatPercent: number;
+  /** Two separate blocks: preparing and verifying are different signatures. */
   preparedBy: string | null;
   preparedByRole: string | null;
+  verifiedBy: string | null;
+  verifiedByRole: string | null;
   notes: string[];
 };
 
@@ -99,6 +102,10 @@ const s = StyleSheet.create({
   },
   th: { fontSize: 5.6, fontFamily: "Helvetica-Bold", textAlign: "center" },
   td: { fontSize: 6, textAlign: "center" },
+  // Absences are what gets queried on a timesheet, so they're findable by eye
+  // rather than by reading every cell.
+  absentCell: { backgroundColor: "#F7A23B" },
+  absentText: { fontSize: 6, textAlign: "center", fontFamily: "Helvetica-Bold", color: "#7A3E00" },
   tdLeft: { fontSize: 6, textAlign: "left" },
   groupRow: { flexDirection: "row", borderBottomWidth: 0.4, borderColor: LINE },
   groupLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", paddingVertical: 1.8, paddingLeft: 3 },
@@ -175,15 +182,20 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
     (810 - (W.sn + W.id + W.name + W.trade + W.total + W.absent + W.ded)) / dayCount
   );
 
-  // Grouped the way the reference does — by project — but the roster's Excel
-  // uploads carry no project, so trade is the fallback grouping rather than
-  // dumping every worker into one unlabelled block.
+  // Grouped by project, as the reference does. Workers whose entry carries no
+  // project are collected under one labelled heading rather than being hidden
+  // in an unnamed block — the gap should be obvious on the page.
+  const NO_PROJECT = "No project assigned";
   const groups = new Map<string, TimesheetEntry[]>();
   for (const e of input.entries) {
-    const key = e.projectCode || e.trade || "—";
+    const key = e.projectCode || NO_PROJECT;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(e);
   }
+  // Named projects first; the unassigned block sits at the end.
+  const orderedGroups = [...groups.entries()].sort(([a], [b]) =>
+    a === NO_PROJECT ? 1 : b === NO_PROJECT ? -1 : a.localeCompare(b)
+  );
 
   const totals = { hours: 0, absent: 0, deduction: 0 };
   for (const e of input.entries) {
@@ -335,7 +347,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
             </View>
           </View>
 
-          {[...groups.entries()].map(([groupKey, rows]) => {
+          {orderedGroups.map(([groupKey, rows]) => {
             const gHours = rows.reduce(
               (sum, e) => sum + e.dailyHours.reduce((t, c) => t + cellHours(c), 0),
               0
@@ -370,11 +382,19 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
                           {hours(worked)}
                         </Text>
                       </View>
-                      {e.dailyHours.map((cell, i) => (
-                        <View key={i} style={[s.cell, { width: dayW }]}>
-                          <Text style={s.td}>{dayMarker(cell.value)}</Text>
-                        </View>
-                      ))}
+                      {e.dailyHours.map((cell, i) => {
+                        const absent = String(cell.value).trim().toUpperCase() === "A";
+                        return (
+                          <View
+                            key={i}
+                            style={[s.cell, { width: dayW }, absent ? s.absentCell : {}]}
+                          >
+                            <Text style={absent ? s.absentText : s.td}>
+                              {dayMarker(cell.value)}
+                            </Text>
+                          </View>
+                        );
+                      })}
                       <View style={[s.cell, { width: W.absent }]}>
                         <Text style={s.td}>{countAbsent(e.dailyHours) || ""}</Text>
                       </View>
@@ -537,17 +557,28 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
               </Text>
             ))}
 
-            {input.preparedBy && (
-              <View style={{ marginTop: 26 }}>
-                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold" }}>
-                  PREPARED AND VERIFIED BY
-                </Text>
-                <Text style={{ fontSize: 7, marginTop: 12 }}>{input.preparedBy}</Text>
+            {/* Separate blocks with their own signature rules: the person who
+                prepares the sheet is not the person who verifies it. */}
+            <View style={{ marginTop: 30, flexDirection: "row", gap: 28 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold" }}>PREPARED BY</Text>
+                <View style={{ height: 30 }} />
+                <View style={{ height: 0.6, backgroundColor: "#000" }} />
+                <Text style={{ fontSize: 7, marginTop: 2 }}>{input.preparedBy || ""}</Text>
                 {input.preparedByRole && (
-                  <Text style={{ fontSize: 6.5 }}>{input.preparedByRole}</Text>
+                  <Text style={{ fontSize: 6.5, color: "#444" }}>{input.preparedByRole}</Text>
                 )}
               </View>
-            )}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold" }}>VERIFIED BY</Text>
+                <View style={{ height: 30 }} />
+                <View style={{ height: 0.6, backgroundColor: "#000" }} />
+                <Text style={{ fontSize: 7, marginTop: 2 }}>{input.verifiedBy || ""}</Text>
+                {input.verifiedByRole && (
+                  <Text style={{ fontSize: 6.5, color: "#444" }}>{input.verifiedByRole}</Text>
+                )}
+              </View>
+            </View>
           </View>
         </View>
 
