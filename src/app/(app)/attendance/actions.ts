@@ -87,7 +87,11 @@ export async function markAttendanceAction(
     return { saved: 0, requested: 0, error: "Could not read the entered rows." };
   }
   if (!Array.isArray(rows) || rows.length === 0) {
-    return { saved: 0, requested: 0, error: "Mark at least one employee." };
+    return {
+      saved: 0,
+      requested: 0,
+      error: "Tick the employees to record before saving — nothing was marked.",
+    };
   }
 
   const dateValue = new Date(date + "T00:00:00.000Z");

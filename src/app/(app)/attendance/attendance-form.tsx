@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
@@ -62,6 +63,10 @@ export function AttendanceForm({
   const [normalHours, setNormalHours] = useState<Record<string, string>>({});
   const [otHours, setOtHours] = useState<Record<string, string>>({});
   const [existing, setExisting] = useState<Record<string, ExistingRow>>({});
+  // Who is actually being recorded today. Nothing is saved for a worker who
+  // isn't ticked: the roster lists everyone on the books, and defaulting the
+  // whole list to Present marks idle workers as having worked a full day.
+  const [marked, setMarked] = useState<Record<string, boolean>>({});
   const [correctionFor, setCorrectionFor] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   // Bumped after a mark is deleted, to re-pull the day from the server.
@@ -137,6 +142,15 @@ export function AttendanceForm({
     return statuses[employeeId] || "PRESENT";
   }
 
+  /** Already-saved rows are ticked; everyone else has to be chosen. */
+  function isMarked(employeeId: string) {
+    return marked[employeeId] ?? !!existing[employeeId];
+  }
+
+  function toggleMarked(employeeId: string) {
+    setMarked((prev) => ({ ...prev, [employeeId]: !isMarked(employeeId) }));
+  }
+
   /**
    * What goes in the hours box: whatever was typed, then whatever is already
    * saved, then a standard day for an active worker who is present.
@@ -147,6 +161,7 @@ export function AttendanceForm({
     if (existing[e.id]) return existing[e.id].normalHours != null
       ? String(existing[e.id].normalHours)
       : "";
+    if (!isMarked(e.id)) return "";
     return e.status === "ACTIVE" && statusFor(e.id) === "PRESENT" ? DEFAULT_DAY_HOURS : "";
   }
 
@@ -154,10 +169,24 @@ export function AttendanceForm({
     return existing[employeeId]?.locked ?? false;
   }
 
+  /** Ticks and sets Present for everyone currently filtered into view. */
   function markAllPresent() {
     setStatuses((prev) => {
       const next = { ...prev };
       for (const r of rows) if (!isLocked(r.id)) next[r.id] = "PRESENT";
+      return next;
+    });
+    setMarked((prev) => {
+      const next = { ...prev };
+      for (const r of rows) if (!isLocked(r.id)) next[r.id] = true;
+      return next;
+    });
+  }
+
+  function clearAllMarks() {
+    setMarked((prev) => {
+      const next = { ...prev };
+      for (const r of rows) if (!isLocked(r.id)) next[r.id] = false;
       return next;
     });
   }
@@ -165,7 +194,7 @@ export function AttendanceForm({
   function handleSave() {
     const rowsJson = JSON.stringify(
       rows
-        .filter((e) => !isLocked(e.id))
+        .filter((e) => !isLocked(e.id) && isMarked(e.id))
         .map((e) => ({
           employeeId: e.id,
           status: statusFor(e.id),
@@ -289,13 +318,25 @@ export function AttendanceForm({
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-primary">Employees</h2>
           {rows.length > 0 && !allLocked && (
-            <button
-              type="button"
-              onClick={markAllPresent}
-              className="btn btn-secondary btn-sm"
-            >
-              Mark all Present
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted">
+                {rows.filter((r) => isMarked(r.id)).length} of {rows.length} to record
+              </span>
+              <button
+                type="button"
+                onClick={markAllPresent}
+                className="btn btn-secondary btn-sm"
+              >
+                Mark all Present
+              </button>
+              <button
+                type="button"
+                onClick={clearAllMarks}
+                className="btn btn-secondary btn-sm"
+              >
+                Clear
+              </button>
+            </div>
           )}
         </div>
         {rows.length === 0 ? (
@@ -310,6 +351,7 @@ export function AttendanceForm({
             <table className="w-full text-sm">
               <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
+                  <th className="w-10 px-2 py-2">Record</th>
                   <th className="px-2 py-2">Employee</th>
                   <th className="px-2 py-2">Trade</th>
                   <th className="px-2 py-2">Status</th>
@@ -321,8 +363,17 @@ export function AttendanceForm({
               <tbody className="divide-y divide-[var(--border)]">
                 {rows.map((e) => {
                   const locked = isLocked(e.id);
+                  const on = isMarked(e.id);
                   return (
-                    <tr key={e.id}>
+                    <tr key={e.id} className={cn(!on && !locked && "opacity-55")}>
+                      <td className="px-2 py-2">
+                        <Checkbox
+                          checked={on}
+                          disabled={locked}
+                          onCheckedChange={() => toggleMarked(e.id)}
+                          aria-label={`Record attendance for ${e.name}`}
+                        />
+                      </td>
                       <td className="px-2 py-2 text-primary">
                         {e.name} <span className="text-subtle">{e.employeeIdNo}</span>
                       </td>
@@ -330,7 +381,7 @@ export function AttendanceForm({
                       <td className="px-2 py-2">
                         <select
                           value={statusFor(e.id)}
-                          disabled={locked}
+                          disabled={locked || !on}
                           onChange={(ev) => setStatuses((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                           className="input px-2 py-1.5 disabled:opacity-50"
                         >
@@ -344,7 +395,7 @@ export function AttendanceForm({
                       <td className="px-2 py-2">
                         <input
                           value={normalFor(e)}
-                          disabled={locked}
+                          disabled={locked || !on}
                           onChange={(ev) => setNormalHours((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                           type="number"
                           min={0}
@@ -355,7 +406,7 @@ export function AttendanceForm({
                       <td className="px-2 py-2">
                         <input
                           value={otHours[e.id] || ""}
-                          disabled={locked}
+                          disabled={locked || !on}
                           onChange={(ev) => setOtHours((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                           type="number"
                           min={0}
