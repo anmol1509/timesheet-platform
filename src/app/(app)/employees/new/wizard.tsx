@@ -180,18 +180,32 @@ export function EmployeeWizard({
   suppliers,
   sponsorshipCompanies,
   lookups,
+  prefill,
+  onRegistered,
 }: {
   projects: Project[];
   suppliers: Supplier[];
   sponsorshipCompanies: SponsorshipCompany[];
   lookups: Record<string, { value: string }[]>;
+  /** Seeds the form when a worker is being added from a scanned document. */
+  prefill?: { name?: string; supplierId?: string; position?: string };
+  /**
+   * Set when the wizard is hosted in a dialog: the caller closes it and
+   * refreshes, instead of the wizard redirecting the whole page away.
+   */
+  onRegistered?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(createEmployeeAction, {
-    error: null,
+    error: null as string | null,
   });
 
   const [step, setStep] = useState(0);
-  const [fields, setFields] = useState<Fields>(EMPTY_FIELDS);
+  const [fields, setFields] = useState<Fields>(() => ({
+    ...EMPTY_FIELDS,
+    name: prefill?.name ?? "",
+    supplierId: prefill?.supplierId ?? "",
+    position: prefill?.position ?? "",
+  }));
   // Each skill carries a proficiency level — EmployeeSkill.proficiencyPercent
   // already existed on the join, it just had no way to be set at registration.
   const [skills, setSkills] = useState<SkillEntry[]>([]);
@@ -240,6 +254,12 @@ export function EmployeeWizard({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasWork, pending]);
+
+  // In dialog mode the action returns the new id instead of redirecting, so
+  // this is where the host is told to close and refresh.
+  useEffect(() => {
+    if (state.createdId && onRegistered) onRegistered();
+  }, [state.createdId, onRegistered]);
 
   // Flag a clashing employee ID while it's being typed, not on save.
   useEffect(() => {
@@ -680,6 +700,7 @@ export function EmployeeWizard({
       body.set(`noteRemarks_${i}`, note.remarks);
       note.files.forEach((file) => body.append(`noteFile_${i}`, file));
     });
+    if (onRegistered) body.set("inline", "1");
     startTransition(() => formAction(body));
   }
 

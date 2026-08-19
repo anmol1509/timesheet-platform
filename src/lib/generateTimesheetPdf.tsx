@@ -49,6 +49,8 @@ export type TimesheetPdfInput = {
   preparedByRole: string | null;
   verifiedBy: string | null;
   verifiedByRole: string | null;
+  approvedBy: string | null;
+  approvedByRole: string | null;
   notes: string[];
 };
 
@@ -137,6 +139,20 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.4,
     borderColor: "#94A3B8",
   },
+  signatureRow: {
+    position: "absolute",
+    bottom: 34,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 24,
+  },
+  signatureBox: { flex: 1 },
+  signatureLabel: { fontSize: 7, fontFamily: "Helvetica-Bold" },
+  signatureLine: { height: 0.6, backgroundColor: "#000" },
+  signatureName: { fontSize: 7, marginTop: 2 },
+  signatureRole: { fontSize: 6.5, color: "#444" },
   moneyLabel: { fontSize: 7 },
   moneyValue: { fontSize: 7, fontFamily: "Helvetica-Bold" },
 });
@@ -557,29 +573,26 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
               </Text>
             ))}
 
-            {/* Separate blocks with their own signature rules: the person who
-                prepares the sheet is not the person who verifies it. */}
-            <View style={{ marginTop: 30, flexDirection: "row", gap: 28 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold" }}>PREPARED BY</Text>
-                <View style={{ height: 30 }} />
-                <View style={{ height: 0.6, backgroundColor: "#000" }} />
-                <Text style={{ fontSize: 7, marginTop: 2 }}>{input.preparedBy || ""}</Text>
-                {input.preparedByRole && (
-                  <Text style={{ fontSize: 6.5, color: "#444" }}>{input.preparedByRole}</Text>
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold" }}>VERIFIED BY</Text>
-                <View style={{ height: 30 }} />
-                <View style={{ height: 0.6, backgroundColor: "#000" }} />
-                <Text style={{ fontSize: 7, marginTop: 2 }}>{input.verifiedBy || ""}</Text>
-                {input.verifiedByRole && (
-                  <Text style={{ fontSize: 6.5, color: "#444" }}>{input.verifiedByRole}</Text>
-                )}
-              </View>
-            </View>
           </View>
+        </View>
+
+        {/* Pinned to the foot of the page and spread across its width: these
+            are signed by three different people, so each needs its own space
+            rather than being stacked beside the notes. */}
+        <View style={s.signatureRow}>
+          {[
+            ["PREPARED BY", input.preparedBy, input.preparedByRole],
+            ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
+            ["APPROVED BY", input.approvedBy, input.approvedByRole],
+          ].map(([label, name, role]) => (
+            <View key={label as string} style={s.signatureBox}>
+              <Text style={s.signatureLabel}>{label}</Text>
+              <View style={{ height: 34 }} />
+              <View style={s.signatureLine} />
+              <Text style={s.signatureName}>{name || ""}</Text>
+              {role && <Text style={s.signatureRole}>{role}</Text>}
+            </View>
+          ))}
         </View>
 
         <Text

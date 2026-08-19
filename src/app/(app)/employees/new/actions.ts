@@ -171,9 +171,9 @@ export async function checkEmployeeIdAction(
 }
 
 export async function createEmployeeAction(
-  _prevState: { error: string | null },
+  _prevState: { error: string | null; createdId?: string },
   formData: FormData
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; createdId?: string }> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const employeeIdNo = String(formData.get("employeeIdNo") || "").trim();
@@ -460,5 +460,11 @@ export async function createEmployeeAction(
   // is usually one of a batch, so the list is where the next one starts. The
   // id rides along so the list can confirm the save and highlight the row;
   // landing on 200+ unchanged rows otherwise gives no sign it worked.
+  // Hosted in a dialog, there's nothing to redirect away from — the caller
+  // closes it and refreshes the list underneath.
+  if (formData.get("inline") === "1") {
+    return { error: null, createdId: employee.id };
+  }
+
   redirect(`/employees?registered=${employee.id}`);
 }

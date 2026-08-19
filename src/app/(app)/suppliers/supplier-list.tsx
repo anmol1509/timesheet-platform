@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
+import { WciScanDialog } from "./wci-scan-dialog";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
@@ -34,7 +35,14 @@ const IMPORT_COLUMNS = [
   { key: "tradeLicenseNumber", label: "Trade license number" },
 ];
 
-export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
+export function SupplierList({
+  suppliers,
+  wizardData,
+}: {
+  suppliers: SupplierRow[];
+  /** Passed through to the registration dialog opened from a scanned name. */
+  wizardData: React.ComponentProps<typeof WciScanDialog>["wizardData"];
+}) {
   const router = useRouter();
   // Clients had a search box and these two didn't, so the same job worked
   // differently depending on which partner you were looking at.
@@ -155,6 +163,11 @@ export function SupplierList({ suppliers }: { suppliers: SupplierRow[] }) {
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center justify-end gap-3">
+                  <WciScanDialog
+                    supplierId={s.id}
+                    supplierName={s.name}
+                    wizardData={wizardData}
+                  />
                   <Link
                     href={`/suppliers/${s.id}`}
                     className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"

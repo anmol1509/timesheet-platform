@@ -163,6 +163,8 @@ export async function POST(request: Request) {
       // deliberately not the same person.
       verifiedBy: null,
       verifiedByRole: null,
+      approvedBy: null,
+      approvedByRole: null,
       notes: DEFAULT_TIMESHEET_NOTES,
     });
     contentType = "application/pdf";

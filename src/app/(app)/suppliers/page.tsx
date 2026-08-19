@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { groupLookups } from "@/lib/lookups";
 import { createSupplierAction } from "./actions";
 import { SupplierList } from "./supplier-list";
 
@@ -15,6 +16,21 @@ export default async function SuppliersPage({
 }) {
   const { error } = await searchParams;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  // The registration dialog opened from a scanned certificate needs the same
+  // reference data the full wizard page loads.
+  const [projects, sponsorshipCompanies, lookupValues] = await Promise.all([
+    prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    prisma.sponsorshipCompany.findMany({
+      where: branchWhere(branchId),
+      orderBy: { name: "asc" },
+    }),
+    prisma.lookupValue.findMany({
+      where: { ...branchWhere(branchId), isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
+      select: { category: true, value: true },
+    }),
+  ]);
+
   const suppliers = await prisma.supplier.findMany({
     where: branchWhere(branchId),
     select: {
@@ -110,7 +126,15 @@ export default async function SuppliersPage({
           }
         />
       ) : (
-        <SupplierList suppliers={rows} />
+        <SupplierList
+          suppliers={rows}
+          wizardData={{
+            projects,
+            suppliers: suppliers.map((s) => ({ id: s.id, name: s.name })),
+            sponsorshipCompanies,
+            lookups: groupLookups(lookupValues),
+          }}
+        />
       )}
     </div>
   );
