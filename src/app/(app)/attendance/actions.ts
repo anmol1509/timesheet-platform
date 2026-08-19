@@ -14,12 +14,13 @@ export async function loadDayAttendanceAction(formData: FormData): Promise<{
 }> {
   const { branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
-  const projectId = String(formData.get("projectId") || "").trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { rows: {} };
 
+  // Every mark for the day across the branch — the day screen lists the whole
+  // roster, not one project's slice.
   const dateValue = new Date(date + "T00:00:00.000Z");
   const existing = await prisma.attendance.findMany({
-    where: { date: dateValue, projectId, ...branchWhere(branchId) },
+    where: { date: dateValue, ...branchWhere(branchId) },
   });
 
   const rows: Record<
@@ -107,8 +108,11 @@ export async function markAttendanceAction(
       normalHours: numberOrNull(row.normalHours),
       otHours: numberOrNull(row.otHours),
       markedById: user.id,
-      projectId,
-      supplierId,
+      // Taken from the worker, not from the form: a day is marked across the
+      // whole roster now, so one project/supplier can't stand for every row.
+      // The batch values remain as a fallback for callers that still send them.
+      projectId: employee.projectId ?? projectId,
+      supplierId: employee.supplierId ?? supplierId,
       branchId,
     };
 

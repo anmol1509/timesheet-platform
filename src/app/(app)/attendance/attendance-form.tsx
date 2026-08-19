@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
+import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   deleteAttendanceAction,
@@ -11,36 +12,52 @@ import {
   loadDayAttendanceAction,
 } from "./actions";
 
-type Supplier = { id: string; name: string };
+type Supplier = { id: string; name: string; parentId: string | null };
 type EmployeeOption = {
   id: string;
   name: string;
   employeeIdNo: string;
   trade: string | null;
-  supplierId: string;
-  projectId: string;
+  status: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  projectId: string | null;
   projectName: string;
+  siteId: string | null;
 };
 type ExistingRow = { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean };
 
 const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "HOLIDAY", "OFF"];
 
-function todayValue() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
+/**
+ * A standard site day. Pre-filled for active workers so marking a day is a
+ * matter of correcting the exceptions rather than typing the same number
+ * against every name.
+ */
+const DEFAULT_DAY_HOURS = "10";
+
 
 export function AttendanceForm({
   suppliers,
   employees,
+  projects,
+  sites,
+  date,
 }: {
   suppliers: Supplier[];
   employees: EmployeeOption[];
+  projects: { id: string; label: string }[];
+  sites: { id: string; label: string }[];
+  /** Chosen on the calendar; the day being marked. */
+  date: string;
 }) {
   const [pending, startTransition] = useTransition();
-  const [supplierId, setSupplierId] = useState("");
+  // Filters narrow the roster; they don't decide which day is being marked.
+  const [supplierIds, setSupplierIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [date, setDate] = useState(todayValue());
+  const [siteId, setSiteId] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "IDLE">("ACTIVE");
+  const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Record<string, string>>({});
   const [normalHours, setNormalHours] = useState<Record<string, string>>({});
   const [otHours, setOtHours] = useState<Record<string, string>>({});
@@ -50,22 +67,35 @@ export function AttendanceForm({
   // Bumped after a mark is deleted, to re-pull the day from the server.
   const [reloadKey, setReloadKey] = useState(0);
 
-  const projectOptions = [
-    ...new Map(
-      employees.filter((e) => e.supplierId === supplierId).map((e) => [e.projectId, e.projectName])
-    ),
-  ].map(([value, label]) => ({ value, label }));
+  // Selecting a parent supplier implies its subsidiaries: their workers are on
+  // the same job and marking them separately is how a day ends up half done.
+  const expandedSupplierIds = useMemo(() => {
+    if (supplierIds.length === 0) return null;
+    const wanted = new Set(supplierIds);
+    for (const s of suppliers) {
+      if (s.parentId && wanted.has(s.parentId)) wanted.add(s.id);
+    }
+    return wanted;
+  }, [supplierIds, suppliers]);
 
-  const rows = employees.filter((e) => e.supplierId === supplierId && e.projectId === projectId);
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return employees.filter((e) => {
+      if (expandedSupplierIds && !(e.supplierId && expandedSupplierIds.has(e.supplierId)))
+        return false;
+      if (projectId && e.projectId !== projectId) return false;
+      if (siteId && e.siteId !== siteId) return false;
+      if (statusFilter !== "all" && e.status !== statusFilter) return false;
+      if (q && !`${e.name} ${e.employeeIdNo} ${e.trade ?? ""}`.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [employees, expandedSupplierIds, projectId, siteId, statusFilter, query]);
 
   useEffect(() => {
-    if (!projectId || !date) {
-      setExisting({});
-      return;
-    }
+    // `date` is always set — the form is only rendered once a day is picked.
     const formData = new FormData();
     formData.append("date", date);
-    formData.append("projectId", projectId);
     loadDayAttendanceAction(formData).then((res) => {
       setExisting(res.rows);
       const nextStatuses: Record<string, string> = {};
@@ -80,12 +110,7 @@ export function AttendanceForm({
       setNormalHours(nextNormal);
       setOtHours(nextOt);
     });
-  }, [projectId, date, reloadKey]);
-
-  function selectSupplier(id: string) {
-    setSupplierId(id);
-    setProjectId("");
-  }
+  }, [date, reloadKey]);
 
   // Clears a saved mark outright, for a day recorded against the wrong worker
   // — a status can't express "this shouldn't exist".
@@ -112,6 +137,19 @@ export function AttendanceForm({
     return statuses[employeeId] || "PRESENT";
   }
 
+  /**
+   * What goes in the hours box: whatever was typed, then whatever is already
+   * saved, then a standard day for an active worker who is present.
+   */
+  function normalFor(e: EmployeeOption) {
+    const typed = normalHours[e.id];
+    if (typed !== undefined) return typed;
+    if (existing[e.id]) return existing[e.id].normalHours != null
+      ? String(existing[e.id].normalHours)
+      : "";
+    return e.status === "ACTIVE" && statusFor(e.id) === "PRESENT" ? DEFAULT_DAY_HOURS : "";
+  }
+
   function isLocked(employeeId: string) {
     return existing[employeeId]?.locked ?? false;
   }
@@ -131,14 +169,12 @@ export function AttendanceForm({
         .map((e) => ({
           employeeId: e.id,
           status: statusFor(e.id),
-          normalHours: normalHours[e.id] || "",
+          normalHours: normalFor(e),
           otHours: otHours[e.id] || "",
         }))
     );
     const formData = new FormData();
     formData.append("date", date);
-    formData.append("supplierId", supplierId);
-    formData.append("projectId", projectId);
     formData.append("rowsJson", rowsJson);
     startTransition(async () => {
       const res = await markAttendanceAction(formData);
@@ -160,35 +196,93 @@ export function AttendanceForm({
 
   return (
     <div className="space-y-6">
-      <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Supplier</span>
-          <Select
-            value={supplierId}
-            onChange={selectSupplier}
-            placeholder="Select supplier"
-            options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+      <div className="card flex flex-wrap items-end gap-3 p-4">
+        <label className="min-w-[12rem] flex-1">
+          <span className="mb-1 block text-xs font-medium text-muted">Search</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Name, ID or trade…"
+            className="input w-full"
           />
         </label>
-        <label className="block">
+        <label className="w-40">
+          <span className="mb-1 block text-xs font-medium text-muted">Status</span>
+          <Select
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v as "all" | "ACTIVE" | "IDLE")}
+            searchable={false}
+            options={[
+              { value: "ACTIVE", label: "Active" },
+              { value: "IDLE", label: "Idle" },
+              { value: "all", label: "All" },
+            ]}
+          />
+        </label>
+        <label className="w-52">
           <span className="mb-1 block text-xs font-medium text-muted">Project</span>
           <Select
             value={projectId}
             onChange={setProjectId}
-            placeholder={supplierId ? "Select project" : "Select a supplier first"}
-            disabled={!supplierId}
-            options={projectOptions}
+            placeholder="All projects"
+            options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.id, label: p.label }))]}
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Date</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="input w-full"
+        <label className="w-52">
+          <span className="mb-1 block text-xs font-medium text-muted">Site</span>
+          <Select
+            value={siteId}
+            onChange={setSiteId}
+            placeholder="All sites"
+            options={[{ value: "", label: "All sites" }, ...sites.map((x) => ({ value: x.id, label: x.label }))]}
           />
         </label>
+        <div className="w-full">
+          <span className="mb-1 block text-xs font-medium text-muted">
+            Suppliers {supplierIds.length > 0 && `(${supplierIds.length} selected)`}
+          </span>
+          {/* Multi-select, and picking a parent pulls in its subsidiaries. */}
+          <div className="flex flex-wrap gap-1.5">
+            {suppliers.map((sup) => {
+              const on = supplierIds.includes(sup.id);
+              const impliedByParent =
+                !on && !!sup.parentId && supplierIds.includes(sup.parentId);
+              return (
+                <button
+                  key={sup.id}
+                  type="button"
+                  onClick={() =>
+                    setSupplierIds((prev) =>
+                      prev.includes(sup.id)
+                        ? prev.filter((x) => x !== sup.id)
+                        : [...prev, sup.id]
+                    )
+                  }
+                  className={cn(
+                    "rounded-control border px-2 py-1 text-xs font-medium transition",
+                    on
+                      ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
+                      : impliedByParent
+                        ? "border-[var(--brand-primary)]/40 bg-brand-soft/50 text-[var(--brand-primary)]"
+                        : "border-default bg-surface text-secondary hover:bg-surface-hover"
+                  )}
+                >
+                  {sup.parentId && <span className="mr-1 text-subtle">└</span>}
+                  {sup.name}
+                </button>
+              );
+            })}
+            {supplierIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSupplierIds([])}
+                className="px-2 py-1 text-xs font-medium text-blue-600 hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="card p-5">
@@ -204,10 +298,8 @@ export function AttendanceForm({
             </button>
           )}
         </div>
-        {!supplierId || !projectId ? (
-          <p className="text-sm text-muted">Select a supplier and a project first.</p>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted">No employees for this supplier on this project.</p>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted">No employee matches these filters.</p>
         ) : (
           <div className="overflow-x-auto">
             {allLocked && (
@@ -251,7 +343,7 @@ export function AttendanceForm({
                       </td>
                       <td className="px-2 py-2">
                         <input
-                          value={normalHours[e.id] || ""}
+                          value={normalFor(e)}
                           disabled={locked}
                           onChange={(ev) => setNormalHours((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                           type="number"
@@ -317,7 +409,7 @@ export function AttendanceForm({
           <button
             type="button"
             onClick={handleSave}
-            disabled={pending || !supplierId || !projectId || rows.length === 0}
+            disabled={pending || rows.length === 0}
             className="btn btn-primary"
           >
             {pending ? "Saving…" : "Save Attendance"}
