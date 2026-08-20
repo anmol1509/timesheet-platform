@@ -530,3 +530,75 @@ export async function matchInsuredNamesAction(
     };
   });
 }
+
+export type SupplierPanel = {
+  employees: {
+    id: string;
+    employeeIdNo: string;
+    name: string;
+    trade: string | null;
+    status: string;
+    active: boolean;
+  }[];
+  certificates: {
+    id: string;
+    filename: string;
+    expiryDate: string | null;
+    uploadedAt: string;
+  }[];
+};
+
+/**
+ * Everything about a supplier's people in one place: who is on the books for
+ * them, and the workmen's-compensation certificates covering those people.
+ *
+ * Certificates accumulate — a new one is issued every renewal — so they're a
+ * list with expiry dates rather than a single current file. An expired
+ * certificate is a live compliance problem, which is why the expiry travels
+ * with the document rather than being remembered separately.
+ */
+export async function getSupplierPanelAction(supplierId: string): Promise<SupplierPanel> {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    select: { branchId: true },
+  });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
+    return { employees: [], certificates: [] };
+  }
+
+  const [employees, certificates] = await Promise.all([
+    prisma.employee.findMany({
+      where: { supplierId },
+      select: {
+        id: true,
+        employeeIdNo: true,
+        name: true,
+        trade: true,
+        status: true,
+        active: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.attachment.findMany({
+      where: {
+        entityType: "SUPPLIER",
+        entityId: supplierId,
+        docType: { in: ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"] },
+      },
+      select: { id: true, filename: true, expiryDate: true, uploadedAt: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+  ]);
+
+  return {
+    employees,
+    certificates: certificates.map((c) => ({
+      id: c.id,
+      filename: c.filename,
+      expiryDate: c.expiryDate ? c.expiryDate.toISOString() : null,
+      uploadedAt: c.uploadedAt.toISOString(),
+    })),
+  };
+}

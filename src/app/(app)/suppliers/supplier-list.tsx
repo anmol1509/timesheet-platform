@@ -7,7 +7,7 @@ import { ChevronRight, Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import { DeleteButton } from "@/components/DeleteButton";
-import { WciScanDialog } from "./wci-scan-dialog";
+import { SupplierEmployeePanel } from "./supplier-employee-panel";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
@@ -23,6 +23,7 @@ type SupplierRow = {
   status: string;
   parentName: string | null;
   parentId: string | null;
+  branchId: string | null;
   employeeCount: number;
   entryCount: number;
   licenseStatus: ComplianceStatus;
@@ -43,7 +44,7 @@ export function SupplierList({
 }: {
   suppliers: SupplierRow[];
   /** Passed through to the registration dialog opened from a scanned name. */
-  wizardData: React.ComponentProps<typeof WciScanDialog>["wizardData"];
+  wizardData: React.ComponentProps<typeof SupplierEmployeePanel>["wizardData"];
 }) {
   const router = useRouter();
   // Clients had a search box and these two didn't, so the same job worked
@@ -227,11 +228,12 @@ export function SupplierList({
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center justify-end gap-3">
-                  {/* Every company insures its own people, so a subsidiary
-                      needs its own certificate upload, not the parent's. */}
-                  <WciScanDialog
+                  {/* Every company insures its own people, so a subsidiary gets
+                      its own panel, not the parent's. */}
+                  <SupplierEmployeePanel
                     supplierId={row.id}
                     supplierName={row.name}
+                    supplierBranchId={row.branchId}
                     wizardData={wizardData}
                   />
                   <Link
