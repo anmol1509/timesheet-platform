@@ -43,7 +43,8 @@ export async function GET(request: Request) {
       // The first few by urgency — enough to act on without paging a whole
       // roster into an email.
       top: actionable.slice(0, 20).map((i) => ({
-        employee: `${i.employeeName} (${i.employeeIdNo})`,
+        subject: `${i.subjectName} (${i.subjectRef})`,
+        kind: i.kind,
         document: i.document,
         days: i.days,
         expiry: i.expiry.slice(0, 10),

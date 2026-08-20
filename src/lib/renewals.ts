@@ -21,10 +21,19 @@ export const RENEWAL_TIERS = [
 export type RenewalTier = (typeof RENEWAL_TIERS)[number]["key"];
 
 export type RenewalItem = {
-  employeeId: string;
-  employeeName: string;
-  employeeIdNo: string;
-  /** "Visa", "Passport", … */
+  /**
+   * What the expiry belongs to. A supplier's workmen's-compensation
+   * certificate lapsing stops that supplier's whole workforce, so it belongs
+   * in the same queue as a worker's own papers rather than in a separate one
+   * nobody opens.
+   */
+  kind: "employee" | "supplier";
+  /** Employee or supplier id, for linking through. */
+  subjectId: string;
+  subjectName: string;
+  /** Employee ID number, or the count of workers a supplier certificate covers. */
+  subjectRef: string;
+  /** "Visa", "Passport", "Workmen's compensation", … */
   document: string;
   expiry: string;
   days: number;
@@ -72,15 +81,65 @@ export async function getRenewals(
       const tier = tierFor(days);
       if (!tier) continue;
       items.push({
-        employeeId: e.id,
-        employeeName: e.name,
-        employeeIdNo: e.employeeIdNo,
+        kind: "employee",
+        subjectId: e.id,
+        subjectName: e.name,
+        subjectRef: e.employeeIdNo,
         document: field.label,
         expiry: date.toISOString(),
         days,
         tier,
         supplier: e.supplier?.name ?? null,
         project: e.project ? `${e.project.code} — ${e.project.name}` : null,
+      });
+    }
+  }
+
+  // Supplier insurance sits in the same queue: the certificate covers people,
+  // and once it lapses none of them can be sent to site.
+  const certificates = await prisma.attachment.findMany({
+    where: {
+      entityType: "SUPPLIER",
+      docType: { in: ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"] },
+      expiryDate: { not: null },
+      ...(branchId ? { branchId } : {}),
+    },
+    select: { entityId: true, expiryDate: true },
+    orderBy: { expiryDate: "desc" },
+  });
+
+  // Only the latest certificate per supplier matters — an older one having
+  // expired is expected once it's been renewed.
+  const latestBySupplier = new Map<string, Date>();
+  for (const c of certificates) {
+    if (!latestBySupplier.has(c.entityId)) latestBySupplier.set(c.entityId, c.expiryDate!);
+  }
+
+  if (latestBySupplier.size > 0) {
+    const suppliers = await prisma.supplier.findMany({
+      where: { id: { in: [...latestBySupplier.keys()] } },
+      select: { id: true, name: true, _count: { select: { employees: true } } },
+    });
+
+    for (const supplier of suppliers) {
+      const expiryDate = latestBySupplier.get(supplier.id)!;
+      const days = daysUntil(expiryDate);
+      if (days > horizonDays) continue;
+      const tier = tierFor(days);
+      if (!tier) continue;
+      items.push({
+        kind: "supplier",
+        subjectId: supplier.id,
+        subjectName: supplier.name,
+        subjectRef: `${supplier._count.employees} worker${
+          supplier._count.employees === 1 ? "" : "s"
+        }`,
+        document: "Workmen's compensation",
+        expiry: expiryDate.toISOString(),
+        days,
+        tier,
+        supplier: supplier.name,
+        project: null,
       });
     }
   }

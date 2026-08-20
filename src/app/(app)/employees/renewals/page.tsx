@@ -31,8 +31,8 @@ export default async function RenewalsPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-primary">Renewals</h1>
         <p className="mt-1 text-sm text-muted">
-          Visas, labour cards, passports, Emirates IDs and medicals falling due in
-          the next 90 days — worst first, so the long-lead ones can be started in
+          Visas, labour cards, passports, Emirates IDs, medicals and suppliers&rsquo;
+          workmen&rsquo;s compensation falling due in the next 90 days — worst first, so the long-lead ones can be started in
           time.
         </p>
       </div>
@@ -60,7 +60,7 @@ export default async function RenewalsPage() {
             <table className="w-full min-w-[48rem] text-sm">
               <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
-                  <th className="px-4 py-3">Employee</th>
+                  <th className="px-4 py-3">Employee / Supplier</th>
                   <th className="px-4 py-3">Document</th>
                   <th className="px-4 py-3">Expires</th>
                   <th className="px-4 py-3">Runway</th>
@@ -69,17 +69,26 @@ export default async function RenewalsPage() {
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {items.map((item) => (
-                  <tr key={`${item.employeeId}-${item.document}`}>
+                  <tr key={`${item.kind}-${item.subjectId}-${item.document}`}>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/employees/${item.employeeId}`}
+                        href={
+                          item.kind === "employee"
+                            ? `/employees/${item.subjectId}`
+                            : `/suppliers/${item.subjectId}`
+                        }
                         className="font-medium text-primary hover:underline"
                       >
-                        {item.employeeName}
+                        {item.subjectName}
                       </Link>
                       <span className="tabular ml-2 text-xs text-subtle">
-                        {item.employeeIdNo}
+                        {item.subjectRef}
                       </span>
+                      {item.kind === "supplier" && (
+                        <span className="ml-2 rounded-control bg-surface-sunken px-1.5 py-0.5 text-[10px] font-medium text-secondary">
+                          Supplier
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-secondary">{item.document}</td>
                     <td className="tabular px-4 py-3 text-secondary">
