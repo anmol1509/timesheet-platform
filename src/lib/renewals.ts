@@ -95,6 +95,40 @@ export async function getRenewals(
     }
   }
 
+  // A supplier's trade licence lapsing stops them being used at all, so it
+  // belongs beside their insurance rather than only colouring a row on the
+  // supplier list.
+  const licensed = await prisma.supplier.findMany({
+    where: { ...branchWhere(branchId), tradeLicenseExpiry: { not: null } },
+    select: {
+      id: true,
+      name: true,
+      tradeLicenseExpiry: true,
+      _count: { select: { employees: true } },
+    },
+  });
+
+  for (const supplier of licensed) {
+    const days = daysUntil(supplier.tradeLicenseExpiry!);
+    if (days > horizonDays) continue;
+    const tier = tierFor(days);
+    if (!tier) continue;
+    items.push({
+      kind: "supplier",
+      subjectId: supplier.id,
+      subjectName: supplier.name,
+      subjectRef: `${supplier._count.employees} worker${
+        supplier._count.employees === 1 ? "" : "s"
+      }`,
+      document: "Trade licence",
+      expiry: supplier.tradeLicenseExpiry!.toISOString(),
+      days,
+      tier,
+      supplier: supplier.name,
+      project: null,
+    });
+  }
+
   // Supplier insurance sits in the same queue: the certificate covers people,
   // and once it lapses none of them can be sent to site.
   const certificates = await prisma.attachment.findMany({

@@ -31,8 +31,8 @@ export default async function RenewalsPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-primary">Renewals</h1>
         <p className="mt-1 text-sm text-muted">
-          Visas, labour cards, passports, Emirates IDs, medicals and suppliers&rsquo;
-          workmen&rsquo;s compensation falling due in the next 90 days — worst first, so the long-lead ones can be started in
+          Visas, labour cards, passports, Emirates IDs, medicals, and suppliers&rsquo; trade
+          licences and workmen&rsquo;s compensation falling due in the next 90 days — worst first, so the long-lead ones can be started in
           time.
         </p>
       </div>
