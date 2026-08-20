@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
-import { isOutsideBranch } from "@/lib/branch";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
 
@@ -440,4 +440,93 @@ export async function createEmployeesFromInsuranceAction(
   revalidatePath("/employees");
   revalidatePath(`/suppliers/${supplierId}`);
   return { created, requested: rows.length, errors };
+}
+
+export type InsuredNameMatch = {
+  /** The name exactly as printed on the certificate. */
+  name: string;
+  status: "new" | "exists_here" | "exists_elsewhere";
+  matches: {
+    id: string;
+    employeeIdNo: string;
+    name: string;
+    supplierName: string | null;
+    active: boolean;
+  }[];
+};
+
+/** Lowercase, punctuation collapsed — for comparing names only. */
+function normaliseName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/** Same words in any order, so "Amrit Kumar Shrestha" matches "Shrestha Amrit Kumar". */
+function nameKey(value: string) {
+  return normaliseName(value).split(" ").filter(Boolean).sort().join(" ");
+}
+
+/**
+ * Checks scanned certificate names against the roster before anything is added.
+ *
+ * A workmen's-compensation certificate carries no employee ID — just names — so
+ * re-uploading next year's renewal would otherwise re-add everybody. Matching
+ * is on the name alone, which is all the document gives us: exact, or the same
+ * words in a different order.
+ *
+ * A match is reported, never acted on. Names repeat in this workforce (three
+ * records already share one name), so deciding whether two "Amrit Kumar
+ * Shrestha"s are one person is a judgement for whoever is looking at the
+ * certificate, not something to resolve silently.
+ */
+export async function matchInsuredNamesAction(
+  supplierId: string,
+  names: string[]
+): Promise<InsuredNameMatch[]> {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    select: { branchId: true },
+  });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
+    return names.map((name) => ({ name, status: "new" as const, matches: [] }));
+  }
+
+  const roster = await prisma.employee.findMany({
+    where: branchWhere(branchId),
+    select: {
+      id: true,
+      name: true,
+      employeeIdNo: true,
+      active: true,
+      supplierId: true,
+      supplier: { select: { name: true } },
+    },
+  });
+
+  const byKey = new Map<string, typeof roster>();
+  for (const e of roster) {
+    const key = nameKey(e.name);
+    byKey.set(key, [...(byKey.get(key) ?? []), e]);
+  }
+
+  return names.map((name) => {
+    const found = byKey.get(nameKey(name)) ?? [];
+    if (found.length === 0) return { name, status: "new" as const, matches: [] };
+
+    // Under this supplier is a straight duplicate; under another is more likely
+    // a transfer or a different person with the same name.
+    const here = found.some((e) => e.supplierId === supplierId);
+    return {
+      name,
+      status: here ? ("exists_here" as const) : ("exists_elsewhere" as const),
+      matches: found.map((e) => ({
+        id: e.id,
+        employeeIdNo: e.employeeIdNo,
+        name: e.name,
+        supplierName: e.supplier?.name ?? null,
+        active: e.active,
+      })),
+    };
+  });
 }

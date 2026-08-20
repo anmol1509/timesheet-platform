@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { UPLOAD_ACCEPT_ATTR } from "@/lib/uploads";
 import { matchTrade } from "@/lib/trades";
+import { matchInsuredNamesAction, type InsuredNameMatch } from "./actions";
 import type { ExtractedEmployeeRow } from "@/app/api/documents/extract-employees/route";
 import { EmployeeWizard } from "@/app/(app)/employees/new/wizard";
 
@@ -18,7 +19,11 @@ type WizardData = {
   lookups: Record<string, { value: string }[]>;
 };
 
-type ScannedRow = ExtractedEmployeeRow & { include: boolean };
+type ScannedRow = ExtractedEmployeeRow & {
+  include: boolean;
+  /** Filled once the scanned names have been checked against the roster. */
+  match?: InsuredNameMatch;
+};
 
 /**
  * Reads a workmen's-compensation certificate from the supplier list and turns
@@ -69,7 +74,24 @@ export function WciScanDialog({
         setError("No names could be read from that file.");
         return;
       }
-      setRows(found.map((r) => ({ ...r, include: true })));
+      // Check the names against the roster before anything is offered for
+      // adding — a renewed certificate lists everyone again, and without this
+      // the whole workforce gets a second record every year.
+      const matches = await matchInsuredNamesAction(
+        supplierId,
+        found.map((r) => r.name ?? "")
+      );
+      setRows(
+        found.map((r, i) => {
+          const match = matches[i];
+          return {
+            ...r,
+            match,
+            // Only names we don't already hold start ticked.
+            include: match?.status === "new",
+          };
+        })
+      );
     } catch {
       setError("Could not read that certificate.");
     } finally {
@@ -78,6 +100,7 @@ export function WciScanDialog({
   }
 
   const included = rows?.filter((r) => r.include) ?? [];
+  const alreadyHeld = rows?.filter((r) => r.match?.status !== "new" && r.match).length ?? 0;
 
   return (
     <>
@@ -121,6 +144,11 @@ export function WciScanDialog({
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-xs font-semibold tracking-wide text-muted uppercase">
                   {included.length} of {rows.length} selected
+                  {alreadyHeld > 0 && (
+                    <span className="ml-2 font-normal text-[var(--success)] normal-case">
+                      {alreadyHeld} already on the roster
+                    </span>
+                  )}
                 </p>
                 <button
                   type="button"
@@ -149,9 +177,34 @@ export function WciScanDialog({
                       }
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-primary">
-                        {row.name || <span className="text-subtle">Unnamed</span>}
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate text-sm text-primary">
+                          {row.name || <span className="text-subtle">Unnamed</span>}
+                        </span>
+                        {row.match?.status === "exists_here" && (
+                          <span className="shrink-0 rounded-control bg-[var(--success-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--success)]">
+                            Already added
+                          </span>
+                        )}
+                        {row.match?.status === "exists_elsewhere" && (
+                          <span className="shrink-0 rounded-control bg-[var(--warning-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--warning)]">
+                            Same name elsewhere
+                          </span>
+                        )}
                       </span>
+
+                      {row.match && row.match.matches.length > 0 && (
+                        <span className="block truncate text-xs text-subtle">
+                          {row.match.matches
+                            .map(
+                              (m) =>
+                                `${m.employeeIdNo}${m.supplierName ? ` · ${m.supplierName}` : ""}${
+                                  m.active ? "" : " · inactive"
+                                }`
+                            )
+                            .join("  |  ")}
+                        </span>
+                      )}
                       <span className="block truncate text-xs text-subtle">
                         {matchTrade(row.designation) ?? (
                           <span className="text-[var(--warning)]">
@@ -166,6 +219,11 @@ export function WciScanDialog({
                     <button
                       type="button"
                       disabled={!row.include || !row.name}
+                      title={
+                        row.match?.status === "exists_here"
+                          ? "Already on this supplier's roster — tick it only if this is a different person with the same name"
+                          : undefined
+                      }
                       onClick={() => setAdding(row)}
                       className="inline-flex shrink-0 items-center gap-1 rounded-control border border-default px-2 py-1 text-xs font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-40"
                     >
@@ -177,9 +235,11 @@ export function WciScanDialog({
               </ul>
 
               <p className="mt-2 text-xs text-subtle">
-                Names come off the certificate as printed — check them before adding,
-                since the insurer&rsquo;s list usually covers more people than work for
-                us.
+                Names come off the certificate as printed and are checked against the
+                roster by name, which is all the certificate gives. Anyone already
+                held is left unticked. Names repeat in this workforce, so a match is
+                flagged rather than assumed — tick it anyway if it really is someone
+                else.
               </p>
             </div>
           )}
