@@ -6,7 +6,12 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { markUnderMobilisation } from "@/lib/employeeStage";
+import {
+  markUnderMobilisation,
+  markOnSite,
+  revertSiteArrival,
+  releaseFromMobilisation,
+} from "@/lib/employeeStageTransitions";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -285,6 +290,11 @@ export async function unallocateEmployeeAction(formData: FormData) {
   }
   await prisma.employee.update({ where: { id: allocation.employeeId }, data: { projectId: null } });
 
+  // The placement is over, so everything that described it goes with it —
+  // otherwise the worker sits on the arrival queue forever, growing more
+  // overdue against a demand they are no longer on.
+  await releaseFromMobilisation([allocation.employeeId]);
+
   await logAudit({
     entityType: "DEMAND_REQUEST_ALLOCATION",
     entityId: allocation.employeeId,
@@ -413,4 +423,109 @@ export async function setTradeApprovalAction(
   revalidatePath(`/demand/${trade.demandRequest.id}/mobilise`);
   revalidatePath("/demand/mobilisation");
   revalidatePath("/demand");
+}
+
+/**
+ * Records that mobilised workers reached site.
+ *
+ * Both this and its reverse revalidate the employee pages as well as the queue,
+ * because the stage badge on the worker's own record is the copy most people
+ * look at.
+ */
+export async function confirmSiteArrivalAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
+  if (employeeIds.length === 0) return { confirmed: 0, requested: 0 };
+
+  const rawDate = String(formData.get("siteArrivalDate") || "").trim();
+  // No sensible default: an arrival with no date is the thing this step exists
+  // to stop, so a missing or malformed one is refused rather than guessed.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    return { confirmed: 0, requested: employeeIds.length };
+  }
+  const siteArrivalDate = new Date(rawDate + "T00:00:00.000Z");
+  const siteId = stringOrNull(formData.get("siteId"));
+
+  // Filter to this branch before writing — updateMany takes ids straight from
+  // the form, so the branch guard has to happen here rather than inside it.
+  const employees = await prisma.employee.findMany({
+    where: { id: { in: employeeIds } },
+    select: { id: true, branchId: true, name: true, status: true, projectId: true },
+  });
+  const allowed = employees.filter((e) => !isOutsideBranch(e.branchId, branchId, isSuperAdmin));
+
+  // A site belongs to exactly one project, so it can only be applied to workers
+  // on that project. The rest are still confirmed as arrived — the arrival is
+  // the fact being recorded, and the site is an extra the form may have got
+  // wrong. Refusing the whole batch over it would cost more than it saves.
+  let siteProjectId: string | null = null;
+  if (siteId) {
+    const site = await prisma.site.findUnique({
+      where: { id: siteId },
+      select: { projectId: true, project: { select: { branchId: true } } },
+    });
+    if (!site || isOutsideBranch(site.project.branchId, branchId, isSuperAdmin)) {
+      return { confirmed: 0, requested: employeeIds.length };
+    }
+    siteProjectId = site.projectId;
+  }
+
+  const onSiteProject = allowed.filter((e) => siteProjectId && e.projectId === siteProjectId);
+  const elsewhere = allowed.filter((e) => !siteProjectId || e.projectId !== siteProjectId);
+
+  const confirmed =
+    (await markOnSite(onSiteProject.map((e) => e.id), siteArrivalDate, siteId)) +
+    (await markOnSite(elsewhere.map((e) => e.id), siteArrivalDate, null));
+
+  for (const employee of allowed) {
+    await logAudit({
+      entityType: "EMPLOYEE_SITE_ARRIVAL",
+      entityId: employee.id,
+      action: "UPDATE",
+      before: { status: employee.status, siteArrivalDate: null },
+      after: {
+        status: "ON_SITE",
+        siteArrivalDate: rawDate,
+        siteId: employee.projectId === siteProjectId ? siteId : null,
+      },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+    revalidatePath(`/employees/${employee.id}`);
+  }
+
+  revalidatePath("/demand/site-arrival");
+  revalidatePath("/employees");
+  return { confirmed, requested: employeeIds.length };
+}
+
+/** Reverses a site-arrival confirmation entered against the wrong worker. */
+export async function revertSiteArrivalAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  if (!employeeId) return;
+
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { id: true, branchId: true, status: true, siteArrivalDate: true },
+  });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
+
+  await revertSiteArrival([employee.id]);
+
+  await logAudit({
+    entityType: "EMPLOYEE_SITE_ARRIVAL",
+    entityId: employee.id,
+    action: "UPDATE",
+    before: { status: employee.status, siteArrivalDate: employee.siteArrivalDate },
+    after: { status: "UNDER_MOBILISATION", siteArrivalDate: null },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath("/demand/site-arrival");
+  revalidatePath("/employees");
 }

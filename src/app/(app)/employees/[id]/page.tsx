@@ -6,6 +6,7 @@ import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
+import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
@@ -14,6 +15,14 @@ import { VisaHistorySection } from "./visa-history-section";
 import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
 import { NotesSection } from "./notes-section";
+
+function formatShortDate(value: Date) {
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
+}
 
 const STATUS_BADGE = {
   valid: { label: "Valid", color: "green" as const },
@@ -100,10 +109,22 @@ export default async function EmployeeDetailPage({
                 <Badge color={employee.active ? "green" : "slate"}>
                   {employee.active ? "Active" : "Inactive"}
                 </Badge>
+                {/* Where the worker sits in the mobilisation cycle. The
+                    active/inactive chip above is about the employment; this is
+                    about the job, and they differ often enough to show both. */}
+                <Badge color={STAGE_COLOR[employee.status] ?? "slate"}>
+                  {STAGE_LABEL[employee.status] ?? employee.status}
+                </Badge>
               </div>
               <p className="mt-1 text-sm text-muted">
                 {employee.employeeIdNo} · {employee.trade || "No trade set"} ·{" "}
                 {employee.supplier?.name || "No company"}
+                {employee.status === "UNDER_MOBILISATION" && employee.mobilisationDate && (
+                  <> · due on site {formatShortDate(employee.mobilisationDate)}</>
+                )}
+                {employee.status === "ON_SITE" && employee.siteArrivalDate && (
+                  <> · on site since {formatShortDate(employee.siteArrivalDate)}</>
+                )}
               </p>
             </div>
           </div>

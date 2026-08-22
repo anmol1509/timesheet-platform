@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { markActiveFromAttendance } from "@/lib/employeeStage";
+import { markActiveFromAttendance } from "@/lib/employeeStageTransitions";
 
 export async function loadDayAttendanceAction(formData: FormData): Promise<{
   rows: Record<
@@ -155,9 +155,12 @@ export async function markAttendanceAction(
 
   // A worker counts as working from the first day marked, not from the day the
   // paperwork said they would start.
-  await markActiveFromAttendance(markedEmployeeIds);
+  await markActiveFromAttendance(markedEmployeeIds, dateValue);
 
   revalidatePath("/attendance");
+  // Marking attendance clears people off the arrival queue, so that page is
+  // stale the moment this returns.
+  revalidatePath("/demand/site-arrival");
   return { saved, requested: rows.length };
 }
 

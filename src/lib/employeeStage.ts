@@ -1,65 +1,50 @@
-import { prisma } from "@/lib/db";
-
 /**
- * A worker's three working stages, and the events that move between them.
+ * A worker's four working stages, and the events that move between them.
  *
  * IDLE               on the books, not working
- * UNDER_MOBILISATION assigned to a site, not yet started
+ * UNDER_MOBILISATION allocated to a demand on paper, not yet turned up
+ * ON_SITE            someone confirmed they physically reached site
  * ACTIVE             attendance has been marked since mobilising
  *
- * The middle stage is the one that matters operationally: a worker who has been
- * committed to a client but hasn't turned up is neither idle nor working, and
- * counting them as either hides the gap. ON_VACATION and TERMINATED sit outside
- * this cycle and are set by hand.
+ * The two middle stages are the ones that matter operationally. Allocation is a
+ * plan and attendance is paperwork that lands days later; between them sits the
+ * only question the client actually asks — did the man reach site. Nothing
+ * recorded that, so a mobilisation that quietly failed looked identical to one
+ * that worked until the timesheet came up short at month end.
+ *
+ * ON_VACATION and TERMINATED sit outside this cycle and are set by hand.
  */
-export const WORKING_STAGES = ["IDLE", "UNDER_MOBILISATION", "ACTIVE"] as const;
+export const WORKING_STAGES = ["IDLE", "UNDER_MOBILISATION", "ON_SITE", "ACTIVE"] as const;
+
+/**
+ * The stages that mean "on a job" — everyone a site is expecting to see.
+ *
+ * Screens that ask "who is working" must use this rather than testing for
+ * ACTIVE. Attendance did test for ACTIVE, which hid every newly mobilised
+ * worker from the very screen whose job is to record that they turned up —
+ * and since attendance is what promotes them, they could never become ACTIVE
+ * either.
+ */
+export const ON_WORK_STAGES = ["UNDER_MOBILISATION", "ON_SITE", "ACTIVE"] as const;
+
+export function isOnWork(status: string) {
+  return (ON_WORK_STAGES as readonly string[]).includes(status);
+}
 
 export const STAGE_LABEL: Record<string, string> = {
   IDLE: "Idle",
   UNDER_MOBILISATION: "Under mobilisation",
+  ON_SITE: "On site",
   ACTIVE: "Active",
   ON_VACATION: "On vacation",
   TERMINATED: "Terminated",
 };
 
-export const STAGE_COLOR: Record<string, "green" | "amber" | "slate" | "red"> = {
+export const STAGE_COLOR: Record<string, "green" | "amber" | "slate" | "red" | "blue"> = {
   IDLE: "slate",
   UNDER_MOBILISATION: "amber",
+  ON_SITE: "blue",
   ACTIVE: "green",
   ON_VACATION: "slate",
   TERMINATED: "red",
 };
-
-/**
- * Marks workers as mobilised to a site from a given date.
- *
- * Deliberately does not touch ON_VACATION or TERMINATED: those are decisions
- * about the person, and being allocated on paper shouldn't quietly override
- * them.
- */
-export async function markUnderMobilisation(
-  employeeIds: string[],
-  mobilisationDate: Date | null
-) {
-  if (employeeIds.length === 0) return 0;
-  const result = await prisma.employee.updateMany({
-    where: { id: { in: employeeIds }, status: { in: ["IDLE", "UNDER_MOBILISATION"] } },
-    data: { status: "UNDER_MOBILISATION", mobilisationDate },
-  });
-  return result.count;
-}
-
-/**
- * Promotes a worker to ACTIVE the first time attendance is marked for them.
- *
- * Called after attendance is saved rather than on a schedule, so the stage
- * reflects what actually happened on site instead of what was planned.
- */
-export async function markActiveFromAttendance(employeeIds: string[]) {
-  if (employeeIds.length === 0) return 0;
-  const result = await prisma.employee.updateMany({
-    where: { id: { in: employeeIds }, status: "UNDER_MOBILISATION" },
-    data: { status: "ACTIVE" },
-  });
-  return result.count;
-}

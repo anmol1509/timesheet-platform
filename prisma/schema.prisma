@@ -392,9 +392,12 @@ model Settings {
 enum EmployeeStatus {
   // On the books, not working.
   IDLE
-  // Mobilised to a site but no attendance recorded yet — the gap between
-  // being assigned and actually starting, which nothing tracked before.
+  // Allocated to a demand on paper, but nobody has confirmed they turned up.
   UNDER_MOBILISATION
+  // Someone has confirmed the worker physically reached site. Distinct from
+  // ACTIVE because arrival is a fact a supervisor asserts on the day, while
+  // attendance is only entered later — often days later, sometimes never.
+  ON_SITE
   // Working: attendance has been marked at least once since mobilising.
   ACTIVE
   ON_VACATION
@@ -501,6 +504,10 @@ model Employee {
   // The date the worker is due on site, chosen when mobilising. Distinct from
   // the assignment's created date, which is when the paperwork was done.
   mobilisationDate    DateTime?
+  // The date the worker was confirmed to have actually reached site. Null while
+  // they are still only mobilised on paper; the gap between the two dates is
+  // how late a mobilisation ran.
+  siteArrivalDate     DateTime?
   religion            String?
   state               String? // state/province within nationality country
   accommodationType   String?

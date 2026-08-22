@@ -28,7 +28,7 @@ type EmployeeRow = {
   nationality: string | null;
   companyDisplayName: string | null;
   onWork: boolean;
-  status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_VACATION" | "TERMINATED";
+  status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
   worstStatus: ComplianceStatus;
   complete: boolean;
 };

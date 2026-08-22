@@ -6,6 +6,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
+import { releaseFromMobilisation } from "@/lib/employeeStageTransitions";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import {
   isAcceptedPhotoType,
@@ -177,7 +178,25 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
   }
 
+  // A site belongs to one project, so a site left over from the previous
+  // project is a contradiction rather than stale data. The form filters the
+  // dropdown already; this is the same rule where it can't be bypassed.
+  if (data.siteId) {
+    const site = await prisma.site.findUnique({
+      where: { id: data.siteId },
+      select: { projectId: true },
+    });
+    if (!site || site.projectId !== data.projectId) data.siteId = null;
+  }
+
   await prisma.employee.update({ where: { id }, data });
+
+  // Taking the project away ends the placement, so the mobilisation stage and
+  // its dates end with it — same rule the demand screen applies when a worker
+  // is unallocated, so the two routes can't leave the roster disagreeing.
+  if (before && before.projectId && !data.projectId) {
+    await releaseFromMobilisation([id]);
+  }
 
   if (before && before.projectId !== data.projectId) {
     const openHistory = await prisma.employeeAssignmentHistory.findFirst({
@@ -219,6 +238,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
   revalidatePath(`/employees/${id}`);
   revalidatePath("/employees");
+  revalidatePath("/demand/site-arrival");
 }
 
 export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {

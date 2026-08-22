@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
+import { isOnWork } from "@/lib/employeeStage";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -57,7 +58,9 @@ export function AttendanceForm({
   const [supplierIds, setSupplierIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState("");
   const [siteId, setSiteId] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "IDLE">("ACTIVE");
+  // "On work" covers the whole mobilisation cycle, not just ACTIVE — see
+  // ON_WORK_STAGES. Matching ACTIVE exactly hid the newly mobilised.
+  const [statusFilter, setStatusFilter] = useState<"all" | "working" | "IDLE">("working");
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Record<string, string>>({});
   const [normalHours, setNormalHours] = useState<Record<string, string>>({});
@@ -90,7 +93,8 @@ export function AttendanceForm({
         return false;
       if (projectId && e.projectId !== projectId) return false;
       if (siteId && e.siteId !== siteId) return false;
-      if (statusFilter !== "all" && e.status !== statusFilter) return false;
+      if (statusFilter === "working" && !isOnWork(e.status)) return false;
+      if (statusFilter === "IDLE" && e.status !== "IDLE") return false;
       if (q && !`${e.name} ${e.employeeIdNo} ${e.trade ?? ""}`.toLowerCase().includes(q))
         return false;
       return true;
@@ -162,7 +166,9 @@ export function AttendanceForm({
       ? String(existing[e.id].normalHours)
       : "";
     if (!isMarked(e.id)) return "";
-    return e.status === "ACTIVE" && statusFor(e.id) === "PRESENT" ? DEFAULT_DAY_HOURS : "";
+    // Anyone on a job gets the standard day prefilled, not just those already
+    // promoted to ACTIVE — the first day on site is a full day like any other.
+    return isOnWork(e.status) && statusFor(e.id) === "PRESENT" ? DEFAULT_DAY_HOURS : "";
   }
 
   function isLocked(employeeId: string) {
@@ -239,10 +245,10 @@ export function AttendanceForm({
           <span className="mb-1 block text-xs font-medium text-muted">Status</span>
           <Select
             value={statusFilter}
-            onChange={(v) => setStatusFilter(v as "all" | "ACTIVE" | "IDLE")}
+            onChange={(v) => setStatusFilter(v as "all" | "working" | "IDLE")}
             searchable={false}
             options={[
-              { value: "ACTIVE", label: "Active" },
+              { value: "working", label: "On work" },
               { value: "IDLE", label: "Idle" },
               { value: "all", label: "All" },
             ]}
