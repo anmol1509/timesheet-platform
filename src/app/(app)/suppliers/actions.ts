@@ -145,6 +145,7 @@ export async function updateSupplierCompanyAction(formData: FormData) {
     pointOfContact: stringOrNull(formData.get("pointOfContact")),
     supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
     account: stringOrNull(formData.get("account")),
+    isOwnCompany: formData.get("isOwnCompany") === "on",
     allowManualLabourId: formData.get("allowManualLabourId") === "on",
     overtime: formData.get("overtime") === "on",
   };

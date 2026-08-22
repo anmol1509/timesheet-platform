@@ -78,7 +78,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       employeeIdNo,
       category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
       supplierId: stringOrNull(formData.get("supplierId")),
-      sponsorshipCompanyId: stringOrNull(formData.get("sponsorshipCompanyId")),
+      sponsorSupplierId: stringOrNull(formData.get("sponsorSupplierId")),
       nationality: stringOrNull(formData.get("nationality")),
       sponsorName: stringOrNull(formData.get("sponsorName")),
       unifiedNo: stringOrNull(formData.get("unifiedNo")),

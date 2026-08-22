@@ -153,6 +153,7 @@ export default async function SupplierDetailPage({
                     entityBranchId={supplier.branchId}
                     revalidate={`/suppliers/${supplier.id}`}
                     docTypeOptions={[
+                      { value: "LETTERHEAD", label: "Letterhead (blank, for letters)" },
                       { value: "TRADE_LICENSE", label: "Trade Licence" },
                       { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
                       { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
@@ -193,6 +194,7 @@ export default async function SupplierDetailPage({
                 parentOptions={parentOptionsWithCurrent}
                 supplier={{
                   id: supplier.id,
+                  isOwnCompany: supplier.isOwnCompany,
                   parentSupplierId: supplier.parentSupplierId,
                   fullName: supplier.fullName,
                   status: supplier.status,

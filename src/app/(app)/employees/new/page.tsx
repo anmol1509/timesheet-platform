@@ -8,14 +8,14 @@ import { EmployeeWizard } from "./wizard";
 
 export default async function AddEmployeePage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [projects, suppliers, sponsorshipCompanies, lookupValues] = await Promise.all([
+  const [projects, suppliers, sponsors, lookupValues] = await Promise.all([
     prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.supplier.findMany({
       where: branchWhere(branchId),
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
-    prisma.sponsorshipCompany.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.lookupValue.findMany({
       where: { ...branchWhere(branchId), isActive: true },
       orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
@@ -60,7 +60,7 @@ export default async function AddEmployeePage() {
         <EmployeeWizard
           projects={projects}
           suppliers={suppliers}
-          sponsorshipCompanies={sponsorshipCompanies}
+          sponsors={sponsors}
           lookups={groupLookups(lookupValues)}
         />
       </div>

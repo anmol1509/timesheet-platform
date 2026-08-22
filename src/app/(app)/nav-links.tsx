@@ -74,7 +74,6 @@ const NAV: Entry[] = [
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/sponsorship-companies", label: "Sponsorship Companies", icon: Landmark },
       { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },

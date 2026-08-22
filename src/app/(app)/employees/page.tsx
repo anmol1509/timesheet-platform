@@ -24,7 +24,7 @@ export default async function EmployeesPage({
       where: {
         ...branchWhere(branchId),
         ...(supplierId ? { supplierId } : {}),
-        ...(sponsorId ? { sponsorshipCompanyId: sponsorId } : {}),
+        ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}),
       },
       include: {
         supplier: { include: { parent: { select: { name: true } } } },
@@ -38,9 +38,9 @@ export default async function EmployeesPage({
           (s) => (s ? { label: "Supplier", name: s.name } : null)
         )
       : sponsorId
-        ? prisma.sponsorshipCompany
+        ? prisma.supplier
             .findUnique({ where: { id: sponsorId }, select: { name: true } })
-            .then((s) => (s ? { label: "Sponsorship company", name: s.name } : null))
+            .then((s) => (s ? { label: "Sponsor", name: s.name } : null))
         : Promise.resolve(null),
   ]);
 

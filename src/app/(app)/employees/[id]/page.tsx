@@ -29,7 +29,7 @@ export default async function EmployeeDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [employee, projects, sites, vehicles, vacantBeds, sponsorshipCompanies, suppliers, lookupValues] = await Promise.all([
+  const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
       include: {
@@ -61,7 +61,7 @@ export default async function EmployeeDetailPage({
       include: { room: { include: { camp: true } } },
       orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
     }),
-    prisma.sponsorshipCompany.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.lookupValue.findMany({
       where: { ...branchWhere(branchId), isActive: true },
@@ -149,7 +149,7 @@ export default async function EmployeeDetailPage({
         projects={projects}
         sites={sites}
         vehicles={vehicles}
-        sponsorshipCompanies={sponsorshipCompanies}
+        sponsors={sponsors}
         suppliers={suppliers}
         documents={employee.documents}
         lookups={lookups}

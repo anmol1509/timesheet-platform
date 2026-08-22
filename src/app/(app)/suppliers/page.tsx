@@ -18,9 +18,9 @@ export default async function SuppliersPage({
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   // The registration dialog opened from a scanned certificate needs the same
   // reference data the full wizard page loads.
-  const [projects, sponsorshipCompanies, lookupValues] = await Promise.all([
+  const [projects, sponsors, lookupValues] = await Promise.all([
     prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
-    prisma.sponsorshipCompany.findMany({
+    prisma.supplier.findMany({
       where: branchWhere(branchId),
       orderBy: { name: "asc" },
     }),
@@ -136,7 +136,7 @@ export default async function SuppliersPage({
           wizardData={{
             projects,
             suppliers: suppliers.map((s) => ({ id: s.id, name: s.name })),
-            sponsorshipCompanies,
+            sponsors,
             lookups: groupLookups(lookupValues),
           }}
         />

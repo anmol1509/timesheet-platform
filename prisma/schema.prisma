@@ -44,7 +44,6 @@ model Branch {
   sheets               GeneratedSheet[]
   items                InventoryItem[]
   entries              TimesheetEntry[]
-  sponsorshipCompanies SponsorshipCompany[]
   banks                Bank[]
   lookupValues         LookupValue[]
   demandRequests       DemandRequest[]
@@ -56,26 +55,6 @@ model Branch {
   quotations           Quotation[]
 }
 
-// The visa-issuing legal entity for an employee — distinct from Branch (the
-// operating company). A manpower supplier's workers are often sponsored
-// under a different trade license than the one running day-to-day ops.
-model SponsorshipCompany {
-  id                 String   @id @default(cuid())
-  name               String
-  shortName          String?
-  address            String?
-  country            String?
-  currency           String?
-  phone              String?
-  email              String?
-  tradeLicenseNumber String?
-  createdAt          DateTime @default(now())
-
-  branch   Branch @relation(fields: [branchId], references: [id])
-  branchId String
-
-  employees Employee[]
-}
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
 // real account.
@@ -200,6 +179,8 @@ model Supplier {
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
   isOwnCompany     Boolean    @default(false)
+
+  sponsoredEmployees Employee[] @relation("EmployeeSponsor")
 
   parent           Supplier?  @relation("SupplierSubsidiaries", fields: [parentSupplierId], references: [id])
   parentSupplierId String?
@@ -544,8 +525,11 @@ model Employee {
   vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
   vehicleId String?
 
-  sponsorshipCompany   SponsorshipCompany? @relation(fields: [sponsorshipCompanyId], references: [id])
-  sponsorshipCompanyId String?
+  // The company holding the visa. Often, but not always, the employer, so it
+  // stays a separate link — it just points at Supplier now rather than a
+  // duplicate SponsorshipCompany list.
+  sponsorSupplier   Supplier? @relation("EmployeeSponsor", fields: [sponsorSupplierId], references: [id])
+  sponsorSupplierId String?
 
   documents              Document[]
   skills                 EmployeeSkill[]

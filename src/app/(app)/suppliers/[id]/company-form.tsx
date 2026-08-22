@@ -24,6 +24,7 @@ type Supplier = {
   pointOfContact: string | null;
   supplierAmountLimit: number | null;
   account: string | null;
+  isOwnCompany: boolean;
   allowManualLabourId: boolean;
   overtime: boolean;
 };
@@ -166,6 +167,13 @@ export function SupplierCompanyForm({
             className="input w-full"
           />
         </Field>
+        {/* Our own entity or a third party: decides whose letterhead a
+            document is issued on, and who is billed rather than paid. */}
+        <CheckboxField
+          label="Our own company"
+          name="isOwnCompany"
+          defaultChecked={supplier.isOwnCompany}
+        />
         <CheckboxField
           label="Allow manual labour ID"
           name="allowManualLabourId"

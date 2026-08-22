@@ -44,7 +44,7 @@ export async function GET(
                     select: { id: true, type: true, filename: true, mimeType: true },
                   },
                   supplier: { select: { id: true, name: true } },
-                  sponsorshipCompany: { select: { id: true, name: true } },
+                  sponsorSupplier: { select: { id: true, name: true } },
                 },
               },
             },
@@ -81,7 +81,7 @@ export async function GET(
     const companyIds = new Set<string>();
     for (const w of workers) {
       // Sponsorship company first — it holds the visa — then the employer.
-      if (w.sponsorshipCompany) companyIds.add(w.sponsorshipCompany.id);
+      if (w.sponsorSupplier) companyIds.add(w.sponsorSupplier.id);
       if (w.supplier) companyIds.add(w.supplier.id);
     }
 

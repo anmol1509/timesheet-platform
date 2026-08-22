@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -32,13 +32,19 @@ export function AttachmentUploader({
   attachments: AttachmentRow[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
       <form
         ref={formRef}
         action={async (formData) => {
-          await uploadAttachmentAction(formData);
+          setError(null);
+          const result = await uploadAttachmentAction(formData);
+          if (result?.error) {
+            setError(result.error);
+            return;
+          }
           formRef.current?.reset();
         }}
         className="flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-strong p-4"
@@ -87,6 +93,8 @@ export function AttachmentUploader({
           Upload
         </button>
       </form>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {attachments.length > 0 && (
         <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-default bg-surface">

@@ -31,7 +31,7 @@ import {
 } from "@/lib/skillLevel";
 
 type Project = { id: string; name: string; code: string };
-type SponsorshipCompany = { id: string; name: string };
+
 type Supplier = { id: string; name: string };
 
 const STEPS = [
@@ -178,14 +178,14 @@ function isPast(iso: string) {
 export function EmployeeWizard({
   projects,
   suppliers,
-  sponsorshipCompanies,
+  sponsors,
   lookups,
   prefill,
   onRegistered,
 }: {
   projects: Project[];
   suppliers: Supplier[];
-  sponsorshipCompanies: SponsorshipCompany[];
+  sponsors: Supplier[];
   lookups: Record<string, { value: string }[]>;
   /** Seeds the form when a worker is being added from a scanned document. */
   prefill?: { name?: string; supplierId?: string; position?: string };
@@ -781,7 +781,7 @@ export function EmployeeWizard({
                 value={fields.sponsorshipCompanyId}
                 onChange={(v) => set("sponsorshipCompanyId", v)}
                 placeholder="Not set"
-                options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
           </div>
@@ -1544,7 +1544,7 @@ export function EmployeeWizard({
                 value={fields.sponsorshipCompanyId}
                 onChange={(v) => set("sponsorshipCompanyId", v)}
                 placeholder="Not set"
-                options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
               />
             </ReviewRow>
 

@@ -25,7 +25,7 @@ import {
 type WizardData = {
   projects: { id: string; name: string; code: string; clientId: string }[];
   suppliers: { id: string; name: string }[];
-  sponsorshipCompanies: { id: string; name: string }[];
+  sponsors: { id: string; name: string }[];
   lookups: Record<string, { value: string }[]>;
 };
 

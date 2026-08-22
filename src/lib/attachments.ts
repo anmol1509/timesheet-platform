@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
-import { MAX_UPLOAD_BYTES } from "@/lib/constants";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
 // One shared upload path for entity types that don't have a dedicated
 // *Document model (Supplier docs today; Payslips/Visa docs in later
@@ -16,7 +16,9 @@ import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 // The form must include a hidden "entityBranchId" field set server-side by
 // the page that renders the uploader (never trust a client-submitted
 // branchId) — see AttachmentUploader's `entityBranchId` prop.
-export async function uploadAttachmentAction(formData: FormData) {
+export async function uploadAttachmentAction(
+  formData: FormData
+): Promise<{ error?: string } | void> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const entityType = String(formData.get("entityType") || "");
@@ -28,10 +30,20 @@ export async function uploadAttachmentAction(formData: FormData) {
   const revalidate = String(formData.get("revalidate") || "");
   const file = formData.get("file");
 
-  if (!entityType || !entityId) return;
-  if (isOutsideBranch(entityBranchId, branchId, isSuperAdmin)) return;
-  if (!(file instanceof File) || file.size === 0) return;
-  if (file.size > MAX_UPLOAD_BYTES) return;
+  // Every rejection used to be a bare `return`, so an oversize file looked
+  // exactly like a broken button. Say what went wrong instead.
+  if (!entityType || !entityId) return { error: "Nothing to attach this file to." };
+  if (isOutsideBranch(entityBranchId, branchId, isSuperAdmin)) {
+    return { error: "That record belongs to another branch." };
+  }
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a file to upload." };
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return {
+      error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.`,
+    };
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   await prisma.attachment.create({

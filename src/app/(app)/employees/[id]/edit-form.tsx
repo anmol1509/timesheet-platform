@@ -18,7 +18,7 @@ type Employee = {
   unifiedNo: string | null;
   category: "STAFF" | "SITE_STAFF";
   supplierId: string | null;
-  sponsorshipCompanyId: string | null;
+  sponsorSupplierId: string | null;
   nationality: string | null;
   position: string | null;
   passportNumber: string | null;
@@ -98,7 +98,7 @@ type Employee = {
 type Project = { id: string; name: string; code: string };
 type Site = { id: string; name: string; projectId: string };
 type Vehicle = { id: string; plateNumber: string; type: string | null };
-type SponsorshipCompany = { id: string; name: string };
+
 type Supplier = { id: string; name: string };
 type LookupsByCategory = Record<string, { value: string }[]>;
 
@@ -130,7 +130,7 @@ export function EditForm({
   projects,
   sites,
   vehicles,
-  sponsorshipCompanies,
+  sponsors,
   suppliers,
   documents,
   lookups,
@@ -140,7 +140,7 @@ export function EditForm({
   projects: Project[];
   sites: Site[];
   vehicles: Vehicle[];
-  sponsorshipCompanies: SponsorshipCompany[];
+  sponsors: Supplier[];
   suppliers: Supplier[];
   documents: Doc[];
   lookups: LookupsByCategory;
@@ -325,12 +325,12 @@ export function EditForm({
             <Field label="Nationality">
               <CountrySelect name="nationality" value={nationality} onChange={setNationality} />
             </Field>
-            <Field label="Sponsorship company">
+            <Field label="Visa sponsor">
               <Select
-                name="sponsorshipCompanyId"
-                defaultValue={employee.sponsorshipCompanyId || ""}
+                name="sponsorSupplierId"
+                defaultValue={employee.sponsorSupplierId || ""}
                 placeholder="Not set"
-                options={sponsorshipCompanies.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             <LookupField label="Position" name="position" defaultValue={employee.position} options={lookups.POSITION} />

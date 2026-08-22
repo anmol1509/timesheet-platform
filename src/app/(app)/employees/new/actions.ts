@@ -100,7 +100,7 @@ function initialsOf(name: string) {
  */
 export async function generateEmployeeIdAction(
   supplierId: string | null,
-  sponsorshipCompanyId: string | null
+  sponsorSupplierId: string | null
 ): Promise<{ id: string | null; error: string | null; source: string | null }> {
   const { branchId } = await requireUserWithBranch();
 
@@ -111,9 +111,9 @@ export async function generateEmployeeIdAction(
         where: { id: supplierId, ...branchWhere(branchId) },
         select: { name: true },
       })
-    : sponsorshipCompanyId
-      ? await prisma.sponsorshipCompany.findFirst({
-          where: { id: sponsorshipCompanyId, ...branchWhere(branchId) },
+    : sponsorSupplierId
+      ? await prisma.supplier.findFirst({
+          where: { id: sponsorSupplierId, ...branchWhere(branchId) },
           select: { name: true },
         })
       : null;
@@ -209,15 +209,15 @@ export async function createEmployeeAction(
   // than trusted — otherwise an employee could be filed under another
   // branch's supplier, sponsor or project.
   const supplierId = stringOrNull(formData.get("supplierId"));
-  const sponsorshipCompanyId = stringOrNull(formData.get("sponsorshipCompanyId"));
+  const sponsorSupplierId = stringOrNull(formData.get("sponsorSupplierId"));
   const projectId = stringOrNull(formData.get("projectId"));
   const [supplierOk, sponsorshipOk, projectOk] = await Promise.all([
     supplierId
       ? prisma.supplier.count({ where: { id: supplierId, ...branchWhere(branchId) } })
       : Promise.resolve(1),
-    sponsorshipCompanyId
-      ? prisma.sponsorshipCompany.count({
-          where: { id: sponsorshipCompanyId, ...branchWhere(branchId) },
+    sponsorSupplierId
+      ? prisma.supplier.count({
+          where: { id: sponsorSupplierId, ...branchWhere(branchId) },
         })
       : Promise.resolve(1),
     projectId
@@ -239,7 +239,7 @@ export async function createEmployeeAction(
     // employs the worker, the sponsorship company holds the visa. Supplier was
     // previously only settable from the edit form, never at creation.
     supplierId,
-    sponsorshipCompanyId,
+    sponsorSupplierId,
     nationality: stringOrNull(formData.get("nationality")),
     position: stringOrNull(formData.get("position")),
     trade: stringOrNull(formData.get("position")),
