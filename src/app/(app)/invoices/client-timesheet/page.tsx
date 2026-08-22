@@ -148,32 +148,45 @@ export default async function ClientTimesheetPage({
               ))}
             </select>
           </label>
-          {projectOptions.length > 0 && (
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-muted">Project</span>
-              <select name="project" defaultValue={selectedProject} className="input">
-                <option value="">All projects</option>
-                {projectOptions.map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {siteOptions.length > 0 && (
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-muted">Site</span>
-              <select name="site" defaultValue={selectedSite} className="input">
-                <option value="">All sites</option>
-                {siteOptions.map((site) => (
-                  <option key={site} value={site}>
-                    {site}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          {/* Always shown, even with nothing to offer. Hiding them made the
+              filters look missing on a client whose rows carry no project or
+              site — the control should say why it's empty, not disappear. */}
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Project</span>
+            <select
+              name="project"
+              defaultValue={selectedProject}
+              disabled={projectOptions.length === 0}
+              className="input disabled:opacity-60"
+            >
+              <option value="">
+                {projectOptions.length === 0 ? "None recorded" : "All projects"}
+              </option>
+              {projectOptions.map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Site</span>
+            <select
+              name="site"
+              defaultValue={selectedSite}
+              disabled={siteOptions.length === 0}
+              className="input disabled:opacity-60"
+            >
+              <option value="">
+                {siteOptions.length === 0 ? "None recorded" : "All sites"}
+              </option>
+              {siteOptions.map((site) => (
+                <option key={site} value={site}>
+                  {site}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             className="btn btn-primary"
@@ -181,6 +194,13 @@ export default async function ClientTimesheetPage({
             Go
           </button>
         </form>
+      )}
+
+      {allEntries.length > 0 && projectOptions.length === 0 && siteOptions.length === 0 && (
+        <p className="text-xs text-subtle">
+          These rows carry no project or site, so those filters have nothing to offer
+          — set them on the entries or on the workers&rsquo; records to use them here.
+        </p>
       )}
 
       {entries.length === 0 ? (
