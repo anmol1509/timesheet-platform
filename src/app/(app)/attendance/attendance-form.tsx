@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { isOnWork } from "@/lib/employeeStage";
+import {
+  expandSuppliers,
+  matchesFilters,
+  projectsForClient,
+  sitesForScope,
+  type StatusFilter,
+} from "@/lib/attendanceFilters";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -24,6 +31,8 @@ type EmployeeOption = {
   supplierId: string | null;
   supplierName: string | null;
   projectId: string | null;
+  /** Reached through the project — a worker has no client of their own. */
+  clientId: string | null;
   projectName: string;
   siteId: string | null;
 };
@@ -41,26 +50,29 @@ const DEFAULT_DAY_HOURS = "10";
 
 export function AttendanceForm({
   suppliers,
+  clients,
   employees,
   projects,
   sites,
   date,
 }: {
   suppliers: Supplier[];
+  clients: { id: string; name: string }[];
   employees: EmployeeOption[];
-  projects: { id: string; label: string }[];
-  sites: { id: string; label: string }[];
+  projects: { id: string; label: string; clientId: string }[];
+  sites: { id: string; label: string; projectId: string }[];
   /** Chosen on the calendar; the day being marked. */
   date: string;
 }) {
   const [pending, startTransition] = useTransition();
   // Filters narrow the roster; they don't decide which day is being marked.
   const [supplierIds, setSupplierIds] = useState<string[]>([]);
+  const [clientId, setClientId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [siteId, setSiteId] = useState("");
   // "On work" covers the whole mobilisation cycle, not just ACTIVE — see
   // ON_WORK_STAGES. Matching ACTIVE exactly hid the newly mobilised.
-  const [statusFilter, setStatusFilter] = useState<"all" | "working" | "IDLE">("working");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("working");
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Record<string, string>>({});
   const [normalHours, setNormalHours] = useState<Record<string, string>>({});
@@ -75,31 +87,45 @@ export function AttendanceForm({
   // Bumped after a mark is deleted, to re-pull the day from the server.
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Selecting a parent supplier implies its subsidiaries: their workers are on
-  // the same job and marking them separately is how a day ends up half done.
-  const expandedSupplierIds = useMemo(() => {
-    if (supplierIds.length === 0) return null;
-    const wanted = new Set(supplierIds);
-    for (const s of suppliers) {
-      if (s.parentId && wanted.has(s.parentId)) wanted.add(s.id);
-    }
-    return wanted;
-  }, [supplierIds, suppliers]);
+  const expandedSupplierIds = useMemo(
+    () => expandSuppliers(supplierIds, suppliers),
+    [supplierIds, suppliers]
+  );
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return employees.filter((e) => {
-      if (expandedSupplierIds && !(e.supplierId && expandedSupplierIds.has(e.supplierId)))
-        return false;
-      if (projectId && e.projectId !== projectId) return false;
-      if (siteId && e.siteId !== siteId) return false;
-      if (statusFilter === "working" && !isOnWork(e.status)) return false;
-      if (statusFilter === "IDLE" && e.status !== "IDLE") return false;
-      if (q && !`${e.name} ${e.employeeIdNo} ${e.trade ?? ""}`.toLowerCase().includes(q))
-        return false;
-      return true;
-    });
-  }, [employees, expandedSupplierIds, projectId, siteId, statusFilter, query]);
+  // Each filter narrows the next. Offering every project under a chosen client,
+  // or every site under a chosen project, is how you end up with a filter
+  // combination that can only ever match nobody.
+  const visibleProjects = useMemo(
+    () => projectsForClient(projects, clientId),
+    [projects, clientId]
+  );
+  const visibleSites = useMemo(
+    () => sitesForScope(sites, visibleProjects, clientId, projectId),
+    [sites, visibleProjects, clientId, projectId]
+  );
+
+  // Narrowing the client can strand a project or site chosen under the old one.
+  useEffect(() => {
+    if (projectId && !visibleProjects.some((p) => p.id === projectId)) setProjectId("");
+  }, [visibleProjects, projectId]);
+  useEffect(() => {
+    if (siteId && !visibleSites.some((x) => x.id === siteId)) setSiteId("");
+  }, [visibleSites, siteId]);
+
+  const rows = useMemo(
+    () =>
+      employees.filter((e) =>
+        matchesFilters(e, {
+          supplierIds: expandedSupplierIds,
+          clientId,
+          projectId,
+          siteId,
+          status: statusFilter,
+          query,
+        })
+      ),
+    [employees, expandedSupplierIds, clientId, projectId, siteId, statusFilter, query]
+  );
 
   useEffect(() => {
     // `date` is always set — the form is only rendered once a day is picked.
@@ -245,7 +271,7 @@ export function AttendanceForm({
           <span className="mb-1 block text-xs font-medium text-muted">Status</span>
           <Select
             value={statusFilter}
-            onChange={(v) => setStatusFilter(v as "all" | "working" | "IDLE")}
+            onChange={(v) => setStatusFilter(v as StatusFilter)}
             searchable={false}
             options={[
               { value: "working", label: "On work" },
@@ -255,12 +281,27 @@ export function AttendanceForm({
           />
         </label>
         <label className="w-52">
+          <span className="mb-1 block text-xs font-medium text-muted">Client</span>
+          <Select
+            value={clientId}
+            onChange={setClientId}
+            placeholder="All clients"
+            options={[
+              { value: "", label: "All clients" },
+              ...clients.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+          />
+        </label>
+        <label className="w-52">
           <span className="mb-1 block text-xs font-medium text-muted">Project</span>
           <Select
             value={projectId}
             onChange={setProjectId}
             placeholder="All projects"
-            options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.id, label: p.label }))]}
+            options={[
+              { value: "", label: "All projects" },
+              ...visibleProjects.map((p) => ({ value: p.id, label: p.label })),
+            ]}
           />
         </label>
         <label className="w-52">
@@ -269,7 +310,10 @@ export function AttendanceForm({
             value={siteId}
             onChange={setSiteId}
             placeholder="All sites"
-            options={[{ value: "", label: "All sites" }, ...sites.map((x) => ({ value: x.id, label: x.label }))]}
+            options={[
+              { value: "", label: "All sites" },
+              ...visibleSites.map((x) => ({ value: x.id, label: x.label })),
+            ]}
           />
         </label>
         <div className="w-full">

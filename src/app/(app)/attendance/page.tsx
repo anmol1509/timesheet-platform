@@ -20,11 +20,18 @@ export default async function AttendancePage({
     : `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
   const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam ?? "") ? dateParam! : null;
 
-  const [suppliers, employees, projects, sites, monthDays, pendingCorrections] =
+  const [suppliers, clients, employees, projects, sites, monthDays, pendingCorrections] =
     await Promise.all([
     prisma.supplier.findMany({
       where: branchWhere(branchId),
       select: { id: true, name: true, parentSupplierId: true },
+      orderBy: { name: "asc" },
+    }),
+    // Attendance is ultimately billed to a client, so that is the filter people
+    // reach for; a worker reaches one through their project.
+    prisma.client.findMany({
+      where: branchWhere(branchId),
+      select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
     // The whole roster: attendance is marked for everyone on the books, and
@@ -41,18 +48,18 @@ export default async function AttendancePage({
         supplier: { select: { name: true } },
         projectId: true,
         siteId: true,
-        project: { select: { id: true, name: true, code: true } },
+        project: { select: { id: true, name: true, code: true, clientId: true } },
       },
       orderBy: { name: "asc" },
     }),
     prisma.project.findMany({
       where: branchWhere(branchId),
-      select: { id: true, name: true, code: true },
+      select: { id: true, name: true, code: true, clientId: true },
       orderBy: { name: "asc" },
     }),
     prisma.site.findMany({
       where: { project: branchWhere(branchId) },
-      select: { id: true, name: true },
+      select: { id: true, name: true, projectId: true },
       orderBy: { name: "asc" },
     }),
     getAttendanceMonth(branchId, month),
@@ -85,8 +92,13 @@ export default async function AttendancePage({
             name: s.name,
             parentId: s.parentSupplierId,
           }))}
-          projects={projects.map((p) => ({ id: p.id, label: `${p.code} — ${p.name}` }))}
-          sites={sites.map((x) => ({ id: x.id, label: x.name }))}
+          clients={clients}
+          projects={projects.map((p) => ({
+            id: p.id,
+            label: `${p.code} — ${p.name}`,
+            clientId: p.clientId,
+          }))}
+          sites={sites.map((x) => ({ id: x.id, label: x.name, projectId: x.projectId }))}
           employees={employees.map((e) => ({
             id: e.id,
             name: e.name,
@@ -96,6 +108,7 @@ export default async function AttendancePage({
             supplierId: e.supplierId,
             supplierName: e.supplier?.name ?? null,
             projectId: e.projectId,
+            clientId: e.project?.clientId ?? null,
             projectName: e.project ? `${e.project.code} — ${e.project.name}` : "",
             siteId: e.siteId,
           }))}
