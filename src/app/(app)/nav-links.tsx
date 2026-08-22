@@ -92,6 +92,7 @@ const NAV: Entry[] = [
     icon: ClipboardList,
     children: [
       { href: "/projects", label: "Projects", icon: ClipboardList },
+      { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
     ],
   },
