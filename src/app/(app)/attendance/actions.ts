@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { markActiveFromAttendance } from "@/lib/employeeStage";
 
 export async function loadDayAttendanceAction(formData: FormData): Promise<{
   rows: Record<
@@ -96,6 +97,7 @@ export async function markAttendanceAction(
 
   const dateValue = new Date(date + "T00:00:00.000Z");
   let saved = 0;
+  const markedEmployeeIds: string[] = [];
 
   for (const row of rows) {
     const status = VALID_STATUSES.has(row.status) ? row.status : "PRESENT";
@@ -119,6 +121,8 @@ export async function markAttendanceAction(
       supplierId: employee.supplierId ?? supplierId,
       branchId,
     };
+
+    markedEmployeeIds.push(employee.id);
 
     if (existing) {
       await prisma.attendance.update({ where: { id: existing.id }, data });
@@ -148,6 +152,10 @@ export async function markAttendanceAction(
     }
     saved++;
   }
+
+  // A worker counts as working from the first day marked, not from the day the
+  // paperwork said they would start.
+  await markActiveFromAttendance(markedEmployeeIds);
 
   revalidatePath("/attendance");
   return { saved, requested: rows.length };

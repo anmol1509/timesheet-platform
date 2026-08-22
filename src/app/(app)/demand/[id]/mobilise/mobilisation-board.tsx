@@ -70,6 +70,11 @@ export function MobilisationBoard({
   const [tab, setTab] = useState<"matching" | "other">("matching");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [retrade, setRetrade] = useState<Record<string, string>>({});
+  // When the worker is due on site. Recorded per mobilisation, and what moves
+  // them from idle to under-mobilisation.
+  const [mobilisationDate, setMobilisationDate] = useState(
+    () => new Date().toISOString().slice(0, 10)
+  );
 
   const activeLine = lines.find((l) => l.id === activeLineId) ?? lines[0];
   const assignedIds = useMemo(
@@ -115,6 +120,7 @@ export function MobilisationBoard({
     if (picked.size === 0) return;
     const body = new FormData();
     body.append("tradeId", activeLine.id);
+    body.append("mobilisationDate", mobilisationDate);
     for (const id of picked) body.append("employeeId", id);
     startTransition(async () => {
       await allocateEmployeesAction(body);
@@ -244,6 +250,16 @@ export function MobilisationBoard({
               ))}
             </div>
             <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5">
+                <span className="text-xs text-muted">On site from</span>
+                <input
+                  type="date"
+                  value={mobilisationDate}
+                  onChange={(e) => setMobilisationDate(e.target.value)}
+                  disabled={locked}
+                  className="input px-2 py-1 text-xs"
+                />
+              </label>
               <span className="text-xs text-muted">
                 {locked
                   ? "Approve this trade to mobilise"

@@ -25,6 +25,37 @@ export const TRADES = [
   "Site Supervisor",
 ] as const;
 
+/**
+ * Short code per trade, for columns too narrow for the full name — timesheets,
+ * NOCs, undertakings.
+ *
+ * Chosen to stay readable rather than generated: the three carpenter trades
+ * differ only by their first word, so they take that word's initial (SCP/FCP/
+ * GCP), and the two masons likewise (MSN/TMS).
+ */
+export const TRADE_CODES: Record<Trade, string> = {
+  Helper: "HLP",
+  Mason: "MSN",
+  "Tile Mason": "TMS",
+  "Steel Fixer": "SFX",
+  "Shuttering Carpenter": "SCP",
+  Scaffolder: "SCF",
+  Painter: "PNT",
+  "Finishing Carpenter": "FCP",
+  "Gypsum Carpenter": "GCP",
+  Electrician: "ELE",
+  Plumber: "PLM",
+  Rigger: "RIG",
+  "ARC Welder": "AWD",
+  "Site Supervisor": "SUP",
+};
+
+/** The code for a trade name, matched case-insensitively; null when off-list. */
+export function tradeCode(value: string | null | undefined): string | null {
+  const trade = canonicalTrade(value);
+  return trade ? TRADE_CODES[trade] : null;
+}
+
 export type Trade = (typeof TRADES)[number];
 
 /** Case-insensitive lookup, so stored spellings still resolve to the list. */

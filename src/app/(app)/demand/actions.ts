@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { markUnderMobilisation } from "@/lib/employeeStage";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -181,6 +182,11 @@ export async function allocateEmployeesAction(
 
   const remaining = Math.max(0, trade.quantity - trade.allocations.length);
   let allocated = 0;
+  const mobilisedIds: string[] = [];
+  const rawDate = String(formData.get("mobilisationDate") || "").trim();
+  const mobilisationDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+    ? new Date(rawDate + "T00:00:00.000Z")
+    : null;
 
   for (const employeeId of employeeIds) {
     if (allocated >= remaining) break;
@@ -234,8 +240,13 @@ export async function allocateEmployeesAction(
     });
 
     revalidatePath(`/employees/${employeeId}`);
+    mobilisedIds.push(employeeId);
     allocated++;
   }
+
+  // Allocated is not the same as working: the worker is committed to a site but
+  // hasn't started, which is its own stage until attendance says otherwise.
+  await markUnderMobilisation(mobilisedIds, mobilisationDate);
 
   // revalidatePath only invalidates the exact path, so the mobilise and
   // documents screens have to be named explicitly — otherwise they re-render

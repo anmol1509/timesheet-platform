@@ -196,6 +196,11 @@ model Supplier {
   labourApprovalStatus  String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates allocating labour to a Demand Request
   invoiceApprovalStatus String @default("Pending") // "Pending" | "Approved" | "Rejected" — gates generating the supplier payout sheet
 
+  // Our own entities vs third-party subcontractors. Same shape, but the
+  // distinction drives whose letterhead a document is issued on and who is
+  // being billed rather than paid.
+  isOwnCompany     Boolean    @default(false)
+
   parent           Supplier?  @relation("SupplierSubsidiaries", fields: [parentSupplierId], references: [id])
   parentSupplierId String?
   subsidiaries     Supplier[] @relation("SupplierSubsidiaries")
@@ -404,8 +409,13 @@ model Settings {
 }
 
 enum EmployeeStatus {
-  ACTIVE
+  // On the books, not working.
   IDLE
+  // Mobilised to a site but no attendance recorded yet — the gap between
+  // being assigned and actually starting, which nothing tracked before.
+  UNDER_MOBILISATION
+  // Working: attendance has been marked at least once since mobilising.
+  ACTIVE
   ON_VACATION
   TERMINATED
 }
@@ -507,6 +517,9 @@ model Employee {
   active              Boolean   @default(true)
   inactiveReason      String?
   lastDemobilizedDate DateTime?
+  // The date the worker is due on site, chosen when mobilising. Distinct from
+  // the assignment's created date, which is when the paperwork was done.
+  mobilisationDate    DateTime?
   religion            String?
   state               String? // state/province within nationality country
   accommodationType   String?
@@ -973,6 +986,9 @@ model ProjectInventoryAssignment {
 model Skill {
   id       String  @id @default(cuid())
   name     String  @unique
+  // Short mnemonic (HLP, MSN, SFX) printed on timesheets and letters, where a
+  // full trade name doesn't fit a column.
+  code     String? @unique
   category String?
   trending Boolean @default(false)
 
