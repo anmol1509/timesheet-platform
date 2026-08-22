@@ -8,7 +8,7 @@ import { ClientTimesheetGrid } from "./client-timesheet-grid";
 export default async function ClientTimesheetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; clientId?: string }>;
+  searchParams: Promise<{ month?: string; clientId?: string; project?: string; site?: string }>;
 }) {
   const params = await searchParams;
   const { branchId } = await requireUserWithBranch();
@@ -34,7 +34,7 @@ export default async function ClientTimesheetPage({
       ? params.clientId
       : clients[0]?.id;
 
-  const entries =
+  const allEntries =
     selectedMonth && selectedClientId
       ? await prisma.timesheetEntry.findMany({
           where: { month: selectedMonth, clientId: selectedClientId, ...branchWhere(branchId) },
@@ -47,10 +47,51 @@ export default async function ClientTimesheetPage({
             totalHours: true,
             absentCount: true,
             status: true,
+            site: true,
+            project: { select: { id: true, code: true, name: true } },
           },
           orderBy: [{ trade: "asc" }, { employeeName: "asc" }],
         })
       : [];
+
+  // Excel-uploaded rows carry no project, so it's resolved from the worker's
+  // own record — otherwise the filter would have nothing to offer.
+  const roster = allEntries.length
+    ? await prisma.employee.findMany({
+        where: { employeeIdNo: { in: allEntries.map((e) => e.employeeIdNo) } },
+        select: { employeeIdNo: true, project: { select: { id: true, code: true, name: true } } },
+      })
+    : [];
+  const projectByEmployee = new Map(
+    roster.filter((r) => r.project).map((r) => [r.employeeIdNo, r.project!] as const)
+  );
+
+  const withContext = allEntries.map((e) => {
+    const project = e.project ?? projectByEmployee.get(e.employeeIdNo) ?? null;
+    return { ...e, resolvedProject: project };
+  });
+
+  // Options come from what's actually on this month's rows, so the dropdowns
+  // never offer a project or site that would return nothing.
+  const projectOptions = [
+    ...new Map(
+      withContext
+        .filter((e) => e.resolvedProject)
+        .map((e) => [e.resolvedProject!.id, `${e.resolvedProject!.code} — ${e.resolvedProject!.name}`])
+    ),
+  ].sort((a, b) => a[1].localeCompare(b[1]));
+  const siteOptions = [
+    ...new Set(withContext.map((e) => e.site).filter((s): s is string => !!s && s.trim() !== "")),
+  ].sort((a, b) => a.localeCompare(b));
+
+  const selectedProject = params.project && projectOptions.some(([id]) => id === params.project)
+    ? params.project
+    : "";
+  const selectedSite = params.site && siteOptions.includes(params.site) ? params.site : "";
+
+  const entries = withContext
+    .filter((e) => !selectedProject || e.resolvedProject?.id === selectedProject)
+    .filter((e) => !selectedSite || e.site === selectedSite);
 
   return (
     <div className="space-y-5">
@@ -107,6 +148,32 @@ export default async function ClientTimesheetPage({
               ))}
             </select>
           </label>
+          {projectOptions.length > 0 && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Project</span>
+              <select name="project" defaultValue={selectedProject} className="input">
+                <option value="">All projects</option>
+                {projectOptions.map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {siteOptions.length > 0 && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Site</span>
+              <select name="site" defaultValue={selectedSite} className="input">
+                <option value="">All sites</option>
+                {siteOptions.map((site) => (
+                  <option key={site} value={site}>
+                    {site}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="submit"
             className="btn btn-primary"
@@ -119,7 +186,9 @@ export default async function ClientTimesheetPage({
       {entries.length === 0 ? (
         <div className="empty-state">
           <p className="text-sm text-muted">
-            No billable timesheet entries for this client/month.
+            {allEntries.length > 0
+              ? "No entries match those filters — clear the project or site to see the rest."
+              : "No billable timesheet entries for this client/month."}
           </p>
         </div>
       ) : (
