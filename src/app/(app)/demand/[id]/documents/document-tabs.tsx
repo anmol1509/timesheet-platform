@@ -31,6 +31,7 @@ export function DocumentTabs({
   nocTemplates,
   undertakingTemplates,
   workers,
+  issuers,
 }: {
   demandId: string;
   requestNo: number;
@@ -38,8 +39,13 @@ export function DocumentTabs({
   nocTemplates: Letter[];
   undertakingTemplates: Letter[];
   workers: Worker[];
+  /** The companies these letters get issued by, and whether each has a letterhead. */
+  issuers: { name: string; hasLetterhead: boolean }[];
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("noc");
+  // Whether the letters print onto each company's uploaded blank letterhead or
+  // plain, for feeding pre-printed paper through the printer instead.
+  const [onLetterhead, setOnLetterhead] = useState(true);
   const [sections, setSections] = useState<Set<string>>(
     () => new Set(PACK_SECTIONS.map((s) => s.key))
   );
@@ -90,6 +96,14 @@ export function DocumentTabs({
         ))}
       </div>
 
+      {(tab === "noc" || tab === "undertaking") && (
+        <LetterheadChoice
+          value={onLetterhead}
+          onChange={setOnLetterhead}
+          issuers={issuers}
+        />
+      )}
+
       {tab === "noc" && (
         <div className="card p-5">
           {nocs.length > 0 && (
@@ -104,7 +118,7 @@ export function DocumentTabs({
                     <span className="ml-2 text-xs text-subtle">{noc.status}</span>
                   </Link>
                   <a
-                    href={`/api/nocs/${noc.id}`}
+                    href={`/api/nocs/${noc.id}${onLetterhead ? "?letterhead=1" : ""}`}
                     className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
                   >
                     <Download className="h-3.5 w-3.5" aria-hidden />
@@ -139,7 +153,7 @@ export function DocumentTabs({
                 <li key={t.id} className="flex items-center justify-between py-2.5">
                   <span className="text-sm text-primary">{t.name}</span>
                   <a
-                    href={`/api/demand-requests/${demandId}/undertaking?templateId=${t.id}`}
+                    href={`/api/demand-requests/${demandId}/undertaking?templateId=${t.id}${onLetterhead ? "&letterhead=1" : ""}`}
                     className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
                   >
                     <Download className="h-3.5 w-3.5" aria-hidden />
@@ -249,5 +263,63 @@ function EmptyTemplate({ category }: { category: string }) {
       </Link>{" "}
       — the body text and its merge fields live there.
     </p>
+  );
+}
+
+/**
+ * Letterhead or plain.
+ *
+ * Plain exists because most offices print these onto pre-printed paper that
+ * already carries the letterhead — drawing it again would print it twice.
+ */
+function LetterheadChoice({
+  value,
+  onChange,
+  issuers,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+  issuers: { name: string; hasLetterhead: boolean }[];
+}) {
+  const missing = issuers.filter((i) => !i.hasLetterhead);
+  return (
+    <div className="card flex flex-wrap items-center gap-3 p-4">
+      <span className="text-xs font-medium text-muted">Print on</span>
+      <div className="flex gap-1.5">
+        {(
+          [
+            [true, "Company letterhead"],
+            [false, "Plain paper"],
+          ] as const
+        ).map(([option, label]) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onChange(option)}
+            className={cn(
+              "rounded-control border px-3 py-1.5 text-xs font-medium transition",
+              value === option
+                ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
+                : "border-default bg-surface text-secondary hover:bg-surface-hover"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-subtle">
+        {value
+          ? `One letter per company (${issuers.length}), each on its own letterhead.`
+          : "No letterhead drawn — for feeding pre-printed paper through the printer."}
+      </p>
+
+      {/* Said before the download, not discovered after it. */}
+      {value && missing.length > 0 && (
+        <p className="w-full rounded-card border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning)]">
+          No letterhead on file for {missing.map((m) => m.name).join(", ")} — those
+          letters print plain. Upload one on the supplier&apos;s Documents tab.
+        </p>
+      )}
+    </div>
   );
 }

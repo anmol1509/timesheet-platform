@@ -3,6 +3,7 @@ import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { LETTER_MERGE_FIELDS } from "@/lib/letterLayout";
 import { createLetterTemplateAction } from "./actions";
 import { LetterTemplateList } from "./letter-template-list";
 
@@ -26,11 +27,29 @@ export default async function LetterTemplatesPage() {
       <div>
         <h1 className="text-xl tracking-tight text-primary font-semibold">Letter Templates</h1>
         <p className="mt-1 text-sm text-muted">
-          Manage NOC/letter bodies. Use <code>%%CLIENTNAME%%</code>, <code>%%PROJECTNAME%%</code>,{" "}
-          <code>%%SPONSORSHIPCOMPANYNAME%%</code>, <code>%%BRANCHNAME%%</code>, <code>%%DOCNO%%</code>,{" "}
-          <code>%%MOBILIZEDATE%%</code> as merge fields — they&apos;re substituted when a NOC is generated.
+          The body of each letter, edited here rather than buried in code.
+          Placeholders below are filled in when the letter is generated.
         </p>
       </div>
+
+      {/* Listed from LETTER_MERGE_FIELDS so this can't drift from what the
+          renderer actually substitutes — it used to name a handful in prose. */}
+      <details className="card p-4">
+        <summary className="cursor-pointer text-sm font-medium text-primary">
+          Placeholders you can use ({LETTER_MERGE_FIELDS.length})
+        </summary>
+        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {LETTER_MERGE_FIELDS.map((f) => (
+            <li key={f.key} className="text-sm">
+              <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs text-primary">
+                %%{f.key}%%
+              </code>
+              <span className="ml-2 text-secondary">{f.label}</span>
+              <span className="block text-xs text-subtle">e.g. {f.example}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       <form
         action={createLetterTemplateAction}

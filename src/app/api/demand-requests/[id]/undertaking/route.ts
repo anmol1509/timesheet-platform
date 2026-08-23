@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
-import { substituteMergeFields } from "@/lib/mergeFields";
-import { generateNocLetterPdf } from "@/lib/generateNocPdf";
-import { NOC_DISPLAY_FIELDS } from "@/lib/nocDisplayFields";
+import { generateLetterPdf } from "@/lib/generateLetterPdf";
+import { buildLetterSections, toLetterWorker } from "@/lib/letterIssuer";
 
 /**
  * Undertaking letter for a demand's mobilised workers.
  *
- * Same shape as the NOC — letterhead, body, worker table — so it reuses that
- * renderer. The body text comes from the chosen Letter Template, which is where
- * the approved wording is maintained; nothing is hardcoded here.
+ * Same shape and the same splitting as the NOC — an undertaking is one
+ * company accepting responsibility for its own people, so a mobilisation
+ * drawn from three suppliers produces three letters. `?letterhead=1` prints
+ * each on that company's own letterhead.
  */
 export async function GET(
   request: Request,
@@ -19,7 +19,9 @@ export async function GET(
 ) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const { id } = await params;
-  const templateId = new URL(request.url).searchParams.get("templateId") || "";
+  const url = new URL(request.url);
+  const templateId = url.searchParams.get("templateId") || "";
+  const onLetterhead = url.searchParams.get("letterhead") === "1";
 
   const demand = await prisma.demandRequest.findUnique({
     where: { id },
@@ -27,7 +29,15 @@ export async function GET(
       client: true,
       project: true,
       branch: true,
-      trades: { include: { allocations: { include: { employee: true } } } },
+      trades: {
+        include: {
+          allocations: {
+            include: {
+              employee: { include: { supplier: { select: { name: true, fullName: true } } } },
+            },
+          },
+        },
+      },
     },
   });
   if (!demand || isOutsideBranch(demand.branchId, branchId, isSuperAdmin)) {
@@ -47,39 +57,38 @@ export async function GET(
     );
   }
 
-  const bodyText = substituteMergeFields(template.remarksText, {
-    CLIENTNAME: demand.client.name,
-    PROJECTNAME: demand.project.name,
-    SPONSORSHIPCOMPANYNAME: demand.project.sponsorshipCompany ?? "",
-    BRANCHNAME: demand.branch.name,
-    DOCNO: String(demand.requestNo),
-    MOBILIZEDATE: new Date().toLocaleDateString("en-GB"),
+  const { sections, missingLetterheads } = await buildLetterSections({
+    workers: workers.map(toLetterWorker),
+    templateBody: template.remarksText,
+    onLetterhead,
+    fallbackIssuerName: demand.branch.name,
+    context: {
+      clientName: demand.client.name,
+      clientAddress: demand.client.billingAddress,
+      projectName: demand.project.name,
+      branchName: demand.branch.name,
+      docNo: demand.requestNo,
+      mobilizeDate: null,
+      date: new Date(),
+    },
   });
 
-  const buffer = await generateNocLetterPdf({
-    branchName: demand.branch.name,
-    branchAddress: demand.branch.address,
-    docPrefix: "UND",
-    docNo: demand.requestNo,
-    bodyText,
-    // Every column the letter can show — an undertaking lists the workers it
-    // covers, so there's nothing to choose between here.
-    displayFields: NOC_DISPLAY_FIELDS.map((f) => f.key),
-    employees: workers.map((e) => ({
-      employeeIdNo: e.employeeIdNo,
-      name: e.name,
-      passportNumber: e.passportNumber,
-      nationality: e.nationality,
-      trade: e.trade,
-      emiratesId: e.emiratesId,
-      visaStatus: e.visaStatus,
-    })),
+  const buffer = await generateLetterPdf({
+    title: template.category ?? "Undertaking Letter",
+    clientName: demand.client.name,
+    clientAddress: demand.client.billingAddress,
+    projectName: demand.project.name,
+    date: new Date(),
+    sections,
   });
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="UND-${demand.requestNo}.pdf"`,
+      ...(missingLetterheads.length
+        ? { "X-Letterhead-Missing": encodeURIComponent(missingLetterheads.join(", ")) }
+        : {}),
     },
   });
 }

@@ -24,7 +24,11 @@ export default async function DemandDocumentsPage({
           allocations: {
             include: {
               employee: {
-                select: { id: true, name: true, employeeIdNo: true, trade: true },
+                select: {
+                  id: true, name: true, employeeIdNo: true, trade: true,
+                  supplierId: true,
+                  supplier: { select: { name: true, fullName: true } },
+                },
               },
             },
           },
@@ -41,6 +45,32 @@ export default async function DemandDocumentsPage({
   });
 
   const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee));
+
+  // Which companies these letters will be issued by, and which of them have no
+  // blank letterhead on file. Worked out here rather than left to the download,
+  // so nobody prints a stack of letters before noticing one came out plain.
+  const issuerIds = [...new Set(workers.map((w) => w.supplierId).filter((x): x is string => !!x))];
+  const withLetterhead = new Set(
+    issuerIds.length
+      ? (
+          await prisma.attachment.findMany({
+            where: { entityType: "SUPPLIER", entityId: { in: issuerIds }, docType: "LETTERHEAD" },
+            select: { entityId: true },
+            distinct: ["entityId"],
+          })
+        ).map((a) => a.entityId)
+      : []
+  );
+  const issuers = issuerIds.map((sid) => {
+    const w = workers.find((x) => x.supplierId === sid)!;
+    return {
+      name: w.supplier?.fullName || w.supplier?.name || "Unnamed company",
+      hasLetterhead: withLetterhead.has(sid),
+    };
+  });
+  if (workers.some((w) => !w.supplierId)) {
+    issuers.push({ name: "Workers with no company set", hasLetterhead: false });
+  }
 
   return (
     <div className="space-y-5">
@@ -65,6 +95,7 @@ export default async function DemandDocumentsPage({
           (t) => t.category === "Undertaking Letter" || t.category === "Supplier Undertaking"
         )}
         workers={workers}
+        issuers={issuers}
       />
     </div>
   );

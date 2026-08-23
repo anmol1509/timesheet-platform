@@ -30,11 +30,13 @@ export default async function NocDetailPage({ params }: { params: Promise<{ id: 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl tracking-tight text-primary font-semibold">NOC-{noc.docNo}</h1>
           <div className="flex items-center gap-2">
-            <a
-              href={`/api/nocs/${noc.id}`}
-              className="btn btn-primary"
-            >
-              Download PDF
+            {/* Two links rather than a toggle: this page has no client state,
+                and the choice is made once at download time anyway. */}
+            <a href={`/api/nocs/${noc.id}?letterhead=1`} className="btn btn-primary">
+              Download on letterhead
+            </a>
+            <a href={`/api/nocs/${noc.id}`} className="btn btn-secondary">
+              Download plain
             </a>
             <DeleteButton
               action={deleteNocAction}
