@@ -6,6 +6,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { markActiveFromAttendance } from "@/lib/employeeStageTransitions";
+import { syncAttendanceDay, type SyncResult } from "@/lib/attendanceTimesheetSync";
 
 export async function loadDayAttendanceAction(formData: FormData): Promise<{
   rows: Record<
@@ -62,7 +63,7 @@ function numberOrNull(value: string) {
 // requestAttendanceCorrectionAction instead.
 export async function markAttendanceAction(
   formData: FormData
-): Promise<{ saved: number; requested: number; error?: string }> {
+): Promise<{ saved: number; requested: number; error?: string; sync?: SyncResult }> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     return {
@@ -157,11 +158,22 @@ export async function markAttendanceAction(
   // paperwork said they would start.
   await markActiveFromAttendance(markedEmployeeIds, dateValue);
 
+  // The same day's work, written once. Entering it here and again on the client
+  // timesheet is what let the two records drift apart.
+  const sync = await syncAttendanceDay(date, markedEmployeeIds, {
+    branchId,
+    userId: user.id,
+    userName: user.name,
+    isSuperAdmin,
+  });
+
   revalidatePath("/attendance");
   // Marking attendance clears people off the arrival queue, so that page is
   // stale the moment this returns.
   revalidatePath("/demand/site-arrival");
-  return { saved, requested: rows.length };
+  revalidatePath("/invoices/client-timesheet");
+  revalidatePath("/invoices/client-timesheet/sync");
+  return { saved, requested: rows.length, sync };
 }
 
 // Locks every Attendance row for a given date+project so normal users can no

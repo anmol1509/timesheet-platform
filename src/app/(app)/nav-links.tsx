@@ -20,6 +20,7 @@ import {
   Bus,
   MapPin,
   MapPinCheck,
+  GitCompareArrows,
   Receipt,
   Package,
   Landmark,
@@ -126,7 +127,17 @@ const NAV: Entry[] = [
     icon: FileSpreadsheet,
     children: [
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
-      { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
+      {
+        href: "/invoices/client-timesheet",
+        label: "Client Timesheet",
+        icon: FileSearch,
+        exact: true,
+      },
+      {
+        href: "/invoices/client-timesheet/sync",
+        label: "Attendance Sync",
+        icon: GitCompareArrows,
+      },
       { href: "/upload", label: "Upload", icon: UploadIcon },
       { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },
       { href: "/history", label: "History", icon: Clock },

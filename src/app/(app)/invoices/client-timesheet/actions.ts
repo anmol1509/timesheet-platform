@@ -8,8 +8,12 @@ import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import type { DailyHourCell, ParsedEntry, ParsedMonth } from "@/lib/parseTimesheet";
-
-const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import {
+  WEEKDAY_ABBR,
+  buildMonthCells,
+  recompute,
+  storedMonthLabel,
+} from "@/lib/timesheetCells";
 
 type ManualRow = {
   employeeIdNo: string;
@@ -20,15 +24,6 @@ type ManualRow = {
   clientName: string;
   days: string[];
 };
-
-function monthLabelFromKey(month: string) {
-  const [y, m] = month.split("-");
-  const date = new Date(Number(y), Number(m) - 1, 1);
-  return date
-    .toLocaleDateString("en-US", { month: "short", year: "2-digit" })
-    .replace(" ", "-")
-    .toUpperCase();
-}
 
 export async function submitManualEntryAction(
   _prevState: { error: string | null },
@@ -128,7 +123,7 @@ export async function submitManualEntryAction(
     });
   }
 
-  const monthLabel = monthLabelFromKey(month);
+  const monthLabel = storedMonthLabel(month);
   const parsedMonth: ParsedMonth = {
     sheetName: "Manual Entry",
     month,
@@ -218,9 +213,7 @@ export async function submitDailyTimesheetAction(
   }
 
   const month = date.slice(0, 7);
-  const monthLabel = monthLabelFromKey(month);
-  const [year, monthNum] = month.split("-").map(Number);
-  const daysInMonth = new Date(year, monthNum, 0).getDate();
+  const monthLabel = storedMonthLabel(month);
 
   let saved = 0;
   for (const row of rows) {
@@ -271,16 +264,9 @@ export async function submitDailyTimesheetAction(
         branchId,
       });
     } else {
-      const dailyHours: DailyHourCell[] = [];
-      for (let d = 1; d <= daysInMonth; d++) {
-        const cellDate = new Date(Date.UTC(year, monthNum - 1, d));
-        const iso = cellDate.toISOString().slice(0, 10);
-        dailyHours.push({
-          date: iso,
-          label: WEEKDAY_ABBR[cellDate.getUTCDay()],
-          value: iso === date ? row.value : "",
-        });
-      }
+      const dailyHours = buildMonthCells(month).map((c) =>
+        c.date === date ? { ...c, value: row.value } : c
+      );
       const { totalHours, absentCount } = recompute(dailyHours);
 
       const created = await prisma.timesheetEntry.create({
@@ -424,17 +410,6 @@ export async function lockTimesheetAction(formData: FormData) {
   );
   revalidatePath("/invoices/client-timesheet");
   return { updated, requested: entryIds.length };
-}
-
-function recompute(days: DailyHourCell[]) {
-  let totalHours = 0;
-  let absentCount = 0;
-  for (const d of days) {
-    const n = Number(d.value);
-    if (d.value && Number.isFinite(n)) totalHours += n;
-    else if (d.value.trim().toUpperCase() === "A") absentCount++;
-  }
-  return { totalHours, absentCount };
 }
 
 export async function updateDailyHoursAction(formData: FormData) {
