@@ -53,6 +53,13 @@ export type LetterPdfInput = {
 const LETTERHEAD_TOP_INSET = 150;
 const LETTERHEAD_BOTTOM_INSET = 90;
 
+// A4 in points. The background needs real page dimensions because a percentage
+// height resolves against the page's *content* box, not the page: with the
+// insets above, "100%" drew the letterhead 602pt tall and left its pre-printed
+// footer floating 240pt above the bottom of the paper.
+const A4_WIDTH = 595.28;
+const A4_HEIGHT = 841.89;
+
 const s = StyleSheet.create({
   page: { paddingTop: 44, paddingBottom: 48, paddingHorizontal: 44, fontSize: 9, fontFamily: "Helvetica" },
   pageOnLetterhead: {
@@ -62,7 +69,17 @@ const s = StyleSheet.create({
     fontSize: 9,
     fontFamily: "Helvetica",
   },
-  background: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
+  // Positioned from the page corner, but sized in absolute points: an absolute
+  // offset is measured from the page, while a percentage size is measured
+  // against the padded content box. Mixing the two is what squashed the
+  // artwork into the text area.
+  background: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: A4_WIDTH,
+    height: A4_HEIGHT,
+  },
   date: { marginBottom: 14 },
   addressee: { marginBottom: 2 },
   addresseeName: { fontFamily: "Helvetica-Bold" },
