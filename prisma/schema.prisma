@@ -585,10 +585,17 @@ model EmployeeAssignmentHistory {
   demobilizedDate DateTime?
   createdAt       DateTime  @default(now())
 
+  // Why the placement ended, and who ended it. This row is already the record
+  // of the placement, so the reason belongs on it rather than only in the audit
+  // log — the demobilisation list reads it back.
+  demobilizationReason String?
+  demobilizedByName    String? // snapshot, like branchName/projectName above
+
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
 
   @@index([employeeId])
+  @@index([demobilizedDate])
 }
 
 // System-written record of each bed placement — opened/closed automatically
