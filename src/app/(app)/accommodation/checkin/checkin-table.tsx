@@ -274,7 +274,13 @@ function CheckInForm({
         setError(result.error);
         return;
       }
-      window.open(`/api/checkins/pdf?ids=${result.ids.join(",")}`, "_blank");
+      // Direct navigation, not window.open: a new-tab/window popup opened
+      // after an awaited server action routinely gets blocked because the
+      // browser's "user activation" window has already expired by the time
+      // the response comes back. Same-tab navigation to a download isn't
+      // subject to that — the Content-Disposition header makes the browser
+      // download the file rather than navigate away from this page.
+      window.location.href = `/api/checkins/pdf?ids=${result.ids.join(",")}`;
       router.refresh();
       onDone();
     });

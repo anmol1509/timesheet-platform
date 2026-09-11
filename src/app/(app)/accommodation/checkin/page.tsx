@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatTile } from "@/components/StatTile";
 import { Users, LogIn, Clock } from "lucide-react";
 import { CheckInTable } from "./checkin-table";
+import { CheckInHistory } from "./checkin-history";
 
 export default async function CheckInPage() {
   const { branchId } = await requireUserWithBranch();
@@ -74,6 +75,28 @@ export default async function CheckInPage() {
   const notCheckedIn = rows.filter((r) => !r.checkInId).length;
   const awaitingBed = rows.length - notCheckedIn;
 
+  const history = await prisma.campCheckIn.findMany({
+    where: branchId ? { employee: { branchId } } : {},
+    include: {
+      employee: { select: { name: true, employeeIdNo: true, nationality: true } },
+      camp: { select: { id: true, name: true } },
+    },
+    orderBy: { checkInNo: "desc" },
+    take: 300,
+  });
+
+  const historyRows = history.map((c) => ({
+    checkInId: c.id,
+    checkInNo: c.checkInNo,
+    employeeName: c.employee.name,
+    employeeIdNo: c.employee.employeeIdNo,
+    nationality: c.employee.nationality,
+    campId: c.camp.id,
+    campName: c.camp.name,
+    checkInDate: c.checkInDate.toISOString(),
+    status: c.status,
+  }));
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -98,6 +121,8 @@ export default async function CheckInPage() {
       </div>
 
       <CheckInTable rows={rows} camps={campOptions} />
+
+      <CheckInHistory rows={historyRows} camps={campOptions.map((c) => ({ id: c.id, name: c.name }))} />
     </div>
   );
 }
