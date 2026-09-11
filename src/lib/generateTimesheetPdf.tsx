@@ -13,8 +13,13 @@ import type { Letterhead } from "@/lib/letterhead";
 /**
  * Supplier timesheet, laid out to match the format the client's contractors
  * already issue and accept: A4 landscape, letterhead, one row per worker with
- * a column per calendar day, grouped with subtotals, then a second page
- * carrying the rate summary, the deduction breakdown and the payment notes.
+ * a column per calendar day, grouped with subtotals, followed by the rate
+ * summary, the deduction breakdown and the payment notes. The summary is
+ * *not* forced onto its own page — it flows straight on from the roster
+ * table, landing on the same page whenever there's room left, and only
+ * spills onto an extra page when the roster genuinely doesn't leave enough
+ * space. A short roster (or one that ends with room to spare on its last
+ * page) prints as a single page instead of always producing two.
  *
  * The day cells carry the same shorthand the industry uses — a number for
  * hours worked, W for the weekly off, A for absent, H for a public holiday —
@@ -256,8 +261,11 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
   const vat = grossTotal * (input.vatPercent / 100);
   const netPayable = grossTotal + vat;
 
+  // fixed: repeats at the top of every physical page react-pdf generates
+  // from the single <Page> below, whether that's page 1 or an overflow page
+  // from a long roster — not just a one-off block on a hardcoded first page.
   const Head = () => (
-    <>
+    <View fixed>
       <View style={s.headBand}>
         {input.letterhead.logo ? (
           // eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt
@@ -299,7 +307,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
       <Text style={s.period}>
         Time Sheet Period From {input.periodFrom} to {input.periodTo}
       </Text>
-    </>
+    </View>
   );
 
   const doc = (
@@ -461,17 +469,14 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
           </View>
         </View>
 
-        <Text
-          style={s.footer}
-          render={({ pageNumber }) => `Page ${pageNumber}`}
-          fixed
-        />
-      </Page>
-
-      <Page size="A4" orientation="landscape" style={s.page}>
-        <Head />
-
-        <View style={{ flexDirection: "row", gap: 16 }}>
+        {/* No page break here: letting this flow straight on from the table
+            (rather than a hardcoded new <Page>) means the summary lands on
+            the table's last page whenever there's room, instead of always
+            wasting whatever blank space that page had left. react-pdf still
+            overflows onto a fresh page automatically if it genuinely doesn't
+            fit — Head (fixed, above) and the footer (fixed, below) repeat on
+            that page the same as any other. */}
+        <View style={{ flexDirection: "row", gap: 16, marginTop: 14 }}>
           <View style={{ width: 420 }}>
             <View style={s.summaryHead}>
               <View style={[s.cell, { width: 110, borderRightWidth: 0 }]}>
