@@ -194,6 +194,11 @@ export async function allocateEmployeesAction(
   const remaining = Math.max(0, approved - trade.allocations.length);
   let allocated = 0;
   const mobilisedIds: string[] = [];
+  // Separate from mobilisedIds: only the employees whose project actually
+  // changed — an already-ACTIVE worker re-allocated to a different trade on
+  // the *same* project shouldn't be knocked back into "awaiting arrival"
+  // when nothing about their placement changed.
+  const projectChangedIds: string[] = [];
   const rawDate = String(formData.get("mobilisationDate") || "").trim();
   const mobilisationDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
     ? new Date(rawDate + "T00:00:00.000Z")
@@ -238,6 +243,7 @@ export async function allocateEmployeesAction(
         },
       });
       await prisma.employee.update({ where: { id: employeeId }, data: { projectId: trade.demandRequest.projectId } });
+      projectChangedIds.push(employeeId);
     }
 
     await logAudit({
@@ -258,6 +264,18 @@ export async function allocateEmployeesAction(
   // Allocated is not the same as working: the worker is committed to a site but
   // hasn't started, which is its own stage until attendance says otherwise.
   await markUnderMobilisation(mobilisedIds, mobilisationDate);
+
+  // markUnderMobilisation only touches IDLE/UNDER_MOBILISATION/ON_SITE — an
+  // already-ACTIVE worker moved onto a genuinely new project also needs to
+  // go back through Site Arrival before showing up as deployed there, or
+  // they appear on Demobilisation (which reads any working stage) having
+  // never been confirmed on the new site at all.
+  if (projectChangedIds.length > 0) {
+    await prisma.employee.updateMany({
+      where: { id: { in: projectChangedIds }, status: "ACTIVE" },
+      data: { status: "UNDER_MOBILISATION", mobilisationDate, siteArrivalDate: null },
+    });
+  }
 
   // revalidatePath only invalidates the exact path, so the mobilise and
   // documents screens have to be named explicitly — otherwise they re-render
