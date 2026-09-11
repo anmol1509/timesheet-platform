@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
-import { BedDouble, Home } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { BedDouble, Home, Percent, Building2 } from "lucide-react";
 import { deleteCampAction } from "../actions";
 import { CampView } from "./camp-view";
 import { AddCampForm } from "./add-camp-form";
@@ -13,6 +15,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
+import { cn } from "@/lib/cn";
 import { createRoomAction, updateCampAction } from "../actions";
 
 export default async function CampsPage({
@@ -25,6 +28,7 @@ export default async function CampsPage({
   const [camps, lookupValues, suppliers] = await Promise.all([
     prisma.camp.findMany({
       include: {
+        owningSupplier: { select: { name: true } },
         rooms: {
           include: { beds: { orderBy: { label: "asc" } } },
           orderBy: { name: "asc" },
@@ -78,68 +82,95 @@ export default async function CampsPage({
           {params.error}
         </p>
       )}
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">
-          Camps
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage camps, rooms and beds. Move employees in with Create Check-In and Bed Allocation.
-        </p>
-      </div>
+
+      <PageHeader
+        title="Camps"
+        description="Manage camps, rooms and beds. Move employees in with Create Check-In and Bed Allocation."
+        meta={
+          <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
+            {camps.length} camp{camps.length === 1 ? "" : "s"}
+          </span>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="Total Beds" value={totalBeds} icon={BedDouble} />
         <StatTile label="Occupied" value={occupiedBeds} icon={Home} />
-        <StatTile label="Vacant" value={vacantBeds} icon={BedDouble} />
+        <StatTile
+          label="Occupancy"
+          value={`${occupancyPct}%`}
+          icon={Percent}
+          hint={`${vacantBeds} bed${vacantBeds === 1 ? "" : "s"} vacant`}
+        />
       </div>
 
       {totalBeds > 0 && (
-        <div className="card p-5">
+        <div className="card relative overflow-hidden p-5">
+          <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-[var(--brand-primary)]/5" />
           <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
         </div>
       )}
 
       {camps.length > 0 && (
-        <div className="card flex flex-wrap items-end gap-2 p-5">
-          <form className="flex flex-1 items-end gap-2">
-            <label className="block max-w-xs flex-1">
-              <span className="mb-1 block text-xs font-medium text-muted">
-                Camp
-              </span>
-              <Select
-                name="campId"
-                defaultValue={selectedCamp?.id}
-                options={camps.map((c) => ({ value: c.id, label: c.name }))}
-              />
-            </label>
-            <button
-              type="submit"
-              className="btn btn-primary px-3"
-            >
-              Go
-            </button>
-          </form>
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {camps.map((c) => {
+              const beds = c.rooms.flatMap((r) => r.beds);
+              const occ = beds.filter((b) => b.employeeId).length;
+              const active = c.id === selectedCamp?.id;
+              return (
+                <Link
+                  key={c.id}
+                  href={`/accommodation/camps?campId=${c.id}`}
+                  className={cn(
+                    "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium whitespace-nowrap transition",
+                    active
+                      ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)] shadow-xs"
+                      : "border-default bg-surface text-secondary hover:border-strong hover:bg-surface-hover"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      c.ownerType === "SUPPLIER" ? "bg-amber-500" : "bg-blue-500"
+                    )}
+                    aria-hidden
+                  />
+                  {c.name}
+                  <span className="tabular text-xs opacity-70">
+                    {occ}/{beds.length}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
           {selectedCamp && (
-            <>
+            <div className="card flex flex-wrap items-center gap-3 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-[var(--brand-primary)]">
+                <Building2 className="h-5 w-5" />
+              </div>
               <InlineEditRow
                 value={selectedCamp.name}
                 action={updateCampAction}
                 hiddenFields={{ campId: selectedCamp.id }}
               />
-              <CampOwnershipEditor
-                campId={selectedCamp.id}
-                ownerType={selectedCamp.ownerType}
-                owningSupplierId={selectedCamp.owningSupplierId}
-                suppliers={suppliers}
-              />
-              <DeleteButton
-                action={deleteCampAction}
-                hiddenFields={{ campId: selectedCamp.id }}
-                confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
-                label="Delete Camp"
-                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-              />
-            </>
+              <div className="ml-auto flex flex-wrap items-center gap-3">
+                <CampOwnershipEditor
+                  campId={selectedCamp.id}
+                  ownerType={selectedCamp.ownerType}
+                  owningSupplierId={selectedCamp.owningSupplierId}
+                  suppliers={suppliers}
+                />
+                <DeleteButton
+                  action={deleteCampAction}
+                  hiddenFields={{ campId: selectedCamp.id }}
+                  confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
+                  label="Delete Camp"
+                  className="rounded-control border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                />
+              </div>
+            </div>
           )}
         </div>
       )}

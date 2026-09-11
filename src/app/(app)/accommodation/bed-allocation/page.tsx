@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
+import { PageHeader } from "@/components/PageHeader";
+import { StatTile } from "@/components/StatTile";
+import { ListChecks, BedDouble, Clock } from "lucide-react";
 import { BedAllocationTable } from "./bed-allocation-table";
 
 export default async function BedAllocationPage() {
@@ -46,15 +49,30 @@ export default async function BedAllocationPage() {
     })),
   }));
 
+  const allocated = rows.filter((r) => r.bedId).length;
+  const awaiting = rows.length - allocated;
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">
-          Bed Allocation
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Everyone checked into a camp. Pick a room, then a bed, to place them.
-        </p>
+      <PageHeader
+        title="Bed Allocation"
+        description="Everyone checked into a camp. Pick a room, then a bed, to place them."
+        meta={
+          <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
+            {rows.length}
+          </span>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile label="Checked In" value={rows.length} icon={ListChecks} />
+        <StatTile label="Bed Allocated" value={allocated} icon={BedDouble} />
+        <StatTile
+          label="Awaiting Allocation"
+          value={awaiting}
+          icon={Clock}
+          tone={awaiting > 0 ? "warning" : "default"}
+        />
       </div>
 
       <BedAllocationTable rows={rows} />

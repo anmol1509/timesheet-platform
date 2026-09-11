@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { BedDouble, Building2 } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
+import { Button } from "@/components/ui/Button";
+import { initials, avatarGradient } from "@/lib/avatar";
+import { cn } from "@/lib/cn";
 import { allocateBedAction } from "../checkin-actions";
 
 type BedOption = { id: string; label: string; vacant: boolean };
@@ -23,63 +27,111 @@ type Row = {
   rooms: RoomOption[];
 };
 
+type Filter = "all" | "awaiting" | "allocated";
+
 export function BedAllocationTable({ rows }: { rows: Row[] }) {
+  const [filter, setFilter] = useState<Filter>("all");
   const [activeRow, setActiveRow] = useState<Row | null>(null);
+
+  const counts = {
+    all: rows.length,
+    awaiting: rows.filter((r) => !r.bedId).length,
+    allocated: rows.filter((r) => r.bedId).length,
+  };
+  const visible =
+    filter === "all" ? rows : rows.filter((r) => (filter === "awaiting" ? !r.bedId : !!r.bedId));
 
   return (
     <div className="space-y-3">
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[54rem] text-sm">
-            <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
-              <tr>
-                <th className="px-4 py-3">Check-In No</th>
-                <th className="px-4 py-3">Employee</th>
-                <th className="px-4 py-3">Camp</th>
-                <th className="px-4 py-3">Room / Bed</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              {rows.map((r) => (
-                <tr key={r.checkInId}>
-                  <td className="tabular px-4 py-3 text-secondary">
-                    CHK-{String(r.checkInNo).padStart(5, "0")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-primary">{r.employeeName}</p>
-                    <p className="text-xs text-subtle">{r.employeeIdNo}</p>
-                  </td>
-                  <td className="px-4 py-3 text-secondary">{r.campName}</td>
-                  <td className="px-4 py-3">
-                    {r.bedId ? (
-                      <Badge color="green">
-                        {r.roomName} · {r.bedLabel}
-                      </Badge>
-                    ) : (
-                      <Badge color="slate">Not allocated</Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setActiveRow(r)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      {r.bedId ? "Switch Room" : "Allocate Bed"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {rows.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-muted">
-            No one is checked into a camp right now — start under Create Check-In.
-          </p>
-        )}
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            ["all", `All (${counts.all})`],
+            ["awaiting", `Awaiting allocation (${counts.awaiting})`],
+            ["allocated", `Bed allocated (${counts.allocated})`],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={cn(
+              "rounded-control border px-3 py-1.5 text-xs font-medium transition",
+              filter === key
+                ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
+                : "border-default bg-surface text-secondary hover:bg-surface-hover"
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        {visible.map((r) => (
+          <div
+            key={r.checkInId}
+            className={cn(
+              "card flex items-center gap-3 p-4 transition",
+              !r.bedId && "border-[var(--warning-border)] bg-[var(--warning-soft)]/30"
+            )}
+          >
+            <div
+              className={cn(
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white",
+                avatarGradient(r.employeeName)
+              )}
+            >
+              {initials(r.employeeName)}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="truncate text-sm font-semibold text-primary">{r.employeeName}</p>
+                <span className="tabular shrink-0 text-[10px] text-subtle">
+                  CHK-{String(r.checkInNo).padStart(5, "0")}
+                </span>
+              </div>
+              <p className="truncate text-xs text-subtle">
+                {r.employeeIdNo}
+                {r.nationality ? ` · ${r.nationality}` : ""}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-xs text-secondary">
+                  <Building2 className="h-3 w-3 text-subtle" /> {r.campName}
+                </span>
+                {r.bedId ? (
+                  <Badge color="green" dot>
+                    {r.roomName} · {r.bedLabel}
+                  </Badge>
+                ) : (
+                  <Badge color="amber" dot>
+                    Not allocated
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <Button
+              variant={r.bedId ? "secondary" : "primary"}
+              size="sm"
+              onClick={() => setActiveRow(r)}
+              className="shrink-0"
+            >
+              <BedDouble className="h-3.5 w-3.5" />
+              {r.bedId ? "Switch Room" : "Allocate Bed"}
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      {visible.length === 0 && (
+        <p className="empty-state py-10 text-center text-sm text-muted">
+          {rows.length === 0
+            ? "No one is checked into a camp right now — start under Create Check-In."
+            : "Nothing matches this filter."}
+        </p>
+      )}
 
       <AllocateModal row={activeRow} onClose={() => setActiveRow(null)} />
     </div>
