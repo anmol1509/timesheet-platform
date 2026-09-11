@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
-import { issueEmployeeInventoryAction, returnEmployeeInventoryAssignmentAction } from "./actions";
+import { issueEmployeeInventoryAction, returnEmployeeInventoryAssignmentAction } from "../../employees/[id]/actions";
 
 type Assignment = {
   id: string;
@@ -12,10 +13,10 @@ type Assignment = {
   returnDate: string | null;
   condition: string | null;
   notes: string | null;
-  item: { id: string; name: string; category: string | null };
+  employee: { id: string; name: string; employeeIdNo: string };
 };
 
-type ItemOption = { id: string; name: string; category: string | null };
+type EmployeeOption = { id: string; name: string; employeeIdNo: string };
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -25,36 +26,29 @@ function formatDate(value: string) {
   });
 }
 
-export function InventorySection({
-  employeeId,
+// A single item can go to several employees, on the same day or different
+// days — each Assign is its own row, not a per-employee slot. Issuing from
+// here is the same EmployeeInventoryAssignment/action pair as the employee's
+// own Trades & Records tab; this is just the item-first way in.
+export function EmployeeIssuanceSection({
+  itemId,
   assignments,
-  items,
+  employees,
 }: {
-  employeeId: string;
+  itemId: string;
   assignments: Assignment[];
-  items: ItemOption[];
+  employees: EmployeeOption[];
 }) {
   const [pending, startTransition] = useTransition();
-  const [itemId, setItemId] = useState("");
-  const [acknowledged, setAcknowledged] = useState(false);
+  const [employeeId, setEmployeeId] = useState("");
   const quantityRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
   const conditionRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLInputElement>(null);
-  const dateRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
 
-  // Still-held units of the item currently selected in the form — the
-  // control-misuse signal a supervisor actually needs before handing out
-  // another one.
-  const heldByEmployee = useMemo(
-    () => assignments.filter((a) => a.item.id === itemId && !a.returnDate),
-    [assignments, itemId]
-  );
-
-  function handleIssue() {
-    if (!itemId) return;
-    if (heldByEmployee.length > 0 && !acknowledged) return;
-
+  function handleAssign() {
+    if (!employeeId) return;
     const formData = new FormData();
     formData.append("employeeId", employeeId);
     formData.append("itemId", itemId);
@@ -67,34 +61,25 @@ export function InventorySection({
       issueEmployeeInventoryAction(formData);
     });
 
-    setItemId("");
-    setAcknowledged(false);
+    setEmployeeId("");
     if (quantityRef.current) quantityRef.current.value = "1";
+    if (dateRef.current) dateRef.current.value = today;
     if (conditionRef.current) conditionRef.current.value = "";
     if (notesRef.current) notesRef.current.value = "";
-    if (dateRef.current) dateRef.current.value = today;
   }
-
-  const blocked = heldByEmployee.length > 0 && !acknowledged;
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold text-primary">PPE &amp; Inventory Issued</h2>
+      <h2 className="mb-3 text-sm font-semibold text-primary">Issued to Employees</h2>
       <div className="card p-5">
         <div className="flex flex-wrap items-end gap-2">
           <label className="block min-w-[200px] flex-1">
-            <span className="mb-1 block text-xs font-medium text-muted">Item</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Employee</span>
             <Select
-              value={itemId}
-              onChange={(value) => {
-                setItemId(String(value));
-                setAcknowledged(false);
-              }}
-              placeholder="Choose an item"
-              options={items.map((i) => ({
-                value: i.id,
-                label: i.category ? `${i.name} (${i.category})` : i.name,
-              }))}
+              value={employeeId}
+              onChange={setEmployeeId}
+              placeholder="Choose an employee"
+              options={employees.map((e) => ({ value: e.id, label: `${e.name} (${e.employeeIdNo})` }))}
             />
           </label>
           <label className="block w-20">
@@ -115,40 +100,22 @@ export function InventorySection({
           </label>
           <button
             type="button"
-            onClick={handleIssue}
-            disabled={pending || !itemId || blocked}
+            onClick={handleAssign}
+            disabled={pending || !employeeId}
             className="btn btn-primary"
           >
-            Issue
+            Assign
           </button>
         </div>
 
-        {heldByEmployee.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-control bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            <span>
-              Already holds {heldByEmployee.reduce((n, a) => n + a.quantity, 0)} unreturned unit
-              {heldByEmployee.reduce((n, a) => n + a.quantity, 0) === 1 ? "" : "s"} of this item
-              (issued {formatDate(heldByEmployee[0].issuedDate)}) — confirm before issuing another.
-            </span>
-            <label className="flex items-center gap-1.5 font-medium">
-              <input
-                type="checkbox"
-                checked={acknowledged}
-                onChange={(e) => setAcknowledged(e.target.checked)}
-              />
-              Issue anyway
-            </label>
-          </div>
-        )}
-
         {assignments.length === 0 ? (
-          <p className="mt-4 text-sm text-subtle">Nothing issued to this employee yet.</p>
+          <p className="mt-4 text-sm text-subtle">Never issued to an employee.</p>
         ) : (
-          <div className="mt-4 overflow-hidden overflow-x-auto rounded-2xl border border-default">
-            <table className="w-full min-w-[40rem] text-sm">
+          <div className="mt-4 overflow-hidden overflow-x-auto rounded-card border border-default">
+            <table className="w-full min-w-[42rem] text-sm">
               <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
-                  <th className="px-3 py-2">Item</th>
+                  <th className="px-3 py-2">Employee</th>
                   <th className="px-3 py-2 text-right">Qty</th>
                   <th className="px-3 py-2">Issued</th>
                   <th className="px-3 py-2">Status</th>
@@ -160,7 +127,10 @@ export function InventorySection({
                 {assignments.map((a) => (
                   <tr key={a.id}>
                     <td className="px-3 py-2 font-medium text-primary">
-                      {a.item.name}
+                      <Link href={`/employees/${a.employee.id}`} className="hover:underline">
+                        {a.employee.name}
+                      </Link>
+                      <span className="tabular ml-2 text-xs text-subtle">{a.employee.employeeIdNo}</span>
                       {a.condition && <span className="ml-1.5 text-xs text-subtle">({a.condition})</span>}
                     </td>
                     <td className="px-3 py-2 text-right text-secondary">{a.quantity}</td>
@@ -176,7 +146,7 @@ export function InventorySection({
                     <td className="px-3 py-2 text-right">
                       {!a.returnDate && (
                         <form action={returnEmployeeInventoryAssignmentAction} className="inline">
-                          <input type="hidden" name="employeeId" value={employeeId} />
+                          <input type="hidden" name="employeeId" value={a.employee.id} />
                           <input type="hidden" name="assignmentId" value={a.id} />
                           <button type="submit" className="text-xs font-medium text-blue-600 hover:underline">
                             Mark returned

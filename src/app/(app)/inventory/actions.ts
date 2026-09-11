@@ -17,11 +17,6 @@ async function assertItemInBranch(itemId: string, branchId: string | null, isSup
   return !!item && !isOutsideBranch(item.branchId, branchId, isSuperAdmin);
 }
 
-async function assertProjectInBranch(projectId: string, branchId: string | null, isSuperAdmin: boolean) {
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { branchId: true } });
-  return !!project && !isOutsideBranch(project.branchId, branchId, isSuperAdmin);
-}
-
 export async function createInventoryItemAction(
   _prevState: { error: string | null },
   formData: FormData
@@ -129,34 +124,3 @@ export async function deleteInventoryItemAction(formData: FormData) {
   redirect("/inventory");
 }
 
-export async function assignInventoryItemAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const itemId = String(formData.get("itemId") || "");
-  const projectId = String(formData.get("projectId") || "");
-  const quantity = Math.max(1, Number(formData.get("quantity")) || 1);
-  const condition = stringOrNull(formData.get("condition"));
-  if (!itemId || !projectId) return;
-  if (!(await assertItemInBranch(itemId, branchId, isSuperAdmin))) return;
-  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
-
-  await prisma.projectInventoryAssignment.create({
-    data: { itemId, projectId, quantity, condition, assignedDate: new Date() },
-  });
-
-  revalidatePath(`/inventory/${itemId}`);
-}
-
-export async function returnInventoryAssignmentAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const itemId = String(formData.get("itemId") || "");
-  const assignmentId = String(formData.get("assignmentId") || "");
-  if (!assignmentId) return;
-  if (!(await assertItemInBranch(itemId, branchId, isSuperAdmin))) return;
-
-  await prisma.projectInventoryAssignment.update({
-    where: { id: assignmentId },
-    data: { returnDate: new Date() },
-  });
-
-  revalidatePath(`/inventory/${itemId}`);
-}

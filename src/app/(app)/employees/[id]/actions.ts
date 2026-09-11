@@ -594,9 +594,12 @@ export async function issueEmployeeInventoryAction(formData: FormData) {
   const quantity = numberOrNull(formData.get("quantity")) ?? 1;
   const condition = stringOrNull(formData.get("condition"));
   const notes = stringOrNull(formData.get("notes"));
+  // Defaults to now (the model's own default) when left blank — issuance
+  // isn't always logged the same day it happened.
+  const issuedDate = dateOrNull(formData.get("issuedDate"));
 
   const created = await prisma.employeeInventoryAssignment.create({
-    data: { employeeId, itemId, quantity, condition, notes },
+    data: { employeeId, itemId, quantity, condition, notes, ...(issuedDate ? { issuedDate } : {}) },
     include: { item: { select: { name: true } } },
   });
 
@@ -604,7 +607,7 @@ export async function issueEmployeeInventoryAction(formData: FormData) {
     entityType: "EMPLOYEE_INVENTORY_ASSIGNMENT",
     entityId: created.id,
     action: "CREATE",
-    after: { employeeId, itemId, itemName: created.item.name, quantity, condition, notes },
+    after: { employeeId, itemId, itemName: created.item.name, quantity, condition, notes, issuedDate: created.issuedDate },
     userId: user.id,
     userName: user.name,
     branchId,

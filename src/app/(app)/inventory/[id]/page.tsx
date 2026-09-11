@@ -1,13 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { deleteInventoryItemAction } from "../actions";
 import { EditItemForm } from "./edit-form";
-import { AssignmentsSection } from "./assignments-section";
+import { EmployeeIssuanceSection } from "./employee-issuance-section";
 
 export default async function InventoryItemPage({
   params,
@@ -20,23 +19,19 @@ export default async function InventoryItemPage({
   const { error } = await searchParams;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
-  const [item, projects] = await Promise.all([
+  const [item, employees] = await Promise.all([
     prisma.inventoryItem.findUnique({
       where: { id },
       include: {
-        assignments: {
-          orderBy: { assignedDate: "desc" },
-          include: { project: { select: { id: true, name: true, code: true } } },
-        },
         employeeAssignments: {
           orderBy: { issuedDate: "desc" },
           include: { employee: { select: { id: true, name: true, employeeIdNo: true } } },
         },
       },
     }),
-    prisma.project.findMany({
+    prisma.employee.findMany({
       where: branchWhere(branchId),
-      select: { id: true, name: true, code: true },
+      select: { id: true, name: true, employeeIdNo: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -64,62 +59,19 @@ export default async function InventoryItemPage({
 
       <EditItemForm item={{ id: item.id, category: item.category, notes: item.notes }} />
 
-      <AssignmentsSection
+      <EmployeeIssuanceSection
         itemId={item.id}
-        assignments={item.assignments.map((a) => ({
+        assignments={item.employeeAssignments.map((a) => ({
           id: a.id,
           quantity: a.quantity,
-          assignedDate: a.assignedDate.toISOString(),
+          issuedDate: a.issuedDate.toISOString(),
           returnDate: a.returnDate ? a.returnDate.toISOString() : null,
           condition: a.condition,
-          project: a.project,
+          notes: a.notes,
+          employee: a.employee,
         }))}
-        projects={projects}
+        employees={employees}
       />
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-primary">Issued to Employees</h2>
-        <p className="mb-3 text-sm text-muted">
-          Read-only here — issue or return from the employee&rsquo;s own Trades &amp; Records tab.
-        </p>
-        {item.employeeAssignments.length === 0 ? (
-          <p className="empty-state py-8 text-sm text-muted">Never issued to an employee.</p>
-        ) : (
-          <div className="card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
-                <tr>
-                  <th className="px-4 py-3">Employee</th>
-                  <th className="px-4 py-3 text-right">Qty</th>
-                  <th className="px-4 py-3">Issued</th>
-                  <th className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {item.employeeAssignments.map((a) => (
-                  <tr key={a.id}>
-                    <td className="px-4 py-3 font-medium text-primary">
-                      <Link href={`/employees/${a.employee.id}`} className="hover:underline">
-                        {a.employee.name}
-                      </Link>
-                      <span className="tabular ml-2 text-xs text-subtle">{a.employee.employeeIdNo}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-secondary">{a.quantity}</td>
-                    <td className="px-4 py-3 text-secondary">{new Date(a.issuedDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">
-                      {a.returnDate ? (
-                        <Badge color="slate">Returned {new Date(a.returnDate).toLocaleDateString()}</Badge>
-                      ) : (
-                        <Badge color="amber">Holding</Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }
