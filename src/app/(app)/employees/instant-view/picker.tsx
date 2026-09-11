@@ -16,7 +16,7 @@ const CATEGORIES = [
   { value: "ALL", label: "All" },
   { value: "SITE_STAFF", label: "Site Staff" },
   { value: "STAFF", label: "Staff" },
-  { value: "SUPPLIER_LABOUR", label: "Supplier Labour" },
+  { value: "SUPPLIER_LABOUR", label: "Supplier Workers" },
 ];
 
 export function InstantViewPicker({

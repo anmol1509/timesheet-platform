@@ -19,11 +19,18 @@ export default async function AppLayout({
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
-  const [alerts, branches] = await Promise.all([
+  // Header extras, not the app itself — a transient DB hiccup (e.g. a cold
+  // connection) fetching these shouldn't take down every page via the root
+  // layout, which no per-page error boundary can catch (error.js doesn't
+  // wrap the layout.js in its own segment). Degrade to an empty header
+  // instead of crashing the whole shell.
+  const [alertsResult, branchesResult] = await Promise.allSettled([
     getComplianceAlerts(branchId),
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
     prisma.branch.findMany({ orderBy: { code: "asc" } }),
   ]);
+  const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
+  const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
 
   const header = (

@@ -49,7 +49,7 @@ type Filter =
 const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   "site-staff": "Site Staff",
   staff: "Staff",
-  "supplier-labour": "Supplier Labour",
+  "supplier-labour": "Supplier Workers",
   "our-workers": "Our Workers",
   idle: "Idle",
   vacation: "On Vacation",

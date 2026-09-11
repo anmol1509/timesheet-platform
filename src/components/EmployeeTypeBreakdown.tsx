@@ -4,7 +4,7 @@ import type { EmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 const ROWS: { key: keyof EmployeeTypeCounts; label: string; color: string; filter: string }[] = [
   { key: "siteStaff", label: "Site Staff", color: "bg-blue-500", filter: "site-staff" },
   { key: "officeStaff", label: "Staff", color: "bg-slate-400", filter: "staff" },
-  { key: "supplierLabour", label: "Supplier Labour", color: "bg-emerald-500", filter: "supplier-labour" },
+  { key: "supplierLabour", label: "Supplier Workers", color: "bg-emerald-500", filter: "supplier-labour" },
   { key: "ourWorkers", label: "Our Workers", color: "bg-sky-500", filter: "our-workers" },
   { key: "idle", label: "Idle", color: "bg-amber-500", filter: "idle" },
   { key: "onVacation", label: "Vacation", color: "bg-violet-500", filter: "vacation" },
