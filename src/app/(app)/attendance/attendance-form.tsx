@@ -28,6 +28,7 @@ type EmployeeOption = {
   employeeIdNo: string;
   trade: string | null;
   status: string;
+  siteArrivalDate: string | null;
   supplierId: string | null;
   supplierName: string | null;
   projectId: string | null;
@@ -177,7 +178,18 @@ export function AttendanceForm({
     return marked[employeeId] ?? !!existing[employeeId];
   }
 
+  /**
+   * Attendance can't predate a worker's confirmed site arrival — checking it
+   * here (rather than only after Save) means the roster shows why a name is
+   * greyed out instead of silently dropping the row on submit.
+   */
+  function isEligible(e: EmployeeOption) {
+    return !!e.siteArrivalDate && date >= e.siteArrivalDate;
+  }
+
   function toggleMarked(employeeId: string) {
+    const employee = employees.find((e) => e.id === employeeId);
+    if (employee && !isMarked(employeeId) && !isEligible(employee)) return;
     setMarked((prev) => ({ ...prev, [employeeId]: !isMarked(employeeId) }));
   }
 
@@ -239,7 +251,10 @@ export function AttendanceForm({
     formData.append("rowsJson", rowsJson);
     startTransition(async () => {
       const res = await markAttendanceAction(formData);
-      setResult(res.error || `Saved ${res.saved} of ${res.requested} rows.`);
+      const skippedNote = res.skipped?.length
+        ? ` Skipped: ${res.skipped.map((s) => `${s.name} (${s.reason})`).join(", ")}.`
+        : "";
+      setResult(res.error || `Saved ${res.saved} of ${res.requested} rows.${skippedNote}`);
     });
   }
 
@@ -414,18 +429,31 @@ export function AttendanceForm({
                 {rows.map((e) => {
                   const locked = isLocked(e.id);
                   const on = isMarked(e.id);
+                  const eligible = on || isEligible(e);
                   return (
                     <tr key={e.id} className={cn(!on && !locked && "opacity-55")}>
                       <td className="px-2 py-2">
                         <Checkbox
                           checked={on}
-                          disabled={locked}
+                          disabled={locked || !eligible}
                           onCheckedChange={() => toggleMarked(e.id)}
                           aria-label={`Record attendance for ${e.name}`}
                         />
                       </td>
                       <td className="px-2 py-2 text-primary">
                         {e.name} <span className="text-subtle">{e.employeeIdNo}</span>
+                        {!eligible && (
+                          <span
+                            className="ml-1.5 text-xs text-[var(--warning)]"
+                            title={
+                              e.siteArrivalDate
+                                ? `Site arrival confirmed ${e.siteArrivalDate} — can't mark attendance before that`
+                                : "Site arrival not confirmed yet"
+                            }
+                          >
+                            (not yet arrived)
+                          </span>
+                        )}
                       </td>
                       <td className="px-2 py-2 text-secondary">{e.trade || "—"}</td>
                       <td className="px-2 py-2">

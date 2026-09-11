@@ -63,7 +63,13 @@ function numberOrNull(value: string) {
 // requestAttendanceCorrectionAction instead.
 export async function markAttendanceAction(
   formData: FormData
-): Promise<{ saved: number; requested: number; error?: string; sync?: SyncResult }> {
+): Promise<{
+  saved: number;
+  requested: number;
+  error?: string;
+  sync?: SyncResult;
+  skipped?: { name: string; reason: string }[];
+}> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     return {
@@ -99,11 +105,28 @@ export async function markAttendanceAction(
   const dateValue = new Date(date + "T00:00:00.000Z");
   let saved = 0;
   const markedEmployeeIds: string[] = [];
+  const skipped: { name: string; reason: string }[] = [];
 
   for (const row of rows) {
     const status = VALID_STATUSES.has(row.status) ? row.status : "PRESENT";
     const employee = await prisma.employee.findUnique({ where: { id: row.employeeId } });
     if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) continue;
+
+    // Attendance is evidence of being on site, so it can't predate the day
+    // that was actually confirmed — a date before arrival (or before arrival
+    // has even been confirmed) means the wrong date, the wrong worker, or an
+    // arrival that still needs confirming on Site Arrival first.
+    if (!employee.siteArrivalDate) {
+      skipped.push({ name: employee.name, reason: "site arrival not confirmed yet" });
+      continue;
+    }
+    if (dateValue < employee.siteArrivalDate) {
+      skipped.push({
+        name: employee.name,
+        reason: `before their site arrival on ${employee.siteArrivalDate.toISOString().slice(0, 10)}`,
+      });
+      continue;
+    }
 
     const existing = await prisma.attendance.findUnique({
       where: { employeeId_date: { employeeId: employee.id, date: dateValue } },
@@ -173,7 +196,7 @@ export async function markAttendanceAction(
   revalidatePath("/demand/site-arrival");
   revalidatePath("/invoices/client-timesheet");
   revalidatePath("/invoices/client-timesheet/sync");
-  return { saved, requested: rows.length, sync };
+  return { saved, requested: rows.length, sync, skipped: skipped.length > 0 ? skipped : undefined };
 }
 
 // Locks every Attendance row for a given date+project so normal users can no
