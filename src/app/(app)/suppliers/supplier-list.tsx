@@ -18,6 +18,7 @@ import { bulkImportSuppliersAction, deleteSupplierAction } from "./actions";
 type SupplierRow = {
   id: string;
   name: string;
+  code: string | null;
   contactPerson: string | null;
   contactPhone: string | null;
   status: string;
@@ -56,6 +57,7 @@ export function SupplierList({
     return suppliers.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
+        (s.code || "").toLowerCase().includes(q) ||
         (s.contactPerson || "").toLowerCase().includes(q) ||
         (s.parentName || "").toLowerCase().includes(q)
     );
@@ -101,6 +103,7 @@ export function SupplierList({
     const rows = selected.size > 0 ? suppliers.filter((s) => selected.has(s.id)) : visible;
     const csv = toCsv(rows, [
       { header: "Supplier", value: (s) => s.name },
+      { header: "Code", value: (s) => s.code },
       { header: "Contact Person", value: (s) => s.contactPerson },
       { header: "Contact Phone", value: (s) => s.contactPhone },
       { header: "Employees", value: (s) => s.employeeCount },
@@ -148,6 +151,7 @@ export function SupplierList({
                 <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">Supplier</th>
+              <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Parent</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3 text-right">Employees</th>
@@ -197,6 +201,7 @@ export function SupplierList({
                     )}
                   </span>
                 </td>
+                <td className="tabular px-4 py-3 text-secondary">{row.code || "—"}</td>
                 <td className="px-4 py-3 text-secondary">{row.parentName || "—"}</td>
                 <td className="px-4 py-3 text-secondary">
                   {row.contactPerson || row.contactPhone ? (

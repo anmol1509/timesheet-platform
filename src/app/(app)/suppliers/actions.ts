@@ -297,12 +297,13 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
         });
         results.push({ row: i + 2, status: "updated" });
       } else {
-        const created = await prisma.supplier.create({ data: { name, ...data, branchId } });
+        const code = await nextSupplierCode();
+        const created = await prisma.supplier.create({ data: { name, code, ...data, branchId } });
         await logAudit({
           entityType: "SUPPLIER",
           entityId: created.id,
           action: "CREATE",
-          after: { name, ...data },
+          after: { name, code, ...data },
           userId: user.id,
           userName: user.name,
           branchId,

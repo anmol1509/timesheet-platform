@@ -36,6 +36,7 @@ export default async function SuppliersPage({
     select: {
       id: true,
       name: true,
+      code: true,
       contactPerson: true,
       contactPhone: true,
       status: true,
@@ -51,6 +52,7 @@ export default async function SuppliersPage({
   const rows = suppliers.map((s) => ({
     id: s.id,
     name: s.name,
+    code: s.code,
     contactPerson: s.contactPerson,
     contactPhone: s.contactPhone,
     status: s.status,
