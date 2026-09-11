@@ -62,6 +62,10 @@ export default async function InstantViewPage({
           branch: true,
           assignmentHistory: { orderBy: { mobilizedDate: "desc" } },
           accommodationHistory: { orderBy: { checkInDate: "desc" } },
+          inventoryAssignments: {
+            orderBy: { issuedDate: "desc" },
+            include: { item: { select: { name: true, category: true } } },
+          },
         },
       })
     : null;
@@ -249,6 +253,38 @@ export default async function InstantViewPage({
                       <td className="py-2">{h.bedLabel || "—"}</td>
                       <td className="py-2">{formatDate(h.checkInDate)}</td>
                       <td className="py-2">{formatDate(h.checkOutDate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-primary">PPE &amp; Inventory Issued</h3>
+            {validEmployee.inventoryAssignments.length === 0 ? (
+              <p className="text-sm text-subtle">Nothing issued to this employee yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
+                  <tr>
+                    <th className="py-2">Item</th>
+                    <th className="py-2">Category</th>
+                    <th className="py-2">Qty</th>
+                    <th className="py-2">Issued Date</th>
+                    <th className="py-2">Returned Date</th>
+                    <th className="py-2">Condition</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {validEmployee.inventoryAssignments.map((a) => (
+                    <tr key={a.id}>
+                      <td className="py-2">{a.item.name}</td>
+                      <td className="py-2">{a.item.category || "—"}</td>
+                      <td className="py-2">{a.quantity}</td>
+                      <td className="py-2">{formatDate(a.issuedDate)}</td>
+                      <td className="py-2">{a.returnDate ? formatDate(a.returnDate) : "Still holding"}</td>
+                      <td className="py-2">{a.condition || "—"}</td>
                     </tr>
                   ))}
                 </tbody>

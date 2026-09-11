@@ -577,6 +577,73 @@ export async function removeSkillAction(formData: FormData) {
  * detail page had no way to read or add them, so anything recorded at
  * onboarding was effectively write-only.
  */
+/**
+ * Issues one inventory item (PPE most often) to an employee. Deliberately no
+ * hard block on re-issuing an item already held unreturned — the section's
+ * client-side warning is enough friction to catch it, and the point is
+ * visibility into repeated/unreturned issuance, not stopping a legitimate
+ * replacement (lost helmet, worn-out gloves).
+ */
+export async function issueEmployeeInventoryAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const itemId = String(formData.get("itemId") || "");
+  if (!employeeId || !itemId) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const quantity = numberOrNull(formData.get("quantity")) ?? 1;
+  const condition = stringOrNull(formData.get("condition"));
+  const notes = stringOrNull(formData.get("notes"));
+
+  const created = await prisma.employeeInventoryAssignment.create({
+    data: { employeeId, itemId, quantity, condition, notes },
+    include: { item: { select: { name: true } } },
+  });
+
+  await logAudit({
+    entityType: "EMPLOYEE_INVENTORY_ASSIGNMENT",
+    entityId: created.id,
+    action: "CREATE",
+    after: { employeeId, itemId, itemName: created.item.name, quantity, condition, notes },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath(`/inventory/${itemId}`);
+}
+
+export async function returnEmployeeInventoryAssignmentAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const id = String(formData.get("assignmentId") || "");
+  if (!employeeId || !id) return;
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.employeeInventoryAssignment.findUnique({ where: { id } });
+  if (!existing || existing.employeeId !== employeeId || existing.returnDate) return;
+
+  const updated = await prisma.employeeInventoryAssignment.update({
+    where: { id },
+    data: { returnDate: new Date() },
+  });
+
+  await logAudit({
+    entityType: "EMPLOYEE_INVENTORY_ASSIGNMENT",
+    entityId: id,
+    action: "UPDATE",
+    before: { returnDate: existing.returnDate },
+    after: { returnDate: updated.returnDate },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath(`/inventory/${existing.itemId}`);
+}
+
 export async function addEmployeeNoteAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");

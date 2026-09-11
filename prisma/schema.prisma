@@ -562,6 +562,7 @@ model Employee {
   bed                    Bed?
   campCheckIns           CampCheckIn[]
   attendance             Attendance[]
+  inventoryAssignments   EmployeeInventoryAssignment[]
 }
 
 // System-written record of each project placement — opened/closed
@@ -976,7 +977,8 @@ model InventoryItem {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
-  assignments ProjectInventoryAssignment[]
+  assignments         ProjectInventoryAssignment[]
+  employeeAssignments EmployeeInventoryAssignment[]
 }
 
 model ProjectInventoryAssignment {
@@ -991,6 +993,31 @@ model ProjectInventoryAssignment {
 
   item   InventoryItem @relation(fields: [itemId], references: [id])
   itemId String
+}
+
+// One row per unit (or batch of units) of an inventory item handed to a
+// worker — PPE most often, but not exclusive to it. Kept separate from
+// ProjectInventoryAssignment (which tracks item-to-project, not item-to-person)
+// so the same item can be tracked issued to a site AND to individuals without
+// overloading one join table's meaning. returnDate null means still held —
+// that's what lets an admin see a worker is still carrying last quarter's
+// harness before issuing another.
+model EmployeeInventoryAssignment {
+  id         String    @id @default(cuid())
+  quantity   Int       @default(1)
+  issuedDate DateTime  @default(now())
+  returnDate DateTime?
+  condition  String?
+  notes      String?
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+
+  item   InventoryItem @relation(fields: [itemId], references: [id])
+  itemId String
+
+  @@index([employeeId])
+  @@index([itemId])
 }
 
 model Skill {

@@ -162,6 +162,10 @@ export default async function SupplierDetailPage({
                       { value: "TRADE_LICENSE", label: "Trade Licence" },
                       { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
                       { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
+                      { value: "ESTABLISHMENT_CARD", label: "MOHRE Establishment Card" },
+                      { value: "EJARI_TENANCY", label: "Ejari / Tenancy Contract" },
+                      { value: "CHAMBER_OF_COMMERCE", label: "Chamber of Commerce Certificate" },
+                      { value: "SPONSORSHIP_AGREEMENT", label: "Sponsorship Agreement" },
                       { value: "CONTRACT", label: "Contract" },
                       { value: "OTHER", label: "Other" },
                     ]}

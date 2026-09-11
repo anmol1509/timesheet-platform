@@ -15,6 +15,7 @@ import { VisaHistorySection } from "./visa-history-section";
 import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
 import { NotesSection } from "./notes-section";
+import { InventorySection } from "./inventory-section";
 
 function formatShortDate(value: Date) {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -38,7 +39,7 @@ export default async function EmployeeDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues] = await Promise.all([
+  const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues, inventoryItems] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
       include: {
@@ -55,6 +56,10 @@ export default async function EmployeeDetailPage({
             createdBy: { select: { name: true } },
             documents: { select: { id: true, filename: true } },
           },
+        },
+        inventoryAssignments: {
+          orderBy: { issuedDate: "desc" },
+          include: { item: { select: { id: true, name: true, category: true } } },
         },
       },
     }),
@@ -76,6 +81,11 @@ export default async function EmployeeDetailPage({
       where: { ...branchWhere(branchId), isActive: true },
       orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
       select: { category: true, value: true },
+    }),
+    prisma.inventoryItem.findMany({
+      where: branchWhere(branchId),
+      select: { id: true, name: true, category: true },
+      orderBy: { name: "asc" },
     }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
@@ -234,6 +244,20 @@ export default async function EmployeeDetailPage({
             />
 
             <DocumentsSection employeeId={employee.id} documents={employee.documents} />
+
+            <InventorySection
+              employeeId={employee.id}
+              assignments={employee.inventoryAssignments.map((a) => ({
+                id: a.id,
+                quantity: a.quantity,
+                issuedDate: a.issuedDate.toISOString(),
+                returnDate: a.returnDate ? a.returnDate.toISOString() : null,
+                condition: a.condition,
+                notes: a.notes,
+                item: a.item,
+              }))}
+              items={inventoryItems}
+            />
           </>
         }
       />

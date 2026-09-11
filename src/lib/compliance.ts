@@ -20,6 +20,9 @@ export const COMPLIANCE_FIELDS = [
   { key: "medicalExpiry", label: "Medical Certificate" },
   { key: "passportExpiry", label: "Passport" },
   { key: "emiratesIdExpiry", label: "Emirates ID" },
+  { key: "cicpaExpiry", label: "CICPA" },
+  { key: "insuranceExpiry", label: "Insurance" },
+  { key: "drivingLicenceExpiry", label: "Driving Licence" },
 ] as const;
 
 export function complianceRowClass(status: ComplianceStatus): string | undefined {
