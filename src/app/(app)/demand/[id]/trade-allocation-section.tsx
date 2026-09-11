@@ -5,10 +5,18 @@ import { setTradeApprovalAction, unallocateEmployeeAction } from "../actions";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import type { TradeSupply } from "@/lib/demandSupply";
+import {
+  APPROVAL_COLOR,
+  APPROVAL_LABEL,
+  approvalStateOf,
+  approvalSummary,
+  approvedHeadcount,
+} from "@/lib/demandApproval";
 
 type Allocation = { id: string; employeeId: string; employeeName: string; employeeIdNo: string };
 type Trade = {
-  approved: boolean;
+  /** null while undecided, 0 once refused, otherwise the heads agreed. */
+  approvedQuantity: number | null;
   id: string;
   trade: string;
   quantity: number;
@@ -26,15 +34,23 @@ export function TradeAllocationSection({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const remaining = Math.max(0, trade.quantity - trade.allocations.length);
+  // Defaults to the full request: approving everything asked for is still the
+  // common answer, so it should be one click.
+  const [draft, setDraft] = useState<string>(
+    String(trade.approvedQuantity ?? trade.quantity)
+  );
+  const state = approvalStateOf(trade);
+  const approved = approvedHeadcount(trade);
+  // What is left to fill is measured against what was agreed, not what was asked.
+  const remaining = Math.max(0, approved - trade.allocations.length);
   // Assignment is gated on having enough idle workers *of this trade* — other
   // trades are shown for context but can't fill the line.
   const short = remaining > 0 && supply.matching < remaining;
 
-  function toggleApproval(next: boolean) {
+  function saveApproval(value: string) {
     const formData = new FormData();
     formData.append("tradeId", trade.id);
-    formData.append("approved", String(next));
+    formData.append("approvedQuantity", value);
     setError(null);
     startTransition(async () => {
       const result = await setTradeApprovalAction(formData);
@@ -62,11 +78,12 @@ export function TradeAllocationSection({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Badge color={trade.approved ? "green" : "slate"}>
-            {trade.approved ? "Approved" : "Not approved"}
-          </Badge>
+          <Badge color={APPROVAL_COLOR[state]}>{APPROVAL_LABEL[state]}</Badge>
           <span className="tabular text-xs font-medium text-secondary">
-            {trade.allocations.length} / {trade.quantity} assigned
+            {approvalSummary(trade)}
+          </span>
+          <span className="tabular text-xs font-medium text-secondary">
+            {trade.allocations.length} / {approved || trade.quantity} assigned
           </span>
 
           {/* Counts, not names: at this stage the question is only whether the
@@ -92,18 +109,46 @@ export function TradeAllocationSection({
 
           {/* Approve regardless of the shortage above: mobilisation can put an
               other-trade worker on the line, so availability today doesn't
-              decide whether the client's request is agreed. */}
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => toggleApproval(!trade.approved)}
-            className={cn(
-              "btn btn-sm",
-              trade.approved ? "btn-secondary" : "btn-primary"
+              decide whether the client's request is agreed.
+
+              A number rather than a yes/no, because a client agreeing to six of
+              the ten asked for is the normal answer and the flag could only
+              record ten. */}
+          <div className="flex items-center gap-1.5">
+            <label className="flex items-center gap-1.5">
+              <span className="text-xs text-muted">Approve</span>
+              <input
+                type="number"
+                min={0}
+                max={trade.quantity}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                disabled={pending}
+                className="input w-16 px-2 py-1 text-xs tabular"
+                aria-label={`Number of ${trade.trade} to approve, of ${trade.quantity} requested`}
+              />
+              <span className="text-xs text-muted">of {trade.quantity}</span>
+            </label>
+            <button
+              type="button"
+              disabled={pending || draft.trim() === ""}
+              onClick={() => saveApproval(draft)}
+              className="btn btn-primary btn-sm"
+            >
+              {state === "PENDING" ? "Approve" : "Update"}
+            </button>
+            {state !== "PENDING" && (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => saveApproval("")}
+                title="Puts the line back to undecided"
+                className="btn btn-secondary btn-sm"
+              >
+                Clear
+              </button>
             )}
-          >
-            {trade.approved ? "Unapprove" : "Approve"}
-          </button>
+          </div>
         </div>
       </div>
 

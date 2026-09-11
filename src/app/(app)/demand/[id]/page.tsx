@@ -85,7 +85,7 @@ export default async function DemandRequestDetailPage({
             trade={{
               id: t.id,
               trade: t.trade,
-              approved: t.approved,
+              approvedQuantity: t.approvedQuantity,
               quantity: t.quantity,
               shift: t.shift,
               rate: t.rate,

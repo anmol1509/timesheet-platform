@@ -1,5 +1,6 @@
 import { HardHat } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { approvedHeadcount } from "@/lib/demandApproval";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { EmptyState } from "@/components/EmptyState";
@@ -34,7 +35,10 @@ export default async function MobilisationQueuePage() {
     requestNo: d.requestNo,
     clientName: d.client.name,
     projectLabel: `${d.project.code} — ${d.project.name}`,
-    needed: d.trades.reduce((sum, t) => sum + t.quantity, 0),
+    // What we are committed to deliver is the approved number, not the
+    // requested one — a demand cut from ten to six is full at six.
+    needed: d.trades.reduce((sum, t) => sum + approvedHeadcount(t), 0),
+    requested: d.trades.reduce((sum, t) => sum + t.quantity, 0),
     filled: d.trades.reduce((sum, t) => sum + t._count.allocations, 0),
     trades: d.trades.map((t) => ({
       id: t.id,
@@ -43,7 +47,7 @@ export default async function MobilisationQueuePage() {
       shift: t.shift,
       quantity: t.quantity,
       filled: t._count.allocations,
-      approved: t.approved,
+      approvedQuantity: t.approvedQuantity,
     })),
   }));
 

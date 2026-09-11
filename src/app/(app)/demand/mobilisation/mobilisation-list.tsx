@@ -4,6 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import {
+  APPROVAL_COLOR,
+  APPROVAL_LABEL,
+  approvalStateOf,
+  approvedHeadcount,
+} from "@/lib/demandApproval";
 import { cn } from "@/lib/cn";
 
 type TradeRow = {
@@ -13,7 +19,7 @@ type TradeRow = {
   shift: string | null;
   quantity: number;
   filled: number;
-  approved: boolean;
+  approvedQuantity: number | null;
 };
 
 export type MobilisationRow = {
@@ -21,7 +27,10 @@ export type MobilisationRow = {
   requestNo: number;
   clientName: string;
   projectLabel: string;
+  /** The agreed headcount — the target this queue measures against. */
   needed: number;
+  /** What the client originally asked for, shown when the two differ. */
+  requested: number;
   filled: number;
   trades: TradeRow[];
 };
@@ -138,6 +147,11 @@ export function MobilisationList({ rows }: { rows: MobilisationRow[] }) {
                     </td>
                     <td className="tabular px-4 py-3 text-secondary">
                       {d.filled} / {d.needed}
+                      {d.requested !== d.needed && (
+                        <span className="ml-1 text-xs text-subtle">
+                          ({d.requested} asked)
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <Link
@@ -169,16 +183,18 @@ export function MobilisationList({ rows }: { rows: MobilisationRow[] }) {
                                   <span className="text-xs text-muted">
                                     {t.shift ? `${t.shift} shift` : "No shift"}
                                   </span>
-                                  {!t.approved && <Badge color="slate">Not approved</Badge>}
+                                  <Badge color={APPROVAL_COLOR[approvalStateOf(t)]}>
+                                    {APPROVAL_LABEL[approvalStateOf(t)]}
+                                  </Badge>
                                   <span
                                     className={cn(
                                       "tabular text-xs font-medium",
-                                      t.filled >= t.quantity
+                                      t.filled >= (approvedHeadcount(t) || t.quantity)
                                         ? "text-[var(--success)]"
                                         : "text-[var(--warning)]"
                                     )}
                                   >
-                                    {t.filled} / {t.quantity}
+                                    {t.filled} / {approvedHeadcount(t) || t.quantity}
                                   </span>
                                 </li>
                               ))}

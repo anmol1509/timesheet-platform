@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRightLeft, Check } from "lucide-react";
 import { Select } from "@/components/ui/Select";
+import { approvalStateOf, approvedHeadcount } from "@/lib/demandApproval";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
 import {
@@ -16,8 +17,8 @@ import {
 type Line = {
   id: string;
   trade: string;
-  /** Only approved lines can be filled; approval is per trade, not per demand. */
-  approved: boolean;
+  /** Heads agreed of `quantity`; null while undecided. The cap on this line. */
+  approvedQuantity: number | null;
   quantity: number;
   shift: string | null;
   assigned: { id: string; employeeId: string; name: string; employeeIdNo: string }[];
@@ -104,8 +105,11 @@ export function MobilisationBoard({
     );
   }
 
-  const remaining = Math.max(0, activeLine.quantity - activeLine.assigned.length);
-  const locked = !activeLine.approved;
+  // Measured against what was agreed, not what was asked for: a line cut from
+  // ten to six is full at six.
+  const approved = approvedHeadcount(activeLine);
+  const remaining = Math.max(0, approved - activeLine.assigned.length);
+  const locked = approved === 0;
 
   function toggle(id: string) {
     setPicked((prev) => {
@@ -160,7 +164,7 @@ export function MobilisationBoard({
       {/* Which line is being filled. */}
       <div className="space-y-2">
         {lines.map((line) => {
-          const done = line.assigned.length >= line.quantity;
+          const done = approvedHeadcount(line) > 0 && line.assigned.length >= approvedHeadcount(line);
           return (
             <button
               key={line.id}
@@ -181,12 +185,16 @@ export function MobilisationBoard({
                 {done && <Check className="h-4 w-4 text-[var(--success)]" aria-hidden />}
               </span>
               <span className="mt-0.5 block text-xs text-muted">
-                {line.approved ? "" : "Not approved · "}
+                {approvalStateOf(line) === "PENDING" ? "Not approved · " : ""}
+                {approvalStateOf(line) === "REFUSED" ? "Refused · " : ""}
                 {line.shift ? `${line.shift} shift · ` : ""}
                 <span className="tabular">
-                  {line.assigned.length}/{line.quantity}
+                  {line.assigned.length}/{approvedHeadcount(line) || line.quantity}
                 </span>{" "}
                 assigned
+                {approvalStateOf(line) === "PARTIAL" && (
+                  <span className="tabular"> · {approvedHeadcount(line)} of {line.quantity} approved</span>
+                )}
               </span>
             </button>
           );
@@ -262,7 +270,9 @@ export function MobilisationBoard({
               </label>
               <span className="text-xs text-muted">
                 {locked
-                  ? "Approve this trade to mobilise"
+                  ? approvalStateOf(activeLine) === "REFUSED"
+                    ? "This line was refused"
+                    : "Approve this trade to mobilise"
                   : remaining === 0
                     ? "Line is full"
                     : `${remaining} still needed`}

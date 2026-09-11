@@ -1207,11 +1207,17 @@ model DemandRequestTrade {
   shift    String? // "Day" | "Night"
   rate     Float?
 
-  // Approval is per trade line, not per request: a client may sign off on the
-  // masons and hold the carpenters. Deliberately independent of whether idle
-  // workers of that trade exist — mobilisation can re-designate someone from
-  // another trade, so a shortage today shouldn't block approval.
-  approved Boolean @default(false)
+  // How many of `quantity` were actually agreed. Approval is per trade line,
+  // not per request — a client may sign off on the masons and hold the
+  // carpenters — and now per head within a line too: asking for ten and being
+  // given six is the normal answer, and approving all ten was the only one the
+  // system could record.
+  //
+  // null means nobody has decided yet; 0 means the line was refused. Kept
+  // deliberately independent of whether idle workers of that trade exist —
+  // mobilisation can re-designate someone from another trade, so a shortage
+  // today shouldn't block approval.
+  approvedQuantity Int?
 
   // The trade as an entry in the Trades taxonomy (the Skill table), so the
   // idle-worker count for a line is an exact join rather than a name match.

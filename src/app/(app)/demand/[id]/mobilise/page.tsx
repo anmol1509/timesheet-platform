@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { isApproved } from "@/lib/demandApproval";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
@@ -64,7 +65,7 @@ export default async function MobilisePage({
         </div>
       </div>
 
-      {request.trades.every((t) => !t.approved) && (
+      {request.trades.every((t) => !isApproved(t)) && (
         // Approval is per trade line, so this is only shown when *nothing* is
         // approved; a partly-approved demand is mobilised line by line.
         <p className="rounded-control border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
@@ -81,7 +82,7 @@ export default async function MobilisePage({
         lines={request.trades.map((t) => ({
           id: t.id,
           trade: t.trade,
-          approved: t.approved,
+          approvedQuantity: t.approvedQuantity,
           quantity: t.quantity,
           shift: t.shift,
           assigned: t.allocations.map((a) => ({

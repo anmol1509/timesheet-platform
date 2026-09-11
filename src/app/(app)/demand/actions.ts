@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { approvedHeadcount, validateApproval } from "@/lib/demandApproval";
 import {
   markUnderMobilisation,
   markOnSite,
@@ -185,7 +186,12 @@ export async function allocateEmployeesAction(
     return { allocated: 0, requested: employeeIds.length };
   }
 
-  const remaining = Math.max(0, trade.quantity - trade.allocations.length);
+  // The approved number is the cap, not the requested one — and a line nobody
+  // has agreed takes nobody. This was previously enforced only by the UI
+  // disabling the button, which left the action itself open.
+  const approved = approvedHeadcount(trade);
+  if (approved === 0) return { allocated: 0, requested: employeeIds.length };
+  const remaining = Math.max(0, approved - trade.allocations.length);
   let allocated = 0;
   const mobilisedIds: string[] = [];
   const rawDate = String(formData.get("mobilisationDate") || "").trim();
@@ -386,7 +392,6 @@ export async function setTradeApprovalAction(
 ): Promise<{ error?: string } | void> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const tradeId = String(formData.get("tradeId") || "");
-  const approved = formData.get("approved") === "true";
   if (!tradeId) return;
 
   const trade = await prisma.demandRequestTrade.findUnique({
@@ -395,25 +400,39 @@ export async function setTradeApprovalAction(
   });
   if (!trade || isOutsideBranch(trade.demandRequest.branchId, branchId, isSuperAdmin)) return;
 
-  // Withdrawing approval while people are already mobilised would leave workers
-  // committed to something no longer agreed, so it's refused with a reason.
-  if (!approved && trade.allocations.length > 0) {
-    return {
-      error: `${trade.trade} has ${trade.allocations.length} worker(s) mobilised — remove them first.`,
-    };
+  const raw = String(formData.get("approvedQuantity") || "").trim();
+  // An empty box means "undecided", which is not the same as refusing zero.
+  const next = raw === "" ? null : Number(raw);
+
+  let approvedQuantity: number | null;
+  if (next === null) {
+    if (trade.allocations.length > 0) {
+      return {
+        error: `${trade.trade} has ${trade.allocations.length} worker(s) mobilised — remove them first.`,
+      };
+    }
+    approvedQuantity = null;
+  } else {
+    const check = validateApproval(next, {
+      quantity: trade.quantity,
+      approvedQuantity: trade.approvedQuantity,
+      allocatedCount: trade.allocations.length,
+    });
+    if (!check.ok) return { error: check.error };
+    approvedQuantity = check.value;
   }
 
   await prisma.demandRequestTrade.update({
     where: { id: tradeId },
-    data: { approved },
+    data: { approvedQuantity },
   });
 
   await logAudit({
     entityType: "DEMAND_REQUEST",
     entityId: trade.demandRequest.id,
     action: "UPDATE",
-    before: { trade: trade.trade, approved: trade.approved },
-    after: { trade: trade.trade, approved },
+    before: { trade: trade.trade, approvedQuantity: trade.approvedQuantity, requested: trade.quantity },
+    after: { trade: trade.trade, approvedQuantity, requested: trade.quantity },
     userId: user.id,
     userName: user.name,
     branchId,
@@ -424,6 +443,7 @@ export async function setTradeApprovalAction(
   revalidatePath("/demand/mobilisation");
   revalidatePath("/demand");
 }
+
 
 /**
  * Records that mobilised workers reached site.
