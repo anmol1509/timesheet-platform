@@ -1,0 +1,243 @@
+import { prisma } from "@/lib/db";
+import { StatTile } from "@/components/StatTile";
+import { BedDouble, Home } from "lucide-react";
+import { deleteCampAction } from "../actions";
+import { CampView } from "./camp-view";
+import { AddCampForm } from "./add-camp-form";
+import { CampOwnershipEditor } from "./camp-ownership-editor";
+import { OccupancyRing } from "@/components/OccupancyRing";
+import { DeleteButton } from "@/components/DeleteButton";
+import { InlineEditRow } from "@/components/InlineEditRow";
+import { Select } from "@/components/ui/Select";
+import { CountrySelect } from "@/components/ui/CountrySelect";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
+import { groupLookups } from "@/lib/lookups";
+import { createRoomAction, updateCampAction } from "../actions";
+
+export default async function CampsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campId?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+  const { branchId } = await requireUserWithBranch();
+  const [camps, lookupValues, suppliers] = await Promise.all([
+    prisma.camp.findMany({
+      include: {
+        rooms: {
+          include: { beds: { orderBy: { label: "asc" } } },
+          orderBy: { name: "asc" },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.lookupValue.findMany({
+      where: { ...branchWhere(branchId), category: "ROOM_TYPE", isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
+      select: { category: true, value: true },
+    }),
+    prisma.supplier.findMany({
+      where: branchWhere(branchId),
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+  const roomTypeOptions = groupLookups(lookupValues).ROOM_TYPE;
+
+  const allBeds = camps.flatMap((c) => c.rooms.flatMap((r) => r.beds));
+  const totalBeds = allBeds.length;
+  const occupiedBeds = allBeds.filter((b) => b.employeeId).length;
+  const vacantBeds = totalBeds - occupiedBeds;
+  const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+
+  const selectedCamp =
+    camps.find((c) => c.id === params.campId) || camps[0] || null;
+
+  const campBedEmployeeIds =
+    selectedCamp?.rooms.flatMap((r) =>
+      r.beds.map((b) => b.employeeId).filter((id): id is string => !!id)
+    ) ?? [];
+
+  const occupants =
+    campBedEmployeeIds.length > 0
+      ? await prisma.employee.findMany({
+          where: { id: { in: campBedEmployeeIds } },
+          select: { id: true, name: true, employeeIdNo: true },
+        })
+      : [];
+
+  const employeeNames = Object.fromEntries(
+    occupants.map((e) => [e.id, { name: e.name, employeeIdNo: e.employeeIdNo }])
+  );
+
+  return (
+    <div className="space-y-5">
+      {params.error && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {params.error}
+        </p>
+      )}
+      <div>
+        <h1 className="text-xl tracking-tight text-primary font-semibold">
+          Camps
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          Manage camps, rooms and beds. Move employees in with Create Check-In and Bed Allocation.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile label="Total Beds" value={totalBeds} icon={BedDouble} />
+        <StatTile label="Occupied" value={occupiedBeds} icon={Home} />
+        <StatTile label="Vacant" value={vacantBeds} icon={BedDouble} />
+      </div>
+
+      {totalBeds > 0 && (
+        <div className="card p-5">
+          <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
+        </div>
+      )}
+
+      {camps.length > 0 && (
+        <div className="card flex flex-wrap items-end gap-2 p-5">
+          <form className="flex flex-1 items-end gap-2">
+            <label className="block max-w-xs flex-1">
+              <span className="mb-1 block text-xs font-medium text-muted">
+                Camp
+              </span>
+              <Select
+                name="campId"
+                defaultValue={selectedCamp?.id}
+                options={camps.map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </label>
+            <button
+              type="submit"
+              className="btn btn-primary px-3"
+            >
+              Go
+            </button>
+          </form>
+          {selectedCamp && (
+            <>
+              <InlineEditRow
+                value={selectedCamp.name}
+                action={updateCampAction}
+                hiddenFields={{ campId: selectedCamp.id }}
+              />
+              <CampOwnershipEditor
+                campId={selectedCamp.id}
+                ownerType={selectedCamp.ownerType}
+                owningSupplierId={selectedCamp.owningSupplierId}
+                suppliers={suppliers}
+              />
+              <DeleteButton
+                action={deleteCampAction}
+                hiddenFields={{ campId: selectedCamp.id }}
+                confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
+                label="Delete Camp"
+                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {selectedCamp ? (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-primary">
+            {selectedCamp.name} — All Rooms
+          </h2>
+          <CampView
+            rooms={selectedCamp.rooms.map((r) => ({
+              id: r.id,
+              name: r.name,
+              roomType: r.roomType,
+              nationality: r.nationality,
+              beds: r.beds.map((b) => ({
+                id: b.id,
+                label: b.label,
+                employeeId: b.employeeId,
+              })),
+            }))}
+            employeeNames={employeeNames}
+          />
+        </div>
+      ) : (
+        <p className="empty-state py-10 text-sm text-muted">
+          No camps yet — add one below to get started.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <AddCampForm suppliers={suppliers} />
+
+        {selectedCamp && (
+          <form
+            action={createRoomAction}
+            className="card space-y-3 p-5"
+          >
+            <h3 className="text-sm font-semibold text-primary">
+              Add Room to {selectedCamp.name}
+            </h3>
+            <input type="hidden" name="campId" value={selectedCamp.id} />
+            <input
+              name="name"
+              required
+              placeholder="Room name, e.g. Room 103"
+              className="input w-full"
+            />
+            <input
+              name="bedCount"
+              type="number"
+              min={1}
+              max={20}
+              defaultValue={4}
+              placeholder="Number of beds"
+              className="input w-full"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">Bed space</span>
+                <input
+                  name="bedSpace"
+                  type="number"
+                  min={0}
+                  className="input w-full"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-muted">Usable bed space</span>
+                <input
+                  name="usableBedSpace"
+                  type="number"
+                  min={0}
+                  className="input w-full"
+                />
+              </label>
+            </div>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Room type</span>
+              <Select
+                name="roomType"
+                placeholder="Not set"
+                options={roomTypeOptions.map((o) => ({ value: o.value, label: o.value }))}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Nationality targeting</span>
+              <CountrySelect name="nationality" placeholder="Not set" />
+            </label>
+            <button
+              type="submit"
+              className="btn btn-primary"
+            >
+              Add Room
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}

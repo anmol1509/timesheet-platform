@@ -11,6 +11,9 @@ type Supplier = {
   phone: string | null;
   location: string | null;
   poBox: string | null;
+  coordinatorName: string | null;
+  coordinatorPhone: string | null;
+  coordinatorEmail: string | null;
   bankName: string | null;
   iban: string | null;
   bankAccountName: string | null;
@@ -93,6 +96,32 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           <input
             name="poBox"
             defaultValue={supplier.poBox || ""}
+            className="input w-full"
+          />
+        </Field>
+      </Section>
+
+      <Section title="Camp Coordinator">
+        <Field label="Coordinator name">
+          <input
+            name="coordinatorName"
+            placeholder="Point of contact for this supplier's workers' camp check-ins"
+            defaultValue={supplier.coordinatorName || ""}
+            className="input w-full"
+          />
+        </Field>
+        <Field label="Coordinator phone">
+          <input
+            name="coordinatorPhone"
+            defaultValue={supplier.coordinatorPhone || ""}
+            className="input w-full"
+          />
+        </Field>
+        <Field label="Coordinator email">
+          <input
+            name="coordinatorEmail"
+            type="email"
+            defaultValue={supplier.coordinatorEmail || ""}
             className="input w-full"
           />
         </Field>

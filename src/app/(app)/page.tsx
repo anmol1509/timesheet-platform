@@ -340,7 +340,7 @@ export default async function DashboardPage() {
         </Panel>
 
         {totalBeds > 0 ? (
-          <Panel title="Camp occupancy" icon={BedDouble} href="/accommodation">
+          <Panel title="Camp occupancy" icon={BedDouble} href="/accommodation/camps">
             <OccupancyRing
               occupied={occupiedBeds}
               vacant={vacantBeds}

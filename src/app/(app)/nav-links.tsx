@@ -117,7 +117,9 @@ const NAV: Entry[] = [
     label: "Facilities",
     icon: BedDouble,
     children: [
-      { href: "/accommodation", label: "Accommodation", icon: BedDouble },
+      { href: "/accommodation/camps", label: "Camps", icon: BedDouble },
+      { href: "/accommodation/checkin", label: "Create Check-In", icon: FilePlus2 },
+      { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
       { href: "/transport", label: "Transport", icon: Bus },
       { href: "/transport/routes", label: "Routes", icon: MapPin },
       { href: "/inventory", label: "Inventory", icon: Package },
