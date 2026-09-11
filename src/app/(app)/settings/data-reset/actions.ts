@@ -23,16 +23,22 @@ export async function resetModuleAction(
   if (confirmText.toUpperCase() !== mod.label.toUpperCase()) {
     return { error: `Type "${mod.label}" exactly to confirm.` };
   }
-  if (!mod.branchScoped && !acknowledgeGlobal) {
-    return { error: "Confirm you understand this isn't split by branch and affects every branch." };
-  }
-  if (mod.branchScoped && !branchId) {
-    return { error: "Pick a specific branch from the switcher first — this can't run across all branches at once." };
+  // A module reset is "global" either because it was never split by branch
+  // (Accommodation, Transport) or because no specific branch is currently
+  // selected — either way, more than just the one branch you're looking at
+  // is affected, so it needs the same explicit acknowledgment.
+  const isGlobalRun = !mod.branchScoped || !branchId;
+  if (isGlobalRun && !acknowledgeGlobal) {
+    return {
+      error: mod.branchScoped
+        ? "Confirm you understand this runs across every branch, since no specific branch is selected."
+        : "Confirm you understand this isn't split by branch and affects every branch.",
+    };
   }
 
   let counts: Record<string, number>;
   try {
-    counts = await mod.run(mod.branchScoped ? branchId : null);
+    counts = await mod.run(branchId);
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     return {

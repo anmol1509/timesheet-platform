@@ -12,18 +12,17 @@ export function ResetModuleCard({
   id,
   label,
   description,
-  branchScoped,
+  global,
   dependsOnLabels,
   count,
-  disabled,
 }: {
   id: string;
   label: string;
   description: string;
-  branchScoped: boolean;
+  /** True when this particular run would affect every branch. */
+  global: boolean;
   dependsOnLabels: string[];
   count: number;
-  disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -33,7 +32,7 @@ export function ResetModuleCard({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-primary">{label}</h3>
-            <Badge color={branchScoped ? "slate" : "amber"}>{branchScoped ? "This branch" : "Global"}</Badge>
+            <Badge color={global ? "amber" : "slate"}>{global ? "All branches" : "This branch"}</Badge>
           </div>
           <p className="mt-1 text-xs text-muted">{description}</p>
           {dependsOnLabels.length > 0 && (
@@ -49,21 +48,14 @@ export function ResetModuleCard({
         variant="danger"
         size="sm"
         onClick={() => setOpen(true)}
-        disabled={disabled || count === 0}
+        disabled={count === 0}
         className="self-start"
       >
         <Trash2 className="h-3.5 w-3.5" />
         Reset
       </Button>
 
-      <ResetDialog
-        open={open}
-        id={id}
-        label={label}
-        branchScoped={branchScoped}
-        count={count}
-        onClose={() => setOpen(false)}
-      />
+      <ResetDialog open={open} id={id} label={label} global={global} count={count} onClose={() => setOpen(false)} />
     </div>
   );
 }
@@ -72,14 +64,14 @@ function ResetDialog({
   open,
   id,
   label,
-  branchScoped,
+  global,
   count,
   onClose,
 }: {
   open: boolean;
   id: string;
   label: string;
-  branchScoped: boolean;
+  global: boolean;
   count: number;
   onClose: () => void;
 }) {
@@ -90,7 +82,7 @@ function ResetDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Record<string, number> | null>(null);
 
-  const canSubmit = confirmText.toUpperCase() === label.toUpperCase() && (branchScoped || acknowledgeGlobal);
+  const canSubmit = confirmText.toUpperCase() === label.toUpperCase() && (!global || acknowledgeGlobal);
 
   function handleClose() {
     setConfirmText("");
@@ -148,7 +140,7 @@ function ResetDialog({
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            {!branchScoped && (
+            {global && (
               <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <input
                   type="checkbox"
@@ -156,7 +148,7 @@ function ResetDialog({
                   onChange={(e) => setAcknowledgeGlobal(e.target.checked)}
                   className="mt-0.5"
                 />
-                <span>This data isn&apos;t split by branch — resetting it affects every branch, not just the one you&apos;re viewing.</span>
+                <span>This affects every branch, not just one — either this data isn&apos;t split by branch, or no specific branch is currently selected.</span>
               </label>
             )}
             <label className="block">

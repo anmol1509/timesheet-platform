@@ -41,8 +41,9 @@ export default async function DataResetPage() {
 
       {!branchId && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-          You&apos;re viewing <strong>All branches</strong>. Branch-scoped modules need a specific branch picked
-          from the switcher (top right) before they can be reset.
+          You&apos;re viewing <strong>All branches</strong>. Resetting a module now will run across every branch,
+          not just one — each one will ask you to confirm that before it runs. Pick a specific branch from the
+          switcher (top right) to scope a reset to just that branch instead.
         </p>
       )}
 
@@ -53,10 +54,12 @@ export default async function DataResetPage() {
             id={m.id}
             label={m.label}
             description={m.description}
-            branchScoped={m.branchScoped}
+            // "Global" whenever this particular run would affect every
+            // branch — either the module was never split by branch, or no
+            // specific branch is currently selected.
+            global={!m.branchScoped || !branchId}
             dependsOnLabels={m.dependsOn.map((id) => labelById[id] ?? id)}
             count={m.count}
-            disabled={m.branchScoped && !branchId}
           />
         ))}
       </div>
