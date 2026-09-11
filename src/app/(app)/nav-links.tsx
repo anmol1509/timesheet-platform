@@ -64,6 +64,7 @@ const NAV: Entry[] = [
     label: "Workforce",
     icon: Users,
     children: [
+      { href: "/dashboards/workforce", label: "Dashboard", icon: LayoutDashboard },
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
@@ -76,6 +77,7 @@ const NAV: Entry[] = [
     label: "Business Partners",
     icon: Building2,
     children: [
+      { href: "/dashboards/business-partners", label: "Dashboard", icon: LayoutDashboard },
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
       { href: "/banks", label: "Banks", icon: Wallet },
@@ -86,6 +88,7 @@ const NAV: Entry[] = [
     label: "Sales",
     icon: BadgeDollarSign,
     children: [
+      { href: "/dashboards/sales", label: "Dashboard", icon: LayoutDashboard },
       { href: "/sales/enquiries", label: "Enquiries", icon: FileQuestion },
       { href: "/sales/quotations", label: "Quotations", icon: FileSignature },
     ],
@@ -95,6 +98,7 @@ const NAV: Entry[] = [
     label: "Projects",
     icon: ClipboardList,
     children: [
+      { href: "/dashboards/projects", label: "Dashboard", icon: LayoutDashboard },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
@@ -105,6 +109,7 @@ const NAV: Entry[] = [
     label: "Demand",
     icon: ListChecks,
     children: [
+      { href: "/dashboards/demand", label: "Dashboard", icon: LayoutDashboard },
       { href: "/demand/new", label: "Create Demand", icon: FilePlus2 },
       { href: "/demand", label: "View Demands", icon: ListChecks, exact: true },
       { href: "/demand/mobilisation", label: "Mobilization", icon: HardHat },
@@ -118,6 +123,7 @@ const NAV: Entry[] = [
     label: "Facilities",
     icon: BedDouble,
     children: [
+      { href: "/dashboards/facilities", label: "Dashboard", icon: LayoutDashboard },
       { href: "/accommodation/camps", label: "Camps", icon: BedDouble },
       { href: "/accommodation/checkin", label: "Create Check-In", icon: FilePlus2 },
       { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
@@ -131,6 +137,7 @@ const NAV: Entry[] = [
     label: "Timesheets",
     icon: FileSpreadsheet,
     children: [
+      { href: "/dashboards/timesheets", label: "Dashboard", icon: LayoutDashboard },
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
       {
         href: "/invoices/client-timesheet",
@@ -153,6 +160,7 @@ const NAV: Entry[] = [
     label: "Billing",
     icon: Receipt,
     children: [
+      { href: "/dashboards/billing", label: "Dashboard", icon: LayoutDashboard },
       { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/invoices/history", label: "Invoice History", icon: Clock },
     ],

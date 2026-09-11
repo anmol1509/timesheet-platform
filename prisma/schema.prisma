@@ -98,6 +98,23 @@ model User {
   demandRequests   DemandRequest[]
   nocs             Noc[]
   employeeNotes EmployeeNote[]
+
+  dashboardPreference DashboardPreference?
+}
+
+// Per-user show/hide + order for the main dashboard's widgets. Widget ids are
+// defined in src/lib/dashboardWidgets.ts, not enforced at the DB level — an
+// id that no longer exists (a widget removed later) is just ignored at render
+// time rather than migrated, and a widget added later simply isn't in
+// `widgetOrder` yet, so it falls back to appending after the known ones.
+model DashboardPreference {
+  id            String   @id @default(cuid())
+  hiddenWidgets String[] @default([])
+  widgetOrder   String[] @default([])
+  updatedAt     DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
 }
 
 // One row per file import (a whole workbook, which may contain multiple month tabs).
