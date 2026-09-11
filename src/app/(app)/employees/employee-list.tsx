@@ -126,7 +126,7 @@ export function EmployeeList({
       case "staff":
         return employees.filter((e) => !e.companyDisplayName && e.category === "STAFF");
       case "supplier-labour":
-        return employees.filter((e) => !!e.companyDisplayName);
+        return employees.filter((e) => !!e.companyDisplayName && !e.isOwnCompanySupplier);
       case "our-workers":
         return employees.filter((e) => e.isOwnCompanySupplier);
       case "idle":

@@ -11,10 +11,10 @@ const ROWS: { key: keyof EmployeeTypeCounts; label: string; color: string; filte
 ];
 
 export function EmployeeTypeBreakdown({ counts }: { counts: EmployeeTypeCounts }) {
-  // ourWorkers is a subset of supplierLabour (suppliers flagged isOwnCompany),
-  // not a fourth exclusive bucket, so it's deliberately left out of the
-  // partition total below — its own bar still reads against that same total.
-  const total = counts.siteStaff + counts.officeStaff + counts.supplierLabour;
+  // supplierLabour/ourWorkers split supplier-sourced employees by the
+  // supplier's isOwnCompany flag, so together with siteStaff/officeStaff they
+  // partition the whole roster with no overlap.
+  const total = counts.siteStaff + counts.officeStaff + counts.supplierLabour + counts.ourWorkers;
   return (
     <div className="space-y-2.5">
       {ROWS.map((r) => {
