@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pencil, UserPlus, Users, X } from "lucide-react";
+import { BadgeCheck, Check, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -57,6 +57,7 @@ const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
 };
 
 const SEGMENTED_VALUES: Filter[] = ["all", "on-work", "bench"];
+const OWNERSHIP_SEGMENTED_VALUES: Filter[] = ["all", "supplier-labour", "our-workers"];
 
 const CATEGORY_LABEL: Record<EmployeeRow["category"], string> = {
   SITE_STAFF: "Site Staff",
@@ -168,8 +169,13 @@ export function EmployeeList({
               .toUpperCase()}
           </span>
           <span className="min-w-0">
-            <span className="block truncate font-medium text-primary group-hover/name:underline">
+            <span className="flex items-center gap-1 truncate font-medium text-primary group-hover/name:underline">
               {e.name}
+              {e.isOwnCompanySupplier && (
+                <span title="Our worker">
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" aria-label="Our worker" />
+                </span>
+              )}
             </span>
             <span className="block truncate text-[11px] text-subtle">
               {CATEGORY_LABEL[e.category]}
@@ -255,7 +261,10 @@ export function EmployeeList({
     },
   ];
 
-  const activeChip = CATEGORY_FILTER_LABEL[filter];
+  // Supplier/Our Employees already have their own dedicated tab above, so
+  // they don't also need the clearable chip the other dashboard-linked
+  // filters (site-staff, idle, vacation, incomplete) show.
+  const activeChip = OWNERSHIP_SEGMENTED_VALUES.includes(filter) ? undefined : CATEGORY_FILTER_LABEL[filter];
 
   return (
     <>
@@ -328,6 +337,19 @@ export function EmployeeList({
               { value: "all", label: "All" },
               { value: "on-work", label: "On work" },
               { value: "bench", label: "Bench" },
+            ]}
+          />
+          <SegmentedControl
+            value={OWNERSHIP_SEGMENTED_VALUES.includes(filter) ? filter : "all"}
+            onChange={(f) => {
+              const next = f as Filter;
+              setFilter(next);
+              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`);
+            }}
+            options={[
+              { value: "all", label: "All Employees" },
+              { value: "supplier-labour", label: "Supplier Employees" },
+              { value: "our-workers", label: "Our Employees" },
             ]}
           />
           {activeChip && (

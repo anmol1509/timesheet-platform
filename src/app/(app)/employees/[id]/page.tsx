@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
@@ -116,6 +117,11 @@ export default async function EmployeeDetailPage({
                 <h1 className="text-xl tracking-tight text-primary font-semibold">
                   {employee.name}
                 </h1>
+                {employee.supplier?.isOwnCompany && (
+                  <span title="Our worker">
+                    <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" aria-label="Our worker" />
+                  </span>
+                )}
                 <Badge color={employee.active ? "green" : "slate"}>
                   {employee.active ? "Active" : "Inactive"}
                 </Badge>
