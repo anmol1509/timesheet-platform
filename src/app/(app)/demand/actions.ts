@@ -266,6 +266,11 @@ export async function allocateEmployeesAction(
   revalidatePath(`/demand/${trade.demandRequestId}/mobilise`);
   revalidatePath(`/demand/${trade.demandRequestId}/documents`);
   revalidatePath("/demand/mobilisation");
+  // markUnderMobilisation above moves these workers onto the site-arrival
+  // queue — without this, the page kept serving its cached (empty) render
+  // until something else happened to invalidate it, so a newly mobilised
+  // worker appeared not to show up there at all.
+  revalidatePath("/demand/site-arrival");
   return { allocated, requested: employeeIds.length };
 }
 
@@ -317,6 +322,7 @@ export async function unallocateEmployeeAction(formData: FormData) {
   revalidatePath(`/demand/${demandId}/mobilise`);
   revalidatePath(`/demand/${demandId}/documents`);
   revalidatePath("/demand/mobilisation");
+  revalidatePath("/demand/site-arrival");
 }
 
 /**
