@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
-import { confirmSiteArrivalAction, revertSiteArrivalAction } from "../actions";
+import { confirmSiteArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
 
 export type ArrivalRow = {
   id: string;
@@ -61,6 +62,7 @@ export function SiteArrivalBoard({
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [siteId, setSiteId] = useState("");
+  const [disapproving, setDisapproving] = useState<ArrivalRow | null>(null);
 
   const rows = tab === "pending" ? pending : arrived;
   const allPicked = useMemo(
@@ -117,6 +119,25 @@ export function SiteArrivalBoard({
     body.append("employeeId", employeeId);
     startTransition(async () => {
       await revertSiteArrivalAction(body);
+      router.refresh();
+    });
+  }
+
+  // Single-row approve, alongside the bulk one above — the per-row
+  // Approve/Disapprove pair is the primary way through this list; the
+  // checkbox + top bar stays for confirming several at once.
+  function approveOne(employeeId: string) {
+    const body = new FormData();
+    body.append("siteArrivalDate", arrivalDate);
+    if (siteId && siteOptions.some((s) => s.id === siteId)) body.append("siteId", siteId);
+    body.append("employeeId", employeeId);
+    startTransition(async () => {
+      await confirmSiteArrivalAction(body);
+      setPicked((prev) => {
+        const next = new Set(prev);
+        next.delete(employeeId);
+        return next;
+      });
       router.refresh();
     });
   }
@@ -217,7 +238,7 @@ export function SiteArrivalBoard({
                 <th className="px-4 py-3">
                   {tab === "pending" ? "Waiting" : "Arrived"}
                 </th>
-                {tab === "arrived" && <th className="px-4 py-3" />}
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
@@ -275,8 +296,8 @@ export function SiteArrivalBoard({
                         </span>
                       )}
                     </td>
-                    {tab === "arrived" && (
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {tab === "arrived" ? (
                         <button
                           type="button"
                           disabled={saving}
@@ -286,8 +307,27 @@ export function SiteArrivalBoard({
                         >
                           Undo
                         </button>
-                      </td>
-                    )}
+                      ) : (
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => approveOne(r.id)}
+                            className="text-xs font-medium text-emerald-600 hover:underline disabled:opacity-60"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => setDisapproving(r)}
+                            className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                          >
+                            Disapprove
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -303,6 +343,94 @@ export function SiteArrivalBoard({
           </p>
         )}
       </div>
+
+      <DisapproveModal
+        row={disapproving}
+        onClose={() => setDisapproving(null)}
+        onDone={() => router.refresh()}
+      />
+    </div>
+  );
+}
+
+function DisapproveModal({
+  row,
+  onClose,
+  onDone,
+}: {
+  row: ArrivalRow | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  return (
+    <Dialog modal={false} open={row !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        title={`Disapprove ${row?.name ?? ""}`}
+        description="They never actually reached site. This ends the placement — allocation removed, project cleared, back to Idle — and the reason is saved as a note on their profile."
+      >
+        {row && <DisapproveForm row={row} onClose={onClose} onDone={onDone} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DisapproveForm({
+  row,
+  onClose,
+  onDone,
+}: {
+  row: ArrivalRow;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    if (!reason.trim()) return;
+    setError(null);
+    const body = new FormData();
+    body.append("employeeId", row.id);
+    body.append("reason", reason.trim());
+    startTransition(async () => {
+      const result = await disapproveSiteArrivalAction(body);
+      if (result && "error" in result && result.error) {
+        setError(result.error);
+        return;
+      }
+      onDone();
+      onClose();
+    });
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">Reason</span>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          autoFocus
+          placeholder="Why didn't they show up?"
+          className="input w-full"
+        />
+      </label>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <DialogFooter>
+        <button type="button" onClick={onClose} className="btn btn-secondary">
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!reason.trim() || pending}
+          className="btn btn-danger"
+        >
+          {pending ? "Saving…" : "Disapprove"}
+        </button>
+      </DialogFooter>
     </div>
   );
 }

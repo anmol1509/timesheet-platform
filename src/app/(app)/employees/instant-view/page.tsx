@@ -66,6 +66,10 @@ export default async function InstantViewPage({
             orderBy: { issuedDate: "desc" },
             include: { item: { select: { name: true, category: true } } },
           },
+          noteEntries: {
+            orderBy: { createdAt: "desc" },
+            include: { createdBy: { select: { name: true } } },
+          },
         },
       })
     : null;
@@ -289,6 +293,24 @@ export default async function InstantViewPage({
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-primary">Notes</h3>
+            {validEmployee.noteEntries.length === 0 ? (
+              <p className="text-sm text-subtle">No notes on file for this worker.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {validEmployee.noteEntries.map((note) => (
+                  <li key={note.id} className="border-b border-default py-1.5 last:border-0">
+                    <p className="whitespace-pre-wrap text-primary">{note.remarks}</p>
+                    <p className="mt-0.5 text-xs text-subtle">
+                      {formatDate(note.createdAt)} · {note.createdBy.name}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

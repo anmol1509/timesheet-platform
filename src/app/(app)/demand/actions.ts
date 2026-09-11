@@ -573,3 +573,88 @@ export async function revertSiteArrivalAction(formData: FormData) {
   revalidatePath("/demand/site-arrival");
   revalidatePath("/employees");
 }
+
+/**
+ * Rejects a mobilised worker who never actually turned up.
+ *
+ * The other half of the Approve/Disapprove pair on Site Arrival — Approve is
+ * confirmSiteArrivalAction above. Unlike a revert (which just undoes a
+ * mis-click), a disapproval ends the placement entirely: same cleanup as
+ * unallocateEmployeeAction (allocation removed, assignment history closed,
+ * project cleared, stage back to IDLE), plus a reason on file. That reason is
+ * a normal EmployeeNote, so it shows up wherever notes already do — the
+ * profile's Notes section and the Instant View report — without needing a
+ * dedicated "disapproval" concept of its own.
+ */
+export async function disapproveSiteArrivalAction(
+  formData: FormData
+): Promise<{ error?: string } | void> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employeeId = String(formData.get("employeeId") || "");
+  const reason = String(formData.get("reason") || "").trim();
+  if (!employeeId) return;
+  if (!reason) return { error: "A reason is required." };
+
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { id: true, branchId: true, status: true, name: true },
+  });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
+  if (employee.status !== "UNDER_MOBILISATION") {
+    return { error: `${employee.name} is no longer awaiting arrival.` };
+  }
+
+  const allocation = await prisma.demandRequestAllocation.findFirst({
+    where: { employeeId },
+    include: { demandRequestTrade: { include: { demandRequest: true } } },
+    orderBy: { allocatedAt: "desc" },
+  });
+
+  if (allocation) {
+    await prisma.demandRequestAllocation.delete({ where: { id: allocation.id } });
+  }
+
+  const openHistory = await prisma.employeeAssignmentHistory.findFirst({
+    where: { employeeId, demobilizedDate: null },
+    orderBy: { mobilizedDate: "desc" },
+  });
+  if (openHistory) {
+    await prisma.employeeAssignmentHistory.update({
+      where: { id: openHistory.id },
+      data: { demobilizedDate: new Date() },
+    });
+  }
+
+  await prisma.employee.update({ where: { id: employeeId }, data: { projectId: null } });
+  await releaseFromMobilisation([employeeId]);
+
+  await prisma.employeeNote.create({
+    data: {
+      employeeId,
+      remarks: `Site arrival disapproved: ${reason}`,
+      createdById: user.id,
+    },
+  });
+
+  await logAudit({
+    entityType: "EMPLOYEE_SITE_ARRIVAL",
+    entityId: employeeId,
+    action: "UPDATE",
+    before: { status: "UNDER_MOBILISATION" },
+    after: { status: "IDLE", disapprovalReason: reason },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath("/employees/instant-view");
+  revalidatePath("/demand/site-arrival");
+  revalidatePath("/demand/mobilisation");
+  revalidatePath("/employees");
+  if (allocation) {
+    const demandId = allocation.demandRequestTrade.demandRequestId;
+    revalidatePath(`/demand/${demandId}`);
+    revalidatePath(`/demand/${demandId}/mobilise`);
+  }
+}
