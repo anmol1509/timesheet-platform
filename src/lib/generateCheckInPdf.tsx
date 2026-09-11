@@ -5,6 +5,7 @@ export type CheckInPdfRow = {
   checkInNo: string;
   employeeName: string;
   nationality: string | null;
+  projectName: string | null;
   supplierName: string | null;
   coordinator: string | null;
   status: string;
@@ -20,7 +21,7 @@ export type CheckInPdfInput = {
 };
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: "Helvetica" },
+  page: { padding: 32, fontSize: 10, fontFamily: "Helvetica" },
   letterhead: { marginBottom: 16, borderBottomWidth: 1, borderColor: "#2563eb", paddingBottom: 10 },
   companyName: { fontSize: 16, fontWeight: 700, color: "#2563eb" },
   companyAddress: { fontSize: 8, color: "#475569", marginTop: 2 },
@@ -32,19 +33,20 @@ const styles = StyleSheet.create({
   table: { display: "flex", flexDirection: "column", borderWidth: 0.5, borderColor: "#94A3B8", marginTop: 8 },
   headerRow: { flexDirection: "row", backgroundColor: "#2563eb" },
   row: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#E2E8F0" },
-  headerCell: { fontSize: 8, fontWeight: 700, color: "#FFFFFF", padding: 5 },
-  cell: { fontSize: 8.5, padding: 5, color: "#1E293B" },
+  headerCell: { fontSize: 7.5, fontWeight: 700, color: "#FFFFFF", padding: 4 },
+  cell: { fontSize: 7.5, padding: 4, color: "#1E293B" },
 });
 
-const COLS = [
-  { key: "slNo", label: "Sl.No", flex: 0.5 },
-  { key: "checkInNo", label: "Check-In No", flex: 1 },
-  { key: "employeeName", label: "Employee Name", flex: 1.8 },
-  { key: "nationality", label: "Nationality", flex: 1 },
-  { key: "supplierName", label: "Supplier", flex: 1.8 },
-  { key: "coordinator", label: "Coordinator", flex: 1.6 },
-  { key: "status", label: "Status", flex: 1 },
-] as const;
+const COLS: { key: keyof CheckInPdfRow; label: string; flex: number }[] = [
+  { key: "slNo", label: "Sl.No", flex: 0.4 },
+  { key: "checkInNo", label: "Check-In No", flex: 0.9 },
+  { key: "employeeName", label: "Employee Name", flex: 1.5 },
+  { key: "nationality", label: "Nationality", flex: 0.9 },
+  { key: "projectName", label: "Project", flex: 1.3 },
+  { key: "supplierName", label: "Supplier", flex: 1.5 },
+  { key: "coordinator", label: "Coordinator", flex: 1.3 },
+  { key: "status", label: "Status", flex: 0.9 },
+];
 
 export async function generateCheckInPdf(input: CheckInPdfInput): Promise<Buffer> {
   const doc = (
@@ -81,13 +83,11 @@ export async function generateCheckInPdf(input: CheckInPdfInput): Promise<Buffer
           </View>
           {input.rows.map((r) => (
             <View key={r.checkInNo} style={styles.row} wrap={false}>
-              <Text style={[styles.cell, { flex: 0.5 }]}>{r.slNo}</Text>
-              <Text style={[styles.cell, { flex: 1 }]}>{r.checkInNo}</Text>
-              <Text style={[styles.cell, { flex: 1.8 }]}>{r.employeeName}</Text>
-              <Text style={[styles.cell, { flex: 1 }]}>{r.nationality || "—"}</Text>
-              <Text style={[styles.cell, { flex: 1.8 }]}>{r.supplierName || "—"}</Text>
-              <Text style={[styles.cell, { flex: 1.6 }]}>{r.coordinator || "—"}</Text>
-              <Text style={[styles.cell, { flex: 1 }]}>{r.status}</Text>
+              {COLS.map((c) => (
+                <Text key={c.key} style={[styles.cell, { flex: c.flex }]}>
+                  {c.key === "slNo" ? r.slNo : r[c.key] || "—"}
+                </Text>
+              ))}
             </View>
           ))}
         </View>

@@ -25,6 +25,12 @@ function numberOrNull(value: FormDataEntryValue | null) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Same "PREFIX + zero-padded sequence" shape as Client's nextClientCode().
+async function nextSupplierCode() {
+  const count = await prisma.supplier.count();
+  return `SUP${String(count + 1).padStart(3, "0")}`;
+}
+
 export async function createSupplierAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -48,13 +54,14 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  const created = await prisma.supplier.create({ data: { name, fullName, branchId } });
+  const code = await nextSupplierCode();
+  const created = await prisma.supplier.create({ data: { name, code, fullName, branchId } });
 
   await logAudit({
     entityType: "SUPPLIER",
     entityId: created.id,
     action: "CREATE",
-    after: { name, fullName },
+    after: { name, code, fullName },
     userId: user.id,
     userName: user.name,
     branchId,
@@ -98,15 +105,16 @@ export async function createSubsidiaryAction(
     return { error: "A supplier with that name already exists." };
   }
 
+  const code = await nextSupplierCode();
   const created = await prisma.supplier.create({
-    data: { name, parentSupplierId, branchId: parent.branchId },
+    data: { name, code, parentSupplierId, branchId: parent.branchId },
   });
 
   await logAudit({
     entityType: "SUPPLIER",
     entityId: created.id,
     action: "CREATE",
-    after: { name, parentSupplierId },
+    after: { name, code, parentSupplierId },
     userId: user.id,
     userName: user.name,
     branchId: parent.branchId,

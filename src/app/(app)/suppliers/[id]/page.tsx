@@ -98,6 +98,11 @@ export default async function SupplierDetailPage({
             <h1 className="text-xl tracking-tight text-primary font-semibold">
               {supplier.name}
             </h1>
+            {supplier.code && (
+              <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
+                {supplier.code}
+              </span>
+            )}
             <Badge color={supplier.status === "ACTIVE" ? "green" : "red"}>
               {supplier.status}
             </Badge>

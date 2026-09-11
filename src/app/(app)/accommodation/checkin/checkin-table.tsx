@@ -2,10 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { LogIn } from "lucide-react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
+import { Button } from "@/components/ui/Button";
+import { initials, avatarGradient } from "@/lib/avatar";
+import { cn } from "@/lib/cn";
 import { createCheckInAction, switchCampAction } from "../checkin-actions";
 
 type EmployeeRow = {
@@ -14,6 +18,9 @@ type EmployeeRow = {
   employeeIdNo: string;
   nationality: string | null;
   supplierName: string | null;
+  supplierCode: string | null;
+  projectCode: string | null;
+  projectName: string | null;
   checkInId: string | null;
   campName: string | null;
   campId: string | null;
@@ -29,12 +36,15 @@ type CampOption = {
   totalBeds: number;
 };
 
+type Filter = "all" | "not_checked_in" | "awaiting_bed";
+
 function campLabel(c: CampOption) {
   const type = c.ownerType === "SUPPLIER" ? `Supplier${c.supplierName ? ` — ${c.supplierName}` : ""}` : "Own";
   return `${c.name} (${type}) — ${c.roomCount} rooms, ${c.vacantBeds}/${c.totalBeds} beds vacant`;
 }
 
 export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: CampOption[] }) {
+  const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [switchRow, setSwitchRow] = useState<EmployeeRow | null>(null);
@@ -48,40 +58,67 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
     });
   }
 
-  const selectableRows = rows.filter((r) => !r.checkInId);
+  const counts = {
+    all: rows.length,
+    not_checked_in: rows.filter((r) => !r.checkInId).length,
+    awaiting_bed: rows.filter((r) => !!r.checkInId).length,
+  };
+  const visible =
+    filter === "all" ? rows : rows.filter((r) => (filter === "not_checked_in" ? !r.checkInId : !!r.checkInId));
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted">
-          {selectableRows.length} not checked in · {rows.length - selectableRows.length} awaiting bed allocation
-        </p>
-        <button
-          type="button"
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              ["all", `All (${counts.all})`],
+              ["not_checked_in", `Not checked in (${counts.not_checked_in})`],
+              ["awaiting_bed", `Awaiting bed allocation (${counts.awaiting_bed})`],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              className={cn(
+                "rounded-control border px-3 py-1.5 text-xs font-medium transition",
+                filter === key
+                  ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
+                  : "border-default bg-surface text-secondary hover:bg-surface-hover"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="primary"
           onClick={() => setCheckInOpen(true)}
           disabled={selected.size === 0}
-          className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-40"
         >
+          <LogIn className="h-3.5 w-3.5" />
           Check In Selected ({selected.size})
-        </button>
+        </Button>
       </div>
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[54rem] text-sm">
+          <table className="w-full min-w-[64rem] text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="w-10 px-4 py-3" />
                 <th className="px-4 py-3">Employee</th>
                 <th className="px-4 py-3">Nationality</th>
                 <th className="px-4 py-3">Supplier</th>
+                <th className="px-4 py-3">Project</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {rows.map((r) => (
-                <tr key={r.id}>
+              {visible.map((r) => (
+                <tr key={r.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
                     <label
                       className={r.checkInId ? "cursor-not-allowed opacity-30" : "cursor-pointer"}
@@ -94,14 +131,51 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
                     </label>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-primary">{r.name}</p>
-                    <p className="text-xs text-subtle">{r.employeeIdNo}</p>
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white",
+                          avatarGradient(r.name)
+                        )}
+                      >
+                        {initials(r.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-primary">{r.name}</p>
+                        <p className="truncate text-xs text-subtle">{r.employeeIdNo}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-secondary">{r.nationality || "—"}</td>
-                  <td className="px-4 py-3 text-secondary">{r.supplierName || "—"}</td>
+                  <td className="px-4 py-3 text-secondary">
+                    {r.supplierName ? (
+                      <>
+                        {r.supplierName}
+                        {r.supplierCode && (
+                          <span className="tabular ml-1.5 text-xs text-subtle">{r.supplierCode}</span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-secondary">
+                    {r.projectName ? (
+                      <>
+                        {r.projectName}
+                        {r.projectCode && (
+                          <span className="tabular ml-1.5 text-xs text-subtle">{r.projectCode}</span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {r.checkInId ? (
-                      <Badge color="amber">Checked in — {r.campName}</Badge>
+                      <Badge color="amber" dot>
+                        Checked in — {r.campName}
+                      </Badge>
                     ) : (
                       <Badge color="slate">Not checked in</Badge>
                     )}
@@ -122,9 +196,9 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-muted">
-            Every registered employee already has a bed.
+        {visible.length === 0 && (
+          <p className="empty-state px-4 py-10 text-center text-sm text-muted">
+            {rows.length === 0 ? "Every registered employee already has a bed." : "Nothing matches this filter."}
           </p>
         )}
       </div>

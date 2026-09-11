@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { PageHeader } from "@/components/PageHeader";
+import { StatTile } from "@/components/StatTile";
+import { Users, LogIn, Clock } from "lucide-react";
 import { CheckInTable } from "./checkin-table";
 
 export default async function CheckInPage() {
@@ -14,7 +17,8 @@ export default async function CheckInPage() {
         name: true,
         employeeIdNo: true,
         nationality: true,
-        supplier: { select: { name: true } },
+        supplier: { select: { name: true, code: true } },
+        project: { select: { code: true, name: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -45,6 +49,9 @@ export default async function CheckInPage() {
       employeeIdNo: e.employeeIdNo,
       nationality: e.nationality,
       supplierName: e.supplier?.name ?? null,
+      supplierCode: e.supplier?.code ?? null,
+      projectCode: e.project?.code ?? null,
+      projectName: e.project?.name ?? null,
       checkInId: openCheckIn?.id ?? null,
       campName: openCheckIn?.camp.name ?? null,
       campId: openCheckIn?.campId ?? null,
@@ -64,15 +71,30 @@ export default async function CheckInPage() {
     };
   });
 
+  const notCheckedIn = rows.filter((r) => !r.checkInId).length;
+  const awaitingBed = rows.length - notCheckedIn;
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">
-          Create Check-In
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Registered employees with no bed allocated yet. Check them into a camp, then allocate a bed under Bed Allocation.
-        </p>
+      <PageHeader
+        title="Create Check-In"
+        description="Registered employees with no bed allocated yet. Check them into a camp, then allocate a bed under Bed Allocation."
+        meta={
+          <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
+            {rows.length}
+          </span>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile label="Without a Bed" value={rows.length} icon={Users} />
+        <StatTile label="Not Checked In" value={notCheckedIn} icon={LogIn} />
+        <StatTile
+          label="Awaiting Bed"
+          value={awaitingBed}
+          icon={Clock}
+          tone={awaitingBed > 0 ? "warning" : "default"}
+        />
       </div>
 
       <CheckInTable rows={rows} camps={campOptions} />

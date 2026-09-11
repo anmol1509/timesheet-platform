@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const checkIns = await prisma.campCheckIn.findMany({
     where: { id: { in: ids } },
     include: {
-      employee: { select: { name: true, nationality: true, branchId: true, supplier: true } },
+      employee: { select: { name: true, nationality: true, branchId: true, supplier: true, project: { select: { code: true, name: true } } } },
       camp: { select: { name: true, ownerType: true } },
     },
     orderBy: { checkInNo: "asc" },
@@ -46,7 +46,12 @@ export async function GET(request: Request) {
       checkInNo: `CHK-${String(c.checkInNo).padStart(5, "0")}`,
       employeeName: c.employee.name,
       nationality: c.employee.nationality,
-      supplierName: c.employee.supplier?.name ?? null,
+      projectName: c.employee.project
+        ? `${c.employee.project.name}${c.employee.project.code ? ` (${c.employee.project.code})` : ""}`
+        : null,
+      supplierName: c.employee.supplier
+        ? `${c.employee.supplier.name}${c.employee.supplier.code ? ` (${c.employee.supplier.code})` : ""}`
+        : null,
       coordinator: c.employee.supplier?.coordinatorName ?? null,
       status: STATUS_LABEL[c.status] ?? c.status,
     })),

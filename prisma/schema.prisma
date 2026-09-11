@@ -133,6 +133,7 @@ model UploadMonth {
 model Supplier {
   id        String   @id @default(cuid())
   name      String   @unique
+  code      String? @unique
   fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
   createdAt DateTime @default(now())
 
