@@ -22,11 +22,13 @@ import { cn } from "@/lib/cn";
  */
 export function AppShell({
   isAdmin,
+  isSuperAdmin,
   defaultCollapsed,
   header,
   children,
 }: {
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   defaultCollapsed: boolean;
   header: React.ReactNode;
   children: React.ReactNode;
@@ -96,7 +98,7 @@ export function AppShell({
               Navigation
             </p>
           )}
-          <NavLinks isAdmin={isAdmin} collapsed={collapsed} />
+          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} collapsed={collapsed} />
         </div>
 
         {collapsed && (

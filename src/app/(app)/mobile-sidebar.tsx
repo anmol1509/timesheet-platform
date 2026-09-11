@@ -6,7 +6,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
 import { NavLinks } from "./nav-links";
 
-export function MobileSidebar({ isAdmin }: { isAdmin: boolean }) {
+export function MobileSidebar({ isAdmin, isSuperAdmin }: { isAdmin: boolean; isSuperAdmin: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -59,7 +59,7 @@ export function MobileSidebar({ isAdmin }: { isAdmin: boolean }) {
             <p className="px-2.5 pb-1.5 text-[10px] font-semibold tracking-wider text-subtle uppercase">
               Navigation
             </p>
-            <NavLinks isAdmin={isAdmin} />
+            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

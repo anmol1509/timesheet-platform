@@ -21,6 +21,14 @@ export async function requireAdmin() {
   return user;
 }
 
+// Stricter than requireAdmin: for actions a BRANCH_ADMIN should never reach,
+// like bulk data reset.
+export async function requireSuperAdmin() {
+  const user = await requireUser();
+  if (user.role !== "SUPER_ADMIN") redirect("/");
+  return user;
+}
+
 // The one place every branch-scoped page/action should start from. Resolves
 // which branch the current request should operate on:
 // - SUPER_ADMIN has no home branch; sees whichever branch they last picked

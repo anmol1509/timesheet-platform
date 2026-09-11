@@ -29,7 +29,7 @@ export default async function AppLayout({
   const header = (
     <header className="sticky top-0 z-30 border-b border-default bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-        <MobileSidebar isAdmin={isAdmin} />
+        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
         <div className="min-w-0 flex-1">
           <GlobalSearch />
         </div>
@@ -56,6 +56,7 @@ export default async function AppLayout({
     <ToastProvider>
       <AppShell
         isAdmin={isAdmin}
+        isSuperAdmin={isSuperAdmin}
         defaultCollapsed={sidebarCollapsed}
         header={header}
       >

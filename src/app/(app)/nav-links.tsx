@@ -36,6 +36,7 @@ import {
   FilePlus2,
   HardHat,
   FileStack,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -160,16 +161,23 @@ const NAV: Entry[] = [
 
 const ADMIN_ITEM: Item = { href: "/settings", label: "Settings", icon: SettingsIcon };
 
-const ADMIN_GROUP: Entry = {
-  type: "group",
-  label: "Administration",
-  icon: ListChecks,
-  children: [
-    { href: "/lookups", label: "Lookups", icon: ListChecks },
-    { href: "/letter-templates", label: "Letter Templates", icon: FileText },
-    { href: "/audit-log", label: "Audit Log", icon: History },
-  ],
-};
+function adminGroup(isSuperAdmin: boolean): Entry {
+  return {
+    type: "group",
+    label: "Administration",
+    icon: ListChecks,
+    children: [
+      { href: "/lookups", label: "Lookups", icon: ListChecks },
+      { href: "/letter-templates", label: "Letter Templates", icon: FileText },
+      { href: "/audit-log", label: "Audit Log", icon: History },
+      // Deletes real data — kept out of the nav (and the page itself
+      // redirects away) for anyone but a Super Admin.
+      ...(isSuperAdmin
+        ? [{ href: "/settings/data-reset", label: "Data Reset", icon: Trash2 }]
+        : []),
+    ],
+  };
+}
 
 function isActive(pathname: string, href: string, exact = false) {
   if (href === "/" || exact) return pathname === href;
@@ -191,14 +199,16 @@ const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
 
 export function NavLinks({
   isAdmin,
+  isSuperAdmin,
   collapsed = false,
 }: {
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   /** Icon-rail mode. Groups flatten to their icon with a hover tooltip. */
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
-  const entries = isAdmin ? [...NAV, ADMIN_GROUP] : NAV;
+  const entries = isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV;
 
   // Only records groups the user explicitly toggled. Whether a group is *open*
   // is derived below, so navigating into a group (via search or a deep link)
