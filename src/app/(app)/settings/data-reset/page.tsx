@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { requireUserWithBranch } from "@/lib/auth";
 import { RESET_MODULES } from "@/lib/dataReset";
 import { ResetModuleCard } from "./reset-module-card";
+import { ResetAllCard } from "./reset-all-card";
 
 export default async function DataResetPage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -46,6 +47,8 @@ export default async function DataResetPage() {
           switcher (top right) to scope a reset to just that branch instead.
         </p>
       )}
+
+      <ResetAllCard totalCount={modules.reduce((sum, m) => sum + m.count, 0)} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {modules.map((m) => (

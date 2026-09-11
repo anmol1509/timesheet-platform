@@ -3,13 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { requireUserWithBranch } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { RESET_MODULES } from "@/lib/dataReset";
+import { prisma } from "@/lib/db";
+import { RESET_MODULES, SAFE_RESET_ORDER } from "@/lib/dataReset";
+
+function checkAccess(role: string) {
+  return role === "SUPER_ADMIN";
+}
 
 export async function resetModuleAction(
   formData: FormData
 ): Promise<{ counts: Record<string, number> } | { error: string }> {
   const { user, branchId } = await requireUserWithBranch();
-  if (user.role !== "SUPER_ADMIN") {
+  if (!checkAccess(user.role)) {
     return { error: "Only a Super Admin can reset data." };
   }
 
@@ -38,7 +43,7 @@ export async function resetModuleAction(
 
   let counts: Record<string, number>;
   try {
-    counts = await mod.run(branchId);
+    counts = await prisma.$transaction((tx) => mod.run(branchId, tx), { timeout: 20000 });
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     return {
@@ -58,4 +63,58 @@ export async function resetModuleAction(
 
   revalidatePath("/settings/data-reset");
   return { counts };
+}
+
+// Resets every module in one shot, in SAFE_RESET_ORDER, inside a single
+// transaction — either everything deletes, or (any module's foreign-key
+// conflict, which shouldn't happen given the order, but data can always
+// surprise you) nothing does. Deliberately its own stronger confirmation
+// phrase, not just each module's name, since this is irreversibly clearing
+// nearly the entire database at once.
+export async function resetAllAction(
+  formData: FormData
+): Promise<{ counts: Record<string, Record<string, number>> } | { error: string }> {
+  const { user, branchId } = await requireUserWithBranch();
+  if (!checkAccess(user.role)) {
+    return { error: "Only a Super Admin can reset data." };
+  }
+
+  const confirmText = String(formData.get("confirmText") || "").trim();
+  const acknowledgeGlobal = formData.get("acknowledgeGlobal") === "true";
+
+  if (confirmText.toUpperCase() !== "RESET ALL") {
+    return { error: 'Type "RESET ALL" exactly to confirm.' };
+  }
+  if (!acknowledgeGlobal) {
+    return { error: "Confirm you understand this deletes every module's data, including modules that affect every branch." };
+  }
+
+  let allCounts: Record<string, Record<string, number>>;
+  try {
+    allCounts = await prisma.$transaction(async (tx) => {
+      const results: Record<string, Record<string, number>> = {};
+      for (const id of SAFE_RESET_ORDER) {
+        const mod = RESET_MODULES.find((m) => m.id === id);
+        if (!mod) continue;
+        results[mod.label] = await mod.run(mod.branchScoped ? branchId : null, tx);
+      }
+      return results;
+    }, { timeout: 60000 });
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return { error: `Reset All failed partway through — nothing was deleted (the whole thing is one transaction). (${detail})` };
+  }
+
+  await logAudit({
+    entityType: "DATA_RESET",
+    entityId: "ALL",
+    action: "DELETE",
+    after: allCounts,
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath("/settings/data-reset");
+  return { counts: allCounts };
 }
