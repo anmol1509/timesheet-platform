@@ -27,6 +27,7 @@ type EmployeeRow = {
   emiratesId: string | null;
   nationality: string | null;
   companyDisplayName: string | null;
+  isOwnCompanySupplier: boolean;
   onWork: boolean;
   status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
   worstStatus: ComplianceStatus;
@@ -40,6 +41,7 @@ type Filter =
   | "site-staff"
   | "staff"
   | "supplier-labour"
+  | "our-workers"
   | "idle"
   | "vacation"
   | "incomplete";
@@ -48,6 +50,7 @@ const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   "site-staff": "Site Staff",
   staff: "Staff",
   "supplier-labour": "Supplier Labour",
+  "our-workers": "Our Workers",
   idle: "Idle",
   vacation: "On Vacation",
   incomplete: "Incomplete",
@@ -99,6 +102,7 @@ export function EmployeeList({
     "site-staff",
     "staff",
     "supplier-labour",
+    "our-workers",
     "idle",
     "vacation",
     "incomplete",
@@ -123,6 +127,8 @@ export function EmployeeList({
         return employees.filter((e) => !e.companyDisplayName && e.category === "STAFF");
       case "supplier-labour":
         return employees.filter((e) => !!e.companyDisplayName);
+      case "our-workers":
+        return employees.filter((e) => e.isOwnCompanySupplier);
       case "idle":
         return employees.filter((e) => e.status === "IDLE");
       case "vacation":

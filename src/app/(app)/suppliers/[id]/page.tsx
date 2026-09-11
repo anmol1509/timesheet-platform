@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -98,6 +99,11 @@ export default async function SupplierDetailPage({
             <h1 className="text-xl tracking-tight text-primary font-semibold">
               {supplier.name}
             </h1>
+            {supplier.isOwnCompany && (
+              <span title="Own company">
+                <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" aria-label="Own company" />
+              </span>
+            )}
             {supplier.code && (
               <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
                 {supplier.code}

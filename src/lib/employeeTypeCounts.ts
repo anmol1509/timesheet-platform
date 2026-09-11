@@ -5,6 +5,11 @@ export type EmployeeTypeCounts = {
   siteStaff: number; // has a supplierId — supplier-sourced labour on a project
   officeStaff: number; // no supplierId, no projectId — own direct staff, on bench
   supplierLabour: number; // has a supplierId
+  // Subset of supplierLabour whose supplier is flagged isOwnCompany — one of
+  // our own entities rather than a third-party subcontractor. Not part of the
+  // mutually-exclusive siteStaff/officeStaff/supplierLabour partition (it
+  // overlaps with supplierLabour), shown as its own informational row.
+  ourWorkers: number;
   idle: number; // status IDLE
   onVacation: number; // status ON_VACATION
   active: number; // status ACTIVE
@@ -18,8 +23,9 @@ export async function getEmployeeTypeCounts(
   branchId: string | null
 ): Promise<EmployeeTypeCounts> {
   const where = branchWhere(branchId);
-  const [supplierLabour, siteStaff, officeStaff, statusCounts] = await Promise.all([
+  const [supplierLabour, ourWorkers, siteStaff, officeStaff, statusCounts] = await Promise.all([
     prisma.employee.count({ where: { ...where, supplierId: { not: null } } }),
+    prisma.employee.count({ where: { ...where, supplier: { isOwnCompany: true } } }),
     prisma.employee.count({
       where: { ...where, supplierId: null, category: "SITE_STAFF" },
     }),
@@ -39,6 +45,7 @@ export async function getEmployeeTypeCounts(
     siteStaff,
     officeStaff,
     supplierLabour,
+    ourWorkers,
     idle: byStatus.IDLE ?? 0,
     onVacation: byStatus.ON_VACATION ?? 0,
     active: byStatus.ACTIVE ?? 0,

@@ -5,11 +5,15 @@ const ROWS: { key: keyof EmployeeTypeCounts; label: string; color: string; filte
   { key: "siteStaff", label: "Site Staff", color: "bg-blue-500", filter: "site-staff" },
   { key: "officeStaff", label: "Staff", color: "bg-slate-400", filter: "staff" },
   { key: "supplierLabour", label: "Supplier Labour", color: "bg-emerald-500", filter: "supplier-labour" },
+  { key: "ourWorkers", label: "Our Workers", color: "bg-sky-500", filter: "our-workers" },
   { key: "idle", label: "Idle", color: "bg-amber-500", filter: "idle" },
   { key: "onVacation", label: "Vacation", color: "bg-violet-500", filter: "vacation" },
 ];
 
 export function EmployeeTypeBreakdown({ counts }: { counts: EmployeeTypeCounts }) {
+  // ourWorkers is a subset of supplierLabour (suppliers flagged isOwnCompany),
+  // not a fourth exclusive bucket, so it's deliberately left out of the
+  // partition total below — its own bar still reads against that same total.
   const total = counts.siteStaff + counts.officeStaff + counts.supplierLabour;
   return (
     <div className="space-y-2.5">

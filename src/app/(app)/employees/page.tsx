@@ -65,6 +65,7 @@ export default async function EmployeesPage({
       emiratesId: e.emiratesId,
       nationality: e.nationality,
       companyDisplayName: e.supplier?.parent?.name ?? e.supplier?.name ?? null,
+      isOwnCompanySupplier: !!e.supplier?.isOwnCompany,
       onWork: e.active && e.project != null,
       status: e.status,
       worstStatus,

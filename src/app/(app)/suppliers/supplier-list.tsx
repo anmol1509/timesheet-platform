@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ChevronRight, Download, Pencil } from "lucide-react";
+import { BadgeCheck, ChevronRight, Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -22,6 +22,7 @@ type SupplierRow = {
   contactPerson: string | null;
   contactPhone: string | null;
   status: string;
+  isOwnCompany: boolean;
   parentName: string | null;
   parentId: string | null;
   branchId: string | null;
@@ -194,6 +195,11 @@ export function SupplierList({
                     <Link href={`/suppliers/${row.id}`} className="hover:underline">
                       {row.name}
                     </Link>
+                    {row.isOwnCompany && (
+                      <span title="Own company">
+                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" aria-label="Own company" />
+                      </span>
+                    )}
                     {!isChild && children.length > 0 && (
                       <span className="text-xs font-normal text-subtle">
                         {children.length} subsidiar{children.length === 1 ? "y" : "ies"}
