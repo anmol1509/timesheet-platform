@@ -299,11 +299,20 @@ export async function unallocateEmployeeAction(formData: FormData) {
 
   const allocation = await prisma.demandRequestAllocation.findUnique({
     where: { id: allocationId },
-    include: { demandRequestTrade: { include: { demandRequest: true } } },
+    include: {
+      demandRequestTrade: { include: { demandRequest: true } },
+      employee: { select: { status: true } },
+    },
   });
   if (!allocation || isOutsideBranch(allocation.demandRequestTrade.demandRequest.branchId, branchId, isSuperAdmin)) {
     return;
   }
+  // Once Site Arrival (or attendance) has confirmed them, removing the
+  // allocation here would strand a worker who's actually on site with
+  // nothing behind them — that has to go through Demobilisation instead,
+  // which closes the placement properly. The UI already hides this button
+  // past that point; this is the server-side half of the same rule.
+  if (allocation.employee.status !== "UNDER_MOBILISATION") return;
 
   await prisma.demandRequestAllocation.delete({ where: { id: allocationId } });
 

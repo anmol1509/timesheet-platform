@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRightLeft, Check } from "lucide-react";
+import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { approvalStateOf, approvedHeadcount } from "@/lib/demandApproval";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -21,7 +22,7 @@ type Line = {
   approvedQuantity: number | null;
   quantity: number;
   shift: string | null;
-  assigned: { id: string; employeeId: string; name: string; employeeIdNo: string }[];
+  assigned: { id: string; employeeId: string; name: string; employeeIdNo: string; status: string }[];
 };
 
 type Worker = {
@@ -208,27 +209,39 @@ export function MobilisationBoard({
               Mobilised for {activeLine.trade}
             </h3>
             <ul className="divide-y divide-[var(--border)]">
-              {activeLine.assigned.map((a) => (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <Link
-                    href={`/employees/${a.employeeId}`}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    {a.name}
-                    <span className="tabular ml-2 text-xs text-subtle">
-                      {a.employeeIdNo}
-                    </span>
-                  </Link>
-                  <button
-                    type="button"
-                    disabled={locked || pending}
-                    onClick={() => unassign(a.id)}
-                    className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
+              {activeLine.assigned.map((a) => {
+                // Once Site Arrival has confirmed them (ON_SITE) or attendance
+                // has (ACTIVE), removing them here would silently strand a
+                // worker who's actually on site with no allocation behind
+                // them — that has to go through Demobilisation instead, which
+                // closes the placement properly.
+                const confirmed = a.status !== "UNDER_MOBILISATION";
+                return (
+                  <li key={a.id} className="flex items-center justify-between py-2">
+                    <Link
+                      href={`/employees/${a.employeeId}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {a.name}
+                      <span className="tabular ml-2 text-xs text-subtle">
+                        {a.employeeIdNo}
+                      </span>
+                    </Link>
+                    {confirmed ? (
+                      <Badge color="green">Confirmed on site</Badge>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={locked || pending}
+                        onClick={() => unassign(a.id)}
+                        className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

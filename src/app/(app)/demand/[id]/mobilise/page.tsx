@@ -90,6 +90,7 @@ export default async function MobilisePage({
             employeeId: a.employeeId,
             name: a.employee.name,
             employeeIdNo: a.employee.employeeIdNo,
+            status: a.employee.status,
           })),
         }))}
         workers={idleWorkers.map((w) => ({
