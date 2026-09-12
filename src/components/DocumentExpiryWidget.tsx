@@ -31,10 +31,10 @@ export function DocumentExpiryWidget({
           <Link
             key={c.category}
             href={HREFS[c.category] ?? "/documents"}
-            className="block rounded-2xl border border-default bg-surface p-4 transition hover:border-strong hover:shadow-md"
+            className="block rounded-card border border-default bg-surface p-4 transition hover:border-strong hover:shadow-sm"
           >
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-muted">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface-sunken text-muted">
                 <Icon className="h-4 w-4" />
               </span>
               <div className="min-w-0">

@@ -8,6 +8,7 @@ import {
   SKILL_LEVEL_STEP,
   skillLevelLabel,
 } from "@/lib/skillLevel";
+import { Slider } from "@/components/ui/Slider";
 import { addSkillAction, removeSkillAction } from "./actions";
 
 type SkillRow = {
@@ -64,26 +65,19 @@ export function SkillsSection({
               className="input w-full"
             />
           </div>
-          {/* Slider, range and wording all match the registration wizard —
-              the two screens write the same column. */}
-          <div className="w-44">
-            <span className="mb-1 flex items-center justify-between text-xs font-medium text-muted">
-              <span>Level</span>
-              <span className="text-secondary">
-                {skillLevelLabel(level)} · {level}%
-              </span>
-            </span>
-            <input
-              type="range"
-              min={SKILL_LEVEL_MIN}
-              max={SKILL_LEVEL_MAX}
-              step={SKILL_LEVEL_STEP}
-              value={level}
-              onChange={(e) => setLevel(Number(e.target.value))}
-              aria-label="Trade level"
-              className="mt-2.5 w-full accent-[var(--brand-primary)]"
-            />
-          </div>
+          {/* Range and wording match the registration wizard — the two
+              screens write the same column. */}
+          <Slider
+            className="w-44"
+            label="Level"
+            valueLabel={`${skillLevelLabel(level)} · ${level}%`}
+            min={SKILL_LEVEL_MIN}
+            max={SKILL_LEVEL_MAX}
+            step={SKILL_LEVEL_STEP}
+            value={level}
+            onChange={setLevel}
+            ariaLabel="Trade level"
+          />
           <div className="w-28">
             <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
             <input

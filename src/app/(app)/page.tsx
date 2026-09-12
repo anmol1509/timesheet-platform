@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
 import { getLpoAlerts } from "@/lib/lpoAlerts";
 import { getWeeklyHours } from "@/lib/weeklyHours";
+import { getHoursSplit } from "@/lib/attendanceHours";
+import { getTimesheetPipeline } from "@/lib/timesheetPipeline";
+import { getComplianceRunway } from "@/lib/complianceRunway";
 import { getAssignedStaff } from "@/lib/assignedStaff";
 import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
@@ -11,12 +14,25 @@ import { getEntityCounts } from "@/lib/entityCounts";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { DASHBOARD_WIDGETS, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
+import { DashboardTabs } from "@/components/DashboardTabs";
 import { CustomizeDashboardButton } from "./customize-dashboard";
 import { UserPlus, Upload as UploadIcon } from "lucide-react";
+
+function greeting() {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Asia/Dubai" }).format(
+      new Date()
+    )
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 export default async function DashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
+  const firstName = user.name.trim().split(/\s+/)[0];
 
   const [
     employeeCount,
@@ -26,6 +42,9 @@ export default async function DashboardPage() {
     alerts,
     lpoAlerts,
     weeklyHours,
+    hoursSplit,
+    timesheetPipeline,
+    complianceRunway,
     assignedStaff,
     beds,
     latestUpload,
@@ -44,6 +63,9 @@ export default async function DashboardPage() {
     getComplianceAlerts(branchId),
     getLpoAlerts(branchId),
     getWeeklyHours(branchId),
+    getHoursSplit(branchId),
+    getTimesheetPipeline(branchId),
+    getComplianceRunway(branchId),
     getAssignedStaff(4, branchId),
     // Camp/Room/Bed aren't branch-scoped yet (deferred to a later phase),
     // so occupancy stays cross-branch for now.
@@ -118,6 +140,9 @@ export default async function DashboardPage() {
     expiredCount,
     attention,
     weeklyHours,
+    hoursSplit,
+    timesheetPipeline,
+    complianceRunway,
     documentExpiryCounts,
     employeeTypeCounts,
     entityCounts,
@@ -142,8 +167,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Dashboard"
-        description="Workforce, compliance and billing at a glance."
+        title={`${greeting()}, ${firstName}.`}
+        description="Here's what's happening across your workforce today."
         actions={
           <>
             <CustomizeDashboardButton
@@ -168,6 +193,8 @@ export default async function DashboardPage() {
           </>
         }
       />
+
+      <DashboardTabs />
 
       {visibleWidgets.map((widget) => (
         <div key={widget.id}>{widget.render(data)}</div>

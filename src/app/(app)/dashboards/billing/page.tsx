@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
@@ -36,7 +37,8 @@ export default async function BillingDashboardPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Billing Dashboard" description="Invoice status and outstanding balances." />
+      <PageHeader title="Dashboard" description="Invoice status and outstanding balances." />
+      <DashboardTabs />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile href="/invoices" label="Total Invoices" value={totalInvoices} icon={Receipt} />

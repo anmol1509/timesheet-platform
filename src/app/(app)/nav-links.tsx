@@ -24,7 +24,6 @@ import {
   GitCompareArrows,
   Receipt,
   Package,
-  Landmark,
   Wallet,
   ListChecks,
   History,
@@ -52,19 +51,33 @@ type Item = {
    * /demand/new and /demand/mobilisation.
    */
   exact?: boolean;
+  /**
+   * Extra path prefixes this entry owns. The per-module dashboards live under
+   * /dashboards/* but are reached as tabs of this one row, so they light it up.
+   */
+  alsoMatch?: string[];
 };
 type Entry =
-  | { type: "link"; item: Item }
-  | { type: "group"; label: string; icon: LucideIcon; children: Item[] };
+  | { type: "link"; item: Item; category: string }
+  | { type: "group"; label: string; icon: LucideIcon; children: Item[]; category: string };
 
 const NAV: Entry[] = [
-  { type: "link", item: { href: "/", label: "Dashboard", icon: LayoutDashboard } },
+  {
+    type: "link",
+    item: {
+      href: "/",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      alsoMatch: ["/dashboards"],
+    },
+    category: "Workspace",
+  },
   {
     type: "group",
     label: "Workforce",
     icon: Users,
+    category: "Operations",
     children: [
-      { href: "/dashboards/workforce", label: "Dashboard", icon: LayoutDashboard },
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
@@ -74,31 +87,10 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
-    label: "Business Partners",
-    icon: Building2,
-    children: [
-      { href: "/dashboards/business-partners", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/clients", label: "Clients", icon: Building2 },
-      { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/banks", label: "Banks", icon: Wallet },
-    ],
-  },
-  {
-    type: "group",
-    label: "Sales",
-    icon: BadgeDollarSign,
-    children: [
-      { href: "/dashboards/sales", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/sales/enquiries", label: "Enquiries", icon: FileQuestion },
-      { href: "/sales/quotations", label: "Quotations", icon: FileSignature },
-    ],
-  },
-  {
-    type: "group",
     label: "Projects",
     icon: ClipboardList,
+    category: "Operations",
     children: [
-      { href: "/dashboards/projects", label: "Dashboard", icon: LayoutDashboard },
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/sites", label: "Sites", icon: MapPin },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
@@ -108,8 +100,8 @@ const NAV: Entry[] = [
     type: "group",
     label: "Demand",
     icon: ListChecks,
+    category: "Operations",
     children: [
-      { href: "/dashboards/demand", label: "Dashboard", icon: LayoutDashboard },
       { href: "/demand/new", label: "Create Demand", icon: FilePlus2 },
       { href: "/demand", label: "View Demands", icon: ListChecks, exact: true },
       { href: "/demand/mobilisation", label: "Mobilization", icon: HardHat },
@@ -122,8 +114,8 @@ const NAV: Entry[] = [
     type: "group",
     label: "Facilities",
     icon: BedDouble,
+    category: "Operations",
     children: [
-      { href: "/dashboards/facilities", label: "Dashboard", icon: LayoutDashboard },
       { href: "/accommodation/camps", label: "Camps", icon: BedDouble },
       { href: "/accommodation/checkin", label: "Create Check-In", icon: FilePlus2 },
       { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
@@ -136,8 +128,8 @@ const NAV: Entry[] = [
     type: "group",
     label: "Timesheets",
     icon: FileSpreadsheet,
+    category: "Operations",
     children: [
-      { href: "/dashboards/timesheets", label: "Dashboard", icon: LayoutDashboard },
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
       {
         href: "/invoices/client-timesheet",
@@ -157,10 +149,31 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
+    label: "Business Partners",
+    icon: Building2,
+    category: "Commercial",
+    children: [
+      { href: "/clients", label: "Clients", icon: Building2 },
+      { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/banks", label: "Banks", icon: Wallet },
+    ],
+  },
+  {
+    type: "group",
+    label: "Sales",
+    icon: BadgeDollarSign,
+    category: "Commercial",
+    children: [
+      { href: "/sales/enquiries", label: "Enquiries", icon: FileQuestion },
+      { href: "/sales/quotations", label: "Quotations", icon: FileSignature },
+    ],
+  },
+  {
+    type: "group",
     label: "Billing",
     icon: Receipt,
+    category: "Commercial",
     children: [
-      { href: "/dashboards/billing", label: "Dashboard", icon: LayoutDashboard },
       { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/invoices/history", label: "Invoice History", icon: Clock },
     ],
@@ -174,6 +187,7 @@ function adminGroup(isSuperAdmin: boolean): Entry {
     type: "group",
     label: "Administration",
     icon: ListChecks,
+    category: "Administration",
     children: [
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },
@@ -187,7 +201,8 @@ function adminGroup(isSuperAdmin: boolean): Entry {
   };
 }
 
-function isActive(pathname: string, href: string, exact = false) {
+function isActive(pathname: string, href: string, exact = false, alsoMatch?: string[]) {
+  if (alsoMatch?.some((p) => pathname === p || pathname.startsWith(p + "/"))) return true;
   if (href === "/" || exact) return pathname === href;
   return pathname === href || pathname.startsWith(href + "/");
 }
@@ -195,7 +210,7 @@ function isActive(pathname: string, href: string, exact = false) {
 function groupContainsActive(pathname: string, children: Item[]) {
   // Deliberately ignores `exact`: a group should stay open anywhere inside its
   // section, including detail pages like /demand/<id> that no child matches.
-  return children.some((c) => isActive(pathname, c.href));
+  return children.some((c) => isActive(pathname, c.href, false, c.alsoMatch));
 }
 
 // Active state reads as "selected", not as a coloured button: a tinted surface
@@ -238,7 +253,7 @@ export function NavLinks({
   }
 
   function renderLeaf(item: Item, depth: 0 | 1) {
-    const active = isActive(pathname, item.href, item.exact);
+    const active = isActive(pathname, item.href, item.exact, item.alsoMatch);
     const Icon = item.icon;
 
     if (collapsed) {
@@ -282,8 +297,28 @@ export function NavLinks({
 
   return (
     <nav className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
-      {entries.map((entry) => {
-        if (entry.type === "link") return renderLeaf(entry.item, 0);
+      {entries.map((entry, i) => {
+        const showCategory = !collapsed && entry.category !== entries[i - 1]?.category;
+        const categoryHeader = showCategory && (
+          <p
+            key={`cat-${entry.category}`}
+            className={cn(
+              "px-2.5 pt-3 pb-1 text-[10px] font-semibold tracking-wider text-subtle uppercase",
+              i === 0 && "pt-1"
+            )}
+          >
+            {entry.category}
+          </p>
+        );
+
+        if (entry.type === "link") {
+          return (
+            <div key={entry.item.href} className="contents">
+              {categoryHeader}
+              {renderLeaf(entry.item, 0)}
+            </div>
+          );
+        }
 
         const GroupIcon = entry.icon;
         const open = isOpen(entry.label, entry.children);
@@ -304,7 +339,9 @@ export function NavLinks({
         }
 
         return (
-          <div key={entry.label}>
+          <div key={entry.label} className="contents">
+            {categoryHeader}
+            <div>
             <button
               type="button"
               onClick={() => toggle(entry.label, entry.children)}
@@ -338,6 +375,7 @@ export function NavLinks({
                 {entry.children.map((child) => renderLeaf(child, 1))}
               </div>
             )}
+            </div>
           </div>
         );
       })}

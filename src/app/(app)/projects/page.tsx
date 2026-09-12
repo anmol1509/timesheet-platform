@@ -1,6 +1,7 @@
-import Link from "next/link";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -39,20 +40,21 @@ export default async function ProjectsPage({
           {error}
         </p>
       )}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Projects</h1>
-          <p className="mt-1 text-sm text-muted">
-            Track active work sites and who&rsquo;s managing them.
-          </p>
-        </div>
-        <Link
-          href="/projects/new"
-          className="btn btn-primary"
-        >
-          + Add Project
-        </Link>
-      </div>
+      <PageHeader
+        title="Projects"
+        description="Track active work sites and who's managing them."
+        meta={
+          <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
+            {rows.length}
+          </span>
+        }
+        actions={
+          <Button href="/projects/new" size="sm">
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add project
+          </Button>
+        }
+      />
 
       {rows.length === 0 ? (
         <EmptyState
@@ -60,9 +62,9 @@ export default async function ProjectsPage({
           title="No projects yet"
           description="Projects are where workers get deployed and hours get billed. Create one to assign labour, track LPOs, and generate client timesheets."
           action={
-            <Link href="/projects/new" className="btn btn-primary btn-sm">
+            <Button href="/projects/new" size="sm">
               Add project
-            </Link>
+            </Button>
           }
         />
       ) : (

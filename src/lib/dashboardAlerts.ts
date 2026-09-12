@@ -16,6 +16,9 @@ export async function getComplianceAlerts(
 ): Promise<ComplianceAlert[]> {
   const employees = await prisma.employee.findMany({
     where: branchWhere(branchId),
+    // Every column COMPLIANCE_FIELDS iterates must be selected: an unselected
+    // one arrives as undefined and is skipped silently, so a missing field
+    // here reads as "nothing is expiring" rather than as an error.
     select: {
       id: true,
       name: true,
@@ -24,6 +27,9 @@ export async function getComplianceAlerts(
       medicalExpiry: true,
       passportExpiry: true,
       emiratesIdExpiry: true,
+      cicpaExpiry: true,
+      insuranceExpiry: true,
+      drivingLicenceExpiry: true,
     },
   });
 

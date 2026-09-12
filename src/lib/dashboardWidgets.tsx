@@ -18,6 +18,12 @@ import { WeeklyHoursChart } from "@/components/WeeklyHoursChart";
 import { AssignedStaffList } from "@/components/AssignedStaffList";
 import { DocumentExpiryWidget } from "@/components/DocumentExpiryWidget";
 import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
+import { ComplianceRunway } from "@/components/ComplianceRunway";
+import { HoursSplitChart } from "@/components/HoursSplitChart";
+import { TimesheetPipelineChart } from "@/components/TimesheetPipelineChart";
+import type { ComplianceRunway as Runway } from "@/lib/complianceRunway";
+import type { HoursSplit } from "@/lib/attendanceHours";
+import type { TimesheetPipeline } from "@/lib/timesheetPipeline";
 import type { ComplianceAlert } from "@/lib/dashboardAlerts";
 import type { LpoAlert } from "@/lib/lpoAlerts";
 import type { WeeklyHoursDay } from "@/lib/weeklyHours";
@@ -54,6 +60,9 @@ export type DashboardData = {
   expiredCount: number;
   attention: AttentionItem[];
   weeklyHours: WeeklyHoursDay[];
+  hoursSplit: HoursSplit;
+  timesheetPipeline: TimesheetPipeline;
+  complianceRunway: Runway;
   documentExpiryCounts: DocumentExpiryCategory[];
   employeeTypeCounts: EmployeeTypeCounts;
   entityCounts: EntityCounts;
@@ -119,8 +128,13 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     label: "Hours trend + Needs attention queue",
     render: (d) => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Hours this month by weekday" className="lg:col-span-2" href="/history" linkLabel="History">
-          <WeeklyHoursChart days={d.weeklyHours} />
+        <Panel
+          title="Hours — normal vs overtime"
+          className="lg:col-span-2"
+          href="/attendance"
+          linkLabel="Attendance"
+        >
+          <HoursSplitChart split={d.hoursSplit} />
         </Panel>
 
         <Panel
@@ -162,6 +176,40 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
           )}
         </Panel>
       </div>
+    ),
+  },
+  {
+    id: "timesheet-pipeline",
+    label: "Timesheet pipeline + Hours by weekday",
+    render: (d) => (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel
+          title="Timesheet pipeline"
+          className="lg:col-span-2"
+          href="/invoices/client-timesheet"
+          linkLabel="Open timesheets"
+        >
+          <TimesheetPipelineChart pipeline={d.timesheetPipeline} />
+        </Panel>
+
+        <Panel title="Hours by weekday" href="/history" linkLabel="History">
+          <WeeklyHoursChart days={d.weeklyHours} />
+        </Panel>
+      </div>
+    ),
+  },
+  {
+    id: "compliance-runway",
+    label: "Compliance runway (90-day document expiry)",
+    render: (d) => (
+      <Panel
+        title="Compliance runway"
+        icon={AlertTriangle}
+        href="/employees/renewals"
+        linkLabel="Renewals"
+      >
+        <ComplianceRunway runway={d.complianceRunway} />
+      </Panel>
     ),
   },
   {

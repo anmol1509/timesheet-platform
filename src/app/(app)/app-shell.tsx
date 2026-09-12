@@ -93,11 +93,6 @@ export function AppShell({
             collapsed ? "px-2" : "px-3"
           )}
         >
-          {!collapsed && (
-            <p className="px-2.5 pb-1.5 text-[10px] font-semibold tracking-wider text-subtle uppercase">
-              Navigation
-            </p>
-          )}
           <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} collapsed={collapsed} />
         </div>
 

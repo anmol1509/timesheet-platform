@@ -61,11 +61,16 @@ export async function getRenewals(
       id: true,
       name: true,
       employeeIdNo: true,
+      // Must cover every COMPLIANCE_FIELDS key — see the note in
+      // dashboardAlerts.ts: an unselected column is skipped silently.
       visaExpiry: true,
       laborCardExpiry: true,
       medicalExpiry: true,
       passportExpiry: true,
       emiratesIdExpiry: true,
+      cicpaExpiry: true,
+      insuranceExpiry: true,
+      drivingLicenceExpiry: true,
       supplier: { select: { name: true } },
       project: { select: { code: true, name: true } },
     },

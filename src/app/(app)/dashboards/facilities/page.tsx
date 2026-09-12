@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/DashboardPanel";
 import { OccupancyRing } from "@/components/OccupancyRing";
@@ -24,7 +25,8 @@ export default async function FacilitiesDashboardPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Facilities Dashboard" description="Accommodation occupancy and transport status." />
+      <PageHeader title="Dashboard" description="Accommodation occupancy and transport status." />
+      <DashboardTabs />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile href="/accommodation/camps" label="Camps" value={campCount} icon={Home} />

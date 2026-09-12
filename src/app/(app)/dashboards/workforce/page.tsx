@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/DashboardPanel";
 import { DocumentExpiryWidget } from "@/components/DocumentExpiryWidget";
 import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
+import { ComplianceRunway } from "@/components/ComplianceRunway";
+import { getComplianceRunway } from "@/lib/complianceRunway";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
 import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
@@ -15,22 +18,31 @@ export default async function WorkforceDashboardPage() {
   const { branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
-  const [employeeCount, onWorkCount, terminatedCount, alerts, documentExpiryCounts, employeeTypeCounts] =
-    await Promise.all([
-      prisma.employee.count({ where: branchScope }),
-      prisma.employee.count({ where: { ...branchScope, active: true, projectId: { not: null } } }),
-      prisma.employee.count({ where: { ...branchScope, status: "TERMINATED" } }),
-      getComplianceAlerts(branchId),
-      getDocumentExpiryCounts(branchId),
-      getEmployeeTypeCounts(branchId),
-    ]);
+  const [
+    employeeCount,
+    onWorkCount,
+    terminatedCount,
+    alerts,
+    documentExpiryCounts,
+    employeeTypeCounts,
+    runway,
+  ] = await Promise.all([
+    prisma.employee.count({ where: branchScope }),
+    prisma.employee.count({ where: { ...branchScope, active: true, projectId: { not: null } } }),
+    prisma.employee.count({ where: { ...branchScope, status: "TERMINATED" } }),
+    getComplianceAlerts(branchId),
+    getDocumentExpiryCounts(branchId),
+    getEmployeeTypeCounts(branchId),
+    getComplianceRunway(branchId),
+  ]);
 
   const benchCount = employeeCount - onWorkCount;
   const expiredCount = alerts.filter((a) => a.days < 0).length;
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Workforce Dashboard" description="Headcount, deployment, and document compliance." />
+      <PageHeader title="Dashboard" description="Headcount, deployment, and document compliance." />
+      <DashboardTabs />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile href="/employees" label="Total Employees" value={employeeCount} icon={Users} />
@@ -45,6 +57,15 @@ export default async function WorkforceDashboardPage() {
         />
         <StatTile href="/employees" label="Terminated" value={terminatedCount} icon={UserX} />
       </div>
+
+      <Panel
+        title="Compliance runway"
+        icon={AlertTriangle}
+        href="/employees/renewals"
+        linkLabel="Renewals"
+      >
+        <ComplianceRunway runway={runway} />
+      </Panel>
 
       <section>
         <h2 className="mb-2.5 text-sm font-semibold text-primary">Document expiry</h2>

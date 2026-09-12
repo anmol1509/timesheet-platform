@@ -19,6 +19,7 @@ import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route"
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { PhoneInput } from "@/components/ui/PhoneInput";
+import { Slider } from "@/components/ui/Slider";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { cn } from "@/lib/cn";
 import { TRADES, RATE_TYPES, type RateType } from "@/lib/trades";
@@ -1349,15 +1350,14 @@ export function EmployeeWizard({
                       </button>
                     </div>
                   </div>
-                  <input
-                    type="range"
+                  <Slider
+                    className="mt-2"
                     min={SKILL_LEVEL_MIN}
                     max={SKILL_LEVEL_MAX}
                     step={SKILL_LEVEL_STEP}
                     value={skill.level}
-                    onChange={(e) => setSkillLevel(skill.name, Number(e.target.value))}
-                    aria-label={`${skill.name} level`}
-                    className="mt-2 w-full accent-[var(--brand-primary)]"
+                    onChange={(next) => setSkillLevel(skill.name, next)}
+                    ariaLabel={`${skill.name} level`}
                   />
 
                   {skill.isActive && (

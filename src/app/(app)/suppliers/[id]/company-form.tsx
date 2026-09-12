@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateSupplierCompanyAction } from "../actions";
 import { Select } from "@/components/ui/Select";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { Switch } from "@/components/ui/Switch";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 
 type Supplier = {
@@ -97,14 +99,13 @@ export function SupplierCompanyForm({
             className="input w-full"
           />
         </Field>
-        <Field label="Active from">
-          <input
+        <FieldBlock label="Active from">
+          <DatePicker
             name="activeFrom"
-            type="date"
             defaultValue={supplier.activeFrom}
-            className="input w-full"
+            ariaLabel="Active from"
           />
-        </Field>
+        </FieldBlock>
         <Field label="MOHRE manpower supply permit #">
           <input
             name="mohrePermitNumber"
@@ -119,14 +120,13 @@ export function SupplierCompanyForm({
             className="input w-full"
           />
         </Field>
-        <Field label="Trade license expiry">
-          <input
+        <FieldBlock label="Trade license expiry">
+          <DatePicker
             name="tradeLicenseExpiry"
-            type="date"
             defaultValue={supplier.tradeLicenseExpiry}
-            className="input w-full"
+            ariaLabel="Trade license expiry"
           />
-        </Field>
+        </FieldBlock>
         <Field label="Previous ID">
           <input
             name="previousId"
@@ -151,15 +151,15 @@ export function SupplierCompanyForm({
             className="input w-full"
           />
         </Field>
-        <Field label="Supplier amount limit (credit limit)">
-          <input
+        <FieldBlock label="Supplier amount limit (credit limit)">
+          <NumberInput
             name="supplierAmountLimit"
-            type="number"
-            step="0.01"
             defaultValue={supplier.supplierAmountLimit ?? ""}
-            className="input w-full"
+            min={0}
+            step={0.01}
+            ariaLabel="Supplier amount limit"
           />
-        </Field>
+        </FieldBlock>
         <Field label="Account (reference only)">
           <input
             name="account"
@@ -167,19 +167,18 @@ export function SupplierCompanyForm({
             className="input w-full"
           />
         </Field>
-        {/* Our own entity or a third party: decides whose letterhead a
-            document is issued on, and who is billed rather than paid. */}
-        <CheckboxField
+        <SwitchField
           label="Our own company"
           name="isOwnCompany"
           defaultChecked={supplier.isOwnCompany}
+          description="Issues documents on our letterhead, and bills this entity rather than paying it."
         />
-        <CheckboxField
+        <SwitchField
           label="Allow manual labour ID"
           name="allowManualLabourId"
           defaultChecked={supplier.allowManualLabourId}
         />
-        <CheckboxField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} />
+        <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} />
       </div>
 
       <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
@@ -196,18 +195,46 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function CheckboxField({
+/**
+ * Field for a control that contains its own button (DatePicker) or several
+ * inputs (NumberInput) — those can't sit inside a <label>, whose click would
+ * be forwarded to the first labelable descendant. The control carries its own
+ * accessible name via ariaLabel instead.
+ */
+function FieldBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A supplier setting that takes effect on its own, so it reads as a switch
+ * rather than a checkbox. Unchecked switches submit nothing, which is what
+ * the `=== "on"` parse in the save action expects.
+ */
+function SwitchField({
   label,
   name,
   defaultChecked,
+  description,
 }: {
   label: string;
   name: string;
   defaultChecked: boolean;
+  description?: string;
 }) {
   return (
     <div className="pt-5">
-      <Checkbox name={name} value="on" defaultChecked={defaultChecked} label={label} />
+      <Switch
+        name={name}
+        value="on"
+        defaultChecked={defaultChecked}
+        label={label}
+        description={description}
+      />
     </div>
   );
 }

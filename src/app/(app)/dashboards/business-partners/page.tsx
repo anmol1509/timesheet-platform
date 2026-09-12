@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
@@ -32,7 +33,8 @@ export default async function BusinessPartnersDashboardPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Business Partners Dashboard" description="Suppliers and clients at a glance." />
+      <PageHeader title="Dashboard" description="Suppliers and clients at a glance." />
+      <DashboardTabs />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile href="/suppliers" label="Suppliers" value={supplierCount} icon={Truck} />
