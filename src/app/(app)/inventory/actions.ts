@@ -124,3 +124,93 @@ export async function deleteInventoryItemAction(formData: FormData) {
   redirect("/inventory");
 }
 
+export async function createVariantAction(
+  formData: FormData
+): Promise<{ error?: string } | void> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const itemId = String(formData.get("itemId") || "");
+  const name = String(formData.get("name") || "").trim();
+  const sku = stringOrNull(formData.get("sku"));
+  const stock = Math.max(0, Number(formData.get("stock")) || 0);
+  if (!itemId || !name) return { error: "Variant name is required." };
+  if (!(await assertItemInBranch(itemId, branchId, isSuperAdmin))) return;
+
+  const existing = await prisma.inventoryVariant.findUnique({
+    where: { itemId_name: { itemId, name } },
+  });
+  if (existing) return { error: `A variant named "${name}" already exists for this item.` };
+
+  const variant = await prisma.inventoryVariant.create({ data: { itemId, name, sku, stock } });
+
+  await logAudit({
+    entityType: "INVENTORY_VARIANT",
+    entityId: variant.id,
+    action: "CREATE",
+    after: { itemId, name, sku, stock },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/inventory/${itemId}`);
+}
+
+export async function updateVariantStockAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const variantId = String(formData.get("variantId") || "");
+  const stock = Math.max(0, Number(formData.get("stock")) || 0);
+  if (!variantId) return;
+
+  const existing = await prisma.inventoryVariant.findUnique({ where: { id: variantId } });
+  if (!existing || !(await assertItemInBranch(existing.itemId, branchId, isSuperAdmin))) return;
+
+  await prisma.inventoryVariant.update({ where: { id: variantId }, data: { stock } });
+
+  await logAudit({
+    entityType: "INVENTORY_VARIANT",
+    entityId: variantId,
+    action: "UPDATE",
+    before: { stock: existing.stock },
+    after: { stock },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/inventory/${existing.itemId}`);
+}
+
+export async function deleteVariantAction(formData: FormData) {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const variantId = String(formData.get("variantId") || "");
+  if (!variantId) return;
+
+  const existing = await prisma.inventoryVariant.findUnique({ where: { id: variantId } });
+  if (!existing || !(await assertItemInBranch(existing.itemId, branchId, isSuperAdmin))) return;
+
+  const heldCount = await prisma.employeeInventoryAssignment.count({
+    where: { variantId, returnDate: null },
+  });
+  if (heldCount > 0) {
+    redirect(
+      `/inventory/${existing.itemId}?error=${encodeURIComponent(
+        `Can't delete "${existing.name}" — ${heldCount} employee(s) still hold it. Return it first.`
+      )}`
+    );
+  }
+
+  await prisma.inventoryVariant.delete({ where: { id: variantId } });
+
+  await logAudit({
+    entityType: "INVENTORY_VARIANT",
+    entityId: variantId,
+    action: "DELETE",
+    before: { itemId: existing.itemId, name: existing.name, sku: existing.sku, stock: existing.stock },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath(`/inventory/${existing.itemId}`);
+}
+

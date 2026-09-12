@@ -7,6 +7,7 @@ import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { deleteInventoryItemAction } from "../actions";
 import { EditItemForm } from "./edit-form";
 import { EmployeeIssuanceSection } from "./employee-issuance-section";
+import { VariantsSection } from "./variants-section";
 
 export default async function InventoryItemPage({
   params,
@@ -23,9 +24,16 @@ export default async function InventoryItemPage({
     prisma.inventoryItem.findUnique({
       where: { id },
       include: {
+        variants: {
+          orderBy: { name: "asc" },
+          include: { assignments: { where: { returnDate: null }, select: { quantity: true } } },
+        },
         employeeAssignments: {
           orderBy: { issuedDate: "desc" },
-          include: { employee: { select: { id: true, name: true, employeeIdNo: true } } },
+          include: {
+            employee: { select: { id: true, name: true, employeeIdNo: true } },
+            variant: { select: { id: true, name: true } },
+          },
         },
       },
     }),
@@ -36,6 +44,14 @@ export default async function InventoryItemPage({
     }),
   ]);
   if (!item || isOutsideBranch(item.branchId, branchId, isSuperAdmin)) notFound();
+
+  const variants = item.variants.map((v) => ({
+    id: v.id,
+    name: v.name,
+    sku: v.sku,
+    stock: v.stock,
+    held: v.assignments.reduce((sum, a) => sum + a.quantity, 0),
+  }));
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -59,6 +75,8 @@ export default async function InventoryItemPage({
 
       <EditItemForm item={{ id: item.id, category: item.category, notes: item.notes }} />
 
+      <VariantsSection itemId={item.id} variants={variants} />
+
       <EmployeeIssuanceSection
         itemId={item.id}
         assignments={item.employeeAssignments.map((a) => ({
@@ -69,8 +87,10 @@ export default async function InventoryItemPage({
           condition: a.condition,
           notes: a.notes,
           employee: a.employee,
+          variant: a.variant,
         }))}
         employees={employees}
+        variants={variants.map((v) => ({ id: v.id, name: v.name, available: v.stock - v.held }))}
       />
     </div>
   );

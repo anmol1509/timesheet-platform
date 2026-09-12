@@ -584,7 +584,9 @@ export async function removeSkillAction(formData: FormData) {
  * visibility into repeated/unreturned issuance, not stopping a legitimate
  * replacement (lost helmet, worn-out gloves).
  */
-export async function issueEmployeeInventoryAction(formData: FormData) {
+export async function issueEmployeeInventoryAction(
+  formData: FormData
+): Promise<{ error?: string } | void> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const itemId = String(formData.get("itemId") || "");
@@ -597,17 +599,47 @@ export async function issueEmployeeInventoryAction(formData: FormData) {
   // Defaults to now (the model's own default) when left blank — issuance
   // isn't always logged the same day it happened.
   const issuedDate = dateOrNull(formData.get("issuedDate"));
+  const variantId = stringOrNull(formData.get("variantId"));
+
+  // A variant is required once the item has any — the whole point of
+  // variants is that "the item" alone no longer says which one is being
+  // handed out. An item with none keeps working exactly as before.
+  if (variantId) {
+    const variant = await prisma.inventoryVariant.findUnique({ where: { id: variantId } });
+    if (!variant || variant.itemId !== itemId) return { error: "That variant no longer exists." };
+    const held = await prisma.employeeInventoryAssignment.aggregate({
+      where: { variantId, returnDate: null },
+      _sum: { quantity: true },
+    });
+    const available = variant.stock - (held._sum.quantity ?? 0);
+    if (quantity > available) {
+      return { error: `Only ${available} of "${variant.name}" left in stock.` };
+    }
+  } else {
+    const variantCount = await prisma.inventoryVariant.count({ where: { itemId } });
+    if (variantCount > 0) return { error: "Select a variant before issuing this item." };
+  }
 
   const created = await prisma.employeeInventoryAssignment.create({
-    data: { employeeId, itemId, quantity, condition, notes, ...(issuedDate ? { issuedDate } : {}) },
-    include: { item: { select: { name: true } } },
+    data: { employeeId, itemId, variantId, quantity, condition, notes, ...(issuedDate ? { issuedDate } : {}) },
+    include: { item: { select: { name: true } }, variant: { select: { name: true } } },
   });
 
   await logAudit({
     entityType: "EMPLOYEE_INVENTORY_ASSIGNMENT",
     entityId: created.id,
     action: "CREATE",
-    after: { employeeId, itemId, itemName: created.item.name, quantity, condition, notes, issuedDate: created.issuedDate },
+    after: {
+      employeeId,
+      itemId,
+      itemName: created.item.name,
+      variantId,
+      variantName: created.variant?.name,
+      quantity,
+      condition,
+      notes,
+      issuedDate: created.issuedDate,
+    },
     userId: user.id,
     userName: user.name,
     branchId,

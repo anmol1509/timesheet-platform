@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
@@ -14,58 +14,67 @@ type Assignment = {
   condition: string | null;
   notes: string | null;
   employee: { id: string; name: string; employeeIdNo: string };
+  variant: { id: string; name: string } | null;
 };
 
 type EmployeeOption = { id: string; name: string; employeeIdNo: string };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
+type VariantOption = { id: string; name: string; available: number };
 
 // A single item can go to several employees, on the same day or different
 // days — each Assign is its own row, not a per-employee slot. Issuing from
 // here is the same EmployeeInventoryAssignment/action pair as the employee's
-// own Trades & Records tab; this is just the item-first way in.
+// own Trades & Records tab; this is just the item-first way in. Once the item
+// has variants, a variant must be picked — the whole point of a variant is
+// that "the item" alone no longer says which one is being handed out.
 export function EmployeeIssuanceSection({
   itemId,
   assignments,
   employees,
+  variants,
 }: {
   itemId: string;
   assignments: Assignment[];
   employees: EmployeeOption[];
+  variants: VariantOption[];
 }) {
   const [pending, startTransition] = useTransition();
   const [employeeId, setEmployeeId] = useState("");
+  const [variantId, setVariantId] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const conditionRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
+  const hasVariants = variants.length > 0;
 
   function handleAssign() {
     if (!employeeId) return;
+    if (hasVariants && !variantId) return;
+    setError(null);
+
     const formData = new FormData();
     formData.append("employeeId", employeeId);
     formData.append("itemId", itemId);
+    if (variantId) formData.append("variantId", variantId);
     formData.append("quantity", quantityRef.current?.value || "1");
     formData.append("issuedDate", dateRef.current?.value || today);
     if (conditionRef.current?.value) formData.append("condition", conditionRef.current.value);
     if (notesRef.current?.value) formData.append("notes", notesRef.current.value);
 
-    startTransition(() => {
-      issueEmployeeInventoryAction(formData);
+    startTransition(async () => {
+      const result = await issueEmployeeInventoryAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setEmployeeId("");
+      setVariantId("");
+      if (quantityRef.current) quantityRef.current.value = "1";
+      if (dateRef.current) dateRef.current.value = today;
+      if (conditionRef.current) conditionRef.current.value = "";
+      if (notesRef.current) notesRef.current.value = "";
     });
-
-    setEmployeeId("");
-    if (quantityRef.current) quantityRef.current.value = "1";
-    if (dateRef.current) dateRef.current.value = today;
-    if (conditionRef.current) conditionRef.current.value = "";
-    if (notesRef.current) notesRef.current.value = "";
   }
 
   return (
@@ -82,6 +91,17 @@ export function EmployeeIssuanceSection({
               options={employees.map((e) => ({ value: e.id, label: `${e.name} (${e.employeeIdNo})` }))}
             />
           </label>
+          {hasVariants && (
+            <label className="block min-w-[180px]">
+              <span className="mb-1 block text-xs font-medium text-muted">Variant</span>
+              <Select
+                value={variantId}
+                onChange={setVariantId}
+                placeholder="Choose a variant"
+                options={variants.map((v) => ({ value: v.id, label: `${v.name} (${v.available} available)` }))}
+              />
+            </label>
+          )}
           <label className="block w-20">
             <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
             <input ref={quantityRef} type="number" min={1} defaultValue={1} className="input w-full" />
@@ -101,12 +121,14 @@ export function EmployeeIssuanceSection({
           <button
             type="button"
             onClick={handleAssign}
-            disabled={pending || !employeeId}
+            disabled={pending || !employeeId || (hasVariants && !variantId)}
             className="btn btn-primary"
           >
             Assign
           </button>
         </div>
+
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
         {assignments.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">Never issued to an employee.</p>
@@ -131,6 +153,7 @@ export function EmployeeIssuanceSection({
                         {a.employee.name}
                       </Link>
                       <span className="tabular ml-2 text-xs text-subtle">{a.employee.employeeIdNo}</span>
+                      {a.variant && <span className="ml-1.5 text-xs text-subtle">— {a.variant.name}</span>}
                       {a.condition && <span className="ml-1.5 text-xs text-subtle">({a.condition})</span>}
                     </td>
                     <td className="px-3 py-2 text-right text-secondary">{a.quantity}</td>
@@ -163,4 +186,12 @@ export function EmployeeIssuanceSection({
       </div>
     </section>
   );
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }

@@ -60,7 +60,10 @@ export default async function EmployeeDetailPage({
         },
         inventoryAssignments: {
           orderBy: { issuedDate: "desc" },
-          include: { item: { select: { id: true, name: true, category: true } } },
+          include: {
+            item: { select: { id: true, name: true, category: true } },
+            variant: { select: { id: true, name: true } },
+          },
         },
       },
     }),
@@ -85,7 +88,20 @@ export default async function EmployeeDetailPage({
     }),
     prisma.inventoryItem.findMany({
       where: branchWhere(branchId),
-      select: { id: true, name: true, category: true },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        variants: {
+          select: {
+            id: true,
+            name: true,
+            stock: true,
+            assignments: { where: { returnDate: null }, select: { quantity: true } },
+          },
+          orderBy: { name: "asc" },
+        },
+      },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -261,8 +277,18 @@ export default async function EmployeeDetailPage({
                 condition: a.condition,
                 notes: a.notes,
                 item: a.item,
+                variant: a.variant,
               }))}
-              items={inventoryItems}
+              items={inventoryItems.map((i) => ({
+                id: i.id,
+                name: i.name,
+                category: i.category,
+                variants: i.variants.map((v) => ({
+                  id: v.id,
+                  name: v.name,
+                  available: v.stock - v.assignments.reduce((sum, a) => sum + a.quantity, 0),
+                })),
+              }))}
             />
           </>
         }

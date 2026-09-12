@@ -13,9 +13,11 @@ type Assignment = {
   condition: string | null;
   notes: string | null;
   item: { id: string; name: string; category: string | null };
+  variant: { id: string; name: string } | null;
 };
 
-type ItemOption = { id: string; name: string; category: string | null };
+type VariantOption = { id: string; name: string; available: number };
+type ItemOption = { id: string; name: string; category: string | null; variants: VariantOption[] };
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -36,12 +38,17 @@ export function InventorySection({
 }) {
   const [pending, startTransition] = useTransition();
   const [itemId, setItemId] = useState("");
+  const [variantId, setVariantId] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const conditionRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
+
+  const selectedItem = items.find((i) => i.id === itemId) ?? null;
+  const hasVariants = (selectedItem?.variants.length ?? 0) > 0;
 
   // Still-held units of the item currently selected in the form — the
   // control-misuse signal a supervisor actually needs before handing out
@@ -53,29 +60,37 @@ export function InventorySection({
 
   function handleIssue() {
     if (!itemId) return;
+    if (hasVariants && !variantId) return;
     if (heldByEmployee.length > 0 && !acknowledged) return;
+    setError(null);
 
     const formData = new FormData();
     formData.append("employeeId", employeeId);
     formData.append("itemId", itemId);
+    if (variantId) formData.append("variantId", variantId);
     formData.append("quantity", quantityRef.current?.value || "1");
     formData.append("issuedDate", dateRef.current?.value || today);
     if (conditionRef.current?.value) formData.append("condition", conditionRef.current.value);
     if (notesRef.current?.value) formData.append("notes", notesRef.current.value);
 
-    startTransition(() => {
-      issueEmployeeInventoryAction(formData);
+    startTransition(async () => {
+      const result = await issueEmployeeInventoryAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setItemId("");
+      setVariantId("");
+      setAcknowledged(false);
+      if (quantityRef.current) quantityRef.current.value = "1";
+      if (conditionRef.current) conditionRef.current.value = "";
+      if (notesRef.current) notesRef.current.value = "";
+      if (dateRef.current) dateRef.current.value = today;
     });
-
-    setItemId("");
-    setAcknowledged(false);
-    if (quantityRef.current) quantityRef.current.value = "1";
-    if (conditionRef.current) conditionRef.current.value = "";
-    if (notesRef.current) notesRef.current.value = "";
-    if (dateRef.current) dateRef.current.value = today;
   }
 
-  const blocked = heldByEmployee.length > 0 && !acknowledged;
+  const blocked =
+    !itemId || (hasVariants && !variantId) || (heldByEmployee.length > 0 && !acknowledged);
 
   return (
     <section>
@@ -88,7 +103,9 @@ export function InventorySection({
               value={itemId}
               onChange={(value) => {
                 setItemId(String(value));
+                setVariantId("");
                 setAcknowledged(false);
+                setError(null);
               }}
               placeholder="Choose an item"
               options={items.map((i) => ({
@@ -97,6 +114,20 @@ export function InventorySection({
               }))}
             />
           </label>
+          {hasVariants && (
+            <label className="block min-w-[180px]">
+              <span className="mb-1 block text-xs font-medium text-muted">Variant</span>
+              <Select
+                value={variantId}
+                onChange={setVariantId}
+                placeholder="Choose a variant"
+                options={(selectedItem?.variants ?? []).map((v) => ({
+                  value: v.id,
+                  label: `${v.name} (${v.available} available)`,
+                }))}
+              />
+            </label>
+          )}
           <label className="block w-20">
             <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
             <input ref={quantityRef} type="number" min={1} defaultValue={1} className="input w-full" />
@@ -116,12 +147,14 @@ export function InventorySection({
           <button
             type="button"
             onClick={handleIssue}
-            disabled={pending || !itemId || blocked}
+            disabled={pending || blocked}
             className="btn btn-primary"
           >
             Issue
           </button>
         </div>
+
+        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
         {heldByEmployee.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-control bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -161,6 +194,7 @@ export function InventorySection({
                   <tr key={a.id}>
                     <td className="px-3 py-2 font-medium text-primary">
                       {a.item.name}
+                      {a.variant && <span className="ml-1.5 text-xs text-subtle">— {a.variant.name}</span>}
                       {a.condition && <span className="ml-1.5 text-xs text-subtle">({a.condition})</span>}
                     </td>
                     <td className="px-3 py-2 text-right text-secondary">{a.quantity}</td>

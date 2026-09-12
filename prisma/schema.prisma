@@ -996,6 +996,29 @@ model InventoryItem {
 
   assignments         ProjectInventoryAssignment[]
   employeeAssignments EmployeeInventoryAssignment[]
+  variants            InventoryVariant[]
+}
+
+// A distinct purchasable/issuable option of an item — size, colour, or any
+// other distinguishing attribute the item is stocked in (e.g. "Size 42",
+// "Red - Large"). Stock is tracked per variant, not on the item itself, once
+// an item has any variants; an item with none is issued directly (variantId
+// left null on the assignment), unchanged from before variants existed.
+model InventoryVariant {
+  id    String @id @default(cuid())
+  name  String
+  sku   String?
+  // Units on hand. "Available" (stock minus currently-held, unreturned
+  // assignments) is computed on read, not stored, so it can never drift out
+  // of sync the way a decrement-on-issue/increment-on-return counter could.
+  stock Int    @default(0)
+
+  item   InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId String
+
+  assignments EmployeeInventoryAssignment[]
+
+  @@unique([itemId, name])
 }
 
 model ProjectInventoryAssignment {
@@ -1033,8 +1056,14 @@ model EmployeeInventoryAssignment {
   item   InventoryItem @relation(fields: [itemId], references: [id])
   itemId String
 
+  // Which specific variant was issued, when the item has any. Null for an
+  // item with no variants (issued directly, as before variants existed).
+  variant   InventoryVariant? @relation(fields: [variantId], references: [id])
+  variantId String?
+
   @@index([employeeId])
   @@index([itemId])
+  @@index([variantId])
 }
 
 model Skill {

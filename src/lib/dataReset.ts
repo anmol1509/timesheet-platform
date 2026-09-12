@@ -158,7 +158,7 @@ export const RESET_MODULES: ResetModule[] = [
   {
     id: "inventory",
     label: "Inventory",
-    description: "Inventory items and their project assignments.",
+    description: "Inventory items, their variants/stock, and project/employee issuance.",
     branchScoped: true,
     count: (branchId) => prisma.inventoryItem.count({ where: branchId ? { branchId } : {} }),
     run: async (branchId, db) => {
@@ -166,8 +166,11 @@ export const RESET_MODULES: ResetModule[] = [
       const items = await db.inventoryItem.findMany({ where, select: { id: true } });
       const itemIds = items.map((i) => i.id);
       const assignments = await db.projectInventoryAssignment.deleteMany({ where: { itemId: { in: itemIds } } });
+      // Blocks item deletion (RESTRICT) if left in place; variants cascade
+      // automatically once these are gone.
+      const issuances = await db.employeeInventoryAssignment.deleteMany({ where: { itemId: { in: itemIds } } });
       const deleted = await db.inventoryItem.deleteMany({ where });
-      return { assignments: assignments.count, items: deleted.count };
+      return { assignments: assignments.count, employeeIssuances: issuances.count, items: deleted.count };
     },
   },
   {

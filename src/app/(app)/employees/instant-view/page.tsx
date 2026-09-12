@@ -64,7 +64,10 @@ export default async function InstantViewPage({
           accommodationHistory: { orderBy: { checkInDate: "desc" } },
           inventoryAssignments: {
             orderBy: { issuedDate: "desc" },
-            include: { item: { select: { name: true, category: true } } },
+            include: {
+              item: { select: { name: true, category: true } },
+              variant: { select: { name: true } },
+            },
           },
           noteEntries: {
             orderBy: { createdAt: "desc" },
@@ -273,6 +276,7 @@ export default async function InstantViewPage({
                 <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
                   <tr>
                     <th className="py-2">Item</th>
+                    <th className="py-2">Variant</th>
                     <th className="py-2">Category</th>
                     <th className="py-2">Qty</th>
                     <th className="py-2">Issued Date</th>
@@ -284,6 +288,7 @@ export default async function InstantViewPage({
                   {validEmployee.inventoryAssignments.map((a) => (
                     <tr key={a.id}>
                       <td className="py-2">{a.item.name}</td>
+                      <td className="py-2">{a.variant?.name || "—"}</td>
                       <td className="py-2">{a.item.category || "—"}</td>
                       <td className="py-2">{a.quantity}</td>
                       <td className="py-2">{formatDate(a.issuedDate)}</td>
