@@ -52,14 +52,12 @@ export default async function LoginPage() {
         </p>
       </div>
 
-      {/* Sign-in panel. Full width on mobile (no curve, nothing left to show
-          it against). On large screens: ~48% width, split into a flat header
-          strip (square corners — a logo placed inside a large corner radius
-          would sit in the area the radius carves away, since border-radius
-          doesn't reflow a box's children) and a body below it that carries
-          the curve on its own top-left corner only. */}
-      <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%] lg:bg-transparent">
-        <div className="hidden items-center bg-surface px-12 pt-12 lg:flex lg:px-20 lg:pt-14">
+      {/* Sign-in panel: one flat, square-edged surface. Full width on mobile,
+          ~48% on large screens with the logo pinned top-left inside it. (An
+          earlier curved edge was built from a separate header strip plus a
+          rounded body, which left a visible notch beside the logo.) */}
+      <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
+        <div className="hidden items-center px-12 pt-12 lg:flex lg:px-20 lg:pt-14">
           <Image
             src="/brand/burj-al-aweer-mark.svg"
             alt="Burj Al Aweer"
@@ -69,7 +67,7 @@ export default async function LoginPage() {
           />
         </div>
 
-        <div className="relative flex flex-1 items-center justify-center bg-surface p-6 sm:p-10 lg:rounded-tl-[300px] lg:px-20 lg:py-10">
+        <div className="relative flex flex-1 items-center justify-center p-6 sm:p-10 lg:px-20 lg:py-10">
           <div className="w-full max-w-sm">
             <div className="mb-10 flex items-center gap-3 lg:hidden">
               <Image
