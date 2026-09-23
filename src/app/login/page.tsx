@@ -56,7 +56,7 @@ export default async function LoginPage() {
           it against); on large screens it overlays the right ~54% with a
           single moderate curve on its left edge, matching the reference's
           gentle sweep rather than a full stadium bulge. */}
-      <div className="absolute inset-y-0 right-0 flex w-full items-center justify-center rounded-l-none bg-surface p-6 sm:p-10 lg:w-[54%] lg:rounded-l-[140px] lg:p-16">
+      <div className="absolute inset-y-0 right-0 flex w-full items-center justify-center rounded-l-none bg-surface p-6 sm:p-10 lg:w-[42%] lg:rounded-l-[140px] lg:p-16">
         <div className="w-full max-w-sm lg:ml-12">
           <div className="mb-10 flex items-center gap-3">
             <Image
