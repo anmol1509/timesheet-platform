@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
+import { m } from "motion/react";
+import { Presence } from "@/components/motion";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { CsvImportDialog, type ImportColumn, type ImportRowResult } from "@/components/CsvImportDialog";
 import { Pagination } from "@/components/Pagination";
@@ -300,25 +302,36 @@ export function DataTable<T extends { id: string }>({
         </div>
       )}
 
-      {selectable && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-control border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2">
-          <span className="text-xs font-medium text-[var(--brand-primary)]">
-            {selected.size} selected
-          </span>
-          {renderBulkActions && (
-            <div className="flex flex-wrap items-center gap-2">
-              {renderBulkActions([...selected], clear)}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={clear}
-            className="ml-auto text-xs font-medium text-[var(--brand-primary)] hover:underline"
+      <Presence>
+        {selectable && selected.size > 0 && (
+          <m.div
+            key="bulk-bar"
+            initial={{ opacity: 0, y: -6, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -6, height: 0 }}
+            transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
+            className="overflow-hidden"
           >
-            Clear
-          </button>
-        </div>
-      )}
+            <div className="flex flex-wrap items-center gap-3 rounded-control border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2">
+              <span className="tabular text-xs font-medium text-[var(--brand-primary)]">
+                {selected.size} selected
+              </span>
+              {renderBulkActions && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {renderBulkActions([...selected], clear)}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={clear}
+                className="ml-auto text-xs font-medium text-[var(--brand-primary)] hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          </m.div>
+        )}
+      </Presence>
 
       <div className="card overflow-hidden">
         {/* `overflow-x-auto` makes this a scroll container, so the sticky
@@ -409,11 +422,20 @@ export function DataTable<T extends { id: string }>({
             <tbody className="divide-y divide-[var(--border)]">
               {sorted.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={colSpan}
-                    className="px-3 py-10 text-center text-sm text-muted"
-                  >
-                    No rows match &ldquo;{query}&rdquo;.
+                  <td colSpan={colSpan} className="px-3 py-10 text-center">
+                    <p className="text-sm font-medium text-primary">
+                      No rows match &ldquo;{query}&rdquo;
+                    </p>
+                    <p className="mt-1 text-xs text-muted">
+                      Check the spelling, or try a shorter search.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="mt-3 text-xs font-medium text-[var(--brand-primary)] hover:underline"
+                    >
+                      Clear search
+                    </button>
                   </td>
                 </tr>
               )}
