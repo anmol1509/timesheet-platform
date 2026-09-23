@@ -123,7 +123,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
           <div>
             <p className="mb-2 text-xs font-medium text-muted">AnimatedNumber (tabular, count-up)</p>
             <p className="text-kpi text-primary">
-              <AnimatedNumber value={kpi} format={(n) => `${Math.round(n)}%`} />
+              <AnimatedNumber value={kpi} suffix="%" />
             </p>
             <button
               type="button"

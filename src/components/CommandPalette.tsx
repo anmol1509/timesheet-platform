@@ -12,7 +12,7 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
-import { getNavPages, type NavPage } from "@/app/(app)/nav-links";
+import { getNavPages } from "@/app/(app)/nav-links";
 import { cn } from "@/lib/cn";
 
 type SearchResults = {
@@ -26,6 +26,8 @@ const EMPTY_RESULTS: SearchResults = { employees: [], projects: [], clients: [],
 
 const RECENT_KEY = "nav-recent-pages";
 const RECENT_MAX = 8;
+
+type RecentEntry = { href: string; label: string; group: string };
 
 /** Quick-create shortcuts — the "obvious next action" for each module's core
  * task, named directly in the redesign brief's ⌘K spec. Kept static: these
@@ -44,18 +46,25 @@ const ACTIONS: { href: string; label: string; hint?: string }[] = [
   { href: "/transport/routes/new", label: "New route" },
 ];
 
-function readRecent(): string[] {
+function readRecent(): RecentEntry[] {
   try {
     const raw = localStorage.getItem(RECENT_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    // Was a bare string[] of hrefs before this fix — only resolvable against
+    // the static Pages list, so visiting a record (the common case, reached
+    // via search) never actually showed up here. Drop anything in the old
+    // shape rather than crash rendering it.
+    if (!Array.isArray(parsed) || (parsed.length > 0 && typeof parsed[0] === "string")) return [];
+    return parsed as RecentEntry[];
   } catch {
     return [];
   }
 }
 
-function pushRecent(href: string) {
+function pushRecent(entry: RecentEntry) {
   try {
-    const next = [href, ...readRecent().filter((h) => h !== href)].slice(0, RECENT_MAX);
+    const next = [entry, ...readRecent().filter((e) => e.href !== entry.href)].slice(0, RECENT_MAX);
     localStorage.setItem(RECENT_KEY, JSON.stringify(next));
   } catch {
     // Private window / blocked storage — recents just won't persist. Not
@@ -83,10 +92,9 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
   const [loading, setLoading] = useState(false);
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent, setRecent] = useState<RecentEntry[]>([]);
   const router = useRouter();
   const pages = useMemo(() => getNavPages(isAdmin, isSuperAdmin), [isAdmin, isSuperAdmin]);
-  const pagesByHref = useMemo(() => new Map(pages.map((p) => [p.href, p])), [pages]);
 
   // Recents are read on the way *in* (the trigger click, or ⌘K's keydown
   // callback) rather than via an effect keyed on `open` — both are already
@@ -130,8 +138,8 @@ export function CommandPalette({
     return () => clearTimeout(timer);
   }, [query]);
 
-  function go(href: string) {
-    pushRecent(href);
+  function go(href: string, label: string, group: string) {
+    pushRecent({ href, label, group });
     setOpen(false);
     setQuery("");
     router.push(href);
@@ -150,7 +158,6 @@ export function CommandPalette({
         open={open}
         onOpenChange={setOpen}
         label="Command palette"
-        shouldFilter={false}
         className="rx-content fixed top-[12%] left-1/2 z-50 w-[calc(100vw-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl border border-default bg-surface shadow-modal"
         onKeyDown={(e) => {
           if (e.key === "Escape") setOpen(false);
@@ -184,15 +191,17 @@ export function CommandPalette({
               heading="Recent"
               className="px-1.5 py-1 text-[10px] font-semibold tracking-wider text-subtle uppercase [&_[cmdk-group-items]]:mt-1"
             >
-              {recent
-                .map((href) => pagesByHref.get(href))
-                .filter((p): p is NavPage => !!p)
-                .map((p) => (
-                  <Item key={`recent-${p.href}`} onSelect={() => go(p.href)} icon={<Clock className="h-3.5 w-3.5" />}>
-                    <span className="truncate">{p.label}</span>
-                    <span className="ml-auto shrink-0 text-xs text-subtle">{p.group}</span>
-                  </Item>
-                ))}
+              {recent.map((r) => (
+                <Item
+                  key={`recent-${r.href}`}
+                  value={`recent ${r.label} ${r.group}`}
+                  onSelect={() => go(r.href, r.label, r.group)}
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                >
+                  <span className="truncate">{r.label}</span>
+                  <span className="ml-auto shrink-0 text-xs text-subtle">{r.group}</span>
+                </Item>
+              ))}
             </Command.Group>
           )}
 
@@ -201,7 +210,7 @@ export function CommandPalette({
             className="px-1.5 py-1 text-[10px] font-semibold tracking-wider text-subtle uppercase [&_[cmdk-group-items]]:mt-1"
           >
             {ACTIONS.map((a) => (
-              <Item key={a.href} onSelect={() => go(a.href)} icon={<UserPlus className="h-3.5 w-3.5" />}>
+              <Item key={a.href} onSelect={() => go(a.href, a.label, "Action")} icon={<UserPlus className="h-3.5 w-3.5" />}>
                 {a.label}
               </Item>
             ))}
@@ -214,7 +223,7 @@ export function CommandPalette({
             {pages.map((p) => {
               const Icon = p.icon;
               return (
-                <Item key={p.href} value={`${p.label} ${p.group}`} onSelect={() => go(p.href)} icon={<Icon className="h-3.5 w-3.5" />}>
+                <Item key={p.href} value={`${p.label} ${p.group}`} onSelect={() => go(p.href, p.label, p.group)} icon={<Icon className="h-3.5 w-3.5" />}>
                   <span className="truncate">{p.label}</span>
                   <span className="ml-auto shrink-0 text-xs text-subtle">{p.group}</span>
                 </Item>
@@ -228,7 +237,7 @@ export function CommandPalette({
               className="px-1.5 py-1 text-[10px] font-semibold tracking-wider text-subtle uppercase [&_[cmdk-group-items]]:mt-1"
             >
               {results.employees.map((e) => (
-                <Item key={`e-${e.id}`} onSelect={() => go(`/employees/${e.id}`)} icon={<FileSearch className="h-3.5 w-3.5" />}>
+                <Item key={`e-${e.id}`} value={`${e.name} ${e.employeeIdNo} ${e.trade ?? ""}`} onSelect={() => go(`/employees/${e.id}`, e.name, "Employee")} icon={<FileSearch className="h-3.5 w-3.5" />}>
                   <span className="truncate">{e.name}</span>
                   <span className="ml-auto shrink-0 text-xs text-subtle">
                     {[e.employeeIdNo, e.trade].filter(Boolean).join(" · ")}
@@ -236,19 +245,19 @@ export function CommandPalette({
                 </Item>
               ))}
               {results.projects.map((p) => (
-                <Item key={`p-${p.id}`} onSelect={() => go(`/projects/${p.id}`)} icon={<Package className="h-3.5 w-3.5" />}>
+                <Item key={`p-${p.id}`} value={`${p.name} ${p.code}`} onSelect={() => go(`/projects/${p.id}`, p.name, "Project")} icon={<Package className="h-3.5 w-3.5" />}>
                   <span className="truncate">{p.name}</span>
                   <span className="ml-auto shrink-0 text-xs text-subtle">{p.code}</span>
                 </Item>
               ))}
               {results.clients.map((c) => (
-                <Item key={`c-${c.id}`} onSelect={() => go(`/clients/${c.id}`)} icon={<Package className="h-3.5 w-3.5" />}>
+                <Item key={`c-${c.id}`} value={`${c.name} ${c.code ?? ""}`} onSelect={() => go(`/clients/${c.id}`, c.name, "Client")} icon={<Package className="h-3.5 w-3.5" />}>
                   <span className="truncate">{c.name}</span>
                   {c.code && <span className="ml-auto shrink-0 text-xs text-subtle">{c.code}</span>}
                 </Item>
               ))}
               {results.documents.map((d) => (
-                <Item key={`d-${d.id}`} onSelect={() => go(`/employees/${d.employeeId}`)} icon={<FileSearch className="h-3.5 w-3.5" />}>
+                <Item key={`d-${d.id}`} value={`${d.filename} ${d.employee.name}`} onSelect={() => go(`/employees/${d.employeeId}`, d.employee.name, "Employee")} icon={<FileSearch className="h-3.5 w-3.5" />}>
                   <span className="truncate">{d.filename}</span>
                   <span className="ml-auto shrink-0 text-xs text-subtle">{d.employee.name}</span>
                 </Item>

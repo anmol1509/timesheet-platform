@@ -51,7 +51,7 @@ export function StatTile({
     typeof value === "number" ? (
       <AnimatedNumber value={value} />
     ) : percentMatch ? (
-      <AnimatedNumber value={Number(percentMatch[1])} format={(n) => `${Math.round(n)}%`} />
+      <AnimatedNumber value={Number(percentMatch[1])} suffix="%" />
     ) : (
       value
     );
