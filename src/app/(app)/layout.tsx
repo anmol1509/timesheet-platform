@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { requireUserWithBranch } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -9,7 +10,9 @@ import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { UserMenu } from "@/components/UserMenu";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ProgressBar } from "@/components/motion/ProgressBar";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
+import { THEME_COOKIE, isThemePreference, type ThemePreference } from "@/lib/theme-preference";
 
 export default async function AppLayout({
   children,
@@ -19,6 +22,10 @@ export default async function AppLayout({
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
+  const themeCookieValue = cookieStore.get(THEME_COOKIE)?.value;
+  const themePref: ThemePreference = isThemePreference(themeCookieValue)
+    ? themeCookieValue
+    : "system";
   // Header extras, not the app itself — a transient DB hiccup (e.g. a cold
   // connection) fetching these shouldn't take down every page via the root
   // layout, which no per-page error boundary can catch (error.js doesn't
@@ -53,6 +60,7 @@ export default async function AppLayout({
             email={user.email}
             role={user.role}
             isAdmin={isAdmin}
+            themePreference={themePref}
           />
         </div>
       </div>
@@ -61,6 +69,9 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
+      <Suspense fallback={null}>
+        <ProgressBar />
+      </Suspense>
       <AppShell
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}

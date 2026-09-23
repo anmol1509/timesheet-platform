@@ -3,6 +3,8 @@
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import type { ThemePreference } from "@/lib/theme-preference";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super admin",
@@ -24,11 +26,14 @@ export function UserMenu({
   email,
   role,
   isAdmin,
+  themePreference,
 }: {
   name: string;
   email: string;
   role: string;
   isAdmin: boolean;
+  /** Read server-side from the theme cookie, so the toggle's first paint already matches — no effect, no flash. */
+  themePreference: ThemePreference;
 }) {
   return (
     <Popover.Root>
@@ -59,6 +64,10 @@ export function UserMenu({
             <p className="mt-1.5 inline-flex rounded-md bg-surface-sunken px-1.5 py-0.5 text-[11px] font-medium text-secondary">
               {ROLE_LABELS[role] ?? role}
             </p>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-b border-default px-3.5 py-2.5">
+            <span className="text-xs font-medium text-muted">Theme</span>
+            <ThemeToggle initial={themePreference} />
           </div>
           <div className="p-1">
             {isAdmin && (

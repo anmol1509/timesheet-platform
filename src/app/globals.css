@@ -23,7 +23,7 @@
   --text: #101828; /* primary copy, headings, data values */
   --text-secondary: #475467; /* body copy, table cells */
   --text-muted: #667085; /* labels, helper text */
-  --text-subtle: #98a2b3; /* placeholders, disabled, timestamps */
+  --text-subtle: #667085; /* placeholders, disabled, timestamps — darkened from #98a2b3 (2.6:1) to meet AA (4.6:1) */
 
   /* Brand chrome — primary actions, active nav, checked controls, focus rings */
   --brand-primary: #2563eb;
@@ -61,14 +61,137 @@
   --shadow-lg: 0 12px 16px -4px rgb(16 24 40 / 0.08), 0 4px 6px -2px rgb(16 24 40 / 0.03);
   --shadow-xl: 0 20px 24px -4px rgb(16 24 40 / 0.10), 0 8px 8px -4px rgb(16 24 40 / 0.04);
 
-  /* Motion — subtle and fast. */
+  /* Type scale — variable font (Geist, already loaded), tabular numerals for
+     data columns. rem-based so browser zoom keeps working. */
+  --text-xs: 0.75rem; /* 12px — meta, timestamps, badges */
+  --text-sm: 0.8125rem; /* 13px — body copy, table cells, form labels */
+  --text-base: 0.875rem; /* 14px — default UI text */
+  --text-md: 1rem; /* 16px — card titles, emphasized values */
+  --text-lg: 1.25rem; /* 20px — page titles */
+  --text-xl: 1.5rem; /* 24px — KPI figures */
+  --text-2xl: 1.875rem; /* 30px — hero numbers */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+
+  /* Motion — subtle and fast. One easing curve, one spring, three durations. */
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: cubic-bezier(0.16, 1, 0.3, 1); /* snappy settle, no overshoot look for CSS fallback */
   --duration-fast: 120ms;
   --duration: 160ms;
+  --duration-slow: 320ms;
 
   /* Back-compat aliases for the two tokens that predate this system. */
   --background: var(--surface);
   --foreground: var(--text);
+
+  /* Tooltip — deliberately inverted from the surface so it always reads as
+     "floating", light or dark. */
+  --tooltip-bg: #101828;
+  --tooltip-text: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark mode
+   Same structure as :root, values only. Respects the OS/browser preference by
+   default; a `data-theme` attribute on <html> lets the user override it
+   (see ThemeToggle). Elevation leans on borders more than shadow here, since
+   shadows barely read against a dark canvas.
+--------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --canvas: #0b0d12;
+    --surface: #14161c;
+    --surface-subtle: #1a1d25;
+    --surface-hover: #20232c;
+    --surface-sunken: #1a1d25;
+
+    --border: #262a34;
+    --border-strong: #363b47;
+
+    --text: #f0f2f5;
+    --text-secondary: #c3c8d1;
+    --text-muted: #9099a8;
+    --text-subtle: #9099a8;
+
+    --brand-primary: #5b8def;
+    --brand-primary-hover: #7ba1f2;
+    --brand-primary-active: #3f6fd6;
+    --brand-primary-soft: #182238;
+    --brand-primary-border: #2c4a85;
+    --brand-navy: #a7b6f5;
+
+    --success: #3dd68c;
+    --success-soft: #103224;
+    --success-border: #1e5c3e;
+    --warning: #f2a93c;
+    --warning-soft: #33260f;
+    --warning-border: #6b4a17;
+    --error: #f26d6d;
+    --error-soft: #3a1717;
+    --error-border: #6e2a2a;
+    --info: #6ab2f2;
+    --info-soft: #142a3f;
+    --info-border: #24507c;
+
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 12px 16px -4px rgb(0 0 0 / 0.5), 0 4px 6px -2px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 24px -4px rgb(0 0 0 / 0.55), 0 8px 8px -4px rgb(0 0 0 / 0.35);
+
+    --tooltip-bg: #2c313d;
+    --tooltip-text: #f0f2f5;
+  }
+}
+
+/* Explicit override regardless of OS preference (ThemeToggle sets this). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas: #0b0d12;
+  --surface: #14161c;
+  --surface-subtle: #1a1d25;
+  --surface-hover: #20232c;
+  --surface-sunken: #1a1d25;
+
+  --border: #262a34;
+  --border-strong: #363b47;
+
+  --text: #f0f2f5;
+  --text-secondary: #c3c8d1;
+  --text-muted: #9099a8;
+  --text-subtle: #9099a8;
+
+  --brand-primary: #5b8def;
+  --brand-primary-hover: #7ba1f2;
+  --brand-primary-active: #3f6fd6;
+  --brand-primary-soft: #182238;
+  --brand-primary-border: #2c4a85;
+  --brand-navy: #a7b6f5;
+
+  --success: #3dd68c;
+  --success-soft: #103224;
+  --success-border: #1e5c3e;
+  --warning: #f2a93c;
+  --warning-soft: #33260f;
+  --warning-border: #6b4a17;
+  --error: #f26d6d;
+  --error-soft: #3a1717;
+  --error-border: #6e2a2a;
+  --info: #6ab2f2;
+  --info-soft: #142a3f;
+  --info-border: #24507c;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.45), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 16px -4px rgb(0 0 0 / 0.5), 0 4px 6px -2px rgb(0 0 0 / 0.3);
+  --shadow-xl: 0 20px 24px -4px rgb(0 0 0 / 0.55), 0 8px 8px -4px rgb(0 0 0 / 0.35);
+
+  --tooltip-bg: #2c313d;
+  --tooltip-text: #f0f2f5;
 }
 
 /* Expose the tokens as Tailwind utilities: bg-surface, text-muted, border-default,
@@ -348,6 +471,28 @@ summary:focus-visible,
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Type scale utilities — additive, opt-in. Existing text-xs/sm/base/lg/xl
+     Tailwind utilities are untouched (800 call sites depend on them); these
+     are for new/redesigned screens that want the tuned scale from
+     `--text-*` in globals.css. */
+  .text-kpi {
+    font-size: var(--text-2xl);
+    line-height: var(--leading-tight);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .text-page-title {
+    font-size: var(--text-lg);
+    line-height: var(--leading-tight);
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  .text-card-title {
+    font-size: var(--text-md);
+    line-height: var(--leading-tight);
+    font-weight: 600;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -392,7 +537,7 @@ summary:focus-visible,
   background: linear-gradient(
     90deg,
     var(--surface-sunken) 25%,
-    #e8eaee 37%,
+    var(--surface-hover) 37%,
     var(--surface-sunken) 63%
   );
   background-size: 200% 100%;
@@ -420,13 +565,13 @@ summary:focus-visible,
     height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #d3d7de;
+    background: var(--border-strong);
     border: 3px solid transparent;
     background-clip: content-box;
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #b9bfc9;
+    background: var(--text-subtle);
     background-clip: content-box;
   }
   ::-webkit-scrollbar-track {

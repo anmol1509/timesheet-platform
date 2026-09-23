@@ -1,14 +1,15 @@
 "use client";
 
-import { cn } from "@/lib/cn";
+import * as RadixTooltip from "@radix-ui/react-tooltip";
 
 /**
- * Minimal CSS-only tooltip. Deliberately not a Radix primitive — @radix-ui
- * /react-tooltip isn't in the dependency list and the only requirement is a
- * label for icon-only controls (collapsed sidebar, table row actions).
- *
- * The label is also wired up via aria-label on the trigger by the caller, so
- * screen readers don't depend on this visual layer.
+ * Radix Tooltip — replaces the earlier CSS-only version. That one broke
+ * inside `overflow-x-auto` tables (a clipped ancestor clips a
+ * non-portalled tooltip too) and couldn't flip side near a viewport edge.
+ * Same call signature (`label`, `side`, `children`), so no call sites needed
+ * to change. `delayDuration={200}` matches the old version's near-instant
+ * feel; `asChild` puts the trigger role on the actual child element instead
+ * of wrapping it in an extra `<span>`.
  */
 export function Tooltip({
   label,
@@ -17,30 +18,28 @@ export function Tooltip({
   className,
 }: {
   label: string;
-  side?: "right" | "top" | "bottom";
+  side?: "right" | "top" | "bottom" | "left";
   children: React.ReactNode;
   className?: string;
 }) {
-  const position =
-    side === "right"
-      ? "top-1/2 left-full ml-2 -translate-y-1/2"
-      : side === "top"
-        ? "bottom-full left-1/2 mb-2 -translate-x-1/2"
-        : "top-full left-1/2 mt-2 -translate-x-1/2";
-
   return (
-    <span className={cn("group/tt relative inline-flex", className)}>
-      {children}
-      <span
-        role="tooltip"
-        className={cn(
-          "pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-[#101828] px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity duration-100",
-          "group-hover/tt:opacity-100 group-focus-within/tt:opacity-100",
-          position
-        )}
-      >
-        {label}
-      </span>
-    </span>
+    <RadixTooltip.Provider delayDuration={200} skipDelayDuration={100}>
+      <RadixTooltip.Root>
+        <RadixTooltip.Trigger asChild className={className}>
+          {children}
+        </RadixTooltip.Trigger>
+        <RadixTooltip.Portal>
+          <RadixTooltip.Content
+            side={side}
+            sideOffset={8}
+            collisionPadding={8}
+            className="rx-popover z-50 rounded-md bg-[var(--tooltip-bg)] px-2 py-1 text-xs font-medium text-[var(--tooltip-text)] shadow-md"
+          >
+            {label}
+            <RadixTooltip.Arrow className="fill-[var(--tooltip-bg)]" />
+          </RadixTooltip.Content>
+        </RadixTooltip.Portal>
+      </RadixTooltip.Root>
+    </RadixTooltip.Provider>
   );
 }
