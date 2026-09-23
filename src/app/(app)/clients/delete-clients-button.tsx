@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { useToastActions } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { deleteClientsAction } from "./actions";
 
 /**
@@ -23,16 +24,9 @@ export function DeleteClientsButton({
   const router = useRouter();
   const toast = useToastActions();
   const [pending, startTransition] = useTransition();
+  const label = `${ids.length} client${ids.length === 1 ? "" : "s"}`;
 
   function run() {
-    const label = `${ids.length} client${ids.length === 1 ? "" : "s"}`;
-    if (
-      !confirm(
-        `Delete ${label}? Any client still linked to a project or timesheet row is kept and reported back.`
-      )
-    ) {
-      return;
-    }
     startTransition(async () => {
       const { deleted, blocked } = await deleteClientsAction(ids);
       if (deleted > 0) {
@@ -50,14 +44,22 @@ export function DeleteClientsButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={run}
-      disabled={pending || ids.length === 0}
-      className="inline-flex items-center gap-1.5 rounded-control border border-red-200 bg-surface px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-    >
-      <Trash2 className="h-3.5 w-3.5" aria-hidden />
-      Delete {ids.length}
-    </button>
+    <ConfirmDialog
+      title={`Delete ${label}?`}
+      description="Any client still linked to a project or timesheet row is kept and reported back."
+      confirmLabel={`Delete ${ids.length}`}
+      onConfirm={run}
+      trigger={(open) => (
+        <button
+          type="button"
+          onClick={open}
+          disabled={pending || ids.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-control border border-red-200 bg-surface px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          Delete {ids.length}
+        </button>
+      )}
+    />
   );
 }

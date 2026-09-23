@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { m } from "motion/react";
+import { SPRING } from "@/lib/motion";
 import { updateEmployeeAction } from "./actions";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -203,13 +205,19 @@ export function EditForm({
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`border-b-2 px-3 py-2 text-sm font-medium transition ${
-              tab === t.id
-                ? "border-[var(--brand-primary)] text-[var(--brand-primary)]"
-                : "border-transparent text-muted hover:text-primary"
+            className={`relative px-3 py-2 text-sm font-medium transition-colors ${
+              tab === t.id ? "text-[var(--brand-primary)]" : "text-muted hover:text-primary"
             }`}
           >
             {t.label}
+            {tab === t.id && (
+              <m.span
+                layoutId="employee-edit-tabs-underline"
+                transition={SPRING}
+                className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[var(--brand-primary)]"
+                aria-hidden
+              />
+            )}
           </button>
         ))}
       </div>

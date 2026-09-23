@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Download, FileText } from "lucide-react";
+import { m } from "motion/react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
+import { SPRING } from "@/lib/motion";
 import { PACK_SECTIONS } from "@/lib/mobilisationPack";
 
 type Letter = { id: string; name: string; category: string | null };
@@ -85,13 +87,19 @@ export function DocumentTabs({
             type="button"
             onClick={() => setTab(t.key)}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition",
-              tab === t.key
-                ? "border-[var(--brand-primary)] text-[var(--brand-primary)]"
-                : "border-transparent text-muted hover:text-primary"
+              "relative px-3 py-2 text-sm font-medium transition-colors",
+              tab === t.key ? "text-[var(--brand-primary)]" : "text-muted hover:text-primary"
             )}
           >
             {t.label}
+            {tab === t.key && (
+              <m.span
+                layoutId="document-tabs-underline"
+                transition={SPRING}
+                className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[var(--brand-primary)]"
+                aria-hidden
+              />
+            )}
           </button>
         ))}
       </div>

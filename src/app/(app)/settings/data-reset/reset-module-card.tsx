@@ -44,8 +44,13 @@ export function ResetModuleCard({
         </span>
       </div>
 
+      {/* Secondary at rest, not danger — the real "this is destructive"
+          weight belongs on the confirmation dialog's actual submit button
+          (still btn-danger, below), not on every one of these cards sitting
+          on the page all the time. A page of solid-red buttons stops
+          reading as dangerous and starts reading as decoration. */}
       <Button
-        variant="danger"
+        variant="secondary"
         size="sm"
         onClick={() => setOpen(true)}
         disabled={count === 0}
