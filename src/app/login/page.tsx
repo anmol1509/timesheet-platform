@@ -35,7 +35,7 @@ export default async function LoginPage() {
       />
       <div
         aria-hidden
-        className="absolute inset-0 hidden flex-col justify-between p-12 lg:flex lg:p-16"
+        className="absolute inset-0 hidden flex-col justify-center p-12 lg:flex lg:p-16"
       >
         <div className="max-w-md">
           <p className="text-xs font-semibold tracking-wide text-white/60 uppercase">
@@ -47,36 +47,50 @@ export default async function LoginPage() {
             your work
           </h2>
         </div>
-        <p className="text-xs text-white/50">
+        <p className="absolute bottom-12 left-12 text-xs text-white/50 lg:bottom-16 lg:left-16">
           © {new Date().getFullYear()} All rights reserved.
         </p>
       </div>
 
-      {/* Sign-in panel — full width on mobile (no curve, nothing left to show
-          it against); on large screens it overlays the right ~54% with a
-          single moderate curve on its left edge, matching the reference's
-          gentle sweep rather than a full stadium bulge. */}
-      <div className="absolute inset-y-0 right-0 flex w-full items-center justify-center rounded-l-none bg-surface p-6 sm:p-10 lg:w-[42%] lg:rounded-l-[140px] lg:p-16">
-        <div className="w-full max-w-sm lg:ml-12">
-          <div className="mb-10 flex items-center gap-3">
-            <Image
-              src="/brand/burj-al-aweer-mark.svg"
-              alt="Burj Al Aweer"
-              width={36}
-              height={28}
-              preload
-            />
-          </div>
+      {/* Sign-in panel. Full width on mobile (no curve, nothing left to show
+          it against). On large screens: ~48% width, split into a flat header
+          strip (square corners — a logo placed inside a large corner radius
+          would sit in the area the radius carves away, since border-radius
+          doesn't reflow a box's children) and a body below it that carries
+          the curve on its own top-left corner only. */}
+      <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%] lg:bg-transparent">
+        <div className="hidden items-center bg-surface px-12 pt-12 lg:flex lg:px-20 lg:pt-14">
+          <Image
+            src="/brand/burj-al-aweer-mark.svg"
+            alt="Burj Al Aweer"
+            width={36}
+            height={28}
+            preload
+          />
+        </div>
 
-          <h1 className="text-2xl font-semibold tracking-tight text-primary">
-            Sign in
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Need workforce or site access? Contact your site administrator.
-          </p>
+        <div className="relative flex flex-1 items-center justify-center bg-surface p-6 sm:p-10 lg:rounded-tl-[300px] lg:px-20 lg:py-10">
+          <div className="w-full max-w-sm">
+            <div className="mb-10 flex items-center gap-3 lg:hidden">
+              <Image
+                src="/brand/burj-al-aweer-mark.svg"
+                alt="Burj Al Aweer"
+                width={36}
+                height={28}
+                preload
+              />
+            </div>
 
-          <div className="mt-8">
-            <LoginForm />
+            <h1 className="text-2xl font-semibold tracking-tight text-primary">
+              Sign in
+            </h1>
+            <p className="mt-2 text-sm text-muted">
+              Need workforce or site access? Contact your site administrator.
+            </p>
+
+            <div className="mt-8">
+              <LoginForm />
+            </div>
           </div>
         </div>
       </div>
