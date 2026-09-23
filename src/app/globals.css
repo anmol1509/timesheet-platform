@@ -588,26 +588,6 @@ summary:focus-visible,
    that the rest of the app never touches. Everything else (colour tokens,
    focus rings) is shared with the app.
 --------------------------------------------------------------------------- */
-.login-page-bg {
-  background:
-    radial-gradient(1100px 700px at 15% -10%, rgb(37 99 235 / 0.10), transparent 60%),
-    radial-gradient(900px 600px at 100% 10%, rgb(30 42 110 / 0.10), transparent 55%),
-    var(--canvas);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .login-page-bg {
-    background:
-      radial-gradient(1100px 700px at 15% -10%, rgb(91 141 239 / 0.14), transparent 60%),
-      radial-gradient(900px 600px at 100% 10%, rgb(167 182 245 / 0.08), transparent 55%),
-      var(--canvas);
-  }
-}
-:root[data-theme="dark"] .login-page-bg {
-  background:
-    radial-gradient(1100px 700px at 15% -10%, rgb(91 141 239 / 0.14), transparent 60%),
-    radial-gradient(900px 600px at 100% 10%, rgb(167 182 245 / 0.08), transparent 55%),
-    var(--canvas);
-}
 
 /* Abstract brand panel — repeating angled "blades" in two tones, purely CSS
    (no image asset, no WebGL/canvas per the redesign brief's login-only

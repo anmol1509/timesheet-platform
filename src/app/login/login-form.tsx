@@ -7,7 +7,7 @@ import { loginAction } from "./actions";
 
 /** Pill-shaped input — the one departure from `.input` (8px control radius)
  * in the whole app, scoped to this file only. Matches the login-only radius
- * exception in globals.css (.login-page-bg / .login-brand-panel). */
+ * exception in globals.css (.login-brand-panel + rounded-l-full on the panel). */
 const FIELD =
   "block w-full rounded-full border border-strong bg-surface px-5 py-3 text-sm text-primary transition outline-none placeholder:text-subtle hover:border-[#b9bfc9] focus:border-[var(--brand-primary)] focus:shadow-[0_0_0_3px_rgb(37_99_235_/_0.12)] disabled:cursor-not-allowed disabled:bg-surface-sunken";
 
