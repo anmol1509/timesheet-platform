@@ -132,6 +132,7 @@ export type PayFormValues = {
   transportAllowance: string;
   otherAllowance: string;
   flatMonthlyRate: string;
+  hourlyRate: string;
   otMultiplier: string;
 };
 
@@ -660,7 +661,7 @@ export function EditForm({
           <section>
             <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
             <p className="mb-3 text-xs text-muted">
-              Choose how this worker is paid. Overtime hours from attendance are paid on top at basic ÷ 240 × the multiplier.
+              Choose how this worker is paid. Overtime hours from attendance are paid on top (monthly pay: basic ÷ 240 × multiplier; hourly: rate × multiplier).
               {!pay.canEdit && " You can view these figures but not change them."}
             </p>
             <input type="hidden" name="_pay" value="1" />
@@ -675,12 +676,18 @@ export function EditForm({
                   options={[
                     { value: "ITEMISED", label: "Itemised — basic + allowances" },
                     { value: "FLAT", label: "Flat — one monthly rate" },
+                    { value: "HOURLY", label: "Hourly — paid per hour worked" },
                   ]}
                 />
               </Field>
               {payStructure === "FLAT" && (
                 <Field label="Monthly rate (AED)">
                   <input type="number" step="0.01" min="0" name="flatMonthlyRate" defaultValue={pay.flatMonthlyRate} className="input w-full" />
+                </Field>
+              )}
+              {payStructure === "HOURLY" && (
+                <Field label="Hourly rate (AED per normal hour)">
+                  <input type="number" step="0.01" min="0" name="hourlyRate" defaultValue={pay.hourlyRate} className="input w-full" />
                 </Field>
               )}
               {payStructure === "ITEMISED" && (

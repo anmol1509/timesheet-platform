@@ -7,16 +7,19 @@
  *  - Overtime is paid on the *basic* wage only (for a FLAT rate, the flat rate
  *    is treated as the basic): hourly = basic / 240 (30 days x 8 hours),
  *    times the employee's multiplier (default 1.25).
+ *  - HOURLY workers are paid normal hours x hourly rate (so there is nothing to
+ *    deduct for absence), and overtime at hourly rate x multiplier.
  *  - Allowances are fixed monthly amounts and are not used for overtime.
  * All money is rounded to 2 decimals half-away-from-zero at each step.
  */
 
-export const PAY_STRUCTURES = ["ITEMISED", "FLAT"] as const;
+export const PAY_STRUCTURES = ["ITEMISED", "FLAT", "HOURLY"] as const;
 export type PayStructure = (typeof PAY_STRUCTURES)[number];
 
 export const PAY_STRUCTURE_LABELS: Record<PayStructure, string> = {
   ITEMISED: "Itemised (basic + allowances)",
   FLAT: "Flat monthly rate",
+  HOURLY: "Hourly rate",
 };
 
 export const round2 = (n: number) => Math.round((n + Math.sign(n) * Number.EPSILON) * 100) / 100;
@@ -29,11 +32,13 @@ export type PayProfile = {
   transport: number;
   other: number;
   flat: number; // FLAT monthly rate — ignored for ITEMISED
+  hourly: number; // HOURLY rate per normal hour
   paysOvertime: boolean;
   otMultiplier: number;
 };
 
 export type PayPeriodFacts = {
+  normalHours: number;
   absentDays: number;
   unpaidLeaveDays: number;
   otHours: number;
@@ -48,6 +53,11 @@ export type PayResult = {
 };
 
 export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
+  if (p.payStructure === "HOURLY") {
+    const earned = round2(Math.max(0, f.normalHours) * p.hourly);
+    const overtimePay = p.paysOvertime ? round2(Math.max(0, f.otHours) * p.hourly * p.otMultiplier) : 0;
+    return { basic: earned, allowances: 0, fixed: earned, deductions: 0, overtimePay };
+  }
   const basic = p.payStructure === "FLAT" ? p.flat : p.basic;
   const allowances = p.payStructure === "ITEMISED" ? p.housing + p.food + p.transport + p.other : 0;
   const fixed = round2(basic + allowances);

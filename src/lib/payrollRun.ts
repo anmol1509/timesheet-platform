@@ -29,6 +29,7 @@ export async function rebuildRunLines(run: { id: string; branchId: string; month
         transportAllowance: true,
         otherAllowance: true,
         flatMonthlyRate: true,
+        hourlyRate: true,
         paysOvertime: true,
         otMultiplier: true,
         molPersonCode: true,
@@ -85,10 +86,11 @@ export async function rebuildRunLines(run: { id: string; branchId: string; month
         transport: num(e.transportAllowance),
         other: num(e.otherAllowance),
         flat: num(e.flatMonthlyRate),
+        hourly: num(e.hourlyRate),
         paysOvertime: e.paysOvertime,
         otMultiplier: num(e.otMultiplier) || 1.25,
       },
-      { absentDays: facts.absent, unpaidLeaveDays, otHours: facts.ot }
+      { absentDays: facts.absent, unpaidLeaveDays, otHours: facts.ot, normalHours: facts.normal }
     );
     const old = prev.get(e.id);
     const adjustment = num(old?.adjustment);

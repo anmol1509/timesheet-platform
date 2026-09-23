@@ -63,7 +63,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
             </dl>
             <table className="w-full">
               <tbody className="divide-y divide-[var(--border)]">
-                <tr><td className="py-1.5 text-secondary">{l.payStructure === "FLAT" ? "Monthly rate" : "Basic salary"}</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.basic))}</td></tr>
+                <tr><td className="py-1.5 text-secondary">{l.payStructure === "FLAT" ? "Monthly rate" : l.payStructure === "HOURLY" ? `Hourly pay (${l.normalHours} h)` : "Basic salary"}</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.basic))}</td></tr>
                 {n(l.allowances) > 0 && <tr><td className="py-1.5 text-secondary">Allowances</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.allowances))}</td></tr>}
                 {n(l.overtimePay) > 0 && <tr><td className="py-1.5 text-secondary">Overtime ({l.otHours} h)</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.overtimePay))}</td></tr>}
                 {n(l.deductions) > 0 && <tr><td className="py-1.5 text-secondary">Absence / unpaid leave ({unpaidDays} day{unpaidDays === 1 ? "" : "s"})</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.deductions))}</td></tr>}

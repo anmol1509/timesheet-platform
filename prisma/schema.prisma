@@ -510,14 +510,16 @@ enum EmployeeCategory {
 model Employee {
   id                 String           @id @default(cuid())
   // Pay structure for payroll. ITEMISED = basic + allowances; FLAT = one
-  // monthly rate. Overtime is paid on top for either, at rate/240 x multiplier.
-  payStructure       String? // "ITEMISED" | "FLAT"
+  // monthly rate; HOURLY = normal hours x hourly rate. Overtime is paid on top,
+  // at (basic|flat)/240 x multiplier, or hourly rate x multiplier for HOURLY.
+  payStructure       String? // "ITEMISED" | "FLAT" | "HOURLY"
   basicSalary        Decimal?         @db.Decimal(12, 2)
   housingAllowance   Decimal?         @db.Decimal(12, 2)
   foodAllowance      Decimal?         @db.Decimal(12, 2)
   transportAllowance Decimal?         @db.Decimal(12, 2)
   otherAllowance     Decimal?         @db.Decimal(12, 2)
   flatMonthlyRate    Decimal?         @db.Decimal(12, 2)
+  hourlyRate         Decimal?         @db.Decimal(12, 2)
   paysOvertime       Boolean          @default(true)
   otMultiplier       Decimal          @default(1.25) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
@@ -1612,7 +1614,7 @@ model PayrollRun {
 model PayrollLine {
   id String @id @default(cuid())
 
-  payStructure    String // snapshot: "ITEMISED" | "FLAT"
+  payStructure    String // snapshot: "ITEMISED" | "FLAT" | "HOURLY"
   daysInMonth     Int
   absentDays      Int    @default(0)
   unpaidLeaveDays Int    @default(0)

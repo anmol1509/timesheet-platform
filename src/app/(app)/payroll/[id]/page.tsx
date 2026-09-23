@@ -114,7 +114,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                   <tr key={l.id} className="align-top">
                     <td className="px-3 py-3">
                       <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                      <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : "Itemised"}</p>
+                      <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"}</p>
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.basic))}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.allowances))}</td>
@@ -137,7 +137,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         </div>
       )}
       <p className="text-xs text-muted">
-        Rules: absence deduction = (base + allowances) ÷ 30 per absent or unpaid-leave day. Overtime = OT hours × (base ÷ 240) × the employee&apos;s multiplier. Adjustments are added to net pay (use a negative amount to deduct).
+        Rules: for monthly-paid staff, absence deduction = (base + allowances) ÷ 30 per absent or unpaid-leave day. Overtime = OT hours × (base ÷ 240) × the employee&apos;s multiplier. Hourly workers are paid normal hours × their rate, with overtime at rate × multiplier. Adjustments are added to net pay (use a negative amount to deduct).
       </p>
     </div>
   );

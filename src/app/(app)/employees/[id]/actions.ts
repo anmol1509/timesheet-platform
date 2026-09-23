@@ -88,7 +88,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       const v = numberOrNull(formData.get(k));
       return v !== null && v < 0 ? "bad" : v;
     };
-    const fields = ["basicSalary", "housingAllowance", "foodAllowance", "transportAllowance", "otherAllowance", "flatMonthlyRate"] as const;
+    const fields = ["basicSalary", "housingAllowance", "foodAllowance", "transportAllowance", "otherAllowance", "flatMonthlyRate", "hourlyRate"] as const;
     const parsed: Record<string, number | null> = {};
     for (const k of fields) {
       const v = money(k);
@@ -97,6 +97,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
     if (structure === "ITEMISED" && !parsed.basicSalary) return { error: "Enter a basic salary for an itemised pay structure." };
     if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
+    if (structure === "HOURLY" && !parsed.hourlyRate) return { error: "Enter the hourly rate for an hourly pay structure." };
     const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
     if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
     payData = {
@@ -108,6 +109,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       transportAllowance: structure === "ITEMISED" ? parsed.transportAllowance : null,
       otherAllowance: structure === "ITEMISED" ? parsed.otherAllowance : null,
       flatMonthlyRate: structure === "FLAT" ? parsed.flatMonthlyRate : null,
+      hourlyRate: structure === "HOURLY" ? parsed.hourlyRate : null,
       paysOvertime: formData.get("paysOvertime") === "on",
       otMultiplier: mult,
     };

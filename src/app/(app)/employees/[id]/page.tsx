@@ -55,6 +55,7 @@ export default async function EmployeeDetailPage({
         transportAllowance: true,
         otherAllowance: true,
         flatMonthlyRate: true,
+        hourlyRate: true,
         otMultiplier: true,
       },
       include: {
@@ -131,6 +132,7 @@ export default async function EmployeeDetailPage({
           transportAllowance: true,
           otherAllowance: true,
           flatMonthlyRate: true,
+          hourlyRate: true,
           otMultiplier: true,
         },
       })
@@ -145,6 +147,7 @@ export default async function EmployeeDetailPage({
         transportAllowance: n(payRow.transportAllowance),
         otherAllowance: n(payRow.otherAllowance),
         flatMonthlyRate: n(payRow.flatMonthlyRate),
+        hourlyRate: n(payRow.hourlyRate),
         otMultiplier: n(payRow.otMultiplier) || "1.25",
       }
     : null;
