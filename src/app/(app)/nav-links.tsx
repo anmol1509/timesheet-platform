@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import * as Popover from "@radix-ui/react-popover";
+import { m } from "motion/react";
+import { SPRING } from "@/lib/motion";
 import {
   LayoutDashboard,
   Users,
@@ -182,6 +185,27 @@ const NAV: Entry[] = [
 
 const ADMIN_ITEM: Item = { href: "/settings", label: "Settings", icon: SettingsIcon };
 
+export type NavPage = { href: string; label: string; group: string; icon: LucideIcon };
+
+/** Flattens the nav into one list of every reachable page — consumed by the
+ * ⌘K command palette's "Pages" group, so it never drifts out of sync with
+ * the sidebar itself. */
+export function getNavPages(isAdmin: boolean, isSuperAdmin: boolean): NavPage[] {
+  const entries = isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV;
+  const pages: NavPage[] = [];
+  for (const entry of entries) {
+    if (entry.type === "link") {
+      pages.push({ href: entry.item.href, label: entry.item.label, group: entry.category, icon: entry.item.icon });
+    } else {
+      for (const child of entry.children) {
+        pages.push({ href: child.href, label: child.label, group: entry.label, icon: child.icon });
+      }
+    }
+  }
+  if (isAdmin) pages.push({ href: ADMIN_ITEM.href, label: ADMIN_ITEM.label, group: "Administration", icon: ADMIN_ITEM.icon });
+  return pages;
+}
+
 function adminGroup(isSuperAdmin: boolean): Entry {
   return {
     type: "group",
@@ -201,16 +225,47 @@ function adminGroup(isSuperAdmin: boolean): Entry {
   };
 }
 
-function isActive(pathname: string, href: string, exact = false, alsoMatch?: string[]) {
-  if (alsoMatch?.some((p) => pathname === p || pathname.startsWith(p + "/"))) return true;
-  if (href === "/" || exact) return pathname === href;
-  return pathname === href || pathname.startsWith(href + "/");
+/** How specifically `item` matches `pathname` — the length of the matched
+ * prefix, or null for no match. Used to resolve one winner when several nav
+ * items would otherwise all match the same URL (e.g. `/invoices` and
+ * `/invoices/client-timesheet` both prefix-match `/invoices/client-timesheet`
+ * — only the longer, more specific one should light up). */
+function matchSpecificity(pathname: string, item: Item): number | null {
+  const alsoMatched = item.alsoMatch?.find(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
+  if (alsoMatched) return alsoMatched.length;
+  if (item.href === "/" || item.exact) {
+    return pathname === item.href ? item.href.length : null;
+  }
+  if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+    return item.href.length;
+  }
+  return null;
 }
 
-function groupContainsActive(pathname: string, children: Item[]) {
-  // Deliberately ignores `exact`: a group should stay open anywhere inside its
-  // section, including detail pages like /demand/<id> that no child matches.
-  return children.some((c) => isActive(pathname, c.href, false, c.alsoMatch));
+/** The single most-specific nav item for the current path, across the whole
+ * nav (not just within one group) — see matchSpecificity. Exactly one row
+ * (or none) is ever "active" at a time. */
+function resolveActiveHref(pathname: string, entries: Entry[]): string | null {
+  let bestHref: string | null = null;
+  let bestLen = -1;
+  function consider(item: Item) {
+    const len = matchSpecificity(pathname, item);
+    if (len !== null && len > bestLen) {
+      bestLen = len;
+      bestHref = item.href;
+    }
+  }
+  for (const entry of entries) {
+    if (entry.type === "link") consider(entry.item);
+    else entry.children.forEach(consider);
+  }
+  return bestHref;
+}
+
+function groupContainsActive(activeHref: string | null, children: Item[]) {
+  return children.some((c) => c.href === activeHref);
 }
 
 // Active state reads as "selected", not as a coloured button: a tinted surface
@@ -227,11 +282,21 @@ export function NavLinks({
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
-  /** Icon-rail mode. Groups flatten to their icon with a hover tooltip. */
+  /** Icon-rail mode. Groups become a single icon with a click-to-open flyout. */
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
   const entries = isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV;
+
+  // One winner across the *whole* nav, not per group — fixes two rows (in
+  // different groups, or a group row and a top-level item) lighting up for
+  // the same URL. See matchSpecificity/resolveActiveHref. Cheap enough (~40
+  // items) to recompute every render rather than memoize against `entries`,
+  // which is itself rebuilt each render.
+  const navCandidates = isAdmin
+    ? [...entries, { type: "link" as const, item: ADMIN_ITEM, category: "" }]
+    : entries;
+  const activeHref = resolveActiveHref(pathname, navCandidates);
 
   // Only records groups the user explicitly toggled. Whether a group is *open*
   // is derived below, so navigating into a group (via search or a deep link)
@@ -241,7 +306,7 @@ export function NavLinks({
   function isOpen(label: string, children: Item[]) {
     const override = overrides.get(label);
     if (override !== undefined) return override;
-    return groupContainsActive(pathname, children);
+    return groupContainsActive(activeHref, children);
   }
 
   function toggle(label: string, children: Item[]) {
@@ -252,22 +317,26 @@ export function NavLinks({
     });
   }
 
-  function renderLeaf(item: Item, depth: 0 | 1) {
-    const active = isActive(pathname, item.href, item.exact, item.alsoMatch);
+  function renderLeaf(item: Item, depth: 0 | 1, keyPrefix = "") {
+    const active = item.href === activeHref;
     const Icon = item.icon;
 
     if (collapsed) {
       return (
-        <Tooltip key={item.href} label={item.label} className="w-full">
+        <Popover.Close key={keyPrefix + item.href} asChild>
           <Link
             href={item.href}
-            aria-label={item.label}
             aria-current={active ? "page" : undefined}
-            className={cn(ROW, "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
+            className={cn(
+              ROW,
+              "gap-2 px-2 py-1.5 text-[13px]",
+              active ? ACTIVE : INACTIVE
+            )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{item.label}</span>
           </Link>
-        </Tooltip>
+        </Popover.Close>
       );
     }
 
@@ -284,7 +353,9 @@ export function NavLinks({
         )}
       >
         {active && (
-          <span
+          <m.span
+            layoutId="nav-active-rail"
+            transition={SPRING}
             className="absolute top-1/2 -left-3 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
             aria-hidden
           />
@@ -312,6 +383,22 @@ export function NavLinks({
         );
 
         if (entry.type === "link") {
+          const active = entry.item.href === activeHref;
+          const Icon = entry.item.icon;
+          if (collapsed) {
+            return (
+              <Tooltip key={entry.item.href} label={entry.item.label} className="w-full">
+                <Link
+                  href={entry.item.href}
+                  aria-label={entry.item.label}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(ROW, "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                </Link>
+              </Tooltip>
+            );
+          }
           return (
             <div key={entry.item.href} className="contents">
               {categoryHeader}
@@ -322,19 +409,46 @@ export function NavLinks({
 
         const GroupIcon = entry.icon;
         const open = isOpen(entry.label, entry.children);
-        const hasActiveChild = groupContainsActive(pathname, entry.children);
+        const hasActiveChild = groupContainsActive(activeHref, entry.children);
 
-        // Collapsed rail: show each group's children as bare icons, since a
-        // disclosure control has nothing to disclose into at 56px wide.
+        // Collapsed rail: one icon per GROUP (not per child — flattening every
+        // child into the rail left ~40 near-identical icons with no way to
+        // tell which section they belonged to). Click opens a flyout listing
+        // the group's own children by label.
         if (collapsed) {
           return (
-            <div key={entry.label} className="flex w-full flex-col items-center gap-0.5">
-              <span
-                className="my-1 h-px w-5 bg-[var(--border)]"
-                aria-hidden
-              />
-              {entry.children.map((child) => renderLeaf(child, 1))}
-            </div>
+            <Popover.Root key={entry.label}>
+              <Tooltip label={entry.label} className="w-full">
+                <Popover.Trigger asChild>
+                  <button
+                    type="button"
+                    aria-label={entry.label}
+                    className={cn(
+                      ROW,
+                      "h-9 w-9 justify-center",
+                      hasActiveChild ? ACTIVE : INACTIVE
+                    )}
+                  >
+                    <GroupIcon className="h-4 w-4 shrink-0" />
+                  </button>
+                </Popover.Trigger>
+              </Tooltip>
+              <Popover.Portal>
+                <Popover.Content
+                  side="right"
+                  align="start"
+                  sideOffset={10}
+                  className="rx-popover z-50 w-52 rounded-card border border-default bg-surface p-1.5 shadow-popover"
+                >
+                  <p className="px-2 pt-1 pb-1.5 text-[10px] font-semibold tracking-wider text-subtle uppercase">
+                    {entry.label}
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {entry.children.map((child) => renderLeaf(child, 1, entry.label))}
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
           );
         }
 
@@ -370,17 +484,46 @@ export function NavLinks({
                 aria-hidden
               />
             </button>
-            {open && (
-              <div className="mt-0.5 ml-[1.0625rem] flex flex-col gap-0.5 border-l border-default pl-3">
-                {entry.children.map((child) => renderLeaf(child, 1))}
+            {/* CSS grid-rows collapse: 0fr/1fr both instantly measurable (no JS
+                height calc needed) and animatable, and it respects the global
+                prefers-reduced-motion override (transition-duration: 0.01ms). */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateRows: open ? "1fr" : "0fr",
+                transition: "grid-template-rows var(--duration) var(--ease)",
+              }}
+            >
+              <div className="overflow-hidden">
+                <div className="mt-0.5 ml-[1.0625rem] flex flex-col gap-0.5 border-l border-default pl-3">
+                  {entry.children.map((child) => renderLeaf(child, 1))}
+                </div>
               </div>
-            )}
+            </div>
             </div>
           </div>
         );
       })}
 
-      {isAdmin && renderLeaf(ADMIN_ITEM, 0)}
+      {isAdmin &&
+        (collapsed ? (
+          <Tooltip label={ADMIN_ITEM.label} className="w-full">
+            <Link
+              href={ADMIN_ITEM.href}
+              aria-label={ADMIN_ITEM.label}
+              aria-current={ADMIN_ITEM.href === activeHref ? "page" : undefined}
+              className={cn(
+                ROW,
+                "h-9 w-9 justify-center",
+                ADMIN_ITEM.href === activeHref ? ACTIVE : INACTIVE
+              )}
+            >
+              <ADMIN_ITEM.icon className="h-4 w-4 shrink-0" />
+            </Link>
+          </Tooltip>
+        ) : (
+          renderLeaf(ADMIN_ITEM, 0)
+        ))}
     </nav>
   );
 }

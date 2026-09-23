@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 import { AppShell } from "./app-shell";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { MobileSidebar } from "./mobile-sidebar";
-import { GlobalSearch } from "@/components/GlobalSearch";
+import { CommandPalette } from "@/components/CommandPalette";
+import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { UserMenu } from "@/components/UserMenu";
@@ -45,7 +46,7 @@ export default async function AppLayout({
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
         <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
         <div className="min-w-0 flex-1">
-          <GlobalSearch />
+          <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {isSuperAdmin && (
@@ -72,6 +73,7 @@ export default async function AppLayout({
       <Suspense fallback={null}>
         <ProgressBar />
       </Suspense>
+      <ShortcutsSheet />
       <AppShell
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
