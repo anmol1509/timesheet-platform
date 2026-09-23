@@ -15,6 +15,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { DASHBOARD_WIDGETS, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
 import { DashboardTabs } from "@/components/DashboardTabs";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { CustomizeDashboardButton } from "./customize-dashboard";
 import { UserPlus, Upload as UploadIcon } from "lucide-react";
 
@@ -196,9 +197,11 @@ export default async function DashboardPage() {
 
       <DashboardTabs />
 
-      {visibleWidgets.map((widget) => (
-        <div key={widget.id}>{widget.render(data)}</div>
-      ))}
+      <Stagger className="space-y-5">
+        {visibleWidgets.map((widget) => (
+          <StaggerItem key={widget.id}>{widget.render(data)}</StaggerItem>
+        ))}
+      </Stagger>
     </div>
   );
 }

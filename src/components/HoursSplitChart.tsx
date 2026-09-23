@@ -1,4 +1,7 @@
+"use client";
+
 import { Clock } from "lucide-react";
+import { m } from "motion/react";
 import type { HoursSplit } from "@/lib/attendanceHours";
 
 /**
@@ -45,9 +48,11 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
             <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
               <div className="flex w-full flex-1 items-end justify-center">
                 {total > 0 ? (
-                  <div
+                  <m.div
                     className="flex w-full max-w-7 flex-col-reverse overflow-hidden rounded-t-sm"
-                    style={{ height: `${Math.max(4, heightPct)}%` }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(4, heightPct)}%` }}
+                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                     title={`${day.label} — ${day.normal}h normal, ${day.ot}h overtime`}
                   >
                     <span
@@ -58,7 +63,7 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
                       className="w-full bg-[var(--warning)]"
                       style={{ height: `${(day.ot / total) * 100}%` }}
                     />
-                  </div>
+                  </m.div>
                 ) : (
                   <div
                     className="h-0.5 w-full max-w-7 rounded-full bg-[var(--border)]"

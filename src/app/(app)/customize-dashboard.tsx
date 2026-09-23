@@ -3,7 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Settings2, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { m } from "motion/react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
+import { DURATION, EASE } from "@/lib/motion";
 import { saveDashboardPreferenceAction } from "./dashboard-actions";
 
 type WidgetMeta = { id: string; label: string };
@@ -100,8 +102,10 @@ function CustomizeForm({
         {order.map((id, i) => {
           const isHidden = hidden.has(id);
           return (
-            <li
+            <m.li
               key={id}
+              layout
+              transition={{ duration: DURATION, ease: EASE }}
               className="flex items-center gap-2 rounded-control border border-default bg-surface p-2"
             >
               <div className="flex flex-col">
@@ -142,7 +146,7 @@ function CustomizeForm({
                   </>
                 )}
               </button>
-            </li>
+            </m.li>
           );
         })}
       </ul>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
 import { getLpoAlerts } from "@/lib/lpoAlerts";
@@ -29,11 +30,18 @@ export default async function ProjectsDashboardPage() {
       <PageHeader title="Dashboard" description="Active projects, sites, and LPO health." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/projects" label="Active Projects" value={activeCount} icon={ClipboardList} />
-        <StatTile href="/projects" label="On Hold" value={onHoldCount} icon={PauseCircle} />
-        <StatTile href="/sites" label="Sites" value={siteCount} icon={MapPin} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/projects" label="Active Projects" value={activeCount} icon={ClipboardList} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/projects" label="On Hold" value={onHoldCount} icon={PauseCircle} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/sites" label="Sites" value={siteCount} icon={MapPin} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/projects"
           label="LPO Alerts"
           value={lpoAlerts.length}
@@ -41,7 +49,8 @@ export default async function ProjectsDashboardPage() {
           tone={lpoAlerts.length > 0 ? "warning" : "default"}
           hint={`${expiringLpos.length} expiring · ${lowBalanceLpos.length} low balance`}
         />
-      </div>
+        </StaggerItem>
+      </Stagger>
 
       <Panel title="LPOs needing attention">
         {lpoAlerts.length === 0 ? (

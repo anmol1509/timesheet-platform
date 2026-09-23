@@ -1,3 +1,6 @@
+"use client";
+
+import { m } from "motion/react";
 import type { WeeklyHoursDay } from "@/lib/weeklyHours";
 
 const HATCH_BG =
@@ -14,14 +17,13 @@ export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
         return (
           <div key={i} className="flex flex-1 flex-col items-center gap-2">
             <div className="flex h-40 w-full items-end justify-center">
-              <div
+              <m.div
                 title={hasData ? `${d.hours}h logged` : "No hours logged"}
-                style={
-                  hasData
-                    ? { height: `${heightPct}%` }
-                    : { height: `${heightPct}%`, backgroundImage: HATCH_BG }
-                }
-                className={`w-full max-w-9 rounded-full transition-all ${
+                initial={{ height: 0 }}
+                animate={{ height: `${heightPct}%` }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.03 }}
+                style={hasData ? undefined : { backgroundImage: HATCH_BG }}
+                className={`w-full max-w-9 rounded-full ${
                   hasData ? "bg-[var(--brand-primary)]" : "border border-default"
                 }`}
               />

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { HoursSplitChart } from "@/components/HoursSplitChart";
 import { TimesheetPipelineChart } from "@/components/TimesheetPipelineChart";
@@ -44,17 +45,25 @@ export default async function TimesheetsDashboardPage() {
       <PageHeader title="Dashboard" description="This month's timesheet volume and status." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/invoices/client-timesheet" label="This Month's Rows" value={thisMonthCount} icon={FileSpreadsheet} />
-        <StatTile href="/attendance" label="Marked Today" value={attendanceToday} icon={Clock} />
-        <StatTile href="/invoices/client-timesheet" label="Locked" value={lockedCount} icon={Lock} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/invoices/client-timesheet" label="This Month's Rows" value={thisMonthCount} icon={FileSpreadsheet} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/attendance" label="Marked Today" value={attendanceToday} icon={Clock} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/invoices/client-timesheet" label="Locked" value={lockedCount} icon={Lock} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/invoices/client-timesheet"
           label="Approved"
           value={statusBreakdown.find((s) => s.status === "CLIENT_APPROVED")?._count._all ?? 0}
           icon={CheckCircle2}
         />
-      </div>
+        </StaggerItem>
+      </Stagger>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel

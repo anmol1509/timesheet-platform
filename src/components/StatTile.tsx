@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { AnimatedNumber } from "@/components/motion";
 
 export type StatTileTrend = {
   /** Signed change; sign drives the arrow and colour. */
@@ -42,6 +43,18 @@ export function StatTile({
   href?: string;
 }) {
   const isWarning = tone === "warning";
+  // Numbers (and "N%" strings, the one other shape every call site passes)
+  // count up on mount/change instead of just appearing — everything else
+  // (already-composed nodes) passes through untouched.
+  const percentMatch = typeof value === "string" ? value.match(/^(\d+)%$/) : null;
+  const animatedValue =
+    typeof value === "number" ? (
+      <AnimatedNumber value={value} />
+    ) : percentMatch ? (
+      <AnimatedNumber value={Number(percentMatch[1])} format={(n) => `${Math.round(n)}%`} />
+    ) : (
+      value
+    );
   const trendPositive = trend
     ? trend.inverted
       ? trend.direction === "down"
@@ -83,7 +96,7 @@ export function StatTile({
           hero ? "text-white" : "text-primary"
         )}
       >
-        {value}
+        {animatedValue}
       </div>
 
       {(trend || hint) && (

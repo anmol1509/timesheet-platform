@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -40,17 +41,25 @@ export default async function BillingDashboardPage() {
       <PageHeader title="Dashboard" description="Invoice status and outstanding balances." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/invoices" label="Total Invoices" value={totalInvoices} icon={Receipt} />
-        <StatTile href="/invoices" label="Paid" value={paidCount} icon={CheckCircle2} />
-        <StatTile href="/invoices" label="Overdue" value={overdueCount} icon={AlertTriangle} tone={overdueCount > 0 ? "warning" : "default"} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/invoices" label="Total Invoices" value={totalInvoices} icon={Receipt} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/invoices" label="Paid" value={paidCount} icon={CheckCircle2} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/invoices" label="Overdue" value={overdueCount} icon={AlertTriangle} tone={overdueCount > 0 ? "warning" : "default"} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/invoices"
           label="Outstanding"
           value={`AED ${(outstanding._sum.totalAmount ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
           icon={Wallet}
         />
-      </div>
+        </StaggerItem>
+      </Stagger>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Invoices by status">

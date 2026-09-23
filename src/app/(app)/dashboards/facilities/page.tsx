@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { Badge } from "@/components/Badge";
@@ -28,18 +29,26 @@ export default async function FacilitiesDashboardPage() {
       <PageHeader title="Dashboard" description="Accommodation occupancy and transport status." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/accommodation/camps" label="Camps" value={campCount} icon={Home} />
-        <StatTile href="/accommodation/bed-allocation" label="Occupancy" value={`${occupancyPct}%`} icon={BedDouble} hint={`${vacantBeds} vacant`} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/accommodation/camps" label="Camps" value={campCount} icon={Home} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/accommodation/bed-allocation" label="Occupancy" value={`${occupancyPct}%`} icon={BedDouble} hint={`${vacantBeds} vacant`} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/accommodation/bed-allocation"
           label="Awaiting Bed"
           value={awaitingBed}
           icon={LogIn}
           tone={awaitingBed > 0 ? "warning" : "default"}
         />
-        <StatTile href="/transport" label="Vehicles" value={totalVehicles} icon={Bus} />
-      </div>
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/transport" label="Vehicles" value={totalVehicles} icon={Bus} />
+        </StaggerItem>
+      </Stagger>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {totalBeds > 0 && (

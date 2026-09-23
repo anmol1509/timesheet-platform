@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
 import { approvedHeadcount } from "@/lib/demandApproval";
@@ -45,17 +46,25 @@ export default async function DemandDashboardPage() {
       <PageHeader title="Dashboard" description="Open demand requests and mobilisation progress." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/demand" label="Open Requests" value={openCount} icon={ListChecks} />
-        <StatTile href="/demand/mobilisation" label="Short-Staffed" value={shortfall.length} icon={HardHat} tone={shortfall.length > 0 ? "warning" : "default"} />
-        <StatTile href="/demand" label="Awaiting Approval" value={pendingApprovalCount} icon={Clock} tone={pendingApprovalCount > 0 ? "warning" : "default"} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/demand" label="Open Requests" value={openCount} icon={ListChecks} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/demand/mobilisation" label="Short-Staffed" value={shortfall.length} icon={HardHat} tone={shortfall.length > 0 ? "warning" : "default"} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/demand" label="Awaiting Approval" value={pendingApprovalCount} icon={Clock} tone={pendingApprovalCount > 0 ? "warning" : "default"} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/demand/mobilisation"
           label="Total Fulfilment"
           value={`${rows.reduce((s, r) => s + r.filled, 0)}/${rows.reduce((s, r) => s + r.needed, 0)}`}
           icon={ListChecks}
         />
-      </div>
+        </StaggerItem>
+      </Stagger>
 
       <Panel title="Requests short of headcount" href="/demand/mobilisation">
         {shortfall.length === 0 ? (

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { DocumentExpiryWidget } from "@/components/DocumentExpiryWidget";
 import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
@@ -44,10 +45,15 @@ export default async function WorkforceDashboardPage() {
       <PageHeader title="Dashboard" description="Headcount, deployment, and document compliance." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/employees" label="Total Employees" value={employeeCount} icon={Users} />
-        <StatTile href="/employees?filter=on-work" label="Deployed" value={onWorkCount} icon={ClipboardList} hint={`${benchCount} on bench`} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/employees" label="Total Employees" value={employeeCount} icon={Users} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/employees?filter=on-work" label="Deployed" value={onWorkCount} icon={ClipboardList} hint={`${benchCount} on bench`} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/documents"
           label="Compliance Alerts"
           value={alerts.length}
@@ -55,8 +61,11 @@ export default async function WorkforceDashboardPage() {
           tone={expiredCount > 0 ? "warning" : "default"}
           hint={expiredCount > 0 ? `${expiredCount} expired` : "expiring within 30 days"}
         />
-        <StatTile href="/employees" label="Terminated" value={terminatedCount} icon={UserX} />
-      </div>
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/employees" label="Terminated" value={terminatedCount} icon={UserX} />
+        </StaggerItem>
+      </Stagger>
 
       <Panel
         title="Compliance runway"

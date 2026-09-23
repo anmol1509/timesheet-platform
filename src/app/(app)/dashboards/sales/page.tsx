@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -47,12 +48,20 @@ export default async function SalesDashboardPage() {
       <PageHeader title="Dashboard" description="Enquiries and quotation pipeline." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/sales/enquiries" label="Open Enquiries" value={openEnquiries} icon={FileQuestion} />
-        <StatTile href="/sales/quotations" label="Total Quotations" value={totalQuotations} icon={FileSignature} />
-        <StatTile href="/sales/quotations" label="Converted" value={convertedCount} icon={TrendingUp} hint={`${conversionPct}% conversion`} />
-        <StatTile href="/sales/quotations" label="Expiring Soon" value={expiringSoon.length} icon={Clock} tone={expiringSoon.length > 0 ? "warning" : "default"} />
-      </div>
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/sales/enquiries" label="Open Enquiries" value={openEnquiries} icon={FileQuestion} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/sales/quotations" label="Total Quotations" value={totalQuotations} icon={FileSignature} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/sales/quotations" label="Converted" value={convertedCount} icon={TrendingUp} hint={`${conversionPct}% conversion`} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/sales/quotations" label="Expiring Soon" value={expiringSoon.length} icon={Clock} tone={expiringSoon.length > 0 ? "warning" : "default"} />
+        </StaggerItem>
+      </Stagger>
 
       <Panel title="Quotations by status">
         <ul className="space-y-1.5">

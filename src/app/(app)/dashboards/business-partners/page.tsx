@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { StatTile } from "@/components/StatTile";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Panel } from "@/components/DashboardPanel";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -36,18 +37,26 @@ export default async function BusinessPartnersDashboardPage() {
       <PageHeader title="Dashboard" description="Suppliers and clients at a glance." />
       <DashboardTabs />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/suppliers" label="Suppliers" value={supplierCount} icon={Truck} />
-        <StatTile href="/clients" label="Clients" value={clientCount} icon={Building2} />
-        <StatTile
+      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem>
+          <StatTile href="/suppliers" label="Suppliers" value={supplierCount} icon={Truck} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/clients" label="Clients" value={clientCount} icon={Building2} />
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile
           href="/suppliers"
           label="Pending Approval"
           value={pendingTotal}
           icon={Clock}
           tone={pendingTotal > 0 ? "warning" : "default"}
         />
-        <StatTile href="/suppliers" label="Blacklisted" value={blacklistedCount} icon={Ban} />
-      </div>
+        </StaggerItem>
+        <StaggerItem>
+          <StatTile href="/suppliers" label="Blacklisted" value={blacklistedCount} icon={Ban} />
+        </StaggerItem>
+      </Stagger>
 
       <Panel title="Suppliers awaiting approval" href="/suppliers">
         {pendingSuppliers.length === 0 ? (

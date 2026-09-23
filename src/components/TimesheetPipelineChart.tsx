@@ -1,11 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { m } from "motion/react";
 import { FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import type { TimesheetPipeline } from "@/lib/timesheetPipeline";
 
 function formatMonthLabel(month: string) {
-  const [y, m] = month.split("-");
-  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-GB", {
+  const [y, mo] = month.split("-");
+  return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
   });
@@ -39,15 +42,17 @@ export function TimesheetPipelineChart({ pipeline }: { pipeline: TimesheetPipeli
       </div>
 
       <ul className="space-y-2">
-        {pipeline.stages.map((stage) => (
+        {pipeline.stages.map((stage, i) => (
           <li key={stage.status} className="flex items-center gap-3">
             <span className="w-28 shrink-0 text-xs font-medium text-secondary">
               {stage.label}
             </span>
             <span className="flex h-6 min-w-0 flex-1 items-center">
-              <span
+              <m.span
                 className="h-full rounded-sm bg-brand-soft"
-                style={{ width: `${Math.max(2, (stage.count / max) * 100)}%` }}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.max(2, (stage.count / max) * 100)}%` }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.04 }}
               />
               <span className="tabular ml-2 shrink-0 text-xs font-semibold text-primary">
                 {stage.count}
