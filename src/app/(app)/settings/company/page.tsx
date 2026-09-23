@@ -4,6 +4,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { ImageUpload } from "@/components/ImageUpload";
 import { CompanyForm } from "./company-form";
+import { WpsForm } from "./wps-form";
 import { removeLogoAction, uploadLogoAction } from "./actions";
 
 export const metadata = { title: "Company profile" };
@@ -23,6 +24,10 @@ export default async function CompanyProfilePage({
     ? (requested && branches.some((b) => b.id === requested) ? requested : (activeId ?? branches[0]?.id ?? null))
     : admin.branchId;
   const branch = targetId ? await prisma.branch.findUnique({ where: { id: targetId } }) : null;
+
+  const banks = branch
+    ? await prisma.bank.findMany({ where: { branchId: branch.id, status: "ACTIVE" }, orderBy: { accountName: "asc" } })
+    : [];
 
   if (!branch) {
     return <p className="text-sm text-muted">No company to edit — this account isn&apos;t attached to a branch.</p>;
@@ -73,6 +78,26 @@ export default async function CompanyProfilePage({
         />
         <CompanyForm key={branch.id} branch={branch} />
       </div>
+
+      <section className="card max-w-2xl space-y-4 p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-primary">Payroll / WPS</h2>
+          <p className="mt-1 text-xs text-muted">
+            Needed to generate the WPS salary file: your MOHRE establishment ID and the bank account salaries are paid from.
+          </p>
+        </div>
+        <WpsForm
+          key={branch.id}
+          branchId={branch.id}
+          establishmentId={branch.wpsEstablishmentId ?? ""}
+          payerBankId={branch.wpsPayerBankId ?? ""}
+          banks={banks.map((b) => ({
+            id: b.id,
+            label: `${b.accountName} — ${b.bankName}${b.ibanNo ? ` · ${b.ibanNo}` : ""}`,
+            complete: !!b.routingCode && !!(b.ibanNo || b.accountNo),
+          }))}
+        />
+      </section>
     </div>
   );
 }

@@ -67,6 +67,13 @@ export const MODULES: PermissionModule[] = [
     actions: WITH_APPROVE,
   },
   {
+    key: "payroll",
+    label: "Payroll",
+    description: "Pay structures, payroll runs, payslips, WPS files",
+    paths: ["/payroll", "/api/payroll"],
+    actions: WITH_APPROVE,
+  },
+  {
     key: "facilities",
     label: "Facilities",
     description: "Accommodation, transport, inventory",

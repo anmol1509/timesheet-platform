@@ -38,30 +38,35 @@ model Branch {
   logo   StoredImage? @relation("BranchLogo", fields: [logoId], references: [id], onDelete: SetNull)
   logoId String?
 
-  accessRoles          AccessRole[]
-  leaveTypes           LeaveType[]
-  leaveRequests        LeaveRequest[]
-  users                User[]
-  employees            Employee[]
-  clients              Client[]
-  suppliers            Supplier[]
-  projects             Project[]
-  uploads              Upload[]
-  invoices             ClientInvoice[]
-  sheets               GeneratedSheet[]
-  items                InventoryItem[]
-  entries              TimesheetEntry[]
-  banks                Bank[]
-  lookupValues         LookupValue[]
-  demandRequests       DemandRequest[]
-  letterTemplates      LetterTemplate[]
-  nocs                 Noc[]
-  lpos                 Lpo[]
-  attendance           Attendance[]
-  enquiries            Enquiry[]
-  quotations           Quotation[]
-}
+  // WPS establishment details (Company profile -> Payroll / WPS).
+  wpsEstablishmentId String? // MOHRE establishment / employer ID
+  wpsPayerBank       Bank?        @relation("BranchWpsPayerBank", fields: [wpsPayerBankId], references: [id], onDelete: SetNull)
+  wpsPayerBankId     String?
+  payrollRuns        PayrollRun[]
 
+  accessRoles     AccessRole[]
+  leaveTypes      LeaveType[]
+  leaveRequests   LeaveRequest[]
+  users           User[]
+  employees       Employee[]
+  clients         Client[]
+  suppliers       Supplier[]
+  projects        Project[]
+  uploads         Upload[]
+  invoices        ClientInvoice[]
+  sheets          GeneratedSheet[]
+  items           InventoryItem[]
+  entries         TimesheetEntry[]
+  banks           Bank[]
+  lookupValues    LookupValue[]
+  demandRequests  DemandRequest[]
+  letterTemplates LetterTemplate[]
+  nocs            Noc[]
+  lpos            Lpo[]
+  attendance      Attendance[]
+  enquiries       Enquiry[]
+  quotations      Quotation[]
+}
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
 // real account.
@@ -81,6 +86,9 @@ model Bank {
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
+
+  wpsForBranches Branch[]     @relation("BranchWpsPayerBank")
+  payrollRuns    PayrollRun[]
 }
 
 model User {
@@ -93,16 +101,16 @@ model User {
 
   // Profile. `isActive` lets an admin suspend a sub-user without deleting
   // them (deleting fails anyway once they own uploads/documents).
-  phone    String?
-  jobTitle String?
-  isActive Boolean @default(true)
+  phone          String?
+  jobTitle       String?
+  isActive       Boolean        @default(true)
   // Delivery preferences for notifications (in-app always on).
-  notifyEmail    Boolean @default(true)
-  notifyWhatsapp Boolean @default(false)
+  notifyEmail    Boolean        @default(true)
+  notifyWhatsapp Boolean        @default(false)
   whatsappNumber String?
   notifications  Notification[]
-  avatar   StoredImage? @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
-  avatarId String?
+  avatar         StoredImage?   @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
+  avatarId       String?
 
   // Fine-grained permissions. Null = legacy behaviour driven by `role` alone
   // (admins do everything, STAFF everything except Administration), so every
@@ -123,11 +131,13 @@ model User {
   attachments      Attachment[]
   demandRequests   DemandRequest[]
   nocs             Noc[]
-  employeeNotes EmployeeNote[]
+  employeeNotes    EmployeeNote[]
 
   dashboardPreference DashboardPreference?
-  leaveDecisions      LeaveRequest[] @relation("LeaveDecidedBy")
-  leaveRequested      LeaveRequest[] @relation("LeaveRequestedBy")
+  payrollCreated      PayrollRun[]         @relation("PayrollCreatedBy")
+  payrollApproved     PayrollRun[]         @relation("PayrollApprovedBy")
+  leaveDecisions      LeaveRequest[]       @relation("LeaveDecidedBy")
+  leaveRequested      LeaveRequest[]       @relation("LeaveRequestedBy")
 }
 
 // Small uploaded images (user avatars, company logos). Its own table so the
@@ -207,7 +217,7 @@ model UploadMonth {
 model Supplier {
   id        String   @id @default(cuid())
   name      String   @unique
-  code      String? @unique
+  code      String?  @unique
   fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
   createdAt DateTime @default(now())
 
@@ -253,7 +263,7 @@ model Supplier {
   // Our own entities vs third-party subcontractors. Same shape, but the
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
-  isOwnCompany     Boolean    @default(false)
+  isOwnCompany Boolean @default(false)
 
   // The point of contact this supplier's workers' camp check-in slips are
   // printed with — distinct from contactPerson (the general business
@@ -498,29 +508,41 @@ enum EmployeeCategory {
 // supplier) and manually enriched here (photo, compliance dates, etc). The
 // upload flow never touches the manually-owned fields.
 model Employee {
-  id               String           @id @default(cuid())
-  leaveRequests    LeaveRequest[]
-  employeeIdNo     String           @unique
-  name             String
-  trade            String?
+  id                 String           @id @default(cuid())
+  // Pay structure for payroll. ITEMISED = basic + allowances; FLAT = one
+  // monthly rate. Overtime is paid on top for either, at rate/240 x multiplier.
+  payStructure       String? // "ITEMISED" | "FLAT"
+  basicSalary        Decimal?         @db.Decimal(12, 2)
+  housingAllowance   Decimal?         @db.Decimal(12, 2)
+  foodAllowance      Decimal?         @db.Decimal(12, 2)
+  transportAllowance Decimal?         @db.Decimal(12, 2)
+  otherAllowance     Decimal?         @db.Decimal(12, 2)
+  flatMonthlyRate    Decimal?         @db.Decimal(12, 2)
+  paysOvertime       Boolean          @default(true)
+  otMultiplier       Decimal          @default(1.25) @db.Decimal(4, 2)
+  payrollLines       PayrollLine[]
+  leaveRequests      LeaveRequest[]
+  employeeIdNo       String           @unique
+  name               String
+  trade              String?
   // Kept alongside the legacy `active` boolean during the transition — existing
   // dashboard/list queries still read `active`; new code should prefer `status`.
-  status           EmployeeStatus   @default(ACTIVE)
-  category         EmployeeCategory @default(SITE_STAFF)
-  photoData        Bytes?
-  photoMimeType    String?
-  nationality      String?
-  position         String?
-  passportNumber   String?
-  emiratesId       String?
-  emiratesIdExpiry DateTime?
-  visaExpiry       DateTime?
-  laborCardExpiry  DateTime?
-  medicalExpiry    DateTime?
-  passportExpiry   DateTime?
-  salaryType       String? // "BASIC" | "HOURLY" — reference only
-  salaryRate       Float? // reference only, pairs with salaryType
-  notes            String?
+  status             EmployeeStatus   @default(ACTIVE)
+  category           EmployeeCategory @default(SITE_STAFF)
+  photoData          Bytes?
+  photoMimeType      String?
+  nationality        String?
+  position           String?
+  passportNumber     String?
+  emiratesId         String?
+  emiratesIdExpiry   DateTime?
+  visaExpiry         DateTime?
+  laborCardExpiry    DateTime?
+  medicalExpiry      DateTime?
+  passportExpiry     DateTime?
+  salaryType         String? // "BASIC" | "HOURLY" — reference only
+  salaryRate         Float? // reference only, pairs with salaryType
+  notes              String?
 
   dateOfBirth           DateTime?
   gender                String? // "MALE" | "FEMALE"
@@ -624,20 +646,20 @@ model Employee {
   sponsorSupplier   Supplier? @relation("EmployeeSponsor", fields: [sponsorSupplierId], references: [id])
   sponsorSupplierId String?
 
-  documents              Document[]
-  skills                 EmployeeSkill[]
-  vaccinations           EmployeeVaccination[]
-  visaApplications       VisaApplication[]
-  labourCardApplications LabourCardApplication[]
-  noteEntries            EmployeeNote[]
-  assignmentHistory      EmployeeAssignmentHistory[]
-  accommodationHistory   AccommodationHistory[]
+  documents                Document[]
+  skills                   EmployeeSkill[]
+  vaccinations             EmployeeVaccination[]
+  visaApplications         VisaApplication[]
+  labourCardApplications   LabourCardApplication[]
+  noteEntries              EmployeeNote[]
+  assignmentHistory        EmployeeAssignmentHistory[]
+  accommodationHistory     AccommodationHistory[]
   demandRequestAllocations DemandRequestAllocation[]
-  nocEmployees           NocEmployee[]
-  bed                    Bed?
-  campCheckIns           CampCheckIn[]
-  attendance             Attendance[]
-  inventoryAssignments   EmployeeInventoryAssignment[]
+  nocEmployees             NocEmployee[]
+  bed                      Bed?
+  campCheckIns             CampCheckIn[]
+  attendance               Attendance[]
+  inventoryAssignments     EmployeeInventoryAssignment[]
 }
 
 // System-written record of each project placement — opened/closed
@@ -765,11 +787,11 @@ model Document {
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
 
-  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id])
   uploadedById String
   // Set when the file was attached to a note rather than filed on its own.
-  note   EmployeeNote? @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  noteId String?
+  note         EmployeeNote? @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId       String?
 
   visaApplications       VisaApplication[]
   labourCardApplications LabourCardApplication[]
@@ -946,15 +968,15 @@ model Enquiry {
 // optionally an Lpo, if Phase A's Lpo model is populated at conversion
 // time). Mirrors the DemandRequest/DemandRequestTrade header+line shape.
 model Quotation {
-  id               String    @id @default(cuid())
-  quotationNumber  String    @unique
-  status           String    @default("DRAFT") // "DRAFT" | "SENT" | "NEGOTIATION" | "APPROVED" | "ACCEPTED" | "REJECTED" | "CONVERTED"
-  validUntil       DateTime?
-  terms            String?
+  id                           String    @id @default(cuid())
+  quotationNumber              String    @unique
+  status                       String    @default("DRAFT") // "DRAFT" | "SENT" | "NEGOTIATION" | "APPROVED" | "ACCEPTED" | "REJECTED" | "CONVERTED"
+  validUntil                   DateTime?
+  terms                        String?
   accommodationResponsibility  String?
   transportationResponsibility String?
   ppeResponsibility            String?
-  createdAt        DateTime  @default(now())
+  createdAt                    DateTime  @default(now())
 
   enquiry   Enquiry? @relation(fields: [enquiryId], references: [id])
   enquiryId String?
@@ -1063,13 +1085,13 @@ model InventoryItem {
 // an item has any variants; an item with none is issued directly (variantId
 // left null on the assignment), unchanged from before variants existed.
 model InventoryVariant {
-  id    String @id @default(cuid())
+  id    String  @id @default(cuid())
   name  String
   sku   String?
   // Units on hand. "Available" (stock minus currently-held, unreturned
   // assignments) is computed on read, not stored, so it can never drift out
   // of sync the way a decrement-on-issue/increment-on-return counter could.
-  stock Int    @default(0)
+  stock Int     @default(0)
 
   item   InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   itemId String
@@ -1133,7 +1155,7 @@ model Skill {
   category String?
   trending Boolean @default(false)
 
-  employees EmployeeSkill[]
+  employees    EmployeeSkill[]
   demandTrades DemandRequestTrade[]
 }
 
@@ -1245,7 +1267,7 @@ model RouteStop {
   pickupTime String? // free text, e.g. "07:30" — no date component, matches a recurring daily route
   notes      String?
 
-  route   Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
   routeId String
 
   @@index([routeId])
@@ -1372,11 +1394,11 @@ model DemandRequest {
   remarks              String?
   createdAt            DateTime @default(now())
 
-  client    Client @relation(fields: [clientId], references: [id])
+  client    Client  @relation(fields: [clientId], references: [id])
   clientId  String
   project   Project @relation(fields: [projectId], references: [id])
   projectId String
-  branch    Branch @relation(fields: [branchId], references: [id])
+  branch    Branch  @relation(fields: [branchId], references: [id])
   branchId  String
 
   requestedBy   User?   @relation(fields: [requestedById], references: [id])
@@ -1477,7 +1499,6 @@ model NocEmployee {
   employeeId String
 }
 
-
 // ---------------------------------------------------------------------------
 // Leave management
 // ---------------------------------------------------------------------------
@@ -1532,7 +1553,6 @@ model LeaveRequest {
   @@index([employeeId, startDate])
 }
 
-
 // ---------------------------------------------------------------------------
 // Notifications
 // ---------------------------------------------------------------------------
@@ -1553,4 +1573,71 @@ model Notification {
   userId String
 
   @@index([userId, readAt, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Payroll
+// ---------------------------------------------------------------------------
+
+// One month of payroll for a branch. DRAFT lines can be recomputed and
+// adjusted; APPROVED locks the figures and unlocks the WPS file; PAID records
+// that the bank has been instructed.
+model PayrollRun {
+  id         String    @id @default(cuid())
+  month      String // "YYYY-MM"
+  status     String    @default("DRAFT") // "DRAFT" | "APPROVED" | "PAID"
+  notes      String?
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
+  paidAt     DateTime?
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  payerBank   Bank?   @relation(fields: [payerBankId], references: [id], onDelete: SetNull)
+  payerBankId String?
+
+  createdBy    User    @relation("PayrollCreatedBy", fields: [createdById], references: [id])
+  createdById  String
+  approvedBy   User?   @relation("PayrollApprovedBy", fields: [approvedById], references: [id])
+  approvedById String?
+
+  lines PayrollLine[]
+
+  @@unique([branchId, month])
+}
+
+// One employee's pay for a run. Pay and bank details are snapshotted at
+// compute time so an approved run never shifts if the employee record changes.
+model PayrollLine {
+  id String @id @default(cuid())
+
+  payStructure    String // snapshot: "ITEMISED" | "FLAT"
+  daysInMonth     Int
+  absentDays      Int    @default(0)
+  unpaidLeaveDays Int    @default(0)
+  normalHours     Float  @default(0)
+  otHours         Float  @default(0)
+
+  basic          Decimal @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
+  allowances     Decimal @default(0) @db.Decimal(12, 2)
+  overtimePay    Decimal @default(0) @db.Decimal(12, 2)
+  deductions     Decimal @default(0) @db.Decimal(12, 2) // absence + unpaid leave
+  adjustment     Decimal @default(0) @db.Decimal(12, 2) // manual +/-
+  adjustmentNote String?
+  net            Decimal @default(0) @db.Decimal(12, 2)
+
+  // Bank snapshot for the WPS file.
+  paymentMode String?
+  personCode  String?
+  bankName    String?
+  routingCode String?
+  account     String?
+
+  run        PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId      String
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  @@unique([runId, employeeId])
 }

@@ -93,3 +93,33 @@ export async function removeLogoAction(formData: FormData) {
   revalidatePath("/", "layout");
   return { error: null };
 }
+
+export async function updateWpsAction(_prev: State, formData: FormData): Promise<State> {
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+
+  const establishmentId = String(formData.get("wpsEstablishmentId") || "").trim() || null;
+  if (establishmentId && !/^\d{8,15}$/.test(establishmentId)) {
+    return { error: "The MOHRE establishment ID should be digits only (usually 13)." };
+  }
+  const bankId = String(formData.get("wpsPayerBankId") || "") || null;
+  if (bankId) {
+    const bank = await prisma.bank.findUnique({ where: { id: bankId }, select: { branchId: true } });
+    if (!bank || bank.branchId !== branch.id) return { error: "Choose one of this company's bank accounts." };
+  }
+
+  await prisma.branch.update({ where: { id: branch.id }, data: { wpsEstablishmentId: establishmentId, wpsPayerBankId: bankId } });
+  await logAudit({
+    entityType: "BRANCH",
+    entityId: branch.id,
+    action: "UPDATE",
+    before: { wpsEstablishmentId: branch.wpsEstablishmentId, wpsPayerBankId: branch.wpsPayerBankId },
+    after: { wpsEstablishmentId: establishmentId, wpsPayerBankId: bankId },
+    userId: admin.id,
+    userName: admin.name,
+    branchId: branch.id,
+  });
+  revalidatePath("/settings/company");
+  revalidatePath("/payroll");
+  return { error: null, ok: true };
+}

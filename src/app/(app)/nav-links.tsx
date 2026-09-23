@@ -43,6 +43,7 @@ import {
   FileStack,
   Trash2,
   CalendarOff,
+  Banknote,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -196,6 +197,13 @@ const NAV: Entry[] = [
       { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/invoices/history", label: "Invoice History", icon: Clock },
     ],
+  },
+  {
+    type: "group",
+    label: "Payroll",
+    icon: Banknote,
+    category: "Commercial",
+    children: [{ href: "/payroll", label: "Payroll Runs", icon: Banknote }],
   },
 ];
 

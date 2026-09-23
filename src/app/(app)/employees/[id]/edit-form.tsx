@@ -32,6 +32,8 @@ type Employee = {
   emiratesIdExpiry: Date | null;
   salaryType: string | null;
   salaryRate: number | null;
+  payStructure: string | null;
+  paysOvertime: boolean;
   projectId: string | null;
   siteId: string | null;
   vehicleId: string | null;
@@ -108,7 +110,7 @@ const TABS = [
   { id: "overview", label: "Overview" },
   { id: "documents", label: "Documents" },
   { id: "payroll", label: "Payroll & WPS" },
-  { id: "project", label: "Project & Salary" },
+  { id: "project", label: "Project & Site" },
   { id: "records", label: "Trades & Records" },
 ];
 
@@ -121,6 +123,17 @@ const INACTIVE_REASONS = [
   { value: "Cancelled", label: "Cancelled" },
   { value: "Other", label: "Other" },
 ];
+
+export type PayFormValues = {
+  canEdit: boolean;
+  basicSalary: string;
+  housingAllowance: string;
+  foodAllowance: string;
+  transportAllowance: string;
+  otherAllowance: string;
+  flatMonthlyRate: string;
+  otMultiplier: string;
+};
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -137,8 +150,11 @@ export function EditForm({
   documents,
   lookups,
   recordsContent,
+  pay,
 }: {
   employee: Employee;
+  /** Pay figures as strings; null when the viewer may not see pay. */
+  pay: PayFormValues | null;
   projects: Project[];
   sites: Site[];
   vehicles: Vehicle[];
@@ -166,7 +182,7 @@ export function EditForm({
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
-  const [salaryType, setSalaryType] = useState(employee.salaryType || "");
+    const [payStructure, setPayStructure] = useState(employee.payStructure || "");
   const [nationality, setNationality] = useState(employee.nationality || "");
   const [projectId, setProjectId] = useState(employee.projectId || "");
   const [siteId, setSiteId] = useState(employee.siteId || "");
@@ -640,6 +656,65 @@ export function EditForm({
       </div>
 
       <div className={tab === "payroll" ? "space-y-8" : "hidden"}>
+        {pay && (
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
+            <p className="mb-3 text-xs text-muted">
+              Choose how this worker is paid. Overtime hours from attendance are paid on top at basic ÷ 240 × the multiplier.
+              {!pay.canEdit && " You can view these figures but not change them."}
+            </p>
+            <input type="hidden" name="_pay" value="1" />
+            <fieldset disabled={!pay.canEdit} className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+              <Field label="Pay structure">
+                <Select
+                  name="payStructure"
+                  value={payStructure}
+                  onChange={setPayStructure}
+                  placeholder="Not set — excluded from payroll"
+                  searchable={false}
+                  options={[
+                    { value: "ITEMISED", label: "Itemised — basic + allowances" },
+                    { value: "FLAT", label: "Flat — one monthly rate" },
+                  ]}
+                />
+              </Field>
+              {payStructure === "FLAT" && (
+                <Field label="Monthly rate (AED)">
+                  <input type="number" step="0.01" min="0" name="flatMonthlyRate" defaultValue={pay.flatMonthlyRate} className="input w-full" />
+                </Field>
+              )}
+              {payStructure === "ITEMISED" && (
+                <>
+                  <Field label="Basic salary (AED)">
+                    <input type="number" step="0.01" min="0" name="basicSalary" defaultValue={pay.basicSalary} className="input w-full" />
+                  </Field>
+                  <Field label="Housing allowance (AED)">
+                    <input type="number" step="0.01" min="0" name="housingAllowance" defaultValue={pay.housingAllowance} className="input w-full" />
+                  </Field>
+                  <Field label="Food allowance (AED)">
+                    <input type="number" step="0.01" min="0" name="foodAllowance" defaultValue={pay.foodAllowance} className="input w-full" />
+                  </Field>
+                  <Field label="Transport allowance (AED)">
+                    <input type="number" step="0.01" min="0" name="transportAllowance" defaultValue={pay.transportAllowance} className="input w-full" />
+                  </Field>
+                  <Field label="Other allowance (AED)">
+                    <input type="number" step="0.01" min="0" name="otherAllowance" defaultValue={pay.otherAllowance} className="input w-full" />
+                  </Field>
+                </>
+              )}
+              {payStructure && (
+                <>
+                  <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
+                    <input type="checkbox" name="paysOvertime" defaultChecked={employee.paysOvertime} /> Paid for overtime
+                  </label>
+                  <Field label="Overtime multiplier">
+                    <input type="number" step="0.01" min="1" max="3" name="otMultiplier" defaultValue={pay.otMultiplier} className="input w-full" />
+                  </Field>
+                </>
+              )}
+            </fieldset>
+          </section>
+        )}
         <section>
           <h2 className="mb-3 text-sm font-semibold text-primary">
             Payroll & WPS
@@ -670,7 +745,7 @@ export function EditForm({
       <div className={tab === "project" ? "space-y-8" : "hidden"}>
         <section>
           <h2 className="mb-3 text-sm font-semibold text-primary">
-            Project & salary
+            Project & site
           </h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Project assignment">
@@ -708,30 +783,6 @@ export function EditForm({
                 }))}
               />
             </Field>
-            <Field label="Salary type (reference only)">
-              <Select
-                name="salaryType"
-                value={salaryType}
-                onChange={setSalaryType}
-                placeholder="Not set"
-                searchable={false}
-                options={[
-                  { value: "BASIC", label: "Basic Salary" },
-                  { value: "HOURLY", label: "Hourly Rate" },
-                ]}
-              />
-            </Field>
-            {salaryType && (
-              <Field label={salaryType === "HOURLY" ? "Hourly rate (AED, reference only)" : "Basic salary (AED, reference only)"}>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="salaryRate"
-                  defaultValue={employee.salaryRate ?? ""}
-                  className="input w-full"
-                />
-              </Field>
-            )}
           </div>
         </section>
       </div>

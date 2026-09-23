@@ -4,7 +4,8 @@ import { BadgeCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
@@ -39,10 +40,23 @@ export default async function EmployeeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const canViewPay = can(subjectOf(user), "payroll", "view");
+  const canEditPay = can(subjectOf(user), "payroll", "edit");
   const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues, inventoryItems] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
+      // Decimal columns can't cross into the client form (and pay is only
+      // fetched below for people allowed to see it).
+      omit: {
+        basicSalary: true,
+        housingAllowance: true,
+        foodAllowance: true,
+        transportAllowance: true,
+        otherAllowance: true,
+        flatMonthlyRate: true,
+        otMultiplier: true,
+      },
       include: {
         supplier: true,
         project: { include: { client: true } },
@@ -106,6 +120,34 @@ export default async function EmployeeDetailPage({
     }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
+
+  const payRow = canViewPay
+    ? await prisma.employee.findUnique({
+        where: { id },
+        select: {
+          basicSalary: true,
+          housingAllowance: true,
+          foodAllowance: true,
+          transportAllowance: true,
+          otherAllowance: true,
+          flatMonthlyRate: true,
+          otMultiplier: true,
+        },
+      })
+    : null;
+  const n = (d: { toString(): string } | null | undefined) => (d == null ? "" : String(Number(d.toString())));
+  const pay = payRow
+    ? {
+        canEdit: canEditPay,
+        basicSalary: n(payRow.basicSalary),
+        housingAllowance: n(payRow.housingAllowance),
+        foodAllowance: n(payRow.foodAllowance),
+        transportAllowance: n(payRow.transportAllowance),
+        otherAllowance: n(payRow.otherAllowance),
+        flatMonthlyRate: n(payRow.flatMonthlyRate),
+        otMultiplier: n(payRow.otMultiplier) || "1.25",
+      }
+    : null;
 
   const lookups = groupLookups(lookupValues);
   const documentOptions = employee.documents.map((d) => ({ id: d.id, filename: d.filename }));
@@ -199,6 +241,7 @@ export default async function EmployeeDetailPage({
 
       <EditForm
         employee={employee}
+        pay={pay}
         projects={projects}
         sites={sites}
         vehicles={vehicles}

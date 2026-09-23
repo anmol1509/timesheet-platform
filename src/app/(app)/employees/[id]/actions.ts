@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { can } from "@/lib/permissions";
+import { subjectOf } from "@/lib/auth";
+import { PAY_STRUCTURES } from "@/lib/payroll";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
 import { releaseFromMobilisation } from "@/lib/employeeStageTransitions";
@@ -74,7 +77,44 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
   }
 
+  // Pay structure: only applied when the form actually carried the pay section
+  // (`_pay`) AND this user may edit payroll — a hidden section can never blank
+  // out figures, and a tampered post from someone without access is ignored.
+  let payData: Record<string, unknown> = {};
+  if (formData.get("_pay") === "1" && can(subjectOf(user), "payroll", "edit")) {
+    const structure = stringOrNull(formData.get("payStructure"));
+    if (structure && !(PAY_STRUCTURES as readonly string[]).includes(structure)) return { error: "Unknown pay structure." };
+    const money = (k: string) => {
+      const v = numberOrNull(formData.get(k));
+      return v !== null && v < 0 ? "bad" : v;
+    };
+    const fields = ["basicSalary", "housingAllowance", "foodAllowance", "transportAllowance", "otherAllowance", "flatMonthlyRate"] as const;
+    const parsed: Record<string, number | null> = {};
+    for (const k of fields) {
+      const v = money(k);
+      if (v === "bad") return { error: "Pay amounts can't be negative." };
+      parsed[k] = v;
+    }
+    if (structure === "ITEMISED" && !parsed.basicSalary) return { error: "Enter a basic salary for an itemised pay structure." };
+    if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
+    const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
+    if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
+    payData = {
+      payStructure: structure,
+      // Clear the figures the chosen structure doesn't use, so a switch can't leave stale pay behind.
+      basicSalary: structure === "ITEMISED" ? parsed.basicSalary : null,
+      housingAllowance: structure === "ITEMISED" ? parsed.housingAllowance : null,
+      foodAllowance: structure === "ITEMISED" ? parsed.foodAllowance : null,
+      transportAllowance: structure === "ITEMISED" ? parsed.transportAllowance : null,
+      otherAllowance: structure === "ITEMISED" ? parsed.otherAllowance : null,
+      flatMonthlyRate: structure === "FLAT" ? parsed.flatMonthlyRate : null,
+      paysOvertime: formData.get("paysOvertime") === "on",
+      otMultiplier: mult,
+    };
+  }
+
   const data = {
+      ...payData,
       name,
       employeeIdNo,
       category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
@@ -91,8 +131,6 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       medicalExpiry: dateOrNull(formData.get("medicalExpiry")),
       passportExpiry: dateOrNull(formData.get("passportExpiry")),
       emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
-      salaryType: stringOrNull(formData.get("salaryType")),
-      salaryRate: numberOrNull(formData.get("salaryRate")),
       projectId: stringOrNull(formData.get("projectId")),
       siteId: stringOrNull(formData.get("siteId")),
       vehicleId: stringOrNull(formData.get("vehicleId")),
@@ -229,7 +267,16 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     entityType: "EMPLOYEE",
     entityId: id,
     action: "UPDATE",
-    before: before as unknown as Record<string, unknown>,
+    // Decimal columns serialise as strings; compare them as numbers so an
+    // unchanged salary doesn't log as "1200" -> 1200 on every save.
+    before: Object.fromEntries(
+      Object.entries((before ?? {}) as Record<string, unknown>).map(([k, v]) => [
+        k,
+        v && typeof v === "object" && typeof (v as { toNumber?: unknown }).toNumber === "function"
+          ? (v as unknown as { toNumber(): number }).toNumber()
+          : v,
+      ])
+    ),
     after: data as unknown as Record<string, unknown>,
     userId: user.id,
     userName: user.name,
