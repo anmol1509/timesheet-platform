@@ -5,8 +5,19 @@ import Link from "next/link";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
 import { NavLinks } from "./nav-links";
+import { BrandMark, type Brand } from "@/components/BrandMark";
 
-export function MobileSidebar({ isAdmin, isSuperAdmin }: { isAdmin: boolean; isSuperAdmin: boolean }) {
+export function MobileSidebar({
+  isAdmin,
+  isSuperAdmin,
+  allowedModules,
+  brand,
+}: {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  allowedModules: string[] | null;
+  brand: Brand;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -25,23 +36,7 @@ export function MobileSidebar({ isAdmin, isSuperAdmin }: { isAdmin: boolean; isS
         <RadixDialog.Content className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-default bg-surface outline-none lg:hidden">
           <RadixDialog.Title className="sr-only">Navigation</RadixDialog.Title>
           <div className="flex h-14 shrink-0 items-center justify-between border-b border-default pr-2 pl-3">
-            <Link
-              href="/"
-              onClick={() => setOpen(false)}
-              className="flex min-w-0 items-center gap-2.5"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-[11px] font-bold text-white">
-                BA
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-primary">
-                  Burj Al Aweer
-                </span>
-                <span className="block truncate text-[11px] text-subtle">
-                  Manpower ERP
-                </span>
-              </span>
-            </Link>
+            <BrandMark brand={brand} onNavigate={() => setOpen(false)} />
             <RadixDialog.Close
               aria-label="Close navigation"
               className="shrink-0 rounded-md p-1.5 text-subtle transition hover:bg-surface-hover hover:text-secondary"
@@ -56,7 +51,7 @@ export function MobileSidebar({ isAdmin, isSuperAdmin }: { isAdmin: boolean; isS
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
-            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
+            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

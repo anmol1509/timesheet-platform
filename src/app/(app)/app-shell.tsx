@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
+import { BrandMark, type Brand } from "@/components/BrandMark";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { cn } from "@/lib/cn";
@@ -23,12 +23,16 @@ import { cn } from "@/lib/cn";
 export function AppShell({
   isAdmin,
   isSuperAdmin,
+  allowedModules,
+  brand,
   defaultCollapsed,
   header,
   children,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  allowedModules: string[] | null;
+  brand: Brand;
   defaultCollapsed: boolean;
   header: React.ReactNode;
   children: React.ReactNode;
@@ -56,25 +60,7 @@ export function AppShell({
             collapsed ? "justify-center px-2" : "justify-between pr-2 pl-3"
           )}
         >
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-2.5"
-            aria-label="Burj Al Aweer ERP — dashboard"
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-[11px] font-bold text-white">
-              BA
-            </span>
-            {!collapsed && (
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold text-primary">
-                  Burj Al Aweer
-                </span>
-                <span className="block truncate text-[11px] text-subtle">
-                  Manpower ERP
-                </span>
-              </span>
-            )}
-          </Link>
+          <BrandMark brand={brand} collapsed={collapsed} />
           {!collapsed && (
             <button
               type="button"
@@ -93,7 +79,7 @@ export function AppShell({
             collapsed ? "px-2" : "px-3"
           )}
         >
-          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} collapsed={collapsed} />
+          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} />
         </div>
 
         {collapsed && (

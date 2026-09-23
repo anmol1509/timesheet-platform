@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -92,6 +92,7 @@ export async function updateBankAction(formData: FormData) {
 }
 
 export async function deleteBankAction(formData: FormData) {
+  await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("bankId") || "");
   if (!id) return;

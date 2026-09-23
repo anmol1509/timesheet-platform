@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 
 const RESULT_LIMIT = 5;
@@ -15,8 +16,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ employees: [], projects: [], clients: [], documents: [] });
   }
 
+  // Results only from modules this user may open, so search can't leak
+  // records their role hides from the sidebar.
+  const subject = subjectOf(user);
+  const canWorkforce = can(subject, "workforce", "view");
+  const canProjects = can(subject, "projects", "view");
+  const canPartners = can(subject, "partners", "view");
+
   const [employees, projects, clients, documents] = await Promise.all([
-    prisma.employee.findMany({
+    canWorkforce ? prisma.employee.findMany({
       where: {
         OR: [
           { name: { contains: q, mode: "insensitive" } },
@@ -26,8 +34,8 @@ export async function GET(request: Request) {
       },
       select: { id: true, name: true, employeeIdNo: true, trade: true },
       take: RESULT_LIMIT,
-    }),
-    prisma.project.findMany({
+    }) : Promise.resolve([]),
+    canProjects ? prisma.project.findMany({
       where: {
         OR: [
           { name: { contains: q, mode: "insensitive" } },
@@ -36,8 +44,8 @@ export async function GET(request: Request) {
       },
       select: { id: true, name: true, code: true },
       take: RESULT_LIMIT,
-    }),
-    prisma.client.findMany({
+    }) : Promise.resolve([]),
+    canPartners ? prisma.client.findMany({
       where: {
         OR: [
           { name: { contains: q, mode: "insensitive" } },
@@ -46,12 +54,12 @@ export async function GET(request: Request) {
       },
       select: { id: true, name: true, code: true },
       take: RESULT_LIMIT,
-    }),
-    prisma.document.findMany({
+    }) : Promise.resolve([]),
+    canWorkforce ? prisma.document.findMany({
       where: { filename: { contains: q, mode: "insensitive" } },
       select: { id: true, filename: true, type: true, employeeId: true, employee: { select: { name: true } } },
       take: RESULT_LIMIT,
-    }),
+    }) : Promise.resolve([]),
   ]);
 
   return NextResponse.json({ employees, projects, clients, documents });

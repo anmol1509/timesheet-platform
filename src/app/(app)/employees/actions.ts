@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -54,6 +54,7 @@ async function blockingReason(employee: {
 export async function deleteEmployeesAction(
   employeeIds: string[]
 ): Promise<DeleteEmployeesResult> {
+  await requirePermission("workforce", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (employeeIds.length === 0) return { deleted: 0, blocked: [] };
 

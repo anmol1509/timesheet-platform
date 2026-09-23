@@ -30,6 +30,9 @@ import {
   Wallet,
   ListChecks,
   History,
+  Building,
+  UserCog,
+  ShieldCheck,
   FileSearch,
   BadgeDollarSign,
   FileQuestion,
@@ -43,6 +46,7 @@ import {
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
+import { moduleForPath } from "@/lib/permissions";
 
 type Item = {
   href: string;
@@ -190,8 +194,12 @@ export type NavPage = { href: string; label: string; group: string; icon: Lucide
 /** Flattens the nav into one list of every reachable page — consumed by the
  * ⌘K command palette's "Pages" group, so it never drifts out of sync with
  * the sidebar itself. */
-export function getNavPages(isAdmin: boolean, isSuperAdmin: boolean): NavPage[] {
-  const entries = isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV;
+export function getNavPages(
+  isAdmin: boolean,
+  isSuperAdmin: boolean,
+  allowedModules: string[] | null = null
+): NavPage[] {
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
   const pages: NavPage[] = [];
   for (const entry of entries) {
     if (entry.type === "link") {
@@ -206,6 +214,21 @@ export function getNavPages(isAdmin: boolean, isSuperAdmin: boolean): NavPage[] 
   return pages;
 }
 
+/** Drops nav rows whose module the user can't open (allowed = null → no restriction),
+ * and any group left empty. Rows outside every module (dashboard, admin) always stay. */
+function visibleEntries(entries: Entry[], allowed: string[] | null): Entry[] {
+  if (!allowed) return entries;
+  const ok = (item: Item) => {
+    const m = moduleForPath(item.href);
+    return m === null || allowed.includes(m);
+  };
+  return entries.flatMap((e): Entry[] => {
+    if (e.type === "link") return ok(e.item) ? [e] : [];
+    const children = e.children.filter(ok);
+    return children.length ? [{ ...e, children }] : [];
+  });
+}
+
 function adminGroup(isSuperAdmin: boolean): Entry {
   return {
     type: "group",
@@ -213,6 +236,9 @@ function adminGroup(isSuperAdmin: boolean): Entry {
     icon: ListChecks,
     category: "Administration",
     children: [
+      { href: "/settings/company", label: "Company Profile", icon: Building },
+      { href: "/settings/team", label: "Team & Access", icon: UserCog },
+      { href: "/settings/roles", label: "Roles & Permissions", icon: ShieldCheck },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },
       { href: "/audit-log", label: "Audit Log", icon: History },
@@ -278,15 +304,18 @@ const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
 export function NavLinks({
   isAdmin,
   isSuperAdmin,
+  allowedModules = null,
   collapsed = false,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  /** Module keys the user may open; null = unrestricted. */
+  allowedModules?: string[] | null;
   /** Icon-rail mode. Groups become a single icon with a click-to-open flyout. */
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
-  const entries = isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV;
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
 
   // One winner across the *whole* nav, not per group — fixes two rows (in
   // different groups, or a group row and a top-level item) lighting up for

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { approvedHeadcount, validateApproval } from "@/lib/demandApproval";
@@ -129,6 +129,7 @@ export async function updateDemandRequestAction(formData: FormData) {
 }
 
 export async function deleteDemandRequestAction(formData: FormData) {
+  await requirePermission("demand", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("requestId") || "");
   if (!id) return;
@@ -423,6 +424,7 @@ export async function changeEmployeeTradeAction(
 export async function setTradeApprovalAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requirePermission("demand", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const tradeId = String(formData.get("tradeId") || "");
   if (!tradeId) return;
@@ -598,6 +600,7 @@ export async function revertSiteArrivalAction(formData: FormData) {
 export async function disapproveSiteArrivalAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requirePermission("demand", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const reason = String(formData.get("reason") || "").trim();

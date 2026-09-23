@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
@@ -46,7 +46,7 @@ export type ExtractedEmployeesResult = {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) {
+  if (!user || (await isBlockedByPermissions(user))) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 

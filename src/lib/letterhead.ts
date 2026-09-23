@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { prisma } from "@/lib/db";
 
 /**
  * Letterhead block for generated documents.
@@ -65,7 +66,14 @@ export async function buildLetterhead(branch: {
   email: string | null;
   poBox: string | null;
   trn: string | null;
+  /** Uploaded company logo (Company profile). Wins over the static fallback file. */
+  logoId?: string | null;
 }): Promise<Letterhead> {
+  let logo: string | null = null;
+  if (branch.logoId) {
+    const img = await prisma.storedImage.findUnique({ where: { id: branch.logoId } });
+    if (img) logo = `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`;
+  }
   return {
     name: branch.name,
     addressLines: [branch.address, branch.emirate, branch.country].filter(
@@ -78,6 +86,6 @@ export async function buildLetterhead(branch: {
     // as "P.O. Box P.O. Box 26403".
     poBox: branch.poBox ? branch.poBox.replace(/^\s*P\.?\s*O\.?\s*Box\s*/i, "").trim() : null,
     trn: branch.trn,
-    logo: await loadLogoDataUri(),
+    logo: logo ?? (await loadLogoDataUri()),
   };
 }

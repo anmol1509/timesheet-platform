@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
@@ -388,6 +388,7 @@ export async function uploadDocumentAction(formData: FormData) {
 }
 
 export async function deleteDocumentAction(formData: FormData) {
+  await requirePermission("workforce", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const employeeId = String(formData.get("employeeId") || "");
@@ -729,6 +730,7 @@ export async function addEmployeeNoteAction(formData: FormData) {
 }
 
 export async function deleteEmployeeNoteAction(formData: FormData) {
+  await requirePermission("workforce", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const noteId = String(formData.get("noteId") || "");

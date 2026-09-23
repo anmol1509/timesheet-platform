@@ -34,6 +34,11 @@ model Branch {
   poBox    String?
   trn      String? // Tax Registration Number
 
+  // Company logo, shown in the sidebar and on generated letterheads.
+  logo   StoredImage? @relation("BranchLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  logoId String?
+
+  accessRoles          AccessRole[]
   users                User[]
   employees            Employee[]
   clients              Client[]
@@ -84,6 +89,20 @@ model User {
   role         Role     @default(STAFF)
   createdAt    DateTime @default(now())
 
+  // Profile. `isActive` lets an admin suspend a sub-user without deleting
+  // them (deleting fails anyway once they own uploads/documents).
+  phone    String?
+  jobTitle String?
+  isActive Boolean @default(true)
+  avatar   StoredImage? @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
+  avatarId String?
+
+  // Fine-grained permissions. Null = legacy behaviour driven by `role` alone
+  // (admins do everything, STAFF everything except Administration), so every
+  // pre-existing user keeps working unchanged.
+  accessRole   AccessRole? @relation(fields: [accessRoleId], references: [id], onDelete: SetNull)
+  accessRoleId String?
+
   // SUPER_ADMIN is not tied to one branch, so this stays nullable.
   branch   Branch? @relation(fields: [branchId], references: [id])
   branchId String?
@@ -100,6 +119,35 @@ model User {
   employeeNotes EmployeeNote[]
 
   dashboardPreference DashboardPreference?
+}
+
+// Small uploaded images (user avatars, company logos). Its own table so the
+// bytes are never dragged along by `include: { branch: true }` / user reads.
+model StoredImage {
+  id        String   @id @default(cuid())
+  data      Bytes
+  mimeType  String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  userAvatars User[]   @relation("UserAvatar")
+  branchLogos Branch[] @relation("BranchLogo")
+}
+
+// A named bundle of "module:action" permission keys (see src/lib/permissions.ts)
+// that can be assigned to any number of sub-users. branchId null = available
+// to every branch (created by a super admin).
+model AccessRole {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  permissions String[] @default([])
+  createdAt   DateTime @default(now())
+
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId String?
+  users    User[]
+
+  @@unique([branchId, name])
 }
 
 // Per-user show/hide + order for the main dashboard's widgets. Widget ids are

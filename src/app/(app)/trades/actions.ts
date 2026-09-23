@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 /**
@@ -112,6 +112,7 @@ export async function toggleTrendingAction(formData: FormData) {
 }
 
 export async function deleteSkillAction(formData: FormData) {
+  await requirePermission("workforce", "delete");
   const user = await requireUser();
   const id = String(formData.get("skillId") || "");
   if (!id) return;

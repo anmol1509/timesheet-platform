@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -268,6 +268,7 @@ export async function addClientDocumentAction(formData: FormData) {
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
+  await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const clientId = String(formData.get("clientId") || "");
@@ -363,6 +364,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
 }
 
 export async function deleteClientAction(formData: FormData) {
+  await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
@@ -412,6 +414,7 @@ export async function deleteClientAction(formData: FormData) {
 export async function deleteClientsAction(
   ids: string[]
 ): Promise<{ deleted: number; blocked: { name: string; reason: string }[] }> {
+  await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const blocked: { name: string; reason: string }[] = [];
   let deleted = 0;

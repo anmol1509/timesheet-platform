@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
@@ -368,6 +368,7 @@ export async function submitTimesheetForReviewAction(formData: FormData) {
 }
 
 export async function approveTimesheetAction(formData: FormData) {
+  await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   const updated = await transitionTimesheetEntries(
@@ -525,6 +526,7 @@ export async function batchUpdateHoursAction(formData: FormData) {
 export async function deleteTimesheetEntryAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  await requirePermission("timesheets", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryId = String(formData.get("entryId") || "");
   if (!entryId) return { deleted: 0 };

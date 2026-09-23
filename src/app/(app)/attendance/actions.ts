@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { markActiveFromAttendance } from "@/lib/employeeStageTransitions";
@@ -205,6 +205,7 @@ export async function markAttendanceAction(
 // expressed as a boolean here since Attendance only has two states
 // (open/locked) rather than a multi-stage pipeline.
 export async function approveAttendanceDayAction(formData: FormData) {
+  await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
   const projectId = String(formData.get("projectId") || "").trim() || null;
@@ -331,6 +332,7 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
 export async function deleteAttendanceAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  await requirePermission("timesheets", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("attendanceId") || "").trim();
   if (!id) return { deleted: 0 };

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getNavPages } from "@/app/(app)/nav-links";
 import { cn } from "@/lib/cn";
+import { moduleForPath } from "@/lib/permissions";
 
 type SearchResults = {
   employees: { id: string; name: string; employeeIdNo: string; trade: string | null }[];
@@ -84,9 +85,11 @@ function pushRecent(entry: RecentEntry) {
 export function CommandPalette({
   isAdmin,
   isSuperAdmin,
+  allowedModules = null,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  allowedModules?: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -94,7 +97,7 @@ export function CommandPalette({
   const [loading, setLoading] = useState(false);
   const [recent, setRecent] = useState<RecentEntry[]>([]);
   const router = useRouter();
-  const pages = useMemo(() => getNavPages(isAdmin, isSuperAdmin), [isAdmin, isSuperAdmin]);
+  const pages = useMemo(() => getNavPages(isAdmin, isSuperAdmin, allowedModules), [isAdmin, isSuperAdmin, allowedModules]);
 
   // Recents are read on the way *in* (the trigger click, or ⌘K's keydown
   // callback) rather than via an effect keyed on `open` — both are already
@@ -209,7 +212,10 @@ export function CommandPalette({
             heading="Actions"
             className="px-1.5 py-1 text-[10px] font-semibold tracking-wider text-subtle uppercase [&_[cmdk-group-items]]:mt-1"
           >
-            {ACTIONS.map((a) => (
+            {ACTIONS.filter((a) => {
+              const m = moduleForPath(a.href);
+              return !m || !allowedModules || allowedModules.includes(m);
+            }).map((a) => (
               <Item key={a.href} onSelect={() => go(a.href, a.label, "Action")} icon={<UserPlus className="h-3.5 w-3.5" />}>
                 {a.label}
               </Item>

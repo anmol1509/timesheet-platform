@@ -23,6 +23,9 @@ export async function loginAction(
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return { error: "Invalid email or password." };
   }
+  if (!user.isActive) {
+    return { error: "This account has been suspended. Contact your administrator." };
+  }
 
   await setSessionCookie(user.id, remember);
   redirect("/");

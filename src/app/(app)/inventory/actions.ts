@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -89,6 +89,7 @@ export async function updateInventoryItemAction(formData: FormData) {
 }
 
 export async function deleteInventoryItemAction(formData: FormData) {
+  await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
   if (!id) return;
@@ -181,6 +182,7 @@ export async function updateVariantStockAction(formData: FormData) {
 }
 
 export async function deleteVariantAction(formData: FormData) {
+  await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");
   if (!variantId) return;

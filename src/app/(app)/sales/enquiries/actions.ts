@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -84,6 +84,7 @@ export async function updateEnquiryAction(formData: FormData) {
 }
 
 export async function deleteEnquiryAction(formData: FormData) {
+  await requirePermission("sales", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("enquiryId") || "");
   if (!id) return;

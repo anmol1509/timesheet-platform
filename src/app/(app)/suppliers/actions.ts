@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
@@ -229,6 +229,7 @@ const APPROVAL_FIELDS = ["approvalStatus", "labourApprovalStatus", "invoiceAppro
 type ApprovalField = (typeof APPROVAL_FIELDS)[number];
 
 export async function updateSupplierApprovalAction(formData: FormData) {
+  await requirePermission("partners", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   const field = String(formData.get("field") || "") as ApprovalField;
@@ -324,6 +325,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
 }
 
 export async function deleteSupplierAction(formData: FormData) {
+  await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;

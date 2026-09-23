@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, requireUserWithBranch } from "@/lib/auth";
+import { requireUser, requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -337,6 +337,7 @@ export async function unassignBedAction(formData: FormData) {
  * worker out first, then the bed can go.
  */
 export async function deleteBedAction(formData: FormData) {
+  await requirePermission("facilities", "delete");
   const user = await requireUser();
   const bedId = String(formData.get("bedId") || "");
   if (!bedId) return;
@@ -370,6 +371,7 @@ export async function deleteBedAction(formData: FormData) {
 }
 
 export async function deleteRoomAction(formData: FormData) {
+  await requirePermission("facilities", "delete");
   const user = await requireUser();
   const roomId = String(formData.get("roomId") || "");
   if (!roomId) return;
@@ -411,6 +413,7 @@ export async function deleteRoomAction(formData: FormData) {
 }
 
 export async function deleteCampAction(formData: FormData) {
+  await requirePermission("facilities", "delete");
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   if (!campId) return;

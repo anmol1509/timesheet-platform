@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 function stringOrNull(value: FormDataEntryValue | null) {
@@ -88,6 +88,7 @@ export async function updateVehicleAction(formData: FormData) {
 }
 
 export async function deleteVehicleAction(formData: FormData) {
+  await requirePermission("facilities", "delete");
   const user = await requireUser();
   const id = String(formData.get("vehicleId") || "");
   if (!id) return;

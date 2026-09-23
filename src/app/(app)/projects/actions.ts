@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -247,6 +247,7 @@ export async function addProjectDocumentAction(formData: FormData) {
 }
 
 export async function deleteProjectDocumentAction(formData: FormData) {
+  await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const projectId = String(formData.get("projectId") || "");
@@ -436,6 +437,7 @@ export async function removeProjectInventoryAction(formData: FormData) {
 }
 
 export async function deleteProjectAction(formData: FormData) {
+  await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
@@ -621,6 +623,7 @@ export async function closeLpoAction(formData: FormData) {
 }
 
 export async function deleteSiteAction(formData: FormData) {
+  await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const siteId = String(formData.get("siteId") || "");

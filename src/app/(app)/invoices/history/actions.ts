@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -35,6 +35,7 @@ export async function markInvoicePaidAction(formData: FormData) {
 }
 
 export async function deleteInvoiceAction(formData: FormData) {
+  await requirePermission("billing", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const invoiceId = String(formData.get("invoiceId") || "");
   if (!invoiceId) return;

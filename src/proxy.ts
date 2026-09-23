@@ -27,15 +27,23 @@ export async function proxy(request: NextRequest) {
   const session = token ? await verifySessionToken(token) : null;
 
   if (!session) {
+    // API routes answer 401 themselves; only pages redirect.
+    if (pathname.startsWith("/api/")) return NextResponse.next();
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  // Tell the server-side permission gate (lib/auth.ts) which path and method
+  // it is serving. A server action POSTs to its own page, so this covers
+  // pages, actions and API routes alike.
+  const forwarded = new Headers(request.headers);
+  forwarded.set("x-pathname", pathname);
+  forwarded.set("x-method", request.method);
+  return NextResponse.next({ request: { headers: forwarded } });
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico).*)",
   ],
 };

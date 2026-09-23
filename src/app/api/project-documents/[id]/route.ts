@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getCurrentUser();
-  if (!user) {
+  if (!user || (await isBlockedByPermissions(user))) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 

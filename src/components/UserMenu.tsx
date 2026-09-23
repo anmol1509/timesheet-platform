@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { ChevronDown, LogOut, Settings, UserCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ThemePreference } from "@/lib/theme-preference";
 
@@ -12,10 +12,7 @@ const ROLE_LABELS: Record<string, string> = {
   STAFF: "Staff",
 };
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "?";
-}
+import { Avatar } from "@/components/Avatar";
 
 /**
  * Account menu. Collapses the name/email block and the standalone "Sign out"
@@ -25,12 +22,15 @@ export function UserMenu({
   name,
   email,
   role,
+  avatarUrl,
   isAdmin,
   themePreference,
 }: {
   name: string;
   email: string;
   role: string;
+  /** /api/images/<id> URL of the user's uploaded photo, or null for initials. */
+  avatarUrl: string | null;
   isAdmin: boolean;
   /** Read server-side from the theme cookie, so the toggle's first paint already matches — no effect, no flash. */
   themePreference: ThemePreference;
@@ -43,9 +43,7 @@ export function UserMenu({
           aria-label={`Account menu for ${name}`}
           className="flex shrink-0 items-center gap-2 rounded-md p-1 pr-1.5 transition hover:bg-surface-hover"
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-[11px] font-semibold text-white">
-            {initials(name)}
-          </span>
+          <Avatar name={name} url={avatarUrl} className="h-7 w-7 text-[11px]" />
           <span className="hidden max-w-32 truncate text-sm font-medium text-secondary md:block">
             {name}
           </span>
@@ -70,6 +68,13 @@ export function UserMenu({
             <ThemeToggle initial={themePreference} />
           </div>
           <div className="p-1">
+            <Link
+              href="/profile"
+              className="flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-sm text-secondary transition hover:bg-surface-hover hover:text-primary"
+            >
+              <UserCircle className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
+              My profile
+            </Link>
             {isAdmin && (
               <Link
                 href="/settings"

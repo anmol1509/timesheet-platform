@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { viewableModules } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { AppShell } from "./app-shell";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
@@ -40,13 +41,26 @@ export default async function AppLayout({
   const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
+  const allowedModules = viewableModules(subjectOf(user));
+
+  // Sidebar brand: the active branch's own name and uploaded logo. A super
+  // admin viewing "all branches" (branchId null) keeps the group name and
+  // borrows the first uploaded logo, so uploading one is visible immediately.
+  const activeBranch = branchId
+    ? branches.find((b) => b.id === branchId) ?? null
+    : null;
+  const logoSource = activeBranch ?? branches.find((b) => b.logoId) ?? null;
+  const brand = {
+    name: activeBranch?.name ?? "Burj Al Aweer",
+    logoUrl: logoSource?.logoId ? `/api/images/${logoSource.logoId}` : null,
+  };
 
   const header = (
     <header className="sticky top-0 z-30 border-b border-default bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
+        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} />
         <div className="min-w-0 flex-1">
-          <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
+          <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {isSuperAdmin && (
@@ -60,6 +74,7 @@ export default async function AppLayout({
             name={user.name}
             email={user.email}
             role={user.role}
+            avatarUrl={user.avatarId ? `/api/images/${user.avatarId}` : null}
             isAdmin={isAdmin}
             themePreference={themePref}
           />
@@ -77,6 +92,8 @@ export default async function AppLayout({
       <AppShell
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
+        allowedModules={allowedModules}
+        brand={brand}
         defaultCollapsed={sidebarCollapsed}
         header={header}
       >
