@@ -44,6 +44,8 @@ import {
   Trash2,
   CalendarOff,
   Banknote,
+  Landmark,
+  Hammer,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -146,6 +148,13 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
+    label: "Assets",
+    icon: Hammer,
+    category: "Operations",
+    children: [{ href: "/assets", label: "Asset Register", icon: Hammer }],
+  },
+  {
+    type: "group",
     label: "Timesheets",
     icon: FileSpreadsheet,
     category: "Operations",
@@ -204,6 +213,17 @@ const NAV: Entry[] = [
     icon: Banknote,
     category: "Commercial",
     children: [{ href: "/payroll", label: "Payroll Runs", icon: Banknote }],
+  },
+  {
+    type: "group",
+    label: "Finance",
+    icon: Landmark,
+    category: "Commercial",
+    children: [
+      { href: "/finance", label: "Overview", icon: Landmark, exact: true },
+      { href: "/finance/expenses", label: "Expenses", icon: Receipt },
+      { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
+    ],
   },
 ];
 

@@ -8,7 +8,9 @@ import { SupplierCompanyForm } from "./company-form";
 import { SupplierContactPaymentForm } from "./contact-payment-form";
 import { SupplierApprovals } from "./supplier-approvals";
 import { deleteSupplierAction } from "../actions";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { PortalAccessCard } from "./portal-access";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { SupplierTabs } from "./supplier-tabs";
@@ -28,7 +30,7 @@ export default async function SupplierDetailPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({
     where: { id },
     include: {
@@ -144,6 +146,13 @@ export default async function SupplierDetailPage({
         )}
         </div>
       </div>
+
+      <PortalAccessCard
+        supplierId={supplier.id}
+        enabled={supplier.portalEnabled}
+        canEdit={can(subjectOf(user), "partners", "edit")}
+        phones={[supplier.contactPhone, supplier.phone, supplier.coordinatorPhone].filter((p): p is string => !!p)}
+      />
 
       <SupplierTabs
         tabs={[

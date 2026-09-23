@@ -617,3 +617,26 @@ export async function getSupplierPanelAction(supplierId: string): Promise<Suppli
     })),
   };
 }
+
+/** Opt a supplier in/out of the supplier portal (phone + one-time-code sign-in). */
+export async function setSupplierPortalAction(formData: FormData): Promise<{ error: string | null }> {
+  await requirePermission("partners", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("supplierId") || "");
+  const enabled = formData.get("enabled") === "1";
+  const supplier = await prisma.supplier.findUnique({ where: { id }, select: { branchId: true, portalEnabled: true, name: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
+  await prisma.supplier.update({ where: { id }, data: { portalEnabled: enabled } });
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: id,
+    action: "UPDATE",
+    before: { portalEnabled: supplier.portalEnabled },
+    after: { portalEnabled: enabled },
+    userId: user.id,
+    userName: user.name,
+    branchId: supplier.branchId,
+  });
+  revalidatePath(`/suppliers/${id}`);
+  return { error: null };
+}

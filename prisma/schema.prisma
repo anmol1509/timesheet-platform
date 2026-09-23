@@ -44,6 +44,9 @@ model Branch {
   wpsPayerBankId     String?
   payrollRuns        PayrollRun[]
 
+  expenses        Expense[]
+  supplierBills   SupplierBill[]
+  assets          Asset[]
   accessRoles     AccessRole[]
   leaveTypes      LeaveType[]
   leaveRequests   LeaveRequest[]
@@ -134,6 +137,8 @@ model User {
   employeeNotes    EmployeeNote[]
 
   dashboardPreference DashboardPreference?
+  expensesSubmitted   Expense[]            @relation("ExpenseSubmittedBy")
+  expensesDecided     Expense[]            @relation("ExpenseDecidedBy")
   payrollCreated      PayrollRun[]         @relation("PayrollCreatedBy")
   payrollApproved     PayrollRun[]         @relation("PayrollApprovedBy")
   leaveDecisions      LeaveRequest[]       @relation("LeaveDecidedBy")
@@ -285,6 +290,12 @@ model Supplier {
   generatedSheets GeneratedSheet[]
   employees       Employee[]
   attendance      Attendance[]
+
+  // Supplier portal sign-in (phone + one-time code, matched against the contact,
+  // secondary and coordinator numbers). Off by default: an admin opts each
+  // supplier in.
+  portalEnabled Boolean        @default(false)
+  bills         SupplierBill[]
 }
 
 model Client {
@@ -804,6 +815,7 @@ model Document {
 
 model Project {
   id            String    @id @default(cuid())
+  expenses      Expense[]
   code          String    @unique
   name          String
   description   String?
@@ -1649,7 +1661,6 @@ model PayrollLine {
   @@unique([runId, employeeId])
 }
 
-
 // ---------------------------------------------------------------------------
 // Employee self-service sign-in
 // ---------------------------------------------------------------------------
@@ -1666,8 +1677,131 @@ model OtpChallenge {
   consumedAt DateTime?
   createdAt  DateTime  @default(now())
 
+  // Who the code was issued for: an employee (portal /me) or a supplier (/vendor).
+  kind       String  @default("EMPLOYEE")
   employeeId String?
+  supplierId String?
 
   @@index([phone, createdAt])
   @@index([ip, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Finance: expenses and supplier bills (accounts payable)
+// ---------------------------------------------------------------------------
+
+// A cost the company incurred. Submitted by anyone with finance create rights,
+// approved/rejected by an approver. `category` is free text with suggestions.
+model Expense {
+  id            String    @id @default(cuid())
+  date          DateTime
+  category      String
+  description   String
+  amount        Decimal   @db.Decimal(12, 2)
+  vatAmount     Decimal   @default(0) @db.Decimal(12, 2)
+  paidTo        String?
+  paymentMethod String? // "CASH" | "BANK" | "CARD" | "CHEQUE"
+  reference     String?
+  status        String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  decisionNote  String?
+  decidedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+
+  submittedBy   User    @relation("ExpenseSubmittedBy", fields: [submittedById], references: [id])
+  submittedById String
+  decidedBy     User?   @relation("ExpenseDecidedBy", fields: [decidedById], references: [id])
+  decidedById   String?
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId, date])
+  @@index([branchId, status])
+}
+
+// What a supplier has billed us. Status is derived from payments, never stored.
+model SupplierBill {
+  id          String   @id @default(cuid())
+  billNo      String
+  billDate    DateTime
+  dueDate     DateTime
+  amount      Decimal  @db.Decimal(12, 2)
+  vatAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  description String?
+  createdAt   DateTime @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplierId String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  payments BillPayment[]
+
+  @@unique([supplierId, billNo])
+  @@index([branchId, dueDate])
+}
+
+model BillPayment {
+  id        String   @id @default(cuid())
+  paidOn    DateTime
+  amount    Decimal  @db.Decimal(12, 2)
+  method    String? // "BANK" | "CASH" | "CHEQUE"
+  reference String?
+  createdAt DateTime @default(now())
+
+  bill   SupplierBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billId String
+
+  createdById String
+}
+
+// ---------------------------------------------------------------------------
+// Fixed assets
+// ---------------------------------------------------------------------------
+
+// A depreciating asset. Straight-line depreciation is computed on demand from
+// cost, salvage value, useful life and the purchase (or disposal) date — see
+// src/lib/depreciation.ts — so nothing here goes stale.
+model Asset {
+  id               String    @id @default(cuid())
+  code             String
+  name             String
+  category         String
+  serialNo         String?
+  location         String?
+  purchaseDate     DateTime
+  cost             Decimal   @db.Decimal(12, 2)
+  salvageValue     Decimal   @default(0) @db.Decimal(12, 2)
+  usefulLifeMonths Int
+  status           String    @default("ACTIVE") // "ACTIVE" | "DISPOSED"
+  disposedOn       DateTime?
+  disposalValue    Decimal?  @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime  @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  maintenance AssetMaintenance[]
+
+  @@unique([branchId, code])
+}
+
+model AssetMaintenance {
+  id          String    @id @default(cuid())
+  date        DateTime
+  description String
+  cost        Decimal   @default(0) @db.Decimal(12, 2)
+  doneBy      String?
+  nextDueDate DateTime?
+  createdAt   DateTime  @default(now())
+
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId String
+
+  @@index([nextDueDate])
 }

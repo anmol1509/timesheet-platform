@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySessionToken } from "@/lib/session";
 import { ESS_COOKIE, verifyEssToken } from "@/lib/ess/token";
+import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 
 const PUBLIC_PATHS = ["/login"];
 
@@ -31,6 +32,15 @@ export async function proxy(request: NextRequest) {
     const essToken = request.cookies.get(ESS_COOKIE)?.value;
     const ess = essToken ? await verifyEssToken(essToken) : null;
     if (!ess) return NextResponse.redirect(new URL("/me/login", request.url));
+    return NextResponse.next();
+  }
+
+  // Supplier portal: same idea under /vendor, with its own cookie.
+  if (pathname === "/vendor" || pathname.startsWith("/vendor/")) {
+    if (pathname === "/vendor/login") return NextResponse.next();
+    const vToken = request.cookies.get(VENDOR_COOKIE)?.value;
+    const vendor = vToken ? await verifyVendorToken(vToken) : null;
+    if (!vendor) return NextResponse.redirect(new URL("/vendor/login", request.url));
     return NextResponse.next();
   }
 
