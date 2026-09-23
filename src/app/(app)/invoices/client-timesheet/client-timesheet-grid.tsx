@@ -173,9 +173,13 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
         />
       )}
 
-      <div className="card overflow-x-auto">
+      {/* Capped height turns this wrapper into the scroll container, so
+          `sticky top-0` below sticks to *it*, not the viewport (that would
+          overlap the app header — see the DataTable component for the same
+          pattern). */}
+      <div className="card max-h-[calc(100vh-20rem)] overflow-auto">
         <table className="w-full text-xs">
-          <thead className="border-b border-default bg-surface-subtle text-left font-medium tracking-wide text-muted uppercase">
+          <thead className="sticky top-0 z-20 border-b border-default bg-surface-subtle text-left font-medium tracking-wide text-muted uppercase">
             <tr>
               <th className="w-8 px-2 py-2">
                 <Checkbox
@@ -185,13 +189,18 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                   }
                 />
               </th>
-              <th className="px-2 py-2">Employee</th>
+              <th className="sticky left-0 z-10 bg-surface-subtle px-2 py-2">Employee</th>
               <th className="px-2 py-2">Trade</th>
               <th className="px-2 py-2">Status</th>
               <th className="px-2 py-2">Total</th>
               {dayHeaders.map((d, i) => (
                 <th key={i} className="w-12 px-1 py-2 text-center">
-                  {d.label}
+                  <span className="block">{d.label}</span>
+                  {d.date && (
+                    <span className="block text-[10px] font-normal text-subtle">
+                      {new Date(d.date).getDate()}
+                    </span>
+                  )}
                 </th>
               ))}
               <th className="px-2 py-2" />
@@ -206,7 +215,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                   <td className="px-2 py-1.5">
                     <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggle(e.id)} />
                   </td>
-                  <td className="px-2 py-1.5 whitespace-nowrap text-primary">
+                  <td className="sticky left-0 z-[5] bg-surface px-2 py-1.5 whitespace-nowrap text-primary">
                     {e.employeeName}
                     <span className="ml-1 text-subtle">{e.employeeIdNo}</span>
                   </td>
@@ -223,7 +232,8 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                         value={cellValue(e.id, i)}
                         onChange={(ev) => editCell(e.id, i, ev.target.value)}
                         disabled={locked}
-                        className={`w-11 rounded px-1 py-1 text-center outline-none disabled:opacity-50 ${badgeClass(cellValue(e.id, i))}`}
+                        aria-label={`${e.employeeName}, ${dayHeaders[i]?.label ?? `day ${i + 1}`}`}
+                        className={`w-11 rounded px-1 py-1 text-center transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-1 disabled:opacity-50 ${badgeClass(cellValue(e.id, i))}`}
                       />
                     </td>
                   ))}

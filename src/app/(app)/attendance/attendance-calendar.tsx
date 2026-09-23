@@ -11,12 +11,18 @@ const STATE_STYLE = {
   submitted: "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]",
   draft: "border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning)]",
   empty: "border-[var(--error-border)] bg-[var(--error-soft)] text-[var(--error)]",
+  // "Empty" only reads as an error for a day that's already passed — that's
+  // a real gap. A future day hasn't failed to be marked; it isn't due yet.
+  // (Phase 0 audit: every unmarked day painted red, including the 20+
+  // future days visible on a freshly-opened month.)
+  emptyFuture: "border-default bg-surface text-subtle",
 } as const;
 
 const STATE_LABEL = {
   submitted: "Submitted",
   draft: "Draft — not submitted",
   empty: "Nothing marked",
+  emptyFuture: "Not due yet",
 } as const;
 
 function shiftMonth(month: string, by: number) {
@@ -48,6 +54,17 @@ export function AttendanceCalendar({
     year: "numeric",
     timeZone: "UTC",
   });
+  const today = new Date();
+  const todayIso = today.toISOString().slice(0, 10);
+
+  // Deliberately future-only, not weekend-aware too: this codebase has no
+  // existing weekend/working-day convention (it varies by project — see
+  // the per-project holiday calendar), and guessing one risked marking a
+  // real working Saturday as "not due" for a site that works six days.
+  function visualState(day: AttendanceDay): keyof typeof STATE_STYLE {
+    if (day.state !== "empty") return day.state;
+    return day.date > todayIso ? "emptyFuture" : "empty";
+  }
 
   // Monday-first grid, so the leading blanks line the 1st up under its weekday.
   const firstWeekday = (new Date(Date.UTC(year, m - 1, 1)).getUTCDay() + 6) % 7;
@@ -112,11 +129,11 @@ export function AttendanceCalendar({
             <Link
               key={day.date}
               href={`/attendance?month=${month}&date=${day.date}`}
-              aria-label={`${day.date} — ${STATE_LABEL[day.state]}`}
+              aria-label={`${day.date} — ${STATE_LABEL[visualState(day)]}`}
               aria-current={isSelected ? "date" : undefined}
               className={cn(
                 "flex min-h-[62px] flex-col rounded-control border p-2 transition hover:brightness-95",
-                STATE_STYLE[day.state],
+                STATE_STYLE[visualState(day)],
                 isSelected && "ring-2 ring-[var(--brand-primary)] ring-offset-1"
               )}
             >
