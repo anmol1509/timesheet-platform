@@ -9,23 +9,36 @@ export const metadata = {
   title: "Login",
 };
 
+const BRAND_PHOTO =
+  "https://res.cloudinary.com/degunlqed/image/upload/f_auto/q_auto/pexels-steve-12696432_nzrvxy.jpg";
+
 export default async function LoginPage() {
   const user = await getCurrentUser();
   if (user) redirect("/");
 
   return (
     <div className="login-brand-panel relative min-h-screen w-full overflow-hidden">
-      {/* Dark panel — the page background itself, not a boxed-in card. Only
-          shown once the sign-in panel stops covering the full width (lg+),
-          so there's nothing to hide underneath on mobile. Purely decorative
-          copy: aria-hidden, since the form panel restates everything a
-          screen reader needs. */}
+      {/* Dark panel — a photo with a gradient scrim for legibility, not a
+          pattern. Plain CSS background-image (not next/image) since it's an
+          external URL and this repo doesn't have a remote-image allowlist
+          configured. Only shown once the sign-in panel stops covering the
+          full width (lg+). Purely decorative: aria-hidden, since the form
+          panel restates everything a screen reader needs. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 hidden lg:block"
+        style={{
+          backgroundImage: `linear-gradient(200deg, rgb(10 12 20 / 0.35) 0%, rgb(10 12 20 / 0.72) 65%, rgb(10 12 20 / 0.88) 100%), url(${BRAND_PHOTO})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
       <div
         aria-hidden
         className="absolute inset-0 hidden flex-col justify-between p-12 lg:flex lg:p-16"
       >
         <div className="max-w-md">
-          <p className="text-xs font-semibold tracking-wide text-white/50 uppercase">
+          <p className="text-xs font-semibold tracking-wide text-white/60 uppercase">
             Workforce, projects and timesheets — one place.
           </p>
           <h2 className="mt-3 text-5xl leading-[1.05] font-semibold tracking-tight text-white">
@@ -34,16 +47,16 @@ export default async function LoginPage() {
             your work
           </h2>
         </div>
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-white/50">
           © {new Date().getFullYear()} All rights reserved.
         </p>
       </div>
 
-      {/* Sign-in panel — full width on mobile (the curve disappears, since
-          there's no dark sliver left to show it against); on large screens it
-          overlays the right ~54% with one continuous arc for its whole left
-          edge (a radius ≥ half its own width clamps to that shape). */}
-      <div className="absolute inset-y-0 right-0 flex w-full items-center justify-center rounded-l-none bg-surface p-6 sm:p-10 lg:w-[54%] lg:rounded-l-full lg:p-16">
+      {/* Sign-in panel — full width on mobile (no curve, nothing left to show
+          it against); on large screens it overlays the right ~54% with a
+          single moderate curve on its left edge, matching the reference's
+          gentle sweep rather than a full stadium bulge. */}
+      <div className="absolute inset-y-0 right-0 flex w-full items-center justify-center rounded-l-none bg-surface p-6 sm:p-10 lg:w-[54%] lg:rounded-l-[140px] lg:p-16">
         <div className="w-full max-w-sm lg:ml-12">
           <div className="mb-10 flex items-center gap-3">
             <Image

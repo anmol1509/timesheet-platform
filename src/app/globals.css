@@ -593,30 +593,10 @@ summary:focus-visible,
    (no image asset, no WebGL/canvas per the redesign brief's login-only
    allowance). Animates a slow drift; still under prefers-reduced-motion
    because it isn't wrapped in the .rx-* opt-out list, so add it there too. */
+/* Dark base colour behind the panel's photo — shows briefly while the image
+   loads, and is what's left if it fails to load at all. */
 .login-brand-panel {
   background-color: #10131c;
-  background-image: repeating-linear-gradient(
-    115deg,
-    rgb(255 255 255 / 0.09) 0px,
-    rgb(255 255 255 / 0.09) 2px,
-    transparent 2px,
-    transparent 14px
-  ),
-  radial-gradient(120% 140% at 15% 20%, rgb(91 141 239 / 0.35), transparent 55%),
-  radial-gradient(120% 140% at 85% 85%, rgb(30 42 110 / 0.55), transparent 60%),
-  linear-gradient(160deg, #0b0d16 0%, #151a29 55%, #0e1220 100%);
-  background-size: 200% 200%, 100% 100%, 100% 100%, 100% 100%;
-  animation: login-panel-drift 22s ease-in-out infinite;
-}
-@keyframes login-panel-drift {
-  0%, 100% { background-position: 0% 0%, 0 0, 0 0, 0 0; }
-  50% { background-position: 100% 40%, 0 0, 0 0, 0 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .login-brand-panel {
-    animation: none;
-    background-position: 40% 20%, 0 0, 0 0, 0 0;
-  }
 }
 
 /* ---------------------------------------------------------------------------
