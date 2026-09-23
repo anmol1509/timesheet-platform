@@ -42,6 +42,7 @@ import {
   HardHat,
   FileStack,
   Trash2,
+  CalendarOff,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -115,6 +116,17 @@ const NAV: Entry[] = [
       { href: "/demand/site-arrival", label: "Site Arrival", icon: MapPinCheck },
       { href: "/demand/demobilisation", label: "Demobilisation", icon: UserMinus },
       { href: "/demand/documents", label: "Generate Doc", icon: FileStack },
+    ],
+  },
+  {
+    type: "group",
+    label: "Leave",
+    icon: CalendarOff,
+    category: "Operations",
+    children: [
+      { href: "/leave", label: "Leave Requests", icon: CalendarOff, exact: true },
+      { href: "/leave/balances", label: "Balances", icon: ListChecks },
+      { href: "/leave/types", label: "Leave Types", icon: FileText },
     ],
   },
   {

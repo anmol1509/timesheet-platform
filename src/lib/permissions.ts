@@ -60,6 +60,13 @@ export const MODULES: PermissionModule[] = [
     actions: WITH_APPROVE,
   },
   {
+    key: "leave",
+    label: "Leave",
+    description: "Leave requests, balances and leave types",
+    paths: ["/leave"],
+    actions: WITH_APPROVE,
+  },
+  {
     key: "facilities",
     label: "Facilities",
     description: "Accommodation, transport, inventory",

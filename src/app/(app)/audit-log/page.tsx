@@ -22,6 +22,32 @@ export default async function AuditLogPage() {
         </p>
       </div>
 
+      <form action="/api/audit-log/export" method="get" className="card flex flex-wrap items-end gap-3 p-4">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">From</span>
+          <input type="date" name="from" className="input" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">To</span>
+          <input type="date" name="to" className="input" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Action</span>
+          <select name="action" className="input">
+            <option value="">All</option>
+            <option value="CREATE">Create</option>
+            <option value="UPDATE">Update</option>
+            <option value="DELETE">Delete</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Record type</span>
+          <input name="entity" placeholder="e.g. EMPLOYEE" className="input" />
+        </label>
+        <button type="submit" className="btn btn-secondary">Export CSV</button>
+        <p className="w-full text-xs text-muted">Exports up to 50,000 matching entries for the current branch view.</p>
+      </form>
+
       {entries.length === 0 ? (
         <div className="empty-state">
           <p className="text-sm text-muted">No audit entries yet.</p>
