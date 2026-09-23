@@ -89,6 +89,13 @@ export default async function LoginPage() {
             <div className="mt-8">
               <LoginForm />
             </div>
+
+            <p className="mt-6 text-center text-xs text-muted">
+              Employee?{" "}
+              <a href="/me/login" className="text-[var(--brand-primary)] hover:underline">
+                Sign in to the employee portal
+              </a>
+            </p>
           </div>
         </div>
       </div>

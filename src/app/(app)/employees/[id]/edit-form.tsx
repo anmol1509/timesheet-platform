@@ -34,6 +34,7 @@ type Employee = {
   salaryRate: number | null;
   payStructure: string | null;
   paysOvertime: boolean;
+  essEnabled: boolean;
   projectId: string | null;
   siteId: string | null;
   vehicleId: string | null;
@@ -395,6 +396,13 @@ export function EditForm({
                 className="input w-full"
               />
             </Field>
+            <label className="flex items-start gap-2 text-sm text-secondary sm:col-span-2">
+              <input type="checkbox" name="essEnabled" defaultChecked={employee.essEnabled} className="mt-0.5" />
+              <span>
+                Allow this employee to sign in to the self-service portal
+                <span className="block text-xs text-muted">They sign in at /me/login with a code sent to the mobile or WhatsApp number above. Make sure it is correct and belongs only to them.</span>
+              </span>
+            </label>
             <Field label="Join date">
               <input
                 type="date"

@@ -523,6 +523,9 @@ model Employee {
   paysOvertime       Boolean          @default(true)
   otMultiplier       Decimal          @default(1.25) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
+  // Self-service portal sign-in (phone + one-time code). On by default; an admin
+  // can switch it off per employee.
+  essEnabled         Boolean          @default(true)
   leaveRequests      LeaveRequest[]
   employeeIdNo       String           @unique
   name               String
@@ -1542,8 +1545,10 @@ model LeaveRequest {
   leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
   leaveTypeId String
 
-  requestedBy   User   @relation("LeaveRequestedBy", fields: [requestedById], references: [id])
-  requestedById String
+  // Null when the employee raised it themselves from the self-service portal.
+  requestedBy        User?   @relation("LeaveRequestedBy", fields: [requestedById], references: [id])
+  requestedById      String?
+  requestedViaPortal Boolean @default(false)
 
   decidedBy   User?   @relation("LeaveDecidedBy", fields: [decidedById], references: [id])
   decidedById String?
@@ -1642,4 +1647,27 @@ model PayrollLine {
   employeeId String
 
   @@unique([runId, employeeId])
+}
+
+
+// ---------------------------------------------------------------------------
+// Employee self-service sign-in
+// ---------------------------------------------------------------------------
+
+// One phone-number one-time-code attempt. The code itself is never stored, only
+// an HMAC of it. Rows are throwaway; they double as the rate-limit ledger.
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  phone      String // normalised, e.g. "+971501234567"
+  codeHash   String
+  ip         String?
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  employeeId String?
+
+  @@index([phone, createdAt])
+  @@index([ip, createdAt])
 }

@@ -142,6 +142,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       bloodGroup: stringOrNull(formData.get("bloodGroup")),
       mobileNumber: stringOrNull(formData.get("mobileNumber")),
       whatsappNumber: stringOrNull(formData.get("whatsappNumber")),
+      essEnabled: formData.get("essEnabled") === "on",
       joinDate: dateOrNull(formData.get("joinDate")),
       emergencyContactName: stringOrNull(formData.get("emergencyContactName")),
       emergencyContactPhone: stringOrNull(formData.get("emergencyContactPhone")),

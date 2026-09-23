@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySessionToken } from "@/lib/session";
+import { ESS_COOKIE, verifyEssToken } from "@/lib/ess/token";
 
 const PUBLIC_PATHS = ["/login"];
 
@@ -17,9 +18,19 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
-    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+    PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path + "/")) ||
     isPublicBrandAsset(pathname)
   ) {
+    return NextResponse.next();
+  }
+
+  // Employee self-service lives under /me with its own cookie and sign-in; it
+  // never touches (or accepts) the staff session.
+  if (pathname === "/me" || pathname.startsWith("/me/")) {
+    if (pathname === "/me/login") return NextResponse.next();
+    const essToken = request.cookies.get(ESS_COOKIE)?.value;
+    const ess = essToken ? await verifyEssToken(essToken) : null;
+    if (!ess) return NextResponse.redirect(new URL("/me/login", request.url));
     return NextResponse.next();
   }
 

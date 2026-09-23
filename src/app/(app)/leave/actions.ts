@@ -110,7 +110,7 @@ export async function decideLeaveAction(formData: FormData): Promise<State> {
     branchId: req.branchId,
   });
   await notifyUsers({
-    userIds: [req.requestedById].filter((id) => id !== user.id),
+    userIds: [req.requestedById].filter((id): id is string => !!id && id !== user.id),
     kind: "LEAVE_DECIDED",
     title: `Leave ${decision === "APPROVED" ? "approved" : "rejected"}: ${req.employee.name}`,
     body: `${req.leaveType.name}, ${req.startDate.toISOString().slice(0, 10)} → ${req.endDate.toISOString().slice(0, 10)}.${note ? ` Note: ${note}` : ""}`,
