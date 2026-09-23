@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { MODULES, can, ACTION_LABELS, type PermissionAction } from "@/lib/permissions";
 import { Avatar } from "@/components/Avatar";
 import { ImageUpload } from "@/components/ImageUpload";
-import { PasswordForm, ProfileForm } from "./profile-forms";
+import { NotificationPrefsForm, PasswordForm, ProfileForm } from "./profile-forms";
 import { removeAvatarAction, uploadAvatarAction } from "./actions";
 
 export const metadata = { title: "My profile" };
@@ -87,6 +87,11 @@ export default async function ProfilePage() {
                 ))}
               </ul>
             )}
+          </section>
+
+          <section className="card p-5">
+            <h2 className="mb-3 text-sm font-semibold text-primary">Notifications</h2>
+            <NotificationPrefsForm notifyEmail={user.notifyEmail} notifyWhatsapp={user.notifyWhatsapp} whatsappNumber={user.whatsappNumber ?? ""} />
           </section>
 
           <section className="card p-5">

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { UAE_DEFAULT_LEAVE_TYPES, daysInYear, inclusiveDays, parseDay } from "@/lib/leave";
 
 type State = { error: string | null; ok?: boolean };
@@ -51,6 +52,13 @@ export async function createLeaveRequestAction(_prev: State, formData: FormData)
     userId: user.id,
     userName: user.name,
     branchId,
+  });
+  await notifyUsers({
+    userIds: (await approverIds("leave", branchId)).filter((id) => id !== user.id),
+    kind: "LEAVE_REQUESTED",
+    title: `Leave request: ${employee.name}`,
+    body: `${type.name}, ${start.toISOString().slice(0, 10)} → ${end.toISOString().slice(0, 10)} (${days} day${days === 1 ? "" : "s"}). Waiting for approval.`,
+    href: "/leave?status=PENDING",
   });
   revalidatePath("/leave");
   return { error: null, ok: true };
@@ -100,6 +108,13 @@ export async function decideLeaveAction(formData: FormData): Promise<State> {
     userId: user.id,
     userName: user.name,
     branchId: req.branchId,
+  });
+  await notifyUsers({
+    userIds: [req.requestedById].filter((id) => id !== user.id),
+    kind: "LEAVE_DECIDED",
+    title: `Leave ${decision === "APPROVED" ? "approved" : "rejected"}: ${req.employee.name}`,
+    body: `${req.leaveType.name}, ${req.startDate.toISOString().slice(0, 10)} → ${req.endDate.toISOString().slice(0, 10)}.${note ? ` Note: ${note}` : ""}`,
+    href: "/leave",
   });
   revalidatePath("/leave");
   revalidatePath("/leave/balances");

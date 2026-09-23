@@ -33,11 +33,22 @@ export default async function AppLayout({
   // layout, which no per-page error boundary can catch (error.js doesn't
   // wrap the layout.js in its own segment). Degrade to an empty header
   // instead of crashing the whole shell.
-  const [alertsResult, branchesResult] = await Promise.allSettled([
+  const [alertsResult, branchesResult, inboxResult, unreadResult] = await Promise.allSettled([
     getComplianceAlerts(branchId),
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
     prisma.branch.findMany({ orderBy: { code: "asc" } }),
+    prisma.notification.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: { id: true, title: true, body: true, href: true, readAt: true },
+    }),
+    prisma.notification.count({ where: { userId: user.id, readAt: null } }),
   ]);
+  const inbox = inboxResult.status === "fulfilled"
+    ? inboxResult.value.map((n) => ({ id: n.id, title: n.title, body: n.body, href: n.href, read: n.readAt !== null }))
+    : [];
+  const unreadCount = unreadResult.status === "fulfilled" ? unreadResult.value : 0;
   const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
@@ -68,7 +79,7 @@ export default async function AppLayout({
               <BranchSwitcher branches={branches} activeBranchId={branchId} />
             </div>
           )}
-          <NotificationsMenu alerts={alerts} />
+          <NotificationsMenu alerts={alerts} inbox={inbox} unreadCount={unreadCount} />
           <span className="mx-0.5 hidden h-5 w-px bg-[var(--border)] sm:block" aria-hidden />
           <UserMenu
             name={user.name}

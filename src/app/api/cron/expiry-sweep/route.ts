@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getRenewals, summarise } from "@/lib/renewals";
+import { notifyUsers } from "@/lib/notifications/notify";
 import { getExpiryDigestRecipients, sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
 
 /**
@@ -70,7 +71,30 @@ export async function GET(request: Request) {
     );
 
     // Nothing due beyond the 90-day horizon means nothing worth a message.
-    if (actionable.length === 0 || recipients.length === 0) continue;
+    if (actionable.length === 0) continue;
+
+    // In-app + (opted-in) email/WhatsApp digest for the admins who own this
+    // branch, once per day even if the cron is retried.
+    const title = `Expiry digest — ${branch.name}`;
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const [admins, already] = await Promise.all([
+      prisma.user.findMany({
+        where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId: branch.id }] },
+        select: { id: true },
+      }),
+      prisma.notification.findMany({ where: { kind: "EXPIRY_DIGEST", title, createdAt: { gte: startOfDay } }, select: { userId: true } }),
+    ]);
+    const done = new Set(already.map((a) => a.userId));
+    await notifyUsers({
+      userIds: admins.map((a) => a.id).filter((id) => !done.has(id)),
+      kind: "EXPIRY_DIGEST",
+      title,
+      body: `${counts.expired} expired · ${counts.urgent} within 7 days · ${counts.soon} within 30 days.`,
+      href: "/employees/renewals",
+    });
+
+    if (recipients.length === 0) continue;
 
     const message = formatDigestMessage(branch.name, counts, top);
     for (const to of recipients) {

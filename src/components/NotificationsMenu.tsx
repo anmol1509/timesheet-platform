@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
 import { Bell, ShieldCheck } from "lucide-react";
+import { markNotificationReadAction } from "@/app/(app)/notifications/actions";
 import type { ComplianceAlert } from "@/lib/dashboardAlerts";
 import { cn } from "@/lib/cn";
 
@@ -11,7 +12,17 @@ import { cn } from "@/lib/cn";
  * shell was already running for the unread dot — previously the bell was a
  * button that did nothing.
  */
-export function NotificationsMenu({ alerts }: { alerts: ComplianceAlert[] }) {
+export type InboxItem = { id: string; title: string; body: string | null; href: string | null; read: boolean };
+
+export function NotificationsMenu({
+  alerts,
+  inbox = [],
+  unreadCount = 0,
+}: {
+  alerts: ComplianceAlert[];
+  inbox?: InboxItem[];
+  unreadCount?: number;
+}) {
   const overdue = alerts.filter((a) => a.days < 0);
   const soon = alerts.filter((a) => a.days >= 0);
   const shown = alerts.slice(0, 8);
@@ -22,18 +33,18 @@ export function NotificationsMenu({ alerts }: { alerts: ComplianceAlert[] }) {
         <button
           type="button"
           aria-label={
-            alerts.length > 0
-              ? `Notifications — ${alerts.length} compliance alerts`
+            unreadCount + alerts.length > 0
+              ? `Notifications — ${unreadCount} unread, ${alerts.length} compliance alerts`
               : "Notifications"
           }
           className="relative shrink-0 rounded-md p-2 text-muted transition hover:bg-surface-hover hover:text-primary"
         >
           <Bell className="h-4.5 w-4.5" />
-          {alerts.length > 0 && (
+          {(alerts.length > 0 || unreadCount > 0) && (
             <span
               className={cn(
                 "absolute top-1 right-1 h-2 w-2 rounded-full ring-2 ring-[var(--surface)]",
-                overdue.length > 0 ? "bg-[var(--error)]" : "bg-[var(--warning)]"
+                unreadCount > 0 ? "bg-[var(--brand-primary)]" : overdue.length > 0 ? "bg-[var(--error)]" : "bg-[var(--warning)]"
               )}
               aria-hidden
             />
@@ -46,6 +57,39 @@ export function NotificationsMenu({ alerts }: { alerts: ComplianceAlert[] }) {
           sideOffset={8}
           className="rx-popover z-50 w-[22rem] overflow-hidden rounded-card border border-default bg-surface shadow-popover"
         >
+          {inbox.length > 0 && (
+            <div className="border-b border-default">
+              <div className="flex items-center justify-between px-3.5 py-2.5">
+                <p className="text-sm font-semibold text-primary">
+                  Notifications{unreadCount > 0 && <span className="ml-1.5 text-xs font-medium text-[var(--brand-primary)]">{unreadCount} new</span>}
+                </p>
+                <Link href="/notifications" className="text-xs font-medium text-[var(--brand-primary)] hover:underline">View all</Link>
+              </div>
+              <ul className="max-h-60 overflow-y-auto pb-1">
+                {inbox.map((n) => (
+                  <li key={n.id}>
+                    <Link
+                      href={n.href ?? "/notifications"}
+                      onClick={() => {
+                        if (!n.read) {
+                          const fd = new FormData();
+                          fd.set("id", n.id);
+                          void markNotificationReadAction(fd);
+                        }
+                      }}
+                      className="flex items-start gap-2.5 px-3.5 py-2 transition hover:bg-surface-hover"
+                    >
+                      <span className={n.read ? "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-transparent" : "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-primary)]"} aria-hidden />
+                      <span className="min-w-0">
+                        <span className={cn("block truncate text-sm", n.read ? "text-secondary" : "font-medium text-primary")}>{n.title}</span>
+                        {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="flex items-center justify-between border-b border-default px-3.5 py-2.5">
             <p className="text-sm font-semibold text-primary">Compliance alerts</p>
             {alerts.length > 0 && (

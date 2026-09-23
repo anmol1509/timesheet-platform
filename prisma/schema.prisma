@@ -96,6 +96,11 @@ model User {
   phone    String?
   jobTitle String?
   isActive Boolean @default(true)
+  // Delivery preferences for notifications (in-app always on).
+  notifyEmail    Boolean @default(true)
+  notifyWhatsapp Boolean @default(false)
+  whatsappNumber String?
+  notifications  Notification[]
   avatar   StoredImage? @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
   avatarId String?
 
@@ -1525,4 +1530,27 @@ model LeaveRequest {
 
   @@index([branchId, status])
   @@index([employeeId, startDate])
+}
+
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+// One in-app notification for one user. Email / WhatsApp copies are sent from
+// the same call (src/lib/notifications/notify.ts) but aren't stored — this row
+// is the inbox.
+model Notification {
+  id        String    @id @default(cuid())
+  kind      String // e.g. "LEAVE_REQUESTED", "LEAVE_DECIDED", "EXPIRY_DIGEST"
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@index([userId, readAt, createdAt])
 }
