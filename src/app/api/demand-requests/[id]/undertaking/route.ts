@@ -74,7 +74,7 @@ export async function GET(
   });
 
   const buffer = await generateLetterPdf({
-    title: template.category ?? "Undertaking Letter",
+    title: template.title || template.category || "Undertaking Letter",
     clientName: demand.client.name,
     clientAddress: demand.client.billingAddress,
     projectName: demand.project.name,

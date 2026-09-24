@@ -1474,6 +1474,10 @@ model LetterTemplate {
   id          String   @id @default(cuid())
   name        String
   category    String? // "No Objection Letter" | "Mobilization Letter" | "Undertaking Letter" | "Supplier Undertaking"
+  // Heading printed on the letter. Falls back to the category when empty.
+  title       String?
+  // Which built-in template this began as (src/lib/letterPresets.ts), so it can be reset to the original wording.
+  presetKey   String?
   remarksText String
   createdAt   DateTime @default(now())
 

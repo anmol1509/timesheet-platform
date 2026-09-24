@@ -56,7 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const buffer = await generateLetterPdf({
-    title: noc.template.category ?? "No Objection Certificate",
+    title: noc.template.title || noc.template.category || "No Objection Certificate",
     clientName: noc.demandRequest.client.name,
     clientAddress: noc.demandRequest.client.billingAddress,
     projectName: noc.demandRequest.project.name,

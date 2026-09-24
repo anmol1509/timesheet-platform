@@ -7,6 +7,7 @@ import {
   type LetterGroup,
   type LetterWorker,
 } from "@/lib/letterLayout";
+import { parseLetterBody } from "@/lib/letterMarkup";
 
 /**
  * The NOC and Undertaking, in the format the client's own letters use.
@@ -86,6 +87,10 @@ const s = StyleSheet.create({
   project: { marginTop: 6, marginBottom: 12, fontFamily: "Helvetica-Bold" },
   title: { marginBottom: 12, fontSize: 11, fontFamily: "Helvetica-Bold", textAlign: "center", textDecoration: "underline" },
   paragraph: { marginBottom: 8, lineHeight: 1.5, textAlign: "justify" },
+  bulletRow: { flexDirection: "row", marginBottom: 4, paddingLeft: 10 },
+  bulletDot: { width: 10, lineHeight: 1.5 },
+  bulletText: { flex: 1, lineHeight: 1.5, textAlign: "justify" },
+  bold: { fontFamily: "Helvetica-Bold" },
   table: { marginTop: 10, borderWidth: 0.5, borderColor: "#000000" },
   headerRow: { flexDirection: "row", backgroundColor: "#D9D9D9" },
   row: { flexDirection: "row" },
@@ -128,7 +133,7 @@ function LetterBody({
   input: LetterPdfInput;
   section: LetterSection;
 }) {
-  const paragraphs = section.bodyText.split(/\n+/).filter((p) => p.trim().length > 0);
+  const blocks = parseLetterBody(section.bodyText);
   const companyName = section.group.supplierName ?? section.issuer.name;
   const chosen = new Set<LetterColumnKey>(input.columns ?? DEFAULT_LETTER_COLUMNS);
   const selected = LETTER_TABLE_COLUMNS.filter((c) => chosen.has(c.key));
@@ -153,11 +158,17 @@ function LetterBody({
 
       <Text style={s.title}>{input.title.toUpperCase()}</Text>
 
-      {paragraphs.map((p, i) => (
-        <Text key={i} style={s.paragraph}>
-          {p}
-        </Text>
-      ))}
+      {blocks.map((b, i) => {
+        const runs = b.runs.map((r, j) => (r.bold ? <Text key={j} style={s.bold}>{r.text}</Text> : r.text));
+        return b.type === "li" ? (
+          <View key={i} style={s.bulletRow} wrap={false}>
+            <Text style={s.bulletDot}>•</Text>
+            <Text style={s.bulletText}>{runs}</Text>
+          </View>
+        ) : (
+          <Text key={i} style={s.paragraph}>{runs}</Text>
+        );
+      })}
 
       {section.group.workers.length > 0 && (
         <View style={s.table}>
