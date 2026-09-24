@@ -63,15 +63,50 @@ export function LetterPreview({ title, html, audience }: { title: string; html: 
   );
 }
 
+export type PaperOptions = {
+  onLetterhead: boolean;
+  /** URL of the letterhead artwork, if one is uploaded (drawn as the page background). */
+  letterheadUrl: string | null;
+  signatoryName: string;
+  signatoryTitle: string;
+  signatureUrl: string | null;
+  stampUrl: string | null;
+};
+
 /** An employee letter with real (already filled in) content, on paper. */
-export function EmployeeLetterPaper({ companyName, refNo, date, title, html }: { companyName: string; refNo: string; date: string; title: string; html: string }) {
+export function EmployeeLetterPaper({ companyName, refNo, date, title, html, options }: { companyName: string; refNo: string; date: string; title: string; html: string; options: PaperOptions }) {
+  const o = options;
   return (
-    <div className="letter-paper mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
-      <div className="mb-3 border-b border-black pb-2"><p className="text-sm font-bold">{companyName}</p></div>
+    <div
+      className="letter-paper relative mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5"
+      style={o.onLetterhead && o.letterheadUrl ? { backgroundImage: `url(${o.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : undefined}
+    >
+      {o.onLetterhead ? (
+        // Pre-printed paper (or artwork): keep the header area clear, exactly as the PDF does.
+        <div className={`mb-3 flex h-20 items-center justify-center text-[10px] ${o.letterheadUrl ? "" : "rounded border border-dashed border-neutral-400 text-neutral-500"}`}>{o.letterheadUrl ? "" : "Letterhead prints here"}</div>
+      ) : (
+        <div className="mb-3 border-b border-black pb-2"><p className="text-sm font-bold">{companyName}</p></div>
+      )}
       <div className="flex justify-between"><p>Ref: {refNo}</p><p>Date: {date}</p></div>
       <p className="my-3 text-center text-xs font-bold underline">{title.toUpperCase()}</p>
       <div className="text-justify" dangerouslySetInnerHTML={{ __html: html }} />
-      <div className="mt-6"><p>For and on behalf of</p><p className="font-bold">{companyName}</p><p className="mt-4">Authorised Signatory</p></div>
+      <div className="mt-6 flex items-end justify-between gap-3">
+        <div>
+          <p>For and on behalf of</p>
+          <p className="font-bold">{companyName}</p>
+          {o.signatureUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- our own image route
+            <img src={o.signatureUrl} alt="" className="my-1 h-11 w-[7.5rem] object-contain" />
+          ) : (
+            <div className="h-7" />
+          )}
+          <p className="font-bold">{o.signatoryName || "Authorised Signatory"}</p>
+          {o.signatoryTitle && <p>{o.signatoryTitle}</p>}
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- our own image route */}
+        {o.stampUrl && <img src={o.stampUrl} alt="" className="h-[5.75rem] w-[5.75rem] object-contain" />}
+      </div>
+      {o.onLetterhead && !o.letterheadUrl && <div className="mt-3 flex h-10 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead footer prints here</div>}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { ImageUpload } from "@/components/ImageUpload";
 import { CompanyForm } from "./company-form";
 import { WpsForm } from "./wps-form";
+import { LettersSection } from "./letters-section";
 import { removeLogoAction, uploadLogoAction } from "./actions";
 
 export const metadata = { title: "Company profile" };
@@ -77,6 +78,22 @@ export default async function CompanyProfilePage({
         />
         <CompanyForm key={branch.id} branch={branch} />
       </div>
+
+      <section className="card max-w-2xl space-y-4 p-5">
+        <div>
+          <h2 className="text-sm font-semibold text-primary">Letters</h2>
+          <p className="mt-1 text-xs text-muted">Optional defaults for letters about your employees: who signs, a signature image, a company stamp, and your letterhead. Each is chosen per letter, so nothing prints unless you tick it.</p>
+        </div>
+        <LettersSection
+          key={branch.id}
+          branchId={branch.id}
+          signatoryName={branch.signatoryName ?? ""}
+          signatoryTitle={branch.signatoryTitle ?? ""}
+          signatureUrl={branch.signatureId ? `/api/images/${branch.signatureId}` : null}
+          stampUrl={branch.stampId ? `/api/images/${branch.stampId}` : null}
+          letterheadUrl={branch.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null}
+        />
+      </section>
 
       <section className="card max-w-2xl space-y-4 p-5">
         <div>

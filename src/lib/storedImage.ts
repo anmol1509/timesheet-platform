@@ -32,3 +32,10 @@ export async function deleteImage(id: string | null | undefined) {
   if (!id) return;
   await prisma.storedImage.delete({ where: { id } }).catch(() => {});
 }
+
+/** A stored image as a data URI, for embedding in a PDF. Null if the id is empty or the image is gone. */
+export async function imageDataUri(id: string | null | undefined): Promise<string | null> {
+  if (!id) return null;
+  const img = await prisma.storedImage.findUnique({ where: { id } });
+  return img ? `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}` : null;
+}

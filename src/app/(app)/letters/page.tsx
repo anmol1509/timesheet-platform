@@ -16,7 +16,7 @@ export default async function EmployeeLettersPage() {
     prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: { name: "asc" } }),
     prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
-    branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true } }) : null,
+    branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true } }) : null,
   ]);
 
   return (
@@ -33,6 +33,13 @@ export default async function EmployeeLettersPage() {
           canIssue={can(subject, "workforce", "create")}
           companyName={(branch?.name ?? "").toUpperCase()}
           today={formatLetterDate(new Date())}
+          defaults={{
+            signatoryName: branch?.signatoryName ?? "",
+            signatoryTitle: branch?.signatoryTitle ?? "",
+            signatureUrl: branch?.signatureId ? `/api/images/${branch.signatureId}` : null,
+            stampUrl: branch?.stampId ? `/api/images/${branch.stampId}` : null,
+            letterheadUrl: branch?.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null,
+          }}
           employees={employees.map((e) => ({ id: e.id, name: e.name, idNo: e.employeeIdNo, trade: e.trade }))}
           templates={templates.map((t) => {
             const html = templateHtml(t);

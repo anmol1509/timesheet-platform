@@ -57,10 +57,11 @@ export async function employeeLetterValues(employeeId: string, opts: { canSeePay
 }
 
 import { askLabels, substituteInHtml, templateHtml, tokensIn, ASK_PREFIX } from "@/lib/letterHtml";
+import { EMPLOYEE_MERGE_FIELDS } from "@/lib/letterFields";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
 
 export type RenderedLetter =
-  | { ok: true; html: string; title: string; employeeName: string; branchId: string; templateName: string; missing: string[]; asks: string[] }
+  | { ok: true; html: string; title: string; employeeName: string; branchId: string; templateName: string; missing: string[]; asks: string[]; empty: string[] }
   | { ok: false; error: string };
 
 /**
@@ -97,8 +98,12 @@ export async function renderEmployeeLetter(opts: {
     values[`${ASK_PREFIX}${label}`] = v || `[${label}]`;
     if (!v) missing.push(label);
   }
+  // Details the letter uses that are blank on the employee's record (it would print a gap).
+  const labelOf = new Map(EMPLOYEE_MERGE_FIELDS.map((f) => [f.key, f.label]));
+  const empty = [...tokens].filter((t) => labelOf.has(t) && !(values[t] ?? "").trim()).map((t) => labelOf.get(t)!);
   return {
     ok: true,
+    empty,
     html: sanitizeLetterHtml(substituteInHtml(html, values)),
     title: template.title || template.category || "Letter",
     employeeName: ev.employee.name,

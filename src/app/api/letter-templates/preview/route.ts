@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
-import { generateEmployeeLetterPdf } from "@/lib/generateEmployeeLetterPdf";
+import { generateEmployeeLetterPdf, PLAIN_LAYOUT } from "@/lib/generateEmployeeLetterPdf";
 import { loadLogoDataUri } from "@/lib/letterhead";
 import { SAMPLE_VALUES, SAMPLE_WORKERS } from "@/lib/letterSample";
 import { EMPLOYEE_MERGE_FIELDS } from "@/lib/letterFields";
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     for (const t of tokensIn(clean)) if (t.startsWith(ASK_PREFIX)) values[t] = `[${t.slice(ASK_PREFIX.length)}]`;
     buffer = await generateEmployeeLetterPdf({
       letterhead: { name: SAMPLE_VALUES.COMPANYNAME, addressLines: ["Business Bay", "Dubai"], phone: "+971 4 123 4567", fax: null, email: "office@example.com", poBox: "12345", trn: "100000000000003", logo: await loadLogoDataUri() },
-      refNo: values.REFNO, date: values.DATE, title: (title || "Letter").slice(0, 120), bodyHtml: substituteInHtml(clean, values), signedBy: "Authorised Signatory",
+      refNo: values.REFNO, date: values.DATE, title: (title || "Letter").slice(0, 120), bodyHtml: substituteInHtml(clean, values), layout: PLAIN_LAYOUT,
     });
   } else {
     buffer = await generateLetterPdf({

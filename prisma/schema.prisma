@@ -38,6 +38,17 @@ model Branch {
   logo   StoredImage? @relation("BranchLogo", fields: [logoId], references: [id], onDelete: SetNull)
   logoId String?
 
+  // Letter defaults (Company profile -> Letters). All optional; using them is chosen per letter.
+  signatoryName     String?
+  signatoryTitle    String?
+  signature         StoredImage? @relation("BranchSignature", fields: [signatureId], references: [id], onDelete: SetNull)
+  signatureId       String?
+  stamp             StoredImage? @relation("BranchStamp", fields: [stampId], references: [id], onDelete: SetNull)
+  stampId           String?
+  // Full-page letterhead artwork (A4) used when printing letters "on letterhead".
+  letterheadImage   StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
+  letterheadImageId String?
+
   // WPS establishment details (Company profile -> Payroll / WPS).
   wpsEstablishmentId String? // MOHRE establishment / employer ID
   wpsPayerBank       Bank?        @relation("BranchWpsPayerBank", fields: [wpsPayerBankId], references: [id], onDelete: SetNull)
@@ -154,8 +165,11 @@ model StoredImage {
   mimeType  String
   updatedAt DateTime @default(now()) @updatedAt
 
-  userAvatars User[]   @relation("UserAvatar")
-  branchLogos Branch[] @relation("BranchLogo")
+  userAvatars       User[]   @relation("UserAvatar")
+  branchLogos       Branch[] @relation("BranchLogo")
+  branchSignatures  Branch[] @relation("BranchSignature")
+  branchStamps      Branch[] @relation("BranchStamp")
+  branchLetterheads Branch[] @relation("BranchLetterhead")
 }
 
 // A named bundle of "module:action" permission keys (see src/lib/permissions.ts)
@@ -1779,6 +1793,8 @@ model IssuedLetter {
   title     String
   bodyHtml  String // fully substituted, sanitised
   inputs    Json? // what the person filled in for %%ASK:...%% prompts
+  // How it was printed: { onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp } — so a re-download matches the original.
+  layout    Json?
   createdAt DateTime @default(now())
 
   employee   Employee @relation(fields: [employeeId], references: [id])

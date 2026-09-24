@@ -123,3 +123,54 @@ export async function updateWpsAction(_prev: State, formData: FormData): Promise
   revalidatePath("/payroll");
   return { error: null, ok: true };
 }
+
+// ---- Letters: signatory, signature, stamp, letterhead ---------------------------------
+const LETTER_IMAGES = {
+  signature: { column: "signatureId", label: "signature" },
+  stamp: { column: "stampId", label: "stamp" },
+  letterhead: { column: "letterheadImageId", label: "letterhead" },
+} as const;
+type LetterImageKind = keyof typeof LETTER_IMAGES;
+const asKind = (v: FormDataEntryValue | null): LetterImageKind | null => (typeof v === "string" && v in LETTER_IMAGES ? (v as LetterImageKind) : null);
+
+export async function updateLetterDefaultsAction(_prev: State, formData: FormData): Promise<State> {
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+  const signatoryName = String(formData.get("signatoryName") || "").trim().slice(0, 80) || null;
+  const signatoryTitle = String(formData.get("signatoryTitle") || "").trim().slice(0, 80) || null;
+  await prisma.branch.update({ where: { id: branch.id }, data: { signatoryName, signatoryTitle } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { signatoryName: branch.signatoryName, signatoryTitle: branch.signatoryTitle }, after: { signatoryName, signatoryTitle }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  revalidatePath("/letters");
+  return { error: null, ok: true };
+}
+
+export async function uploadLetterImageAction(formData: FormData) {
+  const kind = asKind(formData.get("kind"));
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch || !kind) return { error: "You can't edit that company." };
+  const saved = await storeImage(formData.get("image"));
+  if ("error" in saved) return { error: saved.error };
+  const { column, label } = LETTER_IMAGES[kind];
+  const previous = branch[column];
+  await prisma.branch.update({ where: { id: branch.id }, data: { [column]: saved.id } });
+  await deleteImage(previous);
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { [label]: previous ? "(set)" : null }, after: { [label]: "(replaced)" }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  revalidatePath("/letters");
+  return { error: null };
+}
+
+export async function removeLetterImageAction(formData: FormData) {
+  const kind = asKind(formData.get("kind"));
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch || !kind) return { error: "You can't edit that company." };
+  const { column, label } = LETTER_IMAGES[kind];
+  const previous = branch[column];
+  await prisma.branch.update({ where: { id: branch.id }, data: { [column]: null } });
+  await deleteImage(previous);
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { [label]: "(set)" }, after: { [label]: null }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  revalidatePath("/letters");
+  return { error: null };
+}
