@@ -7,7 +7,7 @@ import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
 
 /**
- * Read-only tools the navigation assistant can call.
+ * Read-only tools My Assistant can call.
  *
  * Every tool is gated on the same module permission as the page that shows
  * the data, and scoped to the caller's active branch. Results are deliberately
