@@ -11,14 +11,14 @@ type Msg = { role: "user" | "assistant"; content: string; links?: Link[]; error?
 
 const SUGGESTIONS = [
   "Where do I renew a visa?",
-  "How do I raise a demand?",
-  "Where can I check a worker in to a camp?",
-  "Where are invoices generated?",
+  "How do I get workers onto a project?",
+  "Open the profile for a worker",
+  "How many workers are on the bench?",
 ];
 
 const GREETING: Msg = {
   role: "assistant",
-  content: "Hi! Tell me what you want to do and I'll point you to the right page.",
+  content: "Hi! Ask where something is, how a task works, or for a worker, project or client — I'll point you to the right page.",
 };
 
 /**
@@ -118,7 +118,7 @@ export function NavAssistant({
             <Sparkles className="h-4 w-4 text-[var(--brand-primary)]" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-primary">Navigation assistant</p>
-              <p className="text-xs text-muted">Ask where to find something</p>
+              <p className="text-xs text-muted">Pages, how-tos and quick lookups</p>
             </div>
             <button
               type="button"
@@ -194,7 +194,7 @@ export function NavAssistant({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               maxLength={500}
-              placeholder="e.g. where do I add a new worker?"
+              placeholder="Ask about a page, task or record"
               aria-label="Ask the assistant"
               className="input flex-1"
             />
