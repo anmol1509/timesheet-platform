@@ -51,3 +51,6 @@ export function rateLimit(
 
 /** Document extraction: enough for a busy onboarding session, not a loop. */
 export const EXTRACTION_LIMIT = { limit: 60, windowMs: 60 * 60 * 1000 };
+
+/** Navigation assistant: generous for a chat, still a cap on a runaway loop. */
+export const ASSISTANT_LIMIT = { limit: 60, windowMs: 60 * 60 * 1000 };
