@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getVendor } from "@/lib/vendor/session";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { STAGE_LABEL } from "@/lib/employeeStage";
+import { AddWorker, SubmissionList, type SubmissionRow } from "./add-worker";
 
 export const metadata = { title: "Your workers" };
 const DAY = 86_400_000;
@@ -15,18 +16,36 @@ function chip(label: string, d: Date | null) {
 
 export default async function VendorWorkersPage() {
   const vendor = (await getVendor())!;
-  const workers = await prisma.employee.findMany({
-    where: { supplierId: vendor.id, status: { not: "TERMINATED" } },
-    orderBy: { name: "asc" },
-    select: {
-      id: true, name: true, employeeIdNo: true, trade: true, status: true,
-      visaExpiry: true, laborCardExpiry: true, medicalExpiry: true, passportExpiry: true, emiratesIdExpiry: true,
-      project: { select: { name: true } },
-    },
-  });
+  const [workers, subs, skills] = await Promise.all([
+    prisma.employee.findMany({
+      where: { supplierId: vendor.id, status: { not: "TERMINATED" } },
+      orderBy: { name: "asc" },
+      select: {
+        id: true, name: true, employeeIdNo: true, trade: true, status: true,
+        visaExpiry: true, laborCardExpiry: true, medicalExpiry: true, passportExpiry: true, emiratesIdExpiry: true,
+        project: { select: { name: true } },
+      },
+    }),
+    prisma.workerSubmission.findMany({ where: { supplierId: vendor.id, status: { in: ["PENDING", "REJECTED"] } }, orderBy: { submittedAt: "desc" } }),
+    prisma.skill.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+  ]);
+  const rows: SubmissionRow[] = subs.map((s) => ({
+    id: s.id, name: [s.firstName, s.middleName, s.lastName].filter(Boolean).join(" "), trade: s.trade, status: s.status, note: s.note,
+    submittedAt: s.submittedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+  }));
+
   return (
     <>
-      <h1 className="text-xl font-semibold tracking-tight text-primary">Your workers</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-primary">Your workers</h1>
+          <p className="mt-1 text-sm text-muted">Workers linked to your company. New ones are checked by our team before they are added.</p>
+        </div>
+        <AddWorker trades={skills.map((s) => s.name)} enabled={vendor.labourApprovalStatus === "Approved"} />
+      </div>
+
+      <SubmissionList rows={rows} />
+
       {workers.length === 0 ? (
         <div className="card p-8 text-center text-sm text-muted">No workers are linked to your company yet.</div>
       ) : (

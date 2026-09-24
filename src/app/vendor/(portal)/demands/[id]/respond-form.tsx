@@ -1,5 +1,6 @@
 "use client";
 
+import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState } from "react";
 import { acceptOfferAction, declineOfferAction } from "../actions";
 
@@ -23,7 +24,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
       </div>
 
       {mode === "accept" ? (
-        <form action={aAction} className="space-y-4">
+        <form onSubmit={keepInput(aAction)} className="space-y-4">
           <input type="hidden" name="offerId" value={offerId} />
           <p className="text-sm text-muted">For each trade you can cover, say how many workers you can supply and your rate. Leave a trade at 0 to skip it.</p>
           <ul className="space-y-2">
@@ -42,7 +43,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
           </div>
         </form>
       ) : (
-        <form action={dAction} className="space-y-4">
+        <form onSubmit={keepInput(dAction)} className="space-y-4">
           <input type="hidden" name="offerId" value={offerId} />
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Why can&apos;t you supply this?</span><input name="note" required className="input w-full" placeholder="e.g. No carpenters available this month" /></label>
           <div className="flex flex-wrap items-center gap-3">
