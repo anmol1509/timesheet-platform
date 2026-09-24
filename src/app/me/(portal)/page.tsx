@@ -2,7 +2,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getEssEmployee } from "@/lib/ess/session";
 import { Badge, type BadgeColor } from "@/components/Badge";
-import { LEAVE_STATUS_LABELS } from "@/lib/leave";
 
 export const metadata = { title: "My portal" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -11,17 +10,11 @@ const day = (d: Date) => d.toISOString().slice(0, 10);
 export default async function PortalHome() {
   const employee = (await getEssEmployee())!;
   const today = new Date();
-  const [slip, pendingLeave, nextLeave, docs] = await Promise.all([
+  const [slip, docs] = await Promise.all([
     prisma.payrollLine.findFirst({
       where: { employeeId: employee.id, run: { status: { in: ["APPROVED", "PAID"] } } },
       orderBy: { run: { month: "desc" } },
       include: { run: { select: { month: true, status: true } } },
-    }),
-    prisma.leaveRequest.count({ where: { employeeId: employee.id, status: "PENDING" } }),
-    prisma.leaveRequest.findFirst({
-      where: { employeeId: employee.id, status: "APPROVED", endDate: { gte: today } },
-      orderBy: { startDate: "asc" },
-      include: { leaveType: { select: { name: true } } },
     }),
     prisma.document.findMany({
       where: { employeeId: employee.id, displayInEss: true, expiryDate: { not: null } },
@@ -44,7 +37,7 @@ export default async function PortalHome() {
         </p>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         <Link href="/me/payslips" className="card block p-4 transition hover:border-[var(--brand-primary)]">
           <p className="text-xs font-medium tracking-wide text-muted uppercase">Latest payslip</p>
           {slip ? (
@@ -55,15 +48,6 @@ export default async function PortalHome() {
           ) : (
             <p className="mt-2 text-sm text-muted">No payslips yet.</p>
           )}
-        </Link>
-        <Link href="/me/leave" className="card block p-4 transition hover:border-[var(--brand-primary)]">
-          <p className="text-xs font-medium tracking-wide text-muted uppercase">Leave</p>
-          {nextLeave ? (
-            <p className="mt-1 text-sm text-primary">Upcoming: {nextLeave.leaveType.name}, {day(nextLeave.startDate)} → {day(nextLeave.endDate)}</p>
-          ) : (
-            <p className="mt-1 text-sm text-muted">No upcoming leave.</p>
-          )}
-          {pendingLeave > 0 && <p className="mt-1 text-xs text-[var(--warning)]">{pendingLeave} request{pendingLeave === 1 ? "" : "s"} awaiting approval</p>}
         </Link>
       </div>
 
@@ -87,7 +71,6 @@ export default async function PortalHome() {
           </ul>
         </section>
       )}
-      <p className="text-center text-xs text-muted">{LEAVE_STATUS_LABELS.PENDING} requests are reviewed by your office.</p>
     </>
   );
 }

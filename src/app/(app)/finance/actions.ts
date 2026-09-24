@@ -6,7 +6,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
-import { parseDay } from "@/lib/leave";
+import { parseDay } from "@/lib/dates";
 import { round2 } from "@/lib/payroll";
 import { billTotals } from "@/lib/payables";
 

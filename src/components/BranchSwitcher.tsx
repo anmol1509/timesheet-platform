@@ -42,7 +42,7 @@ function AddBranchForm({ current, onDone }: { current: Branch | null; onDone: ()
           <input type="checkbox" name="copyFromBranchId" value={current.id} defaultChecked className="mt-0.5" />
           <span>
             Copy setup from {current.name}
-            <span className="block text-xs text-muted">Dropdown lists, leave types and letter templates. Never people, projects, clients, banks or any records.</span>
+            <span className="block text-xs text-muted">Dropdown lists and letter templates. Never people, projects, clients, banks or any records.</span>
           </span>
         </label>
       )}

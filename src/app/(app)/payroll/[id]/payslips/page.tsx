@@ -66,7 +66,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
                 <tr><td className="py-1.5 text-secondary">{l.payStructure === "FLAT" ? "Monthly rate" : l.payStructure === "HOURLY" ? `Hourly pay (${l.normalHours} h)` : "Basic salary"}</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.basic))}</td></tr>
                 {n(l.allowances) > 0 && <tr><td className="py-1.5 text-secondary">Allowances</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.allowances))}</td></tr>}
                 {n(l.overtimePay) > 0 && <tr><td className="py-1.5 text-secondary">Overtime ({l.otHours} h)</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.overtimePay))}</td></tr>}
-                {n(l.deductions) > 0 && <tr><td className="py-1.5 text-secondary">Absence / unpaid leave ({unpaidDays} day{unpaidDays === 1 ? "" : "s"})</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.deductions))}</td></tr>}
+                {n(l.deductions) > 0 && <tr><td className="py-1.5 text-secondary">Absence ({unpaidDays} day{unpaidDays === 1 ? "" : "s"})</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.deductions))}</td></tr>}
                 {n(l.adjustment) !== 0 && <tr><td className="py-1.5 text-secondary">{l.adjustmentNote || "Adjustment"}</td><td className="py-1.5 text-right tabular-nums">{n(l.adjustment) > 0 ? "" : "−"}{aed(Math.abs(n(l.adjustment)))}</td></tr>}
                 <tr className="font-semibold"><td className="py-2 text-primary">Net pay (AED)</td><td className="py-2 text-right tabular-nums text-primary">{aed(n(l.net))}</td></tr>
               </tbody>

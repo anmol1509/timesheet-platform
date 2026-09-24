@@ -59,8 +59,6 @@ model Branch {
   issuedLetters   IssuedLetter[]
   supplierBills   SupplierBill[]
   accessRoles     AccessRole[]
-  leaveTypes      LeaveType[]
-  leaveRequests   LeaveRequest[]
   users           User[]
   employees       Employee[]
   clients         Client[]
@@ -153,8 +151,6 @@ model User {
   expensesDecided     Expense[]            @relation("ExpenseDecidedBy")
   payrollCreated      PayrollRun[]         @relation("PayrollCreatedBy")
   payrollApproved     PayrollRun[]         @relation("PayrollApprovedBy")
-  leaveDecisions      LeaveRequest[]       @relation("LeaveDecidedBy")
-  leaveRequested      LeaveRequest[]       @relation("LeaveRequestedBy")
 }
 
 // Small uploaded images (user avatars, company logos). Its own table so the
@@ -553,7 +549,6 @@ model Employee {
   // Self-service portal sign-in (phone + one-time code). On by default; an admin
   // can switch it off per employee.
   essEnabled         Boolean          @default(true)
-  leaveRequests      LeaveRequest[]
   employeeIdNo       String           @unique
   name               String
   trade              String?
@@ -1539,62 +1534,6 @@ model NocEmployee {
   nocId      String
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId String
-}
-
-// ---------------------------------------------------------------------------
-// Leave management
-// ---------------------------------------------------------------------------
-
-// A kind of leave a branch offers (annual, sick, unpaid, ...). daysPerYear is
-// the yearly entitlement used to compute balances; 0 means "not capped".
-model LeaveType {
-  id          String  @id @default(cuid())
-  name        String
-  code        String
-  paid        Boolean @default(true)
-  daysPerYear Int     @default(0)
-  isActive    Boolean @default(true)
-
-  branch   Branch @relation(fields: [branchId], references: [id])
-  branchId String
-
-  requests LeaveRequest[]
-
-  @@unique([branchId, code])
-}
-
-// One leave request for one employee. `days` is the inclusive calendar-day
-// count of startDate..endDate, stored so balances don't depend on recomputing.
-model LeaveRequest {
-  id           String    @id @default(cuid())
-  startDate    DateTime
-  endDate      DateTime
-  days         Int
-  reason       String?
-  status       String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
-  decisionNote String?
-  decidedAt    DateTime?
-  createdAt    DateTime  @default(now())
-
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  employeeId String
-
-  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
-  leaveTypeId String
-
-  // Null when the employee raised it themselves from the self-service portal.
-  requestedBy        User?   @relation("LeaveRequestedBy", fields: [requestedById], references: [id])
-  requestedById      String?
-  requestedViaPortal Boolean @default(false)
-
-  decidedBy   User?   @relation("LeaveDecidedBy", fields: [decidedById], references: [id])
-  decidedById String?
-
-  branch   Branch @relation(fields: [branchId], references: [id])
-  branchId String
-
-  @@index([branchId, status])
-  @@index([employeeId, startDate])
 }
 
 // ---------------------------------------------------------------------------

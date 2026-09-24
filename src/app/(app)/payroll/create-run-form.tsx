@@ -16,7 +16,7 @@ export function CreateRunForm({ defaultMonth }: { defaultMonth: string }) {
       </label>
       <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Calculating…" : "Create payroll run"}</button>
       {state.error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>}
-      <p className="w-full text-xs text-muted">Pulls each paid employee&apos;s pay structure, that month&apos;s attendance (absences and overtime) and approved unpaid leave.</p>
+      <p className="w-full text-xs text-muted">Pulls each paid employee&apos;s pay structure, that month&apos;s attendance (absences and overtime).</p>
     </form>
   );
 }

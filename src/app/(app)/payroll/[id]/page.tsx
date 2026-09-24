@@ -98,7 +98,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className="px-3 py-3">Employee</th>
                 <th className="px-3 py-3 text-right">Base</th>
                 <th className="px-3 py-3 text-right">Allow.</th>
-                <th className="px-3 py-3 text-right">Absent / unpaid</th>
+                <th className="px-3 py-3 text-right">Absent</th>
                 <th className="px-3 py-3 text-right">OT hrs</th>
                 <th className="px-3 py-3 text-right">OT pay</th>
                 <th className="px-3 py-3 text-right">Deduct.</th>
@@ -118,7 +118,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.basic))}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.allowances))}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.absentDays} / {l.unpaidLeaveDays}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.absentDays}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.otHours}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.overtimePay))}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{n(l.deductions) > 0 ? `−${aed(n(l.deductions))}` : "—"}</td>
@@ -137,7 +137,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         </div>
       )}
       <p className="text-xs text-muted">
-        Rules: for monthly-paid staff, absence deduction = (base + allowances) ÷ 30 per absent or unpaid-leave day. Overtime = OT hours × (base ÷ 240) × the employee&apos;s multiplier. Hourly workers are paid normal hours × their rate, with overtime at rate × multiplier. Adjustments are added to net pay (use a negative amount to deduct).
+        Rules: for monthly-paid staff, absence deduction = (base + allowances) ÷ 30 per day marked Absent in attendance. Overtime = OT hours × (base ÷ 240) × the employee&apos;s multiplier. Hourly workers are paid normal hours × their rate, with overtime at rate × multiplier. Adjustments are added to net pay (use a negative amount to deduct).
       </p>
     </div>
   );

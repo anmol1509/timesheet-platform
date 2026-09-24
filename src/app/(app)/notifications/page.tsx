@@ -23,7 +23,7 @@ export default async function NotificationsPage() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState icon={Bell} title="No notifications yet" description="Leave requests, decisions and expiry digests will show up here." />
+        <EmptyState icon={Bell} title="No notifications yet" description="Expense approvals and expiry digests will show up here." />
       ) : (
         <ul className="card divide-y divide-[var(--border)]">
           {items.map((n) => {

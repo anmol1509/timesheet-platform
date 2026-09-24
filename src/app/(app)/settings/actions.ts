@@ -67,19 +67,17 @@ export async function createBranchAction(
   // Optionally seed the new branch with the *setup* (never the data) of an
   // existing one, so its dropdowns, leave types and letter templates aren't
   // blank. People, projects, clients, banks and records are never copied.
-  let copied: { lookups: number; leaveTypes: number; templates: number } | null = null;
+  let copied: { lookups: number; templates: number } | null = null;
   if (copyFromId) {
-    const [lookups, leaveTypes, templates] = await Promise.all([
+    const [lookups, templates] = await Promise.all([
       prisma.lookupValue.findMany({ where: { branchId: copyFromId }, select: { category: true, value: true, sortOrder: true, isActive: true } }),
-      prisma.leaveType.findMany({ where: { branchId: copyFromId }, select: { name: true, code: true, paid: true, daysPerYear: true, isActive: true } }),
       prisma.letterTemplate.findMany({ where: { branchId: copyFromId }, select: { name: true, category: true, remarksText: true } }),
     ]);
     await prisma.$transaction([
       prisma.lookupValue.createMany({ data: lookups.map((l) => ({ ...l, branchId: created.id })), skipDuplicates: true }),
-      prisma.leaveType.createMany({ data: leaveTypes.map((l) => ({ ...l, branchId: created.id })), skipDuplicates: true }),
       prisma.letterTemplate.createMany({ data: templates.map((t) => ({ ...t, branchId: created.id })) }),
     ]);
-    copied = { lookups: lookups.length, leaveTypes: leaveTypes.length, templates: templates.length };
+    copied = { lookups: lookups.length, templates: templates.length };
   }
 
   await logAudit({
