@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { normalizePhone, phoneTail } from "@/lib/phone";
 import { isSmsConfigured, sendSms } from "@/lib/notifications/sms";
 import { sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
+import { demoCodeMatches, isDemoPhone, isDemoPrincipal } from "@/lib/ess/demoLogin";
 
 const CODE_TTL_MS = 10 * 60_000;
 const RESEND_COOLDOWN_MS = 45_000;
@@ -77,6 +78,10 @@ export async function requestOtp(rawPhone: string, ip: string | null, kind: OtpK
     },
   });
 
+  // The demo number is a placeholder: never send a message to it. Demo sign-in
+  // (see demoLogin.ts) needs only the challenge recorded above.
+  if (isDemoPhone(phone)) return { ok: true };
+
   if (matches.length === 1) {
     const text = `${code} is your Burj Al Aweer ${kind === "SUPPLIER" ? "supplier portal " : ""}sign-in code. It expires in 10 minutes. Don't share it with anyone.`;
     const channel = process.env.OTP_CHANNEL ?? (isSmsConfigured() ? "sms" : "whatsapp");
@@ -108,11 +113,17 @@ export async function verifyOtp(rawPhone: string, rawCode: string, kind: OtpKind
 
   // Count the attempt first so parallel guesses can't outrun the limit.
   await prisma.otpChallenge.update({ where: { id: challenge.id }, data: { attempts: { increment: 1 } } });
-  const a = Buffer.from(hash(code, phone), "hex");
-  const b = Buffer.from(challenge.codeHash, "hex");
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return generic;
   const principalId = kind === "SUPPLIER" ? challenge.supplierId : challenge.employeeId;
-  if (!principalId) return generic;
+  // Demo sign-in: the fixed code, only for the demo number, only for a record marked as demo.
+  const demo = isDemoPhone(phone) && demoCodeMatches(code);
+  if (demo) {
+    if (!principalId || !(await isDemoPrincipal(kind, principalId))) return generic;
+  } else {
+    const a = Buffer.from(hash(code, phone), "hex");
+    const b = Buffer.from(challenge.codeHash, "hex");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return generic;
+    if (!principalId) return generic;
+  }
 
   const consumed = await prisma.otpChallenge.updateMany({ where: { id: challenge.id, consumedAt: null }, data: { consumedAt: new Date() } });
   if (consumed.count !== 1) return generic;
