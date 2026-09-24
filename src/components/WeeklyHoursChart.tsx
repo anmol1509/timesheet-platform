@@ -3,32 +3,43 @@
 import { m } from "motion/react";
 import type { WeeklyHoursDay } from "@/lib/weeklyHours";
 
-const HATCH_BG =
-  "repeating-linear-gradient(135deg, #e2e8f0 0px, #e2e8f0 3px, transparent 3px, transparent 7px)";
-
+/**
+ * Days with no hours render as a hairline tick, not a placeholder bar — an
+ * empty day should look like nothing, not like the tallest thing on the chart.
+ * The busiest day is the only one in full brand colour.
+ */
 export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
   const max = Math.max(1, ...days.map((d) => d.hours));
+  const peak = days.reduce((best, d) => (d.hours > best.hours ? d : best), days[0]);
 
   return (
-    <div className="flex h-48 items-end justify-between gap-2 sm:gap-3">
+    <div className="flex h-44 items-end justify-between gap-3">
       {days.map((d, i) => {
         const hasData = d.hours > 0;
-        const heightPct = hasData ? Math.max(14, Math.round((d.hours / max) * 100)) : 55;
+        const isPeak = hasData && d === peak;
         return (
           <div key={i} className="flex flex-1 flex-col items-center gap-2">
-            <div className="flex h-40 w-full items-end justify-center">
+            <div className="flex h-36 w-full flex-col items-center justify-end gap-1.5">
+              {hasData && (
+                <span className="tabular text-[11px] font-medium text-secondary">{d.hours}</span>
+              )}
               <m.div
                 title={hasData ? `${d.hours}h logged` : "No hours logged"}
                 initial={{ height: 0 }}
-                animate={{ height: `${heightPct}%` }}
+                animate={{ height: hasData ? `${Math.max(8, Math.round((d.hours / max) * 100))}%` : 2 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.03 }}
-                style={hasData ? undefined : { backgroundImage: HATCH_BG }}
-                className={`w-full max-w-9 rounded-full ${
-                  hasData ? "bg-[var(--brand-primary)]" : "border border-default"
+                className={`w-full max-w-7 rounded-t-[4px] ${
+                  isPeak
+                    ? "bg-[var(--brand-primary)]"
+                    : hasData
+                      ? "bg-[var(--brand-primary)]/35"
+                      : "bg-[var(--border-strong)]"
                 }`}
               />
             </div>
-            <span className="text-xs font-medium text-subtle">{d.label}</span>
+            <span className={`text-xs ${isPeak ? "font-semibold text-primary" : "text-subtle"}`}>
+              {d.label}
+            </span>
           </div>
         );
       })}

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { m } from "motion/react";
 import { FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/Badge";
@@ -32,35 +31,55 @@ export function TimesheetPipelineChart({ pipeline }: { pipeline: TimesheetPipeli
     );
   }
 
-  const max = Math.max(...pipeline.stages.map((s) => s.count), 1);
+  const COLORS = [
+    "var(--border-strong)",
+    "var(--info)",
+    "var(--warning)",
+    "var(--brand-primary)",
+    "var(--success)",
+  ];
+  const busiest = pipeline.stages.reduce((a, s) => (s.count > a.count ? s : a), pipeline.stages[0]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs text-muted">{formatMonthLabel(pipeline.month)}</span>
-        <span className="tabular text-xs text-subtle">{pipeline.total} rows</span>
+        <div>
+          <span className="tabular text-3xl font-semibold tracking-tight text-primary">
+            {pipeline.total}
+          </span>
+          <span className="ml-2 text-sm text-muted">rows in {formatMonthLabel(pipeline.month)}</span>
+        </div>
+        {busiest.count > 0 && (
+          <span className="text-xs text-subtle">
+            Most at <span className="font-medium text-secondary">{busiest.label}</span>
+          </span>
+        )}
       </div>
 
-      <ul className="space-y-2">
+      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-[var(--surface-sunken)]">
+        {pipeline.stages.map((stage, i) =>
+          stage.count > 0 ? (
+            <m.span
+              key={stage.status}
+              title={`${stage.label}: ${stage.count}`}
+              className="h-full first:rounded-l-full last:rounded-r-full"
+              style={{ backgroundColor: COLORS[i] }}
+              initial={{ width: 0 }}
+              animate={{ width: `${(stage.count / pipeline.total) * 100}%` }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.04 }}
+            />
+          ) : null
+        )}
+      </div>
+
+      <ul className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-5">
         {pipeline.stages.map((stage, i) => (
-          <li key={stage.status} className="flex items-center gap-3">
-            <span className="w-28 shrink-0 text-xs font-medium text-secondary">
+          <li key={stage.status} className={stage.count === 0 ? "opacity-50" : undefined}>
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[i] }} aria-hidden />
               {stage.label}
-            </span>
-            <span className="flex h-6 min-w-0 flex-1 items-center">
-              <m.span
-                className="h-full rounded-sm bg-brand-soft"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.max(2, (stage.count / max) * 100)}%` }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.04 }}
-              />
-              <span className="tabular ml-2 shrink-0 text-xs font-semibold text-primary">
-                {stage.count}
-              </span>
-            </span>
-            <span className="hidden w-36 shrink-0 truncate text-right text-[11px] text-subtle sm:block">
-              {stage.hint}
-            </span>
+            </div>
+            <div className="tabular mt-0.5 text-lg font-semibold text-primary">{stage.count}</div>
           </li>
         ))}
       </ul>
@@ -74,12 +93,6 @@ export function TimesheetPipelineChart({ pipeline }: { pipeline: TimesheetPipeli
         </p>
       )}
 
-      <Link
-        href="/invoices/client-timesheet"
-        className="inline-flex items-center text-xs font-medium text-[var(--brand-primary)] hover:underline"
-      >
-        View timesheets →
-      </Link>
     </div>
   );
 }

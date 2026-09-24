@@ -6,6 +6,8 @@ import { branchWhere } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { CreateRunForm } from "./create-run-form";
+import { CostTrend } from "./cost-trend";
+import { ApprovalRuleForm } from "./approval-rule";
 
 export const metadata = { title: "Payroll" };
 
@@ -68,6 +70,12 @@ export default async function PayrollPage() {
       {branchId ? (can(subject, "payroll", "create") && <CreateRunForm defaultMonth={defaultMonth} />) : (
         <p className="text-sm text-muted">Pick a branch from the switcher to create a payroll run.</p>
       )}
+
+      {branchId && can(subject, "payroll", "approve") && (
+        <ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} />
+      )}
+
+      {runs.length >= 2 && <CostTrend runs={runs.map((r) => ({ month: r.month, total: r.lines.reduce((s, l) => s + Number(l.net), 0), headcount: r.lines.length }))} />}
 
       {runs.length === 0 ? (
         <div className="card p-10 text-center text-sm text-muted">No payroll runs yet.</div>

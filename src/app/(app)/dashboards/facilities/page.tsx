@@ -1,12 +1,10 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
-import { StatTile } from "@/components/StatTile";
-import { Stagger, StaggerItem } from "@/components/motion";
+import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
+import { StatusBreakdown } from "@/components/StatusBreakdown";
 import { OccupancyRing } from "@/components/OccupancyRing";
-import { Badge } from "@/components/Badge";
-import { BedDouble, Bus, Home, LogIn } from "lucide-react";
 
 export default async function FacilitiesDashboardPage() {
   // Camp/Room/Bed/Vehicle aren't branch-scoped (deliberate, see Facilities
@@ -21,57 +19,70 @@ export default async function FacilitiesDashboardPage() {
   const totalBeds = beds.length;
   const occupiedBeds = beds.filter((b) => b.employeeId).length;
   const vacantBeds = totalBeds - occupiedBeds;
-  const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+  const occupancyPct =
+    totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
   const totalVehicles = vehicles.reduce((sum, v) => sum + v._count._all, 0);
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Dashboard" description="Accommodation occupancy and transport status." />
+      <PageHeader
+        title="Facilities overview"
+        description="Camps, bed occupancy and the vehicle fleet."
+      />
       <DashboardTabs />
 
-      <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StaggerItem>
-          <StatTile href="/accommodation/camps" label="Camps" value={campCount} icon={Home} />
-        </StaggerItem>
-        <StaggerItem>
-          <StatTile href="/accommodation/bed-allocation" label="Occupancy" value={`${occupancyPct}%`} icon={BedDouble} hint={`${vacantBeds} vacant`} />
-        </StaggerItem>
-        <StaggerItem>
-          <StatTile
-          href="/accommodation/bed-allocation"
-          label="Awaiting Bed"
-          value={awaitingBed}
-          icon={LogIn}
-          tone={awaitingBed > 0 ? "warning" : "default"}
-        />
-        </StaggerItem>
-        <StaggerItem>
-          <StatTile href="/transport" label="Vehicles" value={totalVehicles} icon={Bus} />
-        </StaggerItem>
-      </Stagger>
+      <KpiStrip
+        cells={[
+          {
+            label: "Camps",
+            value: campCount,
+            sub: "managed sites",
+            href: "/accommodation/camps",
+          },
+          {
+            label: "Occupancy",
+            value: occupancyPct,
+            suffix: "%",
+            sub: `${vacantBeds} beds vacant`,
+            href: "/accommodation/bed-allocation",
+            meter: occupancyPct,
+          },
+          {
+            label: "Awaiting bed",
+            value: awaitingBed,
+            sub: "checked in, no bed",
+            href: "/accommodation/bed-allocation",
+            tone: awaitingBed > 0 ? ("warning" as const) : ("default" as const),
+          },
+          {
+            label: "Vehicles",
+            value: totalVehicles,
+            sub: "in the fleet",
+            href: "/transport",
+          },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {totalBeds > 0 && (
           <Panel title="Camp occupancy" href="/accommodation/camps">
-            <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
+            <OccupancyRing
+              occupied={occupiedBeds}
+              vacant={vacantBeds}
+              pct={occupancyPct}
+            />
           </Panel>
         )}
 
         <Panel title="Vehicles by status" href="/transport">
-          {vehicles.length === 0 ? (
-            <p className="text-sm text-muted">No vehicles registered.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {vehicles.map((v) => (
-                <li key={v.status} className="flex items-center justify-between text-sm">
-                  <Badge color={v.status === "ACTIVE" ? "green" : v.status === "MAINTENANCE" ? "amber" : "slate"}>
-                    {v.status}
-                  </Badge>
-                  <span className="tabular font-semibold text-primary">{v._count._all}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <StatusBreakdown
+            items={vehicles.map((v) => ({
+              status: v.status,
+              count: v._count._all,
+            }))}
+            unit="vehicles"
+            emptyMessage="No vehicles registered."
+          />
         </Panel>
       </div>
     </div>

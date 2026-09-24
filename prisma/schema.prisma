@@ -50,10 +50,18 @@ model Branch {
   letterheadImageId String?
 
   // WPS establishment details (Company profile -> Payroll / WPS).
-  wpsEstablishmentId String? // MOHRE establishment / employer ID
-  wpsPayerBank       Bank?        @relation("BranchWpsPayerBank", fields: [wpsPayerBankId], references: [id], onDelete: SetNull)
-  wpsPayerBankId     String?
-  payrollRuns        PayrollRun[]
+  wpsEstablishmentId       String? // MOHRE establishment / employer ID
+  wpsPayerBank             Bank?               @relation("BranchWpsPayerBank", fields: [wpsPayerBankId], references: [id], onDelete: SetNull)
+  wpsPayerBankId           String?
+  // A payroll run above this total (AED) can't be approved by the person who created it.
+  payrollApprovalThreshold Decimal?            @db.Decimal(14, 2)
+  // Above this, an expense needs an admin to approve it (STAFF approvers are capped).
+  expenseApprovalLimit     Decimal?            @db.Decimal(14, 2)
+  expenseBudgets           ExpenseBudget[]
+  pettyCashTopUps          PettyCashTopUp[]
+  payrollRuns              PayrollRun[]
+  employeeLoans            EmployeeLoan[]
+  payrollAdjustments       PayrollAdjustment[]
 
   expenses        Expense[]
   issuedLetters   IssuedLetter[]
@@ -530,32 +538,34 @@ enum EmployeeCategory {
 // supplier) and manually enriched here (photo, compliance dates, etc). The
 // upload flow never touches the manually-owned fields.
 model Employee {
-  id                 String           @id @default(cuid())
+  id                 String              @id @default(cuid())
   // Pay structure for payroll. ITEMISED = basic + allowances; FLAT = one
   // monthly rate; HOURLY = normal hours x hourly rate. Overtime is paid on top,
   // at (basic|flat)/240 x multiplier, or hourly rate x multiplier for HOURLY.
   payStructure       String? // "ITEMISED" | "FLAT" | "HOURLY"
-  basicSalary        Decimal?         @db.Decimal(12, 2)
-  housingAllowance   Decimal?         @db.Decimal(12, 2)
-  foodAllowance      Decimal?         @db.Decimal(12, 2)
-  transportAllowance Decimal?         @db.Decimal(12, 2)
-  otherAllowance     Decimal?         @db.Decimal(12, 2)
-  flatMonthlyRate    Decimal?         @db.Decimal(12, 2)
-  hourlyRate         Decimal?         @db.Decimal(12, 2)
-  paysOvertime       Boolean          @default(true)
-  otMultiplier       Decimal          @default(1.25) @db.Decimal(4, 2)
+  basicSalary        Decimal?            @db.Decimal(12, 2)
+  housingAllowance   Decimal?            @db.Decimal(12, 2)
+  foodAllowance      Decimal?            @db.Decimal(12, 2)
+  transportAllowance Decimal?            @db.Decimal(12, 2)
+  otherAllowance     Decimal?            @db.Decimal(12, 2)
+  flatMonthlyRate    Decimal?            @db.Decimal(12, 2)
+  hourlyRate         Decimal?            @db.Decimal(12, 2)
+  paysOvertime       Boolean             @default(true)
+  otMultiplier       Decimal             @default(1.25) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
+  loans              EmployeeLoan[]
+  payAdjustments     PayrollAdjustment[]
   issuedLetters      IssuedLetter[]
   // Self-service portal sign-in (phone + one-time code). On by default; an admin
   // can switch it off per employee.
-  essEnabled         Boolean          @default(true)
-  employeeIdNo       String           @unique
+  essEnabled         Boolean             @default(true)
+  employeeIdNo       String              @unique
   name               String
   trade              String?
   // Kept alongside the legacy `active` boolean during the transition — existing
   // dashboard/list queries still read `active`; new code should prefer `status`.
-  status             EmployeeStatus   @default(ACTIVE)
-  category           EmployeeCategory @default(SITE_STAFF)
+  status             EmployeeStatus      @default(ACTIVE)
+  category           EmployeeCategory    @default(SITE_STAFF)
   photoData          Bytes?
   photoMimeType      String?
   nationality        String?
@@ -1585,7 +1595,8 @@ model PayrollRun {
   approvedBy   User?   @relation("PayrollApprovedBy", fields: [approvedById], references: [id])
   approvedById String?
 
-  lines PayrollLine[]
+  lines  PayrollLine[]
+  events PayrollRunEvent[]
 
   @@unique([branchId, month])
 }
@@ -1602,13 +1613,22 @@ model PayrollLine {
   normalHours     Float  @default(0)
   otHours         Float  @default(0)
 
-  basic          Decimal @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
-  allowances     Decimal @default(0) @db.Decimal(12, 2)
-  overtimePay    Decimal @default(0) @db.Decimal(12, 2)
-  deductions     Decimal @default(0) @db.Decimal(12, 2) // absence + unpaid leave
-  adjustment     Decimal @default(0) @db.Decimal(12, 2) // manual +/-
-  adjustmentNote String?
-  net            Decimal @default(0) @db.Decimal(12, 2)
+  basic           Decimal @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
+  allowances      Decimal @default(0) @db.Decimal(12, 2)
+  overtimePay     Decimal @default(0) @db.Decimal(12, 2)
+  deductions      Decimal @default(0) @db.Decimal(12, 2) // absence + unpaid leave
+  adjustment      Decimal @default(0) @db.Decimal(12, 2) // manual +/-
+  adjustmentNote  String?
+  otherEarnings   Decimal @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
+  otherDeductions Decimal @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
+  loanDeduction   Decimal @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
+  // Where the worker was assigned when the run was calculated, so cost-by-project
+  // stays true after they move. Plain id, not a relation: history outlives the project row.
+  projectId       String?
+  // Bank reconciliation once the WPS file has been sent.
+  paymentStatus   String  @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
+  paymentNote     String?
+  net             Decimal @default(0) @db.Decimal(12, 2)
 
   // Bank snapshot for the WPS file.
   paymentMode String?
@@ -1622,7 +1642,89 @@ model PayrollLine {
   employee   Employee   @relation(fields: [employeeId], references: [id])
   employeeId String
 
+  repayments LoanRepayment[]
+
   @@unique([runId, employeeId])
+  @@index([runId, projectId])
+}
+
+// Sign-off trail for a run: who created, recalculated, approved, reopened and
+// paid it, and when. Rows are only ever appended.
+model PayrollRunEvent {
+  id       String   @id @default(cuid())
+  action   String // "CREATED" | "RECALCULATED" | "APPROVED" | "REOPENED" | "PAID"
+  note     String?
+  userId   String
+  userName String
+  at       DateTime @default(now())
+
+  run   PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId String
+
+  @@index([runId, at])
+}
+
+// Money advanced to an employee and recovered from pay in instalments. The
+// remaining balance is principal - repaid; each recovery is a LoanRepayment
+// written when the run that deducted it is approved.
+model EmployeeLoan {
+  id          String   @id @default(cuid())
+  type        String // "LOAN" | "ADVANCE"
+  principal   Decimal  @db.Decimal(12, 2)
+  instalment  Decimal  @db.Decimal(12, 2) // recovered per pay run
+  repaid      Decimal  @default(0) @db.Decimal(12, 2)
+  startMonth  String // "YYYY-MM" — first run that may deduct it
+  status      String   @default("ACTIVE") // "ACTIVE" | "CLEARED" | "CANCELLED"
+  reason      String?
+  createdAt   DateTime @default(now())
+  createdById String
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  repayments LoanRepayment[]
+
+  @@index([branchId, status])
+  @@index([employeeId])
+}
+
+model LoanRepayment {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(12, 2)
+  month     String // "YYYY-MM"
+  createdAt DateTime @default(now())
+
+  loan   EmployeeLoan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  loanId String
+  line   PayrollLine  @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  lineId String
+
+  @@unique([loanId, lineId])
+}
+
+// A standing earning or deduction on one employee's pay — phone allowance,
+// recurring fine, uniform recovery. Applies to every run from startMonth
+// through endMonth (open-ended when null).
+model PayrollAdjustment {
+  id          String   @id @default(cuid())
+  kind        String // "EARNING" | "DEDUCTION"
+  label       String
+  amount      Decimal  @db.Decimal(12, 2)
+  startMonth  String // "YYYY-MM"
+  endMonth    String? // inclusive; null = ongoing
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  createdById String
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  @@index([branchId, active])
+  @@index([employeeId])
 }
 
 // ---------------------------------------------------------------------------
@@ -1671,6 +1773,10 @@ model Expense {
   decidedAt     DateTime?
   createdAt     DateTime  @default(now())
 
+  // Paid by an employee from their own pocket and owed back to them.
+  outOfPocket  Boolean   @default(false)
+  reimbursedAt DateTime?
+
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   projectId String?
 
@@ -1696,6 +1802,15 @@ model SupplierBill {
   vatAmount   Decimal  @default(0) @db.Decimal(12, 2)
   description String?
   createdAt   DateTime @default(now())
+
+  // Approval before payment. Bills that pre-date this default to APPROVED so
+  // nothing already in the ledger suddenly stops being payable; new bills are
+  // created PENDING by the action.
+  approvalStatus String    @default("APPROVED") // "PENDING" | "APPROVED" | "REJECTED"
+  approvalNote   String?
+  approvedAt     DateTime?
+  approvedById   String?
+  periodMonth    String? // "YYYY-MM" the bill covers, for comparing with timesheets
 
   supplier   Supplier @relation(fields: [supplierId], references: [id])
   supplierId String
@@ -1750,4 +1865,33 @@ model IssuedLetter {
 
   @@index([employeeId, createdAt])
   @@index([branchId, createdAt])
+}
+
+// Monthly spending cap for one expense category in a branch. Approved spend is
+// compared against it on the finance overview and when an expense is submitted.
+model ExpenseBudget {
+  id           String  @id @default(cuid())
+  category     String
+  monthlyLimit Decimal @db.Decimal(12, 2)
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, category])
+}
+
+// Cash put into the petty-cash float. The balance is top-ups minus approved
+// cash expenses, so nothing else has to be kept in step.
+model PettyCashTopUp {
+  id          String   @id @default(cuid())
+  amount      Decimal  @db.Decimal(12, 2)
+  date        DateTime
+  note        String?
+  createdAt   DateTime @default(now())
+  createdById String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId, date])
 }

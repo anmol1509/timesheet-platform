@@ -11,7 +11,7 @@ const fail = (error: string, status = 400) => NextResponse.json({ error }, { sta
 
 // WPS salary file for an approved run. Cash-paid workers are left out (they
 // aren't paid through the bank), everything else must have complete details.
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!can(subjectOf(user), "payroll", "export")) return fail("You don't have permission to export payroll.", 403);
 
@@ -30,7 +30,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const bounds = monthBounds(run.month)!;
   const day = (d: Date) => d.toISOString().slice(0, 10);
-  const bankLines = run.lines.filter((l) => !isCashMode(l.paymentMode));
+  // ?only=resubmit sends just the lines the bank bounced and whose details have since been fixed.
+  const onlyResubmit = new URL(req.url).searchParams.get("only") === "resubmit";
+  const bankLines = run.lines.filter((l) => !isCashMode(l.paymentMode) && (!onlyResubmit || l.paymentStatus === "RESUBMIT"));
   const problems = bankLines.filter((l) => wpsGaps(l).length > 0);
   if (problems.length > 0) {
     return fail(`Incomplete bank details for: ${problems.slice(0, 5).map((l) => l.employee.name).join(", ")}${problems.length > 5 ? "…" : ""}.`);

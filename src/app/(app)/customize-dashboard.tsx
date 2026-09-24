@@ -2,13 +2,29 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Settings2, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { Settings2, ChevronUp, ChevronDown } from "lucide-react";
 import { m } from "motion/react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
+import { Switch } from "@/components/ui/Switch";
+import { WidgetThumb } from "@/components/WidgetThumb";
 import { DURATION, EASE } from "@/lib/motion";
 import { saveDashboardPreferenceAction } from "./dashboard-actions";
 
 type WidgetMeta = { id: string; label: string };
+
+// Short names for the picker; the registry labels are long because they double
+// as documentation. Unknown ids fall back to the registry label.
+const TITLES: Record<string, { title: string; hint: string }> = {
+  kpi: { title: "Key numbers", hint: "Workforce, deployment, projects, alerts" },
+  "trend-attention": { title: "Hours trend & alerts", hint: "Normal vs overtime, plus what needs attention" },
+  "timesheet-pipeline": { title: "Timesheet pipeline", hint: "Where rows sit in approval, hours by weekday" },
+  "compliance-runway": { title: "Compliance runway", hint: "Documents expiring in the next 90 days" },
+  "document-expiry": { title: "Document expiry", hint: "Employees, clients, projects, suppliers" },
+  composition: { title: "Workforce mix", hint: "By employee type, deployed vs bench" },
+  "staff-partners-facilities": { title: "Staff, partners & camps", hint: "Assigned staff, associates, bed occupancy" },
+  "quick-actions": { title: "Quick actions", hint: "Shortcuts to common tasks" },
+  "months-with-data": { title: "Months with data", hint: "Which timesheet months are loaded" },
+};
 
 export function CustomizeDashboardButton({
   widgets,
@@ -35,7 +51,8 @@ export function CustomizeDashboardButton({
       <Dialog modal={false} open={open} onOpenChange={setOpen}>
         <DialogContent
           title="Customize dashboard"
-          description="Show, hide, and reorder the sections below. Saved to your account."
+          className="max-w-2xl!"
+          description="Switch sections on or off and reorder them. Saved to your account."
         >
           <CustomizeForm
             widgets={widgets}
@@ -98,7 +115,7 @@ function CustomizeForm({
 
   return (
     <div className="mt-4 space-y-4">
-      <ul className="max-h-96 space-y-1.5 overflow-y-auto">
+      <ul className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
         {order.map((id, i) => {
           const isHidden = hidden.has(id);
           return (
@@ -106,7 +123,7 @@ function CustomizeForm({
               key={id}
               layout
               transition={{ duration: DURATION, ease: EASE }}
-              className="flex items-center gap-2 rounded-control border border-default bg-surface p-2"
+              className="flex items-center gap-3 rounded-card border border-default bg-surface p-2.5"
             >
               <div className="flex flex-col">
                 <button
@@ -128,24 +145,18 @@ function CustomizeForm({
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <span className={`flex-1 text-sm ${isHidden ? "text-subtle" : "text-primary"}`}>
-                {labelById[id] ?? id}
-              </span>
-              <button
-                type="button"
-                onClick={() => toggle(id)}
-                className="inline-flex items-center gap-1 rounded-control border border-default px-2 py-1 text-xs font-medium text-secondary transition hover:bg-surface-hover"
-              >
-                {isHidden ? (
-                  <>
-                    <EyeOff className="h-3.5 w-3.5" /> Hidden
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-3.5 w-3.5" /> Visible
-                  </>
-                )}
-              </button>
+              <WidgetThumb id={id} muted={isHidden} />
+              <div className={`min-w-0 flex-1 ${isHidden ? "opacity-60" : ""}`}>
+                <p className="truncate text-sm font-medium text-primary">
+                  {TITLES[id]?.title ?? labelById[id] ?? id}
+                </p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted">{TITLES[id]?.hint}</p>
+              </div>
+              <Switch
+                checked={!isHidden}
+                onCheckedChange={() => toggle(id)}
+                ariaLabel={`Show ${TITLES[id]?.title ?? labelById[id] ?? id}`}
+              />
             </m.li>
           );
         })}

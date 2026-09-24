@@ -22,9 +22,6 @@ import {
   Truck,
   Bus,
   MapPin,
-  MapPinCheck,
-  UserMinus,
-  GitCompareArrows,
   Receipt,
   Package,
   Wallet,
@@ -90,9 +87,9 @@ const NAV: Entry[] = [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
-      { href: "/trades", label: "Trades", icon: Wrench },
       { href: "/documents", label: "Documents", icon: FileText },
-      { href: "/letters", label: "Employee Letters", icon: FileSignature },
+      { href: "/trades", label: "Trades", icon: Wrench },
+      { href: "/inventory", label: "PPE & Inventory", icon: Package },
     ],
   },
   {
@@ -103,7 +100,6 @@ const NAV: Entry[] = [
     children: [
       { href: "/projects", label: "Projects", icon: ClipboardList },
       { href: "/sites", label: "Sites", icon: MapPin },
-      { href: "/operations/nocs", label: "NOCs", icon: FileText },
     ],
   },
   {
@@ -114,9 +110,14 @@ const NAV: Entry[] = [
     children: [
       { href: "/demand/new", label: "Create Demand", icon: FilePlus2 },
       { href: "/demand", label: "View Demands", icon: ListChecks, exact: true },
-      { href: "/demand/mobilisation", label: "Mobilization", icon: HardHat },
-      { href: "/demand/site-arrival", label: "Site Arrival", icon: MapPinCheck },
-      { href: "/demand/demobilisation", label: "Demobilisation", icon: UserMinus },
+      // One row for the mobilise → arrive → demobilise cycle; the three stages
+      // are tabs (see SECTION_TABS), so the sidebar doesn't list each one.
+      {
+        href: "/demand/mobilisation",
+        label: "Deployments",
+        icon: HardHat,
+        alsoMatch: ["/demand/site-arrival", "/demand/demobilisation"],
+      },
       { href: "/demand/documents", label: "Generate Doc", icon: FileStack },
     ],
   },
@@ -129,9 +130,8 @@ const NAV: Entry[] = [
       { href: "/accommodation/camps", label: "Camps", icon: BedDouble },
       { href: "/accommodation/checkin", label: "Create Check-In", icon: FilePlus2 },
       { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
+      // Vehicles and Routes are tabs of this one row.
       { href: "/transport", label: "Transport", icon: Bus },
-      { href: "/transport/routes", label: "Routes", icon: MapPin },
-      { href: "/inventory", label: "Inventory", icon: Package },
     ],
   },
   {
@@ -141,20 +141,25 @@ const NAV: Entry[] = [
     category: "Operations",
     children: [
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
+      // Daily view and Attendance sync are tabs of this row.
+      { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
+      // Upload → Generate Sheets → History is one pipeline; three tabs.
       {
-        href: "/invoices/client-timesheet",
-        label: "Client Timesheet",
-        icon: FileSearch,
-        exact: true,
+        href: "/upload",
+        label: "Import & Generate",
+        icon: UploadIcon,
+        alsoMatch: ["/companies", "/history"],
       },
-      {
-        href: "/invoices/client-timesheet/sync",
-        label: "Attendance Sync",
-        icon: GitCompareArrows,
-      },
-      { href: "/upload", label: "Upload", icon: UploadIcon },
-      { href: "/companies", label: "Generate Sheets", icon: FileSpreadsheet },
-      { href: "/history", label: "History", icon: Clock },
+    ],
+  },
+  {
+    type: "group",
+    label: "Letters",
+    icon: FileSignature,
+    category: "Operations",
+    children: [
+      { href: "/letters", label: "Employee Letters", icon: FileSignature },
+      { href: "/operations/nocs", label: "NOCs", icon: FileText },
     ],
   },
   {
@@ -180,30 +185,16 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
-    label: "Billing",
-    icon: Receipt,
-    category: "Commercial",
-    children: [
-      { href: "/invoices", label: "Invoices", icon: Receipt },
-      { href: "/invoices/history", label: "Invoice History", icon: Clock },
-    ],
-  },
-  {
-    type: "group",
-    label: "Payroll",
-    icon: Banknote,
-    category: "Commercial",
-    children: [{ href: "/payroll", label: "Payroll Runs", icon: Banknote }],
-  },
-  {
-    type: "group",
     label: "Finance",
     icon: Landmark,
     category: "Commercial",
     children: [
       { href: "/finance", label: "Overview", icon: Landmark, exact: true },
-      { href: "/finance/expenses", label: "Expenses", icon: Receipt },
+      // Invoice history is a tab of Invoices.
+      { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
+      { href: "/finance/expenses", label: "Expenses", icon: Wallet },
+      { href: "/payroll", label: "Payroll", icon: Banknote },
     ],
   },
 ];

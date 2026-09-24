@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { findDivergences } from "@/lib/attendanceTimesheetSync";
+import { AlertTriangle } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
 
 export default async function ClientTimesheetPage({
@@ -93,8 +95,31 @@ export default async function ClientTimesheetPage({
     .filter((e) => !selectedProject || e.resolvedProject?.id === selectedProject)
     .filter((e) => !selectedSite || e.site === selectedSite);
 
+  // Attendance keeps the sheet in step on its own; only what it refused to
+  // overwrite (a sheet already sent to the client) surfaces here. Silent when
+  // there is nothing to review, so the check costs the page no space.
+  const divergenceCount =
+    branchId && selectedMonth
+      ? (await findDivergences({ branchId, month: selectedMonth })).length
+      : 0;
+
   return (
     <div className="space-y-5">
+      {divergenceCount > 0 && (
+        <Link
+          href={`/invoices/client-timesheet/sync?month=${selectedMonth}`}
+          className="flex items-center gap-3 rounded-card border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2.5 text-sm transition hover:brightness-[0.98]"
+        >
+          <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
+          <span className="flex-1 text-primary">
+            <span className="font-medium">
+              {divergenceCount} {divergenceCount === 1 ? "day differs" : "days differ"}
+            </span>{" "}
+            <span className="text-muted">from attendance for {monthLabelFromKey(selectedMonth!)}.</span>
+          </span>
+          <span className="shrink-0 text-xs font-medium text-[var(--brand-primary)]">Review →</span>
+        </Link>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl tracking-tight text-primary font-semibold">Client Timesheet</h1>
