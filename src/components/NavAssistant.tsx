@@ -142,25 +142,35 @@ export function NavAssistant({
     <>
       <AnimatePresence>
         {!open && (
-          <m.button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-label="Open My Assistant"
+          <m.div
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.6 }}
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.95 }}
             transition={SPRING}
-            className="group fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full py-3 pr-3 pl-3 text-white shadow-popover sm:right-6 sm:bottom-6"
-            style={{ background: GRADIENT }}
+            className="group fixed right-4 bottom-4 z-40 h-12 w-12 sm:right-6 sm:bottom-6"
           >
-            <span className="absolute inset-0 -z-10 animate-ping rounded-full opacity-20 [animation-duration:2.6s]" style={{ background: GRADIENT }} aria-hidden />
-            <Sparkles className="h-5 w-5" />
-            <span className="hidden max-w-0 overflow-hidden text-sm font-medium whitespace-nowrap transition-all duration-200 group-hover:max-w-32 group-hover:pr-1 sm:inline">
+            {/* Pulse halo: same size as the button, so it reads as a ring of it. */}
+            <span
+              className="absolute inset-0 animate-ping rounded-full opacity-25 [animation-duration:2.6s]"
+              style={{ background: GRADIENT }}
+              aria-hidden
+            />
+            <m.button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="Open My Assistant"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.94 }}
+              transition={SPRING}
+              className="relative flex h-12 w-12 items-center justify-center rounded-full text-white shadow-popover"
+              style={{ background: GRADIENT }}
+            >
+              <Sparkles className="h-5 w-5" />
+            </m.button>
+            <span className="pointer-events-none absolute top-1/2 right-full mr-3 hidden -translate-y-1/2 rounded-control bg-[var(--text)] px-2.5 py-1 text-xs font-medium whitespace-nowrap text-[var(--surface)] opacity-0 shadow-popover transition-opacity duration-150 group-hover:opacity-100 sm:block">
               My Assistant
             </span>
-          </m.button>
+          </m.div>
         )}
       </AnimatePresence>
 
