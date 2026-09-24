@@ -45,7 +45,6 @@ import {
   CalendarOff,
   Banknote,
   Landmark,
-  Hammer,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -145,13 +144,6 @@ const NAV: Entry[] = [
       { href: "/transport/routes", label: "Routes", icon: MapPin },
       { href: "/inventory", label: "Inventory", icon: Package },
     ],
-  },
-  {
-    type: "group",
-    label: "Assets",
-    icon: Hammer,
-    category: "Operations",
-    children: [{ href: "/assets", label: "Asset Register", icon: Hammer }],
   },
   {
     type: "group",

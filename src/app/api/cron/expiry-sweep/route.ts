@@ -105,31 +105,5 @@ export async function GET(request: Request) {
     }
   }
 
-  // Asset maintenance falling due in the next 7 days -> that branch's admins, once a day.
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const inAWeek = new Date(today.getTime() + 7 * 86_400_000);
-  for (const branch of branches) {
-    const due = await prisma.assetMaintenance.findMany({
-      where: { nextDueDate: { gte: today, lte: inAWeek }, asset: { branchId: branch.id, status: "ACTIVE" } },
-      select: { nextDueDate: true, description: true, asset: { select: { code: true, name: true } } },
-      orderBy: { nextDueDate: "asc" },
-    });
-    if (due.length === 0) continue;
-    const title = `Asset maintenance due — ${branch.name}`;
-    const [admins, already] = await Promise.all([
-      prisma.user.findMany({ where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId: branch.id }] }, select: { id: true } }),
-      prisma.notification.findMany({ where: { kind: "ASSET_MAINTENANCE", title, createdAt: { gte: today } }, select: { userId: true } }),
-    ]);
-    const done = new Set(already.map((a) => a.userId));
-    await notifyUsers({
-      userIds: admins.map((a) => a.id).filter((id) => !done.has(id)),
-      kind: "ASSET_MAINTENANCE",
-      title,
-      body: due.slice(0, 5).map((d) => `${d.asset.code} ${d.asset.name}: ${d.description} (${d.nextDueDate!.toISOString().slice(0, 10)})`).join("; ") + (due.length > 5 ? `; +${due.length - 5} more` : ""),
-      href: "/assets",
-    });
-  }
-
   return NextResponse.json({ ranAt: new Date().toISOString(), digest });
 }

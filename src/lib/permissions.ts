@@ -81,13 +81,6 @@ export const MODULES: PermissionModule[] = [
     actions: WITH_APPROVE,
   },
   {
-    key: "assets",
-    label: "Fixed assets",
-    description: "Asset register, depreciation, maintenance",
-    paths: ["/assets", "/api/assets"],
-    actions: CORE,
-  },
-  {
     key: "facilities",
     label: "Facilities",
     description: "Accommodation, transport, inventory",

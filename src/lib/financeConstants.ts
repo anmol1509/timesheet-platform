@@ -12,5 +12,3 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ];
 export const PAYMENT_METHODS = ["BANK", "CASH", "CARD", "CHEQUE"] as const;
-
-export const ASSET_CATEGORIES = ["Vehicle", "Heavy equipment", "Scaffolding & formwork", "Tools & machinery", "Camp furniture", "IT equipment", "Office furniture", "Building / fit-out", "Other"];
