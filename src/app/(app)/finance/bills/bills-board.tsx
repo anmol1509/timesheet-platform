@@ -15,7 +15,7 @@ type State = { error: string | null; ok?: boolean };
 export type BillRow = {
   id: string; supplier: string; supplierId: string; billNo: string; billDate: string; dueDate: string;
   total: number; paid: number; balance: number; status: BillStatus; description: string | null; paymentCount: number;
-  approval: string; approvalNote: string | null; branchId: string; periodMonth: string | null;
+  approval: string; approvalNote: string | null; viaPortal: boolean; branchId: string; periodMonth: string | null;
   variance: { diff: number; pct: number | null; state: "MATCH" | "OVER" | "UNDER" | "NO_REFERENCE"; reference: number } | null;
   payments: { id: string; paidOn: string; amount: number; method: string | null; reference: string | null }[];
   files: AttachmentRow[];
@@ -166,7 +166,7 @@ export function BillsBoard({ rows, suppliers, canCreate, canPay, canApprove, can
                   {canPay && <td className="px-4 py-3">{payable(b) && <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} ariaLabel={`Select bill ${b.billNo}`} />}</td>}
                   <td className="px-4 py-3">
                     <p className="font-medium text-primary">{b.supplier}</p>
-                    <p className="text-xs text-muted">#{b.billNo} · {b.billDate}{b.description ? ` · ${b.description}` : ""}</p>
+                    <p className="text-xs text-muted">#{b.billNo} · {b.billDate}{b.description ? ` · ${b.description}` : ""}{b.viaPortal ? " · submitted by supplier" : ""}</p>
                     {b.variance && b.variance.state !== "MATCH" && b.variance.state !== "NO_REFERENCE" && <p className="mt-0.5 text-xs text-[var(--warning)]">{b.variance.pct}% {b.variance.state === "OVER" ? "above" : "below"} timesheets for {b.periodMonth}</p>}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap text-secondary">{b.dueDate}</td>

@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { SupplierOffers } from "./supplier-offers";
 import { isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
 import { RequestDetailsForm } from "./request-details-form";
@@ -18,7 +20,7 @@ export default async function DemandRequestDetailPage({
 }) {
   const { id } = await params;
   const { error } = await searchParams;
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const request = await prisma.demandRequest.findUnique({
     where: { id },
@@ -26,12 +28,21 @@ export default async function DemandRequestDetailPage({
       client: true,
       project: true,
       trades: { include: { allocations: { include: { employee: true } } } },
+      supplierOffers: { include: { supplier: { select: { name: true } }, lines: true }, orderBy: { sentAt: "desc" } },
     },
   });
   if (!request || isOutsideBranch(request.branchId, branchId, isSuperAdmin)) notFound();
 
   // Shared with the mobilisation screen so both agree on what "idle" means.
   const idleWorkers = await getIdleWorkers(branchId);
+  const offered = new Set(request.supplierOffers.map((o) => o.supplierId));
+  const portalSuppliers = await prisma.supplier.findMany({
+    where: { branchId: request.branchId, portalEnabled: true, status: "ACTIVE" },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  const tradeName = new Map(request.trades.map((t) => [t.id, t]));
+  const day = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 
 
   return (
@@ -74,6 +85,16 @@ export default async function DemandRequestDetailPage({
           id: request.id,
           remarks: request.remarks,
         }}
+      />
+
+      <SupplierOffers
+        demandId={request.id}
+        canEdit={can(subjectOf(user), "demand", "edit")}
+        available={portalSuppliers.filter((s) => !offered.has(s.id))}
+        offers={request.supplierOffers.map((o) => ({
+          id: o.id, supplier: o.supplier.name, status: o.status, note: o.note, sentAt: day(o.sentAt), respondedAt: o.respondedAt ? day(o.respondedAt) : null,
+          lines: o.lines.map((l) => ({ trade: tradeName.get(l.demandRequestTradeId)?.trade ?? "Trade", requested: tradeName.get(l.demandRequestTradeId)?.quantity ?? 0, quantity: l.quantity, rate: l.rate ? Number(l.rate) : null })),
+        }))}
       />
 
       <div className="space-y-4">

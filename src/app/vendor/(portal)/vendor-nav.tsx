@@ -6,9 +6,10 @@ import { cn } from "@/lib/cn";
 
 const TABS = [
   { href: "/vendor", label: "Home", exact: true },
+  { href: "/vendor/demands", label: "Demands" },
   { href: "/vendor/workers", label: "Workers" },
   { href: "/vendor/timesheets", label: "Timesheets" },
-  { href: "/vendor/payments", label: "Payments" },
+  { href: "/vendor/payments", label: "Invoices" },
 ];
 
 export function VendorNav() {

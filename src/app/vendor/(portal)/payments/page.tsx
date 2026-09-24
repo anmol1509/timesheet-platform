@@ -1,50 +1,45 @@
 import { prisma } from "@/lib/db";
 import { getVendor } from "@/lib/vendor/session";
-import { Badge, type BadgeColor } from "@/components/Badge";
-import { BILL_STATUS_LABELS, billStatus, billTotals, type BillStatus } from "@/lib/payables";
+import { billStatus, billTotals } from "@/lib/payables";
+import { InvoicesBoard, type InvoiceRow } from "./invoices-board";
 
-export const metadata = { title: "Payments" };
+export const metadata = { title: "Invoices" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const day = (d: Date) => d.toISOString().slice(0, 10);
-const COLOR: Record<BillStatus, BadgeColor> = { PAID: "green", PARTIAL: "blue", OVERDUE: "red", UNPAID: "amber" };
 
-export default async function VendorPaymentsPage() {
+export default async function VendorInvoicesPage() {
   const vendor = (await getVendor())!;
   const today = new Date();
   const bills = await prisma.supplierBill.findMany({
-    // Only approved bills: one still awaiting approval (or rejected) is not yet a debt we acknowledge.
-    where: { supplierId: vendor.id, approvalStatus: "APPROVED" },
+    where: { supplierId: vendor.id },
     orderBy: { billDate: "desc" },
-    take: 100,
+    take: 200,
     include: { payments: { select: { amount: true, paidOn: true, method: true, reference: true }, orderBy: { paidOn: "desc" } } },
   });
+  const files = bills.length
+    ? await prisma.attachment.findMany({ where: { entityType: "SUPPLIER_BILL", entityId: { in: bills.map((b) => b.id) } }, select: { id: true, entityId: true, filename: true } })
+    : [];
+
+  const rows: InvoiceRow[] = bills.map((b) => {
+    const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) })));
+    return {
+      id: b.id, billNo: b.billNo, billDate: day(b.billDate), dueDate: day(b.dueDate), periodMonth: b.periodMonth, description: b.description,
+      amount: Number(b.amount), vatAmount: Number(b.vatAmount), ...t,
+      approval: b.approvalStatus, approvalNote: b.approvalNote, paymentStatus: billStatus(t.balance, t.paid, b.dueDate, today),
+      canResubmit: b.approvalStatus === "REJECTED" && b.payments.length === 0,
+      payments: b.payments.map((p) => ({ paidOn: day(p.paidOn), amount: Number(p.amount), method: p.method, reference: p.reference })),
+      files: files.filter((f) => f.entityId === b.id).map((f) => ({ id: f.id, filename: f.filename })),
+    };
+  });
+  const approved = rows.filter((r) => r.approval === "APPROVED");
+  const summary = {
+    awaiting: rows.filter((r) => r.approval === "PENDING").length,
+    rejected: rows.filter((r) => r.approval === "REJECTED").length,
+    owed: approved.reduce((s, r) => s + r.balance, 0),
+    paid: approved.reduce((s, r) => s + r.paid, 0),
+  };
+
   return (
-    <>
-      <h1 className="text-xl font-semibold tracking-tight text-primary">Payments</h1>
-      <p className="-mt-3 text-sm text-muted">Bills we&apos;ve recorded for your company, and what has been paid.</p>
-      {bills.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-muted">No bills recorded yet.</div>
-      ) : (
-        <ul className="card divide-y divide-[var(--border)]">
-          {bills.map((b) => {
-            const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) })));
-            const st = billStatus(t.balance, t.paid, b.dueDate, today);
-            return (
-              <li key={b.id} className="space-y-1 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-primary">Bill {b.billNo}</span>
-                  <Badge color={COLOR[st]} dot>{BILL_STATUS_LABELS[st]}</Badge>
-                </div>
-                <p className="text-xs text-muted">Dated {day(b.billDate)} · due {day(b.dueDate)}{b.description ? ` · ${b.description}` : ""}</p>
-                <p className="tabular-nums text-secondary">Total AED {aed(t.total)} · paid AED {aed(t.paid)} · <span className="font-medium text-primary">balance AED {aed(t.balance)}</span></p>
-                {b.payments.map((p, i) => (
-                  <p key={i} className="text-xs text-muted">Paid AED {aed(Number(p.amount))} on {day(p.paidOn)}{p.method ? ` by ${p.method.toLowerCase()}` : ""}{p.reference ? ` (${p.reference})` : ""}</p>
-                ))}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </>
+    <InvoicesBoard rows={rows} summary={summary} canSubmit={vendor.invoiceApprovalStatus === "Approved"} aedFormat={aed(summary.owed)} />
   );
 }
