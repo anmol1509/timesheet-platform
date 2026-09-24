@@ -9,3 +9,7 @@ export const MAX_UPLOAD_LABEL = "8MB";
  */
 export const DOCUMENT_MODEL =
   process.env.DOCUMENT_MODEL || "claude-haiku-4-5-20251001";
+
+/** Model behind the navigation assistant. Short routing answers — Haiku is plenty. */
+export const ASSISTANT_MODEL =
+  process.env.ASSISTANT_MODEL || "claude-haiku-4-5-20251001";

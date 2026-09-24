@@ -7,6 +7,7 @@ import { AppShell } from "./app-shell";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { MobileSidebar } from "./mobile-sidebar";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NavAssistant } from "@/components/NavAssistant";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
@@ -100,6 +101,7 @@ export default async function AppLayout({
         <ProgressBar />
       </Suspense>
       <ShortcutsSheet />
+      <NavAssistant isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
       <AppShell
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
