@@ -172,7 +172,7 @@ const NAV: Entry[] = [
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/suppliers/requests", label: "Supplier Requests", icon: Inbox },
+      { href: "/suppliers/requests", label: "Supplier Requests", icon: Inbox, alsoMatch: ["/suppliers/tickets", "/suppliers/contacts"] },
       { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },

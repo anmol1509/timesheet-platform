@@ -11,6 +11,7 @@ const TABS = [
   { href: "/vendor/timesheets", label: "Timesheets" },
   { href: "/vendor/payments", label: "Invoices" },
   { href: "/vendor/availability", label: "Availability" },
+  { href: "/vendor/support", label: "Support" },
   { href: "/vendor/profile", label: "Profile" },
 ];
 

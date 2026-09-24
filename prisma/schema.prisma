@@ -59,6 +59,7 @@ model Branch {
   expenseApprovalLimit     Decimal?            @db.Decimal(14, 2)
   expenseBudgets           ExpenseBudget[]
   pettyCashTopUps          PettyCashTopUp[]
+  portalContacts           PortalContact[]
   payrollRuns              PayrollRun[]
   employeeLoans            EmployeeLoan[]
   payrollAdjustments       PayrollAdjustment[]
@@ -317,6 +318,8 @@ model Supplier {
   workerSubmissions WorkerSubmission[]
   availability      SupplierAvailability[]
   changeRequests    SupplierChangeRequest[]
+  tickets           SupplierTicket[]
+  notifications     SupplierNotification[]
   portalEnabled     Boolean                 @default(false)
   bills             SupplierBill[]
 }
@@ -2019,4 +2022,72 @@ model SupplierChangeRequest {
 
   @@index([supplierId, status])
   @@index([branchId, status])
+}
+
+// Feedback or a complaint a supplier sends from the portal. Staff answer in the
+// office and the supplier reads the reply in its portal; the whole exchange is
+// kept as a thread.
+model SupplierTicket {
+  id        String   @id @default(cuid())
+  kind      String // "FEEDBACK" | "COMPLAINT"
+  subject   String
+  status    String   @default("OPEN") // "OPEN" | "REPLIED" | "CLOSED"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  branchId   String
+
+  messages SupplierTicketMessage[]
+
+  @@index([supplierId, updatedAt])
+  @@index([branchId, status])
+}
+
+model SupplierTicketMessage {
+  id           String   @id @default(cuid())
+  fromSupplier Boolean
+  authorName   String
+  body         String
+  createdAt    DateTime @default(now())
+
+  ticket   SupplierTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+
+  @@index([ticketId, createdAt])
+}
+
+// A supplier's in-portal inbox. Suppliers are not Users, so they cannot use the
+// Notification table; this is its counterpart.
+model SupplierNotification {
+  id        String    @id @default(cuid())
+  kind      String
+  title     String
+  body      String?
+  href      String? // portal path to open, e.g. "/vendor/demands/abc"
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+
+  @@index([supplierId, readAt, createdAt])
+}
+
+// A contact card shown to suppliers in their portal: who to call for what.
+model PortalContact {
+  id          String  @id @default(cuid())
+  department  String // "Dubai", "Accounts", "Facilities"...
+  personName  String
+  designation String?
+  phone       String?
+  email       String?
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId, isActive, sortOrder])
 }

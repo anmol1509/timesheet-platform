@@ -38,6 +38,10 @@ export default async function VendorTimesheetsPage({ searchParams }: { searchPar
 
   return (
     <>
+      <div className="inline-flex gap-0.5 rounded-control bg-[var(--surface-sunken)] p-0.5">
+        <span className="rounded-[6px] bg-surface px-3 py-1 text-[13px] font-medium text-primary shadow-xs">Monthly summary</span>
+        <Link href="/vendor/timesheets/report" className="rounded-[6px] px-3 py-1 text-[13px] font-medium text-muted hover:text-primary">Attendance report</Link>
+      </div>
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold tracking-tight text-primary">Timesheets</h1>
         <div className="flex items-center gap-1 text-sm">
