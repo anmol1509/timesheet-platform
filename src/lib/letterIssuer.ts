@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { substituteMergeFields } from "@/lib/mergeFields";
+import { substituteInHtml } from "@/lib/letterHtml";
 import {
   formatLetterDate,
   groupWorkersBySupplier,
@@ -68,7 +68,8 @@ export type LetterContext = {
  */
 export async function buildLetterSections(opts: {
   workers: LetterWorker[];
-  templateBody: string;
+  /** The template's body as HTML (see templateHtml()). */
+  templateHtml: string;
   context: LetterContext;
   onLetterhead: boolean;
   /** Used when a group's workers have no supplier of their own. */
@@ -115,7 +116,7 @@ export async function buildLetterSections(opts: {
       letterheadImage,
     };
 
-    const bodyText = substituteMergeFields(opts.templateBody, {
+    const bodyHtml = substituteInHtml(opts.templateHtml, {
       CLIENTNAME: opts.context.clientName,
       CLIENTADDRESS: opts.context.clientAddress ?? "",
       PROJECTNAME: opts.context.projectName,
@@ -130,7 +131,7 @@ export async function buildLetterSections(opts: {
       WORKERCOUNT: String(group.workers.length),
     });
 
-    return { group, issuer, bodyText } satisfies LetterSection;
+    return { group, issuer, bodyHtml } satisfies LetterSection;
   });
 
   return { sections, missingLetterheads };

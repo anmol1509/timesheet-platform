@@ -7,7 +7,8 @@ import {
   type LetterGroup,
   type LetterWorker,
 } from "@/lib/letterLayout";
-import { parseLetterBody } from "@/lib/letterMarkup";
+import { splitAtWorkerTable } from "@/lib/letterHtml";
+import { RichHtml } from "@/lib/richPdf";
 
 /**
  * The NOC and Undertaking, in the format the client's own letters use.
@@ -33,8 +34,8 @@ export type LetterIssuer = {
 export type LetterSection = {
   group: LetterGroup;
   issuer: LetterIssuer;
-  /** Merge fields already substituted. */
-  bodyText: string;
+  /** Merge fields already substituted; sanitised HTML from the letter editor. */
+  bodyHtml: string;
 };
 
 export type LetterPdfInput = {
@@ -133,7 +134,9 @@ function LetterBody({
   input: LetterPdfInput;
   section: LetterSection;
 }) {
-  const blocks = parseLetterBody(section.bodyText);
+  // The worker table sits where the template puts it; older templates have no
+  // marker, so the table follows the body exactly as it always did.
+  const { before, after } = splitAtWorkerTable(section.bodyHtml);
   const companyName = section.group.supplierName ?? section.issuer.name;
   const chosen = new Set<LetterColumnKey>(input.columns ?? DEFAULT_LETTER_COLUMNS);
   const selected = LETTER_TABLE_COLUMNS.filter((c) => chosen.has(c.key));
@@ -158,17 +161,7 @@ function LetterBody({
 
       <Text style={s.title}>{input.title.toUpperCase()}</Text>
 
-      {blocks.map((b, i) => {
-        const runs = b.runs.map((r, j) => (r.bold ? <Text key={j} style={s.bold}>{r.text}</Text> : r.text));
-        return b.type === "li" ? (
-          <View key={i} style={s.bulletRow} wrap={false}>
-            <Text style={s.bulletDot}>•</Text>
-            <Text style={s.bulletText}>{runs}</Text>
-          </View>
-        ) : (
-          <Text key={i} style={s.paragraph}>{runs}</Text>
-        );
-      })}
+      <RichHtml html={before} />
 
       {section.group.workers.length > 0 && (
         <View style={s.table}>
@@ -190,6 +183,8 @@ function LetterBody({
           ))}
         </View>
       )}
+
+      {after && <View style={{ marginTop: 10 }}><RichHtml html={after} /></View>}
 
       <View style={s.signature}>
         <Text>For and on behalf of</Text>

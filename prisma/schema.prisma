@@ -45,6 +45,7 @@ model Branch {
   payrollRuns        PayrollRun[]
 
   expenses        Expense[]
+  issuedLetters   IssuedLetter[]
   supplierBills   SupplierBill[]
   accessRoles     AccessRole[]
   leaveTypes      LeaveType[]
@@ -136,6 +137,7 @@ model User {
   employeeNotes    EmployeeNote[]
 
   dashboardPreference DashboardPreference?
+  lettersIssued       IssuedLetter[]
   expensesSubmitted   Expense[]            @relation("ExpenseSubmittedBy")
   expensesDecided     Expense[]            @relation("ExpenseDecidedBy")
   payrollCreated      PayrollRun[]         @relation("PayrollCreatedBy")
@@ -533,6 +535,7 @@ model Employee {
   paysOvertime       Boolean          @default(true)
   otMultiplier       Decimal          @default(1.25) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
+  issuedLetters      IssuedLetter[]
   // Self-service portal sign-in (phone + one-time code). On by default; an admin
   // can switch it off per employee.
   essEnabled         Boolean          @default(true)
@@ -1478,13 +1481,18 @@ model LetterTemplate {
   title       String?
   // Which built-in template this began as (src/lib/letterPresets.ts), so it can be reset to the original wording.
   presetKey   String?
+  // Rich body from the editor (sanitised HTML). Null for older plain-text templates, which read from remarksText.
+  bodyHtml    String?
+  // SITE = client-facing letters with a worker table (NOC, undertaking...). EMPLOYEE = a letter about one employee.
+  audience    String   @default("SITE")
   remarksText String
   createdAt   DateTime @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
-  nocs Noc[]
+  nocs          Noc[]
+  issuedLetters IssuedLetter[]
 }
 
 // A generated NOC/letter for a subset of a DemandRequest's allocated
@@ -1760,4 +1768,31 @@ model BillPayment {
   billId String
 
   createdById String
+}
+
+// A letter about one employee, issued from a template (salary certificate,
+// experience letter, warning...). The final wording is stored so it can be
+// re-downloaded exactly as issued even if the template is edited later.
+model IssuedLetter {
+  id        String   @id @default(cuid())
+  refNo     Int      @unique @default(autoincrement())
+  title     String
+  bodyHtml  String // fully substituted, sanitised
+  inputs    Json? // what the person filled in for %%ASK:...%% prompts
+  createdAt DateTime @default(now())
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+
+  template   LetterTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  templateId String?
+
+  issuedBy   User   @relation(fields: [issuedById], references: [id])
+  issuedById String
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([employeeId, createdAt])
+  @@index([branchId, createdAt])
 }

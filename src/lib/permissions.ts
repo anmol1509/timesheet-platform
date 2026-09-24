@@ -42,7 +42,7 @@ export const MODULES: PermissionModule[] = [
     key: "workforce",
     label: "Workforce",
     description: "Employees, trades, documents, renewals",
-    paths: ["/employees", "/trades", "/documents", "/api/employees", "/api/documents", "/dashboards/workforce"],
+    paths: ["/employees", "/trades", "/documents", "/letters", "/api/letters", "/api/employees", "/api/documents", "/dashboards/workforce"],
     actions: CORE,
   },
   {

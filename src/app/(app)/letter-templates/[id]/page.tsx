@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { presetByKey } from "@/lib/letterPresets";
+import { templateHtml } from "@/lib/letterHtml";
 import { TemplateEditor } from "./template-editor";
 
 export const metadata = { title: "Edit letter template" };
@@ -26,10 +27,11 @@ export default async function LetterTemplatePage({ params }: { params: Promise<{
       <TemplateEditor
         key={template.id + template.createdAt.getTime()}
         id={template.id}
+        audience={template.audience === "EMPLOYEE" ? "EMPLOYEE" : "SITE"}
         name={template.name}
         category={template.category ?? ""}
         title={template.title ?? ""}
-        body={template.remarksText}
+        html={templateHtml(template)}
         hasPreset={!!presetByKey(template.presetKey)}
         usedBy={usedBy}
       />

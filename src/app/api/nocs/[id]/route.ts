@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { templateHtml } from "@/lib/letterHtml";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
@@ -37,7 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: noc.employees.map((ne) => toLetterWorker(ne.employee)),
-    templateBody: noc.template.remarksText,
+    templateHtml: templateHtml(noc.template),
     onLetterhead,
     fallbackIssuerName: noc.branch.name,
     context: {
