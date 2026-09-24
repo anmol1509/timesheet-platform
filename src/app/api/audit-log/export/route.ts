@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
-import { getSessionFromCookies } from "@/lib/session";
 import { toCsv } from "@/lib/csvExport";
 
 const MAX_ROWS = 50_000;
@@ -14,7 +13,7 @@ export async function GET(request: Request) {
   if (user.role === "STAFF") return NextResponse.json({ error: "Admins only." }, { status: 403 });
 
   const isSuper = user.role === "SUPER_ADMIN";
-  const branchId = isSuper ? ((await getSessionFromCookies())?.activeBranchId ?? null) : user.branchId;
+  const branchId = isSuper ? await resolveSuperAdminBranchId() : user.branchId;
 
   const q = new URL(request.url).searchParams;
   const from = q.get("from") ? new Date(`${q.get("from")}T00:00:00.000Z`) : null;

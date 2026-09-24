@@ -1,7 +1,6 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
-import { getSessionFromCookies } from "@/lib/session";
 import { TeamManager, type TeamUser } from "./team-manager";
 
 export const metadata = { title: "Team & access" };
@@ -9,7 +8,7 @@ export const metadata = { title: "Team & access" };
 export default async function TeamPage() {
   const admin = await requireAdmin();
   const isSuperAdmin = admin.role === "SUPER_ADMIN";
-  const branchId = isSuperAdmin ? ((await getSessionFromCookies())?.activeBranchId ?? null) : admin.branchId;
+  const branchId = isSuperAdmin ? await resolveSuperAdminBranchId() : admin.branchId;
 
   const [users, branches, accessRoles] = await Promise.all([
     prisma.user.findMany({

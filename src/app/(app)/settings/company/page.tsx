@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
-import { getSessionFromCookies } from "@/lib/session";
+import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ImageUpload } from "@/components/ImageUpload";
 import { CompanyForm } from "./company-form";
@@ -19,7 +18,7 @@ export default async function CompanyProfilePage({
   const { branch: requested } = await searchParams;
 
   const branches = isSuperAdmin ? await prisma.branch.findMany({ orderBy: { code: "asc" } }) : [];
-  const activeId = isSuperAdmin ? ((await getSessionFromCookies())?.activeBranchId ?? null) : null;
+  const activeId = isSuperAdmin ? await resolveSuperAdminBranchId() : null;
   const targetId = isSuperAdmin
     ? (requested && branches.some((b) => b.id === requested) ? requested : (activeId ?? branches[0]?.id ?? null))
     : admin.branchId;

@@ -74,7 +74,7 @@ export default async function AppLayout({
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {isSuperAdmin && (
+          {isSuperAdmin && branches.filter((b) => b.isActive).length > 1 && (
             <div className="hidden sm:block">
               <BranchSwitcher branches={branches} activeBranchId={branchId} />
             </div>

@@ -86,13 +86,25 @@ export async function requireSuperAdmin() {
 // - BRANCH_ADMIN/STAFF always resolve to their own User.branchId — the
 //   session's activeBranchId is ignored for them, so a stale/tampered
 //   cookie value can never widen their access.
+/**
+ * The branch a super admin is currently working in. Their explicit pick wins;
+ * otherwise, when the company has exactly one active branch, that branch is
+ * simply the default — asking someone to "select" the only option is noise.
+ * Null still means "all branches" when there are several and none is chosen.
+ */
+export async function resolveSuperAdminBranchId(): Promise<string | null> {
+  const session = await getSessionFromCookies();
+  if (session?.activeBranchId) return session.activeBranchId;
+  const branches = await prisma.branch.findMany({ where: { isActive: true }, select: { id: true }, take: 2 });
+  return branches.length === 1 ? branches[0].id : null;
+}
+
 export async function requireUserWithBranch() {
   const user = await requireUser();
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   let branchId: string | null;
   if (isSuperAdmin) {
-    const session = await getSessionFromCookies();
-    branchId = session?.activeBranchId ?? null;
+    branchId = await resolveSuperAdminBranchId();
   } else {
     branchId = user.branchId;
   }
