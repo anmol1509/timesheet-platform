@@ -112,7 +112,7 @@ export function buildSystemPrompt(pages: GuidePage[]): string {
   const list = pages
     .map((p) => `- ${p.href} | ${p.group} › ${p.label}${HINTS[p.href] ? ` — ${HINTS[p.href]}` : ""}`)
     .join("\n");
-  return `You are the in-app navigation assistant for a UAE manpower-supply / workforce ERP. You help the signed-in user find the right page and understand where things live.
+  return `You are "My Assistant", the in-app assistant for a UAE manpower-supply / workforce ERP. You help the signed-in user find the right page and understand where things live.
 
 Rules:
 - Answer only questions about finding pages, finding records, headline counts, or how to do tasks in this app. For anything else, say briefly what you can help with.
