@@ -22,7 +22,7 @@ export default async function VendorHome() {
         OR: [{ visaExpiry: { lte: soon } }, { laborCardExpiry: { lte: soon } }, { medicalExpiry: { lte: soon } }, { passportExpiry: { lte: soon } }, { emiratesIdExpiry: { lte: soon } }],
       },
     }),
-    prisma.supplierBill.findMany({ where: { supplierId: vendor.id }, include: { payments: { select: { amount: true } } } }),
+    prisma.supplierBill.findMany({ where: { supplierId: vendor.id, approvalStatus: "APPROVED" }, include: { payments: { select: { amount: true } } } }),
   ]);
   const owed = bills.reduce((s, b) => s + billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) }))).balance, 0);
   const active = byStatus.find((x) => x.status === "ACTIVE")?._count ?? 0;
