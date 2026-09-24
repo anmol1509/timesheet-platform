@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ClipboardList,
   AlertTriangle,
   BedDouble,
   CheckCircle2,
@@ -10,7 +9,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
-import { StatTile } from "@/components/StatTile";
+import { KpiStrip } from "@/components/KpiStrip";
 import { Badge } from "@/components/Badge";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { WorkforcePie } from "@/components/WorkforcePie";
@@ -90,37 +89,42 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     id: "kpi",
     label: "KPI strip (workforce, deployed, projects, needs attention)",
     render: (d) => (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile
-          href="/employees"
-          label="Total workforce"
-          value={d.employeeCount}
-          icon={ClipboardList}
-          hint={`${d.onWorkCount} deployed · ${d.benchCount} on bench`}
-        />
-        <StatTile
-          href="/employees?filter=on-work"
-          label="Deployed"
-          value={`${d.deployedPct}%`}
-          icon={ClipboardList}
-          hint={`${d.onWorkCount} of ${d.employeeCount} workers`}
-        />
-        <StatTile
-          href="/projects"
-          label="Active projects"
-          value={d.activeProjectCount}
-          icon={ClipboardList}
-          hint={`${d.activeClientCount} active clients`}
-        />
-        <StatTile
-          href="#needs-attention"
-          label="Needs attention"
-          value={d.alerts.length + d.lpoAlerts.length}
-          icon={AlertTriangle}
-          tone={d.expiredCount > 0 ? "warning" : "default"}
-          hint={d.expiredCount > 0 ? `${d.expiredCount} already expired` : "expiring within 30 days"}
-        />
-      </div>
+      <KpiStrip
+        cells={[
+          {
+            label: "Total workforce",
+            value: d.employeeCount,
+            sub: `${d.onWorkCount} deployed · ${d.benchCount} on bench`,
+            href: "/employees",
+          },
+          {
+            label: "Deployed",
+            value: d.deployedPct,
+            suffix: "%",
+            meter: d.deployedPct,
+            sub: `${d.onWorkCount} of ${d.employeeCount} workers`,
+            href: "/employees?filter=on-work",
+          },
+          {
+            label: "Active projects",
+            value: d.activeProjectCount,
+            sub: `${d.activeClientCount} active clients`,
+            href: "/projects",
+          },
+          {
+            label: "Needs attention",
+            value: d.alerts.length + d.lpoAlerts.length,
+            tone:
+              d.expiredCount > 0
+                ? "danger"
+                : d.alerts.length + d.lpoAlerts.length > 0
+                  ? "warning"
+                  : "success",
+            sub: d.expiredCount > 0 ? `${d.expiredCount} already expired` : "expiring within 30 days",
+            href: "#needs-attention",
+          },
+        ]}
+      />
     ),
   },
   {

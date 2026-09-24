@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import type { ComplianceRunway as Runway, RunwayBucketKey } from "@/lib/complianceRunway";
 import { cn } from "@/lib/cn";
@@ -41,16 +40,39 @@ export function ComplianceRunway({ runway }: { runway: Runway }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {runway.buckets.map((bucket) => (
-          <div key={bucket.key} className={cn("rounded-control px-3 py-2", SWATCH[bucket.key])}>
-            <p className="tabular text-xl font-semibold">{bucket.count}</p>
-            <p className="mt-0.5 text-[11px] font-medium">{bucket.label}</p>
-          </div>
-        ))}
+      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-[var(--surface-sunken)]">
+        {runway.buckets.map((bucket) =>
+          bucket.count > 0 ? (
+            <span
+              key={bucket.key}
+              className={cn("h-full first:rounded-l-full last:rounded-r-full", BAR[bucket.key])}
+              style={{ width: `${(bucket.count / runway.total) * 100}%` }}
+              title={`${bucket.label}: ${bucket.count}`}
+            />
+          ) : null
+        )}
       </div>
 
-      <ul className="space-y-2.5">
+      <ul className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        {runway.buckets.map((bucket) => (
+          <li key={bucket.key} className={bucket.count === 0 ? "opacity-50" : undefined}>
+            <div className="flex items-center gap-1.5 text-xs text-muted">
+              <span className={cn("h-2 w-2 rounded-full", BAR[bucket.key])} aria-hidden />
+              {bucket.label}
+            </div>
+            <div
+              className={cn(
+                "tabular mt-0.5 text-lg font-semibold",
+                bucket.key === "expired" && bucket.count > 0 ? "text-[var(--error)]" : "text-primary"
+              )}
+            >
+              {bucket.count}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <ul className="space-y-2.5 border-t border-default pt-4">
         {runway.documents.map((doc) => (
           <li key={doc.label}>
             <div className="flex items-baseline justify-between gap-3">
@@ -76,12 +98,6 @@ export function ComplianceRunway({ runway }: { runway: Runway }) {
         ))}
       </ul>
 
-      <Link
-        href="/employees/renewals"
-        className="inline-flex items-center text-xs font-medium text-[var(--brand-primary)] hover:underline"
-      >
-        Plan renewals →
-      </Link>
     </div>
   );
 }

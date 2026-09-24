@@ -1,14 +1,6 @@
 import Link from "next/link";
-import { FileText, Building2, ClipboardList, Truck } from "lucide-react";
 import type { DocumentExpiryCategory } from "@/lib/documentExpiryCounts";
-import { Badge } from "@/components/Badge";
-
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "Employee Documents": FileText,
-  "Client Documents": Building2,
-  "Project Documents": ClipboardList,
-  "Supplier Documents": Truck,
-};
+import { cn } from "@/lib/cn";
 
 const HREFS: Record<string, string> = {
   "Employee Documents": "/documents",
@@ -17,40 +9,44 @@ const HREFS: Record<string, string> = {
   "Supplier Documents": "/suppliers",
 };
 
+/**
+ * One divided card rather than four boxes with icons — same shape as the KPI
+ * strip. The count is the headline; expired/expiring only appear when non-zero,
+ * so a healthy category is just quiet.
+ */
 export function DocumentExpiryWidget({
   categories,
 }: {
   categories: DocumentExpiryCategory[];
 }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {categories.map((c) => {
-        const Icon = ICONS[c.category] ?? FileText;
-        const hasIssues = c.expired > 0 || c.expiringSoon > 0;
-        return (
-          <Link
-            key={c.category}
-            href={HREFS[c.category] ?? "/documents"}
-            className="block rounded-card border border-default bg-surface p-4 transition hover:border-strong hover:shadow-sm"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-surface-sunken text-muted">
-                <Icon className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-muted">{c.category}</p>
-                <p className="text-lg font-semibold text-primary">{c.total}</p>
-              </div>
-            </div>
-            {hasIssues && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {c.expired > 0 && <Badge color="red">{c.expired} expired</Badge>}
-                {c.expiringSoon > 0 && <Badge color="amber">{c.expiringSoon} expiring</Badge>}
-              </div>
+    <div className="card grid grid-cols-2 divide-x divide-y divide-[var(--border)] overflow-hidden lg:grid-cols-4 lg:divide-y-0">
+      {categories.map((c) => (
+        <Link
+          key={c.category}
+          href={HREFS[c.category] ?? "/documents"}
+          className="block p-4 transition hover:bg-surface-hover"
+        >
+          <p className="truncate text-[13px] font-medium text-muted">{c.category}</p>
+          <p className="tabular mt-1 text-2xl font-semibold tracking-tight text-primary">{c.total}</p>
+          <p
+            className={cn(
+              "mt-1.5 text-xs",
+              c.expired > 0
+                ? "font-medium text-[var(--error)]"
+                : c.expiringSoon > 0
+                  ? "font-medium text-[var(--warning)]"
+                  : "text-subtle"
             )}
-          </Link>
-        );
-      })}
+          >
+            {c.expired > 0
+              ? `${c.expired} expired${c.expiringSoon > 0 ? ` · ${c.expiringSoon} expiring` : ""}`
+              : c.expiringSoon > 0
+                ? `${c.expiringSoon} expiring soon`
+                : "All valid"}
+          </p>
+        </Link>
+      ))}
     </div>
   );
 }

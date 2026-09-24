@@ -73,6 +73,39 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
 
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
+/** Standing earnings/deductions and loan recovery layered on top of computePay. */
+export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number };
+
+/** Net pay including recurring items and loan instalments. */
+export const netPayWithExtras = (r: PayResult, adjustment: number, x: PayExtras) =>
+  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction);
+
+/**
+ * Loan instalments recovered this run. Each loan takes its instalment (or what
+ * is left of it), in the order given, but never more than keeps net pay at zero
+ * — recovery must not push someone below nothing. Returns the amount taken per
+ * loan, so the run can record each repayment.
+ */
+export function planLoanRecovery(
+  loans: { id: string; remaining: number; instalment: number }[],
+  availableToRecover: number
+): { loanId: string; amount: number }[] {
+  let room = Math.max(0, round2(availableToRecover));
+  const out: { loanId: string; amount: number }[] = [];
+  for (const l of loans) {
+    if (room <= 0) break;
+    const amount = round2(Math.min(l.instalment, l.remaining, room));
+    if (amount <= 0) continue;
+    out.push({ loanId: l.id, amount });
+    room = round2(room - amount);
+  }
+  return out;
+}
+
+/** Whether a standing item applies to a pay month ("YYYY-MM" compares correctly as text). */
+export const appliesToMonth = (a: { startMonth: string; endMonth: string | null }, month: string) =>
+  a.startMonth <= month && (a.endMonth == null || month <= a.endMonth);
+
 /** What's missing for a worker to be paid through WPS, in plain words. */
 export function wpsGaps(l: {
   paymentMode: string | null;

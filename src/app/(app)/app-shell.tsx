@@ -5,6 +5,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
 import { BrandMark, type Brand } from "@/components/BrandMark";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { SectionTabs } from "@/components/SectionTabs";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { cn } from "@/lib/cn";
 
@@ -110,6 +111,7 @@ export function AppShell({
       >
         {header}
         <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6">
+          <SectionTabs />
           {children}
         </main>
       </div>
