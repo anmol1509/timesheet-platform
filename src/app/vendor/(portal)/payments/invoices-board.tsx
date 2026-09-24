@@ -1,5 +1,6 @@
 "use client";
 
+import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState } from "react";
 import { Paperclip, Plus } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
@@ -32,7 +33,7 @@ function InvoiceForm({ row, onDone }: { row?: InvoiceRow; onDone: () => void }) 
   );
   const dup = state.error?.startsWith("DUPLICATE:");
   return (
-    <form action={action} className="mt-4 space-y-3">
+    <form onSubmit={keepInput(action)} className="mt-4 space-y-3">
       {row && <input type="hidden" name="billId" value={row.id} />}
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
       <div className="grid grid-cols-2 gap-3">

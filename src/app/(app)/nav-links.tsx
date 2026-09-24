@@ -41,6 +41,7 @@ import {
   Trash2,
   Banknote,
   Landmark,
+  Inbox,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -119,6 +120,7 @@ const NAV: Entry[] = [
         alsoMatch: ["/demand/site-arrival", "/demand/demobilisation"],
       },
       { href: "/demand/documents", label: "Generate Doc", icon: FileStack },
+      { href: "/demand/availability", label: "Supplier Availability", icon: Users },
     ],
   },
   {
@@ -170,6 +172,7 @@ const NAV: Entry[] = [
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/suppliers/requests", label: "Supplier Requests", icon: Inbox },
       { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },

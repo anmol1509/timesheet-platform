@@ -313,9 +313,12 @@ model Supplier {
   // Supplier portal sign-in (phone + one-time code, matched against the contact,
   // secondary and coordinator numbers). Off by default: an admin opts each
   // supplier in.
-  demandOffers  DemandSupplierOffer[]
-  portalEnabled Boolean               @default(false)
-  bills         SupplierBill[]
+  demandOffers      DemandSupplierOffer[]
+  workerSubmissions WorkerSubmission[]
+  availability      SupplierAvailability[]
+  changeRequests    SupplierChangeRequest[]
+  portalEnabled     Boolean                 @default(false)
+  bills             SupplierBill[]
 }
 
 model Client {
@@ -1939,4 +1942,81 @@ model DemandOfferLine {
   demandRequestTradeId String
 
   @@unique([offerId, demandRequestTradeId])
+}
+
+// A worker a supplier has added through the portal. It lives here, apart from
+// Employee, until our staff approve it, so a pending worker never shows up in
+// headcount, payroll, allocation or any list. Approval creates the Employee.
+model WorkerSubmission {
+  id          String    @id @default(cuid())
+  status      String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  note        String? // reason when rejected
+  submittedAt DateTime  @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+  employeeId  String? // the Employee created on approval
+
+  firstName    String
+  middleName   String?
+  lastName     String
+  gender       String? // "MALE" | "FEMALE"
+  dateOfBirth  DateTime?
+  nationality  String?
+  mobileNumber String?
+  trade        String
+  joinDate     DateTime?
+  bloodGroup   String?
+
+  passportNumber   String
+  emiratesId       String
+  passportExpiry   DateTime?
+  emiratesIdExpiry DateTime?
+  visaExpiry       DateTime?
+  laborCardExpiry  DateTime?
+  medicalExpiry    DateTime?
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  branchId   String
+
+  @@index([supplierId, status])
+  @@index([branchId, status])
+}
+
+// Manpower a supplier says it can provide: a trade, a day and a head count.
+model SupplierAvailability {
+  id        String   @id @default(cuid())
+  trade     String
+  date      DateTime
+  count     Int
+  note      String?
+  createdAt DateTime @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  branchId   String
+
+  @@index([supplierId, date])
+  @@index([branchId, date])
+}
+
+// A change a supplier asks to make to its own record (bank or contact details).
+// Nothing is applied until our staff approve it: bank details decide where
+// money goes, and the contact phone is also the portal sign-in number.
+model SupplierChangeRequest {
+  id          String    @id @default(cuid())
+  kind        String // "BANK" | "CONTACT"
+  payload     Json // the requested values, whitelisted per kind when applied
+  status      String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  note        String? // reason when rejected
+  requestedAt DateTime  @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  branchId   String
+
+  @@index([supplierId, status])
+  @@index([branchId, status])
 }
