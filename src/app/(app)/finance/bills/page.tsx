@@ -58,7 +58,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
       id: b.id, supplier: b.supplier.name, supplierId: b.supplierId, billNo: b.billNo,
       billDate: b.billDate.toISOString().slice(0, 10), dueDate: b.dueDate.toISOString().slice(0, 10),
       ...t, status: billStatus(t.balance, t.paid, b.dueDate, today), description: b.description, paymentCount: b.payments.length,
-      approval: b.approvalStatus, approvalNote: b.approvalNote, branchId: b.branchId, periodMonth: b.periodMonth,
+      approval: b.approvalStatus, approvalNote: b.approvalNote, viaPortal: b.submittedBySupplier, branchId: b.branchId, periodMonth: b.periodMonth,
       variance: b.periodMonth && ref !== null ? { ...billVariance(t.total, ref), reference: ref } : null,
       payments: b.payments.map((p) => ({ id: p.id, paidOn: p.paidOn.toISOString().slice(0, 10), amount: Number(p.amount), method: p.method, reference: p.reference })),
       files: files.filter((f) => f.entityId === b.id).map((f) => ({ id: f.id, docType: f.docType, filename: f.filename, expiryDate: f.expiryDate ? f.expiryDate.toISOString() : null, uploadedAt: f.uploadedAt.toISOString() })),

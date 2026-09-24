@@ -313,7 +313,8 @@ model Supplier {
   // Supplier portal sign-in (phone + one-time code, matched against the contact,
   // secondary and coordinator numbers). Off by default: an admin opts each
   // supplier in.
-  portalEnabled Boolean        @default(false)
+  demandOffers  DemandSupplierOffer[]
+  portalEnabled Boolean               @default(false)
   bills         SupplierBill[]
 }
 
@@ -1370,8 +1371,11 @@ model Attachment {
   // filter by branch without joining through entityId.
   branchId String?
 
-  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
-  uploadedById String
+  // Office users upload as themselves; a supplier using the portal has no User
+  // row, so its uploads carry the supplier id instead. Exactly one is set.
+  uploadedBy           User?   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedById         String?
+  uploadedBySupplierId String?
 
   @@index([entityType, entityId])
   @@index([branchId, docType])
@@ -1442,8 +1446,9 @@ model DemandRequest {
   requestedBy   User?   @relation(fields: [requestedById], references: [id])
   requestedById String?
 
-  trades DemandRequestTrade[]
-  nocs   Noc[]
+  trades         DemandRequestTrade[]
+  nocs           Noc[]
+  supplierOffers DemandSupplierOffer[]
 }
 
 model DemandRequestTrade {
@@ -1476,6 +1481,7 @@ model DemandRequestTrade {
   demandRequestId String
 
   allocations DemandRequestAllocation[]
+  offerLines  DemandOfferLine[]
 }
 
 model DemandRequestAllocation {
@@ -1806,11 +1812,13 @@ model SupplierBill {
   // Approval before payment. Bills that pre-date this default to APPROVED so
   // nothing already in the ledger suddenly stops being payable; new bills are
   // created PENDING by the action.
-  approvalStatus String    @default("APPROVED") // "PENDING" | "APPROVED" | "REJECTED"
-  approvalNote   String?
-  approvedAt     DateTime?
-  approvedById   String?
-  periodMonth    String? // "YYYY-MM" the bill covers, for comparing with timesheets
+  approvalStatus      String    @default("APPROVED") // "PENDING" | "APPROVED" | "REJECTED"
+  approvalNote        String?
+  approvedAt          DateTime?
+  approvedById        String?
+  periodMonth         String? // "YYYY-MM" the bill covers, for comparing with timesheets
+  // Submitted by the supplier through the portal rather than entered by our staff.
+  submittedBySupplier Boolean   @default(false)
 
   supplier   Supplier @relation(fields: [supplierId], references: [id])
   supplierId String
@@ -1894,4 +1902,41 @@ model PettyCashTopUp {
   branchId String
 
   @@index([branchId, date])
+}
+
+// A demand sent to one supplier to answer through the portal. The supplier
+// accepts (with a quote per trade line) or declines with a reason; nothing is
+// allocated until our staff act on the answer.
+model DemandSupplierOffer {
+  id          String    @id @default(cuid())
+  status      String    @default("SENT") // "SENT" | "ACCEPTED" | "DECLINED"
+  note        String? // the supplier's cover note, or its reason for declining
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+  sentById    String?
+
+  demandRequest   DemandRequest @relation(fields: [demandRequestId], references: [id], onDelete: Cascade)
+  demandRequestId String
+  supplier        Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId      String
+
+  lines DemandOfferLine[]
+
+  @@unique([demandRequestId, supplierId])
+  @@index([supplierId, status])
+}
+
+// The supplier's quote for one trade line of a demand: how many workers it
+// offers and at what rate.
+model DemandOfferLine {
+  id       String   @id @default(cuid())
+  quantity Int
+  rate     Decimal? @db.Decimal(12, 2)
+
+  offer                DemandSupplierOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId              String
+  demandRequestTrade   DemandRequestTrade  @relation(fields: [demandRequestTradeId], references: [id], onDelete: Cascade)
+  demandRequestTradeId String
+
+  @@unique([offerId, demandRequestTradeId])
 }
