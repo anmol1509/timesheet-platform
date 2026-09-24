@@ -12,7 +12,8 @@ export default async function VendorPaymentsPage() {
   const vendor = (await getVendor())!;
   const today = new Date();
   const bills = await prisma.supplierBill.findMany({
-    where: { supplierId: vendor.id },
+    // Only approved bills: one still awaiting approval (or rejected) is not yet a debt we acknowledge.
+    where: { supplierId: vendor.id, approvalStatus: "APPROVED" },
     orderBy: { billDate: "desc" },
     take: 100,
     include: { payments: { select: { amount: true, paidOn: true, method: true, reference: true }, orderBy: { paidOn: "desc" } } },
