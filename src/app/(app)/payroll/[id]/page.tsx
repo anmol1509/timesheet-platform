@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { CircleAlert, History as HistoryIcon } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { isCashMode, wpsGaps } from "@/lib/payroll";
-import { runReadiness } from "@/lib/payrollRun";
+import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
-import { AdjustmentCell, RunControls } from "./run-controls";
+import { LineEditor, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
 
 const STATUS: Record<string, { label: string; color: BadgeColor }> = {
@@ -16,7 +16,7 @@ const STATUS: Record<string, { label: string; color: BadgeColor }> = {
   APPROVED: { label: "Approved", color: "blue" },
   PAID: { label: "Paid", color: "green" },
 };
-const EVENT_LABEL: Record<string, string> = { CREATED: "Created", RECALCULATED: "Recalculated", APPROVED: "Approved", REOPENED: "Reopened", PAID: "Marked paid" };
+const EVENT_LABEL: Record<string, string> = { CREATED: "Created", RECALCULATED: "Recalculated", SUBMITTED: "Sent for approval", RETURNED: "Sent back", APPROVED: "Approved", REOPENED: "Reopened", PAID: "Marked paid" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default async function PayrollRunPage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,6 +28,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
     where: { id },
     include: {
       branch: { select: { code: true, name: true, payrollApprovalThreshold: true } },
+      company: { select: { name: true } },
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
       events: { orderBy: { at: "desc" }, take: 30 },
@@ -36,9 +37,10 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   });
   if (!run || isOutsideBranch(run.branchId, branchId, isSuperAdmin)) notFound();
 
-  const unpaidSetup = await prisma.employee.count({
-    where: { ...branchWhere(run.branchId), status: { not: "TERMINATED" }, payStructure: null },
-  });
+  // Employees of this company who are not in the run because they lack the pay details its type needs.
+  const skipped = await runSkipped(run);
+  const unpaidSetup = skipped.length;
+  const isHourly = run.payType === "HOURLY";
 
   const issues = run.status === "DRAFT" ? await runReadiness(run) : [];
   const projectIds = [...new Set(run.lines.map((l) => l.projectId).filter((x): x is string => !!x))];
@@ -72,7 +74,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       <div>
         <Link href="/payroll" className="text-xs text-muted hover:text-secondary">← Payroll</Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Payroll — {run.month}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-primary">Payroll — {run.company?.name ?? "Own companies"} · {run.month}</h1>
+          {run.payType && <Badge color="blue">{run.payType === "HOURLY" ? "Hourly · from timesheet" : "Basic · from attendance"}</Badge>}
           <Badge color={STATUS[run.status]?.color ?? "slate"} dot>{STATUS[run.status]?.label ?? run.status}</Badge>
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -84,12 +87,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Total net pay</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">AED {aed(total)}</p></div>
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Employees</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{run.lines.length}</p>{cashCount > 0 && <p className="text-xs text-muted">{cashCount} paid in cash (not in WPS file)</p>}</div>
-        <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Without pay structure</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">Not in this run</p></div>
+        <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Skipped: missing pay details</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">{skipped.length > 0 ? skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ") + (skipped.length > 3 ? "…" : "") : "Everyone is in this run"}</p></div>
       </div>
 
       <RunControls
         id={run.id}
         status={run.status}
+        submitted={!!run.submittedAt}
         canEdit={can(subject, "payroll", "edit")}
         canApprove={can(subject, "payroll", "approve")}
         canExport={can(subject, "payroll", "export")}
@@ -110,6 +114,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             </ul>
             <p className="mt-1 text-xs text-muted">Fix them on the employee&apos;s Payroll &amp; WPS tab, then Recalculate. (Set the payment mode to Cash for anyone not paid through the bank.)</p>
           </div>
+        </div>
+      )}
+
+      {draft && run.returnNote && !run.submittedAt && (
+        <div className="card flex gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
+          <p className="text-secondary"><span className="font-medium text-primary">Sent back for correction:</span> {run.returnNote}</p>
         </div>
       )}
 
@@ -159,12 +170,9 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className="px-3 py-3">Employee</th>
                 <th className="px-3 py-3 text-right">Base</th>
                 <th className="px-3 py-3 text-right">Allow.</th>
-                <th className="px-3 py-3 text-right">Absent</th>
-                <th className="px-3 py-3 text-right">OT hrs</th>
-                <th className="px-3 py-3 text-right">OT pay</th>
-                <th className="px-3 py-3 text-right">Deduct.</th>
-                <th className="px-3 py-3 text-right">Recurring / loans</th>
-                <th className="px-3 py-3">Adjustment</th>
+                {isHourly ? <th className="px-3 py-3 text-right">Timesheet hrs</th> : <><th className="px-3 py-3 text-right">Absent</th><th className="px-3 py-3 text-right">OT hrs</th><th className="px-3 py-3 text-right">OT pay</th><th className="px-3 py-3 text-right">Absence ded.</th></>}
+                <th className="px-3 py-3 text-right">Recurring</th>
+                <th className="px-3 py-3">Deduction · Advance · Adjustment</th>
                 <th className="px-3 py-3 text-right">Net</th>
                 <th className="px-3 py-3">Bank</th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
@@ -181,18 +189,26 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.basic))}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.allowances))}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.absentDays}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.otHours}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.overtimePay))}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{n(l.deductions) > 0 ? `−${aed(n(l.deductions))}` : "—"}</td>
+                    {isHourly ? (
+                      <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.timesheetHours}</td>
+                    ) : (
+                      <>
+                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.absentDays}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.otHours}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.overtimePay))}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{n(l.deductions) > 0 ? `−${aed(n(l.deductions))}` : "—"}</td>
+                      </>
+                    )}
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">
                       {n(l.otherEarnings) > 0 && <span className="block text-[var(--success)]">+{aed(n(l.otherEarnings))}</span>}
                       {n(l.otherDeductions) > 0 && <span className="block">−{aed(n(l.otherDeductions))}</span>}
-                      {n(l.loanDeduction) > 0 && <span className="block text-xs text-muted">loan −{aed(n(l.loanDeduction))}</span>}
-                      {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && n(l.loanDeduction) === 0 && "—"}
+                      {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && "—"}
                     </td>
                     <td className="px-3 py-3">
-                      <AdjustmentCell lineId={l.id} adjustment={n(l.adjustment)} note={l.adjustmentNote ?? ""} disabled={!draft || !can(subject, "payroll", "edit")} />
+                      <LineEditor
+                        lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
+                        adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!draft || !!run.submittedAt || !can(subject, "payroll", "edit")}
+                      />
                     </td>
                     <td className="px-3 py-3 text-right font-medium tabular-nums text-primary">{aed(n(l.net))}</td>
                     <td className="px-3 py-3">
@@ -245,7 +261,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         </section>
       )}
       <p className="text-xs text-muted">
-        Rules: for monthly-paid staff, absence deduction = (base + allowances) ÷ 30 per day marked Absent in attendance. Overtime = OT hours × (base ÷ 240) × the employee&apos;s multiplier. Hourly workers are paid normal hours × their rate, with overtime at rate × multiplier. Recurring items and loan instalments (see Payroll → Loans & advances / Recurring items) are applied automatically; loan recovery never takes net pay below zero. Adjustments are added to net pay (use a negative amount to deduct).
+        Rules: only employees of the selected company are paid. <strong>Basic</strong> companies pay the monthly figure, deducting (base + allowances) ÷ 30 per day marked Absent in attendance, and paying overtime at (base ÷ 240) × the employee&apos;s multiplier. <strong>Hourly</strong> companies pay the hours on that month&apos;s timesheet × the employee&apos;s hourly rate; the timesheet carries one figure per day, so every hour is paid at the hourly rate. Deduction and advance are typed here with a note each and both reduce net pay; the advance starts from any active loan or advance instalment and can be overwritten. Recurring items apply automatically, and nothing typed can take net pay below zero.
       </p>
     </div>
   );

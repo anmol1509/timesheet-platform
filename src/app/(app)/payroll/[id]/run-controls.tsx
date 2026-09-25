@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { CheckCheck, Download, FileText, RotateCcw, Trash2, Undo2 } from "lucide-react";
-import { approveRunAction, deleteRunAction, markPaidAction, recomputeRunAction, reopenRunAction, saveAdjustmentAction } from "../actions";
+import Link from "next/link";
+import { deleteRunAction, markPaidAction, recomputeRunAction, reopenRunAction, saveLineAction, submitRunAction } from "../actions";
 
 type State = { error: string | null; ok?: boolean };
 
 export function RunControls({
   id,
   status,
+  submitted,
   canEdit,
   canApprove,
   canExport,
@@ -16,6 +18,8 @@ export function RunControls({
 }: {
   id: string;
   status: string;
+  /** A draft that has been sent to the Approvals inbox. */
+  submitted: boolean;
   canEdit: boolean;
   canApprove: boolean;
   canExport: boolean;
@@ -35,15 +39,18 @@ export function RunControls({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {status === "DRAFT" && canEdit && (
+        {status === "DRAFT" && !submitted && canEdit && (
           <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => run(recomputeRunAction)}>
             <RotateCcw className="h-4 w-4" aria-hidden /> Recalculate
           </button>
         )}
-        {status === "DRAFT" && canApprove && (
-          <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(approveRunAction)}>
-            <CheckCheck className="h-4 w-4" aria-hidden /> Approve run
+        {status === "DRAFT" && !submitted && canEdit && (
+          <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(submitRunAction)}>
+            <CheckCheck className="h-4 w-4" aria-hidden /> Submit for approval
           </button>
+        )}
+        {status === "DRAFT" && submitted && (
+          <Link href="/approvals?type=PAYROLL" className="btn btn-secondary">Awaiting approval — open in Approvals</Link>
         )}
         {status === "APPROVED" && canApprove && (
           <>
@@ -79,42 +86,74 @@ export function RunControls({
   );
 }
 
-/** Inline adjustment editor for one line (draft runs only). */
-export function AdjustmentCell({ lineId, adjustment, note, disabled }: { lineId: string; adjustment: number; note: string; disabled: boolean }) {
+type ChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => void;
+
+/** One labelled amount + note pair. Defined at module level so it isn't remounted on every keystroke. */
+function LineRow({ label, amount, note, onAmount, onNote, placeholder }: { label: string; amount: string; note: string; onAmount: ChangeHandler; onNote: ChangeHandler; placeholder: string }) {
+  return (
+    <div className="grid grid-cols-[4.5rem_5.5rem_1fr] items-center gap-1.5">
+      <span className="text-xs text-muted">{label}</span>
+      <input type="number" step="0.01" value={amount} onChange={onAmount} aria-label={`${label} (AED)`} className="input h-8 text-right tabular-nums" />
+      <input value={note} onChange={onNote} placeholder={placeholder} aria-label={`${label} note`} className="input h-8 text-xs" />
+    </div>
+  );
+}
+
+/**
+ * Editor for the three things typed against a line: a deduction (a fine,
+ * damage...), the advance recovered this month, and an adjustment (+ or −).
+ * Each has its own note. One Save writes all three and recomputes net pay.
+ */
+export function LineEditor({
+  lineId, deduction, deductionNote, advance, advanceNote, adjustment, adjustmentNote, disabled,
+}: {
+  lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; disabled: boolean;
+}) {
   const [pending, start] = useTransition();
-  const [value, setValue] = useState(String(adjustment));
-  const [text, setText] = useState(note);
+  const [v, setV] = useState({ deduction: String(deduction || ""), deductionNote, advance: String(advance || ""), advanceNote, adjustment: String(adjustment || ""), adjustmentNote });
   const [error, setError] = useState<string | null>(null);
-  const dirty = Number(value || 0) !== adjustment || text !== note;
+  const [saved, setSaved] = useState(false);
+  const dirty =
+    Number(v.deduction || 0) !== deduction || v.deductionNote !== deductionNote || Number(v.advance || 0) !== advance || v.advanceNote !== advanceNote ||
+    Number(v.adjustment || 0) !== adjustment || v.adjustmentNote !== adjustmentNote;
+  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) => { setSaved(false); setV((p) => ({ ...p, [k]: e.target.value })); };
 
   function save() {
     setError(null);
     start(async () => {
       const fd = new FormData();
       fd.set("lineId", lineId);
-      fd.set("adjustment", value);
-      fd.set("note", text);
-      const res = await saveAdjustmentAction(fd);
-      if (res.error) setError(res.error);
+      for (const [k, val] of Object.entries(v)) fd.set(k, val);
+      const res = await saveLineAction(fd);
+      if (res.error) setError(res.error); else setSaved(true);
     });
   }
 
   if (disabled) {
+    const rows = [
+      ["Deduction", deduction, deductionNote, "−"],
+      ["Advance", advance, advanceNote, "−"],
+      ["Adjustment", adjustment, adjustmentNote, adjustment < 0 ? "−" : "+"],
+    ] as const;
     return (
-      <span className="text-secondary">
-        {adjustment !== 0 ? adjustment.toFixed(2) : "—"}
-        {note && <span className="block max-w-40 truncate text-xs text-muted" title={note}>{note}</span>}
-      </span>
+      <ul className="min-w-44 space-y-1 text-xs">
+        {rows.filter(([, a]) => a !== 0).map(([label, a, note, sign]) => (
+          <li key={label}><span className="text-muted">{label}:</span> <span className="tabular text-secondary">{sign}{Math.abs(a).toFixed(2)}</span>{note && <span className="block max-w-56 truncate text-subtle" title={note}>{note}</span>}</li>
+        ))}
+        {deduction === 0 && advance === 0 && adjustment === 0 && <li className="text-subtle">—</li>}
+      </ul>
     );
   }
   return (
-    <div className="flex min-w-44 flex-col gap-1">
-      <div className="flex gap-1">
-        <input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Adjustment (AED)" className="input w-24 text-right tabular-nums" />
-        {dirty && <button type="button" className="btn btn-primary" disabled={pending} onClick={save}>{pending ? "…" : "Save"}</button>}
+    <div className="flex min-w-[24rem] flex-col gap-1.5">
+      <LineRow label="Deduction" amount={v.deduction} note={v.deductionNote} onAmount={set("deduction")} onNote={set("deductionNote")} placeholder="What for? (fine, damage…)" />
+      <LineRow label="Advance" amount={v.advance} note={v.advanceNote} onAmount={set("advance")} onNote={set("advanceNote")} placeholder="Note (advance taken on…)" />
+      <LineRow label="Adjustment" amount={v.adjustment} note={v.adjustmentNote} onAmount={set("adjustment")} onNote={set("adjustmentNote")} placeholder="Bonus / correction (− to deduct)" />
+      <div className="flex items-center gap-2">
+        {dirty && <button type="button" className="btn btn-primary h-7 px-3 text-xs" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>}
+        {saved && !dirty && <span className="text-xs text-[var(--success)]">Saved</span>}
+        {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
       </div>
-      <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Reason (bonus, advance…)" aria-label="Adjustment reason" className="input w-full text-xs" />
-      {error && <p role="alert" className="text-xs text-[var(--danger-text,#b42318)]">{error}</p>}
     </div>
   );
 }

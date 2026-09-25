@@ -1,89 +1,47 @@
 import { prisma } from "@/lib/db";
 import { Wallet } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
-import { requireUserWithBranch } from "@/lib/auth";
+import { PageHeader } from "@/components/PageHeader";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { createBankAction } from "./actions";
-import { BankList } from "./bank-list";
+import { can } from "@/lib/permissions";
+import { bankState } from "@/lib/bankStatus";
+import { AddBank } from "./add-bank";
+import { BankList, type BankRow } from "./bank-list";
 
-export default async function BanksPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
-  const { branchId } = await requireUserWithBranch();
-  const banks = await prisma.bank.findMany({
-    where: branchWhere(branchId),
-    select: {
-      id: true,
-      accountName: true,
-      bankName: true,
-      accountNo: true,
-      ibanNo: true,
-      swiftCode: true,
-      status: true,
-    },
-    orderBy: { accountName: "asc" },
+export const metadata = { title: "Banks" };
+
+export default async function BanksPage() {
+  const { user, branchId } = await requireUserWithBranch();
+  const subject = subjectOf(user);
+  const [banks, companies] = await Promise.all([
+    prisma.bank.findMany({ where: branchWhere(branchId), include: { company: { select: { name: true } } }, orderBy: { accountName: "asc" } }),
+    branchId ? prisma.supplier.findMany({ where: { branchId, isOwnCompany: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : [],
+  ]);
+  const rows: BankRow[] = banks.map((b) => {
+    const st = bankState(b);
+    return { id: b.id, accountName: b.accountName, bankName: b.bankName, accountNo: b.accountNo, ibanNo: b.ibanNo, currency: b.currency, company: b.company?.name ?? null, state: st.state, missing: st.missing };
   });
+  const active = rows.filter((r) => r.state === "ACTIVE").length;
+  const incomplete = rows.filter((r) => r.state === "INCOMPLETE").length;
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Banks</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage the bank accounts referenced across payments and invoices.
-        </p>
-      </div>
-
-      {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
-          {error}
+      <PageHeader
+        title="Banks"
+        description="Your bank accounts. An account is active only once its account number and a valid IBAN are entered."
+        actions={branchId && can(subject, "partners", "create") ? <AddBank companies={companies} /> : undefined}
+      />
+      {rows.length > 0 && (
+        <p className="text-sm text-muted">
+          <span className="font-medium text-primary">{active}</span> active
+          {incomplete > 0 && <> · <span className="font-medium text-[var(--warning)]">{incomplete}</span> incomplete: add the missing details to make {incomplete === 1 ? "it" : "them"} usable</>}
         </p>
       )}
-
-      <form
-        action={createBankAction}
-        className="card flex flex-wrap items-end gap-3 p-4"
-      >
-        <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Account name
-          </span>
-          <input
-            name="accountName"
-            required
-            placeholder="e.g. Main Operating Account"
-            className="input w-full"
-          />
-        </label>
-        <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Bank name
-          </span>
-          <input
-            name="bankName"
-            required
-            placeholder="e.g. Emirates NBD"
-            className="input w-full"
-          />
-        </label>
-        <button
-          type="submit"
-          className="btn btn-primary"
-        >
-          + Add Bank
-        </button>
-      </form>
-
-      {banks.length === 0 ? (
-        <EmptyState
-          icon={Wallet}
-          title="No banks yet"
-          description="Banks are referenced on supplier payment details and employee WPS records. Add one above to make it selectable."
-        />
+      {rows.length === 0 ? (
+        <EmptyState icon={Wallet} title="No bank accounts yet" description="Add the accounts you pay salaries and suppliers from. They are used for the WPS salary file and for recording payments." />
       ) : (
-        <BankList banks={banks} />
+        <BankList banks={rows} />
       )}
     </div>
   );

@@ -6,7 +6,9 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { monthBounds, round2, wpsGaps } from "@/lib/payroll";
+import { isPayType, monthBounds, round2, wpsGaps } from "@/lib/payroll";
+import { isUsableBank } from "@/lib/bankStatus";
+import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { rebuildRunLines, recordLoanRepayments, reverseLoanRepayments } from "@/lib/payrollRun";
 
 type State = { error: string | null; ok?: boolean };
@@ -30,18 +32,29 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
   const month = String(formData.get("month") || "");
   if (!monthBounds(month)) return { error: "Choose a month." };
 
+  // Payroll is only for our own companies' employees, one run per company.
+  const companyId = String(formData.get("companyId") || "");
+  const company = companyId ? await prisma.supplier.findFirst({ where: { id: companyId, branchId, isOwnCompany: true }, select: { id: true, name: true, payType: true, wpsEstablishmentId: true } }) : null;
+  if (!company) return { error: "Choose which of your companies this payroll is for." };
+  if (!isPayType(company.payType)) return { error: `Set how ${company.name} pays its people (Basic or Hourly) on its company page first.` };
+  if (await prisma.payrollRun.count({ where: { branchId, companyId: company.id, month } }) > 0) return { error: `A payroll run for ${company.name} in ${month} already exists.` };
+
+  // Pay from the company's own account if it has a usable one; otherwise the branch default.
+  const banks = await prisma.bank.findMany({ where: { branchId, companyId: company.id, status: "ACTIVE" }, orderBy: { accountName: "asc" } });
+  const bank = banks.find((b) => isUsableBank(b) && b.routingCode) ?? null;
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { wpsPayerBankId: true } });
+
   let created;
   try {
     created = await prisma.payrollRun.create({
-      data: { month, branchId, createdById: user.id, payerBankId: branch?.wpsPayerBankId ?? null },
+      data: { month, branchId, companyId: company.id, payType: company.payType, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null },
     });
   } catch {
-    return { error: `A payroll run for ${month} already exists.` };
+    return { error: `A payroll run for ${company.name} in ${month} already exists.` };
   }
-  const { count } = await rebuildRunLines(created);
-  await trail(created.id, "CREATED", user);
-  await logAudit({ entityType: "PAYROLL_RUN", entityId: created.id, action: "CREATE", after: { month, employees: count }, userId: user.id, userName: user.name, branchId });
+  const { count, skipped } = await rebuildRunLines(created);
+  await trail(created.id, "CREATED", user, skipped.length > 0 ? `${skipped.length} employee${skipped.length === 1 ? "" : "s"} skipped: missing pay details` : null);
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: created.id, action: "CREATE", after: { month, company: company.name, payType: company.payType, employees: count, skipped: skipped.length }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/payroll");
   redirect(`/payroll/${created.id}`);
 }
@@ -51,42 +64,97 @@ export async function recomputeRunAction(formData: FormData): Promise<State> {
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Only a draft run can be recalculated. Reopen it first." };
-  const { count } = await rebuildRunLines(run);
-  await trail(run.id, "RECALCULATED", user);
+  const { count, skipped } = await rebuildRunLines(run);
+  await trail(run.id, "RECALCULATED", user, skipped.length > 0 ? `${skipped.length} skipped: missing pay details` : null);
   await logAudit({ entityType: "PAYROLL_RUN", entityId: run.id, action: "UPDATE", before: { lines: run.lines.length }, after: { recomputed: count }, userId: user.id, userName: user.name, branchId: run.branchId });
   revalidatePath(`/payroll/${run.id}`);
   return { error: null, ok: true };
 }
 
-export async function saveAdjustmentAction(formData: FormData): Promise<State> {
+/**
+ * Saves what was typed against one line: a deduction, the advance recovered and
+ * an adjustment, each with its own note. Net pay is recomputed from the stored
+ * components, and the typed amounts can't push it below zero.
+ */
+export async function saveLineAction(formData: FormData): Promise<State> {
   await requirePermission("payroll", "edit");
   const lineId = String(formData.get("lineId") || "");
-  const line = await prisma.payrollLine.findUnique({ where: { id: lineId }, select: { runId: true } });
+  const line = await prisma.payrollLine.findUnique({ where: { id: lineId }, include: { employee: { select: { name: true } } } });
   if (!line) return { error: "Line not found." };
   const { user, run } = await loadRun(line.runId);
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Approved runs are locked." };
 
-  const raw = String(formData.get("adjustment") || "0").trim();
-  const adjustment = round2(Number(raw === "" ? 0 : raw));
-  if (!Number.isFinite(adjustment) || Math.abs(adjustment) > 1_000_000) return { error: "Enter a valid amount (negative to deduct)." };
-  const note = String(formData.get("note") || "").trim() || null;
+  const amount = (k: string) => { const raw = String(formData.get(k) || "0").trim(); return round2(Number(raw === "" ? 0 : raw)); };
+  const note = (k: string) => String(formData.get(k) || "").trim().slice(0, 200) || null;
+  const deduction = amount("deduction");
+  const advance = amount("advance");
+  const adjustment = amount("adjustment");
+  if (![deduction, advance, adjustment].every(Number.isFinite) || Math.abs(adjustment) > 1_000_000 || deduction < 0 || advance < 0 || deduction > 1_000_000 || advance > 1_000_000) {
+    return { error: "Enter valid amounts. Deduction and advance can't be negative." };
+  }
+  if (deduction > 0 && !note("deductionNote")) return { error: "Add a note saying what the deduction is for." };
+  if (advance > 0 && !note("advanceNote")) return { error: "Add a note for the advance." };
 
-  const l = run.lines.find((x) => x.id === lineId)!;
-  const net = round2(Number(l.basic) + Number(l.allowances) - Number(l.deductions) + Number(l.overtimePay) + adjustment + Number(l.otherEarnings) - Number(l.otherDeductions) - Number(l.loanDeduction));
-  if (net < 0) return { error: "That adjustment would make net pay negative." };
-  await prisma.payrollLine.update({ where: { id: lineId }, data: { adjustment, adjustmentNote: note, net } });
+  const n = (d: { toString(): string }) => Number(d.toString());
+  const base = n(line.basic) + n(line.allowances) - n(line.deductions) + n(line.overtimePay) + adjustment + n(line.otherEarnings) - n(line.otherDeductions);
+  if (round2(base - deduction - advance) < 0) {
+    return { error: `Deduction plus advance (AED ${round2(deduction + advance).toFixed(2)}) is more than the pay available (AED ${round2(Math.max(0, base)).toFixed(2)}).` };
+  }
+  const net = round2(base - deduction - advance);
+  await prisma.payrollLine.update({
+    where: { id: lineId },
+    data: { adjustment, adjustmentNote: note("adjustmentNote"), manualDeduction: deduction, deductionNote: deduction > 0 ? note("deductionNote") : null, loanDeduction: advance, advanceNote: advance > 0 ? note("advanceNote") : null, advanceManual: true, net },
+  });
   await logAudit({
-    entityType: "PAYROLL_LINE",
-    entityId: lineId,
-    action: "UPDATE",
-    before: { adjustment: Number(l.adjustment), note: l.adjustmentNote },
-    after: { adjustment, note, employee: l.employee.name },
-    userId: user.id,
-    userName: user.name,
-    branchId: run.branchId,
+    entityType: "PAYROLL_LINE", entityId: lineId, action: "UPDATE",
+    before: { adjustment: n(line.adjustment), deduction: n(line.manualDeduction), advance: n(line.loanDeduction) },
+    after: { adjustment, deduction, advance, deductionNote: note("deductionNote"), advanceNote: note("advanceNote"), employee: line.employee.name },
+    userId: user.id, userName: user.name, branchId: run.branchId,
   });
   revalidatePath(`/payroll/${run.id}`);
+  return { error: null, ok: true };
+}
+
+/** The creator sends a finished draft for approval; it then appears in the Approvals inbox. */
+export async function submitRunAction(formData: FormData): Promise<State> {
+  await requirePermission("payroll", "edit");
+  const { user, run } = await loadRun(String(formData.get("id") || ""));
+  if (!run) return { error: "Run not found." };
+  if (run.status !== "DRAFT") return { error: "Only a draft can be sent for approval." };
+  if (run.submittedAt) return { error: "It has already been sent for approval." };
+  if (run.lines.length === 0) return { error: "There are no employees in this run yet." };
+  await prisma.payrollRun.update({ where: { id: run.id }, data: { submittedAt: new Date(), submittedById: user.id, returnNote: null } });
+  await trail(run.id, "SUBMITTED", user);
+  await notifyUsers({
+    userIds: (await approverIds("payroll", run.branchId)).filter((id) => id !== user.id),
+    kind: "PAYROLL_SUBMITTED",
+    title: `Payroll to approve: ${run.month}`,
+    body: `${user.name} sent a payroll run for approval.`,
+    href: "/approvals?type=PAYROLL",
+  });
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: run.id, action: "UPDATE", before: { submitted: false }, after: { submitted: true, month: run.month }, userId: user.id, userName: user.name, branchId: run.branchId });
+  revalidatePath(`/payroll/${run.id}`);
+  revalidatePath("/payroll");
+  revalidatePath("/approvals");
+  return { error: null, ok: true };
+}
+
+/** An approver sends a submitted run back to its creator, with the reason. */
+export async function returnRunAction(formData: FormData): Promise<State> {
+  await requirePermission("payroll", "approve");
+  const { user, run } = await loadRun(String(formData.get("id") || ""));
+  if (!run) return { error: "Run not found." };
+  if (run.status !== "DRAFT" || !run.submittedAt) return { error: "That run isn't waiting for approval." };
+  const note = String(formData.get("note") || "").trim();
+  if (!note) return { error: "Say what needs fixing, so it can be corrected." };
+  await prisma.payrollRun.update({ where: { id: run.id }, data: { submittedAt: null, submittedById: null, returnNote: note } });
+  await trail(run.id, "RETURNED", user, note);
+  if (run.submittedById) await notifyUsers({ userIds: [run.submittedById].filter((id) => id !== user.id), kind: "PAYROLL_RETURNED", title: `Payroll ${run.month} was sent back`, body: note, href: `/payroll/${run.id}` });
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: run.id, action: "UPDATE", before: { submitted: true }, after: { submitted: false, returned: note }, userId: user.id, userName: user.name, branchId: run.branchId });
+  revalidatePath(`/payroll/${run.id}`);
+  revalidatePath("/payroll");
+  revalidatePath("/approvals");
   return { error: null, ok: true };
 }
 
@@ -95,6 +163,7 @@ export async function approveRunAction(formData: FormData): Promise<State> {
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Already approved." };
+  if (!run.submittedAt) return { error: "The run must be sent for approval first (Submit for approval on the run)." };
   if (run.lines.length === 0) return { error: "There are no employees with a pay structure to pay." };
 
   // Four-eyes rule: above the branch's threshold, the run's creator can't be
@@ -120,6 +189,7 @@ export async function approveRunAction(formData: FormData): Promise<State> {
   await logAudit({ entityType: "PAYROLL_RUN", entityId: run.id, action: "UPDATE", before: { status: "DRAFT" }, after: { status: "APPROVED", total: round2(run.lines.reduce((s, l) => s + Number(l.net), 0)) }, userId: user.id, userName: user.name, branchId: run.branchId });
   revalidatePath(`/payroll/${run.id}`);
   revalidatePath("/payroll");
+  revalidatePath("/approvals");
   return { error: null, ok: true };
 }
 
@@ -129,7 +199,7 @@ export async function reopenRunAction(formData: FormData): Promise<State> {
   if (!run) return { error: "Run not found." };
   if (run.status !== "APPROVED") return { error: "Only an approved (unpaid) run can be reopened." };
   await reverseLoanRepayments(run.id);
-  await prisma.payrollRun.update({ where: { id: run.id }, data: { status: "DRAFT", approvedAt: null, approvedById: null } });
+  await prisma.payrollRun.update({ where: { id: run.id }, data: { status: "DRAFT", approvedAt: null, approvedById: null, submittedAt: null, submittedById: null } });
   await trail(run.id, "REOPENED", user);
   await logAudit({ entityType: "PAYROLL_RUN", entityId: run.id, action: "UPDATE", before: { status: "APPROVED" }, after: { status: "DRAFT" }, userId: user.id, userName: user.name, branchId: run.branchId });
   revalidatePath(`/payroll/${run.id}`);

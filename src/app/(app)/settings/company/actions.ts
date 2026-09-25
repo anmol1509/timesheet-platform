@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { isUsableBank } from "@/lib/bankStatus";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
@@ -104,8 +105,9 @@ export async function updateWpsAction(_prev: State, formData: FormData): Promise
   }
   const bankId = String(formData.get("wpsPayerBankId") || "") || null;
   if (bankId) {
-    const bank = await prisma.bank.findUnique({ where: { id: bankId }, select: { branchId: true } });
+    const bank = await prisma.bank.findUnique({ where: { id: bankId } });
     if (!bank || bank.branchId !== branch.id) return { error: "Choose one of this company's bank accounts." };
+    if (!isUsableBank(bank)) return { error: "That bank account isn't active yet. Add its account number and IBAN under Banks first." };
   }
 
   await prisma.branch.update({ where: { id: branch.id }, data: { wpsEstablishmentId: establishmentId, wpsPayerBankId: bankId } });

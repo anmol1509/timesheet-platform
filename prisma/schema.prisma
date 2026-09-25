@@ -103,7 +103,21 @@ model Bank {
   bankBranch   String? // the bank's own branch name, not our Branch model
   address      String?
   remarks      String?
+  // "ACTIVE" here only means "not switched off". Whether a bank is usable is
+  // decided by lib/bankStatus.ts from the details below, so a bank with no
+  // account number can never present itself as active.
   status       String  @default("ACTIVE")
+
+  accountType   String? // "CURRENT" | "SAVINGS" | "CREDIT" | "OTHER"
+  currency      String  @default("AED")
+  contactPerson String? // the relationship manager at the bank
+  contactPhone  String?
+  contactEmail  String?
+
+  // Which of our own companies holds this account, so each company's payroll
+  // can pay from its own account.
+  company   Supplier? @relation("CompanyBanks", fields: [companyId], references: [id], onDelete: SetNull)
+  companyId String?
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -319,9 +333,18 @@ model Supplier {
   availability      SupplierAvailability[]
   changeRequests    SupplierChangeRequest[]
   tickets           SupplierTicket[]
-  notifications     SupplierNotification[]
-  portalEnabled     Boolean                 @default(false)
-  bills             SupplierBill[]
+  banks             Bank[]                  @relation("CompanyBanks")
+  payrollRuns       PayrollRun[]            @relation("PayrollCompany")
+
+  // Own companies only: how this company pays its people, and its own MOHRE
+  // establishment id for the WPS file. Every employee of a company is paid the
+  // same way: "BASIC" (monthly salary, adjusted from attendance) or "HOURLY"
+  // (hours taken from the timesheet).
+  payType            String? // "BASIC" | "HOURLY"
+  wpsEstablishmentId String?
+  notifications      SupplierNotification[]
+  portalEnabled      Boolean                @default(false)
+  bills              SupplierBill[]
 }
 
 model Client {
@@ -1594,7 +1617,13 @@ model PayrollRun {
   notes      String?
   createdAt  DateTime  @default(now())
   approvedAt DateTime?
-  paidAt     DateTime?
+
+  // A draft is only "waiting for approval" once someone has sent it: the
+  // approvals inbox lists submitted drafts, not ones still being edited.
+  submittedAt   DateTime?
+  submittedById String?
+  returnNote    String? // why an approver sent it back to draft
+  paidAt        DateTime?
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -1610,7 +1639,13 @@ model PayrollRun {
   lines  PayrollLine[]
   events PayrollRunEvent[]
 
-  @@unique([branchId, month])
+  // One run per own company per month. Runs created before companies existed
+  // have no company (they covered every own-company employee).
+  company   Supplier? @relation("PayrollCompany", fields: [companyId], references: [id], onDelete: SetNull)
+  companyId String?
+  payType   String? // snapshot of the company's pay type when the run was made
+
+  @@unique([branchId, companyId, month])
 }
 
 // One employee's pay for a run. Pay and bank details are snapshotted at
@@ -1633,6 +1668,14 @@ model PayrollLine {
   adjustmentNote  String?
   otherEarnings   Decimal @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
   otherDeductions Decimal @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
+  // Typed in on the run. A deduction is a one-off amount taken off pay (a fine,
+  // damage...); the advance is money already given that is recovered this
+  // month. Each carries its own note. Both reduce net pay.
+  manualDeduction Decimal @default(0) @db.Decimal(12, 2)
+  deductionNote   String?
+  advanceNote     String?
+  advanceManual   Boolean @default(false) // true once someone has typed the advance, so a recalculation keeps it
+  timesheetHours  Float   @default(0) // hours taken from the timesheet (hourly companies)
   loanDeduction   Decimal @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
   // Where the worker was assigned when the run was calculated, so cost-by-project
   // stays true after they move. Plain id, not a relation: history outlives the project row.
@@ -1825,6 +1868,13 @@ model SupplierBill {
   periodMonth         String? // "YYYY-MM" the bill covers, for comparing with timesheets
   // Submitted by the supplier through the portal rather than entered by our staff.
   submittedBySupplier Boolean   @default(false)
+
+  // What the supplier's timesheet for periodMonth says we owe it, worked out
+  // when the bill was entered (hours x rate, less absence and gas deductions).
+  // A snapshot, so the comparison shown at approval time is the one that was
+  // true when the bill arrived, even if the timesheet is edited afterwards.
+  timesheetAmount Decimal? @db.Decimal(12, 2)
+  timesheetHours  Float?
 
   supplier   Supplier @relation(fields: [supplierId], references: [id])
   supplierId String

@@ -42,13 +42,18 @@ export async function createInventoryItemAction(
     notes: stringOrNull(formData.get("notes")),
   };
 
-  const item = await prisma.inventoryItem.create({ data });
+  // A quantity entered up front becomes the item's first (default) variant, so the
+  // stock shows on the list straight away; sizes and colours can be split out later.
+  const quantity = Math.max(0, Math.trunc(Number(formData.get("quantity")) || 0));
+  const item = await prisma.inventoryItem.create({
+    data: { ...data, ...(quantity > 0 ? { variants: { create: { name: "Standard", stock: quantity } } } : {}) },
+  });
 
   await logAudit({
     entityType: "INVENTORY_ITEM",
     entityId: item.id,
     action: "CREATE",
-    after: data,
+    after: { ...data, quantity },
     userId: user.id,
     userName: user.name,
     branchId,

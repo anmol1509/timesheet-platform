@@ -51,7 +51,7 @@ export async function requestChangeAction(_prev: State, formData: FormData): Pro
     kind: "SUPPLIER_CHANGE_REQUEST",
     title: `${kind === "BANK" ? "Bank" : "Contact"} details change to approve`,
     body: `${vendor.name} asked to change ${Object.keys(changes).length} field${Object.keys(changes).length === 1 ? "" : "s"}.${kind === "BANK" ? " Check it before approving: it decides where payments go." : ""}`,
-    href: "/suppliers/requests",
+    href: "/approvals?type=CHANGE",
   });
   revalidatePath("/vendor/profile");
   return { error: null, ok: true };

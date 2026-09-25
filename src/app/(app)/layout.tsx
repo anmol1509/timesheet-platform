@@ -1,3 +1,4 @@
+import { countPendingApprovals } from "@/lib/approvals";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -54,6 +55,8 @@ export default async function AppLayout({
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
   const allowedModules = viewableModules(subjectOf(user));
+  // A failed count must never take the page down: the badge just doesn't show.
+  const pendingApprovals = await countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }).catch(() => 0);
 
   // Sidebar brand: the active branch's own name and uploaded logo. A super
   // admin viewing "all branches" (branchId null) keeps the group name and
@@ -70,7 +73,7 @@ export default async function AppLayout({
   const header = (
     <header className="sticky top-0 z-30 border-b border-default bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} />
+        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} />
         <div className="min-w-0 flex-1">
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
@@ -106,6 +109,7 @@ export default async function AppLayout({
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
         allowedModules={allowedModules}
+        pendingApprovals={pendingApprovals}
         brand={brand}
         defaultCollapsed={sidebarCollapsed}
         header={header}

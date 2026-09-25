@@ -6,6 +6,7 @@ import { getVendor } from "@/lib/vendor/session";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { parseDay } from "@/lib/dates";
 import { isDuplicateBill } from "@/lib/financeRules";
+import { loadSupplierMonthPayable } from "@/lib/supplierMonthPayable";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
 type State = { error: string | null; ok?: boolean };
@@ -53,7 +54,7 @@ async function tellFinance(branchId: string, supplierName: string, billNo: strin
     kind: "SUPPLIER_INVOICE_SUBMITTED",
     title: `${resubmitted ? "Invoice resubmitted" : "New supplier invoice"}: AED ${total.toFixed(2)}`,
     body: `${supplierName} — invoice #${billNo}. Waiting for your approval.`,
-    href: "/finance/bills?view=REVIEW",
+    href: "/approvals?type=BILL",
   });
 }
 
@@ -73,12 +74,15 @@ export async function submitInvoiceAction(_prev: State, formData: FormData): Pro
     if (dup) return { error: `DUPLICATE: you already submitted invoice #${dup.billNo} for the same total around the same date. Submit again if this is a different invoice.` };
   }
 
+  if (!d.periodMonth) return { error: "Choose the month this invoice covers." };
+  const sheet = await loadSupplierMonthPayable(vendor.id, d.periodMonth);
+
   let billId: string;
   try {
     const bill = await prisma.supplierBill.create({
       data: {
         supplierId: vendor.id, branchId: vendor.branchId, billNo: d.billNo, billDate: d.billDate, dueDate: new Date(d.billDate.getTime() + 30 * DAY),
-        amount: d.amount, vatAmount: d.vatAmount, periodMonth: d.periodMonth, description: d.description, approvalStatus: "PENDING", submittedBySupplier: true,
+        amount: d.amount, vatAmount: d.vatAmount, periodMonth: d.periodMonth, timesheetAmount: sheet.entryCount > 0 ? sheet.net : null, timesheetHours: sheet.entryCount > 0 ? sheet.hours : null, description: d.description, approvalStatus: "PENDING", submittedBySupplier: true,
       },
     });
     billId = bill.id;
@@ -103,12 +107,14 @@ export async function resubmitInvoiceAction(_prev: State, formData: FormData): P
   if (!("ok" in p)) return { error: p.error };
   const d = p.data;
 
+  if (!d.periodMonth) return { error: "Choose the month this invoice covers." };
+  const sheet = await loadSupplierMonthPayable(vendor.id, d.periodMonth);
   try {
     await prisma.supplierBill.update({
       where: { id: bill.id },
       data: {
         billNo: d.billNo, billDate: d.billDate, dueDate: new Date(d.billDate.getTime() + 30 * DAY), amount: d.amount, vatAmount: d.vatAmount,
-        periodMonth: d.periodMonth, description: d.description, approvalStatus: "PENDING", approvalNote: null, approvedAt: null, approvedById: null,
+        periodMonth: d.periodMonth, timesheetAmount: sheet.entryCount > 0 ? sheet.net : null, timesheetHours: sheet.entryCount > 0 ? sheet.hours : null, description: d.description, approvalStatus: "PENDING", approvalNote: null, approvedAt: null, approvedById: null,
       },
     });
   } catch {

@@ -384,6 +384,8 @@ export async function approveTimesheetAction(formData: FormData) {
 }
 
 export async function rejectTimesheetAction(formData: FormData) {
+  // Rejecting is a review decision, like approving; it used to have no permission check.
+  await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   const updated = await transitionTimesheetEntries(

@@ -13,6 +13,8 @@ type ItemRow = {
   notes: string | null;
   activeAssignments: number;
   assignedQuantity: number;
+  inStock: number;
+  issued: number;
 };
 
 export function InventoryList({ items }: { items: ItemRow[] }) {
@@ -32,6 +34,30 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
       header: "Category",
       render: (i) => i.category || "—",
       csvValue: (i) => i.category,
+    },
+    {
+      key: "inStock",
+      header: "Qty in stock",
+      render: (i) => <span className="tabular">{i.inStock}</span>,
+      csvValue: (i) => i.inStock,
+      sortValue: (i) => i.inStock,
+    },
+    {
+      key: "issued",
+      header: "Issued",
+      render: (i) => <span className="tabular text-secondary">{i.issued}</span>,
+      csvValue: (i) => i.issued,
+      sortValue: (i) => i.issued,
+    },
+    {
+      key: "available",
+      header: "Available",
+      render: (i) => {
+        const left = i.inStock - i.issued;
+        return <span className={`tabular font-medium ${left < 0 ? "text-[var(--error)]" : left === 0 && i.inStock > 0 ? "text-[var(--warning)]" : "text-primary"}`}>{left}</span>;
+      },
+      csvValue: (i) => i.inStock - i.issued,
+      sortValue: (i) => i.inStock - i.issued,
     },
     {
       key: "status",

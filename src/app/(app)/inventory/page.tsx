@@ -16,6 +16,8 @@ export default async function InventoryPage() {
       category: true,
       notes: true,
       assignments: { where: { returnDate: null }, select: { id: true, quantity: true } },
+      variants: { select: { stock: true } },
+      employeeAssignments: { where: { returnDate: null }, select: { quantity: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -27,6 +29,10 @@ export default async function InventoryPage() {
     notes: i.notes,
     activeAssignments: i.assignments.length,
     assignedQuantity: i.assignments.reduce((sum, a) => sum + a.quantity, 0),
+    // Quantity on hand is the sum over the item's variants; "issued" is what workers
+    // currently hold, so available = on hand - issued.
+    inStock: i.variants.reduce((sum, v) => sum + v.stock, 0),
+    issued: i.employeeAssignments.reduce((sum, a) => sum + a.quantity, 0),
   }));
 
   return (

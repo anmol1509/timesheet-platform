@@ -280,6 +280,8 @@ export async function requestAttendanceCorrectionAction(formData: FormData) {
 }
 
 export async function reviewCorrectionRequestAction(formData: FormData) {
+  // Deciding a correction is an approval; it used to be open to any signed-in user.
+  await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const correctionId = String(formData.get("correctionId") || "");
   const decision = String(formData.get("decision") || "");
