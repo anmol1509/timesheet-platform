@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
-import { ComboSelect } from "@/components/ui/ComboSelect";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
@@ -32,7 +31,6 @@ type EmployeeRow = {
   campKind: string | null;
 };
 
-type ExternalCamp = { id: string; name: string; ownerType: "SUPPLIER" | "CLIENT"; supplierId: string | null };
 type Party = { id: string; name: string };
 type CampType = "OWN" | "SUPPLIER" | "CLIENT";
 const KIND_LABEL: Record<string, string> = { OWN: "Own camp", SUPPLIER: "Supplier camp", CLIENT: "Client camp" };
@@ -54,7 +52,7 @@ function campLabel(c: CampOption) {
   return `${c.name} (${type}) — ${c.roomCount} rooms, ${c.vacantBeds}/${c.totalBeds} beds vacant`;
 }
 
-export function CheckInTable({ rows, camps, externalCamps, suppliers, clients }: { rows: EmployeeRow[]; camps: CampOption[]; externalCamps: ExternalCamp[]; suppliers: Party[]; clients: Party[] }) {
+export function CheckInTable({ rows, camps, suppliers, clients }: { rows: EmployeeRow[]; camps: CampOption[]; suppliers: Party[]; clients: Party[] }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [checkInOpen, setCheckInOpen] = useState(false);
@@ -225,7 +223,6 @@ export function CheckInTable({ rows, camps, externalCamps, suppliers, clients }:
         employeeIds={[...selected]}
         employees={rows.filter((r) => selected.has(r.id))}
         camps={camps}
-        externalCamps={externalCamps}
         suppliers={suppliers}
         clients={clients}
         onDone={() => {
@@ -245,7 +242,6 @@ function CheckInModal({
   employeeIds,
   employees,
   camps,
-  externalCamps,
   suppliers,
   clients,
   onDone,
@@ -255,7 +251,6 @@ function CheckInModal({
   employeeIds: string[];
   employees: EmployeeRow[];
   camps: CampOption[];
-  externalCamps: ExternalCamp[];
   suppliers: Party[];
   clients: Party[];
   onDone: () => void;
@@ -267,7 +262,7 @@ function CheckInModal({
         title={`Check In ${employeeIds.length} Employee${employeeIds.length === 1 ? "" : "s"}`}
         description="Choose whose camp they are staying in. Own camps continue to Bed Allocation; supplier and client camps are recorded here."
       >
-        <CheckInForm employeeIds={employeeIds} employees={employees} camps={camps} externalCamps={externalCamps} suppliers={suppliers} clients={clients} onDone={onDone} />
+        <CheckInForm employeeIds={employeeIds} employees={employees} camps={camps} suppliers={suppliers} clients={clients} onDone={onDone} />
       </DialogContent>
     </Dialog>
   );
@@ -277,7 +272,6 @@ function CheckInForm({
   employeeIds,
   employees,
   camps,
-  externalCamps,
   suppliers,
   clients,
   onDone,
@@ -285,7 +279,6 @@ function CheckInForm({
   employeeIds: string[];
   employees: EmployeeRow[];
   camps: CampOption[];
-  externalCamps: ExternalCamp[];
   suppliers: Party[];
   clients: Party[];
   onDone: () => void;
@@ -305,12 +298,6 @@ function CheckInForm({
   const [error, setError] = useState<string | null>(null);
 
   const partyId = campType === "SUPPLIER" ? supplierId : clientId;
-  const partyName = (campType === "SUPPLIER" ? suppliers : clients).find((p) => p.id === partyId)?.name ?? "";
-  // Camps this supplier / client was used for before, shown without the "Party — " prefix.
-  const remembered = externalCamps
-    .filter((c) => c.ownerType === campType && (campType === "SUPPLIER" ? c.supplierId === partyId : partyName !== "" && c.name.startsWith(`${partyName} — `)))
-    .map((c) => ({ value: c.id, label: partyName && c.name.startsWith(`${partyName} — `) ? c.name.slice(partyName.length + 3) : c.name }));
-  const usingRemembered = remembered.some((o) => o.value === campValue);
   const canSubmit =
     employeeIds.length > 0 && (campType === "OWN" ? !!campId : !!partyId && campValue.trim() !== "");
 
@@ -322,8 +309,7 @@ function CheckInForm({
     if (campType === "OWN") formData.append("campId", campId);
     else {
       formData.append("partyId", partyId);
-      if (usingRemembered) formData.append("campId", campValue);
-      else formData.append("campName", campValue.trim());
+      formData.append("campName", campValue.trim());
     }
     for (const id of employeeIds) formData.append("employeeId", id);
     startTransition(async () => {
@@ -388,15 +374,14 @@ function CheckInForm({
           </div>
           <div>
             <span className={label}>Camp name / location</span>
-            <ComboSelect
+            <input
               key={`${campType}-${partyId}`}
-              options={remembered}
               value={campValue}
-              onChange={setCampValue}
-              placeholder={partyId ? "Select or add a camp" : "Choose the " + (campType === "SUPPLIER" ? "supplier" : "client") + " first"}
+              onChange={(e) => setCampValue(e.target.value)}
               disabled={!partyId}
-              otherLabel="Add a new camp…"
-              otherPlaceholder="e.g. Sonapur camp, Block 3"
+              maxLength={80}
+              placeholder={partyId ? "e.g. Sonapur camp, Block 3" : "Choose the " + (campType === "SUPPLIER" ? "supplier" : "client") + " first"}
+              className="input w-full"
             />
           </div>
           <p className="text-xs text-muted">Housing is arranged by the {campType === "SUPPLIER" ? "supplier" : "client"}, so no room or bed is allocated here.</p>

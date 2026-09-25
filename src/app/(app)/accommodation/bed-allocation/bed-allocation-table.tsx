@@ -11,8 +11,9 @@ import { cn } from "@/lib/cn";
 import { allocateBedAction } from "../checkin-actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 
-type BedOption = { id: string; label: string; vacant: boolean };
+type BedOption = { id: string; label: string; employeeId: string | null };
 type RoomOption = { id: string; name: string; beds: BedOption[] };
+type CampChoice = { id: string; name: string; rooms: RoomOption[] };
 type Row = {
   checkInId: string;
   checkInNo: number;
@@ -25,12 +26,11 @@ type Row = {
   bedLabel: string | null;
   bedId: string | null;
   checkInDate: string;
-  rooms: RoomOption[];
 };
 
 type Filter = "all" | "awaiting" | "allocated";
 
-export function BedAllocationTable({ rows }: { rows: Row[] }) {
+export function BedAllocationTable({ rows, camps }: { rows: Row[]; camps: CampChoice[] }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [activeRow, setActiveRow] = useState<Row | null>(null);
 
@@ -120,7 +120,7 @@ export function BedAllocationTable({ rows }: { rows: Row[] }) {
               className="shrink-0"
             >
               <BedDouble className="h-3.5 w-3.5" />
-              {r.bedId ? "Switch Room" : "Allocate Bed"}
+              {r.bedId ? "Switch Camp / Room" : "Allocate Bed"}
             </Button>
           </div>
         ))}
@@ -134,37 +134,56 @@ export function BedAllocationTable({ rows }: { rows: Row[] }) {
         </p>
       )}
 
-      <AllocateModal row={activeRow} onClose={() => setActiveRow(null)} />
+      <AllocateModal row={activeRow} camps={camps} onClose={() => setActiveRow(null)} />
     </div>
   );
 }
 
-function AllocateModal({ row, onClose }: { row: Row | null; onClose: () => void }) {
+function AllocateModal({ row, camps, onClose }: { row: Row | null; camps: CampChoice[]; onClose: () => void }) {
   return (
     <Dialog modal={false} open={row !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        title={row?.bedId ? `Switch Room for ${row?.employeeName ?? ""}` : `Allocate Bed for ${row?.employeeName ?? ""}`}
-        description={`Camp: ${row?.campName ?? ""}. Pick a room, then a vacant bed, and the check-in date.`}
+        title={row?.bedId ? `Switch Camp / Room for ${row?.employeeName ?? ""}` : `Allocate Bed for ${row?.employeeName ?? ""}`}
+        description={`Currently in ${row?.campName ?? ""}. Pick a camp, then a room and a vacant bed, and the check-in date.`}
       >
-        {row && <AllocateForm key={row.checkInId} row={row} onClose={onClose} />}
+        {row && <AllocateForm key={row.checkInId} row={row} camps={camps} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function AllocateForm({ row, onClose }: { row: Row; onClose: () => void }) {
-  const [roomId, setRoomId] = useState(
-    row.rooms.find((r) => r.beds.some((b) => b.id === row.bedId))?.id ?? ""
-  );
+function AllocateForm({ row, camps, onClose }: { row: Row; camps: CampChoice[]; onClose: () => void }) {
+  const [campId, setCampId] = useState(row.campId);
+  const camp = camps.find((c) => c.id === campId) ?? null;
+  const [roomId, setRoomId] = useState(camps.find((c) => c.id === row.campId)?.rooms.find((r) => r.beds.some((b) => b.id === row.bedId))?.id ?? "");
   const [bedId, setBedId] = useState(row.bedId ?? "");
   const [checkInDate, setCheckInDate] = useState(row.checkInDate);
   const [pending, startTransition] = useTransition();
 
-  const room = row.rooms.find((r) => r.id === roomId) ?? null;
-  const bedsInRoom = room ? room.beds.filter((b) => b.vacant) : [];
+  // A bed is free if nobody is in it, or if it is this worker's own current bed.
+  const isVacant = (b: BedOption) => !b.employeeId || b.id === row.bedId;
+  const rooms = camp?.rooms ?? [];
+  const room = rooms.find((r) => r.id === roomId) ?? null;
+  const bedsInRoom = room ? room.beds.filter(isVacant) : [];
 
   return (
     <div className="mt-4 space-y-4">
+      <label className="block">
+        <span className="mb-1 block text-xs font-medium text-muted">Camp</span>
+        <Select
+          value={campId}
+          onChange={(v) => {
+            setCampId(v);
+            setRoomId("");
+            setBedId("");
+          }}
+          placeholder="Select a camp"
+          options={camps.map((c) => {
+            const beds = c.rooms.flatMap((r) => r.beds);
+            return { value: c.id, label: `${c.name} (${beds.filter(isVacant).length}/${beds.length} beds vacant)` };
+          })}
+        />
+      </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Room</span>
         <Select
@@ -173,10 +192,11 @@ function AllocateForm({ row, onClose }: { row: Row; onClose: () => void }) {
             setRoomId(v);
             setBedId("");
           }}
-          placeholder="Select a room"
-          options={row.rooms.map((r) => ({
+          disabled={!campId}
+          placeholder={campId ? "Select a room" : "Select a camp first"}
+          options={rooms.map((r) => ({
             value: r.id,
-            label: `${r.name} (${r.beds.filter((b) => b.vacant).length}/${r.beds.length} vacant)`,
+            label: `${r.name} (${r.beds.filter(isVacant).length}/${r.beds.length} vacant)`,
           }))}
         />
       </label>
@@ -213,7 +233,7 @@ function AllocateForm({ row, onClose }: { row: Row; onClose: () => void }) {
           }}
           className="btn btn-primary"
         >
-          {pending ? "Saving…" : "Allocate"}
+          {pending ? "Saving…" : row.bedId ? "Switch" : "Allocate"}
         </button>
       </DialogFooter>
     </div>

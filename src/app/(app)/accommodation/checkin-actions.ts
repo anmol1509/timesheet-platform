@@ -177,7 +177,8 @@ export async function allocateBedAction(formData: FormData) {
   if (!checkIn || isOutsideBranch(checkIn.employee.branchId, branchId, isSuperAdmin)) return;
 
   const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { room: { include: { camp: true } } } });
-  if (!bed || bed.room.campId !== checkIn.campId) return;
+  // The bed may be in a different own camp than the one checked into; the check-in then follows the bed.
+  if (!bed || bed.room.camp.ownerType !== "OWN") return;
   if (bed.employeeId && bed.employeeId !== checkIn.employeeId) return; // occupied by someone else
 
   const employeeId = checkIn.employeeId;
@@ -204,7 +205,7 @@ export async function allocateBedAction(formData: FormData) {
         checkInDate,
       },
     });
-    await tx.campCheckIn.update({ where: { id: checkInId }, data: { bedId, status: "BED_ALLOCATED" } });
+    await tx.campCheckIn.update({ where: { id: checkInId }, data: { bedId, campId: bed.room.campId, status: "BED_ALLOCATED" } });
   });
 
   await logAudit({

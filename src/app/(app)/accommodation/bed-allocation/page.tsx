@@ -31,6 +31,13 @@ export default async function BedAllocationPage() {
     orderBy: { checkInNo: "desc" },
   });
 
+  // Every own camp with its rooms and beds, so a placement can be made in any of them.
+  const campChoices = await prisma.camp.findMany({
+    where: { ownerType: "OWN" },
+    select: { id: true, name: true, rooms: { select: { id: true, name: true, beds: { select: { id: true, label: true, employeeId: true } } }, orderBy: { name: "asc" } } },
+    orderBy: { name: "asc" },
+  });
+
   const rows = checkIns.map((c) => ({
     checkInId: c.id,
     checkInNo: c.checkInNo,
@@ -43,11 +50,6 @@ export default async function BedAllocationPage() {
     bedLabel: c.bed?.label ?? null,
     bedId: c.bed?.id ?? null,
     checkInDate: c.checkInDate.toISOString().slice(0, 10),
-    rooms: c.camp.rooms.map((r) => ({
-      id: r.id,
-      name: r.name,
-      beds: r.beds.map((b) => ({ id: b.id, label: b.label, vacant: !b.employeeId || b.id === c.bed?.id })),
-    })),
   }));
 
   const allocated = rows.filter((r) => r.bedId).length;
@@ -76,7 +78,7 @@ export default async function BedAllocationPage() {
         />
       </div>
 
-      <BedAllocationTable rows={rows} />
+      <BedAllocationTable rows={rows} camps={campChoices} />
     </div>
   );
 }

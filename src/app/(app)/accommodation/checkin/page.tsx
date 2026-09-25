@@ -75,11 +75,6 @@ export default async function CheckInPage() {
       const beds = c.rooms.flatMap((r) => r.beds);
       return { id: c.id, name: c.name, ownerType: c.ownerType, supplierName: null as string | null, roomCount: c.rooms.length, vacantBeds: beds.filter((b) => !b.employeeId).length, totalBeds: beds.length };
     });
-  // Camps run by a supplier or a client, remembered from earlier check-ins so they can be picked again.
-  const externalCamps = camps
-    .filter((c) => c.ownerType === "SUPPLIER" || c.ownerType === "CLIENT")
-    .map((c) => ({ id: c.id, name: c.name, ownerType: c.ownerType as "SUPPLIER" | "CLIENT", supplierId: c.owningSupplierId }));
-
   const notCheckedIn = rows.filter((r) => !r.checkInId).length;
   const awaitingBed = rows.filter((r) => r.checkInId && r.campKind === "OWN").length;
 
@@ -132,7 +127,7 @@ export default async function CheckInPage() {
         />
       </div>
 
-      <CheckInTable rows={rows} camps={campOptions} externalCamps={externalCamps} suppliers={suppliers} clients={clients} />
+      <CheckInTable rows={rows} camps={campOptions} suppliers={suppliers} clients={clients} />
 
       <CheckInHistory rows={historyRows} camps={campOptions.map((c) => ({ id: c.id, name: c.name }))} />
     </div>
