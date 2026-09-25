@@ -4,6 +4,8 @@ import { useTransition } from "react";
 import { updateInventoryItemAction } from "../actions";
 import { Field } from "@/components/form/Field";
 import { Section } from "@/components/form/Section";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { INVENTORY_CATEGORIES } from "@/lib/formLists";
 
 export function EditItemForm({
   item,
@@ -19,11 +21,7 @@ export function EditItemForm({
       <input type="hidden" name="itemId" value={item.id} />
       <Section title="Details">
         <Field label="Category">
-          <input
-            name="category"
-            defaultValue={item.category ?? ""}
-            className="input w-full"
-          />
+          <ComboSelect name="category" options={INVENTORY_CATEGORIES} defaultValue={item.category} />
         </Field>
         <Field label="Notes">
           <input

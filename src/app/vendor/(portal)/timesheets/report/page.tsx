@@ -4,6 +4,8 @@ import { parseRange, summarise } from "@/lib/attendanceReport";
 import { loadAttendanceReport, MAX_ROWS } from "@/lib/vendorAttendanceReport";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { Download } from "lucide-react";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { Select } from "@/components/ui/Select";
 
 export const metadata = { title: "Attendance report" };
 const COLOR: Record<string, BadgeColor> = { PRESENT: "green", ABSENT: "red", LEAVE: "amber" };
@@ -31,10 +33,10 @@ export default async function VendorAttendanceReportPage({ searchParams }: { sea
       </div>
 
       <form method="get" className="card flex flex-wrap items-end gap-3 p-4">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">From</span><input type="date" name="from" defaultValue={from} className="input" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">To</span><input type="date" name="to" defaultValue={to} className="input" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">From</span><DatePicker name="from" defaultValue={from} /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">To</span><DatePicker name="to" defaultValue={to} /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Status</span>
-          <select name="status" defaultValue={range.status} className="input"><option value="ALL">All</option><option value="PRESENT">Present</option><option value="ABSENT">Absent</option><option value="LEAVE">On leave</option></select></label>
+          <Select name="status" defaultValue={range.status} searchable={false} options={[{ value: "ALL", label: "All" }, { value: "PRESENT", label: "Present" }, { value: "ABSENT", label: "Absent" }, { value: "LEAVE", label: "On leave" }]} /></label>
         <button type="submit" className="btn btn-primary">Show report</button>
         {rows.length > 0 && (
           <span className="ml-auto flex gap-2">

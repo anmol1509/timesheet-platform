@@ -7,6 +7,9 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { BILL_STATUS_LABELS, type BillStatus } from "@/lib/payables";
 import { resubmitInvoiceAction, submitInvoiceAction } from "./actions";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { MonthInput } from "@/components/ui/MonthInput";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 export type InvoiceRow = {
@@ -37,11 +40,11 @@ function InvoiceForm({ row, onDone }: { row?: InvoiceRow; onDone: () => void }) 
       {row && <input type="hidden" name="billId" value={row.id} />}
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice number</span><input name="billNo" required defaultValue={row?.billNo} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice date</span><input type="date" name="billDate" required defaultValue={row?.billDate ?? new Date().toISOString().slice(0, 10)} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Month it covers *</span><input type="month" name="periodMonth" required defaultValue={row?.periodMonth ?? thisMonth()} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT)</span><input type="number" step="0.01" min="0" name="amount" required defaultValue={row?.amount} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><input type="number" step="0.01" min="0" name="vatAmount" defaultValue={row?.vatAmount ?? 0} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice number *</span><input name="billNo" required defaultValue={row?.billNo} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Invoice date *</span><DatePicker name="billDate" defaultValue={row?.billDate ?? new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Month it covers *</span><MonthInput name="periodMonth" defaultValue={row?.periodMonth ?? thisMonth()} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput name="amount" defaultValue={row?.amount} required min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput name="vatAmount" defaultValue={row?.vatAmount ?? 0} min={0} step={0.01} className="w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input name="description" defaultValue={row?.description ?? ""} className="input w-full" placeholder="e.g. Labour supply, September" /></label>
       </div>
       <label className="block">

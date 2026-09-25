@@ -17,7 +17,6 @@ import { MultiUploadSlot, PhotoSlot, UploadSlot, type UploadStatus } from "./upl
 import { DocumentChecklist, type ChecklistItem } from "./document-checklist";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { Select } from "@/components/ui/Select";
-import { CountrySelect } from "@/components/ui/CountrySelect";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Slider } from "@/components/ui/Slider";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
@@ -30,6 +29,10 @@ import {
   SKILL_LEVEL_STEP,
   skillLevelLabel,
 } from "@/lib/skillLevel";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
+import { CountrySelect } from "@/components/ui/CountrySelect";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Project = { id: string; name: string; code: string };
 
@@ -974,12 +977,7 @@ export function EmployeeWizard({
                 />
               </Field>
               <Field label="Expiry">
-                <input
-                  type="date"
-                  value={fields.additionalDocExpiry}
-                  onChange={(e) => set("additionalDocExpiry", e.target.value)}
-                  className="input w-full"
-                />
+                <DatePicker value={fields.additionalDocExpiry} onChange={(v) => set("additionalDocExpiry", v)} className="w-full" />
               </Field>
             </div>
           </details>
@@ -1087,13 +1085,7 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Date of birth">
-              <input
-                type="date"
-                data-field="dateOfBirth"
-                value={fields.dateOfBirth}
-                onChange={(e) => set("dateOfBirth", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.dateOfBirth} onChange={(v) => set("dateOfBirth", v)} dataField="dateOfBirth" className="w-full" />
             </Field>
             <Field label="Mobile number">
               <PhoneInput
@@ -1117,7 +1109,7 @@ export function EmployeeWizard({
 
           <Group title="Passport">
             <Field label="Passport number">
-              <input
+              <MaskedInput kind="passport"
                 data-field="passportNumber"
                 value={fields.passportNumber}
                 onChange={(e) => set("passportNumber", e.target.value)}
@@ -1125,19 +1117,13 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Passport expiry">
-              <input
-                type="date"
-                data-field="passportExpiry"
-                value={fields.passportExpiry}
-                onChange={(e) => set("passportExpiry", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.passportExpiry} onChange={(v) => set("passportExpiry", v)} dataField="passportExpiry" className="w-full" />
             </Field>
           </Group>
 
           <Group title="Emirates ID">
             <Field label="Emirates ID number">
-              <input
+              <MaskedInput kind="eid"
                 data-field="emiratesId"
                 value={fields.emiratesId}
                 onChange={(e) => set("emiratesId", e.target.value)}
@@ -1145,13 +1131,7 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Emirates ID expiry">
-              <input
-                type="date"
-                data-field="emiratesIdExpiry"
-                value={fields.emiratesIdExpiry}
-                onChange={(e) => set("emiratesIdExpiry", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.emiratesIdExpiry} onChange={(v) => set("emiratesIdExpiry", v)} dataField="emiratesIdExpiry" className="w-full" />
             </Field>
           </Group>
 
@@ -1172,13 +1152,7 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Labour card expiry">
-              <input
-                type="date"
-                data-field="laborCardExpiry"
-                value={fields.laborCardExpiry}
-                onChange={(e) => set("laborCardExpiry", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.laborCardExpiry} onChange={(v) => set("laborCardExpiry", v)} dataField="laborCardExpiry" className="w-full" />
             </Field>
           </Group>
 
@@ -1201,12 +1175,7 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Residency / visa expiry">
-              <input
-                type="date"
-                value={fields.visaExpiry}
-                onChange={(e) => set("visaExpiry", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.visaExpiry} onChange={(v) => set("visaExpiry", v)} className="w-full" />
             </Field>
             <Field label="Sponsor">
               <input
@@ -1219,12 +1188,7 @@ export function EmployeeWizard({
 
           <Group title="Other expiry dates">
             <Field label="Medical certificate expiry">
-              <input
-                type="date"
-                value={fields.medicalExpiry}
-                onChange={(e) => set("medicalExpiry", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.medicalExpiry} onChange={(v) => set("medicalExpiry", v)} className="w-full" />
             </Field>
           </Group>
         </div>
@@ -1246,12 +1210,7 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Join date">
-              <input
-                type="date"
-                value={fields.joinDate}
-                onChange={(e) => set("joinDate", e.target.value)}
-                className="input w-full"
-              />
+              <DatePicker value={fields.joinDate} onChange={(v) => set("joinDate", v)} className="w-full" />
             </Field>
           </Group>
 
@@ -1279,13 +1238,7 @@ export function EmployeeWizard({
                     : "Basic salary (AED)"
                 }
               >
-                <input
-                  type="number"
-                  step="0.01"
-                  value={fields.salaryRate}
-                  onChange={(e) => set("salaryRate", e.target.value)}
-                  className="input w-full"
-                />
+                <NumberInput value={fields.salaryRate} onChange={(v) => set("salaryRate", String(v))} step={0.01} className="w-full" />
               </Field>
             )}
           </Group>
@@ -1380,15 +1333,7 @@ export function EmployeeWizard({
                         <span className="mb-1 block text-xs font-medium text-muted">
                           Rate (AED)
                         </span>
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={skill.rate}
-                          onChange={(e) => patchSkill(skill.name, { rate: e.target.value })}
-                          placeholder={skill.rateType === "FIXED" ? "Per month" : "Per hour"}
-                          className="input w-full"
-                        />
+                        <NumberInput value={skill.rate} onChange={(v) => patchSkill(skill.name, { rate: String(v) })} min={0} step={0.01} placeholder={skill.rateType === "FIXED" ? "Per month" : "Per hour"} className="w-full" />
                       </label>
                     </div>
                   )}

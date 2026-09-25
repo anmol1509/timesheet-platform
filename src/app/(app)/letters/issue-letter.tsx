@@ -64,9 +64,7 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Letter</span>
-          <select value={templateId} onChange={(e) => { setTemplateId(e.target.value); setInputs({}); setPreview(null); }} className="input w-full">
-            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
+          <Select value={templateId} onChange={(v) => { setTemplateId(v); setInputs({}); setPreview(null); }} options={[...templates.map((t) => ({ value: t.id, label: t.name }))]} triggerClassName="w-full" />
         </label>
         {template?.asks.map((label) => (
           <label key={label} className="block">

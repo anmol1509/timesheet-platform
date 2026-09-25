@@ -13,6 +13,7 @@ import {
   rejectTimesheetAction,
 } from "./actions";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type Entry = {
   id: string;
@@ -319,21 +320,11 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
           <div key={r.id} className="flex flex-wrap items-end gap-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">From date</span>
-              <input
-                type="date"
-                value={r.fromDate}
-                onChange={(e) => updateRange(r.id, { fromDate: e.target.value })}
-                className="input"
-              />
+              <DatePicker value={r.fromDate} onChange={(v) => updateRange(r.id, { fromDate: v })} />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">To date</span>
-              <input
-                type="date"
-                value={r.toDate}
-                onChange={(e) => updateRange(r.id, { toDate: e.target.value })}
-                className="input"
-              />
+              <DatePicker value={r.toDate} onChange={(v) => updateRange(r.id, { toDate: v })} />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Update hours</span>

@@ -457,18 +457,7 @@ export function AttendanceForm({
                       </td>
                       <td className="px-2 py-2 text-secondary">{e.trade || "—"}</td>
                       <td className="px-2 py-2">
-                        <select
-                          value={statusFor(e.id)}
-                          disabled={locked || !on}
-                          onChange={(ev) => setStatuses((prev) => ({ ...prev, [e.id]: ev.target.value }))}
-                          className="input px-2 py-1.5 disabled:opacity-50"
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={statusFor(e.id)} onChange={(v) => setStatuses((prev) => ({ ...prev, [e.id]: v }))} disabled={locked || !on} options={[...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} />
                       </td>
                       <td className="px-2 py-2">
                         <input
@@ -604,18 +593,7 @@ function CorrectionRequestPanel({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Requested status</span>
-              <select
-                value={requestedStatus}
-                onChange={(e) => setRequestedStatus(e.target.value)}
-                className="input w-full px-2 py-1.5"
-              >
-                <option value="">No change</option>
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <Select value={requestedStatus} onChange={(v) => setRequestedStatus(v)} options={[{ value: "", label: "No change" }, ...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} triggerClassName="w-full" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Normal hrs</span>

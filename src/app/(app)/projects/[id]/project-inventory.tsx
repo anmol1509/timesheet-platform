@@ -8,6 +8,8 @@ import {
 } from "../actions";
 import { Combobox } from "@/components/ui/Combobox";
 import { DeleteButton } from "@/components/DeleteButton";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Assignment = {
   id: string;
@@ -117,24 +119,13 @@ export function ProjectInventory({
           </label>
           <label className="block w-20">
             <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
-            <input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="input w-full"
-            />
+            <NumberInput value={quantity} onChange={(v) => setQuantity(String(v))} min={1} className="w-full" />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">
               Assigned date
             </span>
-            <input
-              type="date"
-              value={assignedDate}
-              onChange={(e) => setAssignedDate(e.target.value)}
-              className="input"
-            />
+            <DatePicker value={assignedDate} onChange={(v) => setAssignedDate(v)} />
           </label>
           <label className="block min-w-[140px] flex-1">
             <span className="mb-1 block text-xs font-medium text-muted">

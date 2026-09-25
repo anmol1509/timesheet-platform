@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { CitySelect } from "@/components/ui/CitySelect";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { CurrencySelect } from "@/components/ui/CurrencySelect";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { updateCompanyAction } from "./actions";
 
@@ -43,7 +44,7 @@ export function CompanyForm({ branch }: { branch: Branch }) {
         <div><span className={lab}>Fax</span><PhoneField name="fax" defaultValue={branch.fax} /></div>
         {f("Email", "email")}
         {f("P.O. Box", "poBox")}
-        {f("Tax Registration Number (TRN)", "trn")}
+        <div><span className={lab}>Tax Registration Number (TRN)</span><MaskedInput kind="trn" name="trn" defaultValue={branch.trn ?? ""} /></div>
         <div><span className={lab}>Currency</span><CurrencySelect name="currency" defaultValue={branch.currency ?? "AED"} /></div>
       </div>
       <div className="flex items-center gap-3">

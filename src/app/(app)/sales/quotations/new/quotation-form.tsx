@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createQuotationAction } from "../actions";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Client = { id: string; name: string };
 type LineRow = {
@@ -87,12 +89,7 @@ export function QuotationForm({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Valid until</span>
-          <input
-            type="date"
-            value={validUntil}
-            onChange={(e) => setValidUntil(e.target.value)}
-            className="input w-full"
-          />
+          <DatePicker value={validUntil} onChange={(v) => setValidUntil(v)} className="w-full" />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Accommodation responsibility</span>
@@ -142,30 +139,9 @@ export function QuotationForm({
                 placeholder="Trade"
                 options={tradeOptions.map((o) => ({ value: o.value, label: o.value }))}
               />
-              <input
-                type="number"
-                min={1}
-                value={l.quantity}
-                onChange={(e) => updateLine(l.id, { quantity: e.target.value })}
-                placeholder="Quantity"
-                className="input"
-              />
-              <input
-                type="number"
-                step="0.01"
-                value={l.rate}
-                onChange={(e) => updateLine(l.id, { rate: e.target.value })}
-                placeholder="Rate"
-                className="input"
-              />
-              <input
-                type="number"
-                step="0.01"
-                value={l.otRate}
-                onChange={(e) => updateLine(l.id, { otRate: e.target.value })}
-                placeholder="OT rate"
-                className="input"
-              />
+              <NumberInput value={l.quantity} onChange={(v) => updateLine(l.id, { quantity: String(v) })} min={1} placeholder="Quantity" />
+              <NumberInput value={l.rate} onChange={(v) => updateLine(l.id, { rate: String(v) })} step={0.01} placeholder="Rate" />
+              <NumberInput value={l.otRate} onChange={(v) => updateLine(l.id, { otRate: String(v) })} step={0.01} placeholder="OT rate" />
               <input
                 value={l.nationality}
                 onChange={(e) => updateLine(l.id, { nationality: e.target.value })}

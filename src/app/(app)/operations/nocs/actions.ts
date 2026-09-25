@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -18,6 +19,7 @@ function dateOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createNocAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const demandRequestId = String(formData.get("demandRequestId") || "");
   const templateId = String(formData.get("templateId") || "");
@@ -62,6 +64,7 @@ export async function createNocAction(formData: FormData) {
 }
 
 export async function deleteNocAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("nocId") || "");

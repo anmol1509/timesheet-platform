@@ -6,6 +6,8 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { cancelLoanAction, createLoanAction } from "../pay-items-actions";
+import { MonthInput } from "@/components/ui/MonthInput";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 export type LoanRow = { id: string; employee: string; employeeIdNo: string; type: string; principal: number; repaid: number; instalment: number; startMonth: string; status: string; reason: string | null };
@@ -38,11 +40,11 @@ function NewLoanForm({ employees, onDone }: { employees: { id: string; label: st
           <span className="mb-1 block text-xs font-medium text-muted">Type</span>
           <Select name="type" defaultValue="ADVANCE" searchable={false} options={[{ value: "ADVANCE", label: "Salary advance" }, { value: "LOAN", label: "Loan" }]} />
         </label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">First deduction month</span><input type="month" name="startMonth" defaultValue={thisMonth()} required className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">First deduction month *</span><MonthInput name="startMonth" defaultValue={thisMonth()} required className="w-full" /></label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount advanced (AED)</span><input type="number" step="0.01" min="0" name="principal" required className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Recovered per month (AED)</span><input type="number" step="0.01" min="0" name="instalment" required className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount advanced (AED) *</span><NumberInput name="principal" required min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Recovered per month (AED) *</span><NumberInput name="instalment" required min={0} step={0.01} className="w-full" /></label>
       </div>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reason (optional)</span><input name="reason" className="input w-full" /></label>
       <div className="flex items-center gap-3">

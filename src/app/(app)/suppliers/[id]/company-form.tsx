@@ -9,6 +9,9 @@ import { Switch } from "@/components/ui/Switch";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { CountrySelect } from "@/components/ui/CountrySelect";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { SUPPLIER_CATEGORIES } from "@/lib/formLists";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Supplier = {
   id: string;
@@ -89,15 +92,10 @@ export function SupplierCompanyForm({
           />
         </Field>
         <Field label="Category">
-          <input
-            name="category"
-            placeholder="e.g. Manpower Supply"
-            defaultValue={supplier.category || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="category" options={SUPPLIER_CATEGORIES} defaultValue={supplier.category} />
         </Field>
         <Field label="TRN (Tax Registration Number)">
-          <input
+          <MaskedInput kind="trn"
             name="trn"
             defaultValue={supplier.trn || ""}
             className="input w-full"
@@ -176,11 +174,7 @@ export function SupplierCompanyForm({
         {supplier.isOwnCompany && (
           <>
             <Field label="How this company pays its people">
-              <select name="payType" defaultValue={supplier.payType ?? ""} className="input w-full">
-                <option value="">— not set —</option>
-                <option value="BASIC">Basic — monthly salary, from attendance</option>
-                <option value="HOURLY">Hourly — hours from the timesheet</option>
-              </select>
+              <Select name="payType" defaultValue={supplier.payType ?? ""} searchable={false} options={[{ value: "", label: "— not set —" }, { value: "BASIC", label: "Basic — monthly salary, from attendance" }, { value: "HOURLY", label: "Hourly — hours from the timesheet" }]} triggerClassName="w-full" />
             </Field>
             <Field label="MOHRE establishment ID (for the WPS file)">
               <input name="wpsEstablishmentId" defaultValue={supplier.wpsEstablishmentId || ""} inputMode="numeric" className="input w-full" />
@@ -200,10 +194,11 @@ export function SupplierCompanyForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-muted">{label}
+        {required && <span className="text-[var(--error)]"> *</span>}</span>
       {children}
     </label>
   );

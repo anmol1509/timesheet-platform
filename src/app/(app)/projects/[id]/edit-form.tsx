@@ -5,6 +5,12 @@ import { updateProjectAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 import { PersonField } from "@/components/form/PersonField";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { PAYMENT_TYPES } from "@/lib/formLists";
+import { JOB_TYPES } from "@/lib/formLists";
+import { PhoneField } from "@/components/ui/PhoneField";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Project = {
   id: string;
@@ -41,9 +47,12 @@ type Project = {
 export function EditProjectForm({
   project,
   clients,
+  sponsors,
 }: {
   project: Project;
   clients: { id: string; name: string }[];
+  /** Names of the group's own companies, offered as the visa sponsor. */
+  sponsors: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -65,7 +74,7 @@ export function EditProjectForm({
       <input type="hidden" name="projectId" value={project.id} />
 
       <Section title="Basic Detail">
-        <Field label="Project name">
+        <Field required label="Project name">
           <input
             name="name"
             required
@@ -94,11 +103,7 @@ export function EditProjectForm({
           />
         </Field>
         <Field label="Job type">
-          <input
-            name="jobType"
-            defaultValue={project.jobType || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="jobType" options={JOB_TYPES} defaultValue={project.jobType} />
         </Field>
         <Field label="Main contractor">
           <input
@@ -108,11 +113,7 @@ export function EditProjectForm({
           />
         </Field>
         <Field label="Payment type">
-          <input
-            name="paymentType"
-            defaultValue={project.paymentType || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="paymentType" options={PAYMENT_TYPES} defaultValue={project.paymentType} />
         </Field>
         <Field label="Client">
           <Select
@@ -122,54 +123,25 @@ export function EditProjectForm({
           />
         </Field>
         <Field label="Sponsorship company">
-          <input
-            name="sponsorshipCompany"
-            defaultValue={project.sponsorshipCompany || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="sponsorshipCompany" options={sponsors} defaultValue={project.sponsorshipCompany} />
         </Field>
         <PersonField name="salesExecutive" label="Sales executive" defaultName={project.salesExecutive} defaultPhone={project.salesExecutivePhone} defaultEmail={project.salesExecutiveEmail} />
         <PersonField name="projectCoordinator" label="Project coordinator" defaultName={project.projectCoordinator} defaultPhone={project.projectCoordinatorPhone} defaultEmail={project.projectCoordinatorEmail} />
         <PersonField name="manager" label="Project manager" defaultName={project.manager} defaultPhone={project.managerPhone} defaultEmail={project.managerEmail} />
         <Field label="Start date">
-          <input
-            name="timelineStart"
-            type="date"
-            defaultValue={project.timelineStart}
-            className="input w-full"
-          />
+          <DatePicker name="timelineStart" defaultValue={project.timelineStart} className="w-full" />
         </Field>
         <Field label="End date">
-          <input
-            name="timelineEnd"
-            type="date"
-            defaultValue={project.timelineEnd}
-            className="input w-full"
-          />
+          <DatePicker name="timelineEnd" defaultValue={project.timelineEnd} className="w-full" />
         </Field>
         <Field label="Contact no.">
-          <input
-            name="contactNo"
-            defaultValue={project.contactNo || ""}
-            className="input w-full"
-          />
+          <PhoneField name="contactNo" defaultValue={project.contactNo} />
         </Field>
         <Field label="Timesheet collection date">
-          <input
-            name="timesheetCollectionDate"
-            type="date"
-            defaultValue={project.timesheetCollectionDate}
-            className="input w-full"
-          />
+          <DatePicker name="timesheetCollectionDate" defaultValue={project.timesheetCollectionDate} className="w-full" />
         </Field>
         <Field label="No. of employees required">
-          <input
-            name="noOfEmployeesRequired"
-            type="number"
-            min={0}
-            defaultValue={project.noOfEmployeesRequired ?? ""}
-            className="input w-full"
-          />
+          <NumberInput name="noOfEmployeesRequired" defaultValue={project.noOfEmployeesRequired ?? ""} min={0} className="w-full" />
         </Field>
         <Field label="Day shift start">
           <input
@@ -239,15 +211,18 @@ function Field({
   label,
   children,
   className,
+  required,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
+  required?: boolean;
 }) {
   return (
     <label className={`block ${className || ""}`}>
       <span className="mb-1 block text-xs font-medium text-muted">
         {label}
+        {required && <span className="text-[var(--error)]"> *</span>}
       </span>
       {children}
     </label>

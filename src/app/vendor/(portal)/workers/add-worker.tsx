@@ -8,6 +8,11 @@ import { Plus } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { submitWorkerAction, withdrawWorkerAction } from "./actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { BLOOD_GROUPS } from "@/lib/formLists";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { Select } from "@/components/ui/Select";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type State = { error: string | null; ok?: boolean };
 export type SubmissionRow = { id: string; name: string; trade: string; status: string; note: string | null; submittedAt: string };
@@ -28,28 +33,28 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
           <L t="Last name *"><input name="lastName" required className="input w-full" /></L>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <L t="Date of birth *"><input type="date" name="dateOfBirth" required className="input w-full" /></L>
-          <L t="Gender"><select name="gender" defaultValue="" className="input w-full"><option value="">—</option><option value="MALE">Male</option><option value="FEMALE">Female</option></select></L>
+          <L t="Date of birth *"><DatePicker name="dateOfBirth" required className="w-full" /></L>
+          <L t="Gender"><Select name="gender" defaultValue="" searchable={false} options={[{ value: "", label: "—" }, { value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }]} triggerClassName="w-full" /></L>
           <L t="Nationality"><CountrySelect name="nationality" placeholder="Select nationality…" /></L>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <L t="Mobile"><PhoneField name="mobileNumber" /></L>
-          <L t="Blood group"><input name="bloodGroup" className="input w-full" placeholder="e.g. O+" /></L>
-          <L t="Join date"><input type="date" name="joinDate" className="input w-full" /></L>
+          <L t="Blood group"><ComboSelect name="bloodGroup" options={BLOOD_GROUPS} /></L>
+          <L t="Join date"><DatePicker name="joinDate" className="w-full" /></L>
         </div>
       </fieldset>
       <fieldset className="space-y-3"><legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Job</legend>
-        <L t="Trade *"><select name="trade" required defaultValue="" className="input w-full"><option value="" disabled>Choose a trade…</option>{trades.map((t) => <option key={t} value={t}>{t}</option>)}</select></L>
+        <L t="Trade *"><Select name="trade" defaultValue="" required options={[{ value: "", label: "Choose a trade…" }, ...trades.map((t) => ({ value: t, label: t }))]} triggerClassName="w-full" /></L>
       </fieldset>
       <fieldset className="space-y-3"><legend className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Documents</legend>
         <div className="grid grid-cols-2 gap-3">
-          <L t="Passport number *"><input name="passportNumber" required className="input w-full" /></L>
-          <L t="Passport expiry"><input type="date" name="passportExpiry" className="input w-full" /></L>
-          <L t="Emirates ID / ICP number *"><input name="emiratesId" required className="input w-full" /></L>
-          <L t="Emirates ID expiry"><input type="date" name="emiratesIdExpiry" className="input w-full" /></L>
-          <L t="Visa expiry"><input type="date" name="visaExpiry" className="input w-full" /></L>
-          <L t="Labour card expiry"><input type="date" name="laborCardExpiry" className="input w-full" /></L>
-          <L t="Medical expiry"><input type="date" name="medicalExpiry" className="input w-full" /></L>
+          <L t="Passport number *"><MaskedInput kind="passport" name="passportNumber" required className="input w-full" /></L>
+          <L t="Passport expiry"><DatePicker name="passportExpiry" className="w-full" /></L>
+          <L t="Emirates ID / ICP number *"><MaskedInput kind="eid" name="emiratesId" required className="input w-full" /></L>
+          <L t="Emirates ID expiry"><DatePicker name="emiratesIdExpiry" className="w-full" /></L>
+          <L t="Visa expiry"><DatePicker name="visaExpiry" className="w-full" /></L>
+          <L t="Labour card expiry"><DatePicker name="laborCardExpiry" className="w-full" /></L>
+          <L t="Medical expiry"><DatePicker name="medicalExpiry" className="w-full" /></L>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <L t="Passport copy"><input type="file" name="passportFile" accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></L>

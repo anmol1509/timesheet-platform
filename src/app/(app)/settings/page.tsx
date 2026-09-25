@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { updateIssuedToAction } from "./actions";
 import { CreateBranchForm } from "./create-branch-form";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
@@ -47,7 +48,7 @@ export default async function SettingsPage() {
             <span className="mb-1 block text-xs font-medium text-muted">
               Company TRN (printed on client invoices)
             </span>
-            <input
+            <MaskedInput kind="trn"
               name="companyTrn"
               defaultValue={settings.companyTrn ?? ""}
               className="input w-full"

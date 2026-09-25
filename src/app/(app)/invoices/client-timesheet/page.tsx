@@ -6,6 +6,7 @@ import { branchWhere } from "@/lib/branch";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
 import { AlertTriangle } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
+import { Select } from "@/components/ui/Select";
 
 export default async function ClientTimesheetPage({
   searchParams,
@@ -147,70 +148,22 @@ export default async function ClientTimesheetPage({
         <form className="card flex flex-wrap items-end gap-3 p-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Month</span>
-            <select
-              name="month"
-              defaultValue={selectedMonth}
-              className="input"
-            >
-              {months.map((m) => (
-                <option key={m} value={m}>
-                  {monthLabelFromKey(m)}
-                </option>
-              ))}
-            </select>
+            <Select name="month" defaultValue={selectedMonth} options={[...months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))]} />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Client</span>
-            <select
-              name="clientId"
-              defaultValue={selectedClientId}
-              className="input"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <Select name="clientId" defaultValue={selectedClientId} options={[...clients.map((c) => ({ value: c.id, label: c.name }))]} />
           </label>
           {/* Always shown, even with nothing to offer. Hiding them made the
               filters look missing on a client whose rows carry no project or
               site — the control should say why it's empty, not disappear. */}
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Project</span>
-            <select
-              name="project"
-              defaultValue={selectedProject}
-              disabled={projectOptions.length === 0}
-              className="input disabled:opacity-60"
-            >
-              <option value="">
-                {projectOptions.length === 0 ? "None recorded" : "All projects"}
-              </option>
-              {projectOptions.map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
+<Select name="project" defaultValue={selectedProject} disabled={projectOptions.length === 0} options={[{ value: "", label: projectOptions.length === 0 ? "None recorded" : "All projects" }, ...projectOptions.map(([id, label]) => ({ value: id, label }))]} />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Site</span>
-            <select
-              name="site"
-              defaultValue={selectedSite}
-              disabled={siteOptions.length === 0}
-              className="input disabled:opacity-60"
-            >
-              <option value="">
-                {siteOptions.length === 0 ? "None recorded" : "All sites"}
-              </option>
-              {siteOptions.map((site) => (
-                <option key={site} value={site}>
-                  {site}
-                </option>
-              ))}
-            </select>
+            <Select name="site" defaultValue={selectedSite} disabled={siteOptions.length === 0} options={[{ value: "", label: siteOptions.length === 0 ? "None recorded" : "All sites" }, ...siteOptions.map((site) => ({ value: site, label: site }))]} />
           </label>
           <button
             type="submit"

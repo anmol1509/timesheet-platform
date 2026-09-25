@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { submitDailyTimesheetAction } from "../actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type Supplier = { id: string; name: string };
 type SiteOption = { id: string; name: string; projectId: string };
@@ -119,12 +120,7 @@ export function DailyTimesheetForm({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Date</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="input w-full"
-          />
+          <DatePicker value={date} onChange={(v) => setDate(v)} className="w-full" />
         </label>
       </div>
 

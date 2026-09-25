@@ -7,6 +7,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 // Every nested mutation (documents, trade rates, holidays, contacts,
 // inventory) takes a projectId rather than looking the project up itself,
@@ -184,6 +185,7 @@ export async function updateProjectAction(formData: FormData): Promise<{ error?:
 
 // Location Details tab.
 export async function updateProjectLocationAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
@@ -215,6 +217,7 @@ export async function updateProjectLocationAction(formData: FormData) {
 
 // Other Details tab.
 export async function updateProjectOtherDetailsAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
@@ -245,6 +248,7 @@ export async function updateProjectOtherDetailsAction(formData: FormData) {
 // --- Documents ---
 
 export async function addProjectDocumentAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const type = String(formData.get("type") || "OTHER");
@@ -281,6 +285,7 @@ export async function addProjectDocumentAction(formData: FormData) {
 }
 
 export async function deleteProjectDocumentAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
@@ -309,6 +314,7 @@ export async function deleteProjectDocumentAction(formData: FormData) {
 // --- Approved Rates (project-scoped ClientTradeRate) ---
 
 export async function addProjectTradeRateAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const clientId = String(formData.get("clientId") || "");
@@ -330,6 +336,7 @@ export async function addProjectTradeRateAction(formData: FormData) {
 }
 
 export async function removeProjectTradeRateAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const rateId = String(formData.get("rateId") || "");
@@ -342,6 +349,7 @@ export async function removeProjectTradeRateAction(formData: FormData) {
 // --- Holiday Details ---
 
 export async function addProjectHolidayAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const date = dateOrNull(formData.get("date"));
@@ -360,6 +368,7 @@ export async function addProjectHolidayAction(formData: FormData) {
 }
 
 export async function removeProjectHolidayAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const holidayId = String(formData.get("holidayId") || "");
@@ -372,6 +381,7 @@ export async function removeProjectHolidayAction(formData: FormData) {
 // --- Related Users (ProjectContact) ---
 
 export async function addProjectContactAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -392,6 +402,7 @@ export async function addProjectContactAction(formData: FormData) {
 }
 
 export async function updateProjectContactAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const contactId = String(formData.get("contactId") || "");
@@ -413,6 +424,7 @@ export async function updateProjectContactAction(formData: FormData) {
 }
 
 export async function removeProjectContactAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const contactId = String(formData.get("contactId") || "");
@@ -425,6 +437,7 @@ export async function removeProjectContactAction(formData: FormData) {
 // --- Inventory Details ---
 
 export async function addProjectInventoryAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const itemName = String(formData.get("itemName") || "").trim();
@@ -448,6 +461,7 @@ export async function addProjectInventoryAction(formData: FormData) {
 }
 
 export async function returnProjectInventoryAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const assignmentId = String(formData.get("assignmentId") || "");
@@ -461,6 +475,7 @@ export async function returnProjectInventoryAction(formData: FormData) {
 }
 
 export async function removeProjectInventoryAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const assignmentId = String(formData.get("assignmentId") || "");
@@ -471,6 +486,7 @@ export async function removeProjectInventoryAction(formData: FormData) {
 }
 
 export async function deleteProjectAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
@@ -527,6 +543,7 @@ export async function deleteProjectAction(formData: FormData) {
 // --- Sites (child of Project — a Project can have multiple physical sites) ---
 
 export async function createSiteAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -557,6 +574,7 @@ export async function createSiteAction(formData: FormData) {
 // --- LPOs (a Project can have more than one over its lifetime) ---
 
 export async function addLpoAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const clientId = String(formData.get("clientId") || "");
@@ -594,6 +612,7 @@ export async function addLpoAction(formData: FormData) {
 }
 
 export async function updateLpoAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const lpoId = String(formData.get("lpoId") || "");
@@ -631,6 +650,7 @@ export async function updateLpoAction(formData: FormData) {
 }
 
 export async function closeLpoAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const lpoId = String(formData.get("lpoId") || "");
@@ -657,6 +677,7 @@ export async function closeLpoAction(formData: FormData) {
 }
 
 export async function deleteSiteAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");

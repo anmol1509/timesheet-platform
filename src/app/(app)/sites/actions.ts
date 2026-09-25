@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -19,6 +20,7 @@ function stringOrNull(value: FormDataEntryValue | null) {
  * changes hands.
  */
 export async function createSiteAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   const projectId = String(formData.get("projectId") || "").trim();
@@ -48,6 +50,7 @@ export async function createSiteAction(formData: FormData) {
 }
 
 export async function updateSiteAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("siteId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -79,6 +82,7 @@ export async function updateSiteAction(formData: FormData) {
 }
 
 export async function deleteSiteAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("projects", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("siteId") || "");

@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { assertContactsValid } from "@/lib/validators";
 
 // Deliberately getCurrentUser (not requireUser): these are fired from the bell
 // in the shared header on every page, so the per-module write gate — which keys
 // off the page the action was invoked from — must not apply to them. Each only
 // ever touches the caller's own rows.
 export async function markNotificationReadAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await getCurrentUser();
   if (!user) return;
   const id = String(formData.get("id") || "");

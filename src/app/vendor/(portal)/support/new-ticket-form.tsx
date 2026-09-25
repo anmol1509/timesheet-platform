@@ -3,6 +3,7 @@
 import { useActionState, useRef } from "react";
 import { keepInput } from "@/lib/vendor/keepInput";
 import { createTicketAction } from "./actions";
+import { Select } from "@/components/ui/Select";
 
 type State = { error: string | null; ok?: boolean; id?: string };
 
@@ -16,10 +17,10 @@ export function NewTicketForm() {
     <form ref={ref} onSubmit={keepInput(action)} className="card space-y-3 p-5">
       <h2 className="text-sm font-semibold text-primary">Send us a message</h2>
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Type</span><select name="kind" defaultValue="FEEDBACK" className="input w-full"><option value="FEEDBACK">Feedback</option><option value="COMPLAINT">Complaint</option></select></label>
-        <label className="block sm:col-span-2"><span className="mb-1 block text-xs font-medium text-muted">Subject</span><input name="subject" required maxLength={120} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Type</span><Select name="kind" defaultValue="FEEDBACK" searchable={false} options={[{ value: "FEEDBACK", label: "Feedback" }, { value: "COMPLAINT", label: "Complaint" }]} triggerClassName="w-full" /></label>
+        <label className="block sm:col-span-2"><span className="mb-1 block text-xs font-medium text-muted">Subject *</span><input name="subject" required maxLength={120} className="input w-full" /></label>
       </div>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Message</span><textarea name="message" required rows={4} maxLength={4000} className="input w-full" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Message *</span><textarea name="message" required rows={4} maxLength={4000} className="input w-full" /></label>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Sending…" : "Send"}</button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}

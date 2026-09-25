@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { sanitizePermissions } from "@/lib/permissions";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -18,6 +19,7 @@ async function editableRole(id: string) {
 }
 
 export async function saveRoleAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const admin = await requireAdmin();
   const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();
@@ -71,6 +73,7 @@ export async function saveRoleAction(_prev: State, formData: FormData): Promise<
 }
 
 export async function deleteRoleAction(formData: FormData) {
+  assertContactsValid(formData);
   const { admin, role } = await editableRole(String(formData.get("id") || ""));
   if (!role) return;
   // Users on this role fall back to legacy staff access (SetNull), so refuse

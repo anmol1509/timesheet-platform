@@ -10,6 +10,7 @@ import {
 } from "@/lib/skillLevel";
 import { Slider } from "@/components/ui/Slider";
 import { addSkillAction, removeSkillAction } from "./actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type SkillRow = {
   id: string;
@@ -29,6 +30,7 @@ export function SkillsSection({
   const nameRef = useRef<HTMLInputElement>(null);
   const [level, setLevel] = useState(DEFAULT_SKILL_LEVEL);
   const rateRef = useRef<HTMLInputElement>(null);
+  const [resetKey, setResetKey] = useState(0);
 
   function handleAdd() {
     const name = nameRef.current?.value.trim();
@@ -43,6 +45,7 @@ export function SkillsSection({
     });
     if (nameRef.current) nameRef.current.value = "";
     setLevel(DEFAULT_SKILL_LEVEL);
+    setResetKey((k) => k + 1);
     if (rateRef.current) rateRef.current.value = "";
   }
 
@@ -80,12 +83,7 @@ export function SkillsSection({
           />
           <div className="w-28">
             <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
-            <input
-              ref={rateRef}
-              type="number"
-              step="0.01"
-              className="input w-full"
-            />
+            <NumberInput key={resetKey} step={0.01} inputRef={rateRef} className="w-full" />
           </div>
           <button
             type="button"

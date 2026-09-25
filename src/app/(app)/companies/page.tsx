@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { CompanyGrid } from "./company-grid";
+import { Select } from "@/components/ui/Select";
 
 export default async function CompaniesPage({
   searchParams,
@@ -46,18 +47,7 @@ export default async function CompaniesPage({
             <label htmlFor="month" className="text-sm text-muted">
               Month
             </label>
-            <select
-              id="month"
-              name="month"
-              defaultValue={selectedMonth}
-              className="input py-1.5"
-            >
-              {months.map((m) => (
-                <option key={m} value={m}>
-                  {monthLabelFromKey(m)}
-                </option>
-              ))}
-            </select>
+            <Select name="month" defaultValue={selectedMonth} options={[...months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))]} />
             <NativeSubmit />
           </form>
         )}

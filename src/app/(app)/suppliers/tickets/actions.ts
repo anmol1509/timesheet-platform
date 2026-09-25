@@ -6,6 +6,7 @@ import { requirePermission, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { notifySupplier } from "@/lib/vendor/notify";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -19,6 +20,7 @@ async function load(id: string) {
 
 /** Answer a supplier. It appears in their portal and they are notified. */
 export async function replyToTicketAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, t } = await load(str(formData.get("ticketId")));
   if (!t) return { error: "Message not found." };
@@ -37,6 +39,7 @@ export async function replyToTicketAction(_prev: State, formData: FormData): Pro
 }
 
 export async function setTicketStatusAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, t } = await load(str(formData.get("id")));
   if (!t) return { error: "Message not found." };

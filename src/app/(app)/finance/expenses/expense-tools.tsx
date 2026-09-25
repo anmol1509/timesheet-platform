@@ -6,6 +6,8 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { EXPENSE_CATEGORIES } from "@/lib/financeConstants";
 import { addPettyCashTopUpAction, saveBudgetAction, setExpenseLimitAction } from "../actions";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -80,7 +82,7 @@ export function ExpenseTools({
           <p className="mb-1.5 text-xs font-medium text-muted">Approval limit for non-admin approvers</p>
           {canManage ? (
             <Inline action={lAction} submit="Save">
-              <input type="number" step="0.01" min="0" name="limit" defaultValue={limit ?? ""} placeholder="No limit" className="input w-40" aria-label="Approval limit (AED)" />
+              <NumberInput name="limit" defaultValue={limit ?? ""} min={0} step={0.01} placeholder="No limit" ariaLabel="Approval limit (AED)" className="w-40" />
             </Inline>
           ) : (
             <p className="text-sm text-secondary">{limit === null ? "No limit" : `AED ${aed(limit)}`}</p>
@@ -107,7 +109,7 @@ export function ExpenseTools({
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Category</span>
               <Select name="category" defaultValue="" placeholder="Choose a category…" options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c }))} />
             </label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Monthly limit (AED)</span><input type="number" step="0.01" min="0" name="monthlyLimit" className="input w-full" /></label>
+            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Monthly limit (AED)</span><NumberInput name="monthlyLimit" min={0} step={0.01} className="w-full" /></label>
             <div className="flex items-center gap-3">
               <button type="submit" className="btn btn-primary">Save budget</button>
               {bState.error && <p role="alert" className="text-sm text-[var(--error)]">{bState.error}</p>}
@@ -121,8 +123,8 @@ export function ExpenseTools({
         <DialogContent title="Top up petty cash" description="Cash put into the float.">
           <form action={tAction} className="mt-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED)</span><input type="number" step="0.01" min="0" name="amount" required className="input w-full" /></label>
-              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date</span><input type="date" name="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="input w-full" /></label>
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-full" /></label>
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date *</span><DatePicker name="date" defaultValue={new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
             </div>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Note</span><input name="note" className="input w-full" placeholder="e.g. Withdrawn from ADCB" /></label>
             <div className="flex items-center gap-3">

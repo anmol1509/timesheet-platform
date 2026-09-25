@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { setActiveBranchCookie } from "@/lib/session";
+import { assertContactsValid } from "@/lib/validators";
 
 export async function setActiveBranchAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   if (user.role !== "SUPER_ADMIN") return; // branch-scoped users can't switch
 

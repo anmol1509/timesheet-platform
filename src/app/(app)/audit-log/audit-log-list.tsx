@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { Pagination } from "@/components/Pagination";
 import { cn } from "@/lib/cn";
 import { AUDIT_MODULES, auditVerb, entityMeta, fieldLabel } from "@/lib/auditPresentation";
+import { Select } from "@/components/ui/Select";
 
 const PAGE_SIZE = 30;
 
@@ -119,8 +120,8 @@ export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <input value={query} onChange={(e) => { setQuery(e.target.value); reset(); }} placeholder="Search person, record type or field…" aria-label="Search" className="input w-full max-w-xs" />
-        <select value={user} onChange={(e) => { setUser(e.target.value); reset(); }} aria-label="Person" className="input"><option value="all">Everyone</option>{users.map((u) => <option key={u} value={u}>{u}</option>)}</select>
-        <select value={action} onChange={(e) => { setAction(e.target.value); reset(); }} aria-label="Action" className="input"><option value="all">Any action</option><option value="CREATE">Created</option><option value="UPDATE">Updated</option><option value="DELETE">Deleted</option></select>
+        <Select value={user} onChange={(v) => { setUser(v); reset(); }} options={[{ value: "all", label: "Everyone" }, ...users.map((u) => ({ value: u, label: u }))]} />
+        <Select value={action} onChange={(v) => { setAction(v); reset(); }} searchable={false} options={[{ value: "all", label: "Any action" }, { value: "CREATE", label: "Created" }, { value: "UPDATE", label: "Updated" }, { value: "DELETE", label: "Deleted" }]} />
         <div className="ml-auto inline-flex rounded-lg bg-surface-sunken p-0.5" role="group" aria-label="Time range">
           {RANGES.map((r) => (
             <button key={r.key} type="button" onClick={() => { setRange(r.key); reset(); }} aria-pressed={range === r.key}

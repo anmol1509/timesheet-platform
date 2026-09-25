@@ -6,6 +6,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { validateBankFields } from "@/lib/bankStatus";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean; id?: string };
 const s = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -52,6 +53,7 @@ async function inBranch(bankId: string, branchId: string | null, isSuperAdmin: b
 }
 
 export async function createBankAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a bank." : "Your account has no branch assigned — contact an admin." };
@@ -64,6 +66,7 @@ export async function createBankAction(_prev: State, formData: FormData): Promis
 }
 
 export async function updateBankAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = s(formData.get("bankId"));
@@ -81,6 +84,7 @@ export async function updateBankAction(_prev: State, formData: FormData): Promis
 }
 
 export async function deleteBankAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = s(formData.get("bankId"));

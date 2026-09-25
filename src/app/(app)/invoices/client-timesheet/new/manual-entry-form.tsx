@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { submitManualEntryAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
+import { MonthInput } from "@/components/ui/MonthInput";
 
 type RowState = {
   id: string;
@@ -122,13 +123,7 @@ export function ManualEntryForm({
           <span className="mb-1 block text-xs font-medium text-muted">
             Month
           </span>
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => updateMonth(e.target.value)}
-            required
-            className="input"
-          />
+          <MonthInput value={month} onChange={(v) => updateMonth(v)} required />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">

@@ -16,6 +16,7 @@ import {
   isAcceptedUploadType,
   safeFilename,
 } from "@/lib/uploads";
+import { assertContactsValid } from "@/lib/validators";
 
 // Every nested mutation (documents, skills, photo) takes an employeeId
 // rather than looking the employee up itself, so this is the one place
@@ -347,6 +348,7 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
 }
 
 export async function uploadPhotoAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   const file = formData.get("photo");
@@ -366,6 +368,7 @@ export async function uploadPhotoAction(formData: FormData) {
 }
 
 export async function applyExtractedFieldsAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return;
@@ -395,6 +398,7 @@ export async function applyExtractedFieldsAction(formData: FormData) {
 }
 
 export async function uploadDocumentAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const type = String(formData.get("type") || "OTHER");
@@ -438,6 +442,7 @@ export async function uploadDocumentAction(formData: FormData) {
 }
 
 export async function deleteDocumentAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("workforce", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
@@ -468,6 +473,7 @@ export async function deleteDocumentAction(formData: FormData) {
 }
 
 export async function addSkillAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const skillName = String(formData.get("skillName") || "").trim();
@@ -501,6 +507,7 @@ export async function addSkillAction(formData: FormData) {
 }
 
 export async function addVisaApplicationAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const stage = String(formData.get("stage") || "").trim();
@@ -529,6 +536,7 @@ export async function addVisaApplicationAction(formData: FormData) {
 }
 
 export async function removeVisaApplicationAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const id = String(formData.get("visaApplicationId") || "");
@@ -555,6 +563,7 @@ export async function removeVisaApplicationAction(formData: FormData) {
 }
 
 export async function addLabourCardApplicationAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const stage = String(formData.get("stage") || "").trim();
@@ -583,6 +592,7 @@ export async function addLabourCardApplicationAction(formData: FormData) {
 }
 
 export async function removeLabourCardApplicationAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const id = String(formData.get("labourCardApplicationId") || "");
@@ -609,6 +619,7 @@ export async function removeLabourCardApplicationAction(formData: FormData) {
 }
 
 export async function removeSkillAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const skillId = String(formData.get("skillId") || "");
@@ -701,6 +712,7 @@ export async function issueEmployeeInventoryAction(
 }
 
 export async function returnEmployeeInventoryAssignmentAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const id = String(formData.get("assignmentId") || "");
@@ -731,6 +743,7 @@ export async function returnEmployeeInventoryAssignmentAction(formData: FormData
 }
 
 export async function addEmployeeNoteAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return;
@@ -780,6 +793,7 @@ export async function addEmployeeNoteAction(formData: FormData) {
 }
 
 export async function deleteEmployeeNoteAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("workforce", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");

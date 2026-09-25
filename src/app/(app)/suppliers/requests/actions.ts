@@ -7,6 +7,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { approveWorkerSubmission, applyChangeRequest } from "@/lib/supplierRequestsApply";
 import { notifySupplier } from "@/lib/vendor/notify";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -20,6 +21,7 @@ async function loadSubmission(id: string) {
 
 /** Approve a supplier's new worker: creates the real Employee, with an ID continuing the supplier's series. */
 export async function approveWorkerAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, sub } = await loadSubmission(str(formData.get("id")));
   if (!sub) return { error: "Submission not found." };
@@ -32,6 +34,7 @@ export async function approveWorkerAction(formData: FormData): Promise<State> {
 }
 
 export async function rejectWorkerAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, sub } = await loadSubmission(str(formData.get("id")));
   if (!sub) return { error: "Submission not found." };
@@ -54,6 +57,7 @@ async function loadChange(id: string) {
 
 /** Apply an approved change to the supplier's record, writing only whitelisted fields. */
 export async function approveChangeAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, req } = await loadChange(str(formData.get("id")));
   if (!req) return { error: "Request not found." };
@@ -67,6 +71,7 @@ export async function approveChangeAction(formData: FormData): Promise<State> {
 }
 
 export async function rejectChangeAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, req } = await loadChange(str(formData.get("id")));
   if (!req) return { error: "Request not found." };

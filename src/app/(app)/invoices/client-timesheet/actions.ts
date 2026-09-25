@@ -14,6 +14,7 @@ import {
   recompute,
   storedMonthLabel,
 } from "@/lib/timesheetCells";
+import { assertContactsValid } from "@/lib/validators";
 
 type ManualRow = {
   employeeIdNo: string;
@@ -353,6 +354,7 @@ async function transitionTimesheetEntries(
 }
 
 export async function submitTimesheetForReviewAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   const updated = await transitionTimesheetEntries(
@@ -368,6 +370,7 @@ export async function submitTimesheetForReviewAction(formData: FormData) {
 }
 
 export async function approveTimesheetAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
@@ -384,6 +387,7 @@ export async function approveTimesheetAction(formData: FormData) {
 }
 
 export async function rejectTimesheetAction(formData: FormData) {
+  assertContactsValid(formData);
   // Rejecting is a review decision, like approving; it used to have no permission check.
   await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -401,6 +405,7 @@ export async function rejectTimesheetAction(formData: FormData) {
 }
 
 export async function lockTimesheetAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   const updated = await transitionTimesheetEntries(
@@ -416,6 +421,7 @@ export async function lockTimesheetAction(formData: FormData) {
 }
 
 export async function updateDailyHoursAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryId = String(formData.get("entryId") || "");
   const daysJson = String(formData.get("days") || "");
@@ -461,6 +467,7 @@ type DateRange = { fromDate: string; toDate: string; value: string };
 // minus the Official/Raw/Missing radio (deferred, see Phase 9 plan). Ranges
 // are applied in array order, so a later range wins on overlapping dates.
 export async function batchUpdateHoursAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   let ranges: DateRange[];

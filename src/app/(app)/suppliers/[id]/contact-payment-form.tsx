@@ -4,6 +4,11 @@ import { CitySelect } from "@/components/ui/CitySelect";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import { updateSupplierContactPaymentAction } from "../actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { UAE_BANKS } from "@/lib/formLists";
+import { PAYMENT_TERMS } from "@/lib/formLists";
+import { NumberInput } from "@/components/ui/NumberInput";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Supplier = {
   id: string;
@@ -118,14 +123,10 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
 
       <Section title="Payment">
         <Field label="Bank name">
-          <input
-            name="bankName"
-            defaultValue={supplier.bankName || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="bankName" options={UAE_BANKS} defaultValue={supplier.bankName} />
         </Field>
         <Field label="IBAN">
-          <input
+          <MaskedInput kind="iban"
             name="iban"
             defaultValue={supplier.iban || ""}
             className="input w-full"
@@ -156,23 +157,10 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           <CitySelect name="bankEmirate" country={null} defaultValue={supplier.bankEmirate ?? ""} />
         </Field>
         <Field label="Payment terms">
-          <input
-            name="paymentTerms"
-            placeholder="e.g. Net 30"
-            defaultValue={supplier.paymentTerms || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="paymentTerms" options={PAYMENT_TERMS} defaultValue={supplier.paymentTerms} />
         </Field>
         <Field label="Payout cycle start day">
-          <input
-            name="payoutCycleStartDay"
-            type="number"
-            min={1}
-            max={31}
-            value={cycleStartDay}
-            onChange={(e) => setCycleStartDay(Number(e.target.value) || 1)}
-            className="input w-full"
-          />
+          <NumberInput name="payoutCycleStartDay" value={cycleStartDay} onChange={(v) => setCycleStartDay(Number(String(v)) || 1)} min={1} max={31} className="w-full" />
           <p className="mt-1 text-xs text-muted">
             Payout period: {payoutPeriodLabel(cycleStartDay)}
           </p>
@@ -204,10 +192,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-muted">{label}
+        {required && <span className="text-[var(--error)]"> *</span>}</span>
       {children}
     </label>
   );

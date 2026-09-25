@@ -10,6 +10,7 @@ import { LETTER_PRESETS, categoriesFor, presetByKey, presetHtml } from "@/lib/le
 import { htmlToText, templateHtml } from "@/lib/letterHtml";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
 import { unknownFieldsIn, type Audience } from "@/lib/letterFields";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const MAX_HTML = 40_000;
@@ -26,6 +27,7 @@ async function ownTemplate(id: string) {
 
 /** Starts a template from a built-in preset ("blank" for an empty one) and opens the editor. */
 export async function createFromPresetAction(formData: FormData) {
+  assertContactsValid(formData);
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) redirect("/letter-templates?error=" + encodeURIComponent("Pick a branch first."));
@@ -66,6 +68,7 @@ export async function addMissingDefaultsAction(): Promise<State> {
 }
 
 export async function saveTemplateAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const id = str(formData.get("id"));
   const { user, template } = await ownTemplate(id);
   if (!template) return { error: "Template not found." };
@@ -93,6 +96,7 @@ export async function saveTemplateAction(_prev: State, formData: FormData): Prom
 }
 
 export async function duplicateTemplateAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, template } = await ownTemplate(str(formData.get("id")));
   if (!template) return;
   const created = await prisma.letterTemplate.create({
@@ -104,6 +108,7 @@ export async function duplicateTemplateAction(formData: FormData) {
 }
 
 export async function resetToPresetAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const { user, template } = await ownTemplate(str(formData.get("id")));
   const preset = presetByKey(template?.presetKey);
   if (!template || !preset) return { error: "There's no original to reset to." };
@@ -116,6 +121,7 @@ export async function resetToPresetAction(formData: FormData): Promise<State> {
 }
 
 export async function deleteTemplateAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const { user, template } = await ownTemplate(str(formData.get("id")));
   if (!template) return { error: "Template not found." };
   const used = await prisma.noc.count({ where: { templateId: template.id } });

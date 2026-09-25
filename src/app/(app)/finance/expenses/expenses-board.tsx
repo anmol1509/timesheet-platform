@@ -9,6 +9,9 @@ import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from "@/lib/financeConstants";
 import Link from "next/link";
 import { AttachmentUploader, type AttachmentRow } from "@/components/AttachmentUploader";
 import { createExpenseAction, deleteExpenseAction, markReimbursedAction } from "../actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 export type ExpenseRow = { id: string; date: string; category: string; description: string; total: number; paidTo: string | null; method: string | null; project: string | null; status: string; by: string; note: string | null; outOfPocket: boolean; reimbursed: boolean; branchId: string; files: AttachmentRow[] };
@@ -31,17 +34,17 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
     <form action={action} className="mt-4 space-y-3">
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date</span><input type="date" name="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date *</span><DatePicker name="date" defaultValue={new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Category</span>
-          <input name="category" required list="expense-categories" className="input w-full" placeholder="Choose or type…" />
+          <ComboSelect name="category" options={EXPENSE_CATEGORIES.filter((c) => c !== "Other")} required />
           <datalist id="expense-categories">{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
         </label>
       </div>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input name="description" required className="input w-full" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description *</span><input name="description" required className="input w-full" /></label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT)</span><input type="number" step="0.01" min="0" name="amount" required className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><input type="number" step="0.01" min="0" name="vatAmount" defaultValue="0" className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput name="vatAmount" defaultValue="0" min={0} step={0.01} className="w-full" /></label>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid to</span><input name="paidTo" className="input w-full" /></label>

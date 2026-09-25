@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { createVariantAction, deleteVariantAction, updateVariantStockAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Variant = { id: string; name: string; sku: string | null; stock: number; held: number };
 
@@ -18,6 +19,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
   const nameRef = useRef<HTMLInputElement>(null);
   const skuRef = useRef<HTMLInputElement>(null);
   const stockRef = useRef<HTMLInputElement>(null);
+  const [resetKey, setResetKey] = useState(0);
 
   function handleAdd() {
     const name = nameRef.current?.value.trim();
@@ -37,6 +39,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
       }
       if (nameRef.current) nameRef.current.value = "";
       if (skuRef.current) skuRef.current.value = "";
+      setResetKey((k) => k + 1);
       if (stockRef.current) stockRef.current.value = "";
     });
   }
@@ -56,7 +59,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
           </label>
           <label className="block w-24">
             <span className="mb-1 block text-xs font-medium text-muted">Stock</span>
-            <input ref={stockRef} type="number" min={0} defaultValue={0} className="input w-full" />
+            <NumberInput key={resetKey} defaultValue={0} min={0} inputRef={stockRef} className="w-full" />
           </label>
           <button type="button" onClick={handleAdd} disabled={pending} className="btn btn-primary">
             Add variant

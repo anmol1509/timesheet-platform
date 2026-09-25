@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useFormReset } from "@/lib/useFormReset";
 import * as Popover from "@radix-ui/react-popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "cmdk";
 import { Check, ChevronDown } from "lucide-react";
@@ -42,6 +43,10 @@ export function Select({
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
   const value = isControlled ? controlledValue : internalValue;
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  useFormReset(triggerRef, () => {
+    if (!isControlled) setInternalValue(defaultValue ?? "");
+  });
 
   const selected = options.find((o) => o.value === value);
 
@@ -56,6 +61,7 @@ export function Select({
       {name && <input type="hidden" name={name} value={value} required={required} />}
       <Popover.Trigger asChild disabled={disabled}>
         <button
+          ref={triggerRef}
           type="button"
           disabled={disabled}
           className={cn(

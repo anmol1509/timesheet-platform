@@ -5,6 +5,10 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState } from "react";
 import { keepInput } from "@/lib/vendor/keepInput";
 import { createBankAction, updateBankAction } from "./actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { UAE_BANKS } from "@/lib/formLists";
+import { Select } from "@/components/ui/Select";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type State = { error: string | null; ok?: boolean; id?: string };
 export type BankValues = {
@@ -37,15 +41,15 @@ export function BankForm({ initial, companies, onDone }: { initial: BankValues; 
       {editing && <input type="hidden" name="bankId" value={initial.id} />}
       <Group title="Account">
         <F t="Account name *"><input name="accountName" required defaultValue={v.accountName} placeholder="e.g. Main operating account" className="input w-full" /></F>
-        <F t="Bank name *"><input name="bankName" required defaultValue={v.bankName} placeholder="e.g. Emirates NBD" className="input w-full" /></F>
-        <F t="Account type"><select name="accountType" defaultValue={v.accountType} className="input w-full"><option value="CURRENT">Current</option><option value="SAVINGS">Savings</option><option value="CREDIT">Credit / overdraft</option><option value="OTHER">Other</option></select></F>
+        <F t="Bank name *"><ComboSelect name="bankName" options={UAE_BANKS} defaultValue={v.bankName} required /></F>
+        <F t="Account type"><Select name="accountType" defaultValue={v.accountType} searchable={false} options={[{ value: "CURRENT", label: "Current" }, { value: "SAVINGS", label: "Savings" }, { value: "CREDIT", label: "Credit / overdraft" }, { value: "OTHER", label: "Other" }]} triggerClassName="w-full" /></F>
         <F t="Currency"><CurrencySelect name="currency" defaultValue={v.currency || "AED"} /></F>
-        <F t="Held by (own company)" hint="Each company's payroll pays from its own account."><select name="companyId" defaultValue={v.companyId} className="input w-full"><option value="">— none —</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></F>
+        <F t="Held by (own company)" hint="Each company's payroll pays from its own account."><Select name="companyId" defaultValue={v.companyId} options={[{ value: "", label: "— none —" }, ...companies.map((c) => ({ value: c.id, label: c.name }))]} triggerClassName="w-full" /></F>
         <F t="Abbreviation"><input name="abbreviation" defaultValue={v.abbreviation} className="input w-full" /></F>
       </Group>
       <Group title="Account numbers (needed to make it active)">
         <F t="Account number"><input name="accountNo" defaultValue={v.accountNo} className="input w-full" /></F>
-        <F t="IBAN" hint="UAE IBANs start with AE and are 23 characters."><input name="ibanNo" defaultValue={v.ibanNo} className="input w-full" /></F>
+        <F t="IBAN" hint="UAE IBANs start with AE and are 23 characters."><MaskedInput kind="iban" name="ibanNo" defaultValue={v.ibanNo} className="input w-full" /></F>
         <F t="Routing code" hint="9 digits; used in the WPS salary file."><input name="routingCode" defaultValue={v.routingCode} className="input w-full" /></F>
         <F t="SWIFT / BIC"><input name="swiftCode" defaultValue={v.swiftCode} className="input w-full" /></F>
       </Group>
@@ -54,7 +58,7 @@ export function BankForm({ initial, companies, onDone }: { initial: BankValues; 
         <F t="Address"><input name="address" defaultValue={v.address} className="input w-full" /></F>
         <F t="Contact person at the bank"><input name="contactPerson" defaultValue={v.contactPerson} className="input w-full" /></F>
         <F t="Contact phone"><PhoneField name="contactPhone" defaultValue={v.contactPhone} /></F>
-        <F t="Contact email"><input name="contactEmail" defaultValue={v.contactEmail} className="input w-full" /></F>
+        <F t="Contact email"><input type="email" name="contactEmail" defaultValue={v.contactEmail} className="input w-full" /></F>
         <F t="Remarks"><input name="remarks" defaultValue={v.remarks} className="input w-full" /></F>
       </Group>
       {editing && <label className="flex items-center gap-2 text-sm text-secondary"><input type="hidden" name="enabled" value="0" /><input type="checkbox" name="enabled" value="1" defaultChecked={v.enabled} className="h-4 w-4" onChange={(e) => { const h = e.currentTarget.previousElementSibling as HTMLInputElement; h.disabled = e.currentTarget.checked; }} />Account is in use (untick to switch it off)</label>}

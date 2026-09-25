@@ -12,6 +12,7 @@ import {
   approvalSummary,
   approvedHeadcount,
 } from "@/lib/demandApproval";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Allocation = { id: string; employeeId: string; employeeName: string; employeeIdNo: string };
 type Trade = {
@@ -117,16 +118,7 @@ export function TradeAllocationSection({
           <div className="flex items-center gap-1.5">
             <label className="flex items-center gap-1.5">
               <span className="text-xs text-muted">Approve</span>
-              <input
-                type="number"
-                min={0}
-                max={trade.quantity}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                disabled={pending}
-                className="input w-16 px-2 py-1 text-xs tabular"
-                aria-label={`Number of ${trade.trade} to approve, of ${trade.quantity} requested`}
-              />
+              <NumberInput value={draft} onChange={(v) => setDraft(String(v))} disabled={pending} min={0} max={trade.quantity} ariaLabel={`Number of ${trade.trade} to approve, of ${trade.quantity} requested`} className="w-16" />
               <span className="text-xs text-muted">of {trade.quantity}</span>
             </label>
             <button

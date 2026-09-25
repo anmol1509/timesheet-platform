@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Entry = {
   id: string;
@@ -253,22 +254,11 @@ export function ReviewInvoice({
                       {r.totalHours}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={rates[r.id]}
-                        disabled={issued !== null}
-                        onChange={(ev) =>
-                          setRates((prev) => ({
+                      <NumberInput value={rates[r.id]} onChange={(v) => setRates((prev) => ({
                             ...prev,
-                            [r.id]: parseFloat(ev.target.value) || 0,
+                            [r.id]: parseFloat(String(v)) || 0,
                           }))
-                        }
-                        className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] disabled:opacity-60 ${
-                          edited ? "border-amber-300 bg-amber-50" : "border-strong"
-                        }`}
-                      />
+                        } disabled={issued !== null} min={0} step={0.01} className="w-24" />
                     </td>
                     <td className="px-4 py-2.5 text-right font-medium text-primary">
                       {r.amount.toFixed(2)}

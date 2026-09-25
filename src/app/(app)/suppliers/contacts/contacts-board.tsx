@@ -5,6 +5,7 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { addContactAction, deleteContactAction, toggleContactAction } from "./actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 export type ContactRow = { id: string; department: string; personName: string; designation: string | null; phone: string | null; email: string | null; isActive: boolean };
@@ -26,8 +27,8 @@ export function ContactsBoard({ rows, canEdit, canDelete }: { rows: ContactRow[]
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Person *</span><input name="personName" required className="input w-full" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Designation</span><input name="designation" className="input w-full" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Phone</span><PhoneField name="phone" /></label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Email</span><input name="email" className="input w-full" /></label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Order (lower first)</span><input type="number" name="sortOrder" defaultValue={0} className="input w-full" /></label>
+            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Email</span><input type="email" name="email" className="input w-full" /></label>
+            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Order (lower first)</span><NumberInput name="sortOrder" defaultValue={0} className="w-full" /></label>
           </div>
           <div className="flex flex-wrap items-center gap-3"><button type="submit" className="btn btn-primary" disabled={adding}>{adding ? "Adding…" : "Add contact"}</button>{state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}</div>
         </form>

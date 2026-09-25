@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
+import { FormValidation } from "@/components/FormValidation";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import { THEME_COOKIE, isThemePreference } from "@/lib/theme-preference";
 
@@ -40,6 +41,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-canvas text-[var(--text)]">
+        <FormValidation />
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

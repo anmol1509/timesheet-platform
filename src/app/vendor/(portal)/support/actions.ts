@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getVendor } from "@/lib/vendor/session";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean; id?: string };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -14,6 +15,7 @@ async function tellOffice(branchId: string, title: string, body: string, ticketI
 
 /** A supplier sends feedback or a complaint. */
 export async function createTicketAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   const kind = str(formData.get("kind")) === "COMPLAINT" ? "COMPLAINT" : "FEEDBACK";
@@ -37,6 +39,7 @@ export async function createTicketAction(_prev: State, formData: FormData): Prom
 
 /** Add a message to one of the supplier's own tickets. */
 export async function replyTicketAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   const ticket = await prisma.supplierTicket.findFirst({ where: { id: str(formData.get("ticketId")), supplierId: vendor.id } });

@@ -53,7 +53,7 @@ export default async function LookupsPage({
       >
         <input type="hidden" name="category" value={category} />
         <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-muted">New value</span>
+          <span className="mb-1 block text-xs font-medium text-muted">New value *</span>
           <input
             name="value"
             required

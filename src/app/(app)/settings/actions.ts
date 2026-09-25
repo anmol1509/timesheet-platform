@@ -5,11 +5,13 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { setActiveBranchCookie } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 const ROLES = ["SUPER_ADMIN", "BRANCH_ADMIN", "STAFF"] as const;
 type RoleValue = (typeof ROLES)[number];
 
 export async function updateIssuedToAction(formData: FormData) {
+  assertContactsValid(formData);
   const admin = await requireAdmin();
   const issuedTo = String(formData.get("issuedTo") || "").trim();
   const companyTrn = String(formData.get("companyTrn") || "").trim() || null;

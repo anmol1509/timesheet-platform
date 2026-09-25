@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { createVehicleAction } from "./actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { VEHICLE_TYPES } from "@/lib/formLists";
 
 /** The two fields needed to register a vehicle; capacity, driver and documents are filled in on its page. */
 export function AddVehicleDialog() {
@@ -21,7 +23,7 @@ export function AddVehicleDialog() {
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Type</span>
-            <input name="type" placeholder="e.g. 30-seater bus" className="input w-full" />
+            <ComboSelect name="type" options={VEHICLE_TYPES} />
           </label>
           <DialogFooter>
             <DialogClose asChild><button type="button" className="btn btn-secondary">Cancel</button></DialogClose>

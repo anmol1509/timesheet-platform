@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { CheckCheck, Download, FileText, RotateCcw, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { deleteRunAction, markPaidAction, recomputeRunAction, reopenRunAction, saveLineAction, submitRunAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -93,7 +94,7 @@ function LineRow({ label, amount, note, onAmount, onNote, placeholder }: { label
   return (
     <div className="grid grid-cols-[4.5rem_5.5rem_1fr] items-center gap-1.5">
       <span className="text-xs text-muted">{label}</span>
-      <input type="number" step="0.01" value={amount} onChange={onAmount} aria-label={`${label} (AED)`} className="input h-8 text-right tabular-nums" />
+      <NumberInput step={0.01} value={amount} onChange={(v) => onAmount({ target: { value: String(v) } } as React.ChangeEvent<HTMLInputElement>)} ariaLabel={`${label} (AED)`} inputClassName="h-8 text-right tabular-nums" />
       <input value={note} onChange={onNote} placeholder={placeholder} aria-label={`${label} note`} className="input h-8 text-xs" />
     </div>
   );

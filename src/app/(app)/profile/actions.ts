@@ -6,10 +6,12 @@ import { requireUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
 export async function updateProfileAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requireUser();
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim() || null;
@@ -32,6 +34,7 @@ export async function updateProfileAction(_prev: State, formData: FormData): Pro
 }
 
 export async function uploadAvatarAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const saved = await storeImage(formData.get("image"));
   if ("error" in saved) return { error: saved.error };
@@ -50,6 +53,7 @@ export async function removeAvatarAction() {
 }
 
 export async function changePasswordAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requireUser();
   const current = String(formData.get("current") || "");
   const next = String(formData.get("next") || "");

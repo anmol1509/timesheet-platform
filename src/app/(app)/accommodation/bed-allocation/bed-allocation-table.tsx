@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { initials, avatarGradient } from "@/lib/avatar";
 import { cn } from "@/lib/cn";
 import { allocateBedAction } from "../checkin-actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type BedOption = { id: string; label: string; vacant: boolean };
 type RoomOption = { id: string; name: string; beds: BedOption[] };
@@ -191,12 +192,7 @@ function AllocateForm({ row, onClose }: { row: Row; onClose: () => void }) {
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Check-in date</span>
-        <input
-          type="date"
-          value={checkInDate}
-          onChange={(e) => setCheckInDate(e.target.value)}
-          className="input w-full"
-        />
+        <DatePicker value={checkInDate} onChange={(v) => setCheckInDate(v)} className="w-full" />
       </label>
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">

@@ -7,6 +7,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -32,6 +33,7 @@ async function nextSupplierCode() {
 }
 
 export async function createSupplierAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -128,6 +130,7 @@ export async function createSubsidiaryAction(
 // Company & Compliance tab — every field this action writes lives in that
 // tab's form, so a save here never touches Contact/Payment fields.
 export async function updateSupplierCompanyAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
@@ -181,6 +184,7 @@ export async function updateSupplierCompanyAction(formData: FormData) {
 // Contact & Payment tab — every field this action writes lives in that
 // tab's form, so a save here never touches Company/Compliance fields.
 export async function updateSupplierContactPaymentAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
@@ -232,6 +236,7 @@ const APPROVAL_FIELDS = ["approvalStatus", "labourApprovalStatus", "invoiceAppro
 type ApprovalField = (typeof APPROVAL_FIELDS)[number];
 
 export async function updateSupplierApprovalAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("partners", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
@@ -328,6 +333,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
 }
 
 export async function deleteSupplierAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");

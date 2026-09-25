@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { addClientTradeRateAction, removeClientTradeRateAction } from "../actions";
 import { DeleteButton } from "@/components/DeleteButton";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type TradeRate = { id: string; trade: string; rate: number };
 
@@ -73,14 +74,7 @@ export function ClientTradeRates({
                   <tr key={r.id}>
                     <td className="px-4 py-2 font-medium text-primary">{r.trade}</td>
                     <td className="px-4 py-2 text-right">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={draftRate}
-                        autoFocus
-                        onChange={(e) => setDraftRate(e.target.value)}
-                        className="input w-24 px-2 py-1 text-right"
-                      />
+                      <NumberInput value={draftRate} onChange={(v) => setDraftRate(String(v))} step={0.01} className="w-24" />
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap">
                       <button
@@ -143,13 +137,7 @@ export function ClientTradeRates({
             <span className="mb-1 block text-xs font-medium text-muted">
               Rate (AED/hr)
             </span>
-            <input
-              type="number"
-              step="0.01"
-              value={newRate}
-              onChange={(e) => setNewRate(e.target.value)}
-              className="input w-full"
-            />
+            <NumberInput value={newRate} onChange={(v) => setNewRate(String(v))} step={0.01} className="w-full" />
           </label>
           <button
             type="button"

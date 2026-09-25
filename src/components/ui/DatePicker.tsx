@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useFormReset } from "@/lib/useFormReset";
 import * as Popover from "@radix-ui/react-popover";
 import { DayPicker } from "react-day-picker";
 import { format, isValid, parse } from "date-fns";
@@ -40,6 +41,11 @@ export function DatePicker({
   required,
   fromYear,
   toYear,
+  min,
+  max,
+  id,
+  inputRef,
+  dataField,
   className,
   ariaLabel,
   placeholder = DISPLAY.toLowerCase(),
@@ -54,6 +60,13 @@ export function DatePicker({
   required?: boolean;
   fromYear?: number;
   toYear?: number;
+  /** ISO bounds; days outside are unselectable and a typed date outside is rejected. */
+  min?: string;
+  max?: string;
+  id?: string;
+  /** Receives the hidden input carrying the ISO value, for code that reads it imperatively. */
+  inputRef?: React.Ref<HTMLInputElement>;
+  dataField?: string;
   className?: string;
   ariaLabel?: string;
   placeholder?: string;
@@ -69,9 +82,18 @@ export function DatePicker({
     return d ? format(d, DISPLAY) : "";
   });
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useFormReset(rootRef, () => {
+    if (!controlled) setIso(defaultValue ?? "");
+    const d = toDate(defaultValue);
+    setText(d ? format(d, DISPLAY) : "");
+  });
 
   const selected = toDate(currentIso);
-  const invalid = text.trim() !== "" && !selected;
+  const minD = toDate(min);
+  const maxD = toDate(max);
+  const outOfRange = !!selected && ((minD && selected < minD) || (maxD && selected > maxD));
+  const invalid = text.trim() !== "" && (!selected || !!outOfRange);
 
   function commit(next: Date | undefined) {
     const nextIso = next ? format(next, ISO) : "";
@@ -83,14 +105,15 @@ export function DatePicker({
     setText(raw);
     if (raw.trim() === "") return commit(undefined);
     const parsed = parse(raw, DISPLAY, new Date());
-    commit(isValid(parsed) ? parsed : undefined);
+    const ok = isValid(parsed) && !(minD && parsed < minD) && !(maxD && parsed > maxD);
+    commit(ok ? parsed : undefined);
   }
 
   const year = new Date().getFullYear();
 
   return (
-    <div className={cn("relative", className)}>
-      {name && <input type="hidden" name={name} value={currentIso} />}
+    <div ref={rootRef} className={cn("relative", className)}>
+      {(name || inputRef) && <input type="hidden" ref={inputRef} name={name} value={currentIso} readOnly />}
       <input
         type="text"
         inputMode="numeric"
@@ -101,6 +124,8 @@ export function DatePicker({
         disabled={disabled}
         required={required && !currentIso}
         placeholder={placeholder}
+        id={id}
+        data-field={dataField}
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         className="input w-full pr-9"
@@ -139,6 +164,7 @@ export function DatePicker({
               endMonth={new Date(toYear ?? year + 20, 11)}
               weekStartsOn={1}
               showOutsideDays
+              disabled={[...(minD ? [{ before: minD }] : []), ...(maxD ? [{ after: maxD }] : [])]}
               classNames={DAY_PICKER_CLASSES}
             />
           </Popover.Content>

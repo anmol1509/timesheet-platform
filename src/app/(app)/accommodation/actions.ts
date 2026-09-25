@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUser, requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 type RoomSpec = { name: string; bedCount: number };
 
@@ -74,6 +75,7 @@ export async function createCampWithRoomsAction(
 }
 
 export async function updateCampOwnershipAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const ownerType = String(formData.get("ownerType") || "OWN") === "SUPPLIER" ? "SUPPLIER" : "OWN";
@@ -110,6 +112,7 @@ function intOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createRoomAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -144,6 +147,7 @@ export async function createRoomAction(formData: FormData) {
 }
 
 export async function updateCampAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -167,6 +171,7 @@ export async function updateCampAction(formData: FormData) {
 }
 
 export async function updateRoomAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const roomId = String(formData.get("roomId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -190,6 +195,7 @@ export async function updateRoomAction(formData: FormData) {
 }
 
 export async function addBedsToRoomAction(formData: FormData) {
+  assertContactsValid(formData);
   await requireUser();
   const roomId = String(formData.get("roomId") || "");
   const count = Math.max(1, Math.min(20, Number(formData.get("count")) || 1));
@@ -214,6 +220,7 @@ export async function addBedsToRoomAction(formData: FormData) {
 // CampCheckIn row behind it, or the employee would show a bed but never
 // appear "checked in" anywhere — so one is opened (or reused/moved) here too.
 export async function assignBedAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
@@ -270,6 +277,7 @@ export async function assignBedAction(formData: FormData) {
 }
 
 export async function unassignBedAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
@@ -337,6 +345,7 @@ export async function unassignBedAction(formData: FormData) {
  * worker out first, then the bed can go.
  */
 export async function deleteBedAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const user = await requireUser();
   const bedId = String(formData.get("bedId") || "");
@@ -371,6 +380,7 @@ export async function deleteBedAction(formData: FormData) {
 }
 
 export async function deleteRoomAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const user = await requireUser();
   const roomId = String(formData.get("roomId") || "");
@@ -413,6 +423,7 @@ export async function deleteRoomAction(formData: FormData) {
 }
 
 export async function deleteCampAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");

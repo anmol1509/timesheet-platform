@@ -6,6 +6,7 @@ import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import type { Divergence } from "@/lib/attendanceTimesheetSync";
 import { applyDivergencesAction } from "./actions";
+import { MonthInput } from "@/components/ui/MonthInput";
 
 function formatDate(iso: string) {
   return new Date(iso + "T00:00:00.000Z").toLocaleDateString("en-GB", {
@@ -94,12 +95,7 @@ export function SyncReview({
       <div className="card flex flex-wrap items-end gap-3 p-4">
         <label className="w-44">
           <span className="mb-1 block text-xs font-medium text-muted">Month</span>
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setParam("month", e.target.value)}
-            className="input w-full"
-          />
+          <MonthInput value={month} onChange={(v) => setParam("month", v)} className="w-full" />
         </label>
         <label className="w-52">
           <span className="mb-1 block text-xs font-medium text-muted">Client</span>

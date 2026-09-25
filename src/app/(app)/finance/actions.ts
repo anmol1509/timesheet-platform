@@ -12,6 +12,7 @@ import { billTotals } from "@/lib/payables";
 import { notifySupplier } from "@/lib/vendor/notify";
 import { loadSupplierMonthPayable, type SupplierMonthPayable } from "@/lib/supplierMonthPayable";
 import { exceedsApprovalLimit, isDuplicateBill, isDuplicateExpense } from "@/lib/financeRules";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const NEED_BRANCH = "Pick a branch from the switcher first.";
@@ -23,6 +24,7 @@ const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
 
 // ---------------------------------------------------------------- expenses
 export async function createExpenseAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("finance", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: NEED_BRANCH };
@@ -74,6 +76,7 @@ export async function createExpenseAction(_prev: State, formData: FormData): Pro
 }
 
 export async function decideExpenseAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "approve");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = str(formData.get("id"));
@@ -105,6 +108,7 @@ export async function decideExpenseAction(formData: FormData): Promise<State> {
 }
 
 export async function deleteExpenseAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "delete");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = str(formData.get("id"));
@@ -120,6 +124,7 @@ export async function deleteExpenseAction(formData: FormData): Promise<State> {
 
 // ------------------------------------------------------------------- bills
 export async function createBillAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("finance", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) return { error: NEED_BRANCH };
@@ -159,6 +164,7 @@ export async function createBillAction(_prev: State, formData: FormData): Promis
 }
 
 export async function recordPaymentAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("finance", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const billId = str(formData.get("billId"));
@@ -182,6 +188,7 @@ export async function recordPaymentAction(_prev: State, formData: FormData): Pro
 }
 
 export async function deleteBillAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "delete");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = str(formData.get("id"));
@@ -197,6 +204,7 @@ export async function deleteBillAction(formData: FormData): Promise<State> {
 
 // ------------------------------------------------------- expense extras
 export async function markReimbursedAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "approve");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const e = await prisma.expense.findUnique({ where: { id: str(formData.get("id")) } });
@@ -211,6 +219,7 @@ export async function markReimbursedAction(formData: FormData): Promise<State> {
 }
 
 export async function setExpenseLimitAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "approve");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return { error: NEED_BRANCH };
@@ -226,6 +235,7 @@ export async function setExpenseLimitAction(_prev: State, formData: FormData): P
 }
 
 export async function saveBudgetAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "approve");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return { error: NEED_BRANCH };
@@ -247,6 +257,7 @@ export async function saveBudgetAction(_prev: State, formData: FormData): Promis
 }
 
 export async function addPettyCashTopUpAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "create");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return { error: NEED_BRANCH };
@@ -263,6 +274,7 @@ export async function addPettyCashTopUpAction(_prev: State, formData: FormData):
 
 // --------------------------------------------------------- bill extras
 export async function decideBillAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const user = await requirePermission("finance", "approve");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const decision = str(formData.get("decision"));
@@ -282,6 +294,7 @@ export async function decideBillAction(formData: FormData): Promise<State> {
 
 /** A credit note or discount: settles part of a bill without any cash leaving. */
 export async function applyCreditAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("finance", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const billId = str(formData.get("billId"));
@@ -302,6 +315,7 @@ export async function applyCreditAction(_prev: State, formData: FormData): Promi
 
 /** Pay several approved bills in full with one date, method and reference. */
 export async function payBatchAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("finance", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const ids = formData.getAll("billId").map(String).filter(Boolean);

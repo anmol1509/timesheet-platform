@@ -169,8 +169,7 @@ export function ClientContacts({
           <input type="hidden" name="clientId" value={clientId} />
           <label className="block min-w-[140px] flex-1">
             <span className="mb-1 block text-xs font-medium text-muted">
-              Name
-            </span>
+              Name *</span>
             <input
               name="name"
               required

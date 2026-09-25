@@ -6,12 +6,14 @@ import { requirePermission, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { notifySupplier } from "@/lib/vendor/notify";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
 
 /** Send a demand to one or more suppliers to answer through their portal. */
 export async function sendToSuppliersAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("demand", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const demandId = str(formData.get("demandId"));
@@ -40,6 +42,7 @@ export async function sendToSuppliersAction(_prev: State, formData: FormData): P
 
 /** Take back an offer the supplier has not answered yet. */
 export async function withdrawOfferAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("demand", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const offer = await prisma.demandSupplierOffer.findUnique({ where: { id: str(formData.get("id")) }, include: { demandRequest: { select: { id: true, requestNo: true, branchId: true } }, supplier: { select: { name: true } } } });

@@ -123,8 +123,7 @@ export default async function SuppliersPage({
       >
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-xs font-medium text-muted">
-            Supplier name
-          </span>
+            Supplier name *</span>
           <input
             name="name"
             required

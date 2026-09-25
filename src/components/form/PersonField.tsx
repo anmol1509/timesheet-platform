@@ -5,6 +5,7 @@ import { Mail, Phone } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { cn } from "@/lib/cn";
+import { isValidEmail, isValidPhone } from "@/lib/validators";
 
 /**
  * A person the record refers to (sales executive, coordinator, manager...).
@@ -37,8 +38,7 @@ export function PersonField({
   const [draftEmail, setDraftEmail] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const digits = phone.replace(/\D/g, "");
-  const missingPhone = person.trim() !== "" && digits.length < 7;
+  const missingPhone = person.trim() !== "" && !isValidPhone(phone);
 
   useEffect(() => {
     nameRef.current?.setCustomValidity(missingPhone ? `Add a phone number for ${label.toLowerCase()}.` : "");
@@ -52,9 +52,8 @@ export function PersonField({
     setOpen(next);
   }
 
-  const draftDigits = draftPhone.replace(/\D/g, "");
-  const emailBad = draftEmail.trim() !== "" && !/^\S+@\S+\.\S+$/.test(draftEmail.trim());
-  const canSave = draftDigits.length >= 7 && !emailBad;
+  const emailBad = draftEmail.trim() !== "" && !isValidEmail(draftEmail);
+  const canSave = isValidPhone(draftPhone) && !emailBad;
 
   return (
     <div>

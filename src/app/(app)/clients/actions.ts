@@ -7,6 +7,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 // Every nested mutation (contacts, trade rates, documents) takes a clientId
 // rather than looking the client up itself, so this is the one place that
@@ -95,6 +96,7 @@ export async function createClientAction(
 }
 
 export async function updateClientAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
@@ -151,6 +153,7 @@ export async function updateClientAction(formData: FormData) {
 }
 
 export async function addClientContactAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -171,6 +174,7 @@ export async function addClientContactAction(formData: FormData) {
 }
 
 export async function updateClientContactAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const contactId = String(formData.get("contactId") || "");
@@ -192,6 +196,7 @@ export async function updateClientContactAction(formData: FormData) {
 }
 
 export async function removeClientContactAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const contactId = String(formData.get("contactId") || "");
@@ -202,6 +207,7 @@ export async function removeClientContactAction(formData: FormData) {
 }
 
 export async function addClientTradeRateAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const trade = String(formData.get("trade") || "").trim();
@@ -222,6 +228,7 @@ export async function addClientTradeRateAction(formData: FormData) {
 }
 
 export async function removeClientTradeRateAction(formData: FormData) {
+  assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const rateId = String(formData.get("rateId") || "");
@@ -232,6 +239,7 @@ export async function removeClientTradeRateAction(formData: FormData) {
 }
 
 export async function addClientDocumentAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const type = String(formData.get("type") || "OTHER");
@@ -268,6 +276,7 @@ export async function addClientDocumentAction(formData: FormData) {
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
@@ -364,6 +373,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
 }
 
 export async function deleteClientAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("partners", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");

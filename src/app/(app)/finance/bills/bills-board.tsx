@@ -13,6 +13,9 @@ import { PAYMENT_METHODS } from "@/lib/financeConstants";
 import Link from "next/link";
 import { applyCreditAction, createBillAction, deleteBillAction, payBatchAction, previewSupplierMonthAction, recordPaymentAction } from "../actions";
 import type { SupplierMonthPayable } from "@/lib/supplierMonthPayable";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { MonthInput } from "@/components/ui/MonthInput";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 export type BillRow = {
@@ -36,6 +39,7 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
   const [sheet, setSheet] = useState<SupplierMonthPayable | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
+  const [resetKey, setResetKey] = useState(0);
   const [state, action, pending] = useActionState(
     async (prev: State, fd: FormData) => {
       const r = await createBillAction(prev, fd);
@@ -62,8 +66,8 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Supplier</span><Select name="supplierId" placeholder="Choose a supplier…" value={supplierId} onChange={(v) => { setSupplierId(v); setSheet(null); }} options={suppliers.map((s) => ({ value: s.id, label: s.name }))} /></label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Month the bill covers *</span><input type="month" name="periodMonth" required value={month} onChange={(e) => { setMonth(e.target.value); setSheet(null); }} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill number</span><input name="billNo" required className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Month the bill covers *</span><MonthInput name="periodMonth" value={month} onChange={(v) => { setMonth(v); setSheet(null); }} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill number *</span><input name="billNo" required className="input w-full" /></label>
       </div>
       {supplierId && month && (
         <div className="rounded-control border border-default bg-surface-subtle p-3 text-sm">
@@ -84,10 +88,10 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill date</span><input type="date" name="billDate" required defaultValue={today} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Due date</span><input type="date" name="dueDate" required className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT)</span><input ref={amountRef} type="number" step="0.01" min="0" name="amount" required className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><input type="number" step="0.01" min="0" name="vatAmount" defaultValue="0" className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bill date *</span><DatePicker name="billDate" defaultValue={today} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Due date *</span><DatePicker name="dueDate" required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput key={resetKey} name="amount" required min={0} step={0.01} inputRef={amountRef} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput name="vatAmount" defaultValue="0" min={0} step={0.01} className="w-full" /></label>
       </div>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input name="description" className="input w-full" placeholder="e.g. Labour supply, Aug" /></label>
       <div className="flex flex-wrap items-center gap-3">
@@ -108,8 +112,8 @@ function PayForm({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
     <form action={action} className="mt-4 space-y-3">
       <input type="hidden" name="billId" value={bill.id} />
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid on</span><input type="date" name="paidOn" required defaultValue={new Date().toISOString().slice(0, 10)} className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED)</span><input type="number" step="0.01" min="0" name="amount" required defaultValue={bill.balance} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid on *</span><DatePicker name="paidOn" defaultValue={new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED) *</span><NumberInput name="amount" defaultValue={bill.balance} required min={0} step={0.01} className="w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Method</span><Select name="method" defaultValue="BANK" searchable={false} options={PAYMENT_METHODS.map((m) => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))} /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference</span><input name="reference" className="input w-full" placeholder="Transfer / cheque no." /></label>
       </div>
@@ -132,7 +136,7 @@ function BatchForm({ bills, onDone }: { bills: BillRow[]; onDone: () => void }) 
       </ul>
       <p className="text-sm text-muted">Each bill is paid in full: <span className="tabular font-semibold text-primary">AED {aed(total)}</span></p>
       <div className="grid grid-cols-3 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid on</span><input type="date" name="paidOn" required defaultValue={new Date().toISOString().slice(0, 10)} className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid on *</span><DatePicker name="paidOn" defaultValue={new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Method</span><Select name="method" defaultValue="BANK" searchable={false} options={PAYMENT_METHODS.map((m) => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))} /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Batch reference</span><input name="reference" className="input w-full" placeholder="Transfer batch no." /></label>
       </div>
@@ -146,8 +150,8 @@ function CreditForm({ bill }: { bill: BillRow }) {
   return (
     <form action={action} className="mt-2 flex flex-wrap items-end gap-2">
       <input type="hidden" name="billId" value={bill.id} />
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Credit (AED)</span><input type="number" step="0.01" min="0" name="amount" required className="input w-28" /></label>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reason / credit note no.</span><input name="reason" required className="input w-56" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Credit (AED) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-28" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reason / credit note no. *</span><input name="reason" required className="input w-56" /></label>
       <button type="submit" className="btn btn-secondary" disabled={pending}>Apply credit</button>
       {state.error && <p role="alert" className={errCls}>{state.error}</p>}
       {state.ok && <span className="text-sm text-[var(--success)]">Applied</span>}

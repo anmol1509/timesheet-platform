@@ -29,7 +29,7 @@ export function ProfileForm({
   return (
     <form action={action} className="space-y-3">
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-muted">Full name</span>
+        <span className="mb-1 block text-xs font-medium text-muted">Full name *</span>
         <input name="name" defaultValue={name} required className="input w-full" />
       </label>
       <label className="block">

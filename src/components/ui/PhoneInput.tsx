@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { isValidPhone, PHONE_MESSAGE } from "@/lib/validators";
 import { Select } from "./Select";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/cn";
@@ -58,6 +59,11 @@ export function PhoneInput({
   className?: string;
 }) {
   const { country, dial, rest } = useMemo(() => split(value), [value]);
+  const telRef = useRef<HTMLInputElement>(null);
+  // A number that has digits but is not complete blocks the form from saving.
+  useEffect(() => {
+    telRef.current?.setCustomValidity(rest === "" || isValidPhone(value) ? "" : PHONE_MESSAGE);
+  }, [rest, value]);
 
   function setCountry(code: string) {
     const next = COUNTRIES.find((c) => c.code === code);
@@ -90,6 +96,7 @@ export function PhoneInput({
         />
       </div>
       <input
+        ref={telRef}
         id={id}
         type="tel"
         inputMode="tel"

@@ -5,6 +5,8 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createClientAction } from "../actions";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 export default function NewClientPage() {
   const [state, formAction, pending] = useActionState(createClientAction, {
@@ -36,7 +38,7 @@ export default function NewClientPage() {
           </p>
         )}
 
-        <Field label="Company name">
+        <Field required label="Company name">
           <input
             name="name"
             required
@@ -87,27 +89,14 @@ export default function NewClientPage() {
           </Field>
           {billingType && (
             <Field label={billingType === "HOURLY" ? "Hourly rate (AED)" : "Basic rate (AED)"}>
-              <input
-                name="billingRate"
-                type="number"
-                step="0.01"
-                className="input w-full"
-              />
+              <NumberInput name="billingRate" step={0.01} className="w-full" />
             </Field>
           )}
           <Field label="Contract start">
-            <input
-              name="contractStart"
-              type="date"
-              className="input w-full"
-            />
+            <DatePicker name="contractStart" className="w-full" />
           </Field>
           <Field label="Contract end">
-            <input
-              name="contractEnd"
-              type="date"
-              className="input w-full"
-            />
+            <DatePicker name="contractEnd" className="w-full" />
           </Field>
         </div>
 
@@ -123,11 +112,12 @@ export default function NewClientPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-muted">
         {label}
+        {required && <span className="text-[var(--error)]"> *</span>}
       </span>
       {children}
     </label>

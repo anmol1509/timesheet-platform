@@ -7,6 +7,8 @@ import { Badge } from "@/components/Badge";
 import { CitySelect } from "@/components/ui/CitySelect";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { cancelChangeAction, requestChangeAction, uploadDocumentAction } from "./actions";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { Select } from "@/components/ui/Select";
 
 type State = { error: string | null; ok?: boolean };
 export type PendingRow = { id: string; kind: string; status: string; note: string | null; changes: { label: string; value: string }[] };
@@ -98,9 +100,9 @@ export function ProfileForms({ contact, bank, maskedIban, requests, docTypes, do
         )}
         <form action={docAction} className="mt-4 space-y-3 border-t border-default pt-4">
           <div className="grid gap-3 sm:grid-cols-3">
-            <F t="Type"><select name="docType" required defaultValue="" className="input w-full"><option value="" disabled>Choose…</option>{docTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></F>
-            <F t="Expiry date"><input type="date" name="expiryDate" className="input w-full" /></F>
-            <F t="File (PDF, JPG, PNG)"><input type="file" name="file" required accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></F>
+            <F t="Type *"><Select name="docType" defaultValue="" required options={[{ value: "", label: "Choose…" }, ...docTypes.map((t) => ({ value: t.value, label: t.label }))]} triggerClassName="w-full" /></F>
+            <F t="Expiry date"><DatePicker name="expiryDate" className="w-full" /></F>
+            <F t="File (PDF, JPG, PNG) *"><input type="file" name="file" required accept="application/pdf,image/jpeg,image/png" className="file-input w-full" /></F>
           </div>
           <div className="flex flex-wrap items-center gap-3"><button type="submit" className="btn btn-secondary" disabled={uploading}>{uploading ? "Uploading…" : "Upload document"}</button>{docState.error && <p role="alert" className="text-sm text-[var(--error)]">{docState.error}</p>}{docState.ok && <span className="text-sm text-[var(--success)]">Uploaded</span>}</div>
         </form>

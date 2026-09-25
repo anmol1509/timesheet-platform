@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { createDemandRequestAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Client = { id: string; name: string };
 type Project = { id: string; name: string; code: string; clientId: string };
@@ -112,14 +113,7 @@ export function DemandRequestForm({
                 placeholder="Trade"
                 options={tradeOptions.map((name) => ({ value: name, label: name }))}
               />
-              <input
-                type="number"
-                min={1}
-                value={t.quantity}
-                onChange={(e) => updateTrade(t.id, { quantity: e.target.value })}
-                placeholder="Quantity"
-                className="input"
-              />
+              <NumberInput value={t.quantity} onChange={(v) => updateTrade(t.id, { quantity: String(v) })} min={1} placeholder="Quantity" />
               {/* Two states, so a toggle beats a dropdown — one click, and
                   which shift is set is readable without opening anything. */}
               <div

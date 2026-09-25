@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction, calculateGasDeduction } from "@/lib/deductions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Entry = {
   id: string;
@@ -268,21 +269,11 @@ export function ReviewClient({
                             className="h-1.5 w-1.5 rounded-full bg-amber-500"
                           />
                         )}
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={deductions[e.id]}
-                          onChange={(ev) =>
-                            setDeductions((d) => ({
+                        <NumberInput value={deductions[e.id]} onChange={(v) => setDeductions((d) => ({
                               ...d,
-                              [e.id]: parseFloat(ev.target.value) || 0,
+                              [e.id]: parseFloat(String(v)) || 0,
                             }))
-                          }
-                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] ${
-                            absentEdited ? "border-amber-300 bg-amber-50" : "border-strong"
-                          }`}
-                        />
+                          } min={0} step={0.01} className="w-24" />
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-right">
@@ -293,21 +284,11 @@ export function ReviewClient({
                             className="h-1.5 w-1.5 rounded-full bg-amber-500"
                           />
                         )}
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={gasDeductions[e.id]}
-                          onChange={(ev) =>
-                            setGasDeductions((d) => ({
+                        <NumberInput value={gasDeductions[e.id]} onChange={(v) => setGasDeductions((d) => ({
                               ...d,
-                              [e.id]: parseFloat(ev.target.value) || 0,
+                              [e.id]: parseFloat(String(v)) || 0,
                             }))
-                          }
-                          className={`w-24 rounded-lg border px-2 py-1 text-right text-sm outline-none focus:border-[var(--brand-primary)] ${
-                            gasEdited ? "border-amber-300 bg-amber-50" : "border-strong"
-                          }`}
-                        />
+                          } min={0} step={0.01} className="w-24" />
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-right">

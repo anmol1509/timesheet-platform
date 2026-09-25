@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { DeleteButton } from "@/components/DeleteButton";
+import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export type AttachmentRow = {
   id: string;
@@ -56,24 +58,11 @@ export function AttachmentUploader({
 
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Type</span>
-          <select
-            name="docType"
-            className="input"
-          >
-            {docTypeOptions.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+<Select name="docType" defaultValue={docTypeOptions[0]?.value ?? ""} options={docTypeOptions.map((o) => ({ value: o.value, label: o.label }))} />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Expiry (optional)</span>
-          <input
-            type="date"
-            name="expiryDate"
-            className="input"
-          />
+          <DatePicker name="expiryDate" />
         </label>
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-xs font-medium text-muted">

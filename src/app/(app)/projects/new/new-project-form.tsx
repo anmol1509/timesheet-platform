@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createProjectAction } from "../actions";
 import { PersonField } from "@/components/form/PersonField";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export function NewProjectForm({
   clients,
@@ -46,7 +47,7 @@ export function NewProjectForm({
           </p>
         ) : (
           <>
-            <Field label="Project name">
+            <Field required label="Project name">
               <input
                 name="name"
                 required
@@ -61,7 +62,7 @@ export function NewProjectForm({
               />
             </Field>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Client">
+              <Field required label="Client">
                 <Select
                   name="clientId"
                   required
@@ -84,18 +85,10 @@ export function NewProjectForm({
                 />
               </Field>
               <Field label="Timeline start">
-                <input
-                  name="timelineStart"
-                  type="date"
-                  className="input w-full"
-                />
+                <DatePicker name="timelineStart" className="w-full" />
               </Field>
               <Field label="Timeline end">
-                <input
-                  name="timelineEnd"
-                  type="date"
-                  className="input w-full"
-                />
+                <DatePicker name="timelineEnd" className="w-full" />
               </Field>
             </div>
 
@@ -113,11 +106,12 @@ export function NewProjectForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-muted">
         {label}
+        {required && <span className="text-[var(--error)]"> *</span>}
       </span>
       {children}
     </label>

@@ -10,6 +10,11 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { InlineDocumentUpload } from "./inline-document-upload";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { UAE_BANKS } from "@/lib/formLists";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
+import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
@@ -195,25 +200,20 @@ export function EditForm({
   );
   const docsByType = (type: string) => documents.filter((d) => d.type === type);
 
-  const dobRef = useRef<HTMLInputElement>(null);
+  // Dates filled in from a scanned document remount their picker with the new value.
+  const [auto, setAuto] = useState<Record<string, string>>({});
   const passportNumberRef = useRef<HTMLInputElement>(null);
-  const passportExpiryRef = useRef<HTMLInputElement>(null);
   const emiratesIdRef = useRef<HTMLInputElement>(null);
-  const emiratesIdExpiryRef = useRef<HTMLInputElement>(null);
   const laborCardNumberRef = useRef<HTMLInputElement>(null);
   const laborCardPersonalNoRef = useRef<HTMLInputElement>(null);
-  const laborCardExpiryRef = useRef<HTMLInputElement>(null);
 
   function applyExtractedFields(fields: ExtractedDocumentFields) {
-    if (fields.dateOfBirth && dobRef.current) dobRef.current.value = fields.dateOfBirth;
+    setAuto((a) => ({ ...a, ...(fields.dateOfBirth ? { dateOfBirth: fields.dateOfBirth } : {}), ...(fields.passportExpiry ? { passportExpiry: fields.passportExpiry } : {}), ...(fields.emiratesIdExpiry ? { emiratesIdExpiry: fields.emiratesIdExpiry } : {}), ...(fields.laborCardExpiry ? { laborCardExpiry: fields.laborCardExpiry } : {}) }));
     if (fields.nationality) setNationality(fields.nationality);
     if (fields.passportNumber && passportNumberRef.current) passportNumberRef.current.value = fields.passportNumber;
-    if (fields.passportExpiry && passportExpiryRef.current) passportExpiryRef.current.value = fields.passportExpiry;
     if (fields.emiratesId && emiratesIdRef.current) emiratesIdRef.current.value = fields.emiratesId;
-    if (fields.emiratesIdExpiry && emiratesIdExpiryRef.current) emiratesIdExpiryRef.current.value = fields.emiratesIdExpiry;
     if (fields.laborCardNumber && laborCardNumberRef.current) laborCardNumberRef.current.value = fields.laborCardNumber;
     if (fields.laborCardPersonalNo && laborCardPersonalNoRef.current) laborCardPersonalNoRef.current.value = fields.laborCardPersonalNo;
-    if (fields.laborCardExpiry && laborCardExpiryRef.current) laborCardExpiryRef.current.value = fields.laborCardExpiry;
   }
 
   return (
@@ -306,12 +306,7 @@ export function EditForm({
                   </Field>
                 )}
                 <Field label="Last demobilized date">
-                  <input
-                    name="lastDemobilizedDate"
-                    type="date"
-                    defaultValue={toDateInput(employee.lastDemobilizedDate)}
-                    className="input w-full"
-                  />
+                  <DatePicker name="lastDemobilizedDate" defaultValue={toDateInput(employee.lastDemobilizedDate)} className="w-full" />
                 </Field>
               </>
             )}
@@ -325,7 +320,7 @@ export function EditForm({
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             {/* Both were set once at registration and then unchangeable, so a
                 mistyped name or ID could only be fixed in the database. */}
-            <Field label="Full name">
+            <Field required label="Full name">
               <input
                 name="name"
                 defaultValue={employee.name}
@@ -333,7 +328,7 @@ export function EditForm({
                 className="input w-full"
               />
             </Field>
-            <Field label="Employee ID No">
+            <Field required label="Employee ID No">
               <input
                 name="employeeIdNo"
                 defaultValue={employee.employeeIdNo}
@@ -362,13 +357,7 @@ export function EditForm({
             </Field>
             <LookupField label="Position" name="position" defaultValue={employee.position} options={lookups.POSITION} />
             <Field label="Date of birth">
-              <input
-                ref={dobRef}
-                type="date"
-                name="dateOfBirth"
-                defaultValue={toDateInput(employee.dateOfBirth)}
-                className="input w-full"
-              />
+              <DatePicker key={`dateOfBirth-${auto.dateOfBirth ?? ""}`} name="dateOfBirth" defaultValue={auto.dateOfBirth ?? toDateInput(employee.dateOfBirth)} />
             </Field>
             <Field label="Gender">
               <Select
@@ -397,12 +386,7 @@ export function EditForm({
               </span>
             </label>
             <Field label="Join date">
-              <input
-                type="date"
-                name="joinDate"
-                defaultValue={toDateInput(employee.joinDate)}
-                className="input w-full"
-              />
+              <DatePicker name="joinDate" defaultValue={toDateInput(employee.joinDate)} className="w-full" />
             </Field>
             <Field label="Emergency contact name">
               <input
@@ -455,7 +439,7 @@ export function EditForm({
           <h2 className="mb-3 text-sm font-semibold text-primary">Passport</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Passport number">
-              <input
+              <MaskedInput kind="passport"
                 ref={passportNumberRef}
                 name="passportNumber"
                 defaultValue={employee.passportNumber || ""}
@@ -464,13 +448,7 @@ export function EditForm({
             </Field>
             <LookupField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} options={lookups.PASSPORT_STATUS} />
             <Field label="Passport expiry date">
-              <input
-                ref={passportExpiryRef}
-                type="date"
-                name="passportExpiry"
-                defaultValue={toDateInput(employee.passportExpiry)}
-                className="input w-full"
-              />
+              <DatePicker key={`passportExpiry-${auto.passportExpiry ?? ""}`} name="passportExpiry" defaultValue={auto.passportExpiry ?? toDateInput(employee.passportExpiry)} />
             </Field>
             <DateField label="Release date" name="passportReleaseDate" defaultValue={employee.passportReleaseDate} />
             <DateField label="Return date" name="passportReturnDate" defaultValue={employee.passportReturnDate} />
@@ -488,7 +466,7 @@ export function EditForm({
           <h2 className="mb-3 text-sm font-semibold text-primary">Emirates ID</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Emirates ID number">
-              <input
+              <MaskedInput kind="eid"
                 ref={emiratesIdRef}
                 name="emiratesId"
                 defaultValue={employee.emiratesId || ""}
@@ -496,13 +474,7 @@ export function EditForm({
               />
             </Field>
             <Field label="Emirates ID expiry date">
-              <input
-                ref={emiratesIdExpiryRef}
-                type="date"
-                name="emiratesIdExpiry"
-                defaultValue={toDateInput(employee.emiratesIdExpiry)}
-                className="input w-full"
-              />
+              <DatePicker key={`emiratesIdExpiry-${auto.emiratesIdExpiry ?? ""}`} name="emiratesIdExpiry" defaultValue={auto.emiratesIdExpiry ?? toDateInput(employee.emiratesIdExpiry)} />
             </Field>
             <LookupField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} options={lookups.EID_STATUS} />
             <div />
@@ -537,13 +509,7 @@ export function EditForm({
             </Field>
             <LookupField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} options={lookups.LABOR_CARD_STATUS} />
             <Field label="Labor card expiry">
-              <input
-                ref={laborCardExpiryRef}
-                type="date"
-                name="laborCardExpiry"
-                defaultValue={toDateInput(employee.laborCardExpiry)}
-                className="input w-full"
-              />
+              <DatePicker key={`laborCardExpiry-${auto.laborCardExpiry ?? ""}`} name="laborCardExpiry" defaultValue={auto.laborCardExpiry ?? toDateInput(employee.laborCardExpiry)} />
             </Field>
             <InlineDocumentUpload
               employeeId={employee.id}
@@ -581,12 +547,7 @@ export function EditForm({
           <h2 className="mb-3 text-sm font-semibold text-primary">Medical Certificate</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="Medical certificate expiry">
-              <input
-                type="date"
-                name="medicalExpiry"
-                defaultValue={toDateInput(employee.medicalExpiry)}
-                className="input w-full"
-              />
+              <DatePicker name="medicalExpiry" defaultValue={toDateInput(employee.medicalExpiry)} className="w-full" />
             </Field>
             <LookupField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} options={lookups.MEDICAL_STATUS} />
             <InlineDocumentUpload
@@ -679,30 +640,30 @@ export function EditForm({
               </Field>
               {payStructure === "FLAT" && (
                 <Field label="Monthly rate (AED)">
-                  <input type="number" step="0.01" min="0" name="flatMonthlyRate" defaultValue={pay.flatMonthlyRate} className="input w-full" />
+                  <NumberInput name="flatMonthlyRate" defaultValue={pay.flatMonthlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
               {payStructure === "HOURLY" && (
                 <Field label="Hourly rate (AED per normal hour)">
-                  <input type="number" step="0.01" min="0" name="hourlyRate" defaultValue={pay.hourlyRate} className="input w-full" />
+                  <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
               {payStructure === "ITEMISED" && (
                 <>
                   <Field label="Basic salary (AED)">
-                    <input type="number" step="0.01" min="0" name="basicSalary" defaultValue={pay.basicSalary} className="input w-full" />
+                    <NumberInput name="basicSalary" defaultValue={pay.basicSalary} min={0} step={0.01} className="w-full" />
                   </Field>
                   <Field label="Housing allowance (AED)">
-                    <input type="number" step="0.01" min="0" name="housingAllowance" defaultValue={pay.housingAllowance} className="input w-full" />
+                    <NumberInput name="housingAllowance" defaultValue={pay.housingAllowance} min={0} step={0.01} className="w-full" />
                   </Field>
                   <Field label="Food allowance (AED)">
-                    <input type="number" step="0.01" min="0" name="foodAllowance" defaultValue={pay.foodAllowance} className="input w-full" />
+                    <NumberInput name="foodAllowance" defaultValue={pay.foodAllowance} min={0} step={0.01} className="w-full" />
                   </Field>
                   <Field label="Transport allowance (AED)">
-                    <input type="number" step="0.01" min="0" name="transportAllowance" defaultValue={pay.transportAllowance} className="input w-full" />
+                    <NumberInput name="transportAllowance" defaultValue={pay.transportAllowance} min={0} step={0.01} className="w-full" />
                   </Field>
                   <Field label="Other allowance (AED)">
-                    <input type="number" step="0.01" min="0" name="otherAllowance" defaultValue={pay.otherAllowance} className="input w-full" />
+                    <NumberInput name="otherAllowance" defaultValue={pay.otherAllowance} min={0} step={0.01} className="w-full" />
                   </Field>
                 </>
               )}
@@ -712,7 +673,7 @@ export function EditForm({
                     <input type="checkbox" name="paysOvertime" defaultChecked={employee.paysOvertime} /> Paid for overtime
                   </label>
                   <Field label="Overtime multiplier">
-                    <input type="number" step="0.01" min="1" max="3" name="otMultiplier" defaultValue={pay.otMultiplier} className="input w-full" />
+                    <NumberInput name="otMultiplier" defaultValue={pay.otMultiplier} min={1} max={3} step={0.01} className="w-full" />
                   </Field>
                 </>
               )}
@@ -725,14 +686,10 @@ export function EditForm({
           </h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <Field label="WPS bank / exchange house name">
-              <input
-                name="wpsBankName"
-                defaultValue={employee.wpsBankName || ""}
-                className="input w-full"
-              />
+              <ComboSelect name="wpsBankName" options={UAE_BANKS} defaultValue={employee.wpsBankName} />
             </Field>
             <Field label="WPS IBAN">
-              <input
+              <MaskedInput kind="iban"
                 name="wpsIban"
                 defaultValue={employee.wpsIban || ""}
                 className="input w-full"
@@ -877,21 +834,17 @@ function DateField({
 }) {
   return (
     <Field label={label}>
-      <input
-        type="date"
-        name={name}
-        defaultValue={toDateInput(defaultValue)}
-        className={INPUT_CLASS}
-      />
+      <DatePicker name={name} defaultValue={toDateInput(defaultValue)} />
     </Field>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-muted">
         {label}
+        {required && <span className="text-[var(--error)]"> *</span>}
       </span>
       {children}
     </label>

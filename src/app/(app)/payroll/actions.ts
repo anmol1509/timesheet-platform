@@ -10,6 +10,7 @@ import { isPayType, monthBounds, round2, wpsGaps } from "@/lib/payroll";
 import { isUsableBank } from "@/lib/bankStatus";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { rebuildRunLines, recordLoanRepayments, reverseLoanRepayments } from "@/lib/payrollRun";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -26,6 +27,7 @@ async function loadRun(id: string) {
 }
 
 export async function createRunAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
@@ -60,6 +62,7 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
 }
 
 export async function recomputeRunAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "edit");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
@@ -77,6 +80,7 @@ export async function recomputeRunAction(formData: FormData): Promise<State> {
  * components, and the typed amounts can't push it below zero.
  */
 export async function saveLineAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "edit");
   const lineId = String(formData.get("lineId") || "");
   const line = await prisma.payrollLine.findUnique({ where: { id: lineId }, include: { employee: { select: { name: true } } } });
@@ -118,6 +122,7 @@ export async function saveLineAction(formData: FormData): Promise<State> {
 
 /** The creator sends a finished draft for approval; it then appears in the Approvals inbox. */
 export async function submitRunAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "edit");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
@@ -142,6 +147,7 @@ export async function submitRunAction(formData: FormData): Promise<State> {
 
 /** An approver sends a submitted run back to its creator, with the reason. */
 export async function returnRunAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
@@ -159,6 +165,7 @@ export async function returnRunAction(formData: FormData): Promise<State> {
 }
 
 export async function approveRunAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
@@ -194,6 +201,7 @@ export async function approveRunAction(formData: FormData): Promise<State> {
 }
 
 export async function reopenRunAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
@@ -208,6 +216,7 @@ export async function reopenRunAction(formData: FormData): Promise<State> {
 }
 
 export async function markPaidAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
@@ -223,6 +232,7 @@ export async function markPaidAction(formData: FormData): Promise<State> {
 }
 
 export async function deleteRunAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("payroll", "delete");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run || run.status !== "DRAFT") return;
@@ -236,6 +246,7 @@ const PAYMENT_STATUSES = ["PENDING", "PAID", "REJECTED", "RESUBMIT"] as const;
 
 /** Record what the bank did with one worker's salary after the WPS file went out. */
 export async function setLinePaymentAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const lineId = String(formData.get("lineId") || "");
   const status = String(formData.get("status") || "");
@@ -256,6 +267,7 @@ export async function setLinePaymentAction(formData: FormData): Promise<State> {
 
 /** Copy the employee's current bank details onto a rejected line so it can be re-sent. */
 export async function refreshLineBankAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const lineId = String(formData.get("lineId") || "");
   const line = await prisma.payrollLine.findUnique({ where: { id: lineId }, include: { employee: { select: { name: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true, wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true } } } });
@@ -277,6 +289,7 @@ export async function refreshLineBankAction(formData: FormData): Promise<State> 
 
 /** Set (or clear) the run total above which the creator may not approve their own run. */
 export async function setApprovalThresholdAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "approve");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
