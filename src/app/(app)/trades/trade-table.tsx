@@ -13,6 +13,8 @@ type TradeRow = {
   trending: boolean;
   employeeCount: number;
   popularity: number;
+  idle: number;
+  openDemand: number;
 };
 
 
@@ -85,6 +87,8 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                 <th className="px-4 py-3">Trade Name</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3 text-right">Employee Count</th>
+                <th className="px-4 py-3 text-right">On bench</th>
+                <th className="px-4 py-3">Open demand</th>
                 <th className="px-4 py-3">Share of workforce</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -173,6 +177,16 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                     )}
                     <td className="px-4 py-3 text-right text-secondary">
                       {s.employeeCount}
+                    </td>
+                    <td className="tabular px-4 py-3 text-right text-secondary">{s.idle || <span className="text-subtle">—</span>}</td>
+                    <td className="px-4 py-3">
+                      {s.openDemand === 0 ? (
+                        <span className="text-xs text-subtle">—</span>
+                      ) : s.idle >= s.openDemand ? (
+                        <span className="text-xs font-medium text-[var(--success)]">{s.openDemand} needed · bench covers it</span>
+                      ) : (
+                        <span className="text-xs font-medium text-[var(--warning)]">{s.openDemand} needed · short by {s.openDemand - s.idle}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {s.employeeCount === 0 ? (

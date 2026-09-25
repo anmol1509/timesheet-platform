@@ -57,12 +57,34 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
     view === "OPEN" ? r.balance > 0 && r.approval !== "REJECTED" : view === "OVERDUE" ? r.status === "OVERDUE" : view === "PAID" ? r.status === "PAID" : view === "REVIEW" ? r.approval === "PENDING" : true
   );
   const reviewCount = rows.filter((r) => r.approval === "PENDING").length;
+  const live = rows.filter((r) => r.approval !== "REJECTED");
+  const outstanding = live.reduce((n, r) => n + Math.max(0, r.balance), 0);
+  const overdueRows = live.filter((r) => r.status === "OVERDUE");
+  const overdue = overdueRows.reduce((n, r) => n + r.balance, 0);
+  const awaiting = rows.filter((r) => r.approval === "PENDING").reduce((n, r) => n + r.total, 0);
+  const dueSoon = live.filter((r) => r.balance > 0 && r.status !== "OVERDUE" && r.dueDate <= new Date(today.getTime() + 7 * 86_400_000).toISOString().slice(0, 10));
+  const money = (n: number) => `AED ${Math.round(n).toLocaleString("en-AE")}`;
+  const strip = [
+    { l: "Outstanding", v: money(outstanding), sub: `${live.filter((r) => r.balance > 0).length} open bills` },
+    { l: "Overdue", v: money(overdue), sub: `${overdueRows.length} bill${overdueRows.length === 1 ? "" : "s"}`, tone: overdueRows.length ? "text-[var(--error)]" : "" },
+    { l: "Due in 7 days", v: money(dueSoon.reduce((n, r) => n + r.balance, 0)), sub: `${dueSoon.length} bill${dueSoon.length === 1 ? "" : "s"}` },
+    { l: "Awaiting approval", v: money(awaiting), sub: `${reviewCount} bill${reviewCount === 1 ? "" : "s"}`, tone: reviewCount ? "text-[var(--warning)]" : "" },
+  ];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-xl font-semibold tracking-tight text-primary">Supplier bills</h1><p className="mt-1 text-sm text-muted">Bills are approved before they can be paid. Suppliers with portal access can see their own bills.</p></div>
         {can(subject, "finance", "export") && <a href="/api/finance/export?type=bills" className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
+      </div>
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+        {strip.map((t) => (
+          <div key={t.l} className="card px-3 py-2.5 sm:px-4 sm:py-3">
+            <p className="text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
+            <p className={`tabular mt-0.5 truncate text-base font-semibold tracking-tight sm:text-xl ${t.tone || "text-primary"}`}>{t.v}</p>
+            <p className="text-xs text-subtle">{t.sub}</p>
+          </div>
+        ))}
       </div>
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter">
         {FILTERS.map((f) => (

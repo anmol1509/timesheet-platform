@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { EmptyState } from "@/components/EmptyState";
 import { Building2, FileCheck2, DollarSign } from "lucide-react";
-import { complianceStatus } from "@/lib/compliance";
+import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ClientList } from "./client-list";
@@ -13,7 +13,11 @@ export default async function ClientsPage() {
   const clients = await prisma.client.findMany({
     where: branchWhere(branchId),
     orderBy: { name: "asc" },
-    include: { _count: { select: { projects: true } } },
+    include: {
+      _count: { select: { projects: true } },
+      demandRequests: { where: { status: "Open" }, select: { id: true } },
+      lpos: { where: { status: "ACTIVE" }, select: { value: true, billedAmount: true } },
+    },
   });
 
   const activeCount = clients.filter((c) => c.status === "ACTIVE").length;
@@ -39,6 +43,11 @@ export default async function ClientsPage() {
     contractEnd: c.contractEnd ? c.contractEnd.toISOString() : null,
     status: c.status,
     licenseStatus: complianceStatus(c.tradeLicenseExpiry),
+    projects: c._count.projects,
+    openDemands: c.demandRequests.length,
+    lpoValue: c.lpos.reduce((n, l) => n + (l.value ?? 0), 0),
+    lpoBilled: c.lpos.reduce((n, l) => n + l.billedAmount, 0),
+    contractDaysLeft: c.contractEnd ? daysUntil(c.contractEnd) : null,
   }));
 
   return (

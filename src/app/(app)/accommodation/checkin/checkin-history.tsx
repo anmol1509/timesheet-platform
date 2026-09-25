@@ -18,6 +18,9 @@ type HistoryRow = {
   campName: string;
   checkInDate: string;
   status: string;
+  checkOutDate: string | null;
+  bedLabel: string | null;
+  stayDays: number;
 };
 
 const STATUS_BADGE: Record<string, { label: string; color: "amber" | "green" | "slate" }> = {
@@ -104,7 +107,8 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
                   </th>
                   <th className="px-4 py-2.5">Check-In No</th>
                   <th className="px-4 py-2.5">Employee</th>
-                  <th className="px-4 py-2.5">Date</th>
+                  <th className="px-4 py-2.5">Bed</th>
+                  <th className="px-4 py-2.5">Stay</th>
                   <th className="px-4 py-2.5">Status</th>
                 </tr>
               </thead>
@@ -142,8 +146,13 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-secondary">
-                        {new Date(r.checkInDate).toLocaleDateString("en-GB")}
+                      <td className="px-4 py-2.5 text-secondary">{r.bedLabel ?? <span className="text-subtle">Not allocated</span>}</td>
+                      <td className="px-4 py-2.5">
+                        <span className="tabular text-secondary">{r.stayDays}d</span>
+                        <span className="block text-[11px] text-subtle">
+                          {new Date(r.checkInDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                          {r.checkOutDate ? ` → ${new Date(r.checkOutDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : " → now"}
+                        </span>
                       </td>
                       <td className="px-4 py-2.5">
                         <Badge color={badge.color}>{badge.label}</Badge>
