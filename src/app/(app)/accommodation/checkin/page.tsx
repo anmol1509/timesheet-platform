@@ -14,7 +14,7 @@ function stayDays(from: Date, to: Date | null) {
 export default async function CheckInPage() {
   const { branchId } = await requireUserWithBranch();
 
-  const [employees, camps] = await Promise.all([
+  const [employees, camps, suppliers, clients] = await Promise.all([
     prisma.employee.findMany({
       where: { ...branchWhere(branchId), bed: null },
       select: {
@@ -23,7 +23,8 @@ export default async function CheckInPage() {
         employeeIdNo: true,
         nationality: true,
         supplier: { select: { name: true, code: true } },
-        project: { select: { code: true, name: true } },
+        supplierId: true,
+        project: { select: { code: true, name: true, clientId: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -34,6 +35,8 @@ export default async function CheckInPage() {
       },
       orderBy: { name: "asc" },
     }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const employeeIds = employees.map((e) => e.id);
@@ -41,7 +44,7 @@ export default async function CheckInPage() {
     employeeIds.length > 0
       ? await prisma.campCheckIn.findMany({
           where: { employeeId: { in: employeeIds }, status: "CHECKED_IN" },
-          include: { camp: { select: { name: true } } },
+          include: { camp: { select: { name: true, ownerType: true } } },
         })
       : [];
   const openCheckInByEmployee = Object.fromEntries(openCheckIns.map((c) => [c.employeeId, c]));
@@ -57,27 +60,28 @@ export default async function CheckInPage() {
       supplierCode: e.supplier?.code ?? null,
       projectCode: e.project?.code ?? null,
       projectName: e.project?.name ?? null,
+      supplierId: e.supplierId,
+      clientId: e.project?.clientId ?? null,
+      campKind: openCheckIn?.camp.ownerType ?? null,
       checkInId: openCheckIn?.id ?? null,
       campName: openCheckIn?.camp.name ?? null,
       campId: openCheckIn?.campId ?? null,
     };
   });
 
-  const campOptions = camps.map((c) => {
-    const beds = c.rooms.flatMap((r) => r.beds);
-    return {
-      id: c.id,
-      name: c.name,
-      ownerType: c.ownerType,
-      supplierName: c.owningSupplier?.name ?? null,
-      roomCount: c.rooms.length,
-      vacantBeds: beds.filter((b) => !b.employeeId).length,
-      totalBeds: beds.length,
-    };
-  });
+  const campOptions = camps
+    .filter((c) => c.ownerType === "OWN")
+    .map((c) => {
+      const beds = c.rooms.flatMap((r) => r.beds);
+      return { id: c.id, name: c.name, ownerType: c.ownerType, supplierName: null as string | null, roomCount: c.rooms.length, vacantBeds: beds.filter((b) => !b.employeeId).length, totalBeds: beds.length };
+    });
+  // Camps run by a supplier or a client, remembered from earlier check-ins so they can be picked again.
+  const externalCamps = camps
+    .filter((c) => c.ownerType === "SUPPLIER" || c.ownerType === "CLIENT")
+    .map((c) => ({ id: c.id, name: c.name, ownerType: c.ownerType as "SUPPLIER" | "CLIENT", supplierId: c.owningSupplierId }));
 
   const notCheckedIn = rows.filter((r) => !r.checkInId).length;
-  const awaitingBed = rows.length - notCheckedIn;
+  const awaitingBed = rows.filter((r) => r.checkInId && r.campKind === "OWN").length;
 
   const history = await prisma.campCheckIn.findMany({
     where: branchId ? { employee: { branchId } } : {},
@@ -128,7 +132,7 @@ export default async function CheckInPage() {
         />
       </div>
 
-      <CheckInTable rows={rows} camps={campOptions} />
+      <CheckInTable rows={rows} camps={campOptions} externalCamps={externalCamps} suppliers={suppliers} clients={clients} />
 
       <CheckInHistory rows={historyRows} camps={campOptions.map((c) => ({ id: c.id, name: c.name }))} />
     </div>

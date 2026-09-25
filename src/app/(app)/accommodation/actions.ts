@@ -36,8 +36,9 @@ export async function createCampWithRoomsAction(
   assertContactsValid(formData);
   const user = await requireUser();
   const name = String(formData.get("name") || "").trim();
-  const ownerType = String(formData.get("ownerType") || "OWN") === "SUPPLIER" ? "SUPPLIER" : "OWN";
-  const owningSupplierId = ownerType === "SUPPLIER" ? stringOrNull(formData.get("supplierId")) : null;
+  // Camps created here are always the company's own; supplier and client camps are recorded at check-in.
+  const ownerType = "OWN";
+  const owningSupplierId = null;
   const rooms = parseRoomSpecs(formData.get("roomsJson"));
   if (!name) return { error: "Camp name is required." };
   if (rooms.length === 0) return { error: "Add at least one room with a bed or a bunk." };

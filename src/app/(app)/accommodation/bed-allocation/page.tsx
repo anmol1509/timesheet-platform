@@ -11,6 +11,7 @@ export default async function BedAllocationPage() {
   const checkIns = await prisma.campCheckIn.findMany({
     where: {
       status: { in: ["CHECKED_IN", "BED_ALLOCATED"] },
+      camp: { ownerType: "OWN" },
       ...(branchId ? { employee: { branchId } } : {}),
     },
     include: {
