@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { BRAND_ICON } from "./brand";
 import { SITE } from "./content";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -10,6 +11,7 @@ const description =
 export const metadata: Metadata = {
   title: { absolute: `${SITE.name}: ${SITE.tagline}` },
   description,
+  icons: { icon: BRAND_ICON },
   openGraph: {
     title: `${SITE.name}: ${SITE.tagline}`,
     description,

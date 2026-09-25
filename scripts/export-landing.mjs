@@ -54,11 +54,18 @@ for (const href of [...head.matchAll(/<link rel="stylesheet" href="([^"]+\.css)"
 // load the same family from Google Fonts instead.
 css = css.replace(/@font-face\{[^}]*\}/g, "").replace(/\/\*# sourceMappingURL=.*?\*\//g, "");
 
+// The real favicon (public/brand-assets, inlined via welcome/brand.ts) shows
+// up as a data: <link rel="icon"> in the rendered head, alongside Next's own
+// auto-generated /favicon.ico link (which doesn't exist as a file in this
+// standalone export) — pick the data: one specifically, and fall back to a
+// placeholder mark only if that's ever missing.
+const iconLink = [...head.matchAll(/<link rel="icon"[^>]*\/>/g)].find((m) => m[0].includes('href="data:'))?.[0];
 const favicon =
+  iconLink?.match(/href="([^"]+)"/)?.[1] ??
   "data:image/svg+xml," +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#0a1530"/><rect x="6" y="6" width="7" height="7" rx="2" fill="#f5d75e"/><rect x="15" y="6" width="7" height="7" rx="2" fill="#ff64c8"/><rect x="6" y="15" width="7" height="7" rx="2" fill="#2a9d99"/><rect x="15" y="15" width="7" height="7" rx="2" fill="#fff"/></svg>'
-  );
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><rect width="28" height="28" rx="7" fill="#0a1530"/><rect x="6" y="6" width="7" height="7" rx="2" fill="#f5d75e"/><rect x="15" y="6" width="7" height="7" rx="2" fill="#ff64c8"/><rect x="6" y="15" width="7" height="7" rx="2" fill="#2a9d99"/><rect x="15" y="15" width="7" height="7" rx="2" fill="#fff"/></svg>'
+    );
 
 const doc = `<!DOCTYPE html>
 <html lang="en">

@@ -182,15 +182,7 @@
 .logoMark {
   width: 28px;
   height: 28px;
-  border-radius: 7px;
-  background: var(--navy);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3px;
-  padding: 6px;
-}
-.logoMark span {
-  border-radius: 2px;
+  flex-shrink: 0;
 }
 .navLinks {
   display: flex;
