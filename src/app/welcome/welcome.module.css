@@ -1230,6 +1230,17 @@
   .mobileMenu {
     display: block;
   }
+  /* iOS Safari can drop/flicker a `position: fixed` element that also has
+     `backdrop-filter`, especially during momentum scrolling — the nav would
+     appear to stop staying sticky. Solid background avoids that; blur isn't
+     needed once it's opaque. (The nav already gets its own compositor layer
+     from Motion's inline `transform: translateY(...)`, set in page.tsx.) */
+  .nav,
+  .navScrolled {
+    background: var(--canvas);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
   .mockBody {
     grid-template-columns: 1fr;
   }
