@@ -11,7 +11,7 @@ export default async function RolesPage() {
   const [roles, branches] = await Promise.all([
     prisma.accessRole.findMany({
       where: isSuperAdmin ? {} : { OR: [{ branchId: null }, { branchId: admin.branchId }] },
-      include: { branch: { select: { code: true } }, _count: { select: { users: true } } },
+      include: { branch: { select: { code: true } }, users: { select: { id: true, name: true }, orderBy: { name: "asc" } } },
       orderBy: { name: "asc" },
     }),
     isSuperAdmin ? prisma.branch.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }) : Promise.resolve([]),
@@ -22,7 +22,7 @@ export default async function RolesPage() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-primary">Roles &amp; permissions</h1>
         <p className="mt-1 text-sm text-muted">
-          A role is a set of modules and actions. Assign one to a team member under Team &amp; Access to limit what they can see and do.
+          A role is a set of modules and actions. Assign one to a team member on the Team tab to limit what they can see and do.
           Admins always have full access.
         </p>
       </div>
@@ -36,7 +36,8 @@ export default async function RolesPage() {
           permissions: r.permissions,
           branchId: r.branchId,
           branchLabel: r.branch ? r.branch.code : "Every branch",
-          userCount: r._count.users,
+          userCount: r.users.length,
+          members: r.users.map((u) => u.name),
           editable: isSuperAdmin || r.branchId === admin.branchId,
         }))}
       />
