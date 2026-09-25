@@ -593,6 +593,41 @@
   gap: 8px;
 }
 
+/* Challenges */
+.challengeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.challenge {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 24px;
+}
+.challenge p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--slate);
+}
+.challengeIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--tint-peach);
+  color: var(--orange);
+  margin-bottom: 16px;
+}
+.h5 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+
 /* Capability cards */
 .capGrid {
   display: grid;
@@ -918,146 +953,6 @@
   text-decoration: underline !important;
 }
 
-/* Pricing */
-.billing {
-  display: inline-flex;
-  padding: 4px;
-  border-radius: 9999px;
-  border: 1px solid var(--hairline);
-  background: var(--canvas);
-  margin-top: 28px;
-  gap: 4px;
-}
-.billing button {
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  border: 0;
-  background: transparent;
-  color: var(--steel);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: background var(--ease), color var(--ease);
-}
-.billing button[aria-pressed="true"] {
-  background: #000;
-  color: #fff;
-}
-.save {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--green);
-}
-.billing button[aria-pressed="true"] .save {
-  color: var(--tint-mint);
-}
-.plans {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  align-items: stretch;
-}
-.plan {
-  background: var(--canvas);
-  border: 1px solid var(--hairline);
-  border-radius: 12px;
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-.planFeatured {
-  border: 2px solid var(--primary);
-  background: var(--surface-soft);
-}
-.popular {
-  position: absolute;
-  top: -12px;
-  left: 32px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 9999px;
-}
-.planName {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
-}
-.planBlurb {
-  font-size: 14px;
-  color: var(--slate);
-  margin: 6px 0 20px;
-  min-height: 42px;
-}
-.price {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-height: 56px;
-}
-.price b {
-  font-size: 40px;
-  font-weight: 600;
-  letter-spacing: -1px;
-}
-.price span {
-  font-size: 14px;
-  color: var(--steel);
-}
-.priceNote {
-  font-size: 13px;
-  color: var(--steel);
-  margin: 4px 0 24px;
-  min-height: 20px;
-}
-.plan .checkList {
-  margin-top: 28px;
-  font-weight: 400;
-}
-.compareWrap {
-  margin-top: 56px;
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  overflow-x: auto;
-  background: var(--canvas);
-}
-.compare {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  min-width: 560px;
-}
-.compare th,
-.compare td {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--hairline-soft);
-  text-align: center;
-}
-.compare th:first-child,
-.compare td:first-child {
-  text-align: left;
-}
-.compare thead th {
-  font-weight: 600;
-  background: var(--surface-soft);
-}
-.compare tbody tr:last-child td {
-  border-bottom: 0;
-}
-.yes {
-  color: var(--green);
-}
-.no {
-  color: var(--muted, #bbb8b1);
-}
-
 /* FAQ */
 .faq {
   max-width: 800px;
@@ -1191,15 +1086,14 @@
   .diveFlip .diveText {
     order: 0;
   }
-  .plans,
+  .challengeGrid {
+    grid-template-columns: 1fr 1fr;
+  }
   .portalGrid {
     grid-template-columns: 1fr;
     max-width: 560px;
     margin-left: auto;
     margin-right: auto;
-  }
-  .planBlurb {
-    min-height: 0;
   }
   .footerGrid {
     grid-template-columns: 1fr 1fr 1fr;
@@ -1243,11 +1137,11 @@
     font-size: 28px;
   }
   .capGrid,
-  .steps {
+  .steps,
+  .challengeGrid {
     grid-template-columns: 1fr;
   }
-  .card,
-  .plan {
+  .card {
     padding: 24px;
   }
   .banner {

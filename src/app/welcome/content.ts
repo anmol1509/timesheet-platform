@@ -6,15 +6,20 @@ export const SITE = {
   salesEmail: "sales@example.com",
 };
 
+// The landing page is served from its own domain, so links into the app need
+// the app's absolute origin. Leave unset when both share one domain.
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+export const appHref = (path: string) => `${APP_URL}${path}`;
+
 export const demoHref = `mailto:${SITE.salesEmail}?subject=${encodeURIComponent(`${SITE.name} demo request`)}`;
 
 export type Tint = "peach" | "rose" | "mint" | "lavender" | "sky" | "yellow" | "cream" | "gray";
 
 export const NAV = [
+  { label: "Challenges", href: "#challenges" },
   { label: "Product", href: "#product" },
   { label: "How it works", href: "#how" },
   { label: "Portals", href: "#portals" },
-  { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -25,6 +30,39 @@ export const INDUSTRIES = [
   "Cleaning & hospitality",
   "Oil & gas services",
   "Security services",
+];
+
+export const CHALLENGES: { icon: "sheet" | "id" | "wallet" | "leak" | "bed" | "mail"; title: string; body: string }[] = [
+  {
+    icon: "sheet",
+    title: "Timesheets in every format",
+    body: "Hours arrive from each site on paper, in Excel and as phone photos. Someone retypes them for payroll, then again for billing.",
+  },
+  {
+    icon: "id",
+    title: "Documents that expire quietly",
+    body: "Visas, Emirates IDs, passports and labour cards lapse between renewals. By the time anyone notices, the fine has arrived.",
+  },
+  {
+    icon: "wallet",
+    title: "Payroll built by hand",
+    body: "Overtime, deductions, loans and the WPS file are worked out in spreadsheets every month, for hundreds of workers at once.",
+  },
+  {
+    icon: "leak",
+    title: "Hours worked, never billed",
+    body: "When timesheets and invoices live in separate files, approved hours slip through and revenue quietly leaks away.",
+  },
+  {
+    icon: "bed",
+    title: "A workforce spread across camps and sites",
+    body: "Beds, buses and site rotations are coordinated by phone, with no single view of who is where today.",
+  },
+  {
+    icon: "mail",
+    title: "Subcontractors on email",
+    body: "Supplier crews, their timesheets and their payments are tracked through forwarded spreadsheets and follow-up calls.",
+  },
 ];
 
 export const CAPABILITIES: {
@@ -124,7 +162,7 @@ export const PORTALS: { tint: Tint; title: string; body: string; href: string; c
     tint: "cream",
     title: "Staff workspace",
     body: "Operations, HR, finance and sales work from one system, each seeing only the modules their role allows.",
-    href: "/login",
+    href: appHref("/login"),
     cta: "Staff sign in",
     points: ["Role-based permissions", "Branch-level access", "Dashboards per team"],
   },
@@ -132,7 +170,7 @@ export const PORTALS: { tint: Tint; title: string; body: string; href: string; c
     tint: "rose",
     title: "Employee self-service",
     body: "Workers check their attendance, download payslips and view their documents from any phone browser.",
-    href: "/me/login",
+    href: appHref("/me/login"),
     cta: "Employee sign in",
     points: ["Payslips", "Attendance history", "Personal documents"],
   },
@@ -140,80 +178,17 @@ export const PORTALS: { tint: Tint; title: string; body: string; href: string; c
     tint: "yellow",
     title: "Supplier portal",
     body: "Subcontractors receive demands, submit workers and timesheets, and track their payments without emailing spreadsheets.",
-    href: "/vendor/login",
+    href: appHref("/vendor/login"),
     cta: "Supplier sign in",
     points: ["Demands & workers", "Timesheet submission", "Payment tracking"],
   },
 ];
 
-export type Plan = {
-  name: string;
-  monthly: number | null;
-  blurb: string;
-  cta: string;
-  featured?: boolean;
-  features: string[];
-};
-
-// Prices are per active worker per month, in AED.
-export const PLANS: Plan[] = [
-  {
-    name: "Starter",
-    monthly: 15,
-    blurb: "For suppliers moving their timesheets off spreadsheets.",
-    cta: "Book a demo",
-    features: [
-      "Timesheets & attendance",
-      "Employee records & documents",
-      "Employee self-service portal",
-      "Letters & NOC templates",
-      "Email support",
-    ],
-  },
-  {
-    name: "Business",
-    monthly: 22,
-    blurb: "The full platform, from hours to payroll to invoices.",
-    cta: "Book a demo",
-    featured: true,
-    features: [
-      "Everything in Starter",
-      "Payroll & WPS export",
-      "Client invoicing & finance",
-      "Accommodation & transport",
-      "Supplier portal",
-      "AI extraction & assistant",
-    ],
-  },
-  {
-    name: "Enterprise",
-    monthly: null,
-    blurb: "For multi-branch groups with custom workflows.",
-    cta: "Talk to sales",
-    features: [
-      "Everything in Business",
-      "Multiple branches & companies",
-      "Custom approval rules",
-      "Guided data migration",
-      "Dedicated success manager",
-    ],
-  },
-];
-
-export const COMPARISON: { feature: string; tiers: [boolean | string, boolean | string, boolean | string] }[] = [
-  { feature: "Timesheet import & approvals", tiers: [true, true, true] },
-  { feature: "Employee self-service portal", tiers: [true, true, true] },
-  { feature: "Documents, letters & NOCs", tiers: [true, true, true] },
-  { feature: "Payroll runs & WPS file", tiers: [false, true, true] },
-  { feature: "Client invoicing with VAT", tiers: [false, true, true] },
-  { feature: "Accommodation & transport", tiers: [false, true, true] },
-  { feature: "Supplier portal", tiers: [false, true, true] },
-  { feature: "AI extraction & assistant", tiers: [false, true, true] },
-  { feature: "Branches", tiers: ["1", "Up to 3", "Unlimited"] },
-  { feature: "Support", tiers: ["Email", "Priority", "Dedicated"] },
-];
-
 export const FAQS = [
+  {
+    q: "How is this different from a general HRMS or ERP?",
+    a: "General systems stop at employee records and payroll. Manpower suppliers also need client timesheets, billing by the hour, visa and ID tracking, camps, transport, mobilisation and subcontractor crews. Those are built in here rather than bolted on.",
+  },
   {
     q: "How long does it take to go live?",
     a: "Most suppliers run their first real month within two weeks. Employees and sites are imported from your existing sheets, and your current timesheet workbook can be uploaded as-is.",
@@ -246,16 +221,16 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
     links: [
       { label: "Capabilities", href: "#product" },
       { label: "How it works", href: "#how" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Portals", href: "#portals" },
       { label: "FAQ", href: "#faq" },
     ],
   },
   {
     title: "Sign in",
     links: [
-      { label: "Staff workspace", href: "/login" },
-      { label: "Employee portal", href: "/me/login" },
-      { label: "Supplier portal", href: "/vendor/login" },
+      { label: "Staff workspace", href: appHref("/login") },
+      { label: "Employee portal", href: appHref("/me/login") },
+      { label: "Supplier portal", href: appHref("/vendor/login") },
     ],
   },
   {

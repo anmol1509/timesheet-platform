@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   BedDouble,
@@ -6,10 +5,13 @@ import {
   Check,
   ClipboardCheck,
   Clock,
+  FileSpreadsheet,
   FileText,
   HardHat,
+  IdCard,
   LayoutDashboard,
-  Minus,
+  Mail,
+  TrendingDown,
   Plus,
   Receipt,
   Sparkles,
@@ -18,28 +20,35 @@ import {
 } from "lucide-react";
 import {
   CAPABILITIES,
-  COMPARISON,
+  CHALLENGES,
   DEEP_DIVES,
   FACTS,
   FAQS,
   FOOTER,
   INDUSTRIES,
   NAV,
-  PLANS,
   PORTALS,
   SITE,
   STEPS,
+  appHref,
   demoHref,
 } from "./content";
 import { MobileMenu } from "./mobile-menu";
-import { Pricing } from "./pricing";
 import s from "./welcome.module.css";
 
 const CAP_ICONS = { clock: Clock, wallet: Wallet, receipt: Receipt, hardhat: HardHat };
+const CHALLENGE_ICONS = {
+  sheet: FileSpreadsheet,
+  id: IdCard,
+  wallet: Wallet,
+  leak: TrendingDown,
+  bed: BedDouble,
+  mail: Mail,
+};
 
 function Logo() {
   return (
-    <Link href="/welcome" className={s.logo} aria-label={`${SITE.name} home`}>
+    <a href="#top" className={s.logo} aria-label={`${SITE.name} home`}>
       <span className={s.logoMark} aria-hidden>
         <span style={{ background: "var(--yellow)" }} />
         <span style={{ background: "var(--pink)" }} />
@@ -47,7 +56,7 @@ function Logo() {
         <span style={{ background: "#fff" }} />
       </span>
       {SITE.name}
-    </Link>
+    </a>
   );
 }
 
@@ -381,7 +390,7 @@ function DiveVisual({ kind }: { kind: "documents" | "camps" | "assistant" }) {
 
 export default function WelcomePage() {
   return (
-    <div className={s.page}>
+    <div id="top" className={s.page}>
       <a href="#main" className={s.skip}>
         Skip to content
       </a>
@@ -399,9 +408,9 @@ export default function WelcomePage() {
             </ul>
           </nav>
           <div className={s.navActions}>
-            <Link href="/login" className={`${s.btn} ${s.btnGhost}`}>
+            <a href={appHref("/login")} className={`${s.btn} ${s.btnGhost}`}>
               Sign in
-            </Link>
+            </a>
             <a href={demoHref} className={`${s.btn} ${s.btnPrimary}`}>
               Book a demo
             </a>
@@ -456,16 +465,46 @@ export default function WelcomePage() {
           </div>
         </section>
 
+        <section id="challenges" className={`${s.section} ${s.sectionSurface}`} aria-labelledby="challenges-title">
+          <div className={s.container}>
+            <div className={s.sectionHead}>
+              <span className={s.eyebrow}>The challenge</span>
+              <h2 id="challenges-title" className={s.h2}>
+                Generic HR software was never built for manpower supply.
+              </h2>
+              <p className={s.lead}>
+                Supplying hundreds of workers to client sites is a different business from employing them in one
+                office. Most HRMS and ERP tools stop at employee records and payroll, so everything else ends up in
+                spreadsheets, WhatsApp groups and inboxes.
+              </p>
+            </div>
+            <div className={s.challengeGrid}>
+              {CHALLENGES.map((ch) => {
+                const Icon = CHALLENGE_ICONS[ch.icon];
+                return (
+                  <article key={ch.title} className={s.challenge}>
+                    <span className={s.challengeIcon}>
+                      <Icon size={20} aria-hidden />
+                    </span>
+                    <h3 className={s.h5}>{ch.title}</h3>
+                    <p>{ch.body}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
         <section id="product" className={s.section} aria-labelledby="product-title">
           <div className={s.container}>
             <div className={s.sectionHead}>
               <span className={s.eyebrow}>The platform</span>
               <h2 id="product-title" className={s.h2}>
-                Stop stitching spreadsheets together.
+                One platform, built around how manpower suppliers work.
               </h2>
               <p className={s.lead}>
-                Operations, HR, payroll and finance usually live in four different files. Here they share one set of
-                records, so the hours your supervisors approve are the hours you bill and the hours you pay.
+                Operations, HR, payroll and finance share one set of records, so the hours your supervisors approve
+                are the hours you bill and the hours you pay.
               </p>
             </div>
             <div className={s.capGrid}>
@@ -591,57 +630,16 @@ export default function WelcomePage() {
                       </li>
                     ))}
                   </ul>
-                  <Link href={p.href} className={s.portalCta}>
+                  <a href={p.href} className={s.portalCta}>
                     {p.cta} <ArrowRight size={14} aria-hidden />
-                  </Link>
+                  </a>
                 </article>
               ))}
             </div>
           </div>
         </section>
 
-        <section id="pricing" className={s.section} aria-labelledby="pricing-title">
-          <div className={s.container}>
-            <Pricing />
-            <div className={s.compareWrap}>
-              <table className={s.compare}>
-                <caption className="sr-only">Plan comparison</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Feature</th>
-                    {PLANS.map((p) => (
-                      <th key={p.name} scope="col">
-                        {p.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON.map((row) => (
-                    <tr key={row.feature}>
-                      <th scope="row" style={{ fontWeight: 400 }}>
-                        {row.feature}
-                      </th>
-                      {row.tiers.map((v, i) => (
-                        <td key={i}>
-                          {v === true ? (
-                            <Check size={18} className={s.yes} aria-label="Included" />
-                          ) : v === false ? (
-                            <Minus size={18} className={s.no} aria-label="Not included" />
-                          ) : (
-                            v
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <section id="faq" className={`${s.section} ${s.sectionSurface}`} aria-labelledby="faq-title">
+        <section id="faq" className={s.section} aria-labelledby="faq-title">
           <div className={s.container}>
             <div className={s.sectionHead}>
               <span className={s.eyebrow}>FAQ</span>
@@ -677,9 +675,9 @@ export default function WelcomePage() {
                 <a href={demoHref} className={`${s.btn} ${s.btnOnDark} ${s.btnLg}`}>
                   Book a demo <ArrowRight size={16} aria-hidden />
                 </a>
-                <Link href="/login" className={`${s.btn} ${s.btnGhostOnDark} ${s.btnLg}`}>
+                <a href={appHref("/login")} className={`${s.btn} ${s.btnGhostOnDark} ${s.btnLg}`}>
                   Sign in
-                </Link>
+                </a>
               </div>
             </div>
           </div>

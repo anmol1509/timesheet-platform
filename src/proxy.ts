@@ -18,6 +18,15 @@ function isPublicBrandAsset(pathname: string) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // The marketing site runs on its own domain (e.g. www.example.com) while the
+  // app keeps its current one. On that domain, / is the landing page and
+  // nothing else in the app is reachable.
+  const marketingHost = process.env.MARKETING_HOST;
+  if (marketingHost && request.headers.get("host") === marketingHost) {
+    if (pathname === "/") return NextResponse.rewrite(new URL("/welcome", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   if (
     PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path + "/")) ||
     isPublicBrandAsset(pathname)

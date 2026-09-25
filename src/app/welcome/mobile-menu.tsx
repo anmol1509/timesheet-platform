@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import Link from "next/link";
 import { Menu } from "lucide-react";
-import { NAV, demoHref } from "./content";
+import { NAV, appHref, demoHref } from "./content";
 import s from "./welcome.module.css";
 
 export function MobileMenu() {
@@ -21,7 +20,7 @@ export function MobileMenu() {
             {n.label}
           </a>
         ))}
-        <Link href="/login">Sign in</Link>
+        <a href={appHref("/login")}>Sign in</a>
         <a href={demoHref} onClick={close} className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
           Book a demo
         </a>
