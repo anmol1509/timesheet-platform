@@ -8,7 +8,9 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
 import { initials, avatarGradient } from "@/lib/avatar";
 import { cn } from "@/lib/cn";
-import { allocateBedAction } from "../checkin-actions";
+import { allocateBedAction, switchToExternalCampAction } from "../checkin-actions";
+import { ExternalCampFields, type Party } from "../external-camp-fields";
+import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 type BedOption = { id: string; label: string; employeeId: string | null };
@@ -20,6 +22,10 @@ type Row = {
   employeeName: string;
   employeeIdNo: string;
   nationality: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
+  clientId: string | null;
+  clientName: string | null;
   campId: string;
   campName: string;
   roomName: string | null;
@@ -30,7 +36,7 @@ type Row = {
 
 type Filter = "all" | "awaiting" | "allocated";
 
-export function BedAllocationTable({ rows, camps }: { rows: Row[]; camps: CampChoice[] }) {
+export function BedAllocationTable({ rows, camps, suppliers, clients }: { rows: Row[]; camps: CampChoice[]; suppliers: Party[]; clients: Party[] }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [activeRow, setActiveRow] = useState<Row | null>(null);
 
@@ -134,25 +140,32 @@ export function BedAllocationTable({ rows, camps }: { rows: Row[]; camps: CampCh
         </p>
       )}
 
-      <AllocateModal row={activeRow} camps={camps} onClose={() => setActiveRow(null)} />
+      <AllocateModal row={activeRow} camps={camps} suppliers={suppliers} clients={clients} onClose={() => setActiveRow(null)} />
     </div>
   );
 }
 
-function AllocateModal({ row, camps, onClose }: { row: Row | null; camps: CampChoice[]; onClose: () => void }) {
+function AllocateModal({ row, camps, suppliers, clients, onClose }: { row: Row | null; camps: CampChoice[]; suppliers: Party[]; clients: Party[]; onClose: () => void }) {
   return (
     <Dialog modal={false} open={row !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         title={row?.bedId ? `Switch Camp / Room for ${row?.employeeName ?? ""}` : `Allocate Bed for ${row?.employeeName ?? ""}`}
         description={`Currently in ${row?.campName ?? ""}. Pick a camp, then a room and a vacant bed, and the check-in date.`}
       >
-        {row && <AllocateForm key={row.checkInId} row={row} camps={camps} onClose={onClose} />}
+        {row && <AllocateForm key={row.checkInId} row={row} camps={camps} suppliers={suppliers} clients={clients} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function AllocateForm({ row, camps, onClose }: { row: Row; camps: CampChoice[]; onClose: () => void }) {
+function AllocateForm({ row, camps, suppliers, clients, onClose }: { row: Row; camps: CampChoice[]; suppliers: Party[]; clients: Party[]; onClose: () => void }) {
+  const [campType, setCampType] = useState<"OWN" | "SUPPLIER" | "CLIENT">("OWN");
+  const [partyId, setPartyId] = useState("");
+  const [campName, setCampName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const external = campType !== "OWN";
+  const knownPartyId = campType === "SUPPLIER" ? row.supplierId : row.clientId;
+  const effectivePartyId = knownPartyId ?? partyId;
   const [campId, setCampId] = useState(row.campId);
   const camp = camps.find((c) => c.id === campId) ?? null;
   const [roomId, setRoomId] = useState(camps.find((c) => c.id === row.campId)?.rooms.find((r) => r.beds.some((b) => b.id === row.bedId))?.id ?? "");
@@ -168,6 +181,36 @@ function AllocateForm({ row, camps, onClose }: { row: Row; camps: CampChoice[]; 
 
   return (
     <div className="mt-4 space-y-4">
+      <div>
+        <span className="mb-1 block text-xs font-medium text-muted">Camp type</span>
+        <SegmentedControl
+          value={campType}
+          onChange={(v) => {
+            setCampType(v as "OWN" | "SUPPLIER" | "CLIENT");
+            setError(null);
+          }}
+          options={[
+            { value: "OWN", label: "Own camp" },
+            { value: "SUPPLIER", label: "Supplier camp" },
+            { value: "CLIENT", label: "Client camp" },
+          ]}
+        />
+      </div>
+
+      {external && (
+        <ExternalCampFields
+          kind={campType as "SUPPLIER" | "CLIENT"}
+          knownPartyId={knownPartyId}
+          knownPartyName={campType === "SUPPLIER" ? row.supplierName : row.clientName}
+          parties={campType === "SUPPLIER" ? suppliers : clients}
+          partyId={partyId}
+          onParty={setPartyId}
+          campName={campName}
+          onCampName={setCampName}
+        />
+      )}
+
+      {!external && (<>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Camp</span>
         <Select
@@ -210,20 +253,34 @@ function AllocateForm({ row, camps, onClose }: { row: Row; camps: CampChoice[]; 
           options={bedsInRoom.map((b) => ({ value: b.id, label: b.label }))}
         />
       </label>
+      </>)}
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Check-in date</span>
         <DatePicker value={checkInDate} onChange={(v) => setCheckInDate(v)} className="w-full" />
       </label>
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel
         </button>
         <button
           type="button"
-          disabled={!bedId || pending}
+          disabled={(external ? !effectivePartyId || campName.trim() === "" : !bedId) || pending}
           onClick={() => {
             const formData = new FormData();
             formData.append("checkInId", row.checkInId);
+            if (external) {
+              formData.append("campType", campType);
+              formData.append("partyId", effectivePartyId);
+              formData.append("campName", campName.trim());
+              formData.append("checkInDate", checkInDate);
+              startTransition(async () => {
+                const res = await switchToExternalCampAction(formData);
+                if (res.error) setError(res.error);
+                else onClose();
+              });
+              return;
+            }
             formData.append("bedId", bedId);
             formData.append("checkInDate", checkInDate);
             startTransition(async () => {
@@ -233,7 +290,7 @@ function AllocateForm({ row, camps, onClose }: { row: Row; camps: CampChoice[]; 
           }}
           className="btn btn-primary"
         >
-          {pending ? "Saving…" : row.bedId ? "Switch" : "Allocate"}
+          {pending ? "Saving…" : row.bedId || external ? "Switch" : "Allocate"}
         </button>
       </DialogFooter>
     </div>
