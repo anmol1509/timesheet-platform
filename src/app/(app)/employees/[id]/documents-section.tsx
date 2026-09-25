@@ -6,6 +6,7 @@ import { complianceStatus } from "@/lib/compliance";
 import { uploadDocumentAction, deleteDocumentAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { DeleteButton } from "@/components/DeleteButton";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type Doc = {
   id: string;
@@ -81,12 +82,7 @@ export function DocumentsSection({
             <span className="mb-1 block text-xs font-medium text-muted">
               Expiry date (optional)
             </span>
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              className="input"
-            />
+            <DatePicker value={expiryDate} onChange={(v) => setExpiryDate(v)} />
           </label>
           <label className="flex items-center gap-1.5 pb-2 text-xs font-medium text-muted">
             <input

@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import {
   addProjectContactAction,
@@ -146,7 +147,7 @@ export function ProjectContacts({
       >
         <input type="hidden" name="projectId" value={projectId} />
         <label className="block min-w-[140px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-muted">Name</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Name *</span>
           <input
             name="name"
             required
@@ -163,10 +164,7 @@ export function ProjectContacts({
         </label>
         <label className="block min-w-[140px] flex-1">
           <span className="mb-1 block text-xs font-medium text-muted">Phone</span>
-          <input
-            name="phone"
-            className="input w-full"
-          />
+          <PhoneField name="phone" />
         </label>
         <label className="block min-w-[160px] flex-1">
           <span className="mb-1 block text-xs font-medium text-muted">Email</span>

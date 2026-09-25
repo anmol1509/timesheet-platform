@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { addVisaApplicationAction, removeVisaApplicationAction } from "./actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type HistoryRow = {
   id: string;
@@ -35,6 +36,7 @@ export function VisaHistorySection({
   const dateRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const documentRef = useRef<string>("");
+  const [resetKey, setResetKey] = useState(0);
 
   function handleAdd() {
     const stage = stageRef.current;
@@ -50,6 +52,7 @@ export function VisaHistorySection({
     });
     stageRef.current = "";
     documentRef.current = "";
+    setResetKey((k) => k + 1);
     if (dateRef.current) dateRef.current.value = "";
     if (notesRef.current) notesRef.current.value = "";
     setFormKey((k) => k + 1);
@@ -82,11 +85,7 @@ export function VisaHistorySection({
           </div>
           <div>
             <span className="mb-1 block text-xs font-medium text-muted">Date</span>
-            <input
-              ref={dateRef}
-              type="date"
-              className="input w-full"
-            />
+            <DatePicker key={resetKey} inputRef={dateRef} className="w-full" />
           </div>
           <div>
             <span className="mb-1 block text-xs font-medium text-muted">Link document</span>

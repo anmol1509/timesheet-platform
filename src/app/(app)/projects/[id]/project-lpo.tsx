@@ -2,6 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { addLpoAction, updateLpoAction, closeLpoAction } from "../actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { TRADES } from "@/lib/formLists";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Lpo = {
   id: string;
@@ -83,25 +87,25 @@ export function ProjectLpo({
             >
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <Field label="Value (AED)">
-                  <input name="value" type="number" step="0.01" defaultValue={lpo.value ?? ""} className={inputCls} />
+                  <NumberInput name="value" defaultValue={lpo.value ?? ""} step={0.01} />
                 </Field>
                 <Field label="Quantity">
-                  <input name="quantity" type="number" defaultValue={lpo.quantity ?? ""} className={inputCls} />
+                  <NumberInput name="quantity" defaultValue={lpo.quantity ?? ""} />
                 </Field>
                 <Field label="Trade">
-                  <input name="trade" defaultValue={lpo.trade ?? ""} className={inputCls} />
+                  <ComboSelect name="trade" options={TRADES} defaultValue={lpo.trade} />
                 </Field>
                 <Field label="Rate (AED/hr)">
-                  <input name="rate" type="number" step="0.01" defaultValue={lpo.rate ?? ""} className={inputCls} />
+                  <NumberInput name="rate" defaultValue={lpo.rate ?? ""} step={0.01} />
                 </Field>
                 <Field label="Valid from">
-                  <input name="validFrom" type="date" defaultValue={lpo.validFrom} className={inputCls} />
+                  <DatePicker name="validFrom" defaultValue={lpo.validFrom} />
                 </Field>
                 <Field label="Valid to (expiry)">
-                  <input name="validTo" type="date" defaultValue={lpo.validTo} className={inputCls} />
+                  <DatePicker name="validTo" defaultValue={lpo.validTo} />
                 </Field>
                 <Field label="Billed amount (AED)">
-                  <input name="billedAmount" type="number" step="0.01" defaultValue={lpo.billedAmount} className={inputCls} />
+                  <NumberInput name="billedAmount" defaultValue={lpo.billedAmount} step={0.01} />
                 </Field>
                 <Field label="Notes" className="col-span-2 sm:col-span-3">
                   <input name="notes" defaultValue={lpo.notes ?? ""} className={inputCls} />
@@ -187,22 +191,22 @@ export function ProjectLpo({
         >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Field label="Value (AED)">
-              <input name="value" type="number" step="0.01" className={inputCls} />
+              <NumberInput name="value" step={0.01} />
             </Field>
             <Field label="Quantity">
-              <input name="quantity" type="number" className={inputCls} />
+              <NumberInput name="quantity" />
             </Field>
             <Field label="Trade">
-              <input name="trade" className={inputCls} />
+              <ComboSelect name="trade" options={TRADES} />
             </Field>
             <Field label="Rate (AED/hr)">
-              <input name="rate" type="number" step="0.01" className={inputCls} />
+              <NumberInput name="rate" step={0.01} />
             </Field>
             <Field label="Valid from">
-              <input name="validFrom" type="date" className={inputCls} />
+              <DatePicker name="validFrom" />
             </Field>
             <Field label="Valid to (expiry)">
-              <input name="validTo" type="date" className={inputCls} />
+              <DatePicker name="validTo" />
             </Field>
             <Field label="Notes" className="col-span-2 sm:col-span-3">
               <input name="notes" className={inputCls} />

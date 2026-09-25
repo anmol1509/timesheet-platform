@@ -57,8 +57,7 @@ export default async function SkillsPage() {
       >
         <label className="block flex-1 min-w-[160px]">
           <span className="mb-1 block text-xs font-medium text-muted">
-            Trade name
-          </span>
+            Trade name *</span>
           <input
             name="name"
             required

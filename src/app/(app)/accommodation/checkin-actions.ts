@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function dateOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -78,6 +79,7 @@ export async function createCheckInAction(
 // bed was already allocated in the old camp, it's freed first — a bed
 // belongs to a specific camp's room, so it can't follow the switch.
 export async function switchCampAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const checkInId = String(formData.get("checkInId") || "");
   const newCampId = String(formData.get("campId") || "");
@@ -133,6 +135,7 @@ export async function switchCampAction(formData: FormData) {
 // bed-allocated to a different bed ("Switch Room") — the old bed is freed
 // and its accommodation history closed before the new one opens.
 export async function allocateBedAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const checkInId = String(formData.get("checkInId") || "");
   const bedId = String(formData.get("bedId") || "");

@@ -52,7 +52,7 @@ export function ProjectSites({
       >
         <input type="hidden" name="projectId" value={projectId} />
         <label className="block min-w-[160px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-muted">Name</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Name *</span>
           <input
             name="name"
             required

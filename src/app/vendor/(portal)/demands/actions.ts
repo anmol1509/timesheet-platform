@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getVendor } from "@/lib/vendor/session";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -34,6 +35,7 @@ async function tellOffice(demand: { requestNo: number; branchId: string }, suppl
 
 /** Accept a demand with a quote: how many workers per trade and at what rate. */
 export async function acceptOfferAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const found = await openOffer(str(formData.get("offerId")));
   if (!found.ok) return { error: found.error };
   const { vendor, offer } = found;
@@ -63,6 +65,7 @@ export async function acceptOfferAction(_prev: State, formData: FormData): Promi
 }
 
 export async function declineOfferAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const found = await openOffer(str(formData.get("offerId")));
   if (!found.ok) return { error: found.error };
   const { vendor, offer } = found;

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -18,6 +19,7 @@ async function assertEnquiryInBranch(id: string, branchId: string | null, isSupe
 }
 
 export async function createEnquiryAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   if (!clientId || !branchId) return;
@@ -52,6 +54,7 @@ export async function createEnquiryAction(formData: FormData) {
 }
 
 export async function updateEnquiryAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("enquiryId") || "");
   if (!id) return;
@@ -84,6 +87,7 @@ export async function updateEnquiryAction(formData: FormData) {
 }
 
 export async function deleteEnquiryAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("sales", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("enquiryId") || "");

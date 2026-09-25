@@ -6,6 +6,10 @@ import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/Badge";
 import { createAdjustmentAction, toggleAdjustmentAction } from "../pay-items-actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { RECURRING_ITEMS } from "@/lib/formLists";
+import { MonthInput } from "@/components/ui/MonthInput";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 export type RecurringRow = { id: string; employee: string; employeeIdNo: string; kind: string; label: string; amount: number; startMonth: string; endMonth: string | null; active: boolean };
@@ -32,12 +36,12 @@ function NewItemForm({ employees, onDone }: { employees: { id: string; label: st
           <span className="mb-1 block text-xs font-medium text-muted">Kind</span>
           <Select name="kind" defaultValue="EARNING" searchable={false} options={[{ value: "EARNING", label: "Earning (added to pay)" }, { value: "DEDUCTION", label: "Deduction (taken from pay)" }]} />
         </label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Monthly amount (AED)</span><input type="number" step="0.01" min="0" name="amount" required className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Monthly amount (AED) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-full" /></label>
       </div>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Name on the payslip</span><input name="label" required placeholder="e.g. Phone allowance" className="input w-full" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Name on the payslip *</span><ComboSelect name="label" options={RECURRING_ITEMS} required /></label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">First month</span><input type="month" name="startMonth" defaultValue={thisMonth()} required className="input w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Last month (blank = ongoing)</span><input type="month" name="endMonth" className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">First month *</span><MonthInput name="startMonth" defaultValue={thisMonth()} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Last month (blank = ongoing)</span><MonthInput name="endMonth" className="w-full" /></label>
       </div>
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Add item"}</button>

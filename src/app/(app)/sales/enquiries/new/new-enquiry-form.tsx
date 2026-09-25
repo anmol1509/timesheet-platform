@@ -3,6 +3,9 @@
 import { useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createEnquiryAction } from "../actions";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { TRADES } from "@/lib/formLists";
+import { ENQUIRY_SOURCES } from "@/lib/formLists";
 
 export function NewEnquiryForm({ clients }: { clients: { id: string; name: string }[] }) {
   const [pending, startTransition] = useTransition();
@@ -26,18 +29,11 @@ export function NewEnquiryForm({ clients }: { clients: { id: string; name: strin
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Required trade</span>
-        <input
-          name="requiredTrade"
-          className="input w-full"
-        />
+        <ComboSelect name="requiredTrade" options={TRADES} />
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Source</span>
-        <input
-          name="source"
-          placeholder="e.g. Referral, Website"
-          className="input w-full"
-        />
+        <ComboSelect name="source" options={ENQUIRY_SOURCES} />
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Remarks</span>

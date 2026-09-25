@@ -4,6 +4,7 @@ import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { InvoiceGrid } from "./invoice-grid";
+import { Select } from "@/components/ui/Select";
 
 export default async function InvoicesPage({
   searchParams,
@@ -53,18 +54,7 @@ export default async function InvoicesPage({
               <label htmlFor="month" className="text-sm text-muted">
                 Month
               </label>
-              <select
-                id="month"
-                name="month"
-                defaultValue={selectedMonth}
-                className="input py-1.5"
-              >
-                {months.map((m) => (
-                  <option key={m} value={m}>
-                    {monthLabelFromKey(m)}
-                  </option>
-                ))}
-              </select>
+              <Select name="month" defaultValue={selectedMonth} options={[...months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))]} />
               <NativeSubmit />
             </form>
           )}

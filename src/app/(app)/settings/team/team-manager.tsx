@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
@@ -83,16 +84,16 @@ function UserForm({
       {user && <input type="hidden" name="userId" value={user.id} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Full name</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Full name *</span>
           <input name="name" defaultValue={user?.name} required className="input w-full" />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Email</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Email *</span>
           <input name="email" type="email" defaultValue={user?.email} required={!user} disabled={!!user} className="input w-full" />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Phone</span>
-          <input name="phone" defaultValue={user?.phone ?? ""} className="input w-full" />
+          <PhoneField name="phone" defaultValue={user?.phone ?? ""} />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Job title</span>
@@ -100,7 +101,7 @@ function UserForm({
         </label>
         {!user && (
           <label className="block sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-muted">Temporary password (they can change it on their profile)</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Temporary password (they can change it on their profile) *</span>
             <input name="password" type="password" required minLength={8} autoComplete="new-password" className="input w-full" />
           </label>
         )}

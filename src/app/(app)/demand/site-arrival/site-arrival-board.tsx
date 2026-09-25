@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 import { confirmSiteArrivalAction, revertSiteArrivalAction, disapproveSiteArrivalAction } from "../actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export type ArrivalRow = {
   id: string;
@@ -176,12 +177,7 @@ export function SiteArrivalBoard({
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-1.5">
                 <span className="text-xs text-muted">Reached site on</span>
-                <input
-                  type="date"
-                  value={arrivalDate}
-                  onChange={(e) => setArrivalDate(e.target.value)}
-                  className="input px-2 py-1 text-xs"
-                />
+                <DatePicker value={arrivalDate} onChange={(v) => setArrivalDate(v)} />
               </label>
               {/* Optional: a demand names a project, and only the site knows
                   which of its sites the worker was actually put on. */}

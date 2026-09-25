@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -24,6 +25,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createVehicleAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const plateNumber = String(formData.get("plateNumber") || "").trim();
   if (!plateNumber) return;
@@ -53,6 +55,7 @@ export async function createVehicleAction(formData: FormData) {
 }
 
 export async function updateVehicleAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const id = String(formData.get("vehicleId") || "");
   if (!id) return;
@@ -88,6 +91,7 @@ export async function updateVehicleAction(formData: FormData) {
 }
 
 export async function deleteVehicleAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const user = await requireUser();
   const id = String(formData.get("vehicleId") || "");
@@ -121,6 +125,7 @@ export async function deleteVehicleAction(formData: FormData) {
 }
 
 export async function assignEmployeesToVehicleAction(formData: FormData) {
+  assertContactsValid(formData);
   await requireUser();
   const vehicleId = String(formData.get("vehicleId") || "");
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
@@ -133,6 +138,7 @@ export async function assignEmployeesToVehicleAction(formData: FormData) {
 }
 
 export async function unassignEmployeeFromVehicleAction(formData: FormData) {
+  assertContactsValid(formData);
   await requireUser();
   const vehicleId = String(formData.get("vehicleId") || "");
   const employeeId = String(formData.get("employeeId") || "");
@@ -145,6 +151,7 @@ export async function unassignEmployeeFromVehicleAction(formData: FormData) {
 }
 
 export async function addVehicleProjectAction(formData: FormData) {
+  assertContactsValid(formData);
   await requireUser();
   const vehicleId = String(formData.get("vehicleId") || "");
   const projectId = String(formData.get("projectId") || "");
@@ -158,6 +165,7 @@ export async function addVehicleProjectAction(formData: FormData) {
 }
 
 export async function removeVehicleProjectAction(formData: FormData) {
+  assertContactsValid(formData);
   await requireUser();
   const vehicleId = String(formData.get("vehicleId") || "");
   const projectId = String(formData.get("projectId") || "");

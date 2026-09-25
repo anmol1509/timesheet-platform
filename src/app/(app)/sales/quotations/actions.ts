@@ -7,6 +7,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -38,6 +39,7 @@ type LineInput = {
 };
 
 export async function createQuotationAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const enquiryId = stringOrNull(formData.get("enquiryId"));
@@ -96,6 +98,7 @@ export async function createQuotationAction(formData: FormData) {
 }
 
 export async function updateQuotationStatusAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
   const toStatus = String(formData.get("status") || "");
@@ -123,6 +126,7 @@ export async function updateQuotationStatusAction(formData: FormData) {
 }
 
 export async function updateQuotationDetailsAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
   if (!id) return;
@@ -160,6 +164,7 @@ export async function updateQuotationDetailsAction(formData: FormData) {
 // Creating an Lpo per line is optional — checked explicitly on the form,
 // since not every accepted quotation arrives with firm LPO terms yet.
 export async function convertQuotationToProjectAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
   const createLpos = formData.get("createLpos") === "on";
@@ -239,6 +244,7 @@ export async function convertQuotationToProjectAction(formData: FormData) {
 }
 
 export async function deleteQuotationAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("sales", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");

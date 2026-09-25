@@ -8,6 +8,7 @@ import { parseDay } from "@/lib/dates";
 import { isDuplicateBill } from "@/lib/financeRules";
 import { loadSupplierMonthPayable } from "@/lib/supplierMonthPayable";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -60,6 +61,7 @@ async function tellFinance(branchId: string, supplierName: string, billNo: strin
 
 /** A supplier submits an invoice. It waits for approval like any bill; nothing is paid until then. */
 export async function submitInvoiceAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   if (vendor.invoiceApprovalStatus !== "Approved") return { error: "Invoicing isn't enabled for your company yet. Please contact us." };
@@ -98,6 +100,7 @@ export async function submitInvoiceAction(_prev: State, formData: FormData): Pro
 
 /** Fix and resend an invoice that was rejected. Only rejected, unpaid invoices can be edited. */
 export async function resubmitInvoiceAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   const bill = await prisma.supplierBill.findFirst({ where: { id: str(formData.get("billId")), supplierId: vendor.id }, include: { _count: { select: { payments: true } } } });

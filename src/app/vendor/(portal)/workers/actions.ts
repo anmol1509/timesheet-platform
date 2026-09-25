@@ -6,6 +6,7 @@ import { getVendor } from "@/lib/vendor/session";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { parseDay } from "@/lib/dates";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -15,6 +16,7 @@ const FILES = [["passportFile", "PASSPORT"], ["emiratesIdFile", "EMIRATES_ID"], 
 
 /** A supplier proposes a new worker. It waits in a staging table until our staff approve it. */
 export async function submitWorkerAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   if (vendor.labourApprovalStatus !== "Approved") return { error: "Adding workers isn't enabled for your company yet. Please contact us." };
@@ -78,6 +80,7 @@ export async function submitWorkerAction(_prev: State, formData: FormData): Prom
 
 /** Withdraw a submission that hasn't been decided. */
 export async function withdrawWorkerAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   const sub = await prisma.workerSubmission.findFirst({ where: { id: str(formData.get("id")), supplierId: vendor.id } });

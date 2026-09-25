@@ -4,6 +4,8 @@ import { useMemo, useRef, useState, useTransition } from "react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { issueEmployeeInventoryAction, returnEmployeeInventoryAssignmentAction } from "./actions";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Assignment = {
   id: string;
@@ -45,6 +47,7 @@ export function InventorySection({
   const conditionRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLInputElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
+  const [resetKey, setResetKey] = useState(0);
   const today = new Date().toISOString().slice(0, 10);
 
   const selectedItem = items.find((i) => i.id === itemId) ?? null;
@@ -82,6 +85,7 @@ export function InventorySection({
       setItemId("");
       setVariantId("");
       setAcknowledged(false);
+      setResetKey((k) => k + 1);
       if (quantityRef.current) quantityRef.current.value = "1";
       if (conditionRef.current) conditionRef.current.value = "";
       if (notesRef.current) notesRef.current.value = "";
@@ -130,11 +134,11 @@ export function InventorySection({
           )}
           <label className="block w-20">
             <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
-            <input ref={quantityRef} type="number" min={1} defaultValue={1} className="input w-full" />
+            <NumberInput key={resetKey} defaultValue={1} min={1} inputRef={quantityRef} className="w-full" />
           </label>
           <label className="block min-w-[140px]">
             <span className="mb-1 block text-xs font-medium text-muted">Date issued</span>
-            <input ref={dateRef} type="date" defaultValue={today} className="input w-full" />
+            <DatePicker key={resetKey} defaultValue={today} inputRef={dateRef} className="w-full" />
           </label>
           <label className="block min-w-[140px]">
             <span className="mb-1 block text-xs font-medium text-muted">Condition</span>

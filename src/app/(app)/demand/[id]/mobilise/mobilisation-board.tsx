@@ -14,6 +14,7 @@ import {
   changeEmployeeTradeAction,
   unallocateEmployeeAction,
 } from "../../actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type Line = {
   id: string;
@@ -273,13 +274,7 @@ export function MobilisationBoard({
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5">
                 <span className="text-xs text-muted">On site from</span>
-                <input
-                  type="date"
-                  value={mobilisationDate}
-                  onChange={(e) => setMobilisationDate(e.target.value)}
-                  disabled={locked}
-                  className="input px-2 py-1 text-xs"
-                />
+                <DatePicker value={mobilisationDate} onChange={(v) => setMobilisationDate(v)} disabled={locked} />
               </label>
               <span className="text-xs text-muted">
                 {locked

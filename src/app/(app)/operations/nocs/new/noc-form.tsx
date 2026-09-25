@@ -5,6 +5,7 @@ import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { NOC_DISPLAY_FIELDS, DEFAULT_NOC_DISPLAY_FIELDS } from "@/lib/nocDisplayFields";
 import { createNocAction } from "../actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type RequestOption = {
   id: string;
@@ -97,12 +98,7 @@ export function NocForm({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Mobilize Date</span>
-          <input
-            type="date"
-            value={mobilizeDate}
-            onChange={(e) => setMobilizeDate(e.target.value)}
-            className="input w-full"
-          />
+          <DatePicker value={mobilizeDate} onChange={(v) => setMobilizeDate(v)} className="w-full" />
         </label>
         <div className="sm:col-span-2">
           <label className="block">

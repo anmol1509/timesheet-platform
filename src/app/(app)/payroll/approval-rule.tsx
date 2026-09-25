@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { setApprovalThresholdAction } from "./actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 /** Payroll approval limit: above it, a run's creator can't approve their own run. */
 export function ApprovalRuleForm({ current }: { current: number | null }) {
@@ -13,7 +14,7 @@ export function ApprovalRuleForm({ current }: { current: number | null }) {
     <form action={action} className="card flex flex-wrap items-end gap-3 p-4">
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Second approver needed above (AED)</span>
-        <input type="number" step="0.01" min="0" name="threshold" defaultValue={current ?? ""} placeholder="No limit" className="input w-44" />
+        <NumberInput name="threshold" defaultValue={current ?? ""} min={0} step={0.01} placeholder="No limit" className="w-44" />
       </label>
       <button type="submit" className="btn btn-secondary" disabled={pending}>{pending ? "Saving…" : "Save rule"}</button>
       {state.ok && <span className="text-sm text-[var(--success)]">Saved</span>}

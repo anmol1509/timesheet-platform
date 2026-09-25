@@ -1,8 +1,13 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import { updateVehicleAction } from "../actions";
 import { Select } from "@/components/ui/Select";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { VEHICLE_TYPES } from "@/lib/formLists";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Vehicle = {
   id: string;
@@ -34,21 +39,10 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
       <input type="hidden" name="vehicleId" value={vehicle.id} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Type">
-          <input
-            name="type"
-            placeholder="e.g. 30-seater bus"
-            defaultValue={vehicle.type || ""}
-            className="input w-full"
-          />
+          <ComboSelect name="type" options={VEHICLE_TYPES} defaultValue={vehicle.type} />
         </Field>
         <Field label="Capacity (seats)">
-          <input
-            name="capacity"
-            type="number"
-            min={0}
-            defaultValue={vehicle.capacity ?? ""}
-            className="input w-full"
-          />
+          <NumberInput name="capacity" defaultValue={vehicle.capacity ?? ""} min={0} className="w-full" />
         </Field>
         <Field label="Driver name">
           <input
@@ -58,27 +52,13 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
           />
         </Field>
         <Field label="Driver phone">
-          <input
-            name="driverPhone"
-            defaultValue={vehicle.driverPhone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="driverPhone" defaultValue={vehicle.driverPhone} />
         </Field>
         <Field label="Registration (Mulkiya) expiry">
-          <input
-            name="registrationExpiry"
-            type="date"
-            defaultValue={vehicle.registrationExpiry}
-            className="input w-full"
-          />
+          <DatePicker name="registrationExpiry" defaultValue={vehicle.registrationExpiry} className="w-full" />
         </Field>
         <Field label="Insurance expiry">
-          <input
-            name="insuranceExpiry"
-            type="date"
-            defaultValue={vehicle.insuranceExpiry}
-            className="input w-full"
-          />
+          <DatePicker name="insuranceExpiry" defaultValue={vehicle.insuranceExpiry} className="w-full" />
         </Field>
         <Field label="Status">
           <Select
@@ -119,11 +99,12 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-muted">
         {label}
+        {required && <span className="text-[var(--error)]"> *</span>}
       </span>
       {children}
     </label>

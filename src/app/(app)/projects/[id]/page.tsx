@@ -38,7 +38,7 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [project, clients, inventoryCatalog] = await Promise.all([
+  const [project, clients, inventoryCatalog, ownCompanies] = await Promise.all([
     prisma.project.findUnique({
       where: { id },
       include: {
@@ -55,6 +55,7 @@ export default async function ProjectDetailPage({
     }),
     prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.inventoryItem.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: true }, select: { name: true }, orderBy: { name: "asc" } }),
   ]);
   if (!project || isOutsideBranch(project.branchId, branchId, isSuperAdmin)) notFound();
 
@@ -97,6 +98,7 @@ export default async function ProjectDetailPage({
             label: "Basic Detail",
             content: (
               <EditProjectForm
+                sponsors={ownCompanies.map((c) => c.name)}
                 project={{
                   id: project.id,
                   name: project.name,

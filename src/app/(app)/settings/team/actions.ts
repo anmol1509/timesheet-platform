@@ -6,6 +6,7 @@ import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { sanitizePermissions } from "@/lib/permissions";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const ROLES = ["SUPER_ADMIN", "BRANCH_ADMIN", "STAFF"] as const;
@@ -40,6 +41,7 @@ function parseRole(raw: string, admin: { role: string }): RoleValue | null {
 }
 
 export async function createUserAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const admin = await requireAdmin();
   const isSuperAdmin = admin.role === "SUPER_ADMIN";
   const v = (k: string) => String(formData.get(k) || "").trim();
@@ -134,6 +136,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
 }
 
 export async function updateUserAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const v = (k: string) => String(formData.get(k) || "").trim();
   const { admin, target } = await manageable(v("userId"));
   if (!target) return { error: "You can't edit that user." };
@@ -186,6 +189,7 @@ export async function updateUserAction(_prev: State, formData: FormData): Promis
 }
 
 export async function setUserActiveAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const { admin, target } = await manageable(String(formData.get("userId") || ""));
   if (!target || target.id === admin.id) return { error: "You can't change that user." };
   const isActive = formData.get("active") === "1";
@@ -209,6 +213,7 @@ export async function setUserActiveAction(formData: FormData): Promise<State> {
 }
 
 export async function resetUserPasswordAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const { admin, target } = await manageable(String(formData.get("userId") || ""));
   if (!target) return { error: "You can't edit that user." };
   const password = String(formData.get("password") || "");
@@ -228,6 +233,7 @@ export async function resetUserPasswordAction(_prev: State, formData: FormData):
 }
 
 export async function deleteUserAction(formData: FormData) {
+  assertContactsValid(formData);
   const { admin, target } = await manageable(String(formData.get("userId") || ""));
   if (!target || target.id === admin.id) return;
   try {

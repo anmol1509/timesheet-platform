@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateProjectLocationAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 export function ProjectLocation({
   projectId,
@@ -45,25 +46,13 @@ export function ProjectLocation({
           <span className="mb-1 block text-xs font-medium text-muted">
             Latitude
           </span>
-          <input
-            name="latitude"
-            type="number"
-            step="any"
-            defaultValue={latitude ?? ""}
-            className="input w-full"
-          />
+          <NumberInput name="latitude" defaultValue={latitude ?? ""} step={0.000001} className="w-full" />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">
             Longitude
           </span>
-          <input
-            name="longitude"
-            type="number"
-            step="any"
-            defaultValue={longitude ?? ""}
-            className="input w-full"
-          />
+          <NumberInput name="longitude" defaultValue={longitude ?? ""} step={0.000001} className="w-full" />
         </label>
       </div>
       <div className="flex items-center gap-3">

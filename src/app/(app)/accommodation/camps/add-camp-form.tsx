@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { Select } from "@/components/ui/Select";
 import { createCampWithRoomsAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type RoomDraft = { name: string; bedCount: number };
 type SupplierOption = { id: string; name: string };
@@ -95,14 +96,7 @@ export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
 
       <label className="block max-w-[160px]">
         <span className="mb-1 block text-xs font-medium text-muted">How many rooms?</span>
-        <input
-          type="number"
-          min={1}
-          max={50}
-          value={roomCount}
-          onChange={(e) => changeRoomCount(Number(e.target.value))}
-          className="input w-full"
-        />
+        <NumberInput value={roomCount} onChange={(v) => changeRoomCount(Number(String(v)))} min={1} max={50} className="w-full" />
       </label>
 
       <div className="space-y-2">
@@ -116,15 +110,7 @@ export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
                 placeholder={`Room ${i + 1} name`}
                 className="input min-w-0 flex-1 px-2 py-1 text-sm"
               />
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={room.bedCount}
-                onChange={(e) => updateRoom(i, { bedCount: Math.max(1, Math.min(20, Number(e.target.value) || 1)) })}
-                className="input w-16 px-2 py-1 text-sm"
-                title="Beds in this room"
-              />
+              <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(1, Math.min(20, Number(String(v)) || 1)) })} min={1} max={20} ariaLabel="Beds in this room" className="w-16" />
             </div>
           ))}
         </div>

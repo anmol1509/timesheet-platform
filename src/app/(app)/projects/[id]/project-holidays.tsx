@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { addProjectHolidayAction, removeProjectHolidayAction } from "../actions";
 import { DeleteButton } from "@/components/DeleteButton";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Holiday = { id: string; date: Date; label: string; rateMultiplier: number | null };
 
@@ -80,12 +82,7 @@ export function ProjectHolidays({
       <div className="flex flex-wrap items-end gap-3 border-t border-default p-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Date</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="input"
-          />
+          <DatePicker value={date} onChange={(v) => setDate(v)} />
         </label>
         <label className="block min-w-[160px] flex-1">
           <span className="mb-1 block text-xs font-medium text-muted">Label</span>
@@ -100,14 +97,7 @@ export function ProjectHolidays({
           <span className="mb-1 block text-xs font-medium text-muted">
             Rate multiplier (optional)
           </span>
-          <input
-            type="number"
-            step="0.1"
-            value={rateMultiplier}
-            onChange={(e) => setRateMultiplier(e.target.value)}
-            placeholder="e.g. 1.5"
-            className="input w-full"
-          />
+          <NumberInput value={rateMultiplier} onChange={(v) => setRateMultiplier(String(v))} step={0.1} placeholder="e.g. 1.5" className="w-full" />
         </label>
         <button
           type="button"

@@ -3,6 +3,7 @@
 import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState } from "react";
 import { acceptOfferAction, declineOfferAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -31,8 +32,8 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
             {trades.map((t) => (
               <li key={t.id} className="grid grid-cols-[1fr_auto_auto] items-end gap-3">
                 <div><p className="text-sm font-medium text-primary">{t.trade}</p><p className="text-xs text-muted">{t.quantity} requested</p></div>
-                <label className="block"><span className="mb-1 block text-xs text-muted">Workers</span><input type="number" min="0" max={t.quantity} name={`qty_${t.id}`} defaultValue={0} className="input w-24 text-right" /></label>
-                <label className="block"><span className="mb-1 block text-xs text-muted">Rate (AED)</span><input type="number" min="0" step="0.01" name={`rate_${t.id}`} className="input w-28 text-right" /></label>
+                <label className="block"><span className="mb-1 block text-xs text-muted">Workers</span><NumberInput name={`qty_${t.id}`} defaultValue={0} min={0} max={t.quantity} className="w-24" /></label>
+                <label className="block"><span className="mb-1 block text-xs text-muted">Rate (AED)</span><NumberInput name={`rate_${t.id}`} min={0} step={0.01} className="w-28" /></label>
               </li>
             ))}
           </ul>
@@ -45,7 +46,7 @@ export function RespondForm({ offerId, trades }: { offerId: string; trades: { id
       ) : (
         <form onSubmit={keepInput(dAction)} className="space-y-4">
           <input type="hidden" name="offerId" value={offerId} />
-          <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Why can&apos;t you supply this?</span><input name="note" required className="input w-full" placeholder="e.g. No carpenters available this month" /></label>
+          <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Why can&apos;t you supply this? *</span><input name="note" required className="input w-full" placeholder="e.g. No carpenters available this month" /></label>
           <div className="flex flex-wrap items-center gap-3">
             <button type="submit" className="btn btn-secondary" disabled={dPending}>{dPending ? "Sending…" : "Decline request"}</button>
             {dState.error && <p role="alert" className="text-sm text-[var(--error)]">{dState.error}</p>}

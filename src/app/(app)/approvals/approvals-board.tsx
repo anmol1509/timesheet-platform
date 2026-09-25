@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
 import type { ApprovalItem, Chip } from "@/lib/approvals";
 import { decideApprovalAction } from "./actions";
+import { NumberInput } from "@/components/ui/NumberInput";
+import { Select } from "@/components/ui/Select";
 
 export type BoardItem = Omit<ApprovalItem, "at"> & { at: string; ageDays: number };
 type Tab = { key: string; label: string; count: number };
@@ -116,9 +118,9 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
       <form method="get" action="/approvals" className="flex flex-wrap items-center gap-2">
         {filters.type && <input type="hidden" name="type" value={filters.type} />}
         <input name="q" defaultValue={filters.q} placeholder="Search supplier, person, amount…" aria-label="Search" className="input w-full max-w-xs" />
-        <select name="age" defaultValue={filters.age} aria-label="Waiting at least" className="input"><option value="">Any wait</option><option value="3">3+ days</option><option value="7">7+ days</option><option value="14">14+ days</option><option value="30">30+ days</option></select>
-        <input type="number" min="0" name="min" defaultValue={filters.min} placeholder="Min AED" aria-label="Amount from" className="input w-28" />
-        {requesters.length > 0 && <select name="from" defaultValue={filters.from} aria-label="Requested by" className="input"><option value="">Anyone</option>{requesters.map((r) => <option key={r} value={r}>{r}</option>)}</select>}
+        <Select name="age" defaultValue={filters.age} searchable={false} options={[{ value: "", label: "Any wait" }, { value: "3", label: "3+ days" }, { value: "7", label: "7+ days" }, { value: "14", label: "14+ days" }, { value: "30", label: "30+ days" }]} />
+        <NumberInput name="min" defaultValue={filters.min} min={0} placeholder="Min AED" ariaLabel="Amount from" className="w-28" />
+        {requesters.length > 0 && <Select name="from" defaultValue={filters.from} options={[{ value: "", label: "Anyone" }, ...requesters.map((r) => ({ value: r, label: r }))]} />}
         <button type="submit" className="btn btn-secondary">Filter</button>
         {(filters.q || filters.age || filters.min || filters.from) && <Link href={link({ q: "", age: "", min: "", from: "" })} className="text-sm text-muted hover:text-primary">Clear</Link>}
       </form>

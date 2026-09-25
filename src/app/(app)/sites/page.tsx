@@ -63,7 +63,7 @@ export default async function SitesPage() {
           />
         </label>
         <label className="min-w-[12rem] flex-1">
-          <span className="mb-1 block text-xs font-medium text-muted">Site name</span>
+          <span className="mb-1 block text-xs font-medium text-muted">Site name *</span>
           <input name="name" required placeholder="e.g. WA DIC" className="input w-full" />
         </label>
         <label className="min-w-[12rem] flex-1">

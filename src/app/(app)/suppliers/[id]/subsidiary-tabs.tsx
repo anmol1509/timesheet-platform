@@ -81,8 +81,7 @@ export function SubsidiaryTabs({
             <input type="hidden" name="parentSupplierId" value={rootId} />
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">
-                Subsidiary name
-              </span>
+                Subsidiary name *</span>
               <input
                 name="name"
                 required

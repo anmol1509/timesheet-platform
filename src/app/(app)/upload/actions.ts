@@ -6,8 +6,10 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 export async function deleteUploadAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("timesheets", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (user.role !== "SUPER_ADMIN" && user.role !== "BRANCH_ADMIN") redirect("/");

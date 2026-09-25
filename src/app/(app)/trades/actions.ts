@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser, requirePermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 /**
  * Finds an existing skill regardless of casing or spacing.
@@ -23,6 +24,7 @@ async function findSkillByName(name: string) {
 const MIN_SKILL_NAME = 3;
 
 export async function createSkillAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const name = String(formData.get("name") || "").trim().replace(/\s+/g, " ");
   if (name.length < MIN_SKILL_NAME) return;
@@ -66,6 +68,7 @@ export async function createSkillAction(formData: FormData) {
 }
 
 export async function updateSkillAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const id = String(formData.get("skillId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -90,6 +93,7 @@ export async function updateSkillAction(formData: FormData) {
 }
 
 export async function toggleTrendingAction(formData: FormData) {
+  assertContactsValid(formData);
   const user = await requireUser();
   const id = String(formData.get("skillId") || "");
   const trending = formData.get("trending") === "true";
@@ -112,6 +116,7 @@ export async function toggleTrendingAction(formData: FormData) {
 }
 
 export async function deleteSkillAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("workforce", "delete");
   const user = await requireUser();
   const id = String(formData.get("skillId") || "");

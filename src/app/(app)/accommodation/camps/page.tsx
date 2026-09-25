@@ -17,6 +17,7 @@ import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { cn } from "@/lib/cn";
 import { createRoomAction, updateCampAction } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 export default async function CampsPage({
   searchParams,
@@ -227,33 +228,15 @@ export default async function CampsPage({
               placeholder="Room name, e.g. Room 103"
               className="input w-full"
             />
-            <input
-              name="bedCount"
-              type="number"
-              min={1}
-              max={20}
-              defaultValue={4}
-              placeholder="Number of beds"
-              className="input w-full"
-            />
+            <NumberInput name="bedCount" defaultValue={4} min={1} max={20} placeholder="Number of beds" className="w-full" />
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-muted">Bed space</span>
-                <input
-                  name="bedSpace"
-                  type="number"
-                  min={0}
-                  className="input w-full"
-                />
+                <NumberInput name="bedSpace" min={0} className="w-full" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-muted">Usable bed space</span>
-                <input
-                  name="usableBedSpace"
-                  type="number"
-                  min={0}
-                  className="input w-full"
-                />
+                <NumberInput name="usableBedSpace" min={0} className="w-full" />
               </label>
             </div>
             <label className="block">

@@ -6,6 +6,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { LOOKUP_CATEGORIES } from "@/lib/lookupCategories";
+import { assertContactsValid } from "@/lib/validators";
 
 async function assertLookupInBranch(id: string, branchId: string | null, isSuperAdmin: boolean) {
   const row = await prisma.lookupValue.findUnique({
@@ -16,6 +17,7 @@ async function assertLookupInBranch(id: string, branchId: string | null, isSuper
 }
 
 export async function createLookupValueAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   const category = String(formData.get("category") || "");
   const value = String(formData.get("value") || "").trim();
@@ -39,6 +41,7 @@ export async function createLookupValueAction(formData: FormData) {
 }
 
 export async function toggleLookupValueActiveAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("lookupValueId") || "");
   if (!id) return;
@@ -98,6 +101,7 @@ export async function countLookupValueUsageAction(id: string): Promise<number> {
 }
 
 export async function deleteLookupValueAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("lookupValueId") || "");
   if (!id) return;

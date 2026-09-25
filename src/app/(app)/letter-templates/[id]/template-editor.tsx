@@ -7,6 +7,7 @@ import { LetterPreview } from "@/components/LetterPreview";
 import { fieldsFor, unknownFieldsIn, type Audience } from "@/lib/letterFields";
 import { categoriesFor } from "@/lib/letterPresets";
 import { deleteTemplateAction, duplicateTemplateAction, resetToPresetAction, saveTemplateAction } from "../actions";
+import { Select } from "@/components/ui/Select";
 
 type State = { error: string | null; ok?: boolean };
 type Props = { id: string; audience: Audience; name: string; category: string; title: string; html: string; hasPreset: boolean; usedBy: number };
@@ -75,10 +76,7 @@ export function TemplateEditor(p: Props) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Letter type</span>
-              <select name="category" value={category} onChange={(e) => setCategory(e.target.value)} className="input w-full">
-                <option value="">Not set</option>
-                {categoriesFor(p.audience).map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <Select name="category" value={category} onChange={(v) => setCategory(v)} options={[{ value: "", label: "Not set" }, ...categoriesFor(p.audience).map((c) => ({ value: c, label: c }))]} triggerClassName="w-full" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Heading printed on the letter</span>

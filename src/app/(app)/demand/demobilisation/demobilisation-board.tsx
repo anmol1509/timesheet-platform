@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 import { cn } from "@/lib/cn";
 import { demobiliseAction } from "./actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 export type DeployedRow = {
   id: string;
@@ -186,12 +187,7 @@ export function DemobilisationBoard({
             <div className="flex flex-wrap items-end gap-3">
               <label>
                 <span className="mb-1 block text-xs font-medium text-muted">Came off site on</span>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="input px-2 py-1.5 text-sm"
-                />
+                <DatePicker value={date} onChange={(v) => setDate(v)} />
               </label>
               <label className="w-56">
                 <span className="mb-1 block text-xs font-medium text-muted">Then</span>

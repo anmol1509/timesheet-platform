@@ -7,6 +7,7 @@ import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { markActiveFromAttendance } from "@/lib/employeeStageTransitions";
 import { syncAttendanceDay, type SyncResult } from "@/lib/attendanceTimesheetSync";
+import { assertContactsValid } from "@/lib/validators";
 
 export async function loadDayAttendanceAction(formData: FormData): Promise<{
   rows: Record<
@@ -14,6 +15,7 @@ export async function loadDayAttendanceAction(formData: FormData): Promise<{
     { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean }
   >;
 }> {
+  assertContactsValid(formData);
   const { branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { rows: {} };
@@ -205,6 +207,7 @@ export async function markAttendanceAction(
 // expressed as a boolean here since Attendance only has two states
 // (open/locked) rather than a multi-stage pipeline.
 export async function approveAttendanceDayAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
@@ -243,6 +246,7 @@ export async function approveAttendanceDayAction(formData: FormData) {
 }
 
 export async function requestAttendanceCorrectionAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const attendanceId = String(formData.get("attendanceId") || "");
   const reason = String(formData.get("reason") || "").trim();
@@ -280,6 +284,7 @@ export async function requestAttendanceCorrectionAction(formData: FormData) {
 }
 
 export async function reviewCorrectionRequestAction(formData: FormData) {
+  assertContactsValid(formData);
   // Deciding a correction is an approval; it used to be open to any signed-in user.
   await requirePermission("timesheets", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();

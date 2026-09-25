@@ -13,6 +13,7 @@ import {
   revertSiteArrival,
   releaseFromMobilisation,
 } from "@/lib/employeeStageTransitions";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -31,6 +32,7 @@ type TradeInput = {
 };
 
 export async function createDemandRequestAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const projectId = String(formData.get("projectId") || "");
@@ -99,6 +101,7 @@ export async function createDemandRequestAction(formData: FormData) {
 }
 
 export async function updateDemandRequestAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("requestId") || "");
   if (!id) return;
@@ -129,6 +132,7 @@ export async function updateDemandRequestAction(formData: FormData) {
 }
 
 export async function deleteDemandRequestAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("demand", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("requestId") || "");
@@ -294,6 +298,7 @@ export async function allocateEmployeesAction(
 }
 
 export async function unallocateEmployeeAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const allocationId = String(formData.get("allocationId") || "");
   if (!allocationId) return;
@@ -488,6 +493,7 @@ export async function setTradeApprovalAction(
  * look at.
  */
 export async function confirmSiteArrivalAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
   if (employeeIds.length === 0) return { confirmed: 0, requested: 0 };
@@ -557,6 +563,7 @@ export async function confirmSiteArrivalAction(formData: FormData) {
 
 /** Reverses a site-arrival confirmation entered against the wrong worker. */
 export async function revertSiteArrivalAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return;

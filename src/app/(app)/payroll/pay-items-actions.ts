@@ -6,6 +6,7 @@ import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { monthBounds, round2 } from "@/lib/payroll";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -21,6 +22,7 @@ async function employeeInBranch(employeeId: string, branchId: string) {
 
 // ------------------------------------------------------- loans & advances
 export async function createLoanAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
@@ -44,6 +46,7 @@ export async function createLoanAction(_prev: State, formData: FormData): Promis
 }
 
 export async function cancelLoanAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const loan = await prisma.employeeLoan.findUnique({ where: { id: str(formData.get("id")) }, include: { employee: { select: { name: true } } } });
@@ -58,6 +61,7 @@ export async function cancelLoanAction(formData: FormData): Promise<State> {
 
 // ---------------------------------------------- recurring earnings / deductions
 export async function createAdjustmentAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
@@ -81,6 +85,7 @@ export async function createAdjustmentAction(_prev: State, formData: FormData): 
 }
 
 export async function toggleAdjustmentAction(formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   await requirePermission("payroll", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const row = await prisma.payrollAdjustment.findUnique({ where: { id: str(formData.get("id")) }, include: { employee: { select: { name: true } } } });

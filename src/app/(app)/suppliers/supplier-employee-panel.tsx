@@ -21,6 +21,7 @@ import {
   type InsuredNameMatch,
   type SupplierPanel,
 } from "./actions";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type WizardData = {
   projects: { id: string; name: string; code: string; clientId: string }[];
@@ -261,12 +262,7 @@ export function SupplierEmployeePanel({
                     <span className="mb-1 block text-xs font-medium text-muted">
                       Expiry of the certificate you&rsquo;re uploading
                     </span>
-                    <input
-                      type="date"
-                      value={expiry}
-                      onChange={(e) => setExpiry(e.target.value)}
-                      className="input w-48"
-                    />
+                    <DatePicker value={expiry} onChange={(v) => setExpiry(v)} className="w-48" />
                   </label>
                   <input
                     type="file"

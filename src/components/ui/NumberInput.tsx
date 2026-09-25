@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useFormReset } from "@/lib/useFormReset";
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -43,10 +44,12 @@ export function NumberInput({
   className,
   inputClassName,
   ariaLabel,
+  inputRef,
 }: {
   name?: string;
-  value?: number | "";
-  defaultValue?: number | "";
+  /** Numbers are expected, but a numeric string (form state kept as text) is accepted too. */
+  value?: number | string | null | "";
+  defaultValue?: number | string | "";
   onChange?: (value: number | "") => void;
   min?: number;
   max?: number;
@@ -57,12 +60,25 @@ export function NumberInput({
   className?: string;
   inputClassName?: string;
   ariaLabel?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
 }) {
-  const [internal, setInternal] = useState<number | "">(defaultValue ?? "");
+  const [internal, setInternal] = useState<number | string>(defaultValue ?? "");
+  const [text, setText] = useState<string>(String(defaultValue ?? value ?? ""));
   const controlled = value !== undefined;
-  const current = controlled ? value : internal;
+  const rootRef = useRef<HTMLDivElement>(null);
+  useFormReset(rootRef, () => {
+    setInternal(defaultValue ?? "");
+    setText(String(defaultValue ?? ""));
+  });
+  const raw = controlled ? (value ?? "") : internal;
+  const current: number | "" = raw === "" || Number.isNaN(Number(raw)) ? "" : Number(raw);
+  // What is shown: the text as typed while it still means the same number (so "1." and "0.50" survive typing),
+  // otherwise the number itself.
+  const display = text !== "" && Number(text) === current ? text : current === "" ? (text === "" || Number.isNaN(Number(text)) ? text : "") : String(current);
 
-  function commit(next: number | "") {
+  function commit(next: number | "", typed?: string) {
+    if (typed !== undefined) setText(typed);
+    else setText(String(next));
     if (!controlled) setInternal(next);
     onChange?.(next);
   }
@@ -77,7 +93,7 @@ export function NumberInput({
   const atMax = current !== "" && max !== undefined && current >= max;
 
   return (
-    <div className={cn("flex items-stretch", className)}>
+    <div ref={rootRef} className={cn("flex items-stretch", className)}>
       <StepButton
         side="left"
         onClick={() => nudge(-1)}
@@ -88,9 +104,10 @@ export function NumberInput({
       </StepButton>
       <input
         type="number"
+        ref={inputRef}
         name={name}
-        value={current}
-        onChange={(e) => commit(e.target.value === "" ? "" : Number(e.target.value))}
+        value={display}
+        onChange={(e) => commit(e.target.value === "" || Number.isNaN(Number(e.target.value)) ? "" : Number(e.target.value), e.target.value)}
         min={min}
         max={max}
         step={step}

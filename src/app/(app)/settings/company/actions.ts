@@ -6,6 +6,7 @@ import { isUsableBank } from "@/lib/bankStatus";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
+import { assertContactsValid } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -20,6 +21,7 @@ async function loadEditableBranch(branchId: string) {
 const FIELDS = ["name", "emirate", "address", "country", "currency", "phone", "email", "fax", "poBox", "trn"] as const;
 
 export async function updateCompanyAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const branchId = String(formData.get("branchId") || "");
   const { admin, branch } = await loadEditableBranch(branchId);
   if (!branch) return { error: "You can't edit that company." };
@@ -56,6 +58,7 @@ export async function updateCompanyAction(_prev: State, formData: FormData): Pro
 }
 
 export async function uploadLogoAction(formData: FormData) {
+  assertContactsValid(formData);
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
   const saved = await storeImage(formData.get("image"));
@@ -77,6 +80,7 @@ export async function uploadLogoAction(formData: FormData) {
 }
 
 export async function removeLogoAction(formData: FormData) {
+  assertContactsValid(formData);
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
   await prisma.branch.update({ where: { id: branch.id }, data: { logoId: null } });
@@ -96,6 +100,7 @@ export async function removeLogoAction(formData: FormData) {
 }
 
 export async function updateWpsAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
 
@@ -136,6 +141,7 @@ type LetterImageKind = keyof typeof LETTER_IMAGES;
 const asKind = (v: FormDataEntryValue | null): LetterImageKind | null => (typeof v === "string" && v in LETTER_IMAGES ? (v as LetterImageKind) : null);
 
 export async function updateLetterDefaultsAction(_prev: State, formData: FormData): Promise<State> {
+  assertContactsValid(formData);
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
   const signatoryName = String(formData.get("signatoryName") || "").trim().slice(0, 80) || null;
@@ -148,6 +154,7 @@ export async function updateLetterDefaultsAction(_prev: State, formData: FormDat
 }
 
 export async function uploadLetterImageAction(formData: FormData) {
+  assertContactsValid(formData);
   const kind = asKind(formData.get("kind"));
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch || !kind) return { error: "You can't edit that company." };
@@ -164,6 +171,7 @@ export async function uploadLetterImageAction(formData: FormData) {
 }
 
 export async function removeLetterImageAction(formData: FormData) {
+  assertContactsValid(formData);
   const kind = asKind(formData.get("kind"));
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch || !kind) return { error: "You can't edit that company." };

@@ -17,6 +17,7 @@ import {
   deleteBedAction,
   placeWorkerInBedAction,
 } from "../actions";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 type Bed = { id: string; label: string; employeeId: string | null };
 type Room = {
@@ -123,14 +124,7 @@ export function CampView({
                 <div className="flex items-center gap-2">
                   <form action={addBedsToRoomAction} className="flex items-center gap-1.5">
                     <input type="hidden" name="roomId" value={room.id} />
-                    <input
-                      name="count"
-                      type="number"
-                      min={1}
-                      max={20}
-                      defaultValue={1}
-                      className="input w-14 px-2 py-1 text-xs"
-                    />
+                    <NumberInput name="count" defaultValue={1} min={1} max={20} className="w-14" />
                     <button
                       type="submit"
                       className="rounded-control border border-strong px-2 py-1 text-xs font-medium text-secondary hover:bg-surface-hover"

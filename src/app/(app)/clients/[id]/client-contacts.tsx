@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import {
   addClientContactAction,
@@ -168,8 +169,7 @@ export function ClientContacts({
           <input type="hidden" name="clientId" value={clientId} />
           <label className="block min-w-[140px] flex-1">
             <span className="mb-1 block text-xs font-medium text-muted">
-              Name
-            </span>
+              Name *</span>
             <input
               name="name"
               required
@@ -189,10 +189,7 @@ export function ClientContacts({
             <span className="mb-1 block text-xs font-medium text-muted">
               Phone
             </span>
-            <input
-              name="phone"
-              className="input w-full"
-            />
+            <PhoneField name="phone" />
           </label>
           <label className="block min-w-[160px] flex-1">
             <span className="mb-1 block text-xs font-medium text-muted">

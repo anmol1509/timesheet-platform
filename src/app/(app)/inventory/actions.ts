@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { assertContactsValid } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -64,6 +65,7 @@ export async function createInventoryItemAction(
 }
 
 export async function updateInventoryItemAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
   if (!id) return;
@@ -94,6 +96,7 @@ export async function updateInventoryItemAction(formData: FormData) {
 }
 
 export async function deleteInventoryItemAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
@@ -162,6 +165,7 @@ export async function createVariantAction(
 }
 
 export async function updateVariantStockAction(formData: FormData) {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");
   const stock = Math.max(0, Number(formData.get("stock")) || 0);
@@ -187,6 +191,7 @@ export async function updateVariantStockAction(formData: FormData) {
 }
 
 export async function deleteVariantAction(formData: FormData) {
+  assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");

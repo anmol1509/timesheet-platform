@@ -263,11 +263,11 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
           <div className="flex gap-3">
             <label className="w-24">
               <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
-              <input type="number" defaultValue={3} min={0} className="input w-full" />
+              <NumberInput defaultValue={3} min={0} className="w-full" />
             </label>
             <label className="w-32">
               <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
-              <input type="number" step="0.01" defaultValue={12.5} className="input w-full" />
+              <NumberInput defaultValue={12.5} step={0.01} className="w-full" />
             </label>
           </div>
         </Card>
@@ -289,7 +289,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
         <Card title="Before — visa expiry">
           <label className="block w-48">
             <span className="mb-1 block text-xs font-medium text-muted">Visa expiry</span>
-            <input type="date" defaultValue="2031-04-15" className="input w-full" />
+            <DatePicker defaultValue="2031-04-15" className="w-full" />
           </label>
         </Card>
         <Card title="After — visa expiry">
