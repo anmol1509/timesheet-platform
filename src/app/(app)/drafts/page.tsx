@@ -22,7 +22,14 @@ const ago = (d: Date, now: Date) => {
 /** Everything this person has started but not finished. Drafts are private to them. */
 export default async function DraftsPage() {
   const { user } = await requireUserWithBranch();
-  const drafts = await prisma.draft.findMany({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, take: 100 }).catch(() => []);
+  // A missing table, or a server still holding an older database client, must not take the page down.
+  const drafts = await (async () => {
+    try {
+      return await prisma.draft.findMany({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, take: 100 });
+    } catch {
+      return [];
+    }
+  })();
   const now = new Date();
 
   return (

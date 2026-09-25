@@ -9,15 +9,17 @@ import { AlertTriangle, RotateCw } from "lucide-react";
  * (sidebar, header) intact so the user can navigate away instead of hitting a
  * dead end.
  *
- * Note: this Next.js version names the recovery callback `unstable_retry`,
- * not `reset` — see node_modules/next/dist/client/components/error-boundary.d.ts.
+ * Note: this Next.js version passes the recovery callback as `retry` (older 16.x releases called it
+ * `unstable_retry`) and also `reset`; use whichever is present — see node_modules/next/dist/client/components/error-boundary.d.ts.
  */
 export default function AppError({
   error,
-  unstable_retry,
+  retry,
+  reset,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry?: () => void;
+  reset?: () => void;
 }) {
   useEffect(() => {
     console.error(error);
@@ -44,7 +46,7 @@ export default function AppError({
         <div className="mt-5 flex items-center justify-center gap-2">
           <button
             type="button"
-            onClick={() => unstable_retry()}
+            onClick={() => (retry ?? reset)?.()}
             className="btn btn-primary btn-sm"
           >
             <RotateCw className="h-3.5 w-3.5" aria-hidden />
