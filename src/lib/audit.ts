@@ -32,15 +32,22 @@ export async function logAudit(params: {
   const changes: object =
     action === "UPDATE" && before && after ? diffFields(before, after) : (after ?? before ?? {});
 
-  await prisma.auditLog.create({
-    data: {
-      entityType,
-      entityId,
-      action,
-      changes,
-      userId,
-      userName,
-      branchId: branchId ?? null,
-    },
-  });
+  // Never let a failed audit-log write take down the action that triggered
+  // it (same principle as notifyUsers) — by the time this runs, the actual
+  // create/update/delete has already committed.
+  try {
+    await prisma.auditLog.create({
+      data: {
+        entityType,
+        entityId,
+        action,
+        changes,
+        userId,
+        userName,
+        branchId: branchId ?? null,
+      },
+    });
+  } catch (e) {
+    console.error("[audit] failed to log:", e instanceof Error ? e.message : e);
+  }
 }
