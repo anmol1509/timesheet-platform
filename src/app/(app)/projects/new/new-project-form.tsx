@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { createProjectAction } from "../actions";
+import { PersonField } from "@/components/form/PersonField";
 import { Select } from "@/components/ui/Select";
 
 export function NewProjectForm({
@@ -68,12 +69,7 @@ export function NewProjectForm({
                   options={clients.map((c) => ({ value: c.id, label: c.name }))}
                 />
               </Field>
-              <Field label="Project manager">
-                <input
-                  name="manager"
-                  className="input w-full"
-                />
-              </Field>
+              <PersonField name="manager" label="Project manager" />
               <Field label="Status">
                 <Select
                   name="status"

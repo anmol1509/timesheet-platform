@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateProjectAction } from "../actions";
 import { Select } from "@/components/ui/Select";
+import { PersonField } from "@/components/form/PersonField";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 type Project = {
@@ -10,7 +11,11 @@ type Project = {
   name: string;
   clientId: string;
   manager: string | null;
+  managerPhone: string | null;
+  managerEmail: string | null;
   projectCoordinator: string | null;
+  projectCoordinatorPhone: string | null;
+  projectCoordinatorEmail: string | null;
   timelineStart: string;
   timelineEnd: string;
   status: string;
@@ -20,6 +25,8 @@ type Project = {
   paymentType: string | null;
   sponsorshipCompany: string | null;
   salesExecutive: string | null;
+  salesExecutivePhone: string | null;
+  salesExecutiveEmail: string | null;
   contactNo: string | null;
   timesheetCollectionDate: string;
   noOfEmployeesRequired: number | null;
@@ -40,14 +47,17 @@ export function EditProjectForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <form
       action={(formData) => {
         setSaved(false);
+        setError(null);
         startTransition(async () => {
-          await updateProjectAction(formData);
-          setSaved(true);
+          const res = await updateProjectAction(formData);
+          if (res?.error) setError(res.error);
+          else setSaved(true);
         });
       }}
       className="card space-y-6 p-6"
@@ -118,27 +128,9 @@ export function EditProjectForm({
             className="input w-full"
           />
         </Field>
-        <Field label="Sales executive">
-          <input
-            name="salesExecutive"
-            defaultValue={project.salesExecutive || ""}
-            className="input w-full"
-          />
-        </Field>
-        <Field label="Project coordinator">
-          <input
-            name="projectCoordinator"
-            defaultValue={project.projectCoordinator || ""}
-            className="input w-full"
-          />
-        </Field>
-        <Field label="Project manager">
-          <input
-            name="manager"
-            defaultValue={project.manager || ""}
-            className="input w-full"
-          />
-        </Field>
+        <PersonField name="salesExecutive" label="Sales executive" defaultName={project.salesExecutive} defaultPhone={project.salesExecutivePhone} defaultEmail={project.salesExecutiveEmail} />
+        <PersonField name="projectCoordinator" label="Project coordinator" defaultName={project.projectCoordinator} defaultPhone={project.projectCoordinatorPhone} defaultEmail={project.projectCoordinatorEmail} />
+        <PersonField name="manager" label="Project manager" defaultName={project.manager} defaultPhone={project.managerPhone} defaultEmail={project.managerEmail} />
         <Field label="Start date">
           <input
             name="timelineStart"
@@ -223,6 +215,7 @@ export function EditProjectForm({
         >
           {pending ? "Saving…" : "Save changes"}
         </button>
+        {error && <span className="text-sm text-[var(--error)]">{error}</span>}
         {saved && !pending && (
           <span className="text-sm text-emerald-600">Saved.</span>
         )}
