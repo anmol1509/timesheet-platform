@@ -26,11 +26,11 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1 basis-80">
           <h1 className="text-xl font-semibold tracking-tight text-primary">Letter templates</h1>
           <p className="mt-1 text-sm text-muted">The wording of your client letters (NOCs, mobilization, undertakings) and letters about your employees (salary certificates, experience letters, warnings). Pick a ready-made one, format it like an email with a live preview, and it&apos;s used the next time a letter is made.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {branchId && templates.length > 0 && missingDefaults && <AddDefaultsButton />}
           {branchId && <NewTemplateButton />}
         </div>

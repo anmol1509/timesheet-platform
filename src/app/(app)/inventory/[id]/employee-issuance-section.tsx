@@ -106,7 +106,7 @@ export function EmployeeIssuanceSection({
               />
             </label>
           )}
-          <label className="block w-20">
+          <label className="block w-32">
             <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
             <NumberInput key={resetKey} defaultValue={1} min={1} inputRef={quantityRef} className="w-full" />
           </label>

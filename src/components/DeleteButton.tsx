@@ -34,7 +34,7 @@ export function DeleteButton({
           <button
             type="button"
             onClick={open}
-            className={className || "text-xs font-medium text-red-600 hover:underline"}
+            className={className || "inline-flex min-h-8 items-center px-1 text-xs font-medium text-red-600 hover:underline sm:min-h-0 sm:px-0"}
           >
             {label}
           </button>

@@ -93,7 +93,7 @@ export function NumberInput({
   const atMax = current !== "" && max !== undefined && current >= max;
 
   return (
-    <div ref={rootRef} className={cn("flex items-stretch", className)}>
+    <div ref={rootRef} className={cn("flex min-w-[7.5rem] items-stretch", className)}>
       <StepButton
         side="left"
         onClick={() => nudge(-1)}
@@ -116,7 +116,7 @@ export function NumberInput({
         placeholder={placeholder}
         aria-label={ariaLabel}
         className={cn(
-          "input w-full rounded-none border-x-0 text-center tabular",
+          "input w-full min-w-0 rounded-none border-x-0 text-center tabular",
           // The spinners would sit next to our own buttons saying the same thing.
           "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
           inputClassName

@@ -117,7 +117,7 @@ export function ProjectInventory({
               options={catalog.map((name) => ({ value: name, label: name }))}
             />
           </label>
-          <label className="block w-20">
+          <label className="block w-32">
             <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
             <NumberInput value={quantity} onChange={(v) => setQuantity(String(v))} min={1} className="w-full" />
           </label>
