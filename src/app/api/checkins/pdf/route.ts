@@ -4,7 +4,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { generateCheckInPdf } from "@/lib/generateCheckInPdf";
 
-const CAMP_TYPE_LABEL: Record<string, string> = { OWN: "Own", SUPPLIER: "Supplier" };
+const CAMP_TYPE_LABEL: Record<string, string> = { OWN: "Own", SUPPLIER: "Supplier", CLIENT: "Client" };
 const STATUS_LABEL: Record<string, string> = {
   CHECKED_IN: "Checked In",
   BED_ALLOCATED: "Bed Allocated",

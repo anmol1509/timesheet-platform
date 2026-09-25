@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
+import { ComboSelect } from "@/components/ui/ComboSelect";
+import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
@@ -24,7 +26,16 @@ type EmployeeRow = {
   checkInId: string | null;
   campName: string | null;
   campId: string | null;
+  supplierId: string | null;
+  clientId: string | null;
+  /** OWN, SUPPLIER or CLIENT for a worker who is already checked in. */
+  campKind: string | null;
 };
+
+type ExternalCamp = { id: string; name: string; ownerType: "SUPPLIER" | "CLIENT"; supplierId: string | null };
+type Party = { id: string; name: string };
+type CampType = "OWN" | "SUPPLIER" | "CLIENT";
+const KIND_LABEL: Record<string, string> = { OWN: "Own camp", SUPPLIER: "Supplier camp", CLIENT: "Client camp" };
 
 type CampOption = {
   id: string;
@@ -43,7 +54,7 @@ function campLabel(c: CampOption) {
   return `${c.name} (${type}) — ${c.roomCount} rooms, ${c.vacantBeds}/${c.totalBeds} beds vacant`;
 }
 
-export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: CampOption[] }) {
+export function CheckInTable({ rows, camps, externalCamps, suppliers, clients }: { rows: EmployeeRow[]; camps: CampOption[]; externalCamps: ExternalCamp[]; suppliers: Party[]; clients: Party[] }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [checkInOpen, setCheckInOpen] = useState(false);
@@ -61,10 +72,10 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
   const counts = {
     all: rows.length,
     not_checked_in: rows.filter((r) => !r.checkInId).length,
-    awaiting_bed: rows.filter((r) => !!r.checkInId).length,
+    awaiting_bed: rows.filter((r) => !!r.checkInId && r.campKind === "OWN").length,
   };
   const visible =
-    filter === "all" ? rows : rows.filter((r) => (filter === "not_checked_in" ? !r.checkInId : !!r.checkInId));
+    filter === "all" ? rows : rows.filter((r) => (filter === "not_checked_in" ? !r.checkInId : !!r.checkInId && r.campKind === "OWN"));
 
   return (
     <div className="space-y-3">
@@ -173,9 +184,15 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
                   </td>
                   <td className="px-4 py-3">
                     {r.checkInId ? (
-                      <Badge color="amber" dot>
-                        Checked in — {r.campName}
-                      </Badge>
+                      r.campKind === "OWN" ? (
+                        <Badge color="amber" dot>
+                          Checked in — {r.campName}
+                        </Badge>
+                      ) : (
+                        <Badge color="blue" dot>
+                          {KIND_LABEL[r.campKind ?? ""] ?? "Camp"} — {r.campName}
+                        </Badge>
+                      )
                     ) : (
                       <Badge color="slate">Not checked in</Badge>
                     )}
@@ -206,7 +223,11 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
       <CheckInModal
         open={checkInOpen}
         employeeIds={[...selected]}
+        employees={rows.filter((r) => selected.has(r.id))}
         camps={camps}
+        externalCamps={externalCamps}
+        suppliers={suppliers}
+        clients={clients}
         onDone={() => {
           setSelected(new Set());
           setCheckInOpen(false);
@@ -222,13 +243,21 @@ export function CheckInTable({ rows, camps }: { rows: EmployeeRow[]; camps: Camp
 function CheckInModal({
   open,
   employeeIds,
+  employees,
   camps,
+  externalCamps,
+  suppliers,
+  clients,
   onDone,
   onClose,
 }: {
   open: boolean;
   employeeIds: string[];
+  employees: EmployeeRow[];
   camps: CampOption[];
+  externalCamps: ExternalCamp[];
+  suppliers: Party[];
+  clients: Party[];
   onDone: () => void;
   onClose: () => void;
 }) {
@@ -236,13 +265,9 @@ function CheckInModal({
     <Dialog modal={false} open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         title={`Check In ${employeeIds.length} Employee${employeeIds.length === 1 ? "" : "s"}`}
-        description="Select the camp to check them into. A bed isn't picked yet — that's the next step, Bed Allocation."
+        description="Choose whose camp they are staying in. Own camps continue to Bed Allocation; supplier and client camps are recorded here."
       >
-        {camps.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">No camps set up yet — add one under Camps first.</p>
-        ) : (
-          <CheckInForm employeeIds={employeeIds} camps={camps} onDone={onDone} />
-        )}
+        <CheckInForm employeeIds={employeeIds} employees={employees} camps={camps} externalCamps={externalCamps} suppliers={suppliers} clients={clients} onDone={onDone} />
       </DialogContent>
     </Dialog>
   );
@@ -250,23 +275,56 @@ function CheckInModal({
 
 function CheckInForm({
   employeeIds,
+  employees,
   camps,
+  externalCamps,
+  suppliers,
+  clients,
   onDone,
 }: {
   employeeIds: string[];
+  employees: EmployeeRow[];
   camps: CampOption[];
+  externalCamps: ExternalCamp[];
+  suppliers: Party[];
+  clients: Party[];
   onDone: () => void;
 }) {
   const router = useRouter();
+  const [campType, setCampType] = useState<CampType>("OWN");
   const [campId, setCampId] = useState("");
+  // Start with the supplier / client the selected workers all share, if they do.
+  const common = (pick: (e: EmployeeRow) => string | null) => {
+    const ids = new Set(employees.map(pick));
+    return ids.size === 1 ? ([...ids][0] ?? "") : "";
+  };
+  const [supplierId, setSupplierId] = useState(() => common((e) => e.supplierId));
+  const [clientId, setClientId] = useState(() => common((e) => e.clientId));
+  const [campValue, setCampValue] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  const partyId = campType === "SUPPLIER" ? supplierId : clientId;
+  const partyName = (campType === "SUPPLIER" ? suppliers : clients).find((p) => p.id === partyId)?.name ?? "";
+  // Camps this supplier / client was used for before, shown without the "Party — " prefix.
+  const remembered = externalCamps
+    .filter((c) => c.ownerType === campType && (campType === "SUPPLIER" ? c.supplierId === partyId : partyName !== "" && c.name.startsWith(`${partyName} — `)))
+    .map((c) => ({ value: c.id, label: partyName && c.name.startsWith(`${partyName} — `) ? c.name.slice(partyName.length + 3) : c.name }));
+  const usingRemembered = remembered.some((o) => o.value === campValue);
+  const canSubmit =
+    employeeIds.length > 0 && (campType === "OWN" ? !!campId : !!partyId && campValue.trim() !== "");
+
   function handleSubmit() {
-    if (!campId || employeeIds.length === 0) return;
+    if (!canSubmit) return;
     setError(null);
     const formData = new FormData();
-    formData.append("campId", campId);
+    formData.append("campType", campType);
+    if (campType === "OWN") formData.append("campId", campId);
+    else {
+      formData.append("partyId", partyId);
+      if (usingRemembered) formData.append("campId", campValue);
+      else formData.append("campName", campValue.trim());
+    }
     for (const id of employeeIds) formData.append("employeeId", id);
     startTransition(async () => {
       const result = await createCheckInAction(formData);
@@ -274,34 +332,80 @@ function CheckInForm({
         setError(result.error);
         return;
       }
-      // Direct navigation, not window.open: a new-tab/window popup opened
-      // after an awaited server action routinely gets blocked because the
-      // browser's "user activation" window has already expired by the time
-      // the response comes back. Same-tab navigation to a download isn't
-      // subject to that — the Content-Disposition header makes the browser
-      // download the file rather than navigate away from this page.
+      // Direct navigation, not window.open: a popup opened after an awaited server action is
+      // routinely blocked once the browser's user-activation window has expired. Same-tab
+      // navigation to a download isn't, and Content-Disposition makes it download, not navigate.
       window.location.href = `/api/checkins/pdf?ids=${result.ids.join(",")}`;
       router.refresh();
       onDone();
     });
   }
 
+  const label = "mb-1 block text-xs font-medium text-muted";
   return (
     <div className="mt-4 space-y-4">
-      <Select
-        value={campId}
-        onChange={setCampId}
-        placeholder="Select a camp"
-        options={camps.map((c) => ({ value: c.id, label: campLabel(c) }))}
-      />
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div>
+        <span className={label}>Camp type</span>
+        <SegmentedControl
+          value={campType}
+          onChange={(v) => {
+            setCampType(v as CampType);
+            setCampValue("");
+            setError(null);
+          }}
+          options={[
+            { value: "OWN", label: "Own camp" },
+            { value: "SUPPLIER", label: "Supplier camp" },
+            { value: "CLIENT", label: "Client camp" },
+          ]}
+        />
+      </div>
+
+      {campType === "OWN" ? (
+        <div>
+          <span className={label}>Camp</span>
+          {camps.length === 0 ? (
+            <p className="text-sm text-muted">No own camps set up yet — add one under Camps first.</p>
+          ) : (
+            <Select value={campId} onChange={setCampId} placeholder="Select a camp" options={camps.map((c) => ({ value: c.id, label: campLabel(c) }))} />
+          )}
+          <p className="mt-1.5 text-xs text-muted">A bed isn&apos;t picked yet — that&apos;s the next step, Bed Allocation.</p>
+        </div>
+      ) : (
+        <>
+          <div>
+            <span className={label}>{campType === "SUPPLIER" ? "Supplier" : "Client"}</span>
+            <Select
+              value={partyId}
+              onChange={(v) => {
+                if (campType === "SUPPLIER") setSupplierId(v);
+                else setClientId(v);
+                setCampValue("");
+              }}
+              placeholder={campType === "SUPPLIER" ? "Select the supplier" : "Select the client"}
+              options={(campType === "SUPPLIER" ? suppliers : clients).map((p) => ({ value: p.id, label: p.name }))}
+            />
+          </div>
+          <div>
+            <span className={label}>Camp name / location</span>
+            <ComboSelect
+              key={`${campType}-${partyId}`}
+              options={remembered}
+              value={campValue}
+              onChange={setCampValue}
+              placeholder={partyId ? "Select or add a camp" : "Choose the " + (campType === "SUPPLIER" ? "supplier" : "client") + " first"}
+              disabled={!partyId}
+              otherLabel="Add a new camp…"
+              otherPlaceholder="e.g. Sonapur camp, Block 3"
+            />
+          </div>
+          <p className="text-xs text-muted">Housing is arranged by the {campType === "SUPPLIER" ? "supplier" : "client"}, so no room or bed is allocated here.</p>
+        </>
+      )}
+
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <DialogFooter>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!campId || pending}
-          className="btn btn-primary"
-        >
+        <button type="button" onClick={handleSubmit} disabled={!canSubmit || pending} className="btn btn-primary">
           {pending ? "Checking in…" : "Check In"}
         </button>
       </DialogFooter>

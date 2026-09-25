@@ -2,23 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { SegmentedControl } from "@/components/ui/RadioGroup";
-import { Select } from "@/components/ui/Select";
 import { createCampWithRoomsAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 type RoomDraft = { name: string; bedCount: number; bunkCount: number };
-type SupplierOption = { id: string; name: string };
 
 function defaultRooms(count: number, previous: RoomDraft[]): RoomDraft[] {
   return Array.from({ length: count }, (_, i) => previous[i] ?? { name: `Room ${i + 1}`, bedCount: 4, bunkCount: 0 });
 }
 
-export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
+export function AddCampForm() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [ownerType, setOwnerType] = useState<"OWN" | "SUPPLIER">("OWN");
-  const [supplierId, setSupplierId] = useState("");
   const [roomCount, setRoomCount] = useState(1);
   const [rooms, setRooms] = useState<RoomDraft[]>(defaultRooms(1, []));
   const [pending, startTransition] = useTransition();
@@ -42,8 +37,6 @@ export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
     setError(null);
     const formData = new FormData();
     formData.append("name", name.trim());
-    formData.append("ownerType", ownerType);
-    if (ownerType === "SUPPLIER" && supplierId) formData.append("supplierId", supplierId);
     formData.append("roomsJson", JSON.stringify(rooms));
     startTransition(async () => {
       const result = await createCampWithRoomsAction(formData);
@@ -70,29 +63,7 @@ export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
         />
       </label>
 
-      <div>
-        <span className="mb-1 block text-xs font-medium text-muted">Camp type</span>
-        <SegmentedControl
-          value={ownerType}
-          onChange={(v) => setOwnerType(v as "OWN" | "SUPPLIER")}
-          options={[
-            { value: "OWN", label: "Own camp" },
-            { value: "SUPPLIER", label: "Supplier camp" },
-          ]}
-        />
-      </div>
-
-      {ownerType === "SUPPLIER" && (
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Owning supplier</span>
-          <Select
-            value={supplierId}
-            onChange={setSupplierId}
-            placeholder="Select a supplier"
-            options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
-          />
-        </label>
-      )}
+      <p className="text-xs text-muted">This adds one of your own camps. Supplier and client camps are recorded when you check workers in, since you don&apos;t manage their rooms.</p>
 
       <label className="block max-w-[160px]">
         <span className="mb-1 block text-xs font-medium text-muted">How many rooms?</span>

@@ -6,7 +6,6 @@ import { BedDouble, Home, Percent, Building2 } from "lucide-react";
 import { deleteCampAction } from "../actions";
 import { CampView } from "./camp-view";
 import { AddCampForm } from "./add-camp-form";
-import { CampOwnershipEditor } from "./camp-ownership-editor";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
@@ -76,7 +75,7 @@ export default async function CampsPage({
     where: { ...branchWhere(branchId), bed: null, active: true, status: { not: "TERMINATED" } },
     select: { id: true, name: true, employeeIdNo: true, trade: true },
     orderBy: { name: "asc" },
-    take: 80,
+    take: 500,
   });
 
   const employeeNames = Object.fromEntries(
@@ -164,12 +163,7 @@ export default async function CampsPage({
                 hiddenFields={{ campId: selectedCamp.id }}
               />
               <div className="ml-auto flex flex-wrap items-center gap-3">
-                <CampOwnershipEditor
-                  campId={selectedCamp.id}
-                  ownerType={selectedCamp.ownerType}
-                  owningSupplierId={selectedCamp.owningSupplierId}
-                  suppliers={suppliers}
-                />
+
                 <DeleteButton
                   action={deleteCampAction}
                   hiddenFields={{ campId: selectedCamp.id }}
@@ -211,7 +205,7 @@ export default async function CampsPage({
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AddCampForm suppliers={suppliers} />
+        <AddCampForm />
 
         {selectedCamp && (
           <form

@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
-import { BedDouble, BedSingle, Layers, MoreHorizontal, Plus } from "lucide-react";
+import { BedDouble, BedSingle, ExternalLink, Layers, MoreHorizontal, Plus, Search, Trash2, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -99,6 +101,18 @@ export function CampView({
   const [overBed, setOverBed] = useState<string | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [trayQuery, setTrayQuery] = useState("");
+  // Clicking a bed opens a modal: assign a worker, delete the bed, or check the occupant out.
+  const [active, setActive] = useState<{ bed: Bed; room: Room } | null>(null);
+  const [mode, setMode] = useState<"menu" | "assign" | "delete" | "checkout">("menu");
+  const [assignQuery, setAssignQuery] = useState("");
+  const [modalError, setModalError] = useState<string | null>(null);
+  const openBed = (bed: Bed, room: Room) => {
+    setActive({ bed, room });
+    setMode("menu");
+    setAssignQuery("");
+    setModalError(null);
+  };
+  const closeBed = () => setActive(null);
 
   function dropOn(bedId: string) {
     const emp = dragEmp;
@@ -112,6 +126,17 @@ export function CampView({
       router.refresh();
     });
   }
+  function assignTo(employeeId: string) {
+    if (!active) return;
+    setModalError(null);
+    start(async () => {
+      const res = await placeWorkerInBedAction(employeeId, active.bed.id);
+      if (res.error) setModalError(res.error);
+      else closeBed();
+      router.refresh();
+    });
+  }
+  const assignList = unhoused.filter((u) => `${u.name} ${u.employeeIdNo} ${u.trade ?? ""}`.toLowerCase().includes(assignQuery.trim().toLowerCase()));
   const tray = unhoused.filter((u) => `${u.name} ${u.employeeIdNo} ${u.trade ?? ""}`.toLowerCase().includes(trayQuery.trim().toLowerCase()));
 
   const allBeds = rooms.flatMap((r) => r.beds);
@@ -127,6 +152,16 @@ export function CampView({
     const occupant = bed.employeeId ? employeeNames[bed.employeeId] : null;
     return (
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={`${bed.label} in ${room.name}${occupant ? `, ${occupant.name}` : ", vacant"}`}
+        onClick={() => openBed(bed, room)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openBed(bed, room);
+          }
+        }}
         draggable={!!occupant}
         onDragStart={() => occupant && bed.employeeId && setDragEmp(bed.employeeId)}
         onDragEnd={() => {
@@ -148,7 +183,7 @@ export function CampView({
         }}
         className={cn(
           "group relative flex min-h-[3.25rem] items-center gap-2.5 rounded-control border px-2.5 py-2 transition",
-          occupant ? "cursor-grab border-default bg-surface active:cursor-grabbing" : "border-dashed border-default bg-surface-subtle",
+          occupant ? "cursor-grab border-default bg-surface hover:border-strong active:cursor-grabbing" : "cursor-pointer border-dashed border-default bg-surface-subtle hover:border-[var(--brand-primary)] hover:bg-brand-soft",
           !occupant && dragEmp && "border-[var(--brand-primary)]/60",
           overBed === bed.id && "border-solid bg-brand-soft ring-2 ring-[var(--brand-primary)]"
         )}
@@ -161,15 +196,6 @@ export function CampView({
               <span className="block truncate text-xs font-semibold text-primary" title={occupant.name}>{occupant.name}</span>
               <span className="tabular block truncate text-[10px] text-subtle">{occupant.employeeIdNo}</span>
             </span>
-            <span className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-              <DeleteButton
-                action={unassignBedAction}
-                hiddenFields={{ bedId: bed.id, employeeId: bed.employeeId ?? "" }}
-                confirmMessage={`Check out ${occupant.name} from ${bed.label}?`}
-                label="Check out"
-                className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 hover:underline"
-              />
-            </span>
           </>
         ) : (
           <>
@@ -179,15 +205,6 @@ export function CampView({
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-semibold text-secondary">Vacant</span>
               <span className="block text-[10px] text-subtle">{dragEmp ? "Drop a worker here" : "Available"}</span>
-            </span>
-            <span className="opacity-0 transition-opacity group-hover:opacity-100">
-              <DeleteButton
-                action={deleteBedAction}
-                hiddenFields={{ bedId: bed.id }}
-                confirmMessage={`Delete ${bed.label} from ${room.name}?`}
-                label="Remove"
-                className="text-[10px] font-medium text-subtle hover:text-red-600 hover:underline"
-              />
             </span>
           </>
         )}
@@ -319,6 +336,106 @@ export function CampView({
           </ul>
         </aside>
       </div>
+
+      <Dialog open={active !== null} onOpenChange={(o) => !o && closeBed()}>
+        {active && (() => {
+          // Read the bed from the current data, not the copy taken at click time, so the modal never shows a stale state.
+          const live = rooms.flatMap((r) => r.beds).find((b) => b.id === active.bed.id);
+          const bed = live ?? active.bed;
+          const room = active.room;
+          const occ = bed.employeeId ? employeeNames[bed.employeeId] : null;
+          return (
+            <DialogContent title={`${bed.label} · ${room.name}`} description={occ ? "Occupied" : "Vacant bed"} className="max-w-md">
+              {modalError && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{modalError}</p>}
+
+              {mode === "menu" && occ && (
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-center gap-3 rounded-lg border border-default bg-surface-subtle p-3">
+                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white", avatarGradient(occ.name))}>{initials(occ.name)}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-primary">{occ.name}</span>
+                      <span className="tabular block text-xs text-muted">{occ.employeeIdNo}</span>
+                    </span>
+                    <Link href={`/employees/${bed.employeeId}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Profile</Link>
+                  </div>
+                  <p className="text-xs text-muted">To move them to another bed, drag them there, or check them out first.</p>
+                  <button type="button" className="btn btn-secondary w-full text-red-600" onClick={() => setMode("checkout")}>Check out of this bed</button>
+                </div>
+              )}
+
+              {mode === "menu" && !occ && (
+                <div className="mt-4 grid gap-2">
+                  <button type="button" className="btn btn-primary w-full gap-2" onClick={() => setMode("assign")}><UserPlus className="h-4 w-4" aria-hidden />Assign a worker</button>
+                  <button type="button" className="btn btn-secondary w-full gap-2 text-red-600" onClick={() => setMode("delete")}><Trash2 className="h-4 w-4" aria-hidden />Delete this bed</button>
+                </div>
+              )}
+
+              {mode === "assign" && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-secondary">Workers who don&apos;t have a bed yet ({unhoused.length}). Pick one to place in this bed.</p>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
+                    <input autoFocus value={assignQuery} onChange={(e) => setAssignQuery(e.target.value)} placeholder="Search by name, ID or trade…" aria-label="Search workers without a bed" className="input w-full pl-9" />
+                  </div>
+                  <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                    {assignList.length === 0 && <li className="py-6 text-center text-sm text-muted">{unhoused.length === 0 ? "Everyone already has a bed." : "No worker matches."}</li>}
+                    {assignList.map((u) => (
+                      <li key={u.id}>
+                        <button type="button" onClick={() => assignTo(u.id)} className="flex w-full items-center gap-3 rounded-lg border border-default bg-surface px-3 py-2 text-left transition hover:border-[var(--brand-primary)] hover:bg-brand-soft">
+                          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-semibold text-white", avatarGradient(u.name))}>{initials(u.name)}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-primary">{u.name}</span>
+                            <span className="tabular block truncate text-xs text-muted">{u.employeeIdNo}{u.trade ? ` · ${u.trade}` : ""}</span>
+                          </span>
+                          <span className="text-xs font-medium text-[var(--brand-primary)]">Assign</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" className="btn btn-secondary" onClick={() => setMode("menu")}>Back</button>
+                </div>
+              )}
+
+              {mode === "delete" && (
+                <form
+                  className="mt-4 space-y-4"
+                  action={async (fd) => {
+                    await deleteBedAction(fd);
+                    closeBed();
+                    router.refresh();
+                  }}
+                >
+                  <input type="hidden" name="bedId" value={bed.id} />
+                  <p className="text-sm text-secondary">Delete <span className="font-medium text-primary">{bed.label}</span> from {room.name}? Nobody is in it. This can&apos;t be undone.</p>
+                  <div className="flex justify-end gap-2">
+                    <button type="button" className="btn btn-secondary" onClick={() => setMode("menu")}>Cancel</button>
+                    <button type="submit" className="btn btn-danger">Delete bed</button>
+                  </div>
+                </form>
+              )}
+
+              {mode === "checkout" && occ && (
+                <form
+                  className="mt-4 space-y-4"
+                  action={async (fd) => {
+                    await unassignBedAction(fd);
+                    closeBed();
+                    router.refresh();
+                  }}
+                >
+                  <input type="hidden" name="bedId" value={bed.id} />
+                  <input type="hidden" name="employeeId" value={bed.employeeId ?? ""} />
+                  <p className="text-sm text-secondary">Check <span className="font-medium text-primary">{occ.name}</span> out of {bed.label}? They will show under &ldquo;Without a bed&rdquo;.</p>
+                  <div className="flex justify-end gap-2">
+                    <button type="button" className="btn btn-secondary" onClick={() => setMode("menu")}>Cancel</button>
+                    <button type="submit" className="btn btn-danger">Check out</button>
+                  </div>
+                </form>
+              )}
+            </DialogContent>
+          );
+        })()}
+      </Dialog>
     </div>
   );
 }

@@ -30,13 +30,40 @@ export async function createCheckInAction(
 ): Promise<{ ids: string[] } | { error: string }> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const campId = String(formData.get("campId") || "");
+  const campType = ["SUPPLIER", "CLIENT"].includes(String(formData.get("campType"))) ? String(formData.get("campType")) : "OWN";
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
-  if (!campId) return { error: "Select a camp." };
   if (employeeIds.length === 0) return { error: "Select at least one employee." };
 
-  const camp = await prisma.camp.findUnique({ where: { id: campId } });
-  if (!camp) return { error: "Camp not found." };
+  // Own camps are picked from the list. Supplier and client camps aren't managed here (no rooms or beds),
+  // so they are recorded by name against the supplier or client, and reused next time.
+  let camp: { id: string; name: string } | null = null;
+  if (campType === "OWN") {
+    const own = await prisma.camp.findUnique({ where: { id: String(formData.get("campId") || "") } });
+    if (!own || own.ownerType !== "OWN") return { error: "Select one of your own camps." };
+    camp = own;
+  } else {
+    const existingId = String(formData.get("campId") || "");
+    const partyId = String(formData.get("partyId") || "");
+    const typedName = String(formData.get("campName") || "").trim().slice(0, 80);
+    const party = campType === "SUPPLIER"
+      ? await prisma.supplier.findUnique({ where: { id: partyId }, select: { id: true, name: true, branchId: true } })
+      : await prisma.client.findUnique({ where: { id: partyId }, select: { id: true, name: true, branchId: true } });
+    if (!party || isOutsideBranch(party.branchId, branchId, isSuperAdmin)) return { error: `Choose the ${campType === "SUPPLIER" ? "supplier" : "client"}.` };
+    if (existingId) {
+      const found = await prisma.camp.findUnique({ where: { id: existingId } });
+      if (!found || found.ownerType !== campType) return { error: "That camp isn't available." };
+      camp = found;
+    } else {
+      if (!typedName) return { error: "Enter the camp name or location." };
+      const fullName = `${party.name} — ${typedName}`;
+      camp = await prisma.camp.upsert({
+        where: { name: fullName },
+        create: { name: fullName, ownerType: campType, owningSupplierId: campType === "SUPPLIER" ? party.id : null },
+        update: {},
+      });
+    }
+  }
+  const campId = camp.id;
 
   const employees = await prisma.employee.findMany({
     where: { id: { in: employeeIds } },
