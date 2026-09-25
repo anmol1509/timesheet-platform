@@ -6,10 +6,12 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
-import { STAGES, statusKind } from "@/lib/onboarding";
+import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { STAGES, statusKind, overallStatusLabel } from "@/lib/onboarding";
 import { CandidateForm } from "../candidate-form";
 import { StageRow } from "../stage-row";
 import { JoinPanel } from "../join-panel";
+import { Pipeline } from "../pipeline";
 import { deleteCandidateAction } from "../actions";
 
 export default async function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,7 +24,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   });
   if (!candidate || isOutsideBranch(candidate.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [agencies, projects, demandRequests, hrUsers, history] = await Promise.all([
+  const [agencies, projects, demandRequests, hrUsers, history, attachments] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({ where: branchWhere(branchId), select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
     prisma.demandRequest.findMany({
@@ -37,6 +39,11 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
       orderBy: { updatedAt: "desc" },
       include: { updatedBy: { select: { name: true } } },
     }),
+    prisma.attachment.findMany({
+      where: { entityType: "CANDIDATE_ONBOARDING", entityId: id },
+      orderBy: { uploadedAt: "desc" },
+      select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
+    }),
   ]);
 
   return (
@@ -46,7 +53,12 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Candidate onboarding
         </Link>
         <div className="mt-2 flex items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-primary">{candidate.candidateName}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-primary">{candidate.candidateName}</h1>
+            <span className="rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-medium text-subtle">
+              #{String(candidate.candidateNo).padStart(3, "0")}
+            </span>
+          </div>
           <DeleteButton
             action={deleteCandidateAction}
             hiddenFields={{ id: candidate.id }}
@@ -57,8 +69,12 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
         <p className="mt-1 text-sm text-muted">
           {candidate.trade ?? "No trade set"} · {candidate.agency?.name ?? "No agency"}
           {candidate.project ? ` · ${candidate.project.code} · ${candidate.project.name}` : ""}
+          {" · "}
+          <span className="font-medium text-secondary">{overallStatusLabel(candidate)}</span>
         </p>
       </div>
+
+      <Pipeline row={candidate} joined={candidate.joined} />
 
       <JoinPanel candidate={candidate} />
 
@@ -70,6 +86,18 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
         {STAGES.map((stage) => (
           <StageRow key={stage.key} candidateId={candidate.id} stage={stage} status={candidate[stage.field]} kind={statusKind(stage, candidate[stage.field])} />
         ))}
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-medium text-primary">Documents</p>
+        <AttachmentUploader
+          entityType="CANDIDATE_ONBOARDING"
+          entityId={candidate.id}
+          entityBranchId={candidate.branchId}
+          revalidate={`/onboarding/${candidate.id}`}
+          docTypeOptions={[...STAGES.map((s) => ({ value: s.key, label: s.label })), { value: "PASSPORT", label: "Passport copy" }, { value: "OTHER", label: "Other" }]}
+          attachments={attachments.map((a) => ({ ...a, expiryDate: a.expiryDate?.toISOString() ?? null, uploadedAt: a.uploadedAt.toISOString() }))}
+        />
       </div>
 
       <div>

@@ -2212,6 +2212,18 @@ model CandidateOnboarding {
   sponsorCompany    String?
   joiningTargetDate DateTime?
 
+  // Profile detail — kept optional (most are filled in as documents come
+  // through the stages below, not all at intake) but needed in full before
+  // "Mark joined" can create the real Employee record, and to catch a
+  // candidate who's already on the roster before re-onboarding them.
+  phone            String?
+  email            String?
+  passportNumber   String?
+  emiratesId       String?
+  dateOfBirth      DateTime?
+  gender           String? // "MALE" | "FEMALE"
+  bloodGroup       String?
+
   offerStatus             String @default("Pending")
   wppStatus               String @default("Pending")
   workPermitPaymentStatus String @default("Pending")
@@ -2258,6 +2270,8 @@ model CandidateOnboarding {
   @@index([branchId])
   @@index([agencyId])
   @@index([readyToJoin, joined])
+  @@index([passportNumber])
+  @@index([emiratesId])
 }
 
 // One row per stage transition — the full audit trail behind each

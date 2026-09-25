@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Minus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { updateStageAction } from "./actions";
 import type { Stage, StatusKind } from "@/lib/onboarding";
 
@@ -78,7 +79,7 @@ export function StageRow({
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Status date</span>
-            <input type="date" name="statusDate" defaultValue={new Date().toISOString().slice(0, 10)} className="input w-full" />
+            <DatePicker name="statusDate" defaultValue={new Date().toISOString().slice(0, 10)} className="w-full" />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Reference number</span>
@@ -86,7 +87,7 @@ export function StageRow({
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Expiry date (if applicable)</span>
-            <input type="date" name="expiryDate" className="input w-full" />
+            <DatePicker name="expiryDate" className="w-full" />
           </label>
           <label className="block sm:col-span-2">
             <span className="mb-1 block text-xs font-medium text-muted">Remarks</span>

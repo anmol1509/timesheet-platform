@@ -2,7 +2,10 @@
 
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
+import { UserRound, IdCard, Building2, MessageSquareText } from "lucide-react";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { createCandidateAction, updateCandidateAction } from "./actions";
 
 type Option = { id: string; name: string };
@@ -14,6 +17,13 @@ type Candidate = {
   nationality: string | null;
   sponsorCompany: string | null;
   joiningTargetDate: Date | null;
+  phone: string | null;
+  email: string | null;
+  passportNumber: string | null;
+  emiratesId: string | null;
+  dateOfBirth: Date | null;
+  gender: string | null;
+  bloodGroup: string | null;
   agencyId: string | null;
   demandRequestId: string | null;
   projectId: string | null;
@@ -32,6 +42,18 @@ function toDateInput(d: Date | null) {
 }
 
 const label = "mb-1 block text-xs font-medium text-muted";
+const GENDER_OPTIONS = [{ value: "", label: "Not set" }, { value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }];
+const BLOOD_OPTIONS = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((v) => ({ value: v, label: v || "Not set" }));
+
+function SectionHead({ icon: Icon, title, hint }: { icon: React.ElementType; title: string; hint?: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-2 border-b border-default pb-2">
+      <Icon className="h-4 w-4 text-subtle" aria-hidden />
+      <span className="text-sm font-medium text-primary">{title}</span>
+      {hint && <span className="text-xs text-muted">— {hint}</span>}
+    </div>
+  );
+}
 
 export function CandidateForm({
   candidate,
@@ -58,70 +80,118 @@ export function CandidateForm({
   );
 
   return (
-    <form action={action} className="card max-w-3xl space-y-4 p-5">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="card max-w-3xl space-y-6 p-5">
+      <section>
+        <SectionHead icon={UserRound} title="Profile" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className={label}>Candidate name *</span>
+            <input name="candidateName" defaultValue={candidate?.candidateName} required className="input w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Trade</span>
+            <input name="trade" defaultValue={candidate?.trade ?? ""} className="input w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Nationality</span>
+            <input name="nationality" defaultValue={candidate?.nationality ?? ""} className="input w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Date of birth</span>
+            <DatePicker name="dateOfBirth" defaultValue={toDateInput(candidate?.dateOfBirth ?? null)} className="w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Gender</span>
+            <Select name="gender" defaultValue={candidate?.gender ?? ""} searchable={false} options={GENDER_OPTIONS} />
+          </label>
+          <label className="block">
+            <span className={label}>Blood group</span>
+            <Select name="bloodGroup" defaultValue={candidate?.bloodGroup ?? ""} searchable={false} options={BLOOD_OPTIONS} />
+          </label>
+          <label className="block">
+            <span className={label}>Phone</span>
+            <PhoneField name="phone" defaultValue={candidate?.phone} />
+          </label>
+          <label className="block">
+            <span className={label}>Email</span>
+            <input name="email" type="email" defaultValue={candidate?.email ?? ""} className="input w-full" />
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <SectionHead icon={IdCard} title="Identity documents" hint="required before this candidate can be marked joined" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className={label}>Passport number</span>
+            <input name="passportNumber" defaultValue={candidate?.passportNumber ?? ""} className="input w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Emirates ID</span>
+            <input name="emiratesId" defaultValue={candidate?.emiratesId ?? ""} className="input w-full" />
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <SectionHead icon={Building2} title="Assignment" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className={label}>Agency</span>
+            <Select
+              name="agencyId"
+              defaultValue={candidate?.agencyId ?? ""}
+              searchable
+              options={[{ value: "", label: "None" }, ...agencies.map((a) => ({ value: a.id, label: a.name }))]}
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Sponsor company</span>
+            <input name="sponsorCompany" defaultValue={candidate?.sponsorCompany ?? ""} className="input w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Project</span>
+            <Select
+              name="projectId"
+              defaultValue={candidate?.projectId ?? ""}
+              searchable
+              options={[{ value: "", label: "None" }, ...projects.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))]}
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Labour request (LR)</span>
+            <Select
+              name="demandRequestId"
+              defaultValue={candidate?.demandRequestId ?? ""}
+              searchable
+              options={[{ value: "", label: "None" }, ...demandRequests.map((d) => ({ value: d.id, label: `#${d.requestNo} · ${d.project.name}` }))]}
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Target joining date</span>
+            <DatePicker name="joiningTargetDate" defaultValue={toDateInput(candidate?.joiningTargetDate ?? null)} className="w-full" />
+          </label>
+          <label className="block">
+            <span className={label}>Assigned HR</span>
+            <Select
+              name="assignedHrId"
+              defaultValue={candidate?.assignedHrId ?? ""}
+              searchable
+              options={[{ value: "", label: "Unassigned" }, ...hrUsers.map((u) => ({ value: u.id, label: u.name }))]}
+            />
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <SectionHead icon={MessageSquareText} title="Notes" />
         <label className="block">
-          <span className={label}>Candidate name *</span>
-          <input name="candidateName" defaultValue={candidate?.candidateName} required className="input w-full" />
-        </label>
-        <label className="block">
-          <span className={label}>Trade</span>
-          <input name="trade" defaultValue={candidate?.trade ?? ""} className="input w-full" />
-        </label>
-        <label className="block">
-          <span className={label}>Nationality</span>
-          <input name="nationality" defaultValue={candidate?.nationality ?? ""} className="input w-full" />
-        </label>
-        <label className="block">
-          <span className={label}>Sponsor company</span>
-          <input name="sponsorCompany" defaultValue={candidate?.sponsorCompany ?? ""} className="input w-full" />
-        </label>
-        <label className="block">
-          <span className={label}>Target joining date</span>
-          <input type="date" name="joiningTargetDate" defaultValue={toDateInput(candidate?.joiningTargetDate ?? null)} className="input w-full" />
-        </label>
-        <label className="block">
-          <span className={label}>Agency</span>
-          <Select
-            name="agencyId"
-            defaultValue={candidate?.agencyId ?? ""}
-            searchable
-            options={[{ value: "", label: "None" }, ...agencies.map((a) => ({ value: a.id, label: a.name }))]}
-          />
-        </label>
-        <label className="block">
-          <span className={label}>Project</span>
-          <Select
-            name="projectId"
-            defaultValue={candidate?.projectId ?? ""}
-            searchable
-            options={[{ value: "", label: "None" }, ...projects.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` }))]}
-          />
-        </label>
-        <label className="block">
-          <span className={label}>Labour request (LR)</span>
-          <Select
-            name="demandRequestId"
-            defaultValue={candidate?.demandRequestId ?? ""}
-            searchable
-            options={[{ value: "", label: "None" }, ...demandRequests.map((d) => ({ value: d.id, label: `#${d.requestNo} · ${d.project.name}` }))]}
-          />
-        </label>
-        <label className="block">
-          <span className={label}>Assigned HR</span>
-          <Select
-            name="assignedHrId"
-            defaultValue={candidate?.assignedHrId ?? ""}
-            searchable
-            options={[{ value: "", label: "Unassigned" }, ...hrUsers.map((u) => ({ value: u.id, label: u.name }))]}
-          />
-        </label>
-        <label className="block sm:col-span-2">
           <span className={label}>Remarks</span>
           <textarea name="remarks" defaultValue={candidate?.remarks ?? ""} rows={3} className="input w-full" />
         </label>
-      </div>
-      <div className="flex items-center gap-3 pt-1">
+      </section>
+
+      <div className="flex items-center gap-3 border-t border-default pt-4">
         <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "Saving…" : candidate ? "Save changes" : "Add candidate"}
         </button>

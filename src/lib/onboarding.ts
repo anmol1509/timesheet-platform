@@ -29,6 +29,8 @@ export type StageKey =
 export type Stage = {
   key: StageKey;
   label: string;
+  /** Short label for narrow table columns. */
+  short: string;
   /** The CandidateOnboarding column this stage's current status lives in. */
   field:
     | "offerStatus"
@@ -42,13 +44,19 @@ export type Stage = {
     | "contractStatus"
     | "idVisaStatus";
   statuses: { value: string; kind: StatusKind }[];
+  /** Typical turnaround for this stage, in calendar days — a candidate still
+   * pending at this stage past this many days shows as overdue on the
+   * dashboard. Rough defaults for a UAE manpower operation; not a hard SLA. */
+  slaDays: number;
 };
 
 export const STAGES: Stage[] = [
   {
     key: "OFFER",
     label: "Offer Letter",
+    short: "Offer",
     field: "offerStatus",
+    slaDays: 2,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Prepared", kind: "progress" },
@@ -60,7 +68,9 @@ export const STAGES: Stage[] = [
   {
     key: "WPP",
     label: "WPP Insurance",
+    short: "WPP",
     field: "wppStatus",
+    slaDays: 3,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Submitted", kind: "progress" },
@@ -71,7 +81,9 @@ export const STAGES: Stage[] = [
   {
     key: "WORK_PERMIT_PAYMENT",
     label: "Work Permit Payment",
+    short: "WP Payment",
     field: "workPermitPaymentStatus",
+    slaDays: 2,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Payment Requested", kind: "progress" },
@@ -81,7 +93,9 @@ export const STAGES: Stage[] = [
   {
     key: "ENTRY_PERMIT",
     label: "Entry Permit",
+    short: "Entry Permit",
     field: "entryPermitStatus",
+    slaDays: 7,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Applied", kind: "progress" },
@@ -94,7 +108,9 @@ export const STAGES: Stage[] = [
   {
     key: "ARRIVAL",
     label: "Arrival",
+    short: "Arrival",
     field: "arrivalStatus",
+    slaDays: 5,
     statuses: [
       { value: "Travel Pending", kind: "pending" },
       { value: "Flight Booked", kind: "progress" },
@@ -106,7 +122,9 @@ export const STAGES: Stage[] = [
   {
     key: "MEDICAL",
     label: "Medical",
+    short: "Medical",
     field: "medicalStatus",
+    slaDays: 2,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Appointment Booked", kind: "progress" },
@@ -118,7 +136,9 @@ export const STAGES: Stage[] = [
   {
     key: "TAWJEEH",
     label: "Tawjeeh",
+    short: "Tawjeeh",
     field: "tawjeehStatus",
+    slaDays: 2,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Scheduled", kind: "progress" },
@@ -128,7 +148,9 @@ export const STAGES: Stage[] = [
   {
     key: "ILOE",
     label: "ILOE Insurance",
+    short: "ILOE",
     field: "iloeStatus",
+    slaDays: 1,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Applied", kind: "progress" },
@@ -138,7 +160,9 @@ export const STAGES: Stage[] = [
   {
     key: "CONTRACT",
     label: "Contract Submission",
+    short: "Contract",
     field: "contractStatus",
+    slaDays: 2,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Submitted", kind: "progress" },
@@ -149,7 +173,9 @@ export const STAGES: Stage[] = [
   {
     key: "ID_VISA",
     label: "ID & Visa Stamping",
+    short: "ID/Visa",
     field: "idVisaStatus",
+    slaDays: 5,
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Submitted", kind: "progress" },
@@ -191,4 +217,21 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export function daysSince(date: Date): number {
   return Math.max(0, Math.floor((Date.now() - date.getTime()) / ONE_DAY_MS));
+}
+
+/** A one-line summary of where a candidate stands, for list rows and headers. */
+export function overallStatusLabel(row: OnboardingStatuses & { joined: boolean; readyToJoin: boolean }): string {
+  if (row.joined) return "Joined";
+  if (row.readyToJoin) return "Ready to join";
+  const stage = currentStage(row);
+  return stage ? `${statusKind(stage, row[stage.field]) === "issue" ? "Blocked at" : "At"} ${stage.label}` : "In progress";
+}
+
+/** Whether a candidate has been sitting at their current stage longer than
+ * that stage's typical turnaround — the dashboard's overdue flag. */
+export function isOverdue(row: OnboardingStatuses & { joined: boolean }, sinceUpdatedAt: Date): boolean {
+  if (row.joined) return false;
+  const stage = currentStage(row);
+  if (!stage) return false;
+  return daysSince(sinceUpdatedAt) > stage.slaDays;
 }
