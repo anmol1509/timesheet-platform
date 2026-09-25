@@ -47,7 +47,7 @@ export function PhoneInput({
   id,
   value,
   onChange,
-  placeholder = "50 123 4567",
+  placeholder,
   disabled,
   className,
   defaultDial,

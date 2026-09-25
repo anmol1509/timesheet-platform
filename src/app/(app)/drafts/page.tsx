@@ -22,7 +22,7 @@ const ago = (d: Date, now: Date) => {
 /** Everything this person has started but not finished. Drafts are private to them. */
 export default async function DraftsPage() {
   const { user } = await requireUserWithBranch();
-  const drafts = await prisma.draft.findMany({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, take: 100 });
+  const drafts = await prisma.draft.findMany({ where: { userId: user.id }, orderBy: { updatedAt: "desc" }, take: 100 }).catch(() => []);
   const now = new Date();
 
   return (

@@ -18,28 +18,41 @@ export async function saveDraftAction(input: { type: string; key?: string; title
   const key = (input.key || "new").slice(0, 80);
   const title = input.title ? String(input.title).trim().slice(0, 120) || null : null;
   const payload = JSON.parse(json);
-  const row = await prisma.draft.upsert({
-    where: { userId_type_key: { userId: user.id, type: input.type, key } },
-    create: { userId: user.id, type: input.type, key, title, payload, branchId },
-    update: { title, payload, branchId },
-    select: { updatedAt: true },
-  });
-  revalidatePath("/drafts");
-  return { ok: true, savedAt: row.updatedAt.toISOString() };
+  try {
+    const row = await prisma.draft.upsert({
+      where: { userId_type_key: { userId: user.id, type: input.type, key } },
+      create: { userId: user.id, type: input.type, key, title, payload, branchId },
+      update: { title, payload, branchId },
+      select: { updatedAt: true },
+    });
+    revalidatePath("/drafts");
+    return { ok: true, savedAt: row.updatedAt.toISOString() };
+  } catch {
+    // The drafts table may not exist yet on this database; the form must keep working without it.
+    return { ok: false, error: "Drafts aren't available right now." };
+  }
 }
 
 /** The caller's draft of one form, if there is one. */
 export async function loadDraftAction(input: { type: string; key?: string }): Promise<{ payload: unknown; title: string | null; updatedAt: string } | null> {
   const { user } = await requireUserWithBranch();
   if (!isDraftType(input.type)) return null;
-  const row = await prisma.draft.findUnique({ where: { userId_type_key: { userId: user.id, type: input.type, key: input.key || "new" } } });
-  return row ? { payload: row.payload, title: row.title, updatedAt: row.updatedAt.toISOString() } : null;
+  try {
+    const row = await prisma.draft.findUnique({ where: { userId_type_key: { userId: user.id, type: input.type, key: input.key || "new" } } });
+    return row ? { payload: row.payload, title: row.title, updatedAt: row.updatedAt.toISOString() } : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function discardDraftAction(input: { type: string; key?: string }): Promise<Result> {
   const { user } = await requireUserWithBranch();
   if (!isDraftType(input.type)) return { ok: false, error: "Unknown form." };
-  await prisma.draft.deleteMany({ where: { userId: user.id, type: input.type, key: input.key || "new" } });
+  try {
+    await prisma.draft.deleteMany({ where: { userId: user.id, type: input.type, key: input.key || "new" } });
+  } catch {
+    return { ok: false, error: "Drafts aren't available right now." };
+  }
   revalidatePath("/drafts");
   return { ok: true };
 }
@@ -49,6 +62,6 @@ export async function discardDraftByIdAction(formData: FormData) {
   assertContactsValid(formData);
   const { user } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");
-  if (id) await prisma.draft.deleteMany({ where: { id, userId: user.id } });
+  if (id) await prisma.draft.deleteMany({ where: { id, userId: user.id } }).catch(() => undefined);
   revalidatePath("/drafts");
 }
