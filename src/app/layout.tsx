@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { FormValidation } from "@/components/FormValidation";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import { THEME_COOKIE, isThemePreference } from "@/lib/theme-preference";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  weight: ["400", "500", "600"],
+  variable: "--font-dm",
+  subsets: ["latin"],
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
   subsets: ["latin"],
 });
 
@@ -43,7 +50,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-theme={dataTheme}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${jakarta.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-canvas text-[var(--text)]">
         <FormValidation />

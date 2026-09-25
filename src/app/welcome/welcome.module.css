@@ -42,7 +42,7 @@
   color-scheme: light;
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-inter), Inter, -apple-system, system-ui, "Segoe UI", Helvetica, sans-serif;
+  font-family: var(--font-dm), "DM Sans", -apple-system, system-ui, "Segoe UI", Helvetica, sans-serif;
   font-size: 16px;
   line-height: 1.55;
   min-height: 100vh;

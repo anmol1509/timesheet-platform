@@ -63,8 +63,8 @@
   --shadow-lg: 0 12px 16px -4px rgb(16 24 40 / 0.08), 0 4px 6px -2px rgb(16 24 40 / 0.03);
   --shadow-xl: 0 20px 24px -4px rgb(16 24 40 / 0.10), 0 8px 8px -4px rgb(16 24 40 / 0.04);
 
-  /* Type scale — variable font (Geist, already loaded), tabular numerals for
-     data columns. rem-based so browser zoom keeps working. */
+  /* Type scale — DM Sans body / Plus Jakarta Sans headings, already loaded,
+     tabular numerals for data columns. rem-based so browser zoom keeps working. */
   --text-xs: 0.75rem; /* 12px — meta, timestamps, badges */
   --text-sm: 0.8125rem; /* 13px — body copy, table cells, form labels */
   --text-base: 0.875rem; /* 14px — default UI text */
@@ -285,7 +285,8 @@
   --shadow-popover: var(--shadow-lg);
   --shadow-modal: var(--shadow-xl);
 
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-dm), "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 
   --color-background: var(--background);
@@ -295,11 +296,13 @@
 body {
   background: var(--canvas);
   color: var(--text);
-  /* Geist is loaded in the root layout; it was previously never applied. */
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-feature-settings: "cv11"; /* disambiguated l/1/I for ID and code columns */
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
 }
 
 /* ---------------------------------------------------------------------------

@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans, Plus_Jakarta_Sans } from "next/font/google";
 import { BRAND_ICON } from "@/lib/brand-assets";
 import { SITE } from "./content";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const dmSans = DM_Sans({
+  weight: ["400", "500", "600"],
+  variable: "--font-dm",
+  subsets: ["latin"],
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
+  subsets: ["latin"],
+});
 
 const description =
   "Timesheets, payroll with WPS, client invoicing, camps, transport and documents for manpower suppliers, in one platform with employee and supplier portals.";
@@ -20,5 +30,5 @@ export const metadata: Metadata = {
 };
 
 export default function WelcomeLayout({ children }: { children: React.ReactNode }) {
-  return <div className={inter.variable}>{children}</div>;
+  return <div className={`${dmSans.variable} ${jakarta.variable}`}>{children}</div>;
 }
