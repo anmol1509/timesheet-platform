@@ -14,6 +14,7 @@ import {
   releaseFromMobilisation,
 } from "@/lib/employeeStageTransitions";
 import { assertContactsValid } from "@/lib/validators";
+import { clearDraft } from "@/lib/drafts";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -86,6 +87,7 @@ export async function createDemandRequestAction(formData: FormData) {
     },
   });
 
+  await clearDraft(user.id, "DEMAND_REQUEST");
   await logAudit({
     entityType: "DEMAND_REQUEST",
     entityId: created.id,
@@ -178,6 +180,7 @@ export async function deleteDemandRequestAction(formData: FormData) {
 export async function allocateEmployeesAction(
   formData: FormData
 ): Promise<{ allocated: number; requested: number }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const tradeId = String(formData.get("tradeId") || "");
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
@@ -369,6 +372,7 @@ export async function unallocateEmployeeAction(formData: FormData) {
 export async function changeEmployeeTradeAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const trade = String(formData.get("trade") || "").trim();
@@ -429,6 +433,7 @@ export async function changeEmployeeTradeAction(
 export async function setTradeApprovalAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   await requirePermission("demand", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const tradeId = String(formData.get("tradeId") || "");
@@ -607,6 +612,7 @@ export async function revertSiteArrivalAction(formData: FormData) {
 export async function disapproveSiteArrivalAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   await requirePermission("demand", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");

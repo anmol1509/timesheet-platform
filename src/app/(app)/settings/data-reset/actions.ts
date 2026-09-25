@@ -5,6 +5,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { RESET_MODULES, SAFE_RESET_ORDER } from "@/lib/dataReset";
+import { assertContactsValid } from "@/lib/validators";
 
 function checkAccess(role: string) {
   return role === "SUPER_ADMIN";
@@ -13,6 +14,7 @@ function checkAccess(role: string) {
 export async function resetModuleAction(
   formData: FormData
 ): Promise<{ counts: Record<string, number> } | { error: string }> {
+  assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   if (!checkAccess(user.role)) {
     return { error: "Only a Super Admin can reset data." };
@@ -74,6 +76,7 @@ export async function resetModuleAction(
 export async function resetAllAction(
   formData: FormData
 ): Promise<{ counts: Record<string, Record<string, number>> } | { error: string }> {
+  assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   if (!checkAccess(user.role)) {
     return { error: "Only a Super Admin can reset data." };

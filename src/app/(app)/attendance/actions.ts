@@ -72,6 +72,7 @@ export async function markAttendanceAction(
   sync?: SyncResult;
   skipped?: { name: string; reason: string }[];
 }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     return {
@@ -339,6 +340,7 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
 export async function deleteAttendanceAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  assertContactsValid(formData);
   await requirePermission("timesheets", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("attendanceId") || "").trim();

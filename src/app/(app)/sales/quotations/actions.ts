@@ -8,6 +8,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
+import { clearDraft } from "@/lib/drafts";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -93,6 +94,7 @@ export async function createQuotationAction(formData: FormData) {
     branchId,
   });
 
+  await clearDraft(user.id, "QUOTATION", enquiryId || "new");
   revalidatePath("/sales/quotations");
   redirect(`/sales/quotations/${created.id}`);
 }

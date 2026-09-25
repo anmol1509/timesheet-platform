@@ -28,6 +28,7 @@ function revalidateAccommodation(employeeId?: string) {
 export async function createCheckInAction(
   formData: FormData
 ): Promise<{ ids: string[] } | { error: string }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createQuotationAction } from "../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { DraftBar } from "@/components/DraftBar";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 type Client = { id: string; name: string };
@@ -77,6 +78,22 @@ export function QuotationForm({
 
   return (
     <div className="space-y-6">
+      <DraftBar
+        type="QUOTATION"
+        draftKey={enquiryId || "new"}
+        state={{ clientId, validUntil, terms, accommodationResponsibility, transportationResponsibility, ppeResponsibility, lines }}
+        title={clients.find((c) => c.id === clientId)?.name}
+        hasContent={!!(terms.trim() || validUntil || lines.some((l) => l.trade || l.rate))}
+        onRestore={(d) => {
+          setClientId(d.clientId || defaultClientId);
+          setValidUntil(d.validUntil ?? "");
+          setTerms(d.terms ?? "");
+          setAccommodationResponsibility(d.accommodationResponsibility ?? "");
+          setTransportationResponsibility(d.transportationResponsibility ?? "");
+          setPpeResponsibility(d.ppeResponsibility ?? "");
+          setLines(d.lines?.length ? d.lines : [blankLine()]);
+        }}
+      />
       <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Client</span>

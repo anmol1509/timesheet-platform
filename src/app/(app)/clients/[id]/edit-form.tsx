@@ -108,7 +108,7 @@ export function EditClientForm({ client }: { client: Client }) {
           <ComboSelect name="paymentSchedule" options={PAYMENT_SCHEDULES} defaultValue={client.paymentSchedule} />
         </Field>
         <Field label="Fax">
-          <PhoneField name="fax" defaultValue={client.fax} />
+          <PhoneField name="fax" defaultValue={client.fax} country={country} />
         </Field>
         <Field label="P.O. Box">
           <input
@@ -150,10 +150,10 @@ export function EditClientForm({ client }: { client: Client }) {
           />
         </Field>
         <Field label="Contact phone (mobile)">
-          <PhoneField name="contactPhone" defaultValue={client.contactPhone} />
+          <PhoneField name="contactPhone" defaultValue={client.contactPhone} country={country} />
         </Field>
         <Field label="Telephone (landline)">
-          <PhoneField name="telephone" defaultValue={client.telephone} />
+          <PhoneField name="telephone" defaultValue={client.telephone} country={country} />
         </Field>
         <Field label="Accounts payable contact">
           <input
@@ -164,7 +164,7 @@ export function EditClientForm({ client }: { client: Client }) {
           />
         </Field>
         <Field label="AP contact phone">
-          <PhoneField name="secondContactPhone" defaultValue={client.secondContactPhone} />
+          <PhoneField name="secondContactPhone" defaultValue={client.secondContactPhone} country={country} />
         </Field>
         <Field label="AP contact email">
           <input

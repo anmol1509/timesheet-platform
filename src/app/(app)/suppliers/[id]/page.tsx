@@ -249,6 +249,7 @@ export default async function SupplierDetailPage({
               <SupplierContactPaymentForm
                 supplier={{
                   id: supplier.id,
+                  country: supplier.country,
                   contactPerson: supplier.contactPerson,
                   contactPhone: supplier.contactPhone,
                   contactEmail: supplier.contactEmail,

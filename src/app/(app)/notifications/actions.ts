@@ -29,6 +29,7 @@ export async function saveNotificationPrefsAction(
   _prev: { error: string | null; ok?: boolean },
   formData: FormData
 ): Promise<{ error: string | null; ok?: boolean }> {
+  assertContactsValid(formData);
   const user = await getCurrentUser();
   if (!user) return { error: "Not signed in." };
   const notifyEmail = formData.get("notifyEmail") === "on";
