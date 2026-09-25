@@ -118,6 +118,13 @@ export const MODULES: PermissionModule[] = [
     paths: ["/invoices", "/api/invoices", "/dashboards/billing"],
     actions: CORE,
   },
+  {
+    key: "onboarding",
+    label: "Candidate onboarding",
+    description: "Candidates from agencies, offer through joining",
+    paths: ["/onboarding", "/api/onboarding", "/dashboards/onboarding"],
+    actions: CORE,
+  },
 ];
 
 export const MODULE_KEYS = MODULES.map((m) => m.key);

@@ -43,6 +43,7 @@ import {
   Landmark,
   Inbox,
   FileClock,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -162,6 +163,16 @@ const NAV: Entry[] = [
         icon: UploadIcon,
         alsoMatch: ["/companies", "/history"],
       },
+    ],
+  },
+  {
+    type: "group",
+    label: "Onboarding",
+    icon: UserCheck,
+    category: "Operations",
+    children: [
+      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
+      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
     ],
   },
   {

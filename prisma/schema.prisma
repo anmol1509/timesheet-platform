@@ -64,29 +64,30 @@ model Branch {
   employeeLoans            EmployeeLoan[]
   payrollAdjustments       PayrollAdjustment[]
 
-  expenses        Expense[]
-  issuedLetters   IssuedLetter[]
-  supplierBills   SupplierBill[]
-  accessRoles     AccessRole[]
-  users           User[]
-  employees       Employee[]
-  clients         Client[]
-  suppliers       Supplier[]
-  projects        Project[]
-  uploads         Upload[]
-  invoices        ClientInvoice[]
-  sheets          GeneratedSheet[]
-  items           InventoryItem[]
-  entries         TimesheetEntry[]
-  banks           Bank[]
-  lookupValues    LookupValue[]
-  demandRequests  DemandRequest[]
-  letterTemplates LetterTemplate[]
-  nocs            Noc[]
-  lpos            Lpo[]
-  attendance      Attendance[]
-  enquiries       Enquiry[]
-  quotations      Quotation[]
+  expenses             Expense[]
+  issuedLetters        IssuedLetter[]
+  supplierBills        SupplierBill[]
+  accessRoles          AccessRole[]
+  users                User[]
+  employees            Employee[]
+  clients              Client[]
+  suppliers            Supplier[]
+  projects             Project[]
+  uploads              Upload[]
+  invoices             ClientInvoice[]
+  sheets               GeneratedSheet[]
+  items                InventoryItem[]
+  entries              TimesheetEntry[]
+  banks                Bank[]
+  lookupValues         LookupValue[]
+  demandRequests       DemandRequest[]
+  letterTemplates      LetterTemplate[]
+  nocs                 Noc[]
+  lpos                 Lpo[]
+  attendance           Attendance[]
+  enquiries            Enquiry[]
+  quotations           Quotation[]
+  candidateOnboardings CandidateOnboarding[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -169,12 +170,14 @@ model User {
   nocs             Noc[]
   employeeNotes    EmployeeNote[]
 
-  dashboardPreference DashboardPreference?
-  lettersIssued       IssuedLetter[]
-  expensesSubmitted   Expense[]            @relation("ExpenseSubmittedBy")
-  expensesDecided     Expense[]            @relation("ExpenseDecidedBy")
-  payrollCreated      PayrollRun[]         @relation("PayrollCreatedBy")
-  payrollApproved     PayrollRun[]         @relation("PayrollApprovedBy")
+  dashboardPreference          DashboardPreference?
+  lettersIssued                IssuedLetter[]
+  expensesSubmitted            Expense[]                    @relation("ExpenseSubmittedBy")
+  expensesDecided              Expense[]                    @relation("ExpenseDecidedBy")
+  payrollCreated               PayrollRun[]                 @relation("PayrollCreatedBy")
+  payrollApproved              PayrollRun[]                 @relation("PayrollApprovedBy")
+  candidateOnboardingsAssigned CandidateOnboarding[]
+  candidateOnboardingUpdates   CandidateOnboardingHistory[]
 }
 
 // Small uploaded images (user avatars, company logos). Its own table so the
@@ -341,11 +344,12 @@ model Supplier {
   // establishment id for the WPS file. Every employee of a company is paid the
   // same way: "BASIC" (monthly salary, adjusted from attendance) or "HOURLY"
   // (hours taken from the timesheet).
-  payType            String? // "BASIC" | "HOURLY"
-  wpsEstablishmentId String?
-  notifications      SupplierNotification[]
-  portalEnabled      Boolean                @default(false)
-  bills              SupplierBill[]
+  payType              String? // "BASIC" | "HOURLY"
+  wpsEstablishmentId   String?
+  notifications        SupplierNotification[]
+  portalEnabled        Boolean                @default(false)
+  bills                SupplierBill[]
+  candidateOnboardings CandidateOnboarding[]
 }
 
 model Client {
@@ -910,20 +914,21 @@ model Project {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
-  employees        Employee[]
-  vehicles         VehicleProject[]
-  timesheetEntries TimesheetEntry[]
-  tradeRates       ClientTradeRate[]
-  documents        ProjectDocument[]
-  holidays         ProjectHoliday[]
-  contacts         ProjectContact[]
-  inventory        ProjectInventoryAssignment[]
-  demandRequests   DemandRequest[]
-  routes           Route[]
-  sites            Site[]
-  lpos             Lpo[]
-  attendance       Attendance[]
-  quotations       Quotation[]
+  employees            Employee[]
+  vehicles             VehicleProject[]
+  timesheetEntries     TimesheetEntry[]
+  tradeRates           ClientTradeRate[]
+  documents            ProjectDocument[]
+  holidays             ProjectHoliday[]
+  contacts             ProjectContact[]
+  inventory            ProjectInventoryAssignment[]
+  demandRequests       DemandRequest[]
+  routes               Route[]
+  sites                Site[]
+  lpos                 Lpo[]
+  attendance           Attendance[]
+  quotations           Quotation[]
+  candidateOnboardings CandidateOnboarding[]
 }
 
 // A Local Purchase Order — the client's authorization + funding envelope for
@@ -1482,9 +1487,10 @@ model DemandRequest {
   requestedBy   User?   @relation(fields: [requestedById], references: [id])
   requestedById String?
 
-  trades         DemandRequestTrade[]
-  nocs           Noc[]
-  supplierOffers DemandSupplierOffer[]
+  trades               DemandRequestTrade[]
+  nocs                 Noc[]
+  supplierOffers       DemandSupplierOffer[]
+  candidateOnboardings CandidateOnboarding[]
 }
 
 model DemandRequestTrade {
@@ -2181,4 +2187,99 @@ model DemoRequest {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Tracks a candidate an agency has put forward, from "received" through to
+// "joined". Deliberately separate from Employee/WorkerSubmission: nothing here
+// is an employee yet (no visa, no labour card issued), so it shouldn't show up
+// in workforce lists, idle-worker counts, or payroll. Once `joined` is set,
+// employeeId can be pointed at the real Employee record created for them
+// (mirrors WorkerSubmission.employeeId — a soft reference, not a DB relation,
+// since we never want deleting an Employee to touch onboarding history).
+//
+// Each `*Status` column is the CURRENT status of that stage, kept in sync
+// with CandidateOnboardingHistory on every update — cheap to read/filter for
+// the tracker table without joining history. The allowed values per stage
+// live in src/lib/onboarding.ts (STAGES), not as a DB enum, matching this
+// codebase's convention for status fields that may grow over time.
+model CandidateOnboarding {
+  id          String @id @default(cuid())
+  candidateNo Int    @unique @default(autoincrement())
+
+  candidateName     String
+  trade             String?
+  nationality       String?
+  sponsorCompany    String?
+  joiningTargetDate DateTime?
+
+  offerStatus             String @default("Pending")
+  wppStatus               String @default("Pending")
+  workPermitPaymentStatus String @default("Pending")
+  entryPermitStatus       String @default("Pending")
+  arrivalStatus           String @default("Travel Pending")
+  medicalStatus           String @default("Pending")
+  tawjeehStatus           String @default("Pending")
+  iloeStatus              String @default("Pending")
+  contractStatus          String @default("Pending")
+  idVisaStatus            String @default("Pending")
+
+  // Recomputed by the app (not entered by hand) every time a stage status
+  // changes — true only once every mandatory stage above is at its
+  // "Completed"-equivalent terminal status. See computeReadyToJoin().
+  readyToJoin Boolean   @default(false)
+  joined      Boolean   @default(false)
+  joiningDate DateTime?
+  // The Employee created for them once joined — set at the same time as
+  // `joined`. See the note above: intentionally not a DB relation.
+  employeeId  String?
+
+  remarks String?
+
+  agency   Supplier? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  agencyId String?
+
+  demandRequest   DemandRequest? @relation(fields: [demandRequestId], references: [id], onDelete: SetNull)
+  demandRequestId String?
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  assignedHr   User?   @relation(fields: [assignedHrId], references: [id], onDelete: SetNull)
+  assignedHrId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  history CandidateOnboardingHistory[]
+
+  @@index([branchId])
+  @@index([agencyId])
+  @@index([readyToJoin, joined])
+}
+
+// One row per stage transition — the full audit trail behind each
+// CandidateOnboarding.*Status column. A stage may have several rows over
+// time (Pending -> Applied -> Approved -> Received), each capturing what
+// changed, any reference/expiry, and who made the change.
+model CandidateOnboardingHistory {
+  id          String    @id @default(cuid())
+  stage       String // "OFFER" | "WPP" | "WORK_PERMIT_PAYMENT" | "ENTRY_PERMIT" | "ARRIVAL" | "MEDICAL" | "TAWJEEH" | "ILOE" | "CONTRACT" | "ID_VISA"
+  oldStatus   String
+  newStatus   String
+  statusDate  DateTime  @default(now())
+  referenceNo String?
+  expiryDate  DateTime?
+  remarks     String?
+
+  onboarding   CandidateOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  onboardingId String
+
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedAt   DateTime @default(now())
+
+  @@index([onboardingId, stage])
 }
