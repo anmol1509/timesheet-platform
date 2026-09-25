@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import { updateVehicleAction } from "../actions";
 import { Select } from "@/components/ui/Select";
@@ -58,11 +59,7 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
           />
         </Field>
         <Field label="Driver phone">
-          <input
-            name="driverPhone"
-            defaultValue={vehicle.driverPhone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="driverPhone" defaultValue={vehicle.driverPhone} />
         </Field>
         <Field label="Registration (Mulkiya) expiry">
           <input

@@ -1,5 +1,7 @@
 "use client";
 
+import { CountrySelect } from "@/components/ui/CountrySelect";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
@@ -28,10 +30,10 @@ function WorkerForm({ trades, onDone }: { trades: string[]; onDone: () => void }
         <div className="grid grid-cols-3 gap-3">
           <L t="Date of birth *"><input type="date" name="dateOfBirth" required className="input w-full" /></L>
           <L t="Gender"><select name="gender" defaultValue="" className="input w-full"><option value="">—</option><option value="MALE">Male</option><option value="FEMALE">Female</option></select></L>
-          <L t="Nationality"><input name="nationality" className="input w-full" /></L>
+          <L t="Nationality"><CountrySelect name="nationality" placeholder="Select nationality…" /></L>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <L t="Mobile"><input name="mobileNumber" className="input w-full" /></L>
+          <L t="Mobile"><PhoneField name="mobileNumber" /></L>
           <L t="Blood group"><input name="bloodGroup" className="input w-full" placeholder="e.g. O+" /></L>
           <L t="Join date"><input type="date" name="joinDate" className="input w-full" /></L>
         </div>

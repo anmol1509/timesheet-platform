@@ -1,5 +1,8 @@
 "use client";
 
+import { CurrencySelect } from "@/components/ui/CurrencySelect";
+import { CitySelect } from "@/components/ui/CitySelect";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateClientAction } from "../actions";
@@ -42,6 +45,7 @@ type Client = {
 export function EditClientForm({ client }: { client: Client }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [country, setCountry] = useState(client.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
   const [billingType, setBillingType] = useState(
     client.hourlyRate != null ? "HOURLY" : client.basicRate != null ? "BASIC" : ""
@@ -64,14 +68,10 @@ export function EditClientForm({ client }: { client: Client }) {
 
       <Section title="Company">
         <Field label="Country">
-          <CountrySelect name="country" defaultValue={client.country || ""} />
+          <CountrySelect name="country" value={country} onChange={setCountry} />
         </Field>
-        <Field label="Emirate">
-          <input
-            name="emirate"
-            defaultValue={client.emirate || ""}
-            className="input w-full"
-          />
+        <Field label="Emirate / city">
+          <CitySelect name="emirate" country={country} defaultValue={client.emirate || ""} />
         </Field>
         <Field label="Customer">
           <input
@@ -82,11 +82,7 @@ export function EditClientForm({ client }: { client: Client }) {
           />
         </Field>
         <Field label="Currency">
-          <input
-            name="currency"
-            defaultValue={client.currency || "AED"}
-            className="input w-full"
-          />
+          <CurrencySelect name="currency" defaultValue={client.currency || "AED"} />
         </Field>
         <Field label="Grade">
           <input
@@ -110,11 +106,7 @@ export function EditClientForm({ client }: { client: Client }) {
           />
         </Field>
         <Field label="Fax">
-          <input
-            name="fax"
-            defaultValue={client.fax || ""}
-            className="input w-full"
-          />
+          <PhoneField name="fax" defaultValue={client.fax} />
         </Field>
         <Field label="P.O. Box">
           <input
@@ -156,18 +148,10 @@ export function EditClientForm({ client }: { client: Client }) {
           />
         </Field>
         <Field label="Contact phone (mobile)">
-          <input
-            name="contactPhone"
-            defaultValue={client.contactPhone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="contactPhone" defaultValue={client.contactPhone} />
         </Field>
         <Field label="Telephone (landline)">
-          <input
-            name="telephone"
-            defaultValue={client.telephone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="telephone" defaultValue={client.telephone} />
         </Field>
         <Field label="Accounts payable contact">
           <input
@@ -178,11 +162,7 @@ export function EditClientForm({ client }: { client: Client }) {
           />
         </Field>
         <Field label="AP contact phone">
-          <input
-            name="secondContactPhone"
-            defaultValue={client.secondContactPhone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="secondContactPhone" defaultValue={client.secondContactPhone} />
         </Field>
         <Field label="AP contact email">
           <input

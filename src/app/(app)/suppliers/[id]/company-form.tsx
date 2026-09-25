@@ -1,5 +1,6 @@
 "use client";
 
+import { CitySelect } from "@/components/ui/CitySelect";
 import { useState, useTransition } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateSupplierCompanyAction } from "../actions";
@@ -42,6 +43,7 @@ export function SupplierCompanyForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [country, setCountry] = useState(supplier.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
 
   return (
@@ -137,14 +139,10 @@ export function SupplierCompanyForm({
           />
         </Field>
         <Field label="Country">
-          <CountrySelect name="country" defaultValue={supplier.country || ""} />
+          <CountrySelect name="country" value={country} onChange={setCountry} />
         </Field>
         <Field label="Emirate">
-          <input
-            name="emirate"
-            defaultValue={supplier.emirate || ""}
-            className="input w-full"
-          />
+          <CitySelect name="emirate" country={country} defaultValue={supplier.emirate ?? ""} />
         </Field>
         <Field label="Point of contact">
           <input

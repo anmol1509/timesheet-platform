@@ -83,7 +83,7 @@ export default async function CompanyProfilePage({
       <section className="card max-w-2xl space-y-4 p-5">
         <div>
           <h2 className="text-sm font-semibold text-primary">Letters</h2>
-          <p className="mt-1 text-xs text-muted">Optional defaults for letters about your employees: who signs, a signature image, a company stamp, and your letterhead. Each is chosen per letter, so nothing prints unless you tick it.</p>
+          <p className="mt-1 text-xs text-muted">Optional defaults for letters about your employees: a signature image, a company stamp, and your letterhead. Each is chosen per letter, so nothing prints unless you tick it.</p>
         </div>
         <LettersSection
           key={branch.id}

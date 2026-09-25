@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createClientAction } from "../actions";
@@ -58,10 +59,7 @@ export default function NewClientPage() {
             />
           </Field>
           <Field label="Contact phone">
-            <input
-              name="contactPhone"
-              className="input w-full"
-            />
+            <PhoneField name="contactPhone" />
           </Field>
           <Field label="Status">
             <Select

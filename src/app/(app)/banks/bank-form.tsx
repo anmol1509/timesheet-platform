@@ -1,5 +1,7 @@
 "use client";
 
+import { CurrencySelect } from "@/components/ui/CurrencySelect";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState } from "react";
 import { keepInput } from "@/lib/vendor/keepInput";
 import { createBankAction, updateBankAction } from "./actions";
@@ -37,7 +39,7 @@ export function BankForm({ initial, companies, onDone }: { initial: BankValues; 
         <F t="Account name *"><input name="accountName" required defaultValue={v.accountName} placeholder="e.g. Main operating account" className="input w-full" /></F>
         <F t="Bank name *"><input name="bankName" required defaultValue={v.bankName} placeholder="e.g. Emirates NBD" className="input w-full" /></F>
         <F t="Account type"><select name="accountType" defaultValue={v.accountType} className="input w-full"><option value="CURRENT">Current</option><option value="SAVINGS">Savings</option><option value="CREDIT">Credit / overdraft</option><option value="OTHER">Other</option></select></F>
-        <F t="Currency"><input name="currency" defaultValue={v.currency} maxLength={3} className="input w-full" /></F>
+        <F t="Currency"><CurrencySelect name="currency" defaultValue={v.currency || "AED"} /></F>
         <F t="Held by (own company)" hint="Each company's payroll pays from its own account."><select name="companyId" defaultValue={v.companyId} className="input w-full"><option value="">— none —</option>{companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></F>
         <F t="Abbreviation"><input name="abbreviation" defaultValue={v.abbreviation} className="input w-full" /></F>
       </Group>
@@ -51,7 +53,7 @@ export function BankForm({ initial, companies, onDone }: { initial: BankValues; 
         <F t="Bank branch"><input name="bankBranch" defaultValue={v.bankBranch} className="input w-full" /></F>
         <F t="Address"><input name="address" defaultValue={v.address} className="input w-full" /></F>
         <F t="Contact person at the bank"><input name="contactPerson" defaultValue={v.contactPerson} className="input w-full" /></F>
-        <F t="Contact phone"><input name="contactPhone" defaultValue={v.contactPhone} className="input w-full" /></F>
+        <F t="Contact phone"><PhoneField name="contactPhone" defaultValue={v.contactPhone} /></F>
         <F t="Contact email"><input name="contactEmail" defaultValue={v.contactEmail} className="input w-full" /></F>
         <F t="Remarks"><input name="remarks" defaultValue={v.remarks} className="input w-full" /></F>
       </Group>

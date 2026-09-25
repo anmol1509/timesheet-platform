@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
@@ -92,7 +93,7 @@ function UserForm({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Phone</span>
-          <input name="phone" defaultValue={user?.phone ?? ""} className="input w-full" />
+          <PhoneField name="phone" defaultValue={user?.phone ?? ""} />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Job title</span>

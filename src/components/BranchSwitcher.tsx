@@ -1,5 +1,6 @@
 "use client";
 
+import { CitySelect } from "@/components/ui/CitySelect";
 import { useActionState, useState, useTransition } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Building2, Check, ChevronDown, Plus } from "lucide-react";
@@ -35,7 +36,7 @@ function AddBranchForm({ current, onDone }: { current: Branch | null; onDone: ()
       </div>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Emirate (optional)</span>
-        <input name="emirate" className="input w-full" />
+        <CitySelect name="emirate" country={null} />
       </label>
       {current && (
         <label className="flex items-start gap-2 text-sm text-secondary">

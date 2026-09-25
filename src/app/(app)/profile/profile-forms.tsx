@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState } from "react";
 import { changePasswordAction, updateProfileAction } from "./actions";
 import { saveNotificationPrefsAction } from "../notifications/actions";
@@ -38,7 +39,7 @@ export function ProfileForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Phone</span>
-          <input name="phone" defaultValue={phone} className="input w-full" />
+          <PhoneField name="phone" defaultValue={phone} />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Job title</span>
@@ -91,7 +92,7 @@ export function NotificationPrefsForm({
       <label className="flex items-center gap-2 text-sm text-secondary">
         <input type="checkbox" name="notifyWhatsapp" defaultChecked={notifyWhatsapp} /> WhatsApp me
       </label>
-      <input name="whatsappNumber" defaultValue={whatsappNumber} placeholder="+971501234567" className="input w-full" />
+      <PhoneField name="whatsappNumber" defaultValue={whatsappNumber} />
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
         <Message state={state} success="Saved." />

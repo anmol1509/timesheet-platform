@@ -1,6 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { CitySelect } from "@/components/ui/CitySelect";
+import { CountrySelect } from "@/components/ui/CountrySelect";
+import { CurrencySelect } from "@/components/ui/CurrencySelect";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { updateCompanyAction } from "./actions";
 
 type Branch = {
@@ -19,6 +23,8 @@ type Branch = {
 
 export function CompanyForm({ branch }: { branch: Branch }) {
   const [state, action, pending] = useActionState(updateCompanyAction, { error: null } as { error: string | null; ok?: boolean });
+  const [country, setCountry] = useState(branch.country ?? "United Arab Emirates");
+  const lab = "mb-1 block text-xs font-medium text-muted";
   const f = (label: string, name: keyof Branch, opts: { required?: boolean; span?: boolean } = {}) => (
     <label className={opts.span ? "block sm:col-span-2" : "block"}>
       <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
@@ -31,14 +37,14 @@ export function CompanyForm({ branch }: { branch: Branch }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {f("Company name", "name", { required: true, span: true })}
         {f("Address", "address", { span: true })}
-        {f("Emirate / city", "emirate")}
-        {f("Country", "country")}
-        {f("Phone", "phone")}
-        {f("Fax", "fax")}
+        <div><span className={lab}>Country</span><CountrySelect name="country" value={country} onChange={setCountry} /></div>
+        <div><span className={lab}>Emirate / city</span><CitySelect name="emirate" country={country} defaultValue={branch.emirate ?? ""} /></div>
+        <div><span className={lab}>Phone</span><PhoneField name="phone" defaultValue={branch.phone} /></div>
+        <div><span className={lab}>Fax</span><PhoneField name="fax" defaultValue={branch.fax} /></div>
         {f("Email", "email")}
         {f("P.O. Box", "poBox")}
         {f("Tax Registration Number (TRN)", "trn")}
-        {f("Currency", "currency")}
+        <div><span className={lab}>Currency</span><CurrencySelect name="currency" defaultValue={branch.currency ?? "AED"} /></div>
       </div>
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>

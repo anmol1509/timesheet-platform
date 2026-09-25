@@ -4,6 +4,8 @@ import { keepInput } from "@/lib/vendor/keepInput";
 import { useActionState, useState, useTransition } from "react";
 import { Paperclip } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { CitySelect } from "@/components/ui/CitySelect";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { cancelChangeAction, requestChangeAction, uploadDocumentAction } from "./actions";
 
 type State = { error: string | null; ok?: boolean };
@@ -19,7 +21,17 @@ function ChangeForm({ kind, title, hint, values, fields, pending: hasPending }: 
       <input type="hidden" name="kind" value={kind} />
       <div><h2 className="text-sm font-semibold text-primary">{title}</h2><p className="mt-0.5 text-xs text-muted">{hint}</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {fields.map(([name, label]) => <F key={name} t={label}><input name={name} defaultValue={values[name]} disabled={hasPending} className="input w-full" /></F>)}
+        {fields.map(([name, label]) => (
+          <F key={name} t={label}>
+            {name === "contactPhone" || name === "phone" ? (
+              <PhoneField name={name} defaultValue={values[name]} disabled={hasPending} />
+            ) : name === "bankEmirate" ? (
+              <CitySelect name={name} defaultValue={values[name] ?? ""} disabled={hasPending} />
+            ) : (
+              <input name={name} defaultValue={values[name]} disabled={hasPending} className="input w-full" />
+            )}
+          </F>
+        ))}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-secondary" disabled={busy || hasPending}>{busy ? "Sending…" : "Request this change"}</button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState, useRef, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
@@ -24,7 +25,7 @@ export function ContactsBoard({ rows, canEdit, canDelete }: { rows: ContactRow[]
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Department *</span><input name="department" required placeholder="e.g. Dubai, Accounts" className="input w-full" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Person *</span><input name="personName" required className="input w-full" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Designation</span><input name="designation" className="input w-full" /></label>
-            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Phone</span><input name="phone" className="input w-full" /></label>
+            <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Phone</span><PhoneField name="phone" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Email</span><input name="email" className="input w-full" /></label>
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Order (lower first)</span><input type="number" name="sortOrder" defaultValue={0} className="input w-full" /></label>
           </div>

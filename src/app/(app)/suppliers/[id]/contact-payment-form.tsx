@@ -1,5 +1,7 @@
 "use client";
 
+import { CitySelect } from "@/components/ui/CitySelect";
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import { updateSupplierContactPaymentAction } from "../actions";
 
@@ -63,11 +65,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Contact phone">
-          <input
-            name="contactPhone"
-            defaultValue={supplier.contactPhone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="contactPhone" defaultValue={supplier.contactPhone} />
         </Field>
         <Field label="Contact email">
           <input
@@ -78,12 +76,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Phone">
-          <input
-            name="phone"
-            placeholder="Landline, if different from mobile"
-            defaultValue={supplier.phone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="phone" defaultValue={supplier.phone} />
         </Field>
         <Field label="Location / address">
           <input
@@ -111,11 +104,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Coordinator phone">
-          <input
-            name="coordinatorPhone"
-            defaultValue={supplier.coordinatorPhone || ""}
-            className="input w-full"
-          />
+          <PhoneField name="coordinatorPhone" defaultValue={supplier.coordinatorPhone} />
         </Field>
         <Field label="Coordinator email">
           <input
@@ -164,11 +153,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Bank emirate">
-          <input
-            name="bankEmirate"
-            defaultValue={supplier.bankEmirate || ""}
-            className="input w-full"
-          />
+          <CitySelect name="bankEmirate" country={null} defaultValue={supplier.bankEmirate ?? ""} />
         </Field>
         <Field label="Payment terms">
           <input

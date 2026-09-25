@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneField } from "@/components/ui/PhoneField";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { m } from "motion/react";
 import { SPRING } from "@/lib/motion";
@@ -383,18 +384,10 @@ export function EditForm({
             </Field>
             <LookupField label="Blood group" name="bloodGroup" defaultValue={employee.bloodGroup} options={lookups.BLOOD_GROUP} />
             <Field label="Mobile number">
-              <input
-                name="mobileNumber"
-                defaultValue={employee.mobileNumber || ""}
-                className="input w-full"
-              />
+              <PhoneField name="mobileNumber" defaultValue={employee.mobileNumber} />
             </Field>
             <Field label="WhatsApp number">
-              <input
-                name="whatsappNumber"
-                defaultValue={employee.whatsappNumber || ""}
-                className="input w-full"
-              />
+              <PhoneField name="whatsappNumber" defaultValue={employee.whatsappNumber} />
             </Field>
             <label className="flex items-start gap-2 text-sm text-secondary sm:col-span-2">
               <input type="checkbox" name="essEnabled" defaultChecked={employee.essEnabled} className="mt-0.5" />
@@ -419,11 +412,7 @@ export function EditForm({
               />
             </Field>
             <Field label="Emergency contact phone">
-              <input
-                name="emergencyContactPhone"
-                defaultValue={employee.emergencyContactPhone || ""}
-                className="input w-full"
-              />
+              <PhoneField name="emergencyContactPhone" defaultValue={employee.emergencyContactPhone} />
             </Field>
             <LookupField label="Religion" name="religion" defaultValue={employee.religion} options={lookups.RELIGION} />
             <LookupField label="State" name="state" defaultValue={employee.state} options={lookups.STATE} />
