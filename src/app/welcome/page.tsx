@@ -1,3 +1,7 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { m, useScroll, useSpring } from "motion/react";
 import {
   ArrowRight,
   BedDouble,
@@ -33,9 +37,29 @@ import {
   appHref,
   demoHref,
 } from "./content";
-import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "./brand";
+import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "./brand";
 import { MobileMenu } from "./mobile-menu";
+import {
+  AnimatedWords,
+  CountUpInView,
+  EASE_PREMIUM,
+  HeroVisual,
+  MagneticButton,
+  Reveal,
+  RevealGroup,
+  RevealItem,
+  useScrolled,
+} from "./motion";
 import s from "./welcome.module.css";
+
+const statVariant = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_PREMIUM } },
+};
+const rowVariant = {
+  hidden: { opacity: 0, y: 6 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM } },
+};
 
 const CAP_ICONS = { clock: Clock, wallet: Wallet, receipt: Receipt, hardhat: HardHat };
 const CHALLENGE_ICONS = {
@@ -48,17 +72,23 @@ const CHALLENGE_ICONS = {
 };
 
 function Logo() {
+  const height = 40;
   return (
     <a href="#top" className={s.logo} aria-label={`${SITE.name} home`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-      <img src={BRAND_ICON} alt="" width={28} height={28} className={s.logoMark} />
-      {SITE.name}
+      <img
+        src={BRAND_LOGO}
+        alt={SITE.name}
+        height={height}
+        width={Math.round(height * BRAND_LOGO_ASPECT)}
+        style={{ height, width: "auto" }}
+      />
     </a>
   );
 }
 
 function FooterLogo() {
-  const height = 36;
+  const height = 56;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed
     <img
@@ -68,6 +98,145 @@ function FooterLogo() {
       width={Math.round(height * BRAND_LOGO_ASPECT)}
       style={{ height, width: "auto" }}
     />
+  );
+}
+
+const CHALLENGE_CONVERGE = [
+  ["Excel", "Paper", "Photo"],
+  ["Visa", "Emirates ID", "Passport"],
+  ["Overtime", "Loans", "Deductions"],
+  ["Approved hrs", "Invoice"],
+  ["Camp", "Bus route", "Site"],
+  ["Email", "Spreadsheet"],
+] as const;
+
+/** Small chips fading/sliding toward the card's icon once in view — the
+ * "scattered inputs converging on one system" metaphor, reused across every
+ * challenge card with its own real labels rather than six bespoke illustrations. */
+function ChallengeConverge({ items }: { items: readonly string[] }) {
+  return (
+    <m.div
+      className={s.convergeRow}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.6 }}
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}
+    >
+      {items.map((label, i) => (
+        <m.span
+          key={label}
+          className={s.convergeChip}
+          variants={{
+            hidden: { opacity: 0, x: i % 2 ? 10 : -10 },
+            show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE_PREMIUM } },
+          }}
+        >
+          {label}
+        </m.span>
+      ))}
+      <m.span
+        className={s.convergeArrow}
+        variants={{
+          hidden: { opacity: 0, scale: 0.6 },
+          show: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: EASE_PREMIUM } },
+        }}
+        aria-hidden
+      >
+        <ArrowRight size={13} />
+      </m.span>
+    </m.div>
+  );
+}
+
+/** The "How it works" scroll-linked signature: a track that fills as the
+ * user scrolls past the three steps, plus each step's number lighting up
+ * once it's reached — makes the hours→approval→payday pipeline read as one
+ * continuous, literal flow instead of three unrelated cards. */
+function HowItWorks() {
+  const ref = useRef<HTMLOListElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.75", "end 0.4"] });
+  const fill = useSpring(scrollYProgress, { stiffness: 120, damping: 26, restDelta: 0.001 });
+
+  return (
+    <div className={s.howWrap}>
+      <div className={s.howTrack} aria-hidden>
+        <m.div className={s.howTrackFill} style={{ scaleX: fill }} />
+      </div>
+      <ol ref={ref} className={s.steps} style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {STEPS.map((step, i) => (
+          <Reveal key={step.n} as="li" className={s.step} delay={i * 0.1} amount={0.4}>
+            <m.span
+              className={s.stepNum}
+              initial={{ color: "var(--stone)" }}
+              whileInView={{ color: "var(--primary)" }}
+              viewport={{ once: true, amount: 0.6 }}
+              transition={{ duration: 0.3, ease: EASE_PREMIUM, delay: 0.15 }}
+            >
+              {step.n}
+            </m.span>
+            <h3 className={s.h3} style={{ marginTop: 8 }}>
+              {step.title}
+            </h3>
+            <p className={s.cardBody} style={{ color: "var(--slate)" }}>
+              {step.body}
+            </p>
+            <StepVisual index={i} />
+          </Reveal>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function NavLinks() {
+  const [hovered, setHovered] = useState<string | null>(null);
+  return (
+    <ul className={s.navLinks} onPointerLeave={() => setHovered(null)}>
+      {NAV.map((n) => (
+        <li key={n.href} className={s.navLinkItem}>
+          <a href={n.href} onPointerEnter={() => setHovered(n.href)}>
+            {n.label}
+          </a>
+          {hovered === n.href && (
+            <m.span
+              layoutId="nav-hover-pill"
+              className={s.navHoverPill}
+              transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Nav() {
+  const scrolled = useScrolled();
+  return (
+    <m.header
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: EASE_PREMIUM }}
+      className={`${s.nav} ${scrolled ? s.navScrolled : ""}`}
+    >
+      <div className={`${s.container} ${s.navInner}`}>
+        <Logo />
+        <nav aria-label="Primary">
+          <NavLinks />
+        </nav>
+        <div className={s.navActions}>
+          <a href={appHref("/login")} className={`${s.btn} ${s.btnGhost}`}>
+            Sign in
+          </a>
+          <MagneticButton>
+            <a href={demoHref} className={`${s.btn} ${s.btnPrimary}`}>
+              Book a demo
+            </a>
+          </MagneticButton>
+        </div>
+        <MobileMenu />
+      </div>
+    </m.header>
   );
 }
 
@@ -114,11 +283,11 @@ const ROWS = [
 function HeroMock() {
   const side = [
     { icon: LayoutDashboard, label: "Dashboards" },
-    { icon: Clock, label: "Timesheets", active: true },
-    { icon: ClipboardCheck, label: "Approvals" },
+    { icon: Clock, label: "Timesheets", active: true, flow: 0 },
+    { icon: ClipboardCheck, label: "Approvals", flow: 1 },
     { icon: Users, label: "Employees" },
-    { icon: Wallet, label: "Payroll" },
-    { icon: Receipt, label: "Invoices" },
+    { icon: Wallet, label: "Payroll", flow: 2 },
+    { icon: Receipt, label: "Invoices", flow: 3 },
   ];
   const ops = [
     { icon: BedDouble, label: "Accommodation" },
@@ -137,9 +306,18 @@ function HeroMock() {
       </div>
       <div className={s.mockBody}>
         <aside className={s.mockSide}>
-          {side.map(({ icon: Icon, label, active }) => (
+          {side.map(({ icon: Icon, label, active, flow }) => (
             <div key={label} className={`${s.mockSideItem} ${active ? s.mockSideActive : ""}`}>
               <Icon size={15} /> {label}
+              {flow !== undefined && (
+                <m.span
+                  className={s.flowDot}
+                  initial={{ opacity: 0.25, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: EASE_PREMIUM, delay: 1.6 + flow * 0.18 }}
+                  aria-hidden
+                />
+              )}
             </div>
           ))}
           <div className={s.mockSideLabel}>Operations</div>
@@ -157,24 +335,37 @@ function HeroMock() {
             </div>
             <span className={`${s.tag} ${s.tagBlue}`}>Ready to invoice</span>
           </div>
-          <div className={s.mockStats}>
-            <div className={s.mockStat}>
-              <b>412</b>
+          <m.div
+            className={s.mockStats}
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.8 } } }}
+          >
+            <m.div className={s.mockStat} variants={statVariant}>
+              <b>
+                <CountUpInView value={412} />
+              </b>
               <span>Workers</span>
-            </div>
-            <div className={s.mockStat}>
-              <b>84,216</b>
+            </m.div>
+            <m.div className={s.mockStat} variants={statVariant}>
+              <b>
+                <CountUpInView value={84216} />
+              </b>
               <span>Regular hours</span>
-            </div>
-            <div className={s.mockStat}>
-              <b>6,930</b>
+            </m.div>
+            <m.div className={s.mockStat} variants={statVariant}>
+              <b>
+                <CountUpInView value={6930} />
+              </b>
               <span>Overtime hours</span>
-            </div>
-            <div className={s.mockStat}>
-              <b>97%</b>
+            </m.div>
+            <m.div className={s.mockStat} variants={statVariant}>
+              <b>
+                <CountUpInView value={97} suffix="%" />
+              </b>
               <span>Approved</span>
-            </div>
-          </div>
+            </m.div>
+          </m.div>
           <div style={{ overflowX: "auto" }}>
             <table className={s.table}>
               <thead>
@@ -187,9 +378,13 @@ function HeroMock() {
                   <th>Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <m.tbody
+                initial="hidden"
+                animate="show"
+                variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 1.1 } } }}
+              >
                 {ROWS.map((r) => (
-                  <tr key={r.name}>
+                  <m.tr key={r.name} variants={rowVariant}>
                     <td>
                       <span className={s.person}>
                         <span className={s.avatar} style={{ background: r.bg }}>
@@ -205,9 +400,9 @@ function HeroMock() {
                     <td>
                       <span className={`${s.tag} ${r.tone}`}>{r.status}</span>
                     </td>
-                  </tr>
+                  </m.tr>
                 ))}
-              </tbody>
+              </m.tbody>
             </table>
           </div>
         </div>
@@ -240,14 +435,28 @@ function CapabilityMini({ index }: { index: number }) {
     ],
   ] as const;
   return (
-    <div className={s.miniMock} aria-hidden>
+    <m.div
+      className={s.miniMock}
+      aria-hidden
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.6 }}
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 0.1 } } }}
+    >
       {minis[index].map(([label, value]) => (
-        <div key={label} className={s.miniRow}>
+        <m.div
+          key={label}
+          className={s.miniRow}
+          variants={{
+            hidden: { opacity: 0, y: 6 },
+            show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM } },
+          }}
+        >
           <span>{label}</span>
           {value}
-        </div>
+        </m.div>
       ))}
-    </div>
+    </m.div>
   );
 }
 
@@ -303,100 +512,215 @@ function StepVisual({ index }: { index: number }) {
   );
 }
 
-function DiveVisual({ kind }: { kind: "documents" | "camps" | "assistant" }) {
-  if (kind === "documents")
-    return (
-      <div className={`${s.diveVisual} ${s["tint-sky"]}`} aria-hidden>
-        <div className={s.diveCard}>
-          <div className={s.scan}>
-            <span className={s.scanThumb} />
-            <div>
-              <b>passport_scan.pdf</b>
-              <div className={s.miniMuted} style={{ fontSize: 13 }}>
-                <Sparkles size={13} style={{ verticalAlign: "-2px" }} /> 6 fields extracted
-              </div>
-            </div>
+const fieldVariant = {
+  hidden: { opacity: 0, y: 6 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM } },
+};
+
+function DocumentsVisual() {
+  return (
+    <m.div
+      className={`${s.diveVisual} ${s["tint-sky"]}`}
+      aria-hidden
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.5 }}
+    >
+      <div className={s.diveCard}>
+        <m.div
+          className={s.scan}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0, delayChildren: 0 } } }}
+        >
+          <m.span
+            className={s.scanThumb}
+            style={{ position: "relative", overflow: "hidden" }}
+            variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3 } } }}
+          >
+            <m.span
+              className={s.scanLine}
+              variants={{
+                hidden: { y: -6, opacity: 0 },
+                show: { y: 60, opacity: [0, 1, 1, 0], transition: { duration: 0.9, ease: "easeInOut", delay: 0.15 } },
+              }}
+            />
+          </m.span>
+          <div>
+            <b>passport_scan.pdf</b>
+            <m.div
+              className={s.miniMuted}
+              style={{ fontSize: 13 }}
+              variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3, delay: 1.05 } } }}
+            >
+              <Sparkles size={13} style={{ verticalAlign: "-2px" }} /> 6 fields extracted
+            </m.div>
           </div>
+        </m.div>
+        <m.div variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 1.2 } } }}>
           {[
             ["Full name", "Rajesh Kumar"],
             ["Passport no.", "Z4821••••"],
             ["Nationality", "India"],
             ["Visa expiry", <span key="v" className={`${s.tag} ${s.tagOrange}`}>in 28 days</span>],
             ["Emirates ID", "784-19••-•••••••-2"],
-          ].map(([k, v]) => (
-            <div key={String(k)} className={s.field}>
+          ].map(([k, v], i) => (
+            <m.div key={String(k)} className={s.field} variants={fieldVariant}>
               <span className={s.fieldLabel}>{k}</span>
-              <span>{v}</span>
-            </div>
+              {i === 3 ? (
+                <m.span
+                  variants={{
+                    hidden: { opacity: 0, scale: 0.85 },
+                    show: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: EASE_PREMIUM } },
+                  }}
+                >
+                  {v}
+                </m.span>
+              ) : (
+                <span>{v}</span>
+              )}
+            </m.div>
           ))}
-        </div>
+        </m.div>
       </div>
-    );
-  if (kind === "camps") {
-    const rooms = [
-      [1, 1, 1, 1, 1, 1],
-      [1, 1, 1, 1, 0, 0],
-      [1, 1, 1, 1, 1, 1],
-      [1, 1, 0, 0, 0, 0],
-      [1, 1, 1, 1, 1, 0],
-      [1, 1, 1, 1, 1, 1],
-      [1, 0, 0, 0, 0, 0],
-      [1, 1, 1, 1, 1, 1],
-    ];
-    return (
-      <div className={`${s.diveVisual} ${s["tint-mint"]}`} aria-hidden>
-        <div className={s.diveCard}>
-          <div className={s.stepLine}>
-            <b>Sonapur Camp · Block C</b>
-            <span className={`${s.tag} ${s.tagGreen}`}>81% occupied</span>
-          </div>
-          <div className={s.bar}>
-            <span style={{ width: "81%" }} />
-          </div>
-          <div className={s.rooms}>
-            {rooms.map((beds, i) => (
-              <div key={i} className={s.room}>
-                C-{101 + i}
-                <div className={s.beds}>
-                  {beds.map((b, j) => (
-                    <span key={j} className={`${s.bed} ${b ? s.bedFull : ""}`} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className={s.stepLine} style={{ marginTop: 16 }}>
-            <span>
-              <Bus size={14} style={{ verticalAlign: "-2px" }} /> Route 4 · Sonapur → Al Quoz
-            </span>
-            <span className={s.miniMuted}>05:30 · 48 seats</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className={`${s.diveVisual} ${s["tint-lavender"]}`} aria-hidden>
-      <div className={`${s.diveCard} ${s.chat}`}>
-        <div className={s.bubbleUser}>Which visas expire in the next 30 days?</div>
-        <div className={s.bubbleBot}>
-          7 employees have visas expiring before 30 June:
-          <ul>
-            <li>
-              <span className={s.linkish}>Rajesh Kumar</span> · 22 Jun
-            </li>
-            <li>
-              <span className={s.linkish}>Joseph Santos</span> · 25 Jun
-            </li>
-            <li>
-              <span className={s.linkish}>+5 more</span> in Documents
-            </li>
-          </ul>
-        </div>
-        <div className={s.bubbleUser}>Draft renewal NOCs for them.</div>
-      </div>
-    </div>
+    </m.div>
   );
+}
+
+function CampsVisual() {
+  const rooms = [
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 0, 0],
+    [1, 1, 1, 1, 1, 1],
+    [1, 1, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 0],
+    [1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1],
+  ];
+  return (
+    <m.div
+      className={`${s.diveVisual} ${s["tint-mint"]}`}
+      aria-hidden
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.5 }}
+    >
+      <div className={s.diveCard}>
+        <div className={s.stepLine}>
+          <b>Sonapur Camp · Block C</b>
+          <span className={`${s.tag} ${s.tagGreen}`}>81% occupied</span>
+        </div>
+        <div className={s.bar}>
+          <m.span
+            variants={{ hidden: { width: "0%" }, show: { width: "81%", transition: { duration: 0.9, ease: EASE_PREMIUM, delay: 0.1 } } }}
+          />
+        </div>
+        <m.div
+          className={s.rooms}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.3 } } }}
+        >
+          {rooms.map((beds, i) => (
+            <m.div key={i} className={s.room} variants={fieldVariant}>
+              C-{101 + i}
+              <div className={s.beds}>
+                {beds.map((b, j) => (
+                  <span key={j} className={`${s.bed} ${b ? s.bedFull : ""}`} />
+                ))}
+              </div>
+            </m.div>
+          ))}
+        </m.div>
+        <m.div
+          className={s.stepLine}
+          style={{ marginTop: 16 }}
+          variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3, delay: 1.0 } } }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Bus size={14} />
+            Route 4 · Sonapur
+            <svg width="36" height="10" viewBox="0 0 36 10" style={{ overflow: "visible" }}>
+              <m.path
+                d="M0 5 H30"
+                stroke="var(--teal)"
+                strokeWidth="1.5"
+                variants={{ hidden: { pathLength: 0 }, show: { pathLength: 1, transition: { duration: 0.6, ease: "easeInOut", delay: 1.1 } } }}
+              />
+              <m.circle
+                cx="30"
+                cy="5"
+                r="2.5"
+                fill="var(--teal)"
+                variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.2, delay: 1.7 } } }}
+              />
+            </svg>
+            Al Quoz
+          </span>
+          <span className={s.miniMuted}>05:30 · 48 seats</span>
+        </m.div>
+      </div>
+    </m.div>
+  );
+}
+
+function AssistantVisual() {
+  return (
+    <m.div
+      className={`${s.diveVisual} ${s["tint-lavender"]}`}
+      aria-hidden
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.5 }}
+    >
+      <div className={`${s.diveCard} ${s.chat}`}>
+        <m.div
+          className={s.bubbleUser}
+          variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM } } }}
+        >
+          Which visas expire in the next 30 days?
+        </m.div>
+        <m.div
+          className={s.thinking}
+          variants={{
+            hidden: { opacity: 0 },
+            show: { opacity: [0, 1, 1, 0], transition: { duration: 0.6, delay: 0.35, times: [0, 0.2, 0.8, 1] } },
+          }}
+          aria-hidden
+        >
+          <span />
+          <span />
+          <span />
+        </m.div>
+        <m.div
+          className={s.bubbleBot}
+          variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM, delay: 0.9 } } }}
+        >
+          7 employees have visas expiring before 30 June:
+          <m.ul variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 1.25 } } }}>
+            <m.li variants={fieldVariant}>
+              <span className={s.linkish}>Rajesh Kumar</span> · 22 Jun
+            </m.li>
+            <m.li variants={fieldVariant}>
+              <span className={s.linkish}>Joseph Santos</span> · 25 Jun
+            </m.li>
+            <m.li variants={fieldVariant}>
+              <span className={s.linkish}>+5 more</span> in Documents
+            </m.li>
+          </m.ul>
+        </m.div>
+        <m.div
+          className={s.bubbleUser}
+          variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM, delay: 1.75 } } }}
+        >
+          Draft renewal NOCs for them.
+        </m.div>
+      </div>
+    </m.div>
+  );
+}
+
+function DiveVisual({ kind }: { kind: "documents" | "camps" | "assistant" }) {
+  if (kind === "documents") return <DocumentsVisual />;
+  if (kind === "camps") return <CampsVisual />;
+  return <AssistantVisual />;
 }
 
 export default function WelcomePage() {
@@ -406,58 +730,66 @@ export default function WelcomePage() {
         Skip to content
       </a>
 
-      <header className={s.nav}>
-        <div className={`${s.container} ${s.navInner}`}>
-          <Logo />
-          <nav aria-label="Primary">
-            <ul className={s.navLinks}>
-              {NAV.map((n) => (
-                <li key={n.href}>
-                  <a href={n.href}>{n.label}</a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <div className={s.navActions}>
-            <a href={appHref("/login")} className={`${s.btn} ${s.btnGhost}`}>
-              Sign in
-            </a>
-            <a href={demoHref} className={`${s.btn} ${s.btnPrimary}`}>
-              Book a demo
-            </a>
-          </div>
-          <MobileMenu />
-        </div>
-      </header>
+      <Nav />
 
       <main id="main">
         <section className={s.hero} aria-labelledby="hero-title">
           <Decorations />
           <div className={s.container}>
             <div className={s.heroInner}>
-              <span className={s.pill}>
+              <m.span
+                className={s.pill}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: EASE_PREMIUM, delay: 0.1 }}
+              >
                 <span className={s.pillBadge}>New</span>
-                AI document extraction for passports, visas & Emirates IDs
-              </span>
+                AI document extraction for passports, visas &amp; Emirates IDs
+              </m.span>
               <h1 id="hero-title" className={s.heroTitle}>
-                Your workforce, from <em>timesheet</em> to payday.
+                <AnimatedWords text="Your workforce, from" startDelay={0.2} />{" "}
+                <em>
+                  <AnimatedWords text="timesheet" startDelay={0.2 + 3 * 0.045} />
+                </em>{" "}
+                <AnimatedWords text="to payday." startDelay={0.2 + 4 * 0.045} />
               </h1>
-              <p className={s.heroSub}>
+              <m.p
+                className={s.heroSub}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: EASE_PREMIUM, delay: 0.35 }}
+              >
                 {SITE.name} runs your manpower business in one place: hours, approvals, payroll with WPS, client
                 invoices, camps, transport and documents.
-              </p>
-              <div className={s.heroCtas}>
-                <a href={demoHref} className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
-                  Book a demo <ArrowRight size={16} aria-hidden />
-                </a>
+              </m.p>
+              <m.div
+                className={s.heroCtas}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: EASE_PREMIUM, delay: 0.5 }}
+              >
+                <MagneticButton>
+                  <a href={demoHref} className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
+                    Book a demo <ArrowRight size={16} aria-hidden />
+                  </a>
+                </MagneticButton>
                 <a href="#how" className={`${s.btn} ${s.btnGhostOnDark} ${s.btnLg}`}>
                   See how it works
                 </a>
-              </div>
-              <p className={s.heroNote}>Bring your existing Excel timesheets, no re-keying</p>
+              </m.div>
+              <m.p
+                className={s.heroNote}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, ease: EASE_PREMIUM, delay: 0.6 }}
+              >
+                Bring your existing Excel timesheets, no re-keying
+              </m.p>
             </div>
             <div className={s.heroMockWrap}>
-              <HeroMock />
+              <HeroVisual>
+                <HeroMock />
+              </HeroVisual>
             </div>
           </div>
         </section>
@@ -465,14 +797,16 @@ export default function WelcomePage() {
 
         <section className={s.strip} aria-label="Industries">
           <div className={s.container}>
-            <p className={s.stripLabel}>Built for companies that supply and manage skilled labour</p>
-            <ul className={s.stripList}>
+            <Reveal as="p" className={s.stripLabel} y={12}>
+              Built for companies that supply and manage skilled labour
+            </Reveal>
+            <RevealGroup as="ul" className={s.stripList} stagger={0.05} amount={0.4}>
               {INDUSTRIES.map((name) => (
-                <li key={name}>
+                <RevealItem key={name} as="li" y={10}>
                   <HardHat size={16} aria-hidden /> {name}
-                </li>
+                </RevealItem>
               ))}
-            </ul>
+            </RevealGroup>
           </div>
         </section>
 
@@ -489,20 +823,21 @@ export default function WelcomePage() {
                 spreadsheets, WhatsApp groups and inboxes.
               </p>
             </div>
-            <div className={s.challengeGrid}>
-              {CHALLENGES.map((ch) => {
+            <RevealGroup className={s.challengeGrid} stagger={0.08}>
+              {CHALLENGES.map((ch, i) => {
                 const Icon = CHALLENGE_ICONS[ch.icon];
                 return (
-                  <article key={ch.title} className={s.challenge}>
+                  <RevealItem key={ch.title} as="article" className={s.challenge}>
                     <span className={s.challengeIcon}>
                       <Icon size={20} aria-hidden />
                     </span>
                     <h3 className={s.h5}>{ch.title}</h3>
                     <p>{ch.body}</p>
-                  </article>
+                    <ChallengeConverge items={CHALLENGE_CONVERGE[i]} />
+                  </RevealItem>
                 );
               })}
-            </div>
+            </RevealGroup>
           </div>
         </section>
 
@@ -518,27 +853,29 @@ export default function WelcomePage() {
                 are the hours you bill and the hours you pay.
               </p>
             </div>
-            <div className={s.capGrid}>
-              {CAPABILITIES.map((c, i) => {
-                const Icon = CAP_ICONS[c.icon];
-                return (
-                  <article key={c.title} className={`${s.card} ${s[`tint-${c.tint}`]}`}>
-                    <span className={s.iconTile}>
-                      <Icon size={22} aria-hidden />
-                    </span>
-                    <h3 className={s.h3}>{c.title}</h3>
-                    <p className={s.cardBody}>{c.body}</p>
-                    <ul className={s.checkList}>
-                      {c.points.map((p) => (
-                        <li key={p}>
-                          <Check size={16} aria-hidden /> {p}
-                        </li>
-                      ))}
-                    </ul>
-                    <CapabilityMini index={i} />
-                  </article>
-                );
-              })}
+            <div className={s.capGridWrap}>
+              <RevealGroup className={s.capGrid} stagger={0.1}>
+                {CAPABILITIES.map((c, i) => {
+                  const Icon = CAP_ICONS[c.icon];
+                  return (
+                    <RevealItem key={c.title} as="article" className={`${s.card} ${s[`tint-${c.tint}`]}`}>
+                      <span className={s.iconTile}>
+                        <Icon size={22} aria-hidden />
+                      </span>
+                      <h3 className={s.h3}>{c.title}</h3>
+                      <p className={s.cardBody}>{c.body}</p>
+                      <ul className={s.checkList}>
+                        {c.points.map((p) => (
+                          <li key={p}>
+                            <Check size={16} aria-hidden /> {p}
+                          </li>
+                        ))}
+                      </ul>
+                      <CapabilityMini index={i} />
+                    </RevealItem>
+                  );
+                })}
+              </RevealGroup>
             </div>
             <div className={s.banner}>
               <div>
@@ -562,20 +899,7 @@ export default function WelcomePage() {
                 Enter hours once. Everything else follows.
               </h2>
             </div>
-            <ol className={s.steps} style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {STEPS.map((step, i) => (
-                <li key={step.n} className={s.step}>
-                  <span className={s.stepNum}>{step.n}</span>
-                  <h3 className={s.h3} style={{ marginTop: 8 }}>
-                    {step.title}
-                  </h3>
-                  <p className={s.cardBody} style={{ color: "var(--slate)" }}>
-                    {step.body}
-                  </p>
-                  <StepVisual index={i} />
-                </li>
-              ))}
-            </ol>
+            <HowItWorks />
           </div>
         </section>
 
@@ -583,18 +907,18 @@ export default function WelcomePage() {
           <div className={s.container}>
             {DEEP_DIVES.map((d, i) => (
               <div key={d.title} className={`${s.dive} ${i % 2 ? s.diveFlip : ""}`}>
-                <div className={s.diveText}>
+                <Reveal as="div" className={s.diveText} y={20}>
                   <span className={s.eyebrow}>{d.eyebrow}</span>
                   <h2 className={s.h2sm}>{d.title}</h2>
                   <p className={s.lead}>{d.body}</p>
-                  <div className={s.chips}>
+                  <RevealGroup className={s.chips} stagger={0.05} amount={0.6}>
                     {d.points.map((p) => (
-                      <span key={p} className={s.chip}>
+                      <RevealItem key={p} as="span" className={s.chip} y={8}>
                         {p}
-                      </span>
+                      </RevealItem>
                     ))}
-                  </div>
-                </div>
+                  </RevealGroup>
+                </Reveal>
                 <DiveVisual kind={d.visual} />
               </div>
             ))}
@@ -603,17 +927,23 @@ export default function WelcomePage() {
 
         <section className={s.section} style={{ paddingTop: 0 }} aria-label="At a glance">
           <div className={s.container}>
-            <dl className={s.facts} style={{ margin: 0 }}>
-              {FACTS.map((f) => (
-                <div key={f.label} className={s.fact}>
-                  <dt className="sr-only">{f.label}</dt>
-                  <dd style={{ margin: 0 }}>
-                    <b>{f.value}</b>
-                    <span>{f.label}</span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <RevealGroup as="dl" className={s.facts} style={{ margin: 0 }} stagger={0.1} amount={0.6}>
+              {FACTS.map((f) => {
+                const match = f.value.match(/^(\d+)(.*)$/);
+                const [, digits, suffix] = match ?? [null, f.value, ""];
+                return (
+                  <RevealItem key={f.label} as="div" className={s.fact}>
+                    <dt className="sr-only">{f.label}</dt>
+                    <dd style={{ margin: 0 }}>
+                      <b>
+                        {match ? <CountUpInView value={Number(digits)} suffix={suffix} /> : f.value}
+                      </b>
+                      <span>{f.label}</span>
+                    </dd>
+                  </RevealItem>
+                );
+              })}
+            </RevealGroup>
           </div>
         </section>
 
@@ -629,9 +959,9 @@ export default function WelcomePage() {
                 same records.
               </p>
             </div>
-            <div className={s.portalGrid}>
+            <RevealGroup as="div" className={s.portalGrid} stagger={0.1}>
               {PORTALS.map((p) => (
-                <article key={p.title} className={`${s.card} ${s[`tint-${p.tint}`]}`}>
+                <RevealItem key={p.title} as="article" className={`${s.card} ${s[`tint-${p.tint}`]}`}>
                   <h3 className={s.h3}>{p.title}</h3>
                   <p className={s.cardBody}>{p.body}</p>
                   <ul className={s.checkList}>
@@ -644,9 +974,9 @@ export default function WelcomePage() {
                   <a href={p.href} className={s.portalCta}>
                     {p.cta} <ArrowRight size={14} aria-hidden />
                   </a>
-                </article>
+                </RevealItem>
               ))}
-            </div>
+            </RevealGroup>
           </div>
         </section>
 
@@ -658,23 +988,27 @@ export default function WelcomePage() {
                 Questions, answered.
               </h2>
             </div>
-            <div className={s.faq}>
+            <Reveal as="div" className={s.faq} amount={0.1}>
               {FAQS.map((f) => (
                 <details key={f.q} className={s.faqItem}>
                   <summary>
                     {f.q}
                     <Plus size={20} aria-hidden />
                   </summary>
-                  <p>{f.a}</p>
+                  <div className={s.faqAnswerWrap}>
+                    <div className={s.faqAnswerInner}>
+                      <p>{f.a}</p>
+                    </div>
+                  </div>
                 </details>
               ))}
-            </div>
+            </Reveal>
           </div>
         </section>
 
         <section className={s.section} aria-labelledby="cta-title">
           <div className={s.container}>
-            <div className={s.cta}>
+            <Reveal as="div" className={s.cta} y={28} amount={0.4}>
               <Decorations />
               <h2 id="cta-title" className={s.h2}>
                 Close next month in days, not weeks.
@@ -683,21 +1017,23 @@ export default function WelcomePage() {
                 See {SITE.name} with your own timesheet workbook. A 30-minute call is all it takes.
               </p>
               <div className={s.heroCtas}>
-                <a href={demoHref} className={`${s.btn} ${s.btnOnDark} ${s.btnLg}`}>
-                  Book a demo <ArrowRight size={16} aria-hidden />
-                </a>
+                <MagneticButton>
+                  <a href={demoHref} className={`${s.btn} ${s.btnOnDark} ${s.btnLg}`}>
+                    Book a demo <ArrowRight size={16} aria-hidden />
+                  </a>
+                </MagneticButton>
                 <a href={appHref("/login")} className={`${s.btn} ${s.btnGhostOnDark} ${s.btnLg}`}>
                   Sign in
                 </a>
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
       </main>
 
       <footer className={s.footer}>
         <div className={s.container}>
-          <div className={s.footerGrid}>
+          <Reveal as="div" className={s.footerGrid} y={16} amount={0.2}>
             <div className={s.footerBrand}>
               <FooterLogo />
               <p className={s.footerAbout}>
@@ -716,7 +1052,7 @@ export default function WelcomePage() {
                 </ul>
               </nav>
             ))}
-          </div>
+          </Reveal>
           <div className={s.footerBottom}>
             <span>
               © {new Date().getFullYear()} {SITE.name}. All rights reserved.
