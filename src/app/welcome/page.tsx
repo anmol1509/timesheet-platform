@@ -72,7 +72,7 @@ const CHALLENGE_ICONS = {
 };
 
 function Logo() {
-  const height = 60;
+  const height = 44;
   return (
     <a href="#top" className={s.logo} aria-label={`${SITE.name} home`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}

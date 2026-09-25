@@ -187,7 +187,7 @@
 .navInner {
   display: flex;
   align-items: center;
-  height: 76px;
+  height: 60px;
   gap: 32px;
   padding-left: 28px;
   padding-right: 20px;
@@ -277,8 +277,8 @@
   color: #fff;
   /* The nav floats (position: fixed) and no longer sits in normal flow, so
      the hero needs its own clearance: nav's top offset (20px) + its height
-     (76px) + a gap (24px) before content starts. */
-  padding: 148px 0 0;
+     (60px) + a gap (24px) before content starts. */
+  padding: 132px 0 0;
   isolation: isolate;
 }
 .heroInner {
@@ -1265,7 +1265,7 @@
     padding: 0 16px;
   }
   .hero {
-    padding-top: 72px;
+    padding-top: 76px;
   }
   .heroTitle {
     font-size: 44px;
