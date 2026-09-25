@@ -6,9 +6,10 @@ import { prisma } from "@/lib/db";
 import { requireUser, requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { bunkLabel, nextBunkNo, singleLabel } from "@/lib/bunk";
 import { assertContactsValid } from "@/lib/validators";
 
-type RoomSpec = { name: string; bedCount: number };
+type RoomSpec = { name: string; bedCount: number; bunkCount: number };
 
 function parseRoomSpecs(raw: FormDataEntryValue | null): RoomSpec[] {
   let parsed: unknown;
@@ -21,9 +22,10 @@ function parseRoomSpecs(raw: FormDataEntryValue | null): RoomSpec[] {
   return parsed
     .map((r) => ({
       name: String((r as { name?: unknown })?.name || "").trim(),
-      bedCount: Math.max(1, Math.min(20, Number((r as { bedCount?: unknown })?.bedCount) || 1)),
+      bedCount: Math.max(0, Math.min(20, Number((r as { bedCount?: unknown })?.bedCount) || 0)),
+      bunkCount: Math.max(0, Math.min(20, Number((r as { bunkCount?: unknown })?.bunkCount) || 0)),
     }))
-    .filter((r) => r.name.length > 0);
+    .filter((r) => r.name.length > 0 && r.bedCount + r.bunkCount > 0);
 }
 
 // Asks for the camp's full room/bed layout up front, rather than an empty
@@ -38,7 +40,7 @@ export async function createCampWithRoomsAction(
   const owningSupplierId = ownerType === "SUPPLIER" ? stringOrNull(formData.get("supplierId")) : null;
   const rooms = parseRoomSpecs(formData.get("roomsJson"));
   if (!name) return { error: "Camp name is required." };
-  if (rooms.length === 0) return { error: "Add at least one room." };
+  if (rooms.length === 0) return { error: "Add at least one room with a bed or a bunk." };
 
   let campId: string;
   try {
@@ -46,13 +48,16 @@ export async function createCampWithRoomsAction(
       const camp = await tx.camp.create({ data: { name, ownerType, owningSupplierId } });
       for (const room of rooms) {
         const createdRoom = await tx.room.create({
-          data: { campId: camp.id, name: room.name, bedSpace: room.bedCount, usableBedSpace: room.bedCount },
+          data: { campId: camp.id, name: room.name, bedSpace: room.bedCount + room.bunkCount * 2, usableBedSpace: room.bedCount + room.bunkCount * 2 },
         });
         await tx.bed.createMany({
-          data: Array.from({ length: room.bedCount }, (_, i) => ({
-            roomId: createdRoom.id,
-            label: `Bed ${String(i + 1).padStart(2, "0")}`,
-          })),
+          data: [
+            ...Array.from({ length: room.bedCount }, (_, i) => ({ roomId: createdRoom.id, label: singleLabel(i + 1) })),
+            ...Array.from({ length: room.bunkCount }, (_, i) => [
+              { roomId: createdRoom.id, label: bunkLabel(i + 1, "Upper") },
+              { roomId: createdRoom.id, label: bunkLabel(i + 1, "Lower") },
+            ]).flat(),
+          ],
         });
       }
       return camp.id;
@@ -117,28 +122,32 @@ export async function createRoomAction(formData: FormData) {
   const user = await requireUser();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
-  const bedCount = Math.max(1, Math.min(20, Number(formData.get("bedCount")) || 1));
+  const bedCount = Math.max(0, Math.min(20, Number(formData.get("bedCount")) || 0));
+  const bunkCount = Math.max(0, Math.min(20, Number(formData.get("bunkCount")) || 0));
   const bedSpace = intOrNull(formData.get("bedSpace"));
   const usableBedSpace = intOrNull(formData.get("usableBedSpace"));
   const roomType = stringOrNull(formData.get("roomType"));
   const nationality = stringOrNull(formData.get("nationality"));
-  if (!campId || !name) return;
+  if (!campId || !name || bedCount + bunkCount === 0) return;
 
   const room = await prisma.room.create({
     data: { campId, name, bedSpace, usableBedSpace, roomType, nationality },
   });
   await prisma.bed.createMany({
-    data: Array.from({ length: bedCount }, (_, i) => ({
-      roomId: room.id,
-      label: `Bed ${String(i + 1).padStart(2, "0")}`,
-    })),
+    data: [
+      ...Array.from({ length: bedCount }, (_, i) => ({ roomId: room.id, label: singleLabel(i + 1) })),
+      ...Array.from({ length: bunkCount }, (_, i) => [
+        { roomId: room.id, label: bunkLabel(i + 1, "Upper") },
+        { roomId: room.id, label: bunkLabel(i + 1, "Lower") },
+      ]).flat(),
+    ],
   });
 
   await logAudit({
     entityType: "ROOM",
     entityId: room.id,
     action: "CREATE",
-    after: { campId, name, bedCount, bedSpace, usableBedSpace, roomType, nationality },
+    after: { campId, name, bedCount, bunkCount, bedSpace, usableBedSpace, roomType, nationality },
     userId: user.id,
     userName: user.name,
     branchId: null,
@@ -199,16 +208,24 @@ export async function addBedsToRoomAction(formData: FormData) {
   assertContactsValid(formData);
   await requireUser();
   const roomId = String(formData.get("roomId") || "");
+  const kind = String(formData.get("kind") || "single") === "bunk" ? "bunk" : "single";
   const count = Math.max(1, Math.min(20, Number(formData.get("count")) || 1));
   if (!roomId) return;
 
-  const existingBeds = await prisma.bed.count({ where: { roomId } });
-  await prisma.bed.createMany({
-    data: Array.from({ length: count }, (_, i) => ({
-      roomId,
-      label: `Bed ${String(existingBeds + i + 1).padStart(2, "0")}`,
-    })),
-  });
+  const existing = await prisma.bed.findMany({ where: { roomId }, select: { label: true } });
+  if (kind === "bunk") {
+    const start = nextBunkNo(existing.map((b) => b.label));
+    await prisma.bed.createMany({
+      data: Array.from({ length: count }, (_, i) => [
+        { roomId, label: bunkLabel(start + i, "Upper") },
+        { roomId, label: bunkLabel(start + i, "Lower") },
+      ]).flat(),
+    });
+  } else {
+    // Continue the single-bed numbering, ignoring bunk berths.
+    const singles = existing.filter((b) => !/^Bunk/i.test(b.label)).length;
+    await prisma.bed.createMany({ data: Array.from({ length: count }, (_, i) => ({ roomId, label: singleLabel(singles + i + 1) })) });
+  }
 
   revalidatePath("/accommodation/camps");
 }

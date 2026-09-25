@@ -7,11 +7,11 @@ import { Select } from "@/components/ui/Select";
 import { createCampWithRoomsAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
-type RoomDraft = { name: string; bedCount: number };
+type RoomDraft = { name: string; bedCount: number; bunkCount: number };
 type SupplierOption = { id: string; name: string };
 
 function defaultRooms(count: number, previous: RoomDraft[]): RoomDraft[] {
-  return Array.from({ length: count }, (_, i) => previous[i] ?? { name: `Room ${i + 1}`, bedCount: 4 });
+  return Array.from({ length: count }, (_, i) => previous[i] ?? { name: `Room ${i + 1}`, bedCount: 4, bunkCount: 0 });
 }
 
 export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
@@ -34,8 +34,8 @@ export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
     setRooms((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
-  const totalBeds = rooms.reduce((sum, r) => sum + r.bedCount, 0);
-  const canSubmit = name.trim().length > 0 && rooms.every((r) => r.name.trim().length > 0);
+  const totalBeds = rooms.reduce((sum, r) => sum + r.bedCount + r.bunkCount * 2, 0);
+  const canSubmit = name.trim().length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.bedCount + r.bunkCount > 0);
 
   function handleSubmit() {
     if (!canSubmit) return;
@@ -103,14 +103,23 @@ export function AddCampForm({ suppliers }: { suppliers: SupplierOption[] }) {
         <span className="block text-xs font-medium text-muted">Beds in each room</span>
         <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
           {rooms.map((room, i) => (
-            <div key={i} className="flex items-center gap-2 rounded-lg border border-default p-2">
+            <div key={i} className="space-y-2 rounded-lg border border-default p-2.5">
               <input
                 value={room.name}
                 onChange={(e) => updateRoom(i, { name: e.target.value })}
                 placeholder={`Room ${i + 1} name`}
-                className="input min-w-0 flex-1 px-2 py-1 text-sm"
+                className="input w-full px-2 py-1 text-sm"
               />
-              <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(1, Math.min(20, Number(String(v)) || 1)) })} min={1} max={20} ariaLabel="Beds in this room" className="w-16" />
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
+                  <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Single beds in this room" />
+                </label>
+                <label className="block">
+                  <span className="mb-0.5 block text-[11px] font-medium text-muted">Bunks (upper + lower)</span>
+                  <NumberInput value={room.bunkCount} onChange={(v) => updateRoom(i, { bunkCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Bunk beds in this room" />
+                </label>
+              </div>
             </div>
           ))}
         </div>
