@@ -221,7 +221,7 @@ function Nav() {
     >
       <div className={`${s.container} ${s.navInner}`}>
         <Logo />
-        <nav aria-label="Primary">
+        <nav aria-label="Primary" className={s.navPrimary}>
           <NavLinks />
         </nav>
         <div className={s.navActions}>

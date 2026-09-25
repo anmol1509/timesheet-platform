@@ -158,24 +158,39 @@
 
 /* ---------- Nav ---------- */
 .nav {
-  position: sticky;
-  top: 0;
+  /* Centered via left/right + auto margins rather than left:50% +
+     transform:translateX(-50%) — this element also gets an animated `y`
+     from Motion (see Nav in page.tsx), and Motion drives that through an
+     inline `transform` style, which would silently clobber a CSS
+     translateX centering trick on the same property. */
+  position: fixed;
+  top: 20px;
+  left: 16px;
+  right: 16px;
+  margin: 0 auto;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid transparent;
-  transition: background 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+  width: auto;
+  max-width: 1100px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: saturate(180%) blur(16px);
+  border: 1px solid var(--hairline-soft);
+  box-shadow: 0 10px 32px -16px rgba(15, 15, 15, 0.22);
+  transition: background 300ms ease, border-color 300ms ease, box-shadow 300ms ease, top 300ms ease;
 }
 .navScrolled {
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom-color: var(--hairline-soft);
-  box-shadow: 0 8px 24px -16px rgba(15, 15, 15, 0.18);
+  top: 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border-color: var(--hairline-strong);
+  box-shadow: 0 14px 36px -14px rgba(15, 15, 15, 0.3);
 }
 .navInner {
   display: flex;
   align-items: center;
-  height: 84px;
+  height: 76px;
   gap: 32px;
+  padding-left: 28px;
+  padding-right: 20px;
 }
 .logo {
   display: inline-flex;
@@ -236,14 +251,15 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 64px;
+  top: calc(100% + 10px);
   background: var(--canvas);
-  border-bottom: 1px solid var(--hairline);
-  padding: 12px 24px 24px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 20px;
+  padding: 12px 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 16px 24px -12px rgba(15, 15, 15, 0.15);
+  box-shadow: 0 20px 40px -16px rgba(15, 15, 15, 0.24);
 }
 .mobilePanel a:not(.btn) {
   padding: 12px 4px;
@@ -259,7 +275,10 @@
   position: relative;
   background: var(--navy);
   color: #fff;
-  padding: 104px 0 0;
+  /* The nav floats (position: fixed) and no longer sits in normal flow, so
+     the hero needs its own clearance: nav's top offset (20px) + its height
+     (76px) + a gap (24px) before content starts. */
+  padding: 148px 0 0;
   isolation: isolate;
 }
 .heroInner {
@@ -1203,6 +1222,7 @@
     font-size: 64px;
     letter-spacing: -1.5px;
   }
+  .navPrimary,
   .navLinks,
   .navActions {
     display: none;
