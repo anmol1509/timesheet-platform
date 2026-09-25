@@ -14,6 +14,12 @@ export type SectionTab = {
 const under = (base: string) => (p: string) => p === base || p.startsWith(base + "/");
 
 export const SECTION_TABS: SectionTab[][] = [
+  // What suppliers send us through their portal
+  [
+    { href: "/suppliers/requests", label: "Requests", match: under("/suppliers/requests") },
+    { href: "/suppliers/tickets", label: "Messages", match: under("/suppliers/tickets") },
+    { href: "/suppliers/contacts", label: "Portal contacts", match: under("/suppliers/contacts") },
+  ],
   // Supplier bills and their payables reports
   [
     {

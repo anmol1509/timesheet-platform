@@ -9,6 +9,7 @@ import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { parseDay } from "@/lib/dates";
 import { round2 } from "@/lib/payroll";
 import { billTotals } from "@/lib/payables";
+import { notifySupplier } from "@/lib/vendor/notify";
 import { exceedsApprovalLimit, isDuplicateBill, isDuplicateExpense } from "@/lib/financeRules";
 
 type State = { error: string | null; ok?: boolean };
@@ -170,6 +171,7 @@ export async function recordPaymentAction(_prev: State, formData: FormData): Pro
     data: { billId, paidOn, amount, method: str(formData.get("method")) || null, reference: str(formData.get("reference")) || null, createdById: user.id },
   });
   await logAudit({ entityType: "BILL_PAYMENT", entityId: created.id, action: "CREATE", after: { billNo: bill.billNo, amount, paidOn: paidOn.toISOString().slice(0, 10) }, userId: user.id, userName: user.name, branchId: bill.branchId });
+  await notifySupplier({ supplierId: bill.supplierId, kind: "PAYMENT", title: `Payment recorded: AED ${amount.toLocaleString("en-AE", { minimumFractionDigits: 2 })}`, body: `Against invoice ${bill.billNo}.`, href: "/vendor/payments" });
   revalidatePath("/finance/bills");
   revalidatePath("/finance");
   return { error: null, ok: true };
@@ -268,6 +270,7 @@ export async function decideBillAction(formData: FormData): Promise<State> {
   if (decision === "REJECTED" && !note) return { error: "Say why it's being rejected." };
   await prisma.supplierBill.update({ where: { id: bill.id }, data: { approvalStatus: decision, approvalNote: note, approvedAt: new Date(), approvedById: user.id } });
   await logAudit({ entityType: "SUPPLIER_BILL", entityId: bill.id, action: "UPDATE", before: { approvalStatus: "PENDING" }, after: { approvalStatus: decision, note, supplier: bill.supplier.name, billNo: bill.billNo }, userId: user.id, userName: user.name, branchId: bill.branchId });
+  await notifySupplier({ supplierId: bill.supplierId, kind: "INVOICE_DECISION", title: decision === "APPROVED" ? `Invoice ${bill.billNo} approved` : `Invoice ${bill.billNo} needs a correction`, body: decision === "APPROVED" ? "It's approved for payment." : note, href: "/vendor/payments" });
   revalidatePath("/finance/bills");
   revalidatePath("/finance");
   return { error: null, ok: true };
@@ -316,6 +319,10 @@ export async function payBatchAction(_prev: State, formData: FormData): Promise<
   });
   if (data.length === 0) return { error: "Those bills are already settled." };
   await prisma.billPayment.createMany({ data });
+  for (const d of data) {
+    const b = bills.find((x) => x.id === d.billId)!;
+    await notifySupplier({ supplierId: b.supplierId, kind: "PAYMENT", title: `Payment recorded: AED ${d.amount.toLocaleString("en-AE", { minimumFractionDigits: 2 })}`, body: `Against invoice ${b.billNo}.`, href: "/vendor/payments" });
+  }
   await logAudit({ entityType: "BILL_PAYMENT", entityId: data[0].billId, action: "CREATE", after: { batch: data.length, total: money(String(total)), reference, bills: bills.map((b) => `${b.supplier.name} #${b.billNo}`).slice(0, 10) }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/finance/bills");
   revalidatePath("/finance");

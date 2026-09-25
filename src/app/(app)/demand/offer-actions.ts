@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requirePermission, requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { notifySupplier } from "@/lib/vendor/notify";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -25,10 +26,13 @@ export async function sendToSuppliersAction(_prev: State, formData: FormData): P
   const ok = suppliers.filter((s) => s.branchId === demand.branchId);
   if (ok.length === 0) return { error: "None of those suppliers have portal access." };
 
+  const already = new Set((await prisma.demandSupplierOffer.findMany({ where: { demandRequestId: demand.id, supplierId: { in: ok.map((s) => s.id) } }, select: { supplierId: true } })).map((o) => o.supplierId));
   const made = await prisma.demandSupplierOffer.createMany({
     data: ok.map((s) => ({ demandRequestId: demand.id, supplierId: s.id, sentById: user.id })),
     skipDuplicates: true,
   });
+  const fresh = await prisma.demandSupplierOffer.findMany({ where: { demandRequestId: demand.id, supplierId: { in: ok.filter((s) => !already.has(s.id)).map((s) => s.id) } }, select: { id: true, supplierId: true } });
+  for (const o of fresh) await notifySupplier({ supplierId: o.supplierId, kind: "DEMAND_REQUEST", title: `New request #${demand.requestNo} for you`, body: "We'd like your quote. Accept or decline in Demands.", href: `/vendor/demands/${o.id}` });
   await logAudit({ entityType: "DEMAND_REQUEST", entityId: demand.id, action: "UPDATE", after: { sentToSuppliers: ok.map((s) => s.name), requestNo: demand.requestNo, count: made.count }, userId: user.id, userName: user.name, branchId: demand.branchId });
   revalidatePath(`/demand/${demand.id}`);
   return { error: null, ok: true };
