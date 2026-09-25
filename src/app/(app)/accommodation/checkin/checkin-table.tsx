@@ -11,7 +11,9 @@ import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
 import { initials, avatarGradient } from "@/lib/avatar";
 import { cn } from "@/lib/cn";
-import { createCheckInAction, switchCampAction } from "../checkin-actions";
+import { createCheckInAction, switchCampAction, switchToExternalCampAction } from "../checkin-actions";
+import { ExternalCampFields, type Party } from "../external-camp-fields";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 type EmployeeRow = {
   id: string;
@@ -27,11 +29,11 @@ type EmployeeRow = {
   campId: string | null;
   supplierId: string | null;
   clientId: string | null;
+  clientName: string | null;
   /** OWN, SUPPLIER or CLIENT for a worker who is already checked in. */
   campKind: string | null;
 };
 
-type Party = { id: string; name: string };
 type CampType = "OWN" | "SUPPLIER" | "CLIENT";
 const KIND_LABEL: Record<string, string> = { OWN: "Own camp", SUPPLIER: "Supplier camp", CLIENT: "Client camp" };
 
@@ -232,7 +234,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
         onClose={() => setCheckInOpen(false)}
       />
 
-      <SwitchCampModal row={switchRow} camps={camps.filter((c) => c.id !== switchRow?.campId)} onClose={() => setSwitchRow(null)} />
+      <SwitchCampModal row={switchRow} camps={camps.filter((c) => c.id !== switchRow?.campId)} suppliers={suppliers} clients={clients} onClose={() => setSwitchRow(null)} />
     </div>
   );
 }
@@ -401,10 +403,14 @@ function CheckInForm({
 function SwitchCampModal({
   row,
   camps,
+  suppliers,
+  clients,
   onClose,
 }: {
   row: EmployeeRow | null;
   camps: CampOption[];
+  suppliers: Party[];
+  clients: Party[];
   onClose: () => void;
 }) {
   return (
@@ -413,46 +419,91 @@ function SwitchCampModal({
         title={`Switch Camp for ${row?.name ?? ""}`}
         description={`Currently checked into ${row?.campName ?? ""}. Pick a different camp.`}
       >
-        {row && <SwitchCampForm key={row.id} row={row} camps={camps} onClose={onClose} />}
+        {row && <SwitchCampForm key={row.id} row={row} camps={camps} suppliers={suppliers} clients={clients} onClose={onClose} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function SwitchCampForm({ row, camps, onClose }: { row: EmployeeRow; camps: CampOption[]; onClose: () => void }) {
+function SwitchCampForm({ row, camps, suppliers, clients, onClose }: { row: EmployeeRow; camps: CampOption[]; suppliers: Party[]; clients: Party[]; onClose: () => void }) {
+  const [campType, setCampType] = useState<CampType>("OWN");
   const [campId, setCampId] = useState("");
+  const [partyId, setPartyId] = useState("");
+  const [campName, setCampName] = useState("");
+  const [checkInDate, setCheckInDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const external = campType !== "OWN";
+  const knownPartyId = campType === "SUPPLIER" ? row.supplierId : row.clientId;
+  const effectivePartyId = knownPartyId ?? partyId;
+
+  function submit() {
+    const formData = new FormData();
+    formData.append("checkInId", row.checkInId!);
+    startTransition(async () => {
+      if (external) {
+        formData.append("campType", campType);
+        formData.append("partyId", effectivePartyId);
+        formData.append("campName", campName.trim());
+        formData.append("checkInDate", checkInDate);
+        const res = await switchToExternalCampAction(formData);
+        if (res.error) {
+          setError(res.error);
+          return;
+        }
+      } else {
+        formData.append("campId", campId);
+        await switchCampAction(formData);
+      }
+      onClose();
+    });
+  }
 
   return (
     <div className="mt-4 space-y-4">
-      {camps.length === 0 ? (
+      <div>
+        <span className="mb-1 block text-xs font-medium text-muted">Camp type</span>
+        <SegmentedControl
+          value={campType}
+          onChange={(v) => {
+            setCampType(v as CampType);
+            setError(null);
+          }}
+          options={[
+            { value: "OWN", label: "Own camp" },
+            { value: "SUPPLIER", label: "Supplier camp" },
+            { value: "CLIENT", label: "Client camp" },
+          ]}
+        />
+      </div>
+      {external ? (
+        <ExternalCampFields
+          kind={campType as "SUPPLIER" | "CLIENT"}
+          knownPartyId={knownPartyId}
+          knownPartyName={campType === "SUPPLIER" ? row.supplierName : row.clientName}
+          parties={campType === "SUPPLIER" ? suppliers : clients}
+          partyId={partyId}
+          onParty={setPartyId}
+          campName={campName}
+          onCampName={setCampName}
+        />
+      ) : camps.length === 0 ? (
         <p className="text-sm text-muted">No other camps to switch to.</p>
       ) : (
-        <Select
-          value={campId}
-          onChange={setCampId}
-          placeholder="Select a camp"
-          options={camps.map((c) => ({ value: c.id, label: campLabel(c) }))}
-        />
+        <Select value={campId} onChange={setCampId} placeholder="Select a camp" options={camps.map((c) => ({ value: c.id, label: campLabel(c) }))} />
       )}
+      {external && (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Check-in date</span>
+          <DatePicker value={checkInDate} onChange={setCheckInDate} className="w-full" />
+        </label>
+      )}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel
         </button>
-        <button
-          type="button"
-          disabled={!campId || pending}
-          onClick={() => {
-            const formData = new FormData();
-            formData.append("checkInId", row.checkInId!);
-            formData.append("campId", campId);
-            startTransition(async () => {
-              await switchCampAction(formData);
-              onClose();
-            });
-          }}
-          className="btn btn-primary"
-        >
+        <button type="button" disabled={(external ? !effectivePartyId || campName.trim() === "" : !campId) || pending} onClick={submit} className="btn btn-primary">
           {pending ? "Switching…" : "Switch"}
         </button>
       </DialogFooter>

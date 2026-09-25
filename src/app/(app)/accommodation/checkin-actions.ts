@@ -19,6 +19,33 @@ function revalidateAccommodation(employeeId?: string) {
   if (employeeId) revalidatePath(`/employees/${employeeId}`);
 }
 
+
+/**
+ * A camp run by a supplier or a client is recorded by name against that party (there are no rooms or
+ * beds to manage). Finds it or creates it, so typing the same name again reuses the same camp.
+ */
+async function resolveExternalCamp(
+  campType: "SUPPLIER" | "CLIENT",
+  partyId: string,
+  campName: string,
+  scope: { branchId: string | null; isSuperAdmin: boolean }
+): Promise<{ camp: { id: string; name: string } } | { error: string }> {
+  const name = campName.trim().slice(0, 80);
+  const party =
+    campType === "SUPPLIER"
+      ? await prisma.supplier.findUnique({ where: { id: partyId }, select: { id: true, name: true, branchId: true } })
+      : await prisma.client.findUnique({ where: { id: partyId }, select: { id: true, name: true, branchId: true } });
+  if (!party || isOutsideBranch(party.branchId, scope.branchId, scope.isSuperAdmin)) return { error: `Choose the ${campType === "SUPPLIER" ? "supplier" : "client"}.` };
+  if (!name) return { error: "Enter the camp name or location." };
+  const fullName = `${party.name} — ${name}`;
+  const camp = await prisma.camp.upsert({
+    where: { name: fullName },
+    create: { name: fullName, ownerType: campType, owningSupplierId: campType === "SUPPLIER" ? party.id : null },
+    update: {},
+  });
+  return { camp };
+}
+
 /**
  * Stage 1 of the two-stage check-in flow: places each selected employee into
  * a camp (no room/bed yet — that's Bed Allocation). Produces a CampCheckIn
@@ -42,26 +69,9 @@ export async function createCheckInAction(
     if (!own || own.ownerType !== "OWN") return { error: "Select one of your own camps." };
     camp = own;
   } else {
-    const existingId = String(formData.get("campId") || "");
-    const partyId = String(formData.get("partyId") || "");
-    const typedName = String(formData.get("campName") || "").trim().slice(0, 80);
-    const party = campType === "SUPPLIER"
-      ? await prisma.supplier.findUnique({ where: { id: partyId }, select: { id: true, name: true, branchId: true } })
-      : await prisma.client.findUnique({ where: { id: partyId }, select: { id: true, name: true, branchId: true } });
-    if (!party || isOutsideBranch(party.branchId, branchId, isSuperAdmin)) return { error: `Choose the ${campType === "SUPPLIER" ? "supplier" : "client"}.` };
-    if (existingId) {
-      const found = await prisma.camp.findUnique({ where: { id: existingId } });
-      if (!found || found.ownerType !== campType) return { error: "That camp isn't available." };
-      camp = found;
-    } else {
-      if (!typedName) return { error: "Enter the camp name or location." };
-      const fullName = `${party.name} — ${typedName}`;
-      camp = await prisma.camp.upsert({
-        where: { name: fullName },
-        create: { name: fullName, ownerType: campType, owningSupplierId: campType === "SUPPLIER" ? party.id : null },
-        update: {},
-      });
-    }
+    const resolved = await resolveExternalCamp(campType as "SUPPLIER" | "CLIENT", String(formData.get("partyId") || ""), String(formData.get("campName") || ""), { branchId, isSuperAdmin });
+    if ("error" in resolved) return { error: resolved.error };
+    camp = resolved.camp;
   }
   const campId = camp.id;
 
@@ -225,4 +235,30 @@ export async function allocateBedAction(formData: FormData) {
   });
 
   revalidateAccommodation(employeeId);
+}
+
+/**
+ * "Switch camp / room" to a supplier's or a client's camp: the worker leaves their bed (it is freed) and is
+ * recorded against that camp by name, with no room or bed. Reuses switchCampAction for the move itself.
+ */
+export async function switchToExternalCampAction(formData: FormData): Promise<{ error?: string }> {
+  assertContactsValid(formData);
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const campType = String(formData.get("campType"));
+  if (campType !== "SUPPLIER" && campType !== "CLIENT") return { error: "Choose a supplier or client camp." };
+  const resolved = await resolveExternalCamp(campType, String(formData.get("partyId") || ""), String(formData.get("campName") || ""), { branchId, isSuperAdmin });
+  if ("error" in resolved) return { error: resolved.error };
+  const checkInId = String(formData.get("checkInId") || "");
+  const fd = new FormData();
+  fd.set("checkInId", checkInId);
+  fd.set("campId", resolved.camp.id);
+  await switchCampAction(fd);
+  // The check-in date is kept (and can be corrected) when moving to a supplier's or client's camp.
+  const date = dateOrNull(formData.get("checkInDate"));
+  if (date && !Number.isNaN(date.getTime())) {
+    const ci = await prisma.campCheckIn.findUnique({ where: { id: checkInId }, select: { employee: { select: { branchId: true } } } });
+    if (ci && !isOutsideBranch(ci.employee.branchId, branchId, isSuperAdmin)) await prisma.campCheckIn.update({ where: { id: checkInId }, data: { checkInDate: date } });
+  }
+  revalidateAccommodation();
+  return {};
 }

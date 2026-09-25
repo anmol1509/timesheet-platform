@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { PageHeader } from "@/components/PageHeader";
 import { StatTile } from "@/components/StatTile";
 import { ListChecks, BedDouble, Clock } from "lucide-react";
@@ -15,7 +16,7 @@ export default async function BedAllocationPage() {
       ...(branchId ? { employee: { branchId } } : {}),
     },
     include: {
-      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true } },
+      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true, supplier: { select: { id: true, name: true } }, project: { select: { client: { select: { id: true, name: true } } } } } },
       camp: {
         select: {
           id: true,
@@ -38,12 +39,21 @@ export default async function BedAllocationPage() {
     orderBy: { name: "asc" },
   });
 
+  const [suppliers, clients] = await Promise.all([
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
+
   const rows = checkIns.map((c) => ({
     checkInId: c.id,
     checkInNo: c.checkInNo,
     employeeName: c.employee.name,
     employeeIdNo: c.employee.employeeIdNo,
     nationality: c.employee.nationality,
+    supplierId: c.employee.supplier?.id ?? null,
+    supplierName: c.employee.supplier?.name ?? null,
+    clientId: c.employee.project?.client.id ?? null,
+    clientName: c.employee.project?.client.name ?? null,
     campId: c.camp.id,
     campName: c.camp.name,
     roomName: c.bed?.room.name ?? null,
@@ -78,7 +88,7 @@ export default async function BedAllocationPage() {
         />
       </div>
 
-      <BedAllocationTable rows={rows} camps={campChoices} />
+      <BedAllocationTable rows={rows} camps={campChoices} suppliers={suppliers} clients={clients} />
     </div>
   );
 }
