@@ -125,7 +125,6 @@ const NAV: Entry[] = [
         alsoMatch: ["/demand/site-arrival", "/demand/demobilisation"],
       },
       { href: "/demand/documents", label: "Generate Doc", icon: FileStack },
-      { href: "/demand/availability", label: "Supplier Availability", icon: Users },
     ],
   },
   {
