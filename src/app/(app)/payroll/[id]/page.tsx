@@ -10,6 +10,13 @@ import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { LineEditor, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
+import { RunStepper, RunVariance, type VarianceRow } from "./run-insights";
+
+function previousMonth(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
 
 const STATUS: Record<string, { label: string; color: BadgeColor }> = {
   DRAFT: { label: "Draft", color: "amber" },
@@ -64,6 +71,19 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       }, new Map<string, { label: string; count: number; net: number }>())
       .values(),
   ].sort((a, b) => b.net - a.net);
+  // The previous month's run for the same company, to show what changed.
+  const prevMonth = previousMonth(run.month);
+  const prev = await prisma.payrollRun.findFirst({
+    where: { branchId: run.branchId, companyId: run.companyId, month: prevMonth },
+    include: { lines: { include: { employee: { select: { id: true, name: true } } } } },
+  });
+  const variance: VarianceRow[] | null = prev
+    ? (() => {
+        const before = new Map(prev.lines.map((l) => [l.employeeId, { name: l.employee.name, net: n(l.net) }]));
+        const now = new Map(run.lines.map((l) => [l.employeeId, { name: l.employee.name, net: n(l.net) }]));
+        return [...new Set([...before.keys(), ...now.keys()])].map((eid) => ({ employeeId: eid, name: (now.get(eid) ?? before.get(eid))!.name, now: now.get(eid)?.net ?? null, before: before.get(eid)?.net ?? null }));
+      })()
+    : null;
   const rejected = run.lines.filter((l) => l.paymentStatus === "REJECTED").length;
   const resubmit = run.lines.filter((l) => l.paymentStatus === "RESUBMIT").length;
   const threshold = run.branch.payrollApprovalThreshold ? n(run.branch.payrollApprovalThreshold) : null;
@@ -89,6 +109,12 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Employees</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{run.lines.length}</p>{cashCount > 0 && <p className="text-xs text-muted">{cashCount} paid in cash (not in WPS file)</p>}</div>
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Skipped: missing pay details</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">{skipped.length > 0 ? skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ") + (skipped.length > 3 ? "…" : "") : "Everyone is in this run"}</p></div>
       </div>
+
+      <RunStepper status={run.status} submitted={!!run.submittedAt} issues={issues.length + gapRows.length} />
+
+      {prev && variance && (
+        <RunVariance prevMonth={prevMonth} total={total} prevTotal={prev.lines.reduce((sum, l) => sum + n(l.net), 0)} count={run.lines.length} prevCount={prev.lines.length} rows={variance} />
+      )}
 
       <RunControls
         id={run.id}
