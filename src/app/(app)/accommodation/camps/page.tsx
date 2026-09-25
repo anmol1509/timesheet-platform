@@ -228,7 +228,10 @@ export default async function CampsPage({
               placeholder="Room name, e.g. Room 103"
               className="input w-full"
             />
-            <NumberInput name="bedCount" defaultValue={4} min={1} max={20} placeholder="Number of beds" className="w-full" />
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Single beds</span><NumberInput name="bedCount" defaultValue={4} min={0} max={20} className="w-full" /></label>
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bunks (upper + lower)</span><NumberInput name="bunkCount" defaultValue={0} min={0} max={20} className="w-full" /></label>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-muted">Bed space</span>
