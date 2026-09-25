@@ -2,7 +2,8 @@
 
 import { useRef } from "react";
 import { Menu } from "lucide-react";
-import { NAV, appHref, demoHref } from "./content";
+import { NAV, appHref } from "./content";
+import { BookDemoButton } from "@/components/BookDemoButton";
 import s from "./welcome.module.css";
 
 export function MobileMenu() {
@@ -21,9 +22,9 @@ export function MobileMenu() {
           </a>
         ))}
         <a href={appHref("/login")}>Sign in</a>
-        <a href={demoHref} onClick={close} className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
+        <BookDemoButton className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`} onClick={close}>
           Book a demo
-        </a>
+        </BookDemoButton>
       </div>
     </details>
   );

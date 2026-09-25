@@ -2169,3 +2169,16 @@ model Draft {
   @@unique([userId, type, key])
   @@index([userId, updatedAt])
 }
+
+// A "Book a demo" submission from the public marketing site. No user/branch —
+// the visitor isn't a customer yet.
+model DemoRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  company   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

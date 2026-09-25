@@ -29,15 +29,14 @@ import {
   FACTS,
   FAQS,
   FOOTER,
-  INDUSTRIES,
   NAV,
   PORTALS,
   SITE,
   STEPS,
   appHref,
-  demoHref,
 } from "./content";
 import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
+import { BookDemoButton } from "@/components/BookDemoButton";
 import { MobileMenu } from "./mobile-menu";
 import {
   AnimatedWords,
@@ -229,9 +228,9 @@ function Nav() {
             Sign in
           </a>
           <MagneticButton>
-            <a href={demoHref} className={`${s.btn} ${s.btnPrimary}`}>
+            <BookDemoButton className={`${s.btn} ${s.btnPrimary}`}>
               Book a demo
-            </a>
+            </BookDemoButton>
           </MagneticButton>
         </div>
         <MobileMenu />
@@ -769,9 +768,9 @@ export default function WelcomePage() {
                 transition={{ duration: 0.5, ease: EASE_PREMIUM, delay: 0.5 }}
               >
                 <MagneticButton>
-                  <a href={demoHref} className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
+                  <BookDemoButton className={`${s.btn} ${s.btnPrimary} ${s.btnLg}`}>
                     Book a demo <ArrowRight size={16} aria-hidden />
-                  </a>
+                  </BookDemoButton>
                 </MagneticButton>
                 <a href="#how" className={`${s.btn} ${s.btnGhostOnDark} ${s.btnLg}`}>
                   See how it works
@@ -794,21 +793,6 @@ export default function WelcomePage() {
           </div>
         </section>
         <div className={s.heroSpacer} aria-hidden />
-
-        <section className={s.strip} aria-label="Industries">
-          <div className={s.container}>
-            <Reveal as="p" className={s.stripLabel} y={12}>
-              Purpose-built for manpower-heavy industries
-            </Reveal>
-            <RevealGroup as="ul" className={s.stripList} stagger={0.05} amount={0.4}>
-              {INDUSTRIES.map((name) => (
-                <RevealItem key={name} as="li" y={10}>
-                  <HardHat size={16} aria-hidden /> {name}
-                </RevealItem>
-              ))}
-            </RevealGroup>
-          </div>
-        </section>
 
         <section id="challenges" className={`${s.section} ${s.sectionSurface}`} aria-labelledby="challenges-title">
           <div className={s.container}>
@@ -1018,9 +1002,9 @@ export default function WelcomePage() {
               </p>
               <div className={s.heroCtas}>
                 <MagneticButton>
-                  <a href={demoHref} className={`${s.btn} ${s.btnOnDark} ${s.btnLg}`}>
+                  <BookDemoButton className={`${s.btn} ${s.btnOnDark} ${s.btnLg}`}>
                     Book a demo <ArrowRight size={16} aria-hidden />
-                  </a>
+                  </BookDemoButton>
                 </MagneticButton>
                 <a href={appHref("/login")} className={`${s.btn} ${s.btnGhostOnDark} ${s.btnLg}`}>
                   Sign in
@@ -1046,7 +1030,11 @@ export default function WelcomePage() {
                 <ul className={s.footerList}>
                   {col.links.map((l) => (
                     <li key={l.label}>
-                      <a href={l.href}>{l.label}</a>
+                      {l.label === "Book a demo" ? (
+                        <BookDemoButton className={s.footerDemoLink}>{l.label}</BookDemoButton>
+                      ) : (
+                        <a href={l.href}>{l.label}</a>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
-import { NAV, demoHref } from "@/app/welcome/content";
+import { NAV } from "@/app/welcome/content";
+import { BookDemoButton } from "@/components/BookDemoButton";
 import { LoginForm } from "./login-form";
 
 // The marketing site nav, floating over the top of the login page so
@@ -38,12 +39,9 @@ function SiteNav() {
           </a>
         ))}
       </nav>
-      <a
-        href={demoHref}
-        className="shrink-0 rounded-full bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-      >
+      <BookDemoButton className="shrink-0 rounded-full bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90">
         Book a demo
-      </a>
+      </BookDemoButton>
     </header>
   );
 }
