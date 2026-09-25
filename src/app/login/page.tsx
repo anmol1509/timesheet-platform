@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { LoginForm } from "./login-form";
 
 // The root layout's title template already appends "• Workforce ERP",
@@ -36,6 +37,14 @@ export default async function LoginPage() {
         aria-hidden
         className="absolute inset-0 hidden flex-col justify-center p-12 lg:flex lg:p-16"
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
+        <img
+          src={BRAND_ICON}
+          alt=""
+          width={40}
+          height={40}
+          className="absolute top-12 left-12 h-10 w-10 lg:top-16 lg:left-16"
+        />
         <div className="max-w-md">
           <p className="text-xs font-semibold tracking-wide text-white/60 uppercase">
             Workforce, projects and timesheets — one place.
@@ -58,6 +67,14 @@ export default async function LoginPage() {
       <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
         <div className="relative flex flex-1 items-center justify-center p-6 sm:p-10 lg:px-20 lg:py-10">
           <div className="w-full max-w-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
+            <img
+              src={BRAND_LOGO}
+              alt="ManpowerSync"
+              height={36}
+              width={Math.round(36 * BRAND_LOGO_ASPECT)}
+              className="mb-8 h-9 w-auto"
+            />
             <h1 className="text-2xl font-semibold tracking-tight text-primary">
               Sign in
             </h1>

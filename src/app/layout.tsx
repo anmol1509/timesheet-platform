@@ -32,7 +32,12 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const themePref = cookieStore.get(THEME_COOKIE)?.value;
-  const dataTheme = isThemePreference(themePref) ? themePref : undefined;
+  // Default to light regardless of the visitor's OS/browser preference —
+  // only an explicit choice (the ThemeToggle's Light/Dark, stored in this
+  // cookie) should switch it. Without this, an unset cookie fell through to
+  // the `@media (prefers-color-scheme: dark)` rule in globals.css and the
+  // app opened dark for anyone whose system was in dark mode.
+  const dataTheme = isThemePreference(themePref) ? themePref : "light";
 
   return (
     <html

@@ -37,7 +37,7 @@ import {
   appHref,
   demoHref,
 } from "./content";
-import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "./brand";
+import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { MobileMenu } from "./mobile-menu";
 import {
   AnimatedWords,

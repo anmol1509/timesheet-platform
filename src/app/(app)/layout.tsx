@@ -27,9 +27,10 @@ export default async function AppLayout({
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
   const themeCookieValue = cookieStore.get(THEME_COOKIE)?.value;
+  // Same default as the root layout: unset means light, not "follow system".
   const themePref: ThemePreference = isThemePreference(themeCookieValue)
     ? themeCookieValue
-    : "system";
+    : "light";
   // Header extras, not the app itself — a transient DB hiccup (e.g. a cold
   // connection) fetching these shouldn't take down every page via the root
   // layout, which no per-page error boundary can catch (error.js doesn't

@@ -1,34 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { Moon, Sun, SunMoon } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { THEME_COOKIE, type ThemePreference } from "@/lib/theme-preference";
 
 const OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
-  { value: "system", label: "System", icon: SunMoon },
 ];
 
 /** Plain module-level helper (not a component/hook) so the DOM writes it
  * does are unambiguously outside any render path. */
 function writeThemePreference(next: ThemePreference) {
-  if (next === "system") {
-    document.documentElement.removeAttribute("data-theme");
-    document.cookie = `${THEME_COOKIE}=;path=/;max-age=0;samesite=lax`;
-  } else {
-    document.documentElement.setAttribute("data-theme", next);
-    document.cookie = `${THEME_COOKIE}=${next};path=/;max-age=31536000;samesite=lax`;
-  }
+  document.documentElement.setAttribute("data-theme", next);
+  document.cookie = `${THEME_COOKIE}=${next};path=/;max-age=31536000;samesite=lax`;
 }
 
 /**
- * Three-way light/dark/system switch. `initial` comes from the server (the
- * theme cookie, read in the app layout — same pattern as the sidebar collapse
- * preference), so the first paint already matches and there's no mount
- * effect or flash. Writes both the `data-theme` attribute and the cookie on
- * change.
+ * Light/dark switch. `initial` comes from the server (the theme cookie, read
+ * in the app layout — same pattern as the sidebar collapse preference), so
+ * the first paint already matches and there's no mount effect or flash.
+ * Writes both the `data-theme` attribute and the cookie on change.
+ *
+ * No "System" option: the app defaults to light regardless of the OS/browser
+ * preference (see the root layout), so a "follow system" choice couldn't be
+ * honored past the current page load anyway — the next server render would
+ * see an unset cookie and fall back to light, silently reverting the choice.
+ * `ThemePreference`/`isThemePreference` still accept "system" for any old
+ * cookies already carrying that value; they're just not offered here.
  */
 export function ThemeToggle({
   initial,

@@ -25,13 +25,15 @@
   --text-muted: #667085; /* labels, helper text */
   --text-subtle: #667085; /* placeholders, disabled, timestamps — darkened from #98a2b3 (2.6:1) to meet AA (4.6:1) */
 
-  /* Brand chrome — primary actions, active nav, checked controls, focus rings */
-  --brand-primary: #2563eb;
-  --brand-primary-hover: #1d4ed8;
-  --brand-primary-active: #1e40af;
-  --brand-primary-soft: #eff6ff;
-  --brand-primary-border: #bfdbfe;
-  --brand-navy: #1e2a6e; /* company wordmark navy — logo only, not chrome */
+  /* Brand chrome — primary actions, active nav, checked controls, focus
+     rings. Matches the ManpowerSync brand palette used on the marketing
+     site (src/app/welcome/welcome.module.css: --primary/--navy). */
+  --brand-primary: #5645d4;
+  --brand-primary-hover: #4534b3;
+  --brand-primary-active: #3a2a99;
+  --brand-primary-soft: #f0eefb;
+  --brand-primary-border: #c9c0f2;
+  --brand-navy: #0a1530; /* company wordmark navy — logo only, not chrome */
 
   /* Semantic states. Each has a solid (text/icon) and a soft (fill) value. */
   --success: #067647;
@@ -115,12 +117,12 @@
     --text-muted: #9099a8;
     --text-subtle: #9099a8;
 
-    --brand-primary: #5b8def;
-    --brand-primary-hover: #7ba1f2;
-    --brand-primary-active: #3f6fd6;
-    --brand-primary-soft: #182238;
-    --brand-primary-border: #2c4a85;
-    --brand-navy: #a7b6f5;
+    --brand-primary: #8b7ff0;
+    --brand-primary-hover: #a79cf5;
+    --brand-primary-active: #6f62d9;
+    --brand-primary-soft: #241f42;
+    --brand-primary-border: #4a3f85;
+    --brand-navy: #b3aef2;
 
     --success: #3dd68c;
     --success-soft: #103224;
@@ -164,12 +166,12 @@
   --text-muted: #9099a8;
   --text-subtle: #9099a8;
 
-  --brand-primary: #5b8def;
-  --brand-primary-hover: #7ba1f2;
-  --brand-primary-active: #3f6fd6;
-  --brand-primary-soft: #182238;
-  --brand-primary-border: #2c4a85;
-  --brand-navy: #a7b6f5;
+  --brand-primary: #8b7ff0;
+  --brand-primary-hover: #a79cf5;
+  --brand-primary-active: #6f62d9;
+  --brand-primary-soft: #241f42;
+  --brand-primary-border: #4a3f85;
+  --brand-navy: #b3aef2;
 
   --success: #3dd68c;
   --success-soft: #103224;
@@ -394,7 +396,7 @@ summary:focus-visible,
   .input:focus {
     outline: none;
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+    box-shadow: 0 0 0 3px rgb(86 69 212 / 0.12);
   }
   .input:focus-visible {
     outline: none; /* the ring above is the focus affordance for fields */
