@@ -57,7 +57,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
             <span className="mb-1 block text-xs font-medium text-muted">SKU</span>
             <input ref={skuRef} placeholder="Optional" className="input w-full" />
           </label>
-          <label className="block w-24">
+          <label className="block w-32">
             <span className="mb-1 block text-xs font-medium text-muted">Stock</span>
             <NumberInput key={resetKey} defaultValue={0} min={0} inputRef={stockRef} className="w-full" />
           </label>

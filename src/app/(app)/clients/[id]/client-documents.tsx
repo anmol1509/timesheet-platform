@@ -102,7 +102,8 @@ export function ClientDocuments({
             No documents uploaded yet.
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[28rem] text-sm">
             <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
                 <th className="px-4 py-3">Document</th>
@@ -144,6 +145,7 @@ export function ClientDocuments({
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </section>

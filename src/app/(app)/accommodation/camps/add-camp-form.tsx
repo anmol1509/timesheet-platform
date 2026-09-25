@@ -81,7 +81,7 @@ export function AddCampForm() {
                 placeholder={`Room ${i + 1} name`}
                 className="input w-full px-2 py-1 text-sm"
               />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2">
                 <label className="block">
                   <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
                   <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Single beds in this room" />

@@ -26,7 +26,7 @@ export function SectionTabs() {
               href={tab.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "rounded-[6px] px-3 py-1 text-[13px] font-medium whitespace-nowrap transition",
+                "inline-flex min-h-9 items-center rounded-[6px] px-3 py-1 text-[13px] font-medium whitespace-nowrap transition sm:min-h-0",
                 active
                   ? "bg-surface text-primary shadow-xs"
                   : "text-muted hover:text-primary"

@@ -42,7 +42,7 @@ export function Checkbox({
       required={required}
       aria-label={ariaLabel}
       className={cn(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border border-strong bg-surface transition hover:border-[var(--brand-primary)] data-[state=checked]:border-[var(--brand-primary)] data-[state=checked]:bg-[var(--brand-primary)] data-[state=indeterminate]:border-[var(--brand-primary)] data-[state=indeterminate]:bg-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50",
+        "relative flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border border-strong bg-surface transition before:absolute before:-inset-3 before:content-[''] [@media(pointer:coarse)]:before:-inset-3.5 sm:before:-inset-1.5 hover:border-[var(--brand-primary)] data-[state=checked]:border-[var(--brand-primary)] data-[state=checked]:bg-[var(--brand-primary)] data-[state=indeterminate]:border-[var(--brand-primary)] data-[state=indeterminate]:bg-[var(--brand-primary)] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
     >

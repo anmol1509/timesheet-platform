@@ -112,7 +112,7 @@ export function AppShell({
         )}
       >
         {header}
-        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pt-6 pb-24 sm:px-6">
           <SectionTabs />
           {children}
         </main>

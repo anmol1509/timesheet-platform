@@ -691,3 +691,21 @@ summary:focus-visible,
 .letter-paper li p { margin: 0 0 0.15em; }
 .letter-paper blockquote { border-left: 3px solid #9ca3af; padding-left: 0.8rem; margin: 0 0 0.5em; font-style: italic; }
 .letter-paper a { color: #1155cc; text-decoration: underline; }
+
+/*
+ * Touch comfort on phones. Small text links and buttons (row actions, back links, sortable column
+ * headers) get a 2rem minimum height, and bordered chips and pills 2.25rem, so they are easy to tap.
+ * Real height rather than padding tricks, so neighbouring controls never overlap when a row wraps.
+ */
+@media (max-width: 767px) {
+  main :is(a, button):is([class*="text-xs"], [class*="text-[11px]"], [class*="text-[13px]"]):not(.btn):not([role="tab"]):not([role="checkbox"]):not([role="switch"]):not([class*="border"]):not([class*="bg-"]):not([class*="min-h-"]),
+  main a.text-sm.text-muted,
+  main th button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+  }
+  main :is(a, button):is([class*="text-xs"], [class*="text-[13px]"]):is([class*="border"], [class*="rounded"]):not(.btn):not([role="checkbox"]):not([role="switch"]):not([class*="min-h-"]) {
+    min-height: 2.25rem;
+  }
+}

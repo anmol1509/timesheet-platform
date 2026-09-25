@@ -125,7 +125,7 @@ export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }
         <div className="ml-auto inline-flex rounded-lg bg-surface-sunken p-0.5" role="group" aria-label="Time range">
           {RANGES.map((r) => (
             <button key={r.key} type="button" onClick={() => { setRange(r.key); reset(); }} aria-pressed={range === r.key}
-              className={cn("rounded-md px-2.5 py-1 text-sm transition", range === r.key ? "bg-surface font-medium text-primary shadow-sm" : "text-muted hover:text-primary")}>{r.label}</button>
+              className={cn("min-h-8 rounded-md px-2.5 py-1 text-sm transition", range === r.key ? "bg-surface font-medium text-primary shadow-sm" : "text-muted hover:text-primary")}>{r.label}</button>
           ))}
         </div>
       </div>

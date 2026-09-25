@@ -145,23 +145,23 @@ export default async function ClientTimesheetPage({
       </div>
 
       {months.length > 0 && (
-        <form className="card flex flex-wrap items-end gap-3 p-4">
-          <label className="block">
+        <form className="card flex flex-wrap items-end gap-3 p-4 [&_label]:min-w-0">
+          <label className="block min-w-0 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Month</span>
             <Select name="month" defaultValue={selectedMonth} options={[...months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))]} />
           </label>
-          <label className="block">
+          <label className="block min-w-0 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Client</span>
             <Select name="clientId" defaultValue={selectedClientId} options={[...clients.map((c) => ({ value: c.id, label: c.name }))]} />
           </label>
           {/* Always shown, even with nothing to offer. Hiding them made the
               filters look missing on a client whose rows carry no project or
               site — the control should say why it's empty, not disappear. */}
-          <label className="block">
+          <label className="block min-w-0 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Project</span>
 <Select name="project" defaultValue={selectedProject} disabled={projectOptions.length === 0} options={[{ value: "", label: projectOptions.length === 0 ? "None recorded" : "All projects" }, ...projectOptions.map(([id, label]) => ({ value: id, label }))]} />
           </label>
-          <label className="block">
+          <label className="block min-w-0 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Site</span>
             <Select name="site" defaultValue={selectedSite} disabled={siteOptions.length === 0} options={[{ value: "", label: siteOptions.length === 0 ? "None recorded" : "All sites" }, ...siteOptions.map((site) => ({ value: site, label: site }))]} />
           </label>
