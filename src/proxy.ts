@@ -4,7 +4,7 @@ import { verifySessionToken } from "@/lib/session";
 import { ESS_COOKIE, verifyEssToken } from "@/lib/ess/token";
 import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/welcome"];
 
 // Static brand assets (the login page's logo/illustration) served from
 // `public/brand/*` — file requests only, not the `/brand` component-gallery
