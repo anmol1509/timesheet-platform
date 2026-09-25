@@ -7,10 +7,12 @@ import {
   type DemobilisationOutcome,
   type DemobilisationResult,
 } from "@/lib/demobilisation";
+import { assertContactsValid } from "@/lib/validators";
 
 export async function demobiliseAction(
   formData: FormData
 ): Promise<{ result?: DemobilisationResult; error?: string }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     return {

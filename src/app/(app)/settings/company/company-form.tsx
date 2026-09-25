@@ -40,8 +40,8 @@ export function CompanyForm({ branch }: { branch: Branch }) {
         {f("Address", "address", { span: true })}
         <div><span className={lab}>Country</span><CountrySelect name="country" value={country} onChange={setCountry} /></div>
         <div><span className={lab}>Emirate / city</span><CitySelect name="emirate" country={country} defaultValue={branch.emirate ?? ""} /></div>
-        <div><span className={lab}>Phone</span><PhoneField name="phone" defaultValue={branch.phone} /></div>
-        <div><span className={lab}>Fax</span><PhoneField name="fax" defaultValue={branch.fax} /></div>
+        <div><span className={lab}>Phone</span><PhoneField name="phone" defaultValue={branch.phone} country={country} /></div>
+        <div><span className={lab}>Fax</span><PhoneField name="fax" defaultValue={branch.fax} country={country} /></div>
         {f("Email", "email")}
         {f("P.O. Box", "poBox")}
         <div><span className={lab}>Tax Registration Number (TRN)</span><MaskedInput kind="trn" name="trn" defaultValue={branch.trn ?? ""} /></div>

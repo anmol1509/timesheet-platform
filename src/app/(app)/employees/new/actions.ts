@@ -13,6 +13,8 @@ import {
 } from "@/lib/uploads";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
+import { assertContactsValid } from "@/lib/validators";
+import { clearDraft } from "@/lib/drafts";
 
 /**
  * Skills arrive as JSON so each can carry its proficiency level. Anything
@@ -174,6 +176,7 @@ export async function createEmployeeAction(
   _prevState: { error: string | null; createdId?: string },
   formData: FormData
 ): Promise<{ error: string | null; createdId?: string }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const employeeIdNo = String(formData.get("employeeIdNo") || "").trim();
@@ -462,6 +465,7 @@ export async function createEmployeeAction(
   // landing on 200+ unchanged rows otherwise gives no sign it worked.
   // Hosted in a dialog, there's nothing to redirect away from — the caller
   // closes it and refreshes the list underneath.
+  await clearDraft(user.id, "EMPLOYEE_REGISTRATION", "new");
   if (formData.get("inline") === "1") {
     return { error: null, createdId: employee.id };
   }

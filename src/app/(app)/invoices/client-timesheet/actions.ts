@@ -30,6 +30,7 @@ export async function submitManualEntryAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     return {
@@ -170,6 +171,7 @@ type DailyRow = { employeeId: string; rate: string; value: string };
 export async function submitDailyTimesheetAction(
   formData: FormData
 ): Promise<{ saved: number; requested: number; error?: string }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     return {
@@ -535,6 +537,7 @@ export async function batchUpdateHoursAction(formData: FormData) {
 export async function deleteTimesheetEntryAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  assertContactsValid(formData);
   await requirePermission("timesheets", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryId = String(formData.get("entryId") || "");

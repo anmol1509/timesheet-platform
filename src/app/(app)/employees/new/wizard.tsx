@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { DraftBar } from "@/components/DraftBar";
 import { AlertTriangle, Check, Loader2, Plus, Sparkles, Wand2, X } from "lucide-react";
 import {
   checkEmployeeIdAction,
@@ -724,6 +725,20 @@ export function EmployeeWizard({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <DraftBar
+        type="EMPLOYEE_REGISTRATION"
+        draftKey={onRegistered ? `dialog-${prefill?.supplierId ?? ""}` : "new"}
+        state={{ step, fields, skills, notes: notes.map((n) => ({ id: n.id, remarks: n.remarks })) }}
+        title={fields.name || undefined}
+        hasContent={Object.values(fields).some((v) => typeof v === "string" && v.trim() !== "") || skills.length > 0 || notes.length > 0}
+        note="uploaded documents and the photo aren't kept in a draft"
+        onRestore={(d) => {
+          setFields({ ...EMPTY_FIELDS, ...(d.fields as Fields) });
+          setSkills((d.skills as SkillEntry[]) ?? []);
+          setNotes(((d.notes as { id: string; remarks: string }[]) ?? []).map((n) => ({ ...n, files: [] })));
+          setStep(typeof d.step === "number" ? d.step : 0);
+        }}
+      />
       <nav aria-label="Progress" className="border-b border-default pb-3">
         <ol className="flex flex-wrap gap-1.5">
           {STEPS.map((s, i) => {

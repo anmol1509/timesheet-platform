@@ -79,6 +79,7 @@ export async function createProjectAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   const clientId = String(formData.get("clientId") || "");
@@ -129,6 +130,7 @@ export async function createProjectAction(
 // touches — and can't accidentally null out — fields that live on another
 // tab's form.
 export async function updateProjectAction(formData: FormData): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;

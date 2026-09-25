@@ -44,6 +44,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function updateEmployeeAction(formData: FormData): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
   if (!id) return;
@@ -649,6 +650,7 @@ export async function removeSkillAction(formData: FormData) {
 export async function issueEmployeeInventoryAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const itemId = String(formData.get("itemId") || "");

@@ -22,6 +22,7 @@ export async function createInventoryItemAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return { error: "Item name is required." };
@@ -136,6 +137,7 @@ export async function deleteInventoryItemAction(formData: FormData) {
 export async function createVariantAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const itemId = String(formData.get("itemId") || "");
   const name = String(formData.get("name") || "").trim();

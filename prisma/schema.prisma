@@ -144,6 +144,7 @@ model User {
   notifyWhatsapp Boolean        @default(false)
   whatsappNumber String?
   notifications  Notification[]
+  drafts         Draft[]
   avatar         StoredImage?   @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
   avatarId       String?
 
@@ -2146,4 +2147,25 @@ model PortalContact {
   branchId String
 
   @@index([branchId, isActive, sortOrder])
+}
+
+// A half-filled form saved by a person so they can come back to it, on any device.
+// One row per person, form type and key ("new" for a fresh record). The payload is
+// whatever the form needs to restore itself; nothing here is validated or acted on
+// until the form is submitted for real, and a successful submit deletes it.
+model Draft {
+  id        String   @id @default(cuid())
+  type      String // e.g. "EMPLOYEE_REGISTRATION" — see src/lib/draftTypes.ts
+  key       String   @default("new")
+  title     String? // shown in the Drafts list, e.g. the worker's name so far
+  payload   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  branchId String?
+
+  @@unique([userId, type, key])
+  @@index([userId, updatedAt])
 }

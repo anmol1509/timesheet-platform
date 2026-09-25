@@ -43,6 +43,7 @@ export async function createBranchAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null; ok?: boolean }> {
+  assertContactsValid(formData);
   const admin = await requireAdmin();
   if (admin.role !== "SUPER_ADMIN") return { error: "Only a super admin can add branches." };
 

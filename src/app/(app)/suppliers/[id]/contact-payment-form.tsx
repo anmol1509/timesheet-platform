@@ -12,6 +12,7 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Supplier = {
   id: string;
+  country: string | null;
   contactPerson: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
@@ -70,7 +71,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Contact phone">
-          <PhoneField name="contactPhone" defaultValue={supplier.contactPhone} />
+          <PhoneField name="contactPhone" defaultValue={supplier.contactPhone} country={supplier.country} />
         </Field>
         <Field label="Contact email">
           <input
@@ -81,7 +82,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Phone">
-          <PhoneField name="phone" defaultValue={supplier.phone} />
+          <PhoneField name="phone" defaultValue={supplier.phone} country={supplier.country} />
         </Field>
         <Field label="Location / address">
           <input
@@ -109,7 +110,7 @@ export function SupplierContactPaymentForm({ supplier }: { supplier: Supplier })
           />
         </Field>
         <Field label="Coordinator phone">
-          <PhoneField name="coordinatorPhone" defaultValue={supplier.coordinatorPhone} />
+          <PhoneField name="coordinatorPhone" defaultValue={supplier.coordinatorPhone} country={supplier.country} />
         </Field>
         <Field label="Coordinator email">
           <input

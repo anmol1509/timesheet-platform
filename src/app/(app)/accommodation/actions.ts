@@ -31,6 +31,7 @@ function parseRoomSpecs(raw: FormDataEntryValue | null): RoomSpec[] {
 export async function createCampWithRoomsAction(
   formData: FormData
 ): Promise<{ campId: string } | { error: string }> {
+  assertContactsValid(formData);
   const user = await requireUser();
   const name = String(formData.get("name") || "").trim();
   const ownerType = String(formData.get("ownerType") || "OWN") === "SUPPLIER" ? "SUPPLIER" : "OWN";

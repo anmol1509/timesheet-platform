@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { createDemandRequestAction } from "../actions";
+import { DraftBar } from "@/components/DraftBar";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 type Client = { id: string; name: string };
@@ -66,6 +67,18 @@ export function DemandRequestForm({
 
   return (
     <div className="space-y-6">
+      <DraftBar
+        type="DEMAND_REQUEST"
+        state={{ clientId, projectId, remarks, trades }}
+        title={[clients.find((c) => c.id === clientId)?.name, projects.find((p) => p.id === projectId)?.name].filter(Boolean).join(" — ") || undefined}
+        hasContent={!!(clientId || projectId || remarks.trim() || trades.some((t) => t.trade))}
+        onRestore={(d) => {
+          setClientId(d.clientId ?? "");
+          setProjectId(d.projectId ?? "");
+          setRemarks(d.remarks ?? "");
+          setTrades(d.trades?.length ? d.trades : [blankTradeRow()]);
+        }}
+      />
       <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Client</span>

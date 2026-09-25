@@ -90,6 +90,7 @@ export async function createSupplierAction(formData: FormData) {
 export async function createSubsidiaryAction(
   formData: FormData
 ): Promise<{ error: string } | { id: string }> {
+  assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parentSupplierId = String(formData.get("parentSupplierId") || "").trim();
   const name = String(formData.get("name") || "").trim();
@@ -629,6 +630,7 @@ export async function getSupplierPanelAction(supplierId: string): Promise<Suppli
 
 /** Opt a supplier in/out of the supplier portal (phone + one-time-code sign-in). */
 export async function setSupplierPortalAction(formData: FormData): Promise<{ error: string | null }> {
+  assertContactsValid(formData);
   await requirePermission("partners", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");

@@ -42,6 +42,7 @@ import {
   Banknote,
   Landmark,
   Inbox,
+  FileClock,
   type LucideIcon,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -82,6 +83,11 @@ const NAV: Entry[] = [
   {
     type: "link",
     item: { href: "/approvals", label: "Approvals", icon: ShieldCheck },
+    category: "Workspace",
+  },
+  {
+    type: "link",
+    item: { href: "/drafts", label: "Drafts", icon: FileClock },
     category: "Workspace",
   },
   {

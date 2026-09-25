@@ -22,7 +22,7 @@ const OPTIONS = COUNTRIES.map((c) => ({
 }));
 
 /** Splits a stored E.164-ish number into its dial code and the rest. */
-function split(value: string) {
+function split(value: string, defaultDial: string = DEFAULT_DIAL) {
   const digits = (value || "").replace(/[^\d+]/g, "");
   const normalized = digits.startsWith("00") ? `+${digits.slice(2)}` : digits;
   const match = BY_LENGTH.find((c) => normalized.startsWith(c.dial));
@@ -30,8 +30,8 @@ function split(value: string) {
     return { country: match.code, dial: match.dial, rest: normalized.slice(match.dial.length) };
   }
   return {
-    country: COUNTRIES.find((c) => c.dial === DEFAULT_DIAL)?.code ?? "ae",
-    dial: DEFAULT_DIAL,
+    country: COUNTRIES.find((c) => c.dial === defaultDial)?.code ?? "ae",
+    dial: defaultDial,
     // A number with no recognisable country code is kept as typed, minus any
     // leading +, rather than being silently reinterpreted.
     rest: normalized.replace(/^\+/, ""),
@@ -47,18 +47,21 @@ export function PhoneInput({
   id,
   value,
   onChange,
-  placeholder = "50 123 4567",
+  placeholder,
   disabled,
   className,
+  defaultDial,
 }: {
   id?: string;
+  /** Country code used while the field is empty, e.g. the dial code of the selected country. */
+  defaultDial?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }) {
-  const { country, dial, rest } = useMemo(() => split(value), [value]);
+  const { country, dial, rest } = useMemo(() => split(value, defaultDial), [value, defaultDial]);
   const telRef = useRef<HTMLInputElement>(null);
   // A number that has digits but is not complete blocks the form from saving.
   useEffect(() => {
