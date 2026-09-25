@@ -4,7 +4,7 @@
  * logged no-op, so callers can send unconditionally.
  *
  * EMAIL_FROM must be an address on a domain verified in Resend, e.g.
- *   "Burj Al Aweer ERP <noreply@yourdomain.com>".
+ *   "Workforce ERP <noreply@yourdomain.com>".
  */
 export type EmailSendResult =
   | { sent: true }

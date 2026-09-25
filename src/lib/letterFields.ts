@@ -15,7 +15,7 @@ export const EMPLOYEE_MERGE_FIELDS: (MergeField & { sensitive?: boolean })[] = [
   { key: "PROJECTNAME", label: "Current project", example: "R1117/1 Improvement Of Al Mustaqbal Road" },
   { key: "BASICSALARY", label: "Basic salary (AED)", example: "1,200.00", sensitive: true },
   { key: "TOTALSALARY", label: "Total monthly salary (AED)", example: "1,800.00", sensitive: true },
-  { key: "COMPANYNAME", label: "Company name", example: "BURJ AL AWEER CONCRETE CARPENTER CONT" },
+  { key: "COMPANYNAME", label: "Company name", example: "ACME CONCRETE CARPENTER CONT" },
   { key: "BRANCHNAME", label: "Branch", example: "Dubai" },
   { key: "DATE", label: "Today's date", example: "27-07-2026" },
   { key: "REFNO", label: "Letter reference no.", example: "LTR-000123" },

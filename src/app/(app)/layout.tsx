@@ -69,7 +69,7 @@ export default async function AppLayout({
     : null;
   const logoSource = activeBranch ?? branches.find((b) => b.logoId) ?? null;
   const brand = {
-    name: activeBranch?.name ?? "Burj Al Aweer",
+    name: activeBranch?.name ?? "Workforce ERP",
     logoUrl: logoSource?.logoId ? `/api/images/${logoSource.logoId}` : null,
   };
 

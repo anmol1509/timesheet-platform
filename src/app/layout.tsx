@@ -17,11 +17,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Burj Al Aweer ERP",
-    template: "%s • Burj Al Aweer ERP",
+    default: "Workforce ERP",
+    template: "%s • Workforce ERP",
   },
   description:
-    "Workforce, projects, timesheets and billing for Burj Al Aweer construction manpower.",
+    "Workforce, projects, timesheets and billing for construction manpower suppliers.",
 };
 
 export default async function RootLayout({

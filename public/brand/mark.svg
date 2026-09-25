@@ -1,0 +1,13 @@
+<svg width="340" height="260" viewBox="0 0 340 260" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Workforce ERP logo mark">
+  <path d="M14,215 C10,195 35,185 65,196 C100,210 140,216 180,206 C215,197 250,182 285,186 C305,188 315,192 320,202 C322,215 310,232 285,240 C210,254 100,250 25,228 C18,225 14,221 14,215 Z" fill="#1D4ED8"/>
+  <rect x="70" y="60" width="72" height="130" rx="4" fill="#2563EB"/>
+  <rect x="160" y="100" width="56" height="90" rx="4" fill="#60A5FA"/>
+  <rect x="230" y="130" width="44" height="60" rx="4" fill="#93C5FD"/>
+  <g fill="#F5F6FA" fill-opacity="0.9">
+    <rect x="86" y="78" width="10" height="12" rx="1"/><rect x="108" y="78" width="10" height="12" rx="1"/>
+    <rect x="86" y="104" width="10" height="12" rx="1"/><rect x="108" y="104" width="10" height="12" rx="1"/>
+    <rect x="86" y="130" width="10" height="12" rx="1"/><rect x="108" y="130" width="10" height="12" rx="1"/>
+    <rect x="174" y="116" width="10" height="12" rx="1"/><rect x="194" y="116" width="10" height="12" rx="1"/>
+    <rect x="174" y="142" width="10" height="12" rx="1"/><rect x="194" y="142" width="10" height="12" rx="1"/>
+  </g>
+</svg>

@@ -83,7 +83,7 @@ export async function requestOtp(rawPhone: string, ip: string | null, kind: OtpK
   if (isDemoPhone(phone)) return { ok: true };
 
   if (matches.length === 1) {
-    const text = `${code} is your Burj Al Aweer ${kind === "SUPPLIER" ? "supplier portal " : ""}sign-in code. It expires in 10 minutes. Don't share it with anyone.`;
+    const text = `${code} is your Workforce ERP ${kind === "SUPPLIER" ? "supplier portal " : ""}sign-in code. It expires in 10 minutes. Don't share it with anyone.`;
     const channel = process.env.OTP_CHANNEL ?? (isSmsConfigured() ? "sms" : "whatsapp");
     const result = channel === "whatsapp" ? await sendWhatsAppMessage(phone, text) : await sendSms(phone, text);
     if (!result.sent) {
