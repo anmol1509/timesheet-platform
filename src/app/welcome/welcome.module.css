@@ -174,7 +174,7 @@
 .navInner {
   display: flex;
   align-items: center;
-  height: 64px;
+  height: 84px;
   gap: 32px;
 }
 .logo {
