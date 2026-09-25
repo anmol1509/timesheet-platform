@@ -154,6 +154,9 @@ export async function updateSupplierCompanyAction(formData: FormData) {
     supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
     account: stringOrNull(formData.get("account")),
     isOwnCompany: formData.get("isOwnCompany") === "on",
+    // Pay settings only mean something for our own companies; clear them otherwise.
+    payType: formData.get("isOwnCompany") === "on" && ["BASIC", "HOURLY"].includes(String(formData.get("payType") || "")) ? String(formData.get("payType")) : null,
+    wpsEstablishmentId: formData.get("isOwnCompany") === "on" ? stringOrNull(formData.get("wpsEstablishmentId")) : null,
     allowManualLabourId: formData.get("allowManualLabourId") === "on",
     overtime: formData.get("overtime") === "on",
   };

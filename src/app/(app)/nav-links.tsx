@@ -80,6 +80,11 @@ const NAV: Entry[] = [
     category: "Workspace",
   },
   {
+    type: "link",
+    item: { href: "/approvals", label: "Approvals", icon: ShieldCheck },
+    category: "Workspace",
+  },
+  {
     type: "group",
     label: "Workforce",
     icon: Users,
@@ -172,7 +177,7 @@ const NAV: Entry[] = [
     children: [
       { href: "/clients", label: "Clients", icon: Building2 },
       { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/suppliers/requests", label: "Supplier Requests", icon: Inbox, alsoMatch: ["/suppliers/tickets", "/suppliers/contacts"] },
+      { href: "/suppliers/tickets", label: "Supplier Messages", icon: Inbox, alsoMatch: ["/suppliers/contacts"] },
       { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },
@@ -321,6 +326,7 @@ export function NavLinks({
   isSuperAdmin,
   allowedModules = null,
   collapsed = false,
+  pendingApprovals = 0,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -328,6 +334,8 @@ export function NavLinks({
   allowedModules?: string[] | null;
   /** Icon-rail mode. Groups become a single icon with a click-to-open flyout. */
   collapsed?: boolean;
+  /** Items waiting for this person, shown as a count on the Approvals row. */
+  pendingApprovals?: number;
 }) {
   const pathname = usePathname();
   const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
@@ -406,6 +414,9 @@ export function NavLinks({
         )}
         <Icon className={cn("shrink-0", depth === 0 ? "h-4 w-4" : "h-3.5 w-3.5")} />
         <span className="truncate">{item.label}</span>
+        {item.href === "/approvals" && pendingApprovals > 0 && (
+          <span className="ml-auto rounded-full bg-[var(--warning)] px-1.5 text-[10px] font-semibold text-white" aria-label={`${pendingApprovals} waiting`}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>
+        )}
       </Link>
     );
   }

@@ -11,11 +11,13 @@ export function MobileSidebar({
   isAdmin,
   isSuperAdmin,
   allowedModules,
+  pendingApprovals,
   brand,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   allowedModules: string[] | null;
+  pendingApprovals?: number;
   brand: Brand;
 }) {
   const [open, setOpen] = useState(false);
@@ -51,7 +53,7 @@ export function MobileSidebar({
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
-            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
+            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} />
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

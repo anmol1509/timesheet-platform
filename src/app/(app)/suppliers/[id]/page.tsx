@@ -219,6 +219,8 @@ export default async function SupplierDetailPage({
                 supplier={{
                   id: supplier.id,
                   isOwnCompany: supplier.isOwnCompany,
+                  payType: supplier.payType,
+                  wpsEstablishmentId: supplier.wpsEstablishmentId,
                   parentSupplierId: supplier.parentSupplierId,
                   fullName: supplier.fullName,
                   status: supplier.status,

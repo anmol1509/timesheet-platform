@@ -30,6 +30,10 @@ export function NewItemForm() {
           className="input w-full"
         />
       </label>
+      <label className="block w-28">
+        <span className="mb-1 block text-xs font-medium text-muted">Quantity</span>
+        <input name="quantity" type="number" min="0" step="1" defaultValue={0} className="input w-full text-right" />
+      </label>
       {state.error && (
         <p className="w-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {state.error}

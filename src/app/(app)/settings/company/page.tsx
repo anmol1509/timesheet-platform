@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isUsableBank } from "@/lib/bankStatus";
 import { ImageUpload } from "@/components/ImageUpload";
 import { CompanyForm } from "./company-form";
 import { WpsForm } from "./wps-form";
@@ -26,7 +27,7 @@ export default async function CompanyProfilePage({
   const branch = targetId ? await prisma.branch.findUnique({ where: { id: targetId } }) : null;
 
   const banks = branch
-    ? await prisma.bank.findMany({ where: { branchId: branch.id, status: "ACTIVE" }, orderBy: { accountName: "asc" } })
+    ? (await prisma.bank.findMany({ where: { branchId: branch.id, status: "ACTIVE" }, orderBy: { accountName: "asc" } })).filter(isUsableBank)
     : [];
 
   if (!branch) {

@@ -32,17 +32,6 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
     prisma.supplier.findMany({ where: { ...branchWhere(branchId), status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
-  // Reference only: what the timesheets say this supplier's workers earned in the month the bill covers.
-  const periods = [...new Set(bills.map((b) => b.periodMonth).filter((m): m is string => !!m))];
-  const sheetTotals = periods.length
-    ? await prisma.timesheetEntry.groupBy({
-        by: ["supplierId", "month"],
-        where: { month: { in: periods }, supplierId: { in: [...new Set(bills.map((b) => b.supplierId))] }, status: { in: ["CLIENT_APPROVED", "LOCKED"] } },
-        _sum: { invoiceValue: true },
-      })
-    : [];
-  const sheetValue = new Map(sheetTotals.map((t) => [`${t.supplierId}|${t.month}`, t._sum.invoiceValue ?? 0]));
-
   const files = bills.length
     ? await prisma.attachment.findMany({
         where: { entityType: "SUPPLIER_BILL", entityId: { in: bills.map((b) => b.id) } },
@@ -53,13 +42,13 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
 
   const rows: BillRow[] = bills.map((b) => {
     const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) })));
-    const ref = b.periodMonth ? (sheetValue.get(`${b.supplierId}|${b.periodMonth}`) ?? 0) : null;
     return {
       id: b.id, supplier: b.supplier.name, supplierId: b.supplierId, billNo: b.billNo,
       billDate: b.billDate.toISOString().slice(0, 10), dueDate: b.dueDate.toISOString().slice(0, 10),
       ...t, status: billStatus(t.balance, t.paid, b.dueDate, today), description: b.description, paymentCount: b.payments.length,
       approval: b.approvalStatus, approvalNote: b.approvalNote, viaPortal: b.submittedBySupplier, branchId: b.branchId, periodMonth: b.periodMonth,
-      variance: b.periodMonth && ref !== null ? { ...billVariance(t.total, ref), reference: ref } : null,
+      // Compared before VAT: the timesheet figure has no VAT in it.
+      variance: b.timesheetAmount !== null ? { ...billVariance(Number(b.amount), Number(b.timesheetAmount)), reference: Number(b.timesheetAmount), hours: b.timesheetHours ?? 0, billAmount: Number(b.amount) } : null,
       payments: b.payments.map((p) => ({ id: p.id, paidOn: p.paidOn.toISOString().slice(0, 10), amount: Number(p.amount), method: p.method, reference: p.reference })),
       files: files.filter((f) => f.entityId === b.id).map((f) => ({ id: f.id, docType: f.docType, filename: f.filename, expiryDate: f.expiryDate ? f.expiryDate.toISOString() : null, uploadedAt: f.uploadedAt.toISOString() })),
     };
@@ -88,7 +77,6 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         suppliers={suppliers}
         canCreate={can(subject, "finance", "create")}
         canPay={can(subject, "finance", "edit")}
-        canApprove={can(subject, "finance", "approve")}
         canDelete={can(subject, "finance", "delete")}
       />
     </div>

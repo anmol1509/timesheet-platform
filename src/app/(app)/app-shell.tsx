@@ -25,6 +25,7 @@ export function AppShell({
   isAdmin,
   isSuperAdmin,
   allowedModules,
+  pendingApprovals,
   brand,
   defaultCollapsed,
   header,
@@ -33,6 +34,7 @@ export function AppShell({
   isAdmin: boolean;
   isSuperAdmin: boolean;
   allowedModules: string[] | null;
+  pendingApprovals?: number;
   brand: Brand;
   defaultCollapsed: boolean;
   header: React.ReactNode;
@@ -80,7 +82,7 @@ export function AppShell({
             collapsed ? "px-2" : "px-3"
           )}
         >
-          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} />
+          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} />
         </div>
 
         {collapsed && (

@@ -27,6 +27,8 @@ type Supplier = {
   supplierAmountLimit: number | null;
   account: string | null;
   isOwnCompany: boolean;
+  payType: string | null;
+  wpsEstablishmentId: string | null;
   allowManualLabourId: boolean;
   overtime: boolean;
 };
@@ -173,6 +175,20 @@ export function SupplierCompanyForm({
           defaultChecked={supplier.isOwnCompany}
           description="Issues documents on our letterhead, and bills this entity rather than paying it."
         />
+        {supplier.isOwnCompany && (
+          <>
+            <Field label="How this company pays its people">
+              <select name="payType" defaultValue={supplier.payType ?? ""} className="input w-full">
+                <option value="">— not set —</option>
+                <option value="BASIC">Basic — monthly salary, from attendance</option>
+                <option value="HOURLY">Hourly — hours from the timesheet</option>
+              </select>
+            </Field>
+            <Field label="MOHRE establishment ID (for the WPS file)">
+              <input name="wpsEstablishmentId" defaultValue={supplier.wpsEstablishmentId || ""} inputMode="numeric" className="input w-full" />
+            </Field>
+          </>
+        )}
         <SwitchField
           label="Allow manual labour ID"
           name="allowManualLabourId"

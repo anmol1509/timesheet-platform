@@ -10,6 +10,7 @@ import { parseDay } from "@/lib/dates";
 import { round2 } from "@/lib/payroll";
 import { billTotals } from "@/lib/payables";
 import { notifySupplier } from "@/lib/vendor/notify";
+import { loadSupplierMonthPayable, type SupplierMonthPayable } from "@/lib/supplierMonthPayable";
 import { exceedsApprovalLimit, isDuplicateBill, isDuplicateExpense } from "@/lib/financeRules";
 
 type State = { error: string | null; ok?: boolean };
@@ -65,7 +66,7 @@ export async function createExpenseAction(_prev: State, formData: FormData): Pro
     kind: "EXPENSE_SUBMITTED",
     title: `Expense to approve: AED ${(amount + vatAmount).toFixed(2)}`,
     body: `${category} — ${description} (by ${user.name}).`,
-    href: "/finance/expenses?status=PENDING",
+    href: "/approvals?type=EXPENSE",
   });
   revalidatePath("/finance/expenses");
   revalidatePath("/finance");
@@ -136,6 +137,9 @@ export async function createBillAction(_prev: State, formData: FormData): Promis
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
   const periodRaw = str(formData.get("periodMonth"));
   const periodMonth = /^\d{4}-\d{2}$/.test(periodRaw) ? periodRaw : null;
+  // Every supplier bill is tied to the month of work it pays for, so it can be checked against that month's timesheet.
+  if (!periodMonth) return { error: "Choose the month this bill covers." };
+  const sheet = await loadSupplierMonthPayable(supplierId, periodMonth);
   if (str(formData.get("allowDuplicate")) !== "1") {
     const others = await prisma.supplierBill.findMany({ where: { supplierId }, select: { billNo: true, billDate: true, amount: true, vatAmount: true } });
     const dup = others.find((o) => isDuplicateBill({ billNo, billDate, amount, vatAmount }, { billNo: o.billNo, billDate: o.billDate, amount: Number(o.amount), vatAmount: Number(o.vatAmount) }));
@@ -143,7 +147,7 @@ export async function createBillAction(_prev: State, formData: FormData): Promis
   }
   try {
     const created = await prisma.supplierBill.create({
-      data: { supplierId, billNo, billDate, dueDate, amount, vatAmount, periodMonth, approvalStatus: "PENDING", description: str(formData.get("description")) || null, branchId },
+      data: { supplierId, billNo, billDate, dueDate, amount, vatAmount, periodMonth, timesheetAmount: sheet.entryCount > 0 ? sheet.net : null, timesheetHours: sheet.entryCount > 0 ? sheet.hours : null, approvalStatus: "PENDING", description: str(formData.get("description")) || null, branchId },
     });
     await logAudit({ entityType: "SUPPLIER_BILL", entityId: created.id, action: "CREATE", after: { supplier: supplier.name, billNo, amount, vatAmount }, userId: user.id, userName: user.name, branchId });
   } catch {
@@ -327,4 +331,14 @@ export async function payBatchAction(_prev: State, formData: FormData): Promise<
   revalidatePath("/finance/bills");
   revalidatePath("/finance");
   return { error: null, ok: true };
+}
+
+/** What the timesheet says we owe a supplier for a month, for the bill form to show before the bill is saved. */
+export async function previewSupplierMonthAction(supplierId: string, month: string): Promise<{ error: string | null; sheet?: SupplierMonthPayable }> {
+  await requirePermission("finance", "create");
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Choose the month." };
+  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
+  return { error: null, sheet: await loadSupplierMonthPayable(supplierId, month) };
 }

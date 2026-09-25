@@ -18,12 +18,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const run = await prisma.payrollRun.findUnique({
     where: { id },
-    include: { lines: { include: { employee: { select: { name: true } } } }, branch: true, payerBank: true },
+    include: { lines: { include: { employee: { select: { name: true } } } }, branch: true, payerBank: true, company: { select: { name: true, wpsEstablishmentId: true } } },
   });
   if (!run || isOutsideBranch(run.branchId, branchId, isSuperAdmin)) return fail("Run not found.", 404);
   if (run.status === "DRAFT") return fail("Approve the run before generating the WPS file.");
 
-  if (!run.branch.wpsEstablishmentId) return fail("Add the MOHRE establishment ID under Settings → Company profile → Payroll / WPS.");
+  // Each own company files under its own MOHRE establishment; older runs use the branch's.
+  const establishmentId = run.company?.wpsEstablishmentId ?? run.branch.wpsEstablishmentId;
+  if (!establishmentId) return fail(run.company ? `Add ${run.company.name}'s MOHRE establishment ID on its company page (Suppliers).` : "Add the MOHRE establishment ID under Settings → Company profile → Payroll / WPS.");
   const bank = run.payerBank ?? (run.branch.wpsPayerBankId ? await prisma.bank.findUnique({ where: { id: run.branch.wpsPayerBankId } }) : null);
   const payerIban = bank?.ibanNo ?? bank?.accountNo;
   if (!bank || !bank.routingCode || !payerIban) return fail("The salary payer bank account needs a routing code and IBAN (Business Partners → Banks).");
@@ -40,7 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (bankLines.length === 0) return fail("No bank-paid employees in this run.");
 
   const sif = buildSif({
-    establishmentId: run.branch.wpsEstablishmentId,
+    establishmentId,
     payerRoutingCode: bank.routingCode,
     payerIban,
     month: run.month,

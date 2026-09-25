@@ -74,11 +74,41 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
 /** Standing earnings/deductions and loan recovery layered on top of computePay. */
-export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number };
+export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number };
 
-/** Net pay including recurring items and loan instalments. */
+/**
+ * Net pay including recurring items, the advance recovered (loanDeduction) and
+ * the deduction typed on the run (manualDeduction).
+ */
 export const netPayWithExtras = (r: PayResult, adjustment: number, x: PayExtras) =>
-  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction);
+  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0));
+
+/** How a company pays everyone in it. */
+export const PAY_TYPES = ["BASIC", "HOURLY"] as const;
+export type CompanyPayType = (typeof PAY_TYPES)[number];
+export const PAY_TYPE_LABELS: Record<CompanyPayType, string> = { BASIC: "Basic (monthly salary, from attendance)", HOURLY: "Hourly (hours from the timesheet)" };
+export const isPayType = (v: string | null | undefined): v is CompanyPayType => v === "BASIC" || v === "HOURLY";
+
+/**
+ * Whether an employee has what their company's pay type needs, and if not, why
+ * they can't be paid. BASIC needs a monthly figure; HOURLY needs an hourly rate.
+ * A run with no pay type (created before companies had one) keeps the old rule:
+ * any pay structure will do.
+ */
+export function payDataGap(
+  type: CompanyPayType | null,
+  e: { payStructure: string | null; basicSalary: number; flatMonthlyRate: number; hourlyRate: number }
+): string | null {
+  if (type === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate";
+  if (type === "BASIC") {
+    if (e.payStructure !== "ITEMISED" && e.payStructure !== "FLAT") return "no monthly pay set up";
+    return (e.payStructure === "FLAT" ? e.flatMonthlyRate : e.basicSalary) > 0 ? null : "no basic salary";
+  }
+  return e.payStructure ? null : "no pay structure";
+}
+
+/** Splits an amount typed against what is available, so a deduction can never push net pay below zero. */
+export const capToAvailable = (wanted: number, available: number) => round2(Math.max(0, Math.min(wanted, available)));
 
 /**
  * Loan instalments recovered this run. Each loan takes its instalment (or what

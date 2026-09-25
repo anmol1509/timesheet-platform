@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Check, Paperclip, Plus, Trash2, X } from "lucide-react";
+import { Paperclip, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from "@/lib/financeConstants";
+import Link from "next/link";
 import { AttachmentUploader, type AttachmentRow } from "@/components/AttachmentUploader";
-import { createExpenseAction, decideExpenseAction, deleteExpenseAction, markReimbursedAction } from "../actions";
+import { createExpenseAction, deleteExpenseAction, markReimbursedAction } from "../actions";
 
 type State = { error: string | null; ok?: boolean };
 export type ExpenseRow = { id: string; date: string; category: string; description: string; total: number; paidTo: string | null; method: string | null; project: string | null; status: string; by: string; note: string | null; outOfPocket: boolean; reimbursed: boolean; branchId: string; files: AttachmentRow[] };
@@ -61,9 +62,7 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
 
 export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete }: { rows: ExpenseRow[]; projects: { id: string; name: string }[]; canCreate: boolean; canApprove: boolean; canDelete: boolean }) {
   const [open, setOpen] = useState(false);
-  const [rejecting, setRejecting] = useState<ExpenseRow | null>(null);
   const [filing, setFiling] = useState<ExpenseRow | null>(null);
-  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const run = (fn: (fd: FormData) => Promise<State>, fields: Record<string, string>, after?: () => void) =>
@@ -106,12 +105,7 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
                       {r.outOfPocket && r.status === "APPROVED" && !r.reimbursed && canApprove && (
                         <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => run(markReimbursedAction, { id: r.id })}>Mark reimbursed</button>
                       )}
-                      {r.status === "PENDING" && canApprove && (
-                        <>
-                          <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => run(decideExpenseAction, { id: r.id, decision: "APPROVED" })}><Check className="h-4 w-4" aria-hidden /> Approve</button>
-                          <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => { setNote(""); setRejecting(r); }}><X className="h-4 w-4" aria-hidden /> Reject</button>
-                        </>
-                      )}
+                      {r.status === "PENDING" && <Link href="/approvals?type=EXPENSE" className="btn btn-secondary">Review in Approvals</Link>}
                       {r.status !== "APPROVED" && canDelete && (
                         <button type="button" className="rounded-md p-1.5 text-subtle hover:bg-surface-hover hover:text-secondary" aria-label="Delete expense" disabled={pending} onClick={() => run(deleteExpenseAction, { id: r.id })}><Trash2 className="h-4 w-4" /></button>
                       )}
@@ -138,17 +132,6 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
                 docTypeOptions={[{ value: "RECEIPT", label: "Receipt" }, { value: "INVOICE", label: "Invoice" }, { value: "OTHER", label: "Other" }]}
                 attachments={filing.files}
               />
-            </div>
-          </DialogContent>
-        )}
-      </Dialog>
-      <Dialog open={rejecting !== null} onOpenChange={(o) => !o && setRejecting(null)}>
-        {rejecting && (
-          <DialogContent title="Reject this expense?" description={`${rejecting.category} — AED ${aed(rejecting.total)}`}>
-            <label className="mt-4 block"><span className="mb-1 block text-xs font-medium text-muted">Reason</span><input value={note} onChange={(e) => setNote(e.target.value)} className="input w-full" /></label>
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className="btn btn-secondary" onClick={() => setRejecting(null)}>Back</button>
-              <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(decideExpenseAction, { id: rejecting.id, decision: "REJECTED", note }, () => setRejecting(null))}>Reject</button>
             </div>
           </DialogContent>
         )}

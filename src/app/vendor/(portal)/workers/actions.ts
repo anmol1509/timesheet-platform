@@ -70,7 +70,7 @@ export async function submitWorkerAction(_prev: State, formData: FormData): Prom
     kind: "SUPPLIER_WORKER_SUBMITTED",
     title: `New worker to approve: ${firstName} ${lastName}`,
     body: `${vendor.name} added a ${trade}.`,
-    href: "/suppliers/requests",
+    href: "/approvals?type=WORKER",
   });
   revalidatePath("/vendor/workers");
   return { error: null, ok: true };
