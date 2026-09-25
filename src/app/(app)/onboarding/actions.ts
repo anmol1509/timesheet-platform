@@ -41,6 +41,7 @@ function profileFields(formData: FormData) {
     gender: stringOrNull(formData.get("gender")),
     bloodGroup: stringOrNull(formData.get("bloodGroup")),
     agencyId: stringOrNull(formData.get("agencyId")),
+    agencyContactId: stringOrNull(formData.get("agencyContactId")),
     demandRequestId: stringOrNull(formData.get("demandRequestId")),
     projectId: stringOrNull(formData.get("projectId")),
     assignedHrId: stringOrNull(formData.get("assignedHrId")),
@@ -270,6 +271,125 @@ export async function markJoinedAction(_prev: State, formData: FormData): Promis
   revalidatePath("/onboarding");
   revalidatePath("/employees");
   return { error: null, ok: true };
+}
+
+export type CreateContactResult = { error: string | null; contact?: { id: string; name: string } };
+
+/** Quick-add for the agency contact picker — the same coordinator usually
+ * handles many candidates from one agency, so this is a reusable row, not a
+ * free-text field re-typed every time. */
+export async function createAgencyContactAction(_prev: CreateContactResult, formData: FormData): Promise<CreateContactResult> {
+  try {
+    assertContactsValid(formData);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
+  }
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const agencyId = String(formData.get("agencyId") || "");
+  const name = stringOrNull(formData.get("name"));
+  if (!agencyId) return { error: "Choose an agency first." };
+  if (!name) return { error: "Name is required." };
+
+  const agency = await prisma.supplier.findUnique({ where: { id: agencyId }, select: { branchId: true } });
+  if (!agency || isOutsideBranch(agency.branchId, branchId, isSuperAdmin)) return { error: "That agency isn't available." };
+
+  const contact = await prisma.agencyContact.create({
+    data: {
+      name,
+      phone: stringOrNull(formData.get("phone")),
+      email: stringOrNull(formData.get("email")),
+      agencyId,
+      branchId: agency.branchId,
+    },
+  });
+  revalidatePath("/onboarding");
+  revalidatePath("/onboarding/new");
+  return { error: null, contact: { id: contact.id, name: contact.name } };
+}
+
+/** Sets who owns a stage and by when — separate from updateStageAction
+ * (which records a status change) since assigning an owner doesn't itself
+ * change the stage's status or need a history row. */
+export async function assignStageTaskAction(_prev: State, formData: FormData): Promise<State> {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("id") || "");
+  const stageKey = String(formData.get("stage") || "") as StageKey;
+  const stage = STAGE_BY_KEY[stageKey];
+  if (!stage) return { error: "Unknown stage." };
+  if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return { error: "You can't edit that candidate." };
+
+  const ownerId = stringOrNull(formData.get("ownerId"));
+  const dueDate = dateOrNull(formData.get("dueDate"));
+
+  await prisma.candidateOnboardingStageTask.upsert({
+    where: { onboardingId_stage: { onboardingId: id, stage: stage.key } },
+    create: { onboardingId: id, stage: stage.key, ownerId, dueDate },
+    update: { ownerId, dueDate },
+  });
+
+  revalidatePath(`/onboarding/${id}`);
+  revalidatePath("/onboarding");
+  return { error: null, ok: true };
+}
+
+type ImportRowResult = { row: number; status: "created" | "error"; message?: string };
+
+/** Batch intake for a sheet an agency sends — the highest-leverage way to
+ * add candidates, since agencies rarely submit one at a time. Only creates;
+ * an existing passport/Emirates ID is reported as a row error rather than
+ * silently merged, so a resubmitted sheet doesn't duplicate work quietly. */
+export async function bulkImportCandidatesAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const results: ImportRowResult[] = [];
+  if (!branchId) return rows.map((_, i) => ({ row: i + 2, status: "error", message: "No branch selected to import into." }));
+
+  const agencyNames = [...new Set(rows.map((r) => (r["Agency"] || "").trim()).filter(Boolean))];
+  const agencies = agencyNames.length
+    ? await prisma.supplier.findMany({ where: { name: { in: agencyNames }, ...(isSuperAdmin ? {} : { branchId }) }, select: { id: true, name: true } })
+    : [];
+  const agencyByName = new Map(agencies.map((a) => [a.name.toLowerCase(), a.id]));
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const candidateName = (r["Candidate name"] || "").trim();
+    if (!candidateName) {
+      results.push({ row: i + 2, status: "error", message: "Candidate name is required." });
+      continue;
+    }
+    const passportNumber = stringOrNull(r["Passport number"] ?? null);
+    const emiratesId = stringOrNull(r["Emirates ID"] ?? null);
+    try {
+      const dupError = await findDuplicate(passportNumber, emiratesId);
+      if (dupError) {
+        results.push({ row: i + 2, status: "error", message: dupError });
+        continue;
+      }
+      const agencyRaw = (r["Agency"] || "").trim();
+      if (agencyRaw && !agencyByName.has(agencyRaw.toLowerCase())) {
+        results.push({ row: i + 2, status: "error", message: `Agency "${agencyRaw}" not found — add it under Suppliers first.` });
+        continue;
+      }
+      const data = {
+        candidateName,
+        trade: stringOrNull(r["Trade"] ?? null),
+        nationality: stringOrNull(r["Nationality"] ?? null),
+        phone: stringOrNull(r["Phone"] ?? null),
+        email: stringOrNull(r["Email"] ?? null),
+        passportNumber,
+        emiratesId,
+        agencyId: agencyRaw ? (agencyByName.get(agencyRaw.toLowerCase()) ?? null) : null,
+        branchId,
+      };
+      const created = await prisma.candidateOnboarding.create({ data });
+      await logAudit({ entityType: "CANDIDATE_ONBOARDING", entityId: created.id, action: "CREATE", after: data, userId: user.id, userName: user.name, branchId });
+      results.push({ row: i + 2, status: "created" });
+    } catch (e) {
+      results.push({ row: i + 2, status: "error", message: e instanceof Error ? e.message : "Failed to import row." });
+    }
+  }
+
+  revalidatePath("/onboarding");
+  return results;
 }
 
 export async function deleteCandidateAction(formData: FormData) {

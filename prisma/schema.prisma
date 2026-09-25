@@ -170,14 +170,15 @@ model User {
   nocs             Noc[]
   employeeNotes    EmployeeNote[]
 
-  dashboardPreference          DashboardPreference?
-  lettersIssued                IssuedLetter[]
-  expensesSubmitted            Expense[]                    @relation("ExpenseSubmittedBy")
-  expensesDecided              Expense[]                    @relation("ExpenseDecidedBy")
-  payrollCreated               PayrollRun[]                 @relation("PayrollCreatedBy")
-  payrollApproved              PayrollRun[]                 @relation("PayrollApprovedBy")
-  candidateOnboardingsAssigned CandidateOnboarding[]
-  candidateOnboardingUpdates   CandidateOnboardingHistory[]
+  dashboardPreference                DashboardPreference?
+  lettersIssued                      IssuedLetter[]
+  expensesSubmitted                  Expense[]                      @relation("ExpenseSubmittedBy")
+  expensesDecided                    Expense[]                      @relation("ExpenseDecidedBy")
+  payrollCreated                     PayrollRun[]                   @relation("PayrollCreatedBy")
+  payrollApproved                    PayrollRun[]                   @relation("PayrollApprovedBy")
+  candidateOnboardingsAssigned       CandidateOnboarding[]
+  candidateOnboardingUpdates         CandidateOnboardingHistory[]
+  candidateOnboardingStageTasksOwned CandidateOnboardingStageTask[]
 }
 
 // Small uploaded images (user avatars, company logos). Its own table so the
@@ -350,6 +351,7 @@ model Supplier {
   portalEnabled        Boolean                @default(false)
   bills                SupplierBill[]
   candidateOnboardings CandidateOnboarding[]
+  agencyContacts       AgencyContact[]
 }
 
 model Client {
@@ -2216,13 +2218,13 @@ model CandidateOnboarding {
   // through the stages below, not all at intake) but needed in full before
   // "Mark joined" can create the real Employee record, and to catch a
   // candidate who's already on the roster before re-onboarding them.
-  phone            String?
-  email            String?
-  passportNumber   String?
-  emiratesId       String?
-  dateOfBirth      DateTime?
-  gender           String? // "MALE" | "FEMALE"
-  bloodGroup       String?
+  phone          String?
+  email          String?
+  passportNumber String?
+  emiratesId     String?
+  dateOfBirth    DateTime?
+  gender         String? // "MALE" | "FEMALE"
+  bloodGroup     String?
 
   offerStatus             String @default("Pending")
   wppStatus               String @default("Pending")
@@ -2250,6 +2252,12 @@ model CandidateOnboarding {
   agency   Supplier? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   agencyId String?
 
+  // The person at the agency handling this candidate — a reusable contact,
+  // not free text, since the same coordinator typically handles many
+  // candidates from one agency. See AgencyContact below.
+  agencyContact   AgencyContact? @relation(fields: [agencyContactId], references: [id], onDelete: SetNull)
+  agencyContactId String?
+
   demandRequest   DemandRequest? @relation(fields: [demandRequestId], references: [id], onDelete: SetNull)
   demandRequestId String?
 
@@ -2265,7 +2273,8 @@ model CandidateOnboarding {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  history CandidateOnboardingHistory[]
+  history    CandidateOnboardingHistory[]
+  stageTasks CandidateOnboardingStageTask[]
 
   @@index([branchId])
   @@index([agencyId])
@@ -2296,4 +2305,49 @@ model CandidateOnboardingHistory {
   updatedAt   DateTime @default(now())
 
   @@index([onboardingId, stage])
+}
+
+// Who owns getting a stage done, and by when — one row per (candidate, stage)
+// pair, upserted as the assignment changes. Separate from the *Status columns
+// on CandidateOnboarding (which track WHAT state a stage is in) and from
+// CandidateOnboardingHistory (which tracks every status CHANGE) — this tracks
+// WHO is responsible right now, the way Workday's onboarding tasks do, so the
+// "action required" queue can page an actual owner instead of just the whole
+// team once a stage's target date has passed.
+model CandidateOnboardingStageTask {
+  id    String @id @default(cuid())
+  stage String
+
+  owner   User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+  dueDate DateTime?
+
+  onboarding   CandidateOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  onboardingId String
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([onboardingId, stage])
+  @@index([ownerId])
+}
+
+// A point of contact at an agency, reusable across every candidate they
+// coordinate — created inline from the candidate form ("+ Add new contact")
+// rather than a separate CRUD screen, since the only place this is ever
+// needed is while picking one for a candidate.
+model AgencyContact {
+  id    String  @id @default(cuid())
+  name  String
+  phone String?
+  email String?
+
+  agency   Supplier @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  branchId  String
+  createdAt DateTime @default(now())
+
+  candidates CandidateOnboarding[]
+
+  @@index([agencyId])
 }

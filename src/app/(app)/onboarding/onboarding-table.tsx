@@ -1,11 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Minus, X } from "lucide-react";
+import { Check, LayoutGrid, Minus, Table2, X } from "lucide-react";
 import { Select } from "@/components/ui/Select";
+import { CsvImportDialog, type ImportRowResult } from "@/components/CsvImportDialog";
 import { cn } from "@/lib/cn";
 import { STAGES, currentStage, isOverdue, overallStatusLabel, statusKind, type StatusKind } from "@/lib/onboarding";
+import { bulkImportCandidatesAction } from "./actions";
+import { KanbanBoard } from "./kanban-board";
+
+const IMPORT_COLUMNS = [
+  { key: "candidateName", label: "Candidate name", required: true },
+  { key: "trade", label: "Trade" },
+  { key: "nationality", label: "Nationality" },
+  { key: "phone", label: "Phone" },
+  { key: "email", label: "Email" },
+  { key: "passportNumber", label: "Passport number" },
+  { key: "emiratesId", label: "Emirates ID" },
+  { key: "agency", label: "Agency" },
+];
 
 type Candidate = {
   id: string;
@@ -36,9 +51,17 @@ function StatusIcon({ kind }: { kind: StatusKind }) {
 }
 
 export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [agencyFilter, setAgencyFilter] = useState("");
   const [view, setView] = useState<"active" | "ready" | "overdue" | "joined" | "all">("active");
+  const [layout, setLayout] = useState<"table" | "board">("table");
+
+  async function handleImport(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
+    const results = await bulkImportCandidatesAction(rows);
+    router.refresh();
+    return results;
+  }
 
   const agencyOptions = useMemo(() => {
     const names = [...new Set(candidates.map((c) => c.agency?.name).filter((n): n is string => !!n))].sort();
@@ -78,7 +101,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
         <div className="w-48">
           <Select name="agencyFilter" value={agencyFilter} onChange={setAgencyFilter} searchable options={agencyOptions} />
         </div>
-        <div className="ml-auto flex flex-wrap gap-1 rounded-lg bg-surface-subtle p-1">
+        <div className="flex flex-wrap gap-1 rounded-lg bg-surface-subtle p-1">
           {VIEW_OPTIONS.map((o) => (
             <button
               key={o.value}
@@ -93,8 +116,36 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
             </button>
           ))}
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          <CsvImportDialog
+            entityLabel="candidates"
+            columns={IMPORT_COLUMNS}
+            importAction={handleImport}
+          />
+          <div className="flex gap-1 rounded-lg bg-surface-subtle p-1">
+            <button
+              type="button"
+              onClick={() => setLayout("table")}
+              aria-label="Table view"
+              className={cn("rounded-md p-1.5", layout === "table" ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-primary")}
+            >
+              <Table2 className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayout("board")}
+              aria-label="Board view"
+              className={cn("rounded-md p-1.5", layout === "board" ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-primary")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
+      {layout === "board" && <KanbanBoard candidates={filtered} />}
+
+      {layout === "table" && (
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
@@ -158,6 +209,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

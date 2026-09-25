@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserRound, IdCard, Building2, MessageSquareText } from "lucide-react";
 import { Select } from "@/components/ui/Select";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PhoneField } from "@/components/ui/PhoneField";
+import { ContactPicker, type AgencyContactOption } from "./contact-picker";
 import { createCandidateAction, updateCandidateAction } from "./actions";
 
 type Option = { id: string; name: string };
@@ -25,6 +27,7 @@ type Candidate = {
   gender: string | null;
   bloodGroup: string | null;
   agencyId: string | null;
+  agencyContactId: string | null;
   demandRequestId: string | null;
   projectId: string | null;
   assignedHrId: string | null;
@@ -58,17 +61,21 @@ function SectionHead({ icon: Icon, title, hint }: { icon: React.ElementType; tit
 export function CandidateForm({
   candidate,
   agencies,
+  agencyContacts,
   projects,
   demandRequests,
   hrUsers,
 }: {
   candidate?: Candidate;
   agencies: Option[];
+  agencyContacts: AgencyContactOption[];
   projects: (Option & { code: string })[];
   demandRequests: DemandOption[];
   hrUsers: Option[];
 }) {
   const router = useRouter();
+  const [agencyId, setAgencyId] = useState(candidate?.agencyId ?? "");
+  const [agencyContactId, setAgencyContactId] = useState(candidate?.agencyContactId ?? "");
   const [state, action, pending] = useActionState(
     async (_prev: State, fd: FormData) => {
       if (candidate) fd.set("id", candidate.id);
@@ -94,7 +101,7 @@ export function CandidateForm({
           </label>
           <label className="block">
             <span className={label}>Nationality</span>
-            <input name="nationality" defaultValue={candidate?.nationality ?? ""} className="input w-full" />
+            <CountrySelect name="nationality" defaultValue={candidate?.nationality ?? ""} />
           </label>
           <label className="block">
             <span className={label}>Date of birth</span>
@@ -140,9 +147,23 @@ export function CandidateForm({
             <span className={label}>Agency</span>
             <Select
               name="agencyId"
-              defaultValue={candidate?.agencyId ?? ""}
+              value={agencyId}
+              onChange={(v) => {
+                setAgencyId(v);
+                setAgencyContactId("");
+              }}
               searchable
               options={[{ value: "", label: "None" }, ...agencies.map((a) => ({ value: a.id, label: a.name }))]}
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Agency contact</span>
+            <ContactPicker
+              name="agencyContactId"
+              agencyId={agencyId}
+              contacts={agencyContacts}
+              value={agencyContactId}
+              onChange={(id) => setAgencyContactId(id)}
             />
           </label>
           <label className="block">

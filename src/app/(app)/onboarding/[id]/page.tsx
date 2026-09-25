@@ -24,8 +24,9 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   });
   if (!candidate || isOutsideBranch(candidate.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [agencies, projects, demandRequests, hrUsers, history, attachments] = await Promise.all([
+  const [agencies, agencyContacts, projects, demandRequests, hrUsers, history, attachments, tasks] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({ where: branchWhere(branchId), select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
     prisma.demandRequest.findMany({
       where: branchWhere(branchId),
@@ -44,7 +45,12 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
       orderBy: { uploadedAt: "desc" },
       select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
     }),
+    prisma.candidateOnboardingStageTask.findMany({
+      where: { onboardingId: id },
+      include: { owner: { select: { name: true } } },
+    }),
   ]);
+  const taskByStage = new Map(tasks.map((t) => [t.stage, { ownerId: t.ownerId, ownerName: t.owner?.name ?? null, dueDate: t.dueDate }]));
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -84,7 +90,15 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           <p className="text-xs text-muted">Expand a stage to record its status, date, reference and remarks.</p>
         </div>
         {STAGES.map((stage) => (
-          <StageRow key={stage.key} candidateId={candidate.id} stage={stage} status={candidate[stage.field]} kind={statusKind(stage, candidate[stage.field])} />
+          <StageRow
+            key={stage.key}
+            candidateId={candidate.id}
+            stage={stage}
+            status={candidate[stage.field]}
+            kind={statusKind(stage, candidate[stage.field])}
+            task={taskByStage.get(stage.key) ?? null}
+            hrUsers={hrUsers}
+          />
         ))}
       </div>
 
@@ -102,7 +116,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
 
       <div>
         <p className="mb-2 text-sm font-medium text-primary">Candidate details</p>
-        <CandidateForm candidate={candidate} agencies={agencies} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
+        <CandidateForm candidate={candidate} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
       </div>
 
       <div className="card overflow-x-auto">
