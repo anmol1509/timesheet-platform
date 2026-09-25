@@ -443,7 +443,7 @@ export default function WelcomePage() {
                   See how it works
                 </a>
               </div>
-              <p className={s.heroNote}>Live in two weeks · Bring your existing Excel timesheets</p>
+              <p className={s.heroNote}>Bring your existing Excel timesheets, no re-keying</p>
             </div>
             <div className={s.heroMockWrap}>
               <HeroMock />

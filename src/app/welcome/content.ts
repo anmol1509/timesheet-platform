@@ -1,9 +1,9 @@
 // Everything a marketer might change before launch lives here.
 
 export const SITE = {
-  name: "Workforce ERP",
+  name: "ManpowerSync",
   tagline: "The operating system for manpower suppliers",
-  salesEmail: "sales@example.com",
+  salesEmail: "sales@manpowersync.com",
 };
 
 // The landing page is served from its own domain, so links into the app need
@@ -190,8 +190,8 @@ export const FAQS = [
     a: "General systems stop at employee records and payroll. Manpower suppliers also need client timesheets, billing by the hour, visa and ID tracking, camps, transport, mobilisation and subcontractor crews. Those are built in here rather than bolted on.",
   },
   {
-    q: "How long does it take to go live?",
-    a: "Most suppliers run their first real month within two weeks. Employees and sites are imported from your existing sheets, and your current timesheet workbook can be uploaded as-is.",
+    q: "What does getting started involve?",
+    a: "Employees and sites are imported from your existing sheets, and your current timesheet workbook can be uploaded as-is. There is nothing to re-key before your first month.",
   },
   {
     q: "Can we bring our existing Excel timesheets?",
