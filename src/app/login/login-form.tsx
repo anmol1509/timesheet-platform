@@ -32,7 +32,7 @@ export function LoginForm() {
           autoFocus
           autoComplete="email"
           disabled={pending}
-          placeholder="you@burjalaweer.com"
+          placeholder="you@company.com"
           className={FIELD}
         />
       </div>

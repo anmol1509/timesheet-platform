@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const branch = letterheadBranchId ? await prisma.branch.findUnique({ where: { id: letterheadBranchId } }) : null;
 
   const buffer = await generateCheckInPdf({
-    branchName: branch?.name ?? "Burj Al Aweer",
+    branchName: branch?.name ?? "Workforce ERP",
     branchAddress: branch?.address ?? null,
     campName: visible[0].camp.name,
     campType: CAMP_TYPE_LABEL[visible[0].camp.ownerType] ?? visible[0].camp.ownerType,

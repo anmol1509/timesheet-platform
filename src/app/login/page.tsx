@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
-// The root layout's title template already appends "• Burj Al Aweer ERP",
+// The root layout's title template already appends "• Workforce ERP",
 // so this must carry the page name only.
 export const metadata = {
   title: "Login",
@@ -59,8 +59,8 @@ export default async function LoginPage() {
       <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
         <div className="hidden items-center px-12 pt-12 lg:flex lg:px-20 lg:pt-14">
           <Image
-            src="/brand/burj-al-aweer-mark.svg"
-            alt="Burj Al Aweer"
+            src="/brand/mark.svg"
+            alt="Workforce ERP"
             width={36}
             height={28}
             preload
@@ -71,8 +71,8 @@ export default async function LoginPage() {
           <div className="w-full max-w-sm">
             <div className="mb-10 flex items-center gap-3 lg:hidden">
               <Image
-                src="/brand/burj-al-aweer-mark.svg"
-                alt="Burj Al Aweer"
+                src="/brand/mark.svg"
+                alt="Workforce ERP"
                 width={36}
                 height={28}
                 preload

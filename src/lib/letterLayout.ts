@@ -20,9 +20,9 @@ export const LETTER_MERGE_FIELDS: MergeField[] = [
   { key: "CLIENTNAME", label: "Client name", example: "WADE ADAMS CONTRACTING LLC" },
   { key: "CLIENTADDRESS", label: "Client address", example: "Business Bay — Dubai" },
   { key: "PROJECTNAME", label: "Project name", example: "R1117/1 Improvement Of Al Mustaqbal Road" },
-  { key: "COMPANYNAME", label: "Issuing company", example: "BURJ AL AWEER CONCRETE CARPENTER CONT" },
+  { key: "COMPANYNAME", label: "Issuing company", example: "ACME CONCRETE CARPENTER CONT" },
   // Kept for templates written before the issuing company had its own field.
-  { key: "SPONSORSHIPCOMPANYNAME", label: "Issuing company (older name for it)", example: "BURJ AL AWEER CONCRETE CARPENTER CONT" },
+  { key: "SPONSORSHIPCOMPANYNAME", label: "Issuing company (older name for it)", example: "ACME CONCRETE CARPENTER CONT" },
   { key: "BRANCHNAME", label: "Branch", example: "Dubai" },
   { key: "DOCNO", label: "Document number", example: "417" },
   { key: "MOBILIZEDATE", label: "Mobilisation date", example: "27-07-2026" },

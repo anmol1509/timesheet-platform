@@ -182,7 +182,7 @@ async function main() {
   for (let i = 0; i < 2; i++) {
     const r = await prisma.route.create({ data: { name: `${["Morning", "Evening"][i]} run — ${projects[i].name}`, vehicleId: vehicles[i].id, projectId: projects[i].id } });
     track("route", r.id);
-    for (const [order, loc, time] of [[1, "Al Quoz Camp", "05:30"], [2, "Al Aweer Camp", "05:50"], [3, projects[i].name, "06:30"]] as const) {
+    for (const [order, loc, time] of [[1, "Camp B — Sonapur", "05:30"], [2, "Camp A — Al Quoz", "05:50"], [3, projects[i].name, "06:30"]] as const) {
       const st = await prisma.routeStop.create({ data: { routeId: r.id, location: loc, stopOrder: order, pickupTime: time } });
       track("routeStop", st.id);
     }
@@ -220,7 +220,7 @@ async function main() {
 
   // ---------- camps: rooms, beds, check-ins
   const campIds: { id: string; beds: string[] }[] = [];
-  for (const cname of ["Al Aweer Camp A", "Al Quoz Camp B"]) {
+  for (const cname of ["Camp A — Al Quoz", "Camp B — Sonapur"]) {
     const camp = await prisma.camp.create({ data: { name: cname, ownerType: "OWN" } });
     track("camp", camp.id);
     const beds: string[] = [];

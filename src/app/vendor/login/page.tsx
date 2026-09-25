@@ -13,7 +13,7 @@ export default async function VendorLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="card w-full max-w-sm space-y-6 p-6 sm:p-8">
         <div>
-          <p className="text-xs font-semibold tracking-wide text-muted uppercase">Burj Al Aweer</p>
+          <p className="text-xs font-semibold tracking-wide text-muted uppercase">Workforce ERP</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-primary">Supplier sign in</h1>
           <p className="mt-2 text-sm text-muted">See your workers, their timesheets and what we owe you. We&apos;ll text a code to the phone number we have on file for your company.</p>
         </div>

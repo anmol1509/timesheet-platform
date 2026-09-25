@@ -23,7 +23,7 @@ export function LettersSection(p: Props) {
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Signatory name</span>
-            <input name="signatoryName" defaultValue={p.signatoryName} placeholder="e.g. Mohammed Al Aweer" className="input w-full" />
+            <input name="signatoryName" defaultValue={p.signatoryName} placeholder="e.g. Ahmed Al Mansoori" className="input w-full" />
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Signatory title</span>
