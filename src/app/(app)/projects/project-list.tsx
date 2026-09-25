@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import type { BadgeColor } from "@/components/Badge";
+import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { deleteProjectAction } from "./actions";
@@ -16,9 +17,23 @@ type ProjectRow = {
   clientName: string;
   address: string | null;
   manager: string | null;
+  managerPhone: string | null;
+  managerEmail: string | null;
+  coordinator: string | null;
+  coordinatorPhone: string | null;
+  salesExecutive: string | null;
+  salesExecutivePhone: string | null;
   timelineStart: string | null;
   timelineEnd: string | null;
   status: string;
+  deployed: number;
+  required: number | null;
+  sites: number;
+  openDemands: number;
+  lpoCount: number;
+  lpoValue: number;
+  lpoBilled: number;
+  daysLeft: number | null;
 };
 
 const STATUS_COLOR: Record<string, BadgeColor> = {
@@ -81,8 +96,106 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       header: "Project Manager",
       sortValue: (p) => p.manager,
       searchValue: (p) => p.manager,
-      csvValue: (p) => p.manager,
-      render: (p) => p.manager || <span className="text-subtle">—</span>,
+      csvValue: (p) => `${p.manager ?? ""} ${p.managerPhone ?? ""}`.trim(),
+      render: (p) =>
+        p.manager ? (
+          <div className="flex flex-col text-sm" onClick={(e) => e.stopPropagation()}>
+            <span className="text-primary">{p.manager}</span>
+            {p.managerPhone && (
+              <a href={`tel:${p.managerPhone}`} className="tabular text-xs text-muted hover:text-[var(--brand-primary)] hover:underline">
+                {p.managerPhone}
+              </a>
+            )}
+            {p.managerEmail && (
+              <a href={`mailto:${p.managerEmail}`} className="max-w-[180px] truncate text-xs text-muted hover:text-[var(--brand-primary)] hover:underline">
+                {p.managerEmail}
+              </a>
+            )}
+          </div>
+        ) : (
+          <span className="text-subtle">—</span>
+        ),
+    },
+    {
+      key: "coordinator",
+      header: "Coordinator",
+      defaultHidden: true,
+      sortValue: (p) => p.coordinator,
+      searchValue: (p) => p.coordinator,
+      csvValue: (p) => `${p.coordinator ?? ""} ${p.coordinatorPhone ?? ""}`.trim(),
+      render: (p) =>
+        p.coordinator ? (
+          <div className="flex flex-col text-sm">
+            <span className="text-primary">{p.coordinator}</span>
+            {p.coordinatorPhone && <a href={`tel:${p.coordinatorPhone}`} className="tabular text-xs text-muted hover:underline">{p.coordinatorPhone}</a>}
+          </div>
+        ) : (
+          <span className="text-subtle">—</span>
+        ),
+    },
+    {
+      key: "salesExecutive",
+      header: "Sales executive",
+      defaultHidden: true,
+      sortValue: (p) => p.salesExecutive,
+      searchValue: (p) => p.salesExecutive,
+      csvValue: (p) => `${p.salesExecutive ?? ""} ${p.salesExecutivePhone ?? ""}`.trim(),
+      render: (p) =>
+        p.salesExecutive ? (
+          <div className="flex flex-col text-sm">
+            <span className="text-primary">{p.salesExecutive}</span>
+            {p.salesExecutivePhone && <a href={`tel:${p.salesExecutivePhone}`} className="tabular text-xs text-muted hover:underline">{p.salesExecutivePhone}</a>}
+          </div>
+        ) : (
+          <span className="text-subtle">—</span>
+        ),
+    },
+    {
+      key: "workforce",
+      header: "Workforce",
+      sortValue: (p) => p.deployed,
+      csvValue: (p) => (p.required ? `${p.deployed}/${p.required}` : String(p.deployed)),
+      render: (p) =>
+        p.required ? (
+          <ProgressBar value={p.deployed} total={p.required} label={`${p.deployed} of ${p.required}`} />
+        ) : (
+          <span className="tabular text-secondary">{p.deployed} deployed</span>
+        ),
+    },
+    {
+      key: "demand",
+      header: "Open demand",
+      sortValue: (p) => p.openDemands,
+      csvValue: (p) => p.openDemands,
+      render: (p) =>
+        p.openDemands > 0 ? <Badge color="amber">{p.openDemands} open</Badge> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "lpo",
+      header: "LPO billed",
+      sortValue: (p) => p.lpoBilled,
+      csvValue: (p) => (p.lpoCount ? `${p.lpoBilled}/${p.lpoValue}` : ""),
+      render: (p) =>
+        p.lpoCount === 0 ? (
+          <span className="text-subtle">No active LPO</span>
+        ) : p.lpoValue > 0 ? (
+          <div className="flex flex-col gap-0.5">
+            <ProgressBar value={p.lpoBilled} total={p.lpoValue} label={`${Math.round((p.lpoBilled / p.lpoValue) * 100)}%`} />
+            <span className="tabular text-xs text-muted">
+              {Math.round(p.lpoBilled).toLocaleString()} / {Math.round(p.lpoValue).toLocaleString()} AED
+            </span>
+          </div>
+        ) : (
+          <span className="text-secondary">{p.lpoCount} active</span>
+        ),
+    },
+    {
+      key: "sites",
+      header: "Sites",
+      defaultHidden: true,
+      sortValue: (p) => p.sites,
+      csvValue: (p) => p.sites,
+      render: (p) => <span className="tabular text-secondary">{p.sites || "—"}</span>,
     },
     {
       key: "timeline",
@@ -90,9 +203,16 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       sortValue: (p) => p.timelineStart,
       csvValue: (p) => `${fmtDate(p.timelineStart)} – ${fmtDate(p.timelineEnd)}`,
       render: (p) => (
-        <span className="tabular text-muted">
-          {fmtDate(p.timelineStart)} – {fmtDate(p.timelineEnd)}
-        </span>
+        <div className="flex flex-col">
+          <span className="tabular text-muted">
+            {fmtDate(p.timelineStart)} – {fmtDate(p.timelineEnd)}
+          </span>
+          {p.daysLeft !== null && p.status !== "COMPLETED" && (
+            <span className={`text-xs ${p.daysLeft < 0 ? "font-medium text-[var(--error)]" : p.daysLeft <= 30 ? "font-medium text-[var(--warning)]" : "text-muted"}`}>
+              {p.daysLeft < 0 ? `Overdue by ${-p.daysLeft}d` : `${p.daysLeft}d left`}
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -101,7 +221,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       sortValue: (p) => p.status,
       csvValue: (p) => p.status,
       render: (p) => (
-        <Badge color={STATUS_COLOR[p.status] || "slate"}>
+        <Badge color={STATUS_COLOR[p.status] || "slate"} dot>
           {p.status.replace("_", " ").toLowerCase()}
         </Badge>
       ),

@@ -38,7 +38,10 @@ export default async function AppLayout({
   const [alertsResult, branchesResult, inboxResult, unreadResult] = await Promise.allSettled([
     getComplianceAlerts(branchId),
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
-    prisma.branch.findMany({ orderBy: { code: "asc" } }),
+    prisma.branch.findMany({
+      orderBy: { code: "asc" },
+      select: { id: true, code: true, name: true, isActive: true, logoId: true },
+    }),
     prisma.notification.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },

@@ -15,6 +15,11 @@ const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   Converted: "green",
 };
 
+const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+function ageInDays(d: Date) {
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
+}
+
 export default async function EnquiriesPage({
   searchParams,
 }: {
@@ -24,7 +29,7 @@ export default async function EnquiriesPage({
   const { branchId } = await requireUserWithBranch();
   const enquiries = await prisma.enquiry.findMany({
     where: branchWhere(branchId),
-    include: { client: true, quotations: { select: { id: true } } },
+    include: { client: true, quotations: { select: { id: true, quotationNumber: true, status: true } } },
     orderBy: { enquiryNo: "desc" },
   });
 
@@ -67,21 +72,55 @@ export default async function EnquiriesPage({
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
-                <th className="px-4 py-3">Enquiry No</th>
-                <th className="px-4 py-3">Client</th>
+                <th className="px-4 py-3">Enquiry</th>
+                <th className="px-4 py-3">Client / project</th>
                 <th className="px-4 py-3">Trade</th>
+                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Quotations</th>
+                <th className="px-4 py-3">Age</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
               {enquiries.map((e) => (
-                <tr key={e.id}>
-                  <td className="px-4 py-3 font-medium text-primary">ENQ-{e.enquiryNo}</td>
-                  <td className="px-4 py-3 text-secondary">{e.client.name}</td>
-                  <td className="px-4 py-3 text-secondary">{e.requiredTrade || "—"}</td>
+                <tr key={e.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
-                    <Badge color={STATUS_COLOR[e.status] ?? "slate"}>{e.status}</Badge>
+                    <div className="font-medium text-primary">ENQ-{e.enquiryNo}</div>
+                    <div className="text-xs text-muted">{fmtDate(e.createdAt)}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-secondary">{e.client.name}</div>
+                    {e.projectHint && <div className="text-xs text-muted">{e.projectHint}</div>}
+                  </td>
+                  <td className="px-4 py-3 text-secondary">
+                    {e.requiredTrade || "—"}
+                    {e.remarks && <div className="max-w-[240px] truncate text-xs text-muted" title={e.remarks}>{e.remarks}</div>}
+                  </td>
+                  <td className="px-4 py-3 text-secondary">{e.source || "—"}</td>
+                  <td className="px-4 py-3">
+                    {e.quotations.length === 0 ? (
+                      <span className="text-muted">None yet</span>
+                    ) : (
+                      <div className="flex flex-col gap-0.5 text-xs">
+                        {e.quotations.slice(0, 2).map((q) => (
+                          <Link key={q.id} href={`/sales/quotations/${q.id}`} className="text-primary hover:underline">
+                            {q.quotationNumber} <span className="text-muted">· {q.status.toLowerCase()}</span>
+                          </Link>
+                        ))}
+                        {e.quotations.length > 2 && <span className="text-muted">+{e.quotations.length - 2} more</span>}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const d = ageInDays(e.createdAt);
+                      const stale = e.status === "Open" && d >= 7;
+                      return <span className={`tabular text-sm ${stale ? "font-medium text-[var(--warning)]" : "text-secondary"}`}>{d === 0 ? "Today" : `${d}d`}</span>;
+                    })()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge color={STATUS_COLOR[e.status] ?? "slate"} dot>{e.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
@@ -90,11 +129,6 @@ export default async function EnquiriesPage({
                     >
                       Create Quotation →
                     </Link>
-                    {e.quotations.length > 0 && (
-                      <span className="ml-2 text-xs text-subtle">
-                        ({e.quotations.length} quote{e.quotations.length > 1 ? "s" : ""})
-                      </span>
-                    )}
                     <span className="ml-3 inline-block">
                       <DeleteButton
                         action={deleteEnquiryAction}

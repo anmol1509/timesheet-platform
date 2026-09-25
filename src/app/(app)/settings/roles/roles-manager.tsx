@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
@@ -17,6 +18,7 @@ type Role = {
   branchId: string | null;
   branchLabel: string;
   userCount: number;
+  members: string[];
   editable: boolean;
 };
 
@@ -65,6 +67,15 @@ export function RolesManager({ roles, branches, isSuperAdmin }: { roles: Role[];
                   )}
                 </div>
                 {r.description && <p className="mt-2 text-xs text-secondary">{r.description}</p>}
+                {r.members.length > 0 && (
+                  <p className="mt-2 text-xs text-muted">
+                    Assigned to{" "}
+                    <Link href="/settings/team" className="text-secondary hover:text-primary hover:underline">
+                      {r.members.slice(0, 4).join(", ")}
+                      {r.members.length > 4 ? ` +${r.members.length - 4} more` : ""}
+                    </Link>
+                  </p>
+                )}
                 <ul className="mt-3 space-y-1 text-xs">
                   {viewable.map((m) => (
                     <li key={m.key} className="flex flex-wrap gap-x-2">

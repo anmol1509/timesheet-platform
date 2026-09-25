@@ -359,7 +359,7 @@ export async function parseConsolidatedWorkbook(
     const dayCols: { col: number; date: Date | null; label: string }[] = [];
     for (let c = dayStart; c <= dayEnd; c++) {
       const date = hasDateRow ? cellDate(dateRow.getCell(c)) : null;
-      let label = date ? WEEKDAY_ABBR[date.getUTCDay()] : cellText(headerRow.getCell(c));
+      const label = date ? WEEKDAY_ABBR[date.getUTCDay()] : cellText(headerRow.getCell(c));
       if (!label && !date) continue;
       dayCols.push({ col: c, date, label: label || "" });
     }

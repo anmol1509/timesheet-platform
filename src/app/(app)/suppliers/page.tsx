@@ -2,12 +2,27 @@ import Link from "next/link";
 import { Truck } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
+import { billTotals } from "@/lib/payables";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { createSupplierAction } from "./actions";
 import { SupplierList } from "./supplier-list";
+
+function outstanding(bills: { amount: unknown; vatAmount: unknown; dueDate: Date; payments: { amount: unknown }[] }[]) {
+  const today = new Date();
+  let balance = 0;
+  let overdue = 0;
+  for (const b of bills) {
+    const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) })));
+    if (t.balance > 0) {
+      balance += t.balance;
+      if (b.dueDate.getTime() < today.getTime()) overdue += t.balance;
+    }
+  }
+  return { billBalance: balance, billOverdue: overdue };
+}
 
 export default async function SuppliersPage({
   searchParams,
@@ -41,6 +56,14 @@ export default async function SuppliersPage({
       contactPhone: true,
       status: true,
       tradeLicenseExpiry: true,
+      category: true,
+      approvalStatus: true,
+      labourApprovalStatus: true,
+      invoiceApprovalStatus: true,
+      bills: {
+        where: { approvalStatus: { not: "REJECTED" } },
+        select: { amount: true, vatAmount: true, dueDate: true, payments: { select: { amount: true } } },
+      },
       branchId: true,
       isOwnCompany: true,
       parent: { select: { name: true } },
@@ -65,6 +88,10 @@ export default async function SuppliersPage({
     employeeCount: s._count.employees,
     entryCount: s._count.entries,
     licenseStatus: complianceStatus(s.tradeLicenseExpiry),
+    licenseExpiry: s.tradeLicenseExpiry ? s.tradeLicenseExpiry.toISOString() : null,
+    category: s.category,
+    approvals: { project: s.approvalStatus, labour: s.labourApprovalStatus, invoicing: s.invoiceApprovalStatus },
+    ...outstanding(s.bills),
   }));
 
   return (

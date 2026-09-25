@@ -27,6 +27,36 @@ function stringOrNull(value: FormDataEntryValue | null) {
   return s || null;
 }
 
+// A named person on a project needs a reachable phone number. Anything without
+// a name is stored blank, so clearing the name clears the contact too.
+const PEOPLE = [
+  { key: "manager", label: "Project manager" },
+  { key: "projectCoordinator", label: "Project coordinator" },
+  { key: "salesExecutive", label: "Sales executive" },
+] as const;
+
+type PeopleResult = { error: string; data?: undefined } | { error?: undefined; data: Record<string, string | null> };
+
+function readPeople(formData: FormData, keys: readonly string[]): PeopleResult {
+  const data: Record<string, string | null> = {};
+  for (const p of PEOPLE) {
+    if (!keys.includes(p.key)) continue;
+    const name = stringOrNull(formData.get(p.key));
+    const phone = name ? stringOrNull(formData.get(`${p.key}Phone`)) : null;
+    const email = name ? stringOrNull(formData.get(`${p.key}Email`)) : null;
+    if (name && (!phone || phone.replace(/\D/g, "").length < 7)) {
+      return { error: `Add a phone number for the ${p.label.toLowerCase()}.` };
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      return { error: `The ${p.label.toLowerCase()}'s email address isn't valid.` };
+    }
+    data[p.key] = name;
+    data[`${p.key}Phone`] = phone;
+    data[`${p.key}Email`] = email;
+  }
+  return { data };
+}
+
 function numberOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
   if (!s) return null;
@@ -62,13 +92,16 @@ export async function createProjectAction(
     };
   }
 
+  const people = readPeople(formData, ["manager"]);
+  if (people.error) return { error: people.error };
+
   const data = {
     code: await nextProjectCode(),
     name,
     clientId,
     branchId,
     description: stringOrNull(formData.get("description")),
-    manager: stringOrNull(formData.get("manager")),
+    ...people.data,
     timelineStart: dateOrNull(formData.get("timelineStart")),
     timelineEnd: dateOrNull(formData.get("timelineEnd")),
     status: String(formData.get("status") || "PLANNING"),
@@ -94,11 +127,14 @@ export async function createProjectAction(
 // `update` with only that tab's fields) so submitting one tab's form never
 // touches — and can't accidentally null out — fields that live on another
 // tab's form.
-export async function updateProjectAction(formData: FormData) {
+export async function updateProjectAction(formData: FormData): Promise<{ error?: string } | void> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("projectId") || "");
   if (!id) return;
   if (!(await assertProjectInBranch(id, branchId, isSuperAdmin))) return;
+
+  const people = readPeople(formData, ["manager", "projectCoordinator", "salesExecutive"]);
+  if (people.error) return { error: people.error };
 
   const name = stringOrNull(formData.get("name"));
 
@@ -107,8 +143,7 @@ export async function updateProjectAction(formData: FormData) {
   const data = {
     ...(name ? { name } : {}),
     clientId: String(formData.get("clientId") || ""),
-    manager: stringOrNull(formData.get("manager")),
-    projectCoordinator: stringOrNull(formData.get("projectCoordinator")),
+    ...people.data,
     timelineStart: dateOrNull(formData.get("timelineStart")),
     timelineEnd: dateOrNull(formData.get("timelineEnd")),
     status: String(formData.get("status") || "PLANNING"),
@@ -117,7 +152,6 @@ export async function updateProjectAction(formData: FormData) {
     mainContractor: stringOrNull(formData.get("mainContractor")),
     paymentType: stringOrNull(formData.get("paymentType")),
     sponsorshipCompany: stringOrNull(formData.get("sponsorshipCompany")),
-    salesExecutive: stringOrNull(formData.get("salesExecutive")),
     contactNo: stringOrNull(formData.get("contactNo")),
     timesheetCollectionDate: dateOrNull(formData.get("timesheetCollectionDate")),
     noOfEmployeesRequired: formData.get("noOfEmployeesRequired")

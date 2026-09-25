@@ -6,11 +6,21 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { DemandRequestList } from "./demand-request-list";
 
+function ageInDays(d: Date) {
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
+}
+
 export default async function DemandRequestsPage() {
   const { branchId } = await requireUserWithBranch();
   const requests = await prisma.demandRequest.findMany({
     where: branchWhere(branchId),
-    include: { client: true, project: true },
+    include: {
+      client: true,
+      project: true,
+      trades: { select: { trade: true, quantity: true, approvedQuantity: true, _count: { select: { allocations: true } } } },
+      supplierOffers: { select: { status: true } },
+      _count: { select: { nocs: true } },
+    },
     orderBy: { requestNo: "desc" },
   });
 
@@ -48,6 +58,20 @@ export default async function DemandRequestsPage() {
             clientName: r.client.name,
             projectName: r.project.name,
             status: r.status,
+            requestType: r.requestType,
+            priority: r.priority,
+            createdAt: r.createdAt.toISOString(),
+            ageDays: ageInDays(r.createdAt),
+            trades: r.trades.map((t) => ({ trade: t.trade, quantity: t.quantity })),
+            requested: r.trades.reduce((n, t) => n + t.quantity, 0),
+            approved: r.trades.some((t) => t.approvedQuantity !== null)
+              ? r.trades.reduce((n, t) => n + (t.approvedQuantity ?? 0), 0)
+              : null,
+            allocated: r.trades.reduce((n, t) => n + t._count.allocations, 0),
+            offersSent: r.supplierOffers.length,
+            offersAccepted: r.supplierOffers.filter((o) => o.status === "ACCEPTED").length,
+            offersDeclined: r.supplierOffers.filter((o) => o.status === "DECLINED").length,
+            nocs: r._count.nocs,
           }))}
         />
       )}

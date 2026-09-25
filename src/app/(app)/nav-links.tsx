@@ -257,7 +257,6 @@ function adminGroup(isSuperAdmin: boolean): Entry {
     children: [
       { href: "/settings/company", label: "Company Profile", icon: Building },
       { href: "/settings/team", label: "Team & Access", icon: UserCog },
-      { href: "/settings/roles", label: "Roles & Permissions", icon: ShieldCheck },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },
       { href: "/audit-log", label: "Audit Log", icon: History },

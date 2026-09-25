@@ -882,7 +882,13 @@ model Project {
   paymentType             String?
   sponsorshipCompany      String?
   salesExecutive          String?
+  salesExecutivePhone     String?
+  salesExecutiveEmail     String?
   projectCoordinator      String?
+  projectCoordinatorPhone String?
+  projectCoordinatorEmail String?
+  managerPhone            String?
+  managerEmail            String?
   contactNo               String?
   timesheetCollectionDate DateTime?
   noOfEmployeesRequired   Int?

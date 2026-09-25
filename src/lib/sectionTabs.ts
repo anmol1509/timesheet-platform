@@ -14,6 +14,11 @@ export type SectionTab = {
 const under = (base: string) => (p: string) => p === base || p.startsWith(base + "/");
 
 export const SECTION_TABS: SectionTab[][] = [
+  // Who can sign in, and what each person may open and do
+  [
+    { href: "/settings/team", label: "Team", match: under("/settings/team") },
+    { href: "/settings/roles", label: "Roles & permissions", match: under("/settings/roles") },
+  ],
   // What suppliers send us through their portal
   [
     { href: "/suppliers/tickets", label: "Messages", match: under("/suppliers/tickets") },

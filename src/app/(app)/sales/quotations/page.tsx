@@ -18,6 +18,12 @@ const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   CONVERTED: "green",
 };
 
+function daysBetween(a: Date, b: Date) {
+  return Math.ceil((a.getTime() - b.getTime()) / 86_400_000);
+}
+const fmtDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const OPEN_STATES = ["DRAFT", "SENT", "NEGOTIATION"];
+
 export default async function QuotationsPage({
   searchParams,
 }: {
@@ -25,9 +31,10 @@ export default async function QuotationsPage({
 }) {
   const { error } = await searchParams;
   const { branchId } = await requireUserWithBranch();
+  const now = new Date();
   const quotations = await prisma.quotation.findMany({
     where: branchWhere(branchId),
-    include: { client: true, lines: true },
+    include: { client: true, lines: true, enquiry: { select: { enquiryNo: true } }, project: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -70,25 +77,67 @@ export default async function QuotationsPage({
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
               <tr>
-                <th className="px-4 py-3">Quotation No</th>
+                <th className="px-4 py-3">Quotation</th>
                 <th className="px-4 py-3">Client</th>
-                <th className="px-4 py-3">Lines</th>
+                <th className="px-4 py-3">Trades</th>
+                <th className="px-4 py-3 text-right">Headcount</th>
+                <th className="px-4 py-3 text-right">Rate / hr (AED)</th>
+                <th className="px-4 py-3">Valid until</th>
+                <th className="px-4 py-3">Linked to</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {quotations.map((q) => (
-                <tr key={q.id}>
-                  <td className="px-4 py-3 font-medium text-primary">
-                    <Link href={`/sales/quotations/${q.id}`} className="hover:underline">
+              {quotations.map((q) => {
+                const headcount = q.lines.reduce((n, l) => n + l.quantity, 0);
+                const rates = q.lines.map((l) => l.rate);
+                const lo = rates.length ? Math.min(...rates) : 0;
+                const hi = rates.length ? Math.max(...rates) : 0;
+                const left = q.validUntil ? daysBetween(q.validUntil, now) : null;
+                const open = OPEN_STATES.includes(q.status);
+                return (
+                <tr key={q.id} className="hover:bg-surface-hover">
+                  <td className="px-4 py-3">
+                    <Link href={`/sales/quotations/${q.id}`} className="font-medium text-primary hover:underline">
                       {q.quotationNumber}
                     </Link>
+                    <div className="text-xs text-muted">{fmtDate(q.createdAt)}</div>
                   </td>
                   <td className="px-4 py-3 text-secondary">{q.client.name}</td>
-                  <td className="px-4 py-3 text-secondary">{q.lines.length}</td>
+                  <td className="px-4 py-3 text-secondary">
+                    {q.lines.slice(0, 2).map((l) => (
+                      <div key={l.id}>
+                        <span className="tabular font-medium text-primary">{l.quantity}</span> {l.trade}
+                      </div>
+                    ))}
+                    {q.lines.length > 2 && <div className="text-xs text-muted">+{q.lines.length - 2} more</div>}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular font-medium text-primary">{headcount}</td>
+                  <td className="px-4 py-3 text-right tabular text-secondary">
+                    {rates.length === 0 ? "—" : lo === hi ? lo.toFixed(2) : `${lo.toFixed(2)} – ${hi.toFixed(2)}`}
+                  </td>
                   <td className="px-4 py-3">
-                    <Badge color={STATUS_COLOR[q.status] ?? "slate"}>{q.status}</Badge>
+                    {q.validUntil ? (
+                      <>
+                        <div className="text-secondary">{fmtDate(q.validUntil)}</div>
+                        {open && left !== null && (
+                          <div className={`text-xs ${left < 0 ? "font-medium text-[var(--error)]" : left <= 7 ? "font-medium text-[var(--warning)]" : "text-muted"}`}>
+                            {left < 0 ? `Expired ${-left}d ago` : left === 0 ? "Expires today" : `${left}d left`}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-secondary">
+                    {q.enquiry && <div>ENQ-{q.enquiry.enquiryNo}</div>}
+                    {q.project && <div className="text-[var(--success)]">Project: {q.project.name}</div>}
+                    {!q.enquiry && !q.project && <span className="text-muted">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge color={STATUS_COLOR[q.status] ?? "slate"} dot>{q.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <DeleteButton
@@ -98,7 +147,8 @@ export default async function QuotationsPage({
                     />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

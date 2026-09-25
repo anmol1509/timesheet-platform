@@ -7,6 +7,10 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ProjectList } from "./project-list";
 
+function daysUntil(d: Date | null) {
+  return d ? Math.ceil((d.getTime() - Date.now()) / 86_400_000) : null;
+}
+
 export default async function ProjectsPage({
   searchParams,
 }: {
@@ -16,7 +20,12 @@ export default async function ProjectsPage({
   const { branchId } = await requireUserWithBranch();
   const projects = await prisma.project.findMany({
     where: branchWhere(branchId),
-    include: { client: true },
+    include: {
+      client: true,
+      _count: { select: { employees: true, sites: true } },
+      demandRequests: { where: { status: "Open" }, select: { id: true } },
+      lpos: { where: { status: "ACTIVE" }, select: { value: true, billedAmount: true } },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -28,9 +37,23 @@ export default async function ProjectsPage({
     clientName: p.client.name,
     address: p.address,
     manager: p.manager,
+    managerPhone: p.managerPhone,
+    managerEmail: p.managerEmail,
+    coordinator: p.projectCoordinator,
+    coordinatorPhone: p.projectCoordinatorPhone,
+    salesExecutive: p.salesExecutive,
+    salesExecutivePhone: p.salesExecutivePhone,
     timelineStart: p.timelineStart ? p.timelineStart.toISOString() : null,
     timelineEnd: p.timelineEnd ? p.timelineEnd.toISOString() : null,
     status: p.status,
+    deployed: p._count.employees,
+    required: p.noOfEmployeesRequired,
+    sites: p._count.sites,
+    openDemands: p.demandRequests.length,
+    lpoCount: p.lpos.length,
+    lpoValue: p.lpos.reduce((n, l) => n + (l.value ?? 0), 0),
+    lpoBilled: p.lpos.reduce((n, l) => n + l.billedAmount, 0),
+    daysLeft: daysUntil(p.timelineEnd),
   }));
 
   return (

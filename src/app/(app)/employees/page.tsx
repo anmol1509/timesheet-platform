@@ -3,7 +3,7 @@ import { UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
-import { complianceStatus } from "@/lib/compliance";
+import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
@@ -30,6 +30,12 @@ export default async function EmployeesPage({
         supplier: { include: { parent: { select: { name: true } } } },
         project: { select: { name: true } },
         documents: { select: { type: true } },
+        campCheckIns: {
+          where: { status: { not: "CHECKED_OUT" } },
+          orderBy: { checkInDate: "desc" },
+          take: 1,
+          select: { camp: { select: { name: true } }, bed: { select: { label: true, room: { select: { name: true } } } } },
+        },
       },
       orderBy: { name: "asc" },
     }),
@@ -45,13 +51,16 @@ export default async function EmployeesPage({
   ]);
 
   const rows = employees.map((e) => {
-    const statuses = [
-      complianceStatus(e.visaExpiry),
-      complianceStatus(e.laborCardExpiry),
-      complianceStatus(e.medicalExpiry),
-      complianceStatus(e.passportExpiry),
-      complianceStatus(e.emiratesIdExpiry),
+    const docs: [string, Date | null][] = [
+      ["Visa", e.visaExpiry],
+      ["Labour card", e.laborCardExpiry],
+      ["Medical", e.medicalExpiry],
+      ["Passport", e.passportExpiry],
+      ["Emirates ID", e.emiratesIdExpiry],
     ];
+    const dated = docs.filter((d): d is [string, Date] => d[1] !== null).sort((a, b) => a[1].getTime() - b[1].getTime());
+    const nextExpiry = dated[0] ? { doc: dated[0][0], days: daysUntil(dated[0][1]) } : null;
+    const statuses = docs.map(([, d]) => complianceStatus(d));
     const worstStatus = statuses.sort(
       (a, b) => STATUS_RANK[a] - STATUS_RANK[b]
     )[0];
@@ -69,6 +78,10 @@ export default async function EmployeesPage({
       onWork: e.active && e.project != null,
       status: e.status,
       worstStatus,
+      projectName: e.project?.name ?? null,
+      campName: e.campCheckIns[0]?.camp.name ?? null,
+      bedLabel: e.campCheckIns[0]?.bed ? `${e.campCheckIns[0].bed.room.name} · ${e.campCheckIns[0].bed.label}` : null,
+      nextExpiry,
       complete: isEmployeeComplete(e),
     };
   });

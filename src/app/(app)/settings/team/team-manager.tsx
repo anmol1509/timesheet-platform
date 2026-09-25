@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { KeyRound, Pencil, Plus, UserCheck, UserX } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
@@ -234,7 +235,13 @@ export function TeamManager({
                 <td className="px-4 py-3 text-secondary">
                   <p>{ROLE_LABELS[u.role]}</p>
                   {u.role === "STAFF" && (
-                    <p className="text-xs text-muted">{u.accessRoleName ?? "No restriction"}</p>
+                    <p className="text-xs text-muted">
+                      {u.accessRoleName ? (
+                        <Link href="/settings/roles" className="hover:text-primary hover:underline">{u.accessRoleName}</Link>
+                      ) : (
+                        "No restriction"
+                      )}
+                    </p>
                   )}
                 </td>
                 {isSuperAdmin && <td className="px-4 py-3 text-secondary">{u.branchCode ?? "All"}</td>}
