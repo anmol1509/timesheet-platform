@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { LoginForm } from "./login-form";
@@ -57,28 +56,8 @@ export default async function LoginPage() {
           earlier curved edge was built from a separate header strip plus a
           rounded body, which left a visible notch beside the logo.) */}
       <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
-        <div className="hidden items-center px-12 pt-12 lg:flex lg:px-20 lg:pt-14">
-          <Image
-            src="/brand/mark.svg"
-            alt="Workforce ERP"
-            width={36}
-            height={28}
-            preload
-          />
-        </div>
-
         <div className="relative flex flex-1 items-center justify-center p-6 sm:p-10 lg:px-20 lg:py-10">
           <div className="w-full max-w-sm">
-            <div className="mb-10 flex items-center gap-3 lg:hidden">
-              <Image
-                src="/brand/mark.svg"
-                alt="Workforce ERP"
-                width={36}
-                height={28}
-                preload
-              />
-            </div>
-
             <h1 className="text-2xl font-semibold tracking-tight text-primary">
               Sign in
             </h1>
