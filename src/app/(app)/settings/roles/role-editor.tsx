@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { PermissionMatrix } from "@/components/settings/PermissionMatrix";
 import { Select } from "@/components/ui/Select";
-import { ACTIONS, ACTION_LABELS, MODULES, ROLE_PRESETS, permissionKey } from "@/lib/permissions";
+import { ROLE_PRESETS } from "@/lib/permissions";
 import { saveRoleAction } from "./actions";
 
 type Branch = { id: string; code: string; name: string };
@@ -33,33 +33,6 @@ export function RoleEditor({
   const [perms, setPerms] = useState<Set<string>>(new Set(role?.permissions ?? []));
   const [name, setName] = useState(role?.name ?? "");
   const [description, setDescription] = useState(role?.description ?? "");
-
-  function toggle(module: string, act: string, on: boolean) {
-    setPerms((prev) => {
-      const next = new Set(prev);
-      const key = permissionKey(module, act as never);
-      if (on) {
-        next.add(key);
-        if (act !== "view") next.add(permissionKey(module, "view"));
-      } else {
-        next.delete(key);
-        if (act === "view") for (const a of ACTIONS) next.delete(permissionKey(module, a));
-      }
-      return next;
-    });
-  }
-
-  function toggleRow(module: string, actions: readonly string[], on: boolean) {
-    setPerms((prev) => {
-      const next = new Set(prev);
-      for (const a of actions) {
-        const key = permissionKey(module, a as never);
-        if (on) next.add(key);
-        else next.delete(key);
-      }
-      return next;
-    });
-  }
 
   function applyPreset(presetName: string) {
     const preset = ROLE_PRESETS.find((p) => p.name === presetName);
@@ -109,54 +82,7 @@ export function RoleEditor({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-default">
-        <table className="w-full text-sm">
-          <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
-            <tr>
-              <th className="px-3 py-2.5">Module</th>
-              {ACTIONS.map((a) => (
-                <th key={a} className="px-2 py-2.5 text-center">{ACTION_LABELS[a]}</th>
-              ))}
-              <th className="px-2 py-2.5 text-center">All</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {MODULES.map((m) => {
-              const all = m.actions.every((a) => perms.has(permissionKey(m.key, a)));
-              const some = m.actions.some((a) => perms.has(permissionKey(m.key, a)));
-              return (
-                <tr key={m.key}>
-                  <td className="px-3 py-2.5">
-                    <p className="font-medium text-primary">{m.label}</p>
-                    <p className="text-xs text-muted">{m.description}</p>
-                  </td>
-                  {ACTIONS.map((a) => (
-                    <td key={a} className="px-2 py-2.5 text-center">
-                      {m.actions.includes(a) ? (
-                        <Checkbox
-                          checked={perms.has(permissionKey(m.key, a))}
-                          onCheckedChange={(c) => toggle(m.key, a, c)}
-                          ariaLabel={`${m.label}: ${ACTION_LABELS[a]}`}
-                        />
-                      ) : (
-                        <span className="text-subtle" aria-hidden>—</span>
-                      )}
-                    </td>
-                  ))}
-                  <td className="px-2 py-2.5 text-center">
-                    <Checkbox
-                      checked={all}
-                      indeterminate={some && !all}
-                      onCheckedChange={(c) => toggleRow(m.key, m.actions, c)}
-                      ariaLabel={`${m.label}: all`}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <PermissionMatrix perms={perms} onChange={setPerms} />
       <p className="text-xs text-muted">
         Administration (settings, team, lookups, audit log, data reset) is never granted through a role — it stays with admins.
       </p>

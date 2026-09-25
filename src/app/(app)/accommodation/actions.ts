@@ -449,3 +449,54 @@ export async function deleteCampAction(formData: FormData) {
 
   revalidatePath("/accommodation/camps");
 }
+
+/**
+ * Drag-and-drop on the camp map: put a worker on a vacant bed, moving them off
+ * their current bed first if they have one. Keeps the same trail as a manual
+ * allocation (accommodation history and the open check-in), so nothing the
+ * check-in slip relies on goes missing.
+ */
+export async function placeWorkerInBedAction(employeeId: string, bedId: string): Promise<{ error?: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, name: true } });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't move that worker." };
+  const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { room: { include: { camp: true } } } });
+  if (!bed) return { error: "That bed no longer exists." };
+  if (bed.employeeId) return { error: bed.employeeId === employeeId ? "They're already in that bed." : "That bed was just taken." };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.bed.findUnique({ where: { employeeId } });
+      if (current) {
+        await tx.bed.update({ where: { id: current.id }, data: { employeeId: null } });
+        const open = await tx.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
+        if (open) await tx.accommodationHistory.update({ where: { id: open.id }, data: { checkOutDate: new Date() } });
+      }
+      await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
+      await tx.accommodationHistory.create({ data: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label } });
+      const openCheckIn = await tx.campCheckIn.findFirst({ where: { employeeId, status: { in: ["CHECKED_IN", "BED_ALLOCATED"] } }, orderBy: { createdAt: "desc" } });
+      if (openCheckIn) {
+        await tx.campCheckIn.update({ where: { id: openCheckIn.id }, data: { campId: bed.room.campId, bedId, status: "BED_ALLOCATED" } });
+      } else {
+        await tx.campCheckIn.create({ data: { employeeId, campId: bed.room.campId, bedId, status: "BED_ALLOCATED", branchId: employee.branchId } });
+      }
+    });
+  } catch {
+    return { error: "Couldn't move them — the bed may have just been taken. Refresh and try again." };
+  }
+
+  await logAudit({
+    entityType: "ACCOMMODATION",
+    entityId: bedId,
+    action: "UPDATE",
+    after: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+  revalidatePath("/accommodation/camps");
+  revalidatePath("/accommodation/checkin");
+  revalidatePath("/accommodation/bed-allocation");
+  revalidatePath(`/employees/${employeeId}`);
+  return {};
+}

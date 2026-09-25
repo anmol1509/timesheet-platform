@@ -71,6 +71,13 @@ export default async function CampsPage({
         })
       : [];
 
+  const unhoused = await prisma.employee.findMany({
+    where: { ...branchWhere(branchId), bed: null, active: true, status: { not: "TERMINATED" } },
+    select: { id: true, name: true, employeeIdNo: true, trade: true },
+    orderBy: { name: "asc" },
+    take: 80,
+  });
+
   const employeeNames = Object.fromEntries(
     occupants.map((e) => [e.id, { name: e.name, employeeIdNo: e.employeeIdNo }])
   );
@@ -193,6 +200,7 @@ export default async function CampsPage({
               })),
             }))}
             employeeNames={employeeNames}
+            unhoused={unhoused}
           />
         </div>
       ) : (

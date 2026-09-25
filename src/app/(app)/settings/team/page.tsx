@@ -20,7 +20,7 @@ export default async function TeamPage() {
     prisma.accessRole.findMany({
       where: isSuperAdmin ? {} : { OR: [{ branchId: null }, { branchId: admin.branchId }] },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, branchId: true },
+      select: { id: true, name: true, description: true, permissions: true, branchId: true },
     }),
   ]);
 

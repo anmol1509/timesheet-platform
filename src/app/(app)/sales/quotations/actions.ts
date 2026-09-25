@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
 import { logAudit } from "@/lib/audit";
 
 function stringOrNull(value: FormDataEntryValue | null) {
@@ -93,19 +94,6 @@ export async function createQuotationAction(formData: FormData) {
   revalidatePath("/sales/quotations");
   redirect(`/sales/quotations/${created.id}`);
 }
-
-// Legal forward transitions for the quotation status, same plain-string +
-// inline-check convention used by Timesheet (Phase B). "CONVERTED" is set
-// only by convertQuotationToProjectAction below, not through this action.
-const QUOTATION_TRANSITIONS: Record<string, string[]> = {
-  DRAFT: ["SENT"],
-  SENT: ["NEGOTIATION", "APPROVED", "REJECTED"],
-  NEGOTIATION: ["APPROVED", "REJECTED"],
-  APPROVED: ["ACCEPTED", "REJECTED"],
-  ACCEPTED: [],
-  REJECTED: [],
-  CONVERTED: [],
-};
 
 export async function updateQuotationStatusAction(formData: FormData) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -284,4 +272,18 @@ export async function deleteQuotationAction(formData: FormData) {
   });
 
   revalidatePath("/sales/quotations");
+}
+
+/** Board drag-and-drop: same rules as updateQuotationStatusAction, but reports why a move was refused. */
+export async function moveQuotationAction(id: string, toStatus: string): Promise<{ error?: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!(await assertQuotationInBranch(id, branchId, isSuperAdmin))) return { error: "You can't change that quotation." };
+  const before = await prisma.quotation.findUnique({ where: { id } });
+  if (!before) return { error: "Quotation not found." };
+  if (!QUOTATION_TRANSITIONS[before.status]?.includes(toStatus)) return { error: `A ${before.status.toLowerCase()} quotation can't move to ${toStatus.toLowerCase()}.` };
+  await prisma.quotation.update({ where: { id }, data: { status: toStatus } });
+  await logAudit({ entityType: "QUOTATION", entityId: id, action: "UPDATE", before: { status: before.status }, after: { status: toStatus }, userId: user.id, userName: user.name, branchId });
+  revalidatePath("/sales/quotations");
+  revalidatePath(`/sales/quotations/${id}`);
+  return {};
 }

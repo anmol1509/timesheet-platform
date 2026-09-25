@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { sanitizePermissions } from "@/lib/permissions";
 
 type State = { error: string | null; ok?: boolean };
 const ROLES = ["SUPER_ADMIN", "BRANCH_ADMIN", "STAFF"] as const;
@@ -51,6 +52,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
   if (!email || !name || password.length < 8) {
     return { error: "Fill in name, email, and a temporary password of at least 8 characters." };
   }
+  if (v("phone").replace(/\D/g, "").length < 7) return { error: "Add a phone number for this person." };
 
   let branchId: string | null;
   if (role === "SUPER_ADMIN") branchId = null;
@@ -61,26 +63,68 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
 
   if (await prisma.user.findUnique({ where: { email } })) return { error: "A user with that email already exists." };
 
-  const ar = role === "STAFF" ? await validAccessRoleId(v("accessRoleId"), branchId) : { id: null, error: null };
-  if (ar.error) return { error: ar.error };
+  // Access for a STAFF member: an existing role, a role defined right here in
+  // the same step (saved so it can be reused), or no restriction.
+  const accessMode = v("accessMode");
+  let accessRoleId: string | null = null;
+  let newRole: { name: string; permissions: string[] } | null = null;
+  if (role === "STAFF") {
+    if (accessMode === "new") {
+      const roleName = v("newRoleName");
+      const permissions = sanitizePermissions(formData.getAll("permission").map(String));
+      if (!roleName) return { error: "Name the role so it can be reused for the next person." };
+      if (permissions.length === 0) return { error: "Tick at least one permission for this role." };
+      for (const p of permissions) {
+        const [mod] = p.split(":");
+        if (!permissions.includes(`${mod}:view`)) return { error: `Grant View on ${mod} too — its other actions can't work without it.` };
+      }
+      newRole = { name: roleName, permissions };
+    } else {
+      const ar = await validAccessRoleId(accessMode === "existing" ? v("accessRoleId") : "", branchId);
+      if (ar.error) return { error: ar.error };
+      accessRoleId = ar.id;
+    }
+  }
 
-  const created = await prisma.user.create({
-    data: {
-      email,
-      name,
-      passwordHash: hashPassword(password),
-      role,
+  let created;
+  try {
+    created = await prisma.$transaction(async (tx) => {
+      if (newRole) {
+        const r = await tx.accessRole.create({ data: { name: newRole.name, permissions: newRole.permissions, branchId } });
+        accessRoleId = r.id;
+      }
+      return tx.user.create({
+        data: {
+          email,
+          name,
+          passwordHash: hashPassword(password),
+          role,
+          branchId,
+          accessRoleId,
+          phone: v("phone") || null,
+          jobTitle: v("jobTitle") || null,
+        },
+      });
+    });
+  } catch {
+    return { error: "A role with that name already exists for this branch — pick it from the list instead, or use another name." };
+  }
+  if (newRole) {
+    await logAudit({
+      entityType: "ACCESS_ROLE",
+      entityId: accessRoleId ?? "",
+      action: "CREATE",
+      after: { name: newRole.name, permissions: newRole.permissions, branchId },
+      userId: admin.id,
+      userName: admin.name,
       branchId,
-      accessRoleId: ar.id,
-      phone: v("phone") || null,
-      jobTitle: v("jobTitle") || null,
-    },
-  });
+    });
+  }
   await logAudit({
     entityType: "USER",
     entityId: created.id,
     action: "CREATE",
-    after: { email, name, role, branchId, accessRoleId: ar.id },
+    after: { email, name, role, branchId, accessRoleId },
     userId: admin.id,
     userName: admin.name,
     branchId,

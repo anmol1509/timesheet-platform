@@ -13,6 +13,7 @@ import { toCsv, downloadCsv } from "@/lib/csv";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { bulkImportClientsAction } from "./actions";
+import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DeleteClientsButton } from "./delete-clients-button";
 import { deleteClientAction } from "./actions";
@@ -32,6 +33,11 @@ type ClientRow = {
   contractEnd: string | null;
   status: string;
   licenseStatus: ComplianceStatus;
+  projects: number;
+  openDemands: number;
+  lpoValue: number;
+  lpoBilled: number;
+  contractDaysLeft: number | null;
 };
 
 const IMPORT_COLUMNS = [
@@ -175,6 +181,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                 </th>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Code</th>
+                <th className="px-4 py-3">Business</th>
                 {has.contactPerson && <th className="px-4 py-3">Contact Person</th>}
                 {has.contactInfo && <th className="px-4 py-3">Contact Info</th>}
                 {has.rates && <th className="px-4 py-3">Rates (AED)</th>}
@@ -193,9 +200,23 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                     <Link href={`/clients/${c.id}`}>{c.name}</Link>
                   </td>
                   <td className="px-4 py-3 text-muted">{c.code || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex min-w-[150px] flex-col gap-1">
+                      <span className="text-xs text-secondary">
+                        <span className="tabular font-medium text-primary">{c.projects}</span> project{c.projects === 1 ? "" : "s"}
+                        {c.openDemands > 0 && <> · <span className="font-medium text-[var(--warning)]">{c.openDemands} open demand{c.openDemands === 1 ? "" : "s"}</span></>}
+                      </span>
+                      {c.lpoValue > 0 ? (
+                        <ProgressBar value={c.lpoBilled} total={c.lpoValue} label={`${Math.round((c.lpoBilled / c.lpoValue) * 100)}% billed`} />
+                      ) : (
+                        <span className="text-xs text-subtle">No active LPO</span>
+                      )}
+                    </div>
+                  </td>
                   {has.contactPerson && (
                     <td className="px-4 py-3 text-secondary">
                       {c.contactPerson || "—"}
+                      {c.contactPhone && <a href={`tel:${c.contactPhone}`} className="tabular block text-xs text-muted hover:underline">{c.contactPhone}</a>}
                     </td>
                   )}
                   {has.contactInfo && (
@@ -221,10 +242,15 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                       {c.contractStart || c.contractEnd
                         ? `${fmtDate(c.contractStart)} – ${fmtDate(c.contractEnd)}`
                         : "—"}
+                      {c.contractDaysLeft !== null && (
+                        <div className={`text-xs ${c.contractDaysLeft < 0 ? "font-medium text-[var(--error)]" : c.contractDaysLeft <= 60 ? "font-medium text-[var(--warning)]" : "text-subtle"}`}>
+                          {c.contractDaysLeft < 0 ? `Ended ${-c.contractDaysLeft}d ago` : `${c.contractDaysLeft}d left`}
+                        </div>
+                      )}
                     </td>
                   )}
                   <td className="px-4 py-3">
-                    <Badge color={c.status === "ACTIVE" ? "green" : "slate"}>
+                    <Badge dot color={c.status === "ACTIVE" ? "green" : "slate"}>
                       {c.status}
                     </Badge>
                   </td>

@@ -7,6 +7,10 @@ import { Users, LogIn, Clock } from "lucide-react";
 import { CheckInTable } from "./checkin-table";
 import { CheckInHistory } from "./checkin-history";
 
+function stayDays(from: Date, to: Date | null) {
+  return Math.max(0, Math.floor(((to ?? new Date()).getTime() - from.getTime()) / 86_400_000));
+}
+
 export default async function CheckInPage() {
   const { branchId } = await requireUserWithBranch();
 
@@ -80,6 +84,7 @@ export default async function CheckInPage() {
     include: {
       employee: { select: { name: true, employeeIdNo: true, nationality: true } },
       camp: { select: { id: true, name: true } },
+      bed: { select: { label: true, room: { select: { name: true } } } },
     },
     orderBy: { checkInNo: "desc" },
     take: 300,
@@ -95,6 +100,9 @@ export default async function CheckInPage() {
     campName: c.camp.name,
     checkInDate: c.checkInDate.toISOString(),
     status: c.status,
+    checkOutDate: c.checkOutDate ? c.checkOutDate.toISOString() : null,
+    bedLabel: c.bed ? `${c.bed.room.name} · ${c.bed.label}` : null,
+    stayDays: stayDays(c.checkInDate, c.checkOutDate),
   }));
 
   return (

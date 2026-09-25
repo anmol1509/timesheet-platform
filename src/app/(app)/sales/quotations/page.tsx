@@ -6,7 +6,10 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
-import { deleteQuotationAction } from "./actions";
+import { KanbanBoard } from "@/components/KanbanBoard";
+import { ViewToggle } from "@/components/ViewToggle";
+import { QUOTATION_COLUMNS, QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
+import { deleteQuotationAction, moveQuotationAction } from "./actions";
 
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   DRAFT: "slate",
@@ -27,9 +30,10 @@ const OPEN_STATES = ["DRAFT", "SENT", "NEGOTIATION"];
 export default async function QuotationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; view?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, view: viewParam } = await searchParams;
+  const view = viewParam === "board" ? "board" : "list";
   const { branchId } = await requireUserWithBranch();
   const now = new Date();
   const quotations = await prisma.quotation.findMany({
@@ -47,12 +51,15 @@ export default async function QuotationsPage({
             Formal quotations with trade/quantity/rate line items.
           </p>
         </div>
-        <Link
-          href="/sales/quotations/new"
-          className="btn btn-primary"
-        >
-          + New Quotation
-        </Link>
+        <div className="flex items-center gap-3">
+          <ViewToggle base="/sales/quotations" view={view} />
+          <Link
+            href="/sales/quotations/new"
+            className="btn btn-primary"
+          >
+            + New Quotation
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -71,6 +78,39 @@ export default async function QuotationsPage({
               New quotation
             </Link>
           }
+        />
+      ) : view === "board" ? (
+        <KanbanBoard
+          columns={QUOTATION_COLUMNS.map((c) => ({
+            id: c,
+            title: c.charAt(0) + c.slice(1).toLowerCase(),
+            tone: c === "ACCEPTED" || c === "CONVERTED" ? "green" : c === "REJECTED" ? "red" : c === "DRAFT" ? "slate" : c === "APPROVED" ? "blue" : "amber",
+          }))}
+          weightLabel="workers"
+          transitions={QUOTATION_TRANSITIONS}
+          onMove={moveQuotationAction}
+          cards={quotations.map((q) => {
+            const headcount = q.lines.reduce((n, l) => n + l.quantity, 0);
+            const left = q.validUntil ? daysBetween(q.validUntil, now) : null;
+            return {
+              id: q.id,
+              columnId: q.status,
+              weight: headcount,
+              content: (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link href={`/sales/quotations/${q.id}`} className="text-sm font-medium text-primary hover:underline" draggable={false}>{q.quotationNumber}</Link>
+                    <span className="tabular text-xs text-muted">{headcount} workers</span>
+                  </div>
+                  <p className="truncate text-sm text-secondary">{q.client.name}</p>
+                  <p className="truncate text-xs text-muted">{q.lines.map((l) => `${l.quantity} ${l.trade}`).join(" · ")}</p>
+                  {left !== null && OPEN_STATES.includes(q.status) && (
+                    <p className={`text-xs ${left < 0 ? "font-medium text-[var(--error)]" : left <= 7 ? "font-medium text-[var(--warning)]" : "text-subtle"}`}>{left < 0 ? `Expired ${-left}d ago` : `${left}d left`}</p>
+                  )}
+                </div>
+              ),
+            };
+          })}
         />
       ) : (
         <div className="card overflow-hidden">

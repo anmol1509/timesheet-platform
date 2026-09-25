@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { BedDouble } from "lucide-react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
@@ -14,6 +15,7 @@ import {
   deleteRoomAction,
   addBedsToRoomAction,
   deleteBedAction,
+  placeWorkerInBedAction,
 } from "../actions";
 
 type Bed = { id: string; label: string; employeeId: string | null };
@@ -25,14 +27,39 @@ type Room = {
   nationality: string | null;
 };
 
+type Unhoused = { id: string; name: string; employeeIdNo: string; trade: string | null };
+
 export function CampView({
   rooms,
   employeeNames,
+  unhoused = [],
 }: {
   rooms: Room[];
   employeeNames: Record<string, { name: string; employeeIdNo: string }>;
+  /** Workers with no bed, offered as a tray to drag onto a vacant bed. */
+  unhoused?: Unhoused[];
 }) {
   const [vacantOnly, setVacantOnly] = useState(false);
+  const router = useRouter();
+  const [, start] = useTransition();
+  const [dragEmp, setDragEmp] = useState<string | null>(null);
+  const [overBed, setOverBed] = useState<string | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [trayQuery, setTrayQuery] = useState("");
+
+  function dropOn(bedId: string) {
+    const emp = dragEmp;
+    setDragEmp(null);
+    setOverBed(null);
+    if (!emp) return;
+    setMoveError(null);
+    start(async () => {
+      const res = await placeWorkerInBedAction(emp, bedId);
+      if (res.error) setMoveError(res.error);
+      router.refresh();
+    });
+  }
+  const tray = unhoused.filter((u) => `${u.name} ${u.employeeIdNo} ${u.trade ?? ""}`.toLowerCase().includes(trayQuery.trim().toLowerCase()));
 
   const allBeds = rooms.flatMap((r) => r.beds);
   const vacantCount = allBeds.filter((b) => !b.employeeId).length;
@@ -66,7 +93,9 @@ export function CampView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {moveError && <p role="alert" className="text-sm text-[var(--error)]">{moveError}</p>}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:items-start">
         {rooms.map((room) => {
           const beds = vacantOnly ? room.beds.filter((b) => !b.employeeId) : room.beds;
           const occupied = room.beds.filter((b) => b.employeeId).length;
@@ -139,11 +168,19 @@ export function CampView({
                     return (
                       <div
                         key={bed.id}
+                        draggable={!!occupant}
+                        onDragStart={() => occupant && bed.employeeId && setDragEmp(bed.employeeId)}
+                        onDragEnd={() => { setDragEmp(null); setOverBed(null); }}
+                        onDragOver={(e) => { if (!occupant && dragEmp) { e.preventDefault(); setOverBed(bed.id); } }}
+                        onDragLeave={() => setOverBed((o) => (o === bed.id ? null : o))}
+                        onDrop={(e) => { if (!occupant) { e.preventDefault(); dropOn(bed.id); } }}
                         className={cn(
                           "group relative rounded-card border p-3 transition",
                           occupant
-                            ? "border-default bg-surface"
-                            : "border-dashed border-default bg-surface-subtle hover:border-[var(--brand-primary)] hover:bg-brand-soft"
+                            ? "cursor-grab border-default bg-surface active:cursor-grabbing"
+                            : "border-dashed border-default bg-surface-subtle hover:border-[var(--brand-primary)] hover:bg-brand-soft",
+                          !occupant && dragEmp && "border-[var(--brand-primary)]/60",
+                          overBed === bed.id && "border-solid bg-brand-soft ring-2 ring-[var(--brand-primary)]"
                         )}
                       >
                         {occupant ? (
@@ -204,6 +241,31 @@ export function CampView({
             </div>
           );
         })}
+      </div>
+
+      <aside className="card h-fit p-3 xl:sticky xl:top-20" aria-label="Workers without a bed">
+        <h3 className="text-sm font-semibold text-primary">Without a bed <span className="tabular text-xs font-normal text-muted">({unhoused.length})</span></h3>
+        <p className="mt-0.5 text-xs text-muted">Drag a worker onto a vacant bed. You can also drag housed workers between beds.</p>
+        <input value={trayQuery} onChange={(e) => setTrayQuery(e.target.value)} placeholder="Search…" aria-label="Search unhoused workers" className="input mt-2 w-full py-1 text-xs" />
+        <ul className="mt-2 max-h-[55vh] space-y-1.5 overflow-y-auto">
+          {tray.length === 0 && <li className="py-4 text-center text-xs text-subtle">{unhoused.length === 0 ? "Everyone has a bed." : "No match."}</li>}
+          {tray.map((u) => (
+            <li
+              key={u.id}
+              draggable
+              onDragStart={() => setDragEmp(u.id)}
+              onDragEnd={() => { setDragEmp(null); setOverBed(null); }}
+              className="flex cursor-grab items-center gap-2 rounded-lg border border-default bg-surface px-2 py-1.5 active:cursor-grabbing"
+            >
+              <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white", avatarGradient(u.name))}>{initials(u.name)}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-medium text-primary">{u.name}</span>
+                <span className="block truncate text-[10px] text-subtle">{u.employeeIdNo}{u.trade ? ` · ${u.trade}` : ""}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </aside>
       </div>
     </div>
   );

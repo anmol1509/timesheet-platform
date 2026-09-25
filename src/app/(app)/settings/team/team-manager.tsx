@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 import { KeyRound, Pencil, Plus, UserCheck, UserX } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Avatar } from "@/components/Avatar";
+import { AddMemberWizard, type AccessRoleOption as WizardRole } from "./add-member-wizard";
 import {
   createUserAction,
   deleteUserAction,
@@ -17,7 +19,7 @@ import {
 
 type State = { error: string | null; ok?: boolean };
 type Branch = { id: string; code: string; name: string };
-type AccessRoleOption = { id: string; name: string; branchId: string | null };
+type AccessRoleOption = WizardRole;
 export type TeamUser = {
   id: string;
   name: string;
@@ -184,7 +186,11 @@ export function TeamManager({
   const [dialog, setDialog] = useState<{ kind: "add" } | { kind: "edit"; user: TeamUser } | { kind: "password"; user: TeamUser } | null>(null);
   const [, start] = useTransition();
   const [rowError, setRowError] = useState<string | null>(null);
-  const close = () => setDialog(null);
+  const router = useRouter();
+  const close = () => {
+    setDialog(null);
+    router.refresh();
+  };
 
   function toggleActive(u: TeamUser) {
     setRowError(null);
@@ -283,8 +289,8 @@ export function TeamManager({
 
       <Dialog open={dialog !== null} onOpenChange={(o) => !o && close()}>
         {dialog?.kind === "add" && (
-          <DialogContent title="Add team member" description="They sign in with this email and the temporary password.">
-            <UserForm isSuperAdmin={isSuperAdmin} branches={branches} accessRoles={accessRoles} onDone={close} />
+          <DialogContent title="Add team member" description="Set up their profile, then choose what they can open and do. Nothing is created until the last step." className="max-w-3xl">
+            <AddMemberWizard isSuperAdmin={isSuperAdmin} branches={branches} accessRoles={accessRoles} onDone={close} />
           </DialogContent>
         )}
         {dialog?.kind === "edit" && (

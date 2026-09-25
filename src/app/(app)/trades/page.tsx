@@ -12,6 +12,21 @@ export default async function SkillsPage() {
     prisma.employee.count(),
   ]);
 
+  const [idleRows, demandRows] = await Promise.all([
+    prisma.employee.groupBy({ by: ["trade"], where: { status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
+    prisma.demandRequestTrade.findMany({
+      where: { demandRequest: { status: { in: ["Open", "Approved"] } } },
+      select: { trade: true, quantity: true, approvedQuantity: true, _count: { select: { allocations: true } } },
+    }),
+  ]);
+  const key = (t: string | null) => (t ?? "").trim().toLowerCase();
+  const idleBy = new Map(idleRows.map((r) => [key(r.trade), r._count._all]));
+  const openBy = new Map<string, number>();
+  for (const d of demandRows) {
+    const gap = Math.max(0, (d.approvedQuantity ?? d.quantity) - d._count.allocations);
+    openBy.set(key(d.trade), (openBy.get(key(d.trade)) ?? 0) + gap);
+  }
+
   const rows = skills.map((s) => {
     const employeeCount = s._count.employees;
     const popularity = totalEmployees > 0 ? (employeeCount / totalEmployees) * 100 : 0;
@@ -22,6 +37,8 @@ export default async function SkillsPage() {
       trending: s.trending,
       employeeCount,
       popularity,
+      idle: idleBy.get(key(s.name)) ?? 0,
+      openDemand: openBy.get(key(s.name)) ?? 0,
     };
   });
 

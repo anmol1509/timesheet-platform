@@ -44,6 +44,12 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
     const st = budgetStatus(spent, Number(b.monthlyLimit));
     return { category: b.category, limit: Number(b.monthlyLimit), spent, pct: st.pct, state: st.state };
   });
+  const [pending, owed] = await Promise.all([
+    prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "PENDING" }, select: { amount: true, vatAmount: true } }),
+    prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", outOfPocket: true, reimbursedAt: null }, select: { amount: true, vatAmount: true } }),
+  ]);
+  const sum = (xs: { amount: unknown; vatAmount: unknown }[]) => xs.reduce((n, e) => n + Number(e.amount) + Number(e.vatAmount), 0);
+  const money = (n: number) => `AED ${Math.round(n).toLocaleString("en-AE")}`;
   const toppedUp = topUps.reduce((sum, t) => sum + Number(t.amount), 0);
   const cash = cashSpent.reduce((sum, e) => sum + Number(e.amount) + Number(e.vatAmount), 0);
   return (
@@ -54,6 +60,20 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <p className="mt-1 text-sm text-muted">Costs submitted for approval. Approved expenses feed the finance overview.</p>
         </div>
         {can(subject, "finance", "export") && <a href={`/api/finance/export?type=expenses${status ? `&status=${status}` : ""}`} className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
+      </div>
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+        {[
+          { l: "Approved this month", v: money(sum(monthApproved)), sub: `${monthApproved.length} expense${monthApproved.length === 1 ? "" : "s"}` },
+          { l: "Awaiting approval", v: money(sum(pending)), sub: `${pending.length} expense${pending.length === 1 ? "" : "s"}`, tone: pending.length ? "text-[var(--warning)]" : "" },
+          { l: "Petty cash on hand", v: money(toppedUp - cash), sub: `${money(toppedUp)} topped up`, tone: toppedUp - cash < 0 ? "text-[var(--error)]" : "" },
+          { l: "Owed to staff", v: money(sum(owed)), sub: `${owed.length} out-of-pocket claim${owed.length === 1 ? "" : "s"}`, tone: owed.length ? "text-[var(--warning)]" : "" },
+        ].map((t) => (
+          <div key={t.l} className="card px-3 py-2.5 sm:px-4 sm:py-3">
+            <p className="text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
+            <p className={`tabular mt-0.5 truncate text-base font-semibold tracking-tight sm:text-xl ${t.tone || "text-primary"}`}>{t.v}</p>
+            <p className="text-xs text-subtle">{t.sub}</p>
+          </div>
+        ))}
       </div>
       <ExpenseTools
         budgets={budgetRows}
