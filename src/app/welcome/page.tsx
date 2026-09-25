@@ -35,7 +35,7 @@ import {
   STEPS,
   appHref,
 } from "./content";
-import { BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
+import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { BookDemoButton } from "@/components/BookDemoButton";
 import { MobileMenu } from "./mobile-menu";
 import {
@@ -86,17 +86,17 @@ function Logo() {
   );
 }
 
+// The full BRAND_LOGO wordmark renders "ManpowerSync" in dark navy, so it
+// disappears on the footer's dark background — use the colour icon mark plus
+// a plain white text wordmark instead of the flattened PNG.
 function FooterLogo() {
-  const height = 84;
+  const height = 40;
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed
-    <img
-      src={BRAND_LOGO}
-      alt={`${SITE.name} — People, Processes, Productivity`}
-      height={height}
-      width={Math.round(height * BRAND_LOGO_ASPECT)}
-      style={{ height, width: "auto" }}
-    />
+    <span className={s.footerLogoRow}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
+      <img src={BRAND_ICON} alt="" height={height} width={height} style={{ height, width: "auto" }} />
+      <span className={s.footerWordmark}>{SITE.name}</span>
+    </span>
   );
 }
 

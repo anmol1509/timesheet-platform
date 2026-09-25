@@ -4,6 +4,9 @@ export const SITE = {
   name: "ManpowerSync",
   tagline: "The operating system for manpower suppliers",
   salesEmail: "sales@manpowersync.com",
+  // Where "Book a demo" submissions are notified — kept separate from
+  // salesEmail since that one also drives the "Contact sales" mailto link.
+  demoNotifyEmail: "info@manpowersync.com",
 };
 
 // The landing page is served from its own domain, so links into the app need

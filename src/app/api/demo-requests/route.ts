@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // email provider must never delay or fail the visitor's submission.
   after(async () => {
     await sendEmail(
-      SITE.salesEmail,
+      SITE.demoNotifyEmail,
       `New demo request: ${demoRequest.company}`,
       `${demoRequest.name} (${demoRequest.company}) requested a demo.\n\nEmail: ${demoRequest.email}\nPhone: ${demoRequest.phone}`,
     );

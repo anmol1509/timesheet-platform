@@ -185,7 +185,8 @@
   box-shadow: 0 14px 36px -14px rgba(15, 15, 15, 0.3);
 }
 .navInner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   height: 60px;
   gap: 32px;
@@ -195,6 +196,10 @@
 .logo {
   display: inline-flex;
   align-items: center;
+  justify-self: start;
+}
+.navPrimary {
+  justify-self: center;
 }
 .navLinks {
   display: flex;
@@ -225,7 +230,7 @@
   z-index: 0;
 }
 .navActions {
-  margin-left: auto;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1155,21 +1160,37 @@
 
 /* Footer */
 .footer {
-  border-top: 1px solid var(--hairline);
-  padding: 64px 0 40px;
+  background: var(--navy-deep);
+  color: #fff;
+  padding: 72px 0 32px;
   font-size: 14px;
-  color: var(--charcoal);
 }
 .footerGrid {
   display: grid;
   grid-template-columns: 2fr repeat(3, 1fr);
   gap: 32px;
 }
+.footerBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.footerLogoRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.footerWordmark {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: #fff;
+}
 .footerTitle {
   font-size: 13px;
   font-weight: 600;
   margin: 0 0 12px;
-  color: var(--ink);
+  color: #fff;
 }
 .footerList {
   list-style: none;
@@ -1181,7 +1202,7 @@
 .footerList a,
 .footerDemoLink {
   position: relative;
-  color: var(--steel);
+  color: rgba(255, 255, 255, 0.6);
   transition: color var(--ease);
   background: none;
   border: none;
@@ -1203,26 +1224,26 @@
 }
 .footerList a:hover,
 .footerDemoLink:hover {
-  color: var(--ink);
+  color: #fff;
 }
 .footerList a:hover::after,
 .footerDemoLink:hover::after {
   right: 0;
 }
 .footerAbout {
-  color: var(--steel);
+  color: rgba(255, 255, 255, 0.55);
   max-width: 300px;
   margin: 16px 0 0;
 }
 .footerBottom {
   margin-top: 48px;
   padding-top: 24px;
-  border-top: 1px solid var(--hairline-soft);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  color: var(--steel);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 13px;
 }
 
