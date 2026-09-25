@@ -29,7 +29,25 @@ type SupplierRow = {
   employeeCount: number;
   entryCount: number;
   licenseStatus: ComplianceStatus;
+  licenseExpiry: string | null;
+  category: string | null;
+  approvals: { project: string; labour: string; invoicing: string };
+  billBalance: number;
+  billOverdue: number;
 };
+
+const APPROVAL_GATES: { key: "project" | "labour" | "invoicing"; label: string }[] = [
+  { key: "project", label: "Projects" },
+  { key: "labour", label: "Labour" },
+  { key: "invoicing", label: "Invoicing" },
+];
+const GATE_TONE: Record<string, string> = {
+  Approved: "bg-[var(--success)]",
+  Pending: "bg-[var(--warning)]",
+  Rejected: "bg-[var(--error)]",
+};
+const fmtAed = (n: number) => Math.round(n).toLocaleString();
+const fmtShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
 const IMPORT_COLUMNS = [
   { key: "name", label: "Supplier name", required: true },
@@ -105,10 +123,12 @@ export function SupplierList({
     const csv = toCsv(rows, [
       { header: "Supplier", value: (s) => s.name },
       { header: "Code", value: (s) => s.code },
+      { header: "Parent", value: (s) => s.parentName },
       { header: "Contact Person", value: (s) => s.contactPerson },
       { header: "Contact Phone", value: (s) => s.contactPhone },
       { header: "Employees", value: (s) => s.employeeCount },
-      { header: "Timesheet Rows", value: (s) => s.entryCount },
+      { header: "Trade licence expiry", value: (s) => (s.licenseExpiry ? s.licenseExpiry.slice(0, 10) : "") },
+      { header: "Owed (AED)", value: (s) => Math.round(s.billBalance) },
       { header: "Status", value: (s) => s.status },
     ]);
     downloadCsv(`suppliers-${new Date().toISOString().slice(0, 10)}.csv`, csv);
@@ -152,11 +172,11 @@ export function SupplierList({
                 <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">Supplier</th>
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Parent</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3 text-right">Employees</th>
-              <th className="px-4 py-3 text-right">Timesheet rows</th>
+              <th className="px-4 py-3">Trade licence</th>
+              <th className="px-4 py-3">Approvals</th>
+              <th className="px-4 py-3 text-right">Owed (AED)</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -206,9 +226,10 @@ export function SupplierList({
                       </span>
                     )}
                   </span>
+                  <div className="tabular mt-0.5 text-xs font-normal text-muted" style={isChild ? { paddingLeft: 36 } : { paddingLeft: 20 }}>
+                    {[row.code, row.category, row.parentName && `Sub of ${row.parentName}`].filter(Boolean).join(" · ") || "—"}
+                  </div>
                 </td>
-                <td className="tabular px-4 py-3 text-secondary">{row.code || "—"}</td>
-                <td className="px-4 py-3 text-secondary">{row.parentName || "—"}</td>
                 <td className="px-4 py-3 text-secondary">
                   {row.contactPerson || row.contactPhone ? (
                     <>
@@ -233,9 +254,39 @@ export function SupplierList({
                     <span className="text-secondary">0</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-right text-secondary">{row.entryCount}</td>
                 <td className="px-4 py-3">
-                  <Badge color={row.status === "ACTIVE" ? "green" : "red"}>{row.status}</Badge>
+                  {row.licenseExpiry ? (
+                    <>
+                      <div className="tabular text-secondary">{fmtShort(row.licenseExpiry)}</div>
+                      {row.licenseStatus === "expired" && <div className="text-xs font-medium text-[var(--error)]">Expired</div>}
+                      {row.licenseStatus === "expiring" && <div className="text-xs font-medium text-[var(--warning)]">Expiring soon</div>}
+                    </>
+                  ) : (
+                    <span className="text-subtle">Not set</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-0.5">
+                    {APPROVAL_GATES.map((g) => (
+                      <span key={g.key} className="flex items-center gap-1.5 text-xs text-secondary" title={`${g.label}: ${row.approvals[g.key]}`}>
+                        <span className={cn("h-1.5 w-1.5 rounded-full", GATE_TONE[row.approvals[g.key]] ?? "bg-[var(--text-subtle)]")} />
+                        {g.label}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {row.billBalance > 0 ? (
+                    <>
+                      <div className="tabular font-medium text-primary">{fmtAed(row.billBalance)}</div>
+                      {row.billOverdue > 0 && <div className="tabular text-xs font-medium text-[var(--error)]">{fmtAed(row.billOverdue)} overdue</div>}
+                    </>
+                  ) : (
+                    <span className="text-subtle">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <Badge dot color={row.status === "ACTIVE" ? "green" : "red"}>{row.status}</Badge>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center justify-end gap-3">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import type { BadgeColor } from "@/components/Badge";
+import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { deleteProjectAction } from "./actions";
@@ -19,6 +20,14 @@ type ProjectRow = {
   timelineStart: string | null;
   timelineEnd: string | null;
   status: string;
+  deployed: number;
+  required: number | null;
+  sites: number;
+  openDemands: number;
+  lpoCount: number;
+  lpoValue: number;
+  lpoBilled: number;
+  daysLeft: number | null;
 };
 
 const STATUS_COLOR: Record<string, BadgeColor> = {
@@ -85,14 +94,68 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       render: (p) => p.manager || <span className="text-subtle">—</span>,
     },
     {
+      key: "workforce",
+      header: "Workforce",
+      sortValue: (p) => p.deployed,
+      csvValue: (p) => (p.required ? `${p.deployed}/${p.required}` : String(p.deployed)),
+      render: (p) =>
+        p.required ? (
+          <ProgressBar value={p.deployed} total={p.required} label={`${p.deployed} of ${p.required}`} />
+        ) : (
+          <span className="tabular text-secondary">{p.deployed} deployed</span>
+        ),
+    },
+    {
+      key: "demand",
+      header: "Open demand",
+      sortValue: (p) => p.openDemands,
+      csvValue: (p) => p.openDemands,
+      render: (p) =>
+        p.openDemands > 0 ? <Badge color="amber">{p.openDemands} open</Badge> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "lpo",
+      header: "LPO billed",
+      sortValue: (p) => p.lpoBilled,
+      csvValue: (p) => (p.lpoCount ? `${p.lpoBilled}/${p.lpoValue}` : ""),
+      render: (p) =>
+        p.lpoCount === 0 ? (
+          <span className="text-subtle">No active LPO</span>
+        ) : p.lpoValue > 0 ? (
+          <div className="flex flex-col gap-0.5">
+            <ProgressBar value={p.lpoBilled} total={p.lpoValue} label={`${Math.round((p.lpoBilled / p.lpoValue) * 100)}%`} />
+            <span className="tabular text-xs text-muted">
+              {Math.round(p.lpoBilled).toLocaleString()} / {Math.round(p.lpoValue).toLocaleString()} AED
+            </span>
+          </div>
+        ) : (
+          <span className="text-secondary">{p.lpoCount} active</span>
+        ),
+    },
+    {
+      key: "sites",
+      header: "Sites",
+      defaultHidden: true,
+      sortValue: (p) => p.sites,
+      csvValue: (p) => p.sites,
+      render: (p) => <span className="tabular text-secondary">{p.sites || "—"}</span>,
+    },
+    {
       key: "timeline",
       header: "Timeline",
       sortValue: (p) => p.timelineStart,
       csvValue: (p) => `${fmtDate(p.timelineStart)} – ${fmtDate(p.timelineEnd)}`,
       render: (p) => (
-        <span className="tabular text-muted">
-          {fmtDate(p.timelineStart)} – {fmtDate(p.timelineEnd)}
-        </span>
+        <div className="flex flex-col">
+          <span className="tabular text-muted">
+            {fmtDate(p.timelineStart)} – {fmtDate(p.timelineEnd)}
+          </span>
+          {p.daysLeft !== null && p.status !== "COMPLETED" && (
+            <span className={`text-xs ${p.daysLeft < 0 ? "font-medium text-[var(--error)]" : p.daysLeft <= 30 ? "font-medium text-[var(--warning)]" : "text-muted"}`}>
+              {p.daysLeft < 0 ? `Overdue by ${-p.daysLeft}d` : `${p.daysLeft}d left`}
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -101,7 +164,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       sortValue: (p) => p.status,
       csvValue: (p) => p.status,
       render: (p) => (
-        <Badge color={STATUS_COLOR[p.status] || "slate"}>
+        <Badge color={STATUS_COLOR[p.status] || "slate"} dot>
           {p.status.replace("_", " ").toLowerCase()}
         </Badge>
       ),

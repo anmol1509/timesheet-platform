@@ -6,11 +6,20 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NocList } from "./noc-list";
 
+function daysUntil(d: Date) {
+  return Math.ceil((d.getTime() - Date.now()) / 86_400_000);
+}
+
 export default async function NocsPage() {
   const { branchId } = await requireUserWithBranch();
   const nocs = await prisma.noc.findMany({
     where: branchWhere(branchId),
-    include: { demandRequest: { include: { client: true, project: true } }, template: true },
+    include: {
+      demandRequest: { include: { client: true, project: true, trades: { select: { _count: { select: { allocations: true } } } } } },
+      template: true,
+      _count: { select: { employees: true } },
+      employees: { take: 3, select: { employee: { select: { name: true } } } },
+    },
     orderBy: { docNo: "desc" },
   });
 
@@ -50,6 +59,12 @@ export default async function NocsPage() {
             templateName: n.template.name,
             status: n.status,
             mobilizeDate: n.mobilizeDate ? n.mobilizeDate.toLocaleDateString("en-GB") : null,
+            mobilizeInDays: n.mobilizeDate ? daysUntil(n.mobilizeDate) : null,
+            demandNo: n.demandRequest.requestNo,
+            demandId: n.demandRequestId,
+            workers: n._count.employees,
+            workerNames: n.employees.map((e) => e.employee.name),
+            allocated: n.demandRequest.trades.reduce((sum, t) => sum + t._count.allocations, 0),
           }))}
         />
       )}

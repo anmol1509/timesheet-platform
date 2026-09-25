@@ -32,6 +32,19 @@ type EmployeeRow = {
   status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
   worstStatus: ComplianceStatus;
   complete: boolean;
+  projectName: string | null;
+  campName: string | null;
+  bedLabel: string | null;
+  nextExpiry: { doc: string; days: number } | null;
+};
+
+const DEPLOY_BADGE: Record<EmployeeRow["status"], { label: string; color: "green" | "amber" | "blue" | "slate" | "red" }> = {
+  ACTIVE: { label: "Active", color: "green" },
+  IDLE: { label: "On bench", color: "amber" },
+  UNDER_MOBILISATION: { label: "Mobilising", color: "blue" },
+  ON_SITE: { label: "On site", color: "green" },
+  ON_VACATION: { label: "On leave", color: "slate" },
+  TERMINATED: { label: "Terminated", color: "red" },
 };
 
 type Filter =
@@ -234,6 +247,34 @@ export function EmployeeList({
       render: (e) => e.companyDisplayName || <span className="text-subtle">—</span>,
     },
     {
+      key: "deployment",
+      header: "Deployment",
+      sortValue: (e) => e.status,
+      csvValue: (e) => `${DEPLOY_BADGE[e.status].label}${e.projectName ? " - " + e.projectName : ""}`,
+      searchValue: (e) => e.projectName,
+      render: (e) => (
+        <div className="flex flex-col items-start gap-1">
+          <Badge color={DEPLOY_BADGE[e.status].color} dot>{DEPLOY_BADGE[e.status].label}</Badge>
+          {e.projectName && <span className="max-w-[180px] truncate text-xs text-muted" title={e.projectName}>{e.projectName}</span>}
+        </div>
+      ),
+    },
+    {
+      key: "accommodation",
+      header: "Accommodation",
+      sortValue: (e) => e.campName,
+      csvValue: (e) => (e.campName ? `${e.campName}${e.bedLabel ? " - " + e.bedLabel : ""}` : ""),
+      render: (e) =>
+        e.campName ? (
+          <div className="flex flex-col">
+            <span className="text-secondary">{e.campName}</span>
+            {e.bedLabel && <span className="text-xs text-muted">{e.bedLabel}</span>}
+          </div>
+        ) : (
+          <span className="text-subtle">Not housed</span>
+        ),
+    },
+    {
       key: "status",
       header: "Compliance",
       // Sorts by severity, not alphabetically — expired first is what matters.
@@ -241,10 +282,18 @@ export function EmployeeList({
       csvValue: (e) => STATUS_BADGE[e.worstStatus].label,
       render: (e) => {
         const badge = STATUS_BADGE[e.worstStatus];
+        const n = e.nextExpiry;
         return (
-          <Badge color={badge.color} dot>
-            {badge.label}
-          </Badge>
+          <div className="flex flex-col items-start gap-1">
+            <Badge color={badge.color} dot>
+              {badge.label}
+            </Badge>
+            {n && (
+              <span className={`text-xs ${n.days < 0 ? "font-medium text-[var(--error)]" : n.days <= 30 ? "font-medium text-[var(--warning)]" : "text-muted"}`}>
+                {n.doc} · {n.days < 0 ? `${-n.days}d overdue` : `${n.days}d`}
+              </span>
+            )}
+          </div>
         );
       },
     },
