@@ -118,3 +118,16 @@ export async function deleteEnquiryAction(formData: FormData) {
 
   revalidatePath("/sales/enquiries");
 }
+
+/** Board drag-and-drop: change only the status, leaving the rest of the enquiry untouched. */
+export async function moveEnquiryAction(id: string, status: string): Promise<{ error?: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!["Open", "Quoted", "Converted", "Lost"].includes(status)) return { error: "Unknown status." };
+  if (!(await assertEnquiryInBranch(id, branchId, isSuperAdmin))) return { error: "You can't change that enquiry." };
+  const before = await prisma.enquiry.findUnique({ where: { id }, select: { status: true } });
+  if (!before) return { error: "Enquiry not found." };
+  await prisma.enquiry.update({ where: { id }, data: { status } });
+  await logAudit({ entityType: "ENQUIRY", entityId: id, action: "UPDATE", before: { status: before.status }, after: { status }, userId: user.id, userName: user.name, branchId });
+  revalidatePath("/sales/enquiries");
+  return {};
+}

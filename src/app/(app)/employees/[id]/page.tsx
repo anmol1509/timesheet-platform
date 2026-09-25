@@ -3,7 +3,6 @@ import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
-import { complianceStatus, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
@@ -18,6 +17,7 @@ import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
 import { NotesSection } from "./notes-section";
 import { InventorySection } from "./inventory-section";
+import { ProfileSummary } from "./profile-summary";
 
 function formatShortDate(value: Date) {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -26,13 +26,6 @@ function formatShortDate(value: Date) {
     year: "2-digit",
   });
 }
-
-const STATUS_BADGE = {
-  valid: { label: "Valid", color: "green" as const },
-  expiring: { label: "Expiring soon", color: "amber" as const },
-  expired: { label: "Expired", color: "red" as const },
-  not_set: { label: "Not on file", color: "slate" as const },
-};
 
 export default async function EmployeeDetailPage({
   params,
@@ -205,42 +198,22 @@ export default async function EmployeeDetailPage({
               </p>
             </div>
           </div>
-          {/* The colour was the whole message and nothing explained it — a
-              grey chip read as a label rather than "no date on file". */}
-          <div className="flex flex-wrap items-center gap-2">
-            {COMPLIANCE_FIELDS.map((f) => {
-              const value = employee[f.key as keyof typeof employee] as Date | null;
-              const status = complianceStatus(value);
-              const badge = STATUS_BADGE[status];
-              return (
-                <Badge key={f.key} color={badge.color}>
-                  {f.label}
-                  <span className="ml-1 opacity-75">
-                    {value
-                      ? new Date(value).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "2-digit",
-                        })
-                      : "not set"}
-                  </span>
-                </Badge>
-              );
-            })}
-          </div>
         </div>
       </div>
 
-      {latest && (
-        <div className="card p-5 text-sm text-secondary">
-          Latest on-record rate:{" "}
-          <span className="font-medium text-primary">
-            AED {latest.rate.toFixed(2)}
-          </span>{" "}
-          ({latest.monthLabel}, from uploaded timesheets — not editable here)
-        </div>
-      )}
-
+      <ProfileSummary
+        employee={employee}
+        project={
+          employee.project
+            ? { id: employee.project.id, name: employee.project.name, manager: employee.project.manager, managerPhone: employee.project.managerPhone, client: { name: employee.project.client.name } }
+            : null
+        }
+        bed={employee.bed ? { label: employee.bed.label, roomName: employee.bed.room.name, campName: employee.bed.room.camp.name } : null}
+        supplier={employee.supplier ? { id: employee.supplier.id, name: employee.supplier.name, contactPerson: employee.supplier.contactPerson, contactPhone: employee.supplier.contactPhone } : null}
+        latest={latest ? { monthLabel: latest.monthLabel, totalHours: latest.totalHours, rate: latest.rate, status: latest.status } : null}
+        ppeOut={employee.inventoryAssignments.filter((a) => !a.returnDate).length}
+        documentCount={employee.documents.length}
+      />
 
       <EditForm
         employee={employee}

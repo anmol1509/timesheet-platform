@@ -6,7 +6,10 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
-import { deleteEnquiryAction } from "./actions";
+import { KanbanBoard } from "@/components/KanbanBoard";
+import { ViewToggle } from "@/components/ViewToggle";
+import { ENQUIRY_COLUMNS } from "@/lib/salesPipeline";
+import { deleteEnquiryAction, moveEnquiryAction } from "./actions";
 
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   Open: "amber",
@@ -23,9 +26,10 @@ function ageInDays(d: Date) {
 export default async function EnquiriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; view?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, view: viewParam } = await searchParams;
+  const view = viewParam === "board" ? "board" : "list";
   const { branchId } = await requireUserWithBranch();
   const enquiries = await prisma.enquiry.findMany({
     where: branchWhere(branchId),
@@ -42,12 +46,15 @@ export default async function EnquiriesPage({
             Client enquiries and RFQs, ahead of a formal quotation.
           </p>
         </div>
-        <Link
-          href="/sales/enquiries/new"
-          className="btn btn-primary"
-        >
-          + New Enquiry
-        </Link>
+        <div className="flex items-center gap-3">
+          <ViewToggle base="/sales/enquiries" view={view} />
+          <Link
+            href="/sales/enquiries/new"
+            className="btn btn-primary"
+          >
+            + New Enquiry
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -66,6 +73,34 @@ export default async function EnquiriesPage({
               New enquiry
             </Link>
           }
+        />
+      ) : view === "board" ? (
+        <KanbanBoard
+          columns={ENQUIRY_COLUMNS.map((c) => ({ id: c, title: c, tone: c === "Converted" ? "green" : c === "Lost" ? "red" : c === "Quoted" ? "blue" : "amber" }))}
+          onMove={moveEnquiryAction}
+          cards={enquiries.map((e) => {
+            const d = ageInDays(e.createdAt);
+            return {
+              id: e.id,
+              columnId: e.status,
+              content: (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-primary">ENQ-{e.enquiryNo}</span>
+                    <span className={`text-xs ${e.status === "Open" && d >= 7 ? "font-medium text-[var(--warning)]" : "text-subtle"}`}>{d === 0 ? "Today" : `${d}d`}</span>
+                  </div>
+                  <p className="truncate text-sm text-secondary">{e.client.name}</p>
+                  <p className="truncate text-xs text-muted">{[e.requiredTrade, e.projectHint].filter(Boolean).join(" · ") || "—"}</p>
+                  <div className="flex items-center justify-between gap-2 text-xs text-subtle">
+                    <span>{e.source || "No source"}</span>
+                    <Link href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`} className="text-[var(--brand-primary)] hover:underline" draggable={false}>
+                      {e.quotations.length > 0 ? `${e.quotations.length} quote${e.quotations.length > 1 ? "s" : ""}` : "Quote →"}
+                    </Link>
+                  </div>
+                </div>
+              ),
+            };
+          })}
         />
       ) : (
         <div className="card overflow-hidden">
