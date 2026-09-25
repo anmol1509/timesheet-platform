@@ -44,16 +44,15 @@ const metas = [
 ].map((m) => m[0]);
 
 let css = "";
-const fonts = new Set();
 for (const href of [...head.matchAll(/<link rel="stylesheet" href="([^"]+\.css)"/g)].map((m) => m[1])) {
   const text = await get(base + href);
   if (!text.includes(`.${wrapClass}`) && !text.includes(`.${pageClass}`)) continue;
-  css += text.replace(/url\(\.\.\/media\/([^)]+)\)/g, (_, file) => {
-    fonts.add(file);
-    return `url(/fonts/${file})`;
-  });
+  css += text;
 }
-css = css.replace(/\/\*# sourceMappingURL=.*?\*\//g, "");
+// Drop next/font's self-hosted @font-face rules (they point at build-relative
+// /_next/static/media paths that don't exist in this standalone export) and
+// load the same family from Google Fonts instead.
+css = css.replace(/@font-face\{[^}]*\}/g, "").replace(/\/\*# sourceMappingURL=.*?\*\//g, "");
 
 const favicon =
   "data:image/svg+xml," +
@@ -68,6 +67,9 @@ const doc = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${metas.join("\n")}
 <link rel="icon" href="${favicon}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <style>body{margin:0}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}${css}</style>
 </head>
 <body>
@@ -81,9 +83,6 @@ document.querySelectorAll("details a").forEach(function (a) {
 </html>
 `;
 
-await mkdir(path.join(outDir, "fonts"), { recursive: true });
+await mkdir(outDir, { recursive: true });
 await writeFile(path.join(outDir, "index.html"), doc);
-for (const file of fonts) {
-  await writeFile(path.join(outDir, "fonts", file), await get(`${base}/_next/static/media/${file}`, "buffer"));
-}
-console.log(`Wrote ${outDir}/index.html (${doc.length} bytes) and ${fonts.size} font files`);
+console.log(`Wrote ${outDir}/index.html (${doc.length} bytes)`);
