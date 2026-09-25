@@ -6,13 +6,14 @@ import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 
 const PUBLIC_PATHS = ["/login", "/welcome"];
 
-// Static brand assets (the login page's logo/illustration) served from
-// `public/brand/*` — file requests only, not the `/brand` component-gallery
-// page itself (which has no sub-paths, so this can't shadow a real route).
-// Without this, /login's own images 307'd back to /login when signed out
-// (flagged in the Phase 0 redesign audit, finding X15).
+// Static brand assets (the login page's logo/illustration/hero photo) served
+// from `public/brand/*` or `public/brand-assets/*` — file requests only, not
+// the `/brand` component-gallery page itself (which has no sub-paths, so
+// this can't shadow a real route). Without this, /login's own images 307'd
+// back to /login when signed out (flagged in the Phase 0 redesign audit,
+// finding X15; brand-assets/webp added when /login grew a hero photo).
 function isPublicBrandAsset(pathname: string) {
-  return /^\/brand\/[^/]+\.(svg|png|jpg|jpeg)$/.test(pathname);
+  return /^\/brand(-assets)?\/[^/]+\.(svg|png|jpg|jpeg|webp)$/.test(pathname);
 }
 
 export async function proxy(request: NextRequest) {

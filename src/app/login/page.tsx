@@ -63,17 +63,20 @@ export default async function LoginPage() {
       {/* Sign-in panel: one flat, square-edged surface. Full width on mobile,
           ~48% on large screens with the logo pinned top-left inside it. (An
           earlier curved edge was built from a separate header strip plus a
-          rounded body, which left a visible notch beside the logo.) */}
-      <div className="absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
+          rounded body, which left a visible notch beside the logo.)
+          theme-force-light: this panel stays light regardless of the
+          visitor's theme choice — a public entry point, not somewhere
+          personal dark-mode preference should apply. */}
+      <div className="theme-force-light absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
         <div className="relative flex flex-1 items-center justify-center p-6 sm:p-10 lg:px-20 lg:py-10">
           <div className="w-full max-w-sm">
             {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
             <img
               src={BRAND_LOGO}
               alt="ManpowerSync"
-              height={36}
-              width={Math.round(36 * BRAND_LOGO_ASPECT)}
-              className="mb-8 h-9 w-auto"
+              height={72}
+              width={Math.round(72 * BRAND_LOGO_ASPECT)}
+              className="mb-8 h-[72px] w-auto"
             />
             <h1 className="text-2xl font-semibold tracking-tight text-primary">
               Sign in
@@ -94,6 +97,12 @@ export default async function LoginPage() {
             </p>
           </div>
         </div>
+        {/* The dark panel's own logo + copyright are hidden below lg along
+            with the rest of that panel, so this panel needs its own footer
+            for narrow screens — the lg+ view already has one on the left. */}
+        <p className="pb-6 text-center text-xs text-muted lg:hidden">
+          © {new Date().getFullYear()} ManpowerSync. All rights reserved.
+        </p>
       </div>
     </div>
   );

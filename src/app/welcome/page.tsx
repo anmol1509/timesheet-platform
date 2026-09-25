@@ -798,7 +798,7 @@ export default function WelcomePage() {
         <section className={s.strip} aria-label="Industries">
           <div className={s.container}>
             <Reveal as="p" className={s.stripLabel} y={12}>
-              Built for companies that supply and manage skilled labour
+              Purpose-built for manpower-heavy industries
             </Reveal>
             <RevealGroup as="ul" className={s.stripList} stagger={0.05} amount={0.4}>
               {INDUSTRIES.map((name) => (
@@ -813,9 +813,9 @@ export default function WelcomePage() {
         <section id="challenges" className={`${s.section} ${s.sectionSurface}`} aria-labelledby="challenges-title">
           <div className={s.container}>
             <div className={s.sectionHead}>
-              <span className={s.eyebrow}>The challenge</span>
+              <span className={s.eyebrow}>Sound familiar?</span>
               <h2 id="challenges-title" className={s.h2}>
-                Generic HR software was never built for manpower supply.
+                Spreadsheets weren&rsquo;t built to run a workforce.
               </h2>
               <p className={s.lead}>
                 Supplying hundreds of workers to client sites is a different business from employing them in one
