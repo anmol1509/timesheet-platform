@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -29,10 +30,11 @@ export default async function NotificationsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Notifications</h1>
-          <p className="mt-1 text-sm text-muted">{unread > 0 ? `${unread} unread.` : "You're all caught up."} Delivery preferences are on your profile.</p>
-        </div>
+        <PageHeader
+          title="Notifications"
+          icon={Bell}
+          description={<>{unread > 0 ? `${unread} unread.` : "You're all caught up."} Delivery preferences are on your profile.</>}
+        />
         {unread > 0 && <MarkAllRead />}
       </div>
 

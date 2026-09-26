@@ -1,3 +1,5 @@
+import { Clock } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -76,13 +78,11 @@ export default async function AttendancePage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Daily Attendance</h1>
-        <p className="mt-1 text-sm text-muted">
-          Mark Present/Absent/Leave/Holiday/Off per employee per day, then submit the day for
-          approval to lock it.
-        </p>
-      </div>
+      <PageHeader
+        title="Daily Attendance"
+        icon={Clock}
+        description={<>Mark Present/Absent/Leave/Holiday/Off per employee per day, then submit the day for approval to lock it.</>}
+      />
 
       <AttendanceCalendar month={month} days={monthDays} selectedDate={selectedDate} />
 

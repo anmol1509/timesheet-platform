@@ -91,7 +91,7 @@ export function SubsidiaryTabs({
                 className="input w-full disabled:opacity-60"
               />
             </label>
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-xs text-[var(--error)]">{error}</p>}
             <div className="flex justify-end gap-2">
               <button
                 type="button"

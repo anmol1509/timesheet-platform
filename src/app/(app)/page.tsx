@@ -97,7 +97,7 @@ export default async function DashboardPage() {
     prisma.employee.findMany({ where: branchScope, select: { createdAt: true } }),
     prisma.project.findMany({
       where: { ...branchScope, status: "ACTIVE" },
-      select: { id: true, name: true, code: true, client: { select: { name: true } }, _count: { select: { employees: true } } },
+      select: { id: true, name: true, code: true, noOfEmployeesRequired: true, client: { select: { name: true } }, _count: { select: { employees: true } } },
       orderBy: { employees: { _count: "desc" } },
       take: 6,
     }),
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
     recentActivity,
     headcountTrend,
     newThisMonth,
-    activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees })),
+    activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees, required: p.noOfEmployeesRequired })),
   };
 
   const hiddenWidgets = preference?.hiddenWidgets ?? [];

@@ -34,7 +34,7 @@ export function NewItemForm() {
         <NumberInput name="quantity" defaultValue={0} min={0} step={1} className="w-full" />
       </label>
       {state.error && (
-        <p className="w-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="w-full rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
           {state.error}
         </p>
       )}

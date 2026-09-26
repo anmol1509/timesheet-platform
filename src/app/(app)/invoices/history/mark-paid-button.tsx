@@ -29,7 +29,7 @@ export function MarkPaidButton({
           <button
             type="button"
             onClick={open}
-            className="text-xs font-medium text-blue-600 hover:underline"
+            className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
           >
             Mark paid
           </button>

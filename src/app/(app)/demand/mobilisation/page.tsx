@@ -1,4 +1,5 @@
-import { HardHat } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { HardHat, Truck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { approvedHeadcount } from "@/lib/demandApproval";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -53,12 +54,11 @@ export default async function MobilisationQueuePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Mobilisation</h1>
-        <p className="mt-1 text-sm text-muted">
-          Put names against approved demands, trade by trade.
-        </p>
-      </div>
+      <PageHeader
+        title="Mobilisation"
+        icon={Truck}
+        description={<>Put names against approved demands, trade by trade.</>}
+      />
 
       {rows.length === 0 ? (
         <EmptyState

@@ -32,13 +32,13 @@ export function NewProjectForm({
         className="card space-y-4 p-6"
       >
         {state.error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {state.error}
           </p>
         )}
 
         {clients.length === 0 ? (
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p className="rounded-lg bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
             You need at least one client before adding a project.{" "}
             <Link href="/clients/new" className="underline">
               Add a client

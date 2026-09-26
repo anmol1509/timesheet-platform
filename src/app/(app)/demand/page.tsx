@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -31,16 +32,17 @@ export default async function DemandRequestsPage({ searchParams }: { searchParam
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Demand Requests</h1>
-          <p className="mt-1 text-sm text-muted">
-            Staffing requests raised against a client project, tracked through allocation.
-          </p>
-        </div>
+        <PageHeader
+          title="Demand Requests"
+          icon={ListChecks}
+          description={<>Staffing requests raised against a client project, tracked through allocation.</>}
+        />
         <div className="flex items-center gap-3">
           <ViewToggle base="/demand" view={view} />
           <Link href="/demand/new" className="btn btn-primary">
-            + New Request
+            <Plus className="h-4 w-4" aria-hidden />
+
+            New Request
           </Link>
         </div>
       </div>

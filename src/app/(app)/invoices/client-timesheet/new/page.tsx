@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { ManualEntryForm } from "./manual-entry-form";
 
@@ -17,14 +19,11 @@ export default async function NewClientTimesheetEntryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">New Timesheet Entry</h1>
-        <p className="mt-1 text-sm text-muted">
-          Add timesheet rows by hand instead of uploading an Excel file. The
-          columns match the Excel format — ID, name, trade, rate, supplier,
-          client, and one column per day. Pick a Project to tag the location.
-        </p>
-      </div>
+      <PageHeader
+        title="New Timesheet Entry"
+        icon={FilePlus2}
+        description={<>Add timesheet rows by hand instead of uploading an Excel file. The columns match the Excel format — ID, name, trade, rate, supplier, client, and one column per day. Pick a Project to tag the location.</>}
+      />
 
       <ManualEntryForm
         supplierNames={suppliers.map((s) => s.name)}

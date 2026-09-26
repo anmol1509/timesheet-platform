@@ -1,3 +1,5 @@
+import { Banknote } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -51,10 +53,11 @@ export default async function PayrollPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Payroll</h1>
-        <p className="mt-1 text-sm text-muted">Monthly payroll runs: one run per own company. Basic pay comes from attendance, hourly pay from approved timesheet hours. Review, submit for approval, then download the WPS file for your bank.</p>
-      </div>
+      <PageHeader
+        title="Payroll"
+        icon={Banknote}
+        description={<>Monthly payroll runs: one run per own company. Basic pay comes from attendance, hourly pay from approved timesheet hours. Review, submit for approval, then download the WPS file for your bank.</>}
+      />
 
       {branchId && setup.length > 0 && (
         <section className="card overflow-x-auto">

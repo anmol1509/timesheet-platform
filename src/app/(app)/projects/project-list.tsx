@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FolderKanban } from "lucide-react";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import type { BadgeColor } from "@/components/Badge";
@@ -62,9 +63,14 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       searchValue: (p) => `${p.name} ${p.description ?? ""}`,
       csvValue: (p) => p.name,
       render: (p) => (
-        <Link href={`/projects/${p.id}`} className="font-medium text-primary hover:underline">
-          {p.name}
-          {p.description && <p className="text-xs font-normal text-subtle">{p.description}</p>}
+        <Link href={`/projects/${p.id}`} className="group flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-violet-100 text-violet-600">
+            <FolderKanban className="h-4 w-4" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-primary group-hover:underline">{p.name}</span>
+            <span className="block max-w-[16rem] truncate text-xs text-subtle">{p.clientName}{p.description ? ` · ${p.description}` : ""}</span>
+          </span>
         </Link>
       ),
     },

@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createRouteAction, updateRouteAction } from "./actions";
@@ -162,7 +163,7 @@ export function RouteForm({
                   type="button"
                   onClick={() => setStops((prev) => prev.filter((r) => r.id !== s.id))}
                   disabled={stops.length === 1}
-                  className="rounded-lg border border-red-200 px-2 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-[var(--error-border)] px-2 py-2 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Remove
                 </button>
@@ -175,7 +176,9 @@ export function RouteForm({
           onClick={() => setStops((prev) => [...prev, blankStopRow()])}
           className="btn btn-secondary btn-sm mt-3"
         >
-          + Add stop
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add stop
         </button>
       </div>
 

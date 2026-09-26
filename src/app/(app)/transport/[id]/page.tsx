@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -79,7 +80,7 @@ export default async function VehicleDetailPage({
                 ? ` ${vehicle.employees.length} employee(s) will be unassigned.`
                 : ""
             }`}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -117,9 +118,11 @@ export default async function VehicleDetailPage({
           <h2 className="text-sm font-semibold text-primary">Routes</h2>
           <Link
             href={`/transport/routes/new?vehicleId=${vehicle.id}`}
-            className="text-xs font-medium text-blue-600 hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
           >
-            + New Route
+            <Plus className="h-4 w-4" aria-hidden />
+
+            New Route
           </Link>
         </div>
         {vehicle.routes.length === 0 ? (

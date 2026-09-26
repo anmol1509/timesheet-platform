@@ -43,7 +43,7 @@ export default async function NocDetailPage({ params }: { params: Promise<{ id: 
               hiddenFields={{ nocId: noc.id }}
               confirmMessage={`Delete NOC-${noc.docNo}?`}
               label="Delete"
-              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              className="rounded-lg border border-[var(--error-border)] px-3 py-2 text-sm font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
             />
           </div>
         </div>

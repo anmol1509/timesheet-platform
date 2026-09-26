@@ -133,7 +133,7 @@ export function SkillsSection({
                         <input type="hidden" name="skillId" value={s.id} />
                         <button
                           type="submit"
-                          className="text-xs font-medium text-red-600 hover:underline"
+                          className="text-xs font-medium text-[var(--error)] hover:underline"
                         >
                           Remove
                         </button>

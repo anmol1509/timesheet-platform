@@ -197,7 +197,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
                       <button
                         type="button"
                         onClick={() => setSwitchRow(r)}
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                       >
                         Switch Camp
                       </button>
@@ -385,7 +385,7 @@ function CheckInForm({
         </>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={handleSubmit} disabled={!canSubmit || pending} className="btn btn-primary">
           {pending ? "Checking in…" : "Check In"}
@@ -493,7 +493,7 @@ function SwitchCampForm({ row, camps, suppliers, clients, onClose }: { row: Empl
           <DatePicker value={checkInDate} onChange={setCheckInDate} className="w-full" />
         </label>
       )}
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel

@@ -1,3 +1,5 @@
+import { Settings } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
@@ -19,12 +21,11 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Settings</h1>
-        <p className="mt-1 text-sm text-muted">
-          Billing defaults, branches, and account & access management.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        icon={Settings}
+        description={<>Billing defaults, branches, and account & access management.</>}
+      />
 
       <section>
         <h2 className="mb-3 text-sm font-semibold text-primary">

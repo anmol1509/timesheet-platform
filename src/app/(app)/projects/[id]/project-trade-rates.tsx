@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { addProjectTradeRateAction, removeProjectTradeRateAction } from "../actions";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -85,7 +86,7 @@ export function ProjectTradeRates({
                         type="button"
                         disabled={pending}
                         onClick={() => saveEdit(r.trade)}
-                        className="mr-2 text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
+                        className="mr-2 text-xs font-medium text-[var(--success)] hover:underline disabled:opacity-50"
                       >
                         {pending ? "Saving…" : "Save"}
                       </button>
@@ -149,7 +150,9 @@ export function ProjectTradeRates({
             onClick={addNew}
             className="btn btn-primary"
           >
-            + Add
+            <Plus className="h-4 w-4" aria-hidden />
+
+            Add
           </button>
         </div>
       </div>

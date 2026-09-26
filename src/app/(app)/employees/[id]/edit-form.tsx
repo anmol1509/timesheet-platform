@@ -759,10 +759,10 @@ export function EditForm({
             <span className="text-sm text-[var(--warning)]">Unsaved changes</span>
           )}
           {saved && !pending && (
-            <span className="text-sm text-emerald-600">Saved.</span>
+            <span className="text-sm text-[var(--success)]">Saved.</span>
           )}
           {error && !pending && (
-            <span className="text-sm text-red-600">{error}</span>
+            <span className="text-sm text-[var(--error)]">{error}</span>
           )}
         </div>
       )}

@@ -89,7 +89,7 @@ export default async function ProjectDetailPage({
                 ? `Delete ${project.name}? ${project.employees.length} employee(s) will be unassigned from it.`
                 : `Delete ${project.name}?`
             }
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         <p className="mt-1 text-sm text-muted">

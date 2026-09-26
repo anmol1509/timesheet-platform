@@ -30,7 +30,7 @@ export function CampOwnershipEditor({
       <div className="flex items-center gap-2 text-xs">
         <span
           className={`rounded-full px-2 py-0.5 font-medium ${
-            ownerType === "SUPPLIER" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
+            ownerType === "SUPPLIER" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--info-soft)] text-[var(--brand-primary)]"
           }`}
         >
           {ownerType === "SUPPLIER" ? `Supplier camp${currentSupplierName ? ` — ${currentSupplierName}` : ""}` : "Own camp"}

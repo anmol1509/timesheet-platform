@@ -73,7 +73,7 @@ export function PhotoUpload({
           }}
         />
       </button>
-      {error && <p className="max-w-[8rem] text-[10px] text-red-600">{error}</p>}
+      {error && <p className="max-w-[8rem] text-[10px] text-[var(--error)]">{error}</p>}
     </div>
   );
 }

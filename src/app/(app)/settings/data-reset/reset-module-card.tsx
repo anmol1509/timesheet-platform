@@ -146,7 +146,7 @@ function ResetDialog({
         ) : (
           <div className="mt-4 space-y-4">
             {global && (
-              <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <label className="flex items-start gap-2 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]">
                 <input
                   type="checkbox"
                   checked={acknowledgeGlobal}
@@ -168,7 +168,7 @@ function ResetDialog({
                 autoFocus
               />
             </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-[var(--error)]">{error}</p>}
             <DialogFooter>
               <button type="button" onClick={handleClose} className="btn btn-secondary">
                 Cancel

@@ -156,12 +156,12 @@ export function ReviewInvoice({
           </div>
         </div>
         {error && (
-          <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {error}
           </div>
         )}
         {issued && (
-          <div className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <div className="mt-3 rounded-lg bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">
             Saved as {issued.invoiceNumber}. Rates are now locked for this invoice — view it
             in{" "}
             <Link href="/invoices/history" className="underline">
@@ -171,7 +171,7 @@ export function ReviewInvoice({
           </div>
         )}
         {hasLpoWarning && !issued && (
-          <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {expiredLpos.length > 0 && (
               <p>
                 Expired LPO on this project: {expiredLpos.map((l) => l.lpoNumber).join(", ")}.
@@ -191,7 +191,7 @@ export function ReviewInvoice({
                 .
               </p>
             )}
-            <label className="mt-2 flex items-center gap-2 text-red-800">
+            <label className="mt-2 flex items-center gap-2 text-[var(--error)]">
               <input
                 type="checkbox"
                 checked={lpoAck}
@@ -202,7 +202,7 @@ export function ReviewInvoice({
           </div>
         )}
         {unratedTrades.length > 0 && !issued && (
-          <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          <div className="mt-3 rounded-lg bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
             No billing rate configured for: {unratedTrades.join(", ")}. Those lines default to
             AED 0 — set a rate below, or add it to{" "}
             <Link href={`/clients/${client.id}`} className="underline">
@@ -235,7 +235,7 @@ export function ReviewInvoice({
               {rows.map((r) => {
                 const edited = rates[r.id] !== r.billRate;
                 return (
-                  <tr key={r.id} className={!r.rateSet ? "bg-amber-50/60" : undefined}>
+                  <tr key={r.id} className={!r.rateSet ? "bg-[var(--warning-soft)]/60" : undefined}>
                     <td className="px-4 py-2.5 text-muted">{r.employeeIdNo}</td>
                     <td className="px-4 py-2.5 font-medium text-primary">
                       {r.employeeName}
@@ -268,7 +268,7 @@ export function ReviewInvoice({
                     </td>
                     <td
                       className={`px-4 py-2.5 text-right font-medium ${
-                        r.margin >= 0 ? "text-emerald-600" : "text-red-600"
+                        r.margin >= 0 ? "text-[var(--success)]" : "text-[var(--error)]"
                       }`}
                     >
                       {r.margin.toFixed(2)}
@@ -278,7 +278,7 @@ export function ReviewInvoice({
                         <button
                           type="button"
                           onClick={() => resetRate(r.id)}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                         >
                           Reset
                         </button>

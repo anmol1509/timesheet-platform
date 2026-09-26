@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { addLpoAction, updateLpoAction, closeLpoAction } from "../actions";
 import { ComboSelect } from "@/components/ui/ComboSelect";
@@ -135,12 +136,12 @@ export function ProjectLpo({
                   <span className="font-mono text-sm font-medium text-primary">{lpo.lpoNumber}</span>
                   <StatusBadge status={lpo.status} />
                   {lpo.status === "ACTIVE" && expiringSoon && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    <span className="rounded-full bg-[var(--warning-soft)] px-2 py-0.5 text-xs font-medium text-[var(--warning)]">
                       Expiring soon
                     </span>
                   )}
                   {lpo.status === "ACTIVE" && lowBalance && (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                    <span className="rounded-full bg-[var(--error-soft)] px-2 py-0.5 text-xs font-medium text-[var(--error)]">
                       Low balance
                     </span>
                   )}
@@ -235,7 +236,9 @@ export function ProjectLpo({
           onClick={() => setShowNew(true)}
           className="btn btn-secondary"
         >
-          + Add LPO
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add LPO
         </button>
       )}
     </div>
@@ -273,7 +276,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    ACTIVE: "bg-emerald-100 text-emerald-700",
+    ACTIVE: "bg-[var(--success-soft)] text-[var(--success)]",
     EXPIRED: "bg-surface-sunken text-secondary",
     CLOSED: "bg-surface-sunken text-secondary",
   };

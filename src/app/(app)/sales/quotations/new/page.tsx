@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -22,12 +24,11 @@ export default async function NewQuotationPage({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">New Quotation</h1>
-        <p className="mt-1 text-sm text-muted">
-          Trade/quantity/rate line items for a client quotation.
-        </p>
-      </div>
+      <PageHeader
+        title="New Quotation"
+        icon={FilePlus2}
+        description={<>Trade/quantity/rate line items for a client quotation.</>}
+      />
       <QuotationForm
         clients={clients}
         tradeOptions={groupLookups(lookupValues).TRADE}

@@ -51,7 +51,7 @@ export function InvoiceGrid({
           >
             <h2 className="text-base font-semibold text-primary">{c.name}</h2>
             {!c.billRateSet && (
-              <p className="mt-1 text-xs font-medium text-amber-600">
+              <p className="mt-1 text-xs font-medium text-[var(--warning)]">
                 No rate for: {c.unratedTrades.join(", ")}
               </p>
             )}
@@ -64,12 +64,12 @@ export function InvoiceGrid({
             </div>
             <div
               className={`mt-1 text-xs font-medium ${
-                c.margin >= 0 ? "text-emerald-600" : "text-red-600"
+                c.margin >= 0 ? "text-[var(--success)]" : "text-[var(--error)]"
               }`}
             >
               Margin: AED {c.margin.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
-            <span className="mt-4 text-sm font-medium text-blue-600 group-hover:underline">
+            <span className="mt-4 text-sm font-medium text-[var(--brand-primary)] group-hover:underline">
               Review &amp; generate →
             </span>
           </Link>

@@ -198,7 +198,7 @@ export function DocumentBrowser({
                     <div className="flex items-center justify-end gap-3">
                       <a
                         href={`/api/documents/${d.id}`}
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                       >
                         Download
                       </a>
@@ -270,7 +270,7 @@ function UploadForm({
 
   if (employees.length === 0) {
     return (
-      <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <p className="rounded-lg bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
         No employees on record yet —{" "}
         <Link href="/employees/new" className="underline">
           add one
@@ -328,7 +328,7 @@ function UploadForm({
       >
         {pending ? "Uploading…" : "Upload"}
       </button>
-      {error && <p className="w-full text-xs text-red-600">{error}</p>}
+      {error && <p className="w-full text-xs text-[var(--error)]">{error}</p>}
     </form>
   );
 }

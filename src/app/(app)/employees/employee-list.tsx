@@ -184,7 +184,7 @@ export function EmployeeList({
               {e.name}
               {e.isOwnCompanySupplier && (
                 <span title="Our worker">
-                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" aria-label="Our worker" />
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--brand-primary)]" aria-label="Our worker" />
                 </span>
               )}
             </span>

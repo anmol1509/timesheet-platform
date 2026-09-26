@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { Bus, CalendarClock, Phone, Route as RouteIcon, ShieldAlert, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
@@ -55,17 +56,18 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Transport</h1>
-          <p className="mt-1 text-sm text-muted">Vehicles, their drivers and rosters, and the daily pickup runs.</p>
-        </div>
+        <PageHeader
+          title="Transport"
+          icon={Bus}
+          description={<>Vehicles, their drivers and rosters, and the daily pickup runs.</>}
+        />
         <div className="flex items-center gap-2">
           <Link href="/transport/routes" className="btn btn-secondary gap-1.5"><RouteIcon className="h-4 w-4" aria-hidden />Routes</Link>
           <AddVehicleDialog />
         </div>
       </div>
 
-      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map((t) => (

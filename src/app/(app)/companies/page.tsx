@@ -1,3 +1,5 @@
+import { Building } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
@@ -36,12 +38,11 @@ export default async function CompaniesPage({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Companies</h1>
-          <p className="mt-1 text-sm text-muted">
-            Pick a month, then generate a timesheet for any company.
-          </p>
-        </div>
+        <PageHeader
+          title="Companies"
+          icon={Building}
+          description={<>Pick a month, then generate a timesheet for any company.</>}
+        />
         {months.length > 0 && (
           <form className="flex items-center gap-2">
             <label htmlFor="month" className="text-sm text-muted">

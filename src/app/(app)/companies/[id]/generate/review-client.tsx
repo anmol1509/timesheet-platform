@@ -183,7 +183,7 @@ export function ReviewClient({
           </div>
         </div>
         {error && (
-          <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {error}
           </div>
         )}
@@ -213,7 +213,7 @@ export function ReviewClient({
             <button
               type="button"
               onClick={resetAll}
-              className="text-xs font-medium text-blue-600 hover:underline"
+              className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
             >
               Reset all to calculated
             </button>
@@ -296,7 +296,7 @@ export function ReviewClient({
                         <button
                           type="button"
                           onClick={() => resetRow(e.id)}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                         >
                           Reset
                         </button>

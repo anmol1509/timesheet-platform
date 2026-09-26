@@ -1,3 +1,5 @@
+import { ListChecks, Plus } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -24,12 +26,11 @@ export default async function LookupsPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Lookups</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage the dropdown values used across employee forms.
-        </p>
-      </div>
+      <PageHeader
+        title="Lookups"
+        icon={ListChecks}
+        description={<>Manage the dropdown values used across employee forms.</>}
+      />
 
       <div className="flex flex-wrap gap-1.5 rounded-2xl border border-default bg-surface p-2">
         {LOOKUP_CATEGORIES.map((c) => (
@@ -65,7 +66,9 @@ export default async function LookupsPage({
           type="submit"
           className="btn btn-primary"
         >
-          + Add value
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add value
         </button>
       </form>
 

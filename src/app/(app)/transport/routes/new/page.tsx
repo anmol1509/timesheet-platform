@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { RouteForm } from "../route-form";
 
@@ -14,10 +16,11 @@ export default async function NewRoutePage({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">New Route</h1>
-        <p className="mt-1 text-sm text-muted">Define a named pickup route with ordered stops.</p>
-      </div>
+      <PageHeader
+        title="New Route"
+        icon={FilePlus2}
+        description={<>Define a named pickup route with ordered stops.</>}
+      />
       <RouteForm vehicles={vehicles} projects={projects} initialVehicleId={vehicleId} />
     </div>
   );

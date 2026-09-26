@@ -145,7 +145,7 @@ export function VisaHistorySection({
                           href={`/api/documents/${doc.id}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-600 hover:underline"
+                          className="text-[var(--brand-primary)] hover:underline"
                         >
                           {doc.filename}
                         </a>
@@ -158,7 +158,7 @@ export function VisaHistorySection({
                         type="button"
                         disabled={pending}
                         onClick={() => handleRemove(e.id)}
-                        className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                        className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-60"
                       >
                         Remove
                       </button>

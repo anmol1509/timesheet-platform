@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -46,12 +48,11 @@ export default async function NewNocPage({
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">New NOC</h1>
-        <p className="mt-1 text-sm text-muted">
-          Generate a no-objection/mobilization letter for a subset of a Demand Request&apos;s allocated employees.
-        </p>
-      </div>
+      <PageHeader
+        title="New NOC"
+        icon={FilePlus2}
+        description={<>Generate a no-objection/mobilization letter for a subset of a Demand Request&apos;s allocated employees.</>}
+      />
       <NocForm
         requests={requests}
         templates={templates.map((t) => ({ id: t.id, name: t.name }))}

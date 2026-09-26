@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, Wallet } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -55,10 +56,11 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Expenses</h1>
-          <p className="mt-1 text-sm text-muted">Costs submitted for approval. Approved expenses feed the finance overview.</p>
-        </div>
+        <PageHeader
+          title="Expenses"
+          icon={Wallet}
+          description={<>Costs submitted for approval. Approved expenses feed the finance overview.</>}
+        />
         {can(subject, "finance", "export") && <a href={`/api/finance/export?type=expenses${status ? `&status=${status}` : ""}`} className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
       </div>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">

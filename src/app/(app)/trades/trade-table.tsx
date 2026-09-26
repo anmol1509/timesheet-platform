@@ -117,7 +117,7 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                               type="button"
                               disabled={pending}
                               onClick={saveEdit}
-                              className="text-xs font-medium text-emerald-600 hover:underline disabled:opacity-50"
+                              className="text-xs font-medium text-[var(--success)] hover:underline disabled:opacity-50"
                             >
                               {pending ? "Saving…" : "Save"}
                             </button>
@@ -147,7 +147,7 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                                 type="submit"
                                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                                   s.trending
-                                    ? "bg-blue-100 text-blue-700"
+                                    ? "bg-[var(--info-soft)] text-[var(--brand-primary)]"
                                     : "bg-surface-subtle text-subtle hover:text-muted"
                                 }`}
                                 title="Toggle trending"

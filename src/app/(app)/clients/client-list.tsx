@@ -258,7 +258,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
                     <div className="flex items-center justify-end gap-3">
                     <Link
                       href={`/clients/${c.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
                     >
                       <Pencil className="h-3.5 w-3.5" /> Edit
                     </Link>

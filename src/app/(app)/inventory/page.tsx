@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { Package } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
@@ -37,12 +38,11 @@ export default async function InventoryPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Inventory</h1>
-        <p className="mt-1 text-sm text-muted">
-          Tools and equipment issued to project sites.
-        </p>
-      </div>
+      <PageHeader
+        title="Inventory"
+        icon={Package}
+        description={<>Tools and equipment issued to project sites.</>}
+      />
 
       <NewItemForm />
 

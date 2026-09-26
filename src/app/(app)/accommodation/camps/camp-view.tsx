@@ -270,7 +270,7 @@ export function CampView({
                             hiddenFields={{ roomId: room.id }}
                             confirmMessage={`Delete ${room.name}? Its ${room.beds.length} bed(s) will be removed, unassigning anyone housed there.`}
                             label="Delete room"
-                            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm text-[var(--error)] hover:bg-[var(--error-soft)]"
                           />
                         </Popover.Content>
                       </Popover.Portal>
@@ -359,14 +359,14 @@ export function CampView({
                     <Link href={`/employees/${bed.employeeId}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Profile</Link>
                   </div>
                   <p className="text-xs text-muted">To move them to another bed, drag them there, or check them out first.</p>
-                  <button type="button" className="btn btn-secondary w-full text-red-600" onClick={() => setMode("checkout")}>Check out of this bed</button>
+                  <button type="button" className="btn btn-secondary w-full text-[var(--error)]" onClick={() => setMode("checkout")}>Check out of this bed</button>
                 </div>
               )}
 
               {mode === "menu" && !occ && (
                 <div className="mt-4 grid gap-2">
                   <button type="button" className="btn btn-primary w-full gap-2" onClick={() => setMode("assign")}><UserPlus className="h-4 w-4" aria-hidden />Assign a worker</button>
-                  <button type="button" className="btn btn-secondary w-full gap-2 text-red-600" onClick={() => setMode("delete")}><Trash2 className="h-4 w-4" aria-hidden />Delete this bed</button>
+                  <button type="button" className="btn btn-secondary w-full gap-2 text-[var(--error)]" onClick={() => setMode("delete")}><Trash2 className="h-4 w-4" aria-hidden />Delete this bed</button>
                 </div>
               )}
 

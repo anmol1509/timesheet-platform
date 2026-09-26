@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import {
   addProjectInventoryAction,
@@ -86,7 +87,7 @@ export function ProjectInventory({
                       <input type="hidden" name="assignmentId" value={a.id} />
                       <button
                         type="submit"
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                       >
                         Mark returned
                       </button>
@@ -144,7 +145,9 @@ export function ProjectInventory({
             onClick={add}
             className="btn btn-primary"
           >
-            + Add
+            <Plus className="h-4 w-4" aria-hidden />
+
+            Add
           </button>
         </div>
       </div>

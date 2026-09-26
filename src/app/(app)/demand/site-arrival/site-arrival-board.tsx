@@ -299,7 +299,7 @@ export function SiteArrivalBoard({
                           disabled={saving}
                           onClick={() => revert(r.id)}
                           title="Puts the worker back to awaiting arrival"
-                          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                          className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-60"
                         >
                           Undo
                         </button>
@@ -309,7 +309,7 @@ export function SiteArrivalBoard({
                             type="button"
                             disabled={saving}
                             onClick={() => approveOne(r.id)}
-                            className="text-xs font-medium text-emerald-600 hover:underline disabled:opacity-60"
+                            className="text-xs font-medium text-[var(--success)] hover:underline disabled:opacity-60"
                           >
                             Approve
                           </button>
@@ -317,7 +317,7 @@ export function SiteArrivalBoard({
                             type="button"
                             disabled={saving}
                             onClick={() => setDisapproving(r)}
-                            className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                            className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-60"
                           >
                             Disapprove
                           </button>
@@ -413,7 +413,7 @@ function DisapproveForm({
           className="input w-full"
         />
       </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel

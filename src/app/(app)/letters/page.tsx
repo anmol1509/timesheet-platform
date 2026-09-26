@@ -1,3 +1,5 @@
+import { FileSignature } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -21,10 +23,11 @@ export default async function EmployeeLettersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Employee letters</h1>
-        <p className="mt-1 text-sm text-muted">Salary certificates, experience letters, warnings and more, made from your templates with the employee&apos;s details filled in. Edit the wording under Administration → Letter Templates.</p>
-      </div>
+      <PageHeader
+        title="Employee letters"
+        icon={FileSignature}
+        description={<>Salary certificates, experience letters, warnings and more, made from your templates with the employee&apos;s details filled in. Edit the wording under Administration → Letter Templates.</>}
+      />
 
       {!branchId ? (
         <p className="text-sm text-muted">Pick a branch from the switcher to make letters.</p>

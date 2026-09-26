@@ -1,3 +1,5 @@
+import { Upload } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { UploadForm } from "./upload-form";
@@ -17,14 +19,11 @@ export default async function UploadPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Upload</h1>
-        <p className="mt-1 text-sm text-muted">
-          Upload the consolidated time sheet workbook. Each month tab (e.g.
-          &ldquo;MAY-25&rdquo;) is detected automatically, and re-uploading the
-          same month just refreshes the hours already on file.
-        </p>
-      </div>
+      <PageHeader
+        title="Upload"
+        icon={Upload}
+        description={<>Upload the consolidated time sheet workbook. Each month tab (e.g. &ldquo;MAY-25&rdquo;) is detected automatically, and re-uploading the same month just refreshes the hours already on file.</>}
+      />
 
       <UploadForm />
 
@@ -68,14 +67,14 @@ export default async function UploadPage() {
                       <div className="flex items-center justify-end gap-3">
                         <Link
                           href={`/upload/${u.id}`}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                         >
                           View
                         </Link>
                         {u.fileData ? (
                           <a
                             href={`/api/upload/${u.id}/download`}
-                            className="text-xs font-medium text-blue-600 hover:underline"
+                            className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                           >
                             Download
                           </a>

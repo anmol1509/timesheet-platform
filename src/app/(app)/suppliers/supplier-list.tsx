@@ -217,7 +217,7 @@ export function SupplierList({
                     </Link>
                     {row.isOwnCompany && (
                       <span title="Own company">
-                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" aria-label="Own company" />
+                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--brand-primary)]" aria-label="Own company" />
                       </span>
                     )}
                     {!isChild && children.length > 0 && (
@@ -300,7 +300,7 @@ export function SupplierList({
                   />
                   <Link
                     href={`/suppliers/${row.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
                   >
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Link>

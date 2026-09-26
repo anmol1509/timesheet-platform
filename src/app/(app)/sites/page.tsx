@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -42,13 +43,11 @@ export default async function SitesPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Sites</h1>
-        <p className="mt-1 text-sm text-muted">
-          Where work actually happens. Each site sits under a project, and takes its
-          client from that project.
-        </p>
-      </div>
+      <PageHeader
+        title="Sites"
+        icon={MapPin}
+        description={<>Where work actually happens. Each site sits under a project, and takes its client from that project.</>}
+      />
 
       <form action={createSiteAction} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="min-w-[16rem] flex-1">

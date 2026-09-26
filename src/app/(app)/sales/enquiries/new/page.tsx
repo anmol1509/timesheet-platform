@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -13,10 +15,11 @@ export default async function NewEnquiryPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">New Enquiry</h1>
-        <p className="mt-1 text-sm text-muted">Capture a client enquiry or RFQ.</p>
-      </div>
+      <PageHeader
+        title="New Enquiry"
+        icon={FilePlus2}
+        description={<>Capture a client enquiry or RFQ.</>}
+      />
       <NewEnquiryForm clients={clients} />
     </div>
   );

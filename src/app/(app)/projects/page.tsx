@@ -1,6 +1,7 @@
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, FolderKanban, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader, CountPill } from "@/components/PageHeader";
+import { KpiStrip } from "@/components/KpiStrip";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -59,18 +60,15 @@ export default async function ProjectsPage({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}
         </p>
       )}
       <PageHeader
         title="Projects"
-        description="Track active work sites and who's managing them."
-        meta={
-          <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
-            {rows.length}
-          </span>
-        }
+        icon={FolderKanban}
+        description="Track active work sites, their workforce, demand and billing."
+        meta={<CountPill>{rows.length}</CountPill>}
         actions={
           <Button href="/projects/new" size="sm">
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -78,6 +76,23 @@ export default async function ProjectsPage({
           </Button>
         }
       />
+
+      {rows.length > 0 && (
+        <KpiStrip
+          cells={[
+            { label: "Active projects", value: rows.filter((r) => r.status === "ACTIVE").length, sub: `${rows.length} projects in total`, href: "/dashboards/projects" },
+            { label: "Deployed workforce", value: rows.reduce((n, r) => n + r.deployed, 0), sub: `${rows.reduce((n, r) => n + (r.required ?? 0), 0)} required across projects`, href: "/employees?filter=on-work" },
+            { label: "Open demand", value: rows.reduce((n, r) => n + r.openDemands, 0), sub: "labour requests being filled", href: "/demand" },
+            {
+              label: "Ending within 30 days",
+              value: rows.filter((r) => r.status === "ACTIVE" && r.daysLeft !== null && r.daysLeft >= 0 && r.daysLeft <= 30).length,
+              sub: "active projects near their end date",
+              href: "/dashboards/projects",
+              tone: rows.some((r) => r.status === "ACTIVE" && r.daysLeft !== null && r.daysLeft >= 0 && r.daysLeft <= 30) ? "warning" : "default",
+            },
+          ]}
+        />
+      )}
 
       {rows.length === 0 ? (
         <EmptyState

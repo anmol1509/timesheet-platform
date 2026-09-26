@@ -116,17 +116,17 @@ export function UploadForm() {
       </div>
 
       {result?.kind === "error" && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">
           {result.message}
         </div>
       )}
 
       {result?.kind === "success" && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
+        <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] px-4 py-4 text-sm text-[var(--success)]">
           <p className="font-medium">
             Imported {result.filename} successfully.
           </p>
-          <ul className="mt-3 space-y-1 text-emerald-800">
+          <ul className="mt-3 space-y-1 text-[var(--success)]">
             {result.stats.monthsProcessed.map((m) => (
               <li key={m.month}>
                 {m.monthLabel}: {m.entries} employee rows processed
@@ -141,17 +141,17 @@ export function UploadForm() {
                 `, ${result.stats.clientsCreated} new clients`}
             </li>
             {result.stats.rowsSkipped > 0 && (
-              <li className="text-amber-700">
+              <li className="text-[var(--warning)]">
                 {result.stats.rowsSkipped} row(s) skipped
               </li>
             )}
           </ul>
           {result.stats.skippedRowDetails.length > 0 && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-900">
+            <div className="mt-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3">
+              <p className="text-xs font-medium text-[var(--warning)]">
                 Skipped rows — fix these in the source sheet and re-upload:
               </p>
-              <ul className="mt-2 space-y-1 text-xs text-amber-800">
+              <ul className="mt-2 space-y-1 text-xs text-[var(--warning)]">
                 {result.stats.skippedRowDetails.map((r, i) => (
                   <li key={i}>
                     {r.sheetName}, row {r.row}: {r.name} ({r.idNo}) —{" "}
@@ -163,11 +163,11 @@ export function UploadForm() {
           )}
           {(result.warnings?.zeroRateCount > 0 ||
             result.warnings?.implausibleHoursCount > 0) && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-900">
+            <div className="mt-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3">
+              <p className="text-xs font-medium text-[var(--warning)]">
                 Worth reviewing before trusting this data:
               </p>
-              <ul className="mt-2 space-y-2 text-xs text-amber-800">
+              <ul className="mt-2 space-y-2 text-xs text-[var(--warning)]">
                 {result.warnings.zeroRateCount > 0 && (
                   <li>
                     <span className="font-medium">

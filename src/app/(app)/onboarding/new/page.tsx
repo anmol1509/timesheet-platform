@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -20,12 +22,11 @@ export default async function NewCandidatePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Add candidate</h1>
-        <p className="mt-1 text-sm text-muted">
-          Start tracking a candidate an agency has put forward. Nothing here creates an Employee record — that happens once they join.
-        </p>
-      </div>
+      <PageHeader
+        title="Add candidate"
+        icon={FilePlus2}
+        description={<>Start tracking a candidate an agency has put forward. Nothing here creates an Employee record — that happens once they join.</>}
+      />
       <CandidateForm agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
     </div>
   );

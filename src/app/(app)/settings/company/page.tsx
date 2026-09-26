@@ -1,3 +1,5 @@
+import { Building } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -36,12 +38,11 @@ export default async function CompanyProfilePage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Company profile</h1>
-        <p className="mt-1 text-sm text-muted">
-          Your company&apos;s name and logo. They appear in the sidebar and on generated timesheets and invoices.
-        </p>
-      </div>
+      <PageHeader
+        title="Company profile"
+        icon={Building}
+        description={<>Your company&apos;s name and logo. They appear in the sidebar and on generated timesheets and invoices.</>}
+      />
 
       {isSuperAdmin && branches.length > 1 && (
         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Company">

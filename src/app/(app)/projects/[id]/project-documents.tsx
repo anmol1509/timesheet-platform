@@ -88,7 +88,7 @@ export function ProjectDocuments({
         />
       </div>
       {error && (
-        <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
+        <p className="border-b border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-xs text-[var(--error)]">
           {error}
         </p>
       )}

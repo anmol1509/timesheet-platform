@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { addProjectHolidayAction, removeProjectHolidayAction } from "../actions";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -105,7 +106,9 @@ export function ProjectHolidays({
           onClick={add}
           className="btn btn-primary"
         >
-          + Add
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add
         </button>
       </div>
     </div>

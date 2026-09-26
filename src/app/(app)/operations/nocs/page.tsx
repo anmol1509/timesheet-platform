@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -26,17 +27,18 @@ export default async function NocsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">NOCs</h1>
-          <p className="mt-1 text-sm text-muted">
-            No-objection and mobilization letters generated from Demand Requests.
-          </p>
-        </div>
+        <PageHeader
+          title="NOCs"
+          icon={FileText}
+          description={<>No-objection and mobilization letters generated from Demand Requests.</>}
+        />
         <Link
           href="/operations/nocs/new"
           className="btn btn-primary"
         >
-          + New NOC
+          <Plus className="h-4 w-4" aria-hidden />
+
+          New NOC
         </Link>
       </div>
 

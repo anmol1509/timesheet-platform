@@ -117,7 +117,7 @@ export function CompanyGrid({
             )}
             <Link
               href={`/companies/${c.id}/generate?month=${month}`}
-              className="mt-4 text-sm font-medium text-blue-600 hover:underline"
+              className="mt-4 text-sm font-medium text-[var(--brand-primary)] hover:underline"
             >
               Review &amp; generate →
             </Link>

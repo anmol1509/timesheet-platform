@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { FileQuestion } from "lucide-react";
+import { FileQuestion, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -40,25 +41,26 @@ export default async function EnquiriesPage({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Enquiries</h1>
-          <p className="mt-1 text-sm text-muted">
-            Client enquiries and RFQs, ahead of a formal quotation.
-          </p>
-        </div>
+        <PageHeader
+          title="Enquiries"
+          icon={FileQuestion}
+          description={<>Client enquiries and RFQs, ahead of a formal quotation.</>}
+        />
         <div className="flex items-center gap-3">
           <ViewToggle base="/sales/enquiries" view={view} />
           <Link
             href="/sales/enquiries/new"
             className="btn btn-primary"
           >
-            + New Enquiry
+            <Plus className="h-4 w-4" aria-hidden />
+
+            New Enquiry
           </Link>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}
         </p>
       )}
@@ -160,7 +162,7 @@ export default async function EnquiriesPage({
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`}
-                      className="text-xs font-medium text-blue-600 hover:underline"
+                      className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                     >
                       Create Quotation →
                     </Link>

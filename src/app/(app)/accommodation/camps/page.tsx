@@ -85,7 +85,7 @@ export default async function CampsPage({
   return (
     <div className="space-y-5">
       {params.error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {params.error}
         </p>
       )}
@@ -139,7 +139,7 @@ export default async function CampsPage({
                   <span
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",
-                      c.ownerType === "SUPPLIER" ? "bg-amber-500" : "bg-blue-500"
+                      c.ownerType === "SUPPLIER" ? "bg-[var(--warning)]" : "bg-[var(--brand-primary)]"
                     )}
                     aria-hidden
                   />
@@ -169,7 +169,7 @@ export default async function CampsPage({
                   hiddenFields={{ campId: selectedCamp.id }}
                   confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
                   label="Delete Camp"
-                  className="rounded-control border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="rounded-control border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
                 />
               </div>
             </div>

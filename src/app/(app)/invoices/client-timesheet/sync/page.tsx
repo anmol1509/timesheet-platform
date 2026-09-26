@@ -1,4 +1,5 @@
-import { CheckCircle2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { CheckCircle2, RefreshCw } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -49,16 +50,11 @@ export default async function TimesheetSyncPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">
-          Attendance vs client timesheet
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Days where the roster and the client sheet disagree. Marking attendance
-          keeps them in step on its own; what lands here is what it would not
-          overwrite.
-        </p>
-      </div>
+      <PageHeader
+        title="Attendance vs client timesheet"
+        icon={RefreshCw}
+        description={<>Days where the roster and the client sheet disagree. Marking attendance keeps them in step on its own; what lands here is what it would not overwrite.</>}
+      />
 
       <SyncReview
         month={month}

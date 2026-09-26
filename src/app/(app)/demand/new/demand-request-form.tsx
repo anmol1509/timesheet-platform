@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
@@ -155,7 +156,7 @@ export function DemandRequestForm({
                 type="button"
                 onClick={() => setTrades((prev) => prev.filter((r) => r.id !== t.id))}
                 disabled={trades.length === 1}
-                className="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-[var(--error-border)] px-3 py-2 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Remove
               </button>
@@ -167,7 +168,9 @@ export function DemandRequestForm({
           onClick={() => setTrades((prev) => [...prev, blankTradeRow()])}
           className="btn btn-secondary btn-sm mt-3"
         >
-          + Add trade
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add trade
         </button>
       </div>
 

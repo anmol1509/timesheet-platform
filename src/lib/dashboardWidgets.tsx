@@ -86,7 +86,7 @@ export type DashboardData = {
   /** Headcount at the end of each of the last six months, oldest first. */
   headcountTrend: number[];
   newThisMonth: number;
-  activeProjects: { id: string; name: string; code: string; clientName: string; workers: number }[];
+  activeProjects: { id: string; name: string; code: string; clientName: string; workers: number; required: number | null }[];
 };
 
 export type DashboardWidget = {
@@ -202,12 +202,19 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
                 <tr>
                   <th className="px-5">Project / Client</th>
                   <th className="px-3 text-right">Workers</th>
-                  <th className="w-2/5 px-5">Share of deployed</th>
+                  <th className="w-2/5 px-5">Capacity</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {d.activeProjects.map((p) => {
-                  const share = d.onWorkCount > 0 ? Math.round((p.workers / d.onWorkCount) * 100) : 0;
+                  // Staffed against the project's required headcount when it has
+                  // one; otherwise its share of everyone deployed.
+                  const share = p.required
+                    ? Math.round((p.workers / p.required) * 100)
+                    : d.onWorkCount > 0
+                      ? Math.round((p.workers / d.onWorkCount) * 100)
+                      : 0;
+                  const barColor = !p.required ? "bg-[var(--brand-primary)]" : share >= 90 ? "bg-[var(--success)]" : share >= 60 ? "bg-[var(--info)]" : "bg-[var(--warning)]";
                   return (
                     <tr key={p.id} className="transition-colors hover:bg-surface-subtle">
                       <td className="px-5 py-3">
@@ -221,13 +228,16 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
                           </span>
                         </Link>
                       </td>
-                      <td className="tabular px-3 py-3 text-right font-semibold text-primary">{p.workers}</td>
+                      <td className="tabular px-3 py-3 text-right font-semibold text-primary">
+                        {p.workers}
+                        {p.required ? <span className="font-normal text-subtle"> / {p.required}</span> : null}
+                      </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-                            <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${share}%` }} />
+                            <div className={cn("h-full rounded-full", barColor)} style={{ width: `${Math.min(100, share)}%` }} />
                           </div>
-                          <span className="tabular w-9 text-right text-xs font-medium text-muted">{share}%</span>
+                          <span className="tabular w-16 text-right text-xs font-medium text-muted">{share}%{p.required ? "" : " of all"}</span>
                         </div>
                       </td>
                     </tr>

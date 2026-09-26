@@ -1,3 +1,5 @@
+import { UserRound } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { requireUser, subjectOf } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { MODULES, can, ACTION_LABELS, type PermissionAction } from "@/lib/permissions";
@@ -24,10 +26,11 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">My profile</h1>
-        <p className="mt-1 text-sm text-muted">Your name, photo and password.</p>
-      </div>
+      <PageHeader
+        title="My profile"
+        icon={UserRound}
+        description={<>Your name, photo and password.</>}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="card p-5 lg:col-span-2">

@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { FileStack } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -34,12 +35,11 @@ export default async function DemandDocumentsIndexPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Generate Doc</h1>
-        <p className="mt-1 text-sm text-muted">
-          NOC, undertaking and the employee document pack for a mobilised demand.
-        </p>
-      </div>
+      <PageHeader
+        title="Generate Doc"
+        icon={FileStack}
+        description={<>NOC, undertaking and the employee document pack for a mobilised demand.</>}
+      />
 
       {rows.length === 0 ? (
         <EmptyState
@@ -82,7 +82,7 @@ export default async function DemandDocumentsIndexPage() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <Link
                         href={`/demand/${d.id}/documents`}
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                       >
                         Generate
                       </Link>

@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, ListChecks } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -38,12 +39,11 @@ export default async function OnboardingPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Candidate onboarding</h1>
-          <p className="mt-1 text-sm text-muted">
-            From agency submission through to joining — one status per stage, dated and referenced.
-          </p>
-        </div>
+        <PageHeader
+          title="Candidate onboarding"
+          icon={ListChecks}
+          description={<>From agency submission through to joining — one status per stage, dated and referenced.</>}
+        />
         <Link href="/onboarding/new" className="btn btn-primary">
           <Plus className="h-4 w-4" aria-hidden /> Add candidate
         </Link>

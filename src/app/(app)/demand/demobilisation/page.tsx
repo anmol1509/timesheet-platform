@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { UserMinus } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -81,13 +82,11 @@ export default async function DemobilisationPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Demobilisation</h1>
-        <p className="mt-1 text-sm text-muted">
-          Take workers off a job. Ends the placement everywhere at once — the
-          stage, the project, the demand allocation and the assignment record.
-        </p>
-      </div>
+      <PageHeader
+        title="Demobilisation"
+        icon={UserMinus}
+        description={<>Take workers off a job. Ends the placement everywhere at once — the stage, the project, the demand allocation and the assignment record.</>}
+      />
 
       {deployed.length === 0 && recent.length === 0 ? (
         <EmptyState

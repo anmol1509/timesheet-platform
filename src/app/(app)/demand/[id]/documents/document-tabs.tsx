@@ -127,7 +127,7 @@ export function DocumentTabs({
                   </Link>
                   <a
                     href={`/api/nocs/${noc.id}${onLetterhead ? "?letterhead=1" : ""}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
                   >
                     <Download className="h-3.5 w-3.5" aria-hidden />
                     PDF
@@ -162,7 +162,7 @@ export function DocumentTabs({
                   <span className="text-sm text-primary">{t.name}</span>
                   <a
                     href={`/api/demand-requests/${demandId}/undertaking?templateId=${t.id}${onLetterhead ? "&letterhead=1" : ""}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
                   >
                     <Download className="h-3.5 w-3.5" aria-hidden />
                     Download PDF
@@ -197,7 +197,7 @@ export function DocumentTabs({
                         : new Set(workers.map((w) => w.id))
                     )
                   }
-                  className="text-xs font-medium text-blue-600 hover:underline"
+                  className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                 >
                   {chosen.size === workers.length ? "Deselect all" : "Select all"}
                 </button>

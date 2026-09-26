@@ -100,7 +100,7 @@ export function DeleteEmployeesButton({
             <button
               type="button"
               onClick={runDelete}
-              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+              className="rounded-lg bg-[var(--error)] px-3 py-2 text-sm font-medium text-white transition hover:bg-[var(--error)]"
             >
               Delete
             </button>

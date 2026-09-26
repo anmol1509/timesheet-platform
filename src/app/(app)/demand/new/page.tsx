@@ -1,3 +1,5 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -21,12 +23,11 @@ export default async function NewDemandRequestPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Raise Demand</h1>
-        <p className="mt-1 text-sm text-muted">
-          Request staffing for a client project, broken down by trade.
-        </p>
-      </div>
+      <PageHeader
+        title="Raise Demand"
+        icon={FilePlus2}
+        description={<>Request staffing for a client project, broken down by trade.</>}
+      />
       <DemandRequestForm clients={clients} projects={projects} tradeOptions={tradeOptions} />
     </div>
   );

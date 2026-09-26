@@ -189,7 +189,7 @@ export function EditProjectForm({
         </button>
         {error && <span className="text-sm text-[var(--error)]">{error}</span>}
         {saved && !pending && (
-          <span className="text-sm text-emerald-600">Saved.</span>
+          <span className="text-sm text-[var(--success)]">Saved.</span>
         )}
       </div>
     </form>

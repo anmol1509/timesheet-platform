@@ -65,11 +65,11 @@ export default async function InventoryItemPage({
             action={deleteInventoryItemAction}
             hiddenFields={{ itemId: item.id }}
             confirmMessage={`Delete "${item.name}"?`}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{error}</p>
         )}
       </div>
 

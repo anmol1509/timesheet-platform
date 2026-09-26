@@ -1,3 +1,5 @@
+import { CalendarDays } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -30,12 +32,11 @@ export default async function DailyTimesheetPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Daily Timesheet</h1>
-        <p className="mt-1 text-sm text-muted">
-          Pick a supplier and project to log just today&rsquo;s hours for that supplier&rsquo;s employees.
-        </p>
-      </div>
+      <PageHeader
+        title="Daily Timesheet"
+        icon={CalendarDays}
+        description={<>Pick a supplier and project to log just today&rsquo;s hours for that supplier&rsquo;s employees.</>}
+      />
 
       <DailyTimesheetForm
         suppliers={suppliers}

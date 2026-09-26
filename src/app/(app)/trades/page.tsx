@@ -1,3 +1,5 @@
+import { Wrench, Plus } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { createSkillAction } from "./actions";
 import { TradeTable } from "./trade-table";
@@ -44,12 +46,11 @@ export default async function SkillsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Trades</h1>
-        <p className="mt-1 text-sm text-muted">
-          The trades your workforce holds, and where demand is highest.
-        </p>
-      </div>
+      <PageHeader
+        title="Trades"
+        icon={Wrench}
+        description={<>The trades your workforce holds, and where demand is highest.</>}
+      />
 
       <form
         action={createSkillAction}
@@ -82,7 +83,9 @@ export default async function SkillsPage() {
           type="submit"
           className="btn btn-primary"
         >
-          + Add Trade
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add Trade
         </button>
       </form>
 

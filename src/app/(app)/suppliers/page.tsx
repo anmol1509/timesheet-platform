@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Truck } from "lucide-react";
+import { Truck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { billTotals } from "@/lib/payables";
@@ -96,22 +97,20 @@ export default async function SuppliersPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Suppliers</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage the manpower suppliers/subcontractors referenced across
-          timesheets and employees.
-        </p>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        icon={Truck}
+        description={<>Manage the manpower suppliers/subcontractors referenced across timesheets and employees.</>}
+      />
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}
         </p>
       )}
 
       {isSuperAdmin && !branchId && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
           You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the
           switcher (top right) before adding a supplier.
         </p>
@@ -145,7 +144,9 @@ export default async function SuppliersPage({
           type="submit"
           className="btn btn-primary"
         >
-          + Add Supplier
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add Supplier
         </button>
       </form>
 

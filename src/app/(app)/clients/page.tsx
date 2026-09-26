@@ -1,8 +1,9 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { EmptyState } from "@/components/EmptyState";
-import { Building2, FileCheck2, DollarSign } from "lucide-react";
+import { Building2, FileCheck2, DollarSign, Plus } from "lucide-react";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -53,19 +54,18 @@ export default async function ClientsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">
-            Client Management
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Manage your clients and contract details.
-          </p>
-        </div>
+        <PageHeader
+          title="Client Management"
+          icon={Building2}
+          description={<>Manage your clients and contract details.</>}
+        />
         <Link
           href="/clients/new"
           className="btn btn-primary"
         >
-          + Add Client
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add Client
         </Link>
       </div>
 

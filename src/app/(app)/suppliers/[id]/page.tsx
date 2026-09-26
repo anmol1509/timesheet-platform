@@ -91,7 +91,7 @@ export default async function SupplierDetailPage({
         />
         <div className="rounded-b-3xl rounded-tr-3xl border border-default bg-surface p-5">
           {isSuperAdmin && !branchId && (
-            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <p className="mb-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
               You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from
               the switcher (top right) before editing or adding a subsidiary here.
             </p>
@@ -103,7 +103,7 @@ export default async function SupplierDetailPage({
             </h1>
             {supplier.isOwnCompany && (
               <span title="Own company">
-                <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" aria-label="Own company" />
+                <BadgeCheck className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-label="Own company" />
               </span>
             )}
             {supplier.code && (
@@ -123,7 +123,7 @@ export default async function SupplierDetailPage({
                 ? ` ${supplier._count.employees} employee(s) will be unassigned.`
                 : ""
             }`}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -140,7 +140,7 @@ export default async function SupplierDetailPage({
           · {supplier._count.entries} timesheet rows
         </p>
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {error}
           </p>
         )}

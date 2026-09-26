@@ -1,3 +1,5 @@
+import { FileSearch } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
@@ -82,12 +84,11 @@ export default async function InstantViewPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Employee Instant View</h1>
-        <p className="mt-1 text-sm text-muted">
-          A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.
-        </p>
-      </div>
+      <PageHeader
+        title="Employee Instant View"
+        icon={FileSearch}
+        description={<>A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.</>}
+      />
 
       <InstantViewPicker category={category} employeeId={employeeId ?? ""} employees={employees} />
 

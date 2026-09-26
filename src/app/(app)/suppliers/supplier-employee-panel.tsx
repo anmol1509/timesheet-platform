@@ -227,7 +227,7 @@ export function SupplierEmployeePanel({
                         <li key={c.id} className="flex items-center gap-2.5 px-3 py-2">
                           <a
                             href={`/api/attachments/${c.id}`}
-                            className="min-w-0 flex-1 truncate text-sm text-blue-600 hover:underline"
+                            className="min-w-0 flex-1 truncate text-sm text-[var(--brand-primary)] hover:underline"
                           >
                             {c.filename}
                           </a>
@@ -286,7 +286,7 @@ export function SupplierEmployeePanel({
                     Saving and reading the certificate…
                   </p>
                 )}
-                {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+                {error && <p className="mt-3 text-sm text-[var(--error)]">{error}</p>}
               </section>
             )}
 
@@ -308,7 +308,7 @@ export function SupplierEmployeePanel({
                         prev!.map((r) => ({ ...r, include: included.length !== rows.length }))
                       )
                     }
-                    className="text-xs font-medium text-blue-600 hover:underline"
+                    className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                   >
                     {included.length === rows.length ? "Deselect all" : "Select all"}
                   </button>

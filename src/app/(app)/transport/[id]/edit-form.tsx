@@ -92,7 +92,7 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
           {pending ? "Saving…" : "Save changes"}
         </button>
         {saved && !pending && (
-          <span className="text-sm text-emerald-600">Saved.</span>
+          <span className="text-sm text-[var(--success)]">Saved.</span>
         )}
       </div>
     </form>

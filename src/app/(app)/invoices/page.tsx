@@ -1,3 +1,5 @@
+import { Receipt } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
@@ -42,12 +44,11 @@ export default async function InvoicesPage({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Invoices</h1>
-          <p className="mt-1 text-sm text-muted">
-            Pick a month, then review and generate a client invoice.
-          </p>
-        </div>
+        <PageHeader
+          title="Invoices"
+          icon={Receipt}
+          description={<>Pick a month, then review and generate a client invoice.</>}
+        />
         <div className="flex items-center gap-3">
           {months.length > 0 && (
             <form className="flex items-center gap-2">
@@ -60,7 +61,7 @@ export default async function InvoicesPage({
           )}
           <Link
             href="/invoices/history"
-            className="text-sm font-medium text-blue-600 hover:underline"
+            className="text-sm font-medium text-[var(--brand-primary)] hover:underline"
           >
             History →
           </Link>

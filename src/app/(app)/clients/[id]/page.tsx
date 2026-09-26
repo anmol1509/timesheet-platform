@@ -56,14 +56,14 @@ export default async function ClientDetailPage({
             action={deleteClientAction}
             hiddenFields={{ clientId: client.id }}
             confirmMessage={`Delete ${client.name}? This only works if no timesheet rows or projects are linked to it.`}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         <p className="mt-1 text-sm text-muted">
           {client.code || "No code assigned"}
         </p>
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {error}
           </p>
         )}
