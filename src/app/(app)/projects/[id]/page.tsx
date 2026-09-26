@@ -96,6 +96,22 @@ export default async function ProjectDetailPage({
           {project.code} · {project.client.name} ·{" "}
           {project.employees.length} employees assigned
         </p>
+        {project.noOfEmployeesRequired != null && project.noOfEmployeesRequired > 0 && (
+          <div className="mt-3 max-w-sm">
+            <div className="mb-1 flex items-baseline justify-between text-xs">
+              <span className="text-muted">Workforce fill</span>
+              <span className="tabular font-medium text-secondary">
+                {project.employees.length}/{project.noOfEmployeesRequired}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary)]/75 transition-[width] duration-500"
+                style={{ width: `${Math.min(100, Math.round((project.employees.length / project.noOfEmployeesRequired) * 100))}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <ProjectTabs

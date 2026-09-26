@@ -16,10 +16,16 @@ function currentMonthKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function monthKey(d: Date) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export default async function TimesheetsDashboardPage() {
   const { branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
   const month = currentMonthKey();
+  const today = new Date();
+  const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5, 1));
 
   const [
     thisMonthCount,
@@ -28,6 +34,7 @@ export default async function TimesheetsDashboardPage() {
     attendanceToday,
     pipeline,
     hoursSplit,
+    recentAttendance,
   ] = await Promise.all([
     prisma.timesheetEntry.count({ where: { ...branchScope, month } }),
     prisma.timesheetEntry.groupBy({
@@ -46,7 +53,22 @@ export default async function TimesheetsDashboardPage() {
     }),
     getTimesheetPipeline(branchId),
     getHoursSplit(branchId),
+    prisma.attendance.findMany({
+      where: { ...branchScope, date: { gte: sixMonthsAgo } },
+      select: { date: true, normalHours: true, otHours: true },
+    }),
   ]);
+
+  const months = Array.from({ length: 6 }, (_, i) => monthKey(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5 + i, 1))));
+  const normalByMonth = new Map(months.map((m) => [m, 0]));
+  const otByMonth = new Map(months.map((m) => [m, 0]));
+  for (const a of recentAttendance) {
+    const k = monthKey(a.date);
+    if (!normalByMonth.has(k)) continue;
+    normalByMonth.set(k, (normalByMonth.get(k) ?? 0) + (a.normalHours ?? 0));
+    otByMonth.set(k, (otByMonth.get(k) ?? 0) + (a.otHours ?? 0));
+  }
+  const monthlyMax = Math.max(1, ...months.map((m) => (normalByMonth.get(m) ?? 0) + (otByMonth.get(m) ?? 0)));
 
   return (
     <div className="space-y-5">
@@ -102,6 +124,30 @@ export default async function TimesheetsDashboardPage() {
           <TimesheetPipelineChart pipeline={pipeline} />
         </Panel>
       </div>
+
+      <Panel title="Hours, last 6 months" href="/attendance">
+        <div className="mb-3 flex items-center gap-3 text-xs text-muted">
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--brand-primary)]" />Normal</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--warning)]" />Overtime</span>
+        </div>
+        <div className="flex h-32 items-end gap-3">
+          {months.map((m) => {
+            const normal = normalByMonth.get(m) ?? 0;
+            const ot = otByMonth.get(m) ?? 0;
+            const total = normal + ot;
+            return (
+              <div key={m} className="flex flex-1 flex-col items-center gap-1" title={`${m}: ${normal}h normal, ${ot}h OT`}>
+                {total > 0 && <span className="tabular text-[11px] text-secondary">{Math.round(total)}h</span>}
+                <div className="flex w-full max-w-10 flex-col-reverse overflow-hidden rounded-t-[4px]" style={{ height: `${Math.max(total > 0 ? 6 : 2, (total / monthlyMax) * 88)}px` }}>
+                  {normal > 0 && <span className="w-full bg-[var(--brand-primary)]" style={{ height: `${(normal / total) * 100}%` }} />}
+                  {ot > 0 && <span className="w-full bg-[var(--warning)]" style={{ height: `${(ot / total) * 100}%` }} />}
+                </div>
+                <span className="text-xs text-subtle">{m.slice(5)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
     </div>
   );
 }

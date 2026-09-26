@@ -64,6 +64,18 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
   const awaiting = rows.filter((r) => r.approval === "PENDING").reduce((n, r) => n + r.total, 0);
   const dueSoon = live.filter((r) => r.balance > 0 && r.status !== "OVERDUE" && r.dueDate <= new Date(today.getTime() + 7 * 86_400_000).toISOString().slice(0, 10));
   const money = (n: number) => `AED ${Math.round(n).toLocaleString("en-AE")}`;
+
+  const monthKey = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5, 1));
+  const months = Array.from({ length: 6 }, (_, i) => monthKey(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5 + i, 1))));
+  const volumeByMonth = new Map(months.map((m) => [m, 0]));
+  for (const b of bills) {
+    if (b.billDate < sixMonthsAgo) continue;
+    const k = monthKey(b.billDate);
+    if (volumeByMonth.has(k)) volumeByMonth.set(k, (volumeByMonth.get(k) ?? 0) + Number(b.amount) + Number(b.vatAmount));
+  }
+  const volumeMax = Math.max(1, ...volumeByMonth.values());
+
   const strip = [
     { l: "Outstanding", v: money(outstanding), sub: `${live.filter((r) => r.balance > 0).length} open bills` },
     { l: "Overdue", v: money(overdue), sub: `${overdueRows.length} bill${overdueRows.length === 1 ? "" : "s"}`, tone: overdueRows.length ? "text-[var(--error)]" : "" },
@@ -86,6 +98,24 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
           </div>
         ))}
       </div>
+      {bills.length > 0 && (
+        <section className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Bill volume, last 6 months</h2>
+          <div className="flex h-28 items-end gap-3">
+            {months.map((m, i) => {
+              const v = volumeByMonth.get(m) ?? 0;
+              return (
+                <div key={m} className="flex flex-1 flex-col items-center gap-1" title={`${m}: ${money(v)}`}>
+                  {v > 0 && <span className="tabular text-[11px] text-secondary">{Math.round(v).toLocaleString("en-AE")}</span>}
+                  <span className={`w-full max-w-10 rounded-t-[4px] bg-gradient-to-t from-[var(--info)] ${i === months.length - 1 ? "to-[var(--info)]" : "to-[var(--info)]/60"}`} style={{ height: `${Math.max(v > 0 ? 6 : 2, (v / volumeMax) * 72)}px` }} />
+                  <span className="text-xs text-subtle">{m.slice(5)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter">
         {FILTERS.map((f) => (
           <Link key={f.k || "all"} href={f.k ? `/finance/bills?view=${f.k}` : "/finance/bills"} role="tab" aria-selected={view === f.k}

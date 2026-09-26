@@ -20,7 +20,7 @@ const STAGE_STYLE = [
  * largest stage, so the shape of the pipeline (where people are piling up)
  * reads at a glance instead of four same-size tiles with no signal.
  */
-export function DeploymentPipelineFunnel({ stages }: { stages: DeploymentStage[] }) {
+export function DeploymentPipelineFunnel({ stages, href = "/employees" }: { stages: DeploymentStage[]; href?: string }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const total = stages.reduce((n, s) => n + s.count, 0);
   const max = Math.max(...stages.map((s) => s.count), 1);
@@ -43,7 +43,7 @@ export function DeploymentPipelineFunnel({ stages }: { stages: DeploymentStage[]
         return (
           <Link
             key={s.key}
-            href="/employees"
+            href={href}
             onMouseEnter={() => setHovered(s.key)}
             onMouseLeave={() => setHovered(null)}
             className="group flex items-center gap-3 rounded-lg px-1.5 py-2.5 transition hover:bg-surface-subtle"

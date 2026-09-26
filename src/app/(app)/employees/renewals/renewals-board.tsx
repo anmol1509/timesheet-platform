@@ -132,6 +132,24 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
       </div>
 
       {items.length > 0 && (
+        <div className="card p-4">
+          <p className="mb-2.5 text-xs font-medium text-muted">Composition — {items.length} renewals due within 90 days</p>
+          <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-sunken">
+            {TIERS.map((t) =>
+              counts[t.key] > 0 ? (
+                <span
+                  key={t.key}
+                  title={`${t.label}: ${counts[t.key]}`}
+                  className={cn("h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-500", t.bar)}
+                  style={{ width: `${(counts[t.key] / items.length) * 100}%` }}
+                />
+              ) : null
+            )}
+          </div>
+        </div>
+      )}
+
+      {items.length > 0 && (
         <TimelineStrip items={items} onSelect={setSelected} />
       )}
 

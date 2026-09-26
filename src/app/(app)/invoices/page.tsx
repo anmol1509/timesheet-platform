@@ -7,6 +7,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { InvoiceGrid } from "./invoice-grid";
 import { Select } from "@/components/ui/Select";
+import { StatusDonut } from "@/components/Donut";
+import { Panel } from "@/components/DashboardPanel";
 
 export default async function InvoicesPage({
   searchParams,
@@ -27,19 +29,22 @@ export default async function InvoicesPage({
     ? params.month
     : months[0];
 
-  const clients = selectedMonth
-    ? await prisma.client.findMany({
-        where: {
-          entries: { some: { month: selectedMonth, status: "CLIENT_APPROVED" } },
-          ...branchWhere(branchId),
-        },
-        include: {
-          entries: { where: { month: selectedMonth, status: "CLIENT_APPROVED" } },
-          tradeRates: true,
-        },
-        orderBy: { name: "asc" },
-      })
-    : [];
+  const [clients, invoicesByStatus] = await Promise.all([
+    selectedMonth
+      ? prisma.client.findMany({
+          where: {
+            entries: { some: { month: selectedMonth, status: "CLIENT_APPROVED" } },
+            ...branchWhere(branchId),
+          },
+          include: {
+            entries: { where: { month: selectedMonth, status: "CLIENT_APPROVED" } },
+            tradeRates: true,
+          },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
+    prisma.clientInvoice.groupBy({ by: ["status"], where: branchWhere(branchId), _count: { _all: true } }),
+  ]);
 
   return (
     <div className="space-y-5">
@@ -67,6 +72,14 @@ export default async function InvoicesPage({
           </Link>
         </div>
       </div>
+
+      {invoicesByStatus.length > 0 && (
+        <Panel title="All-time invoices by status" href="/invoices/history">
+          <StatusDonut
+            items={invoicesByStatus.map((r) => ({ status: r.status, count: r._count._all }))}
+          />
+        </Panel>
+      )}
 
       {clients.length === 0 && (
         <div className="empty-state">

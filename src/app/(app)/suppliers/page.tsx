@@ -2,6 +2,8 @@ import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { Truck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 import { prisma } from "@/lib/db";
 import { billTotals } from "@/lib/payables";
 import { complianceStatus } from "@/lib/compliance";
@@ -149,6 +151,19 @@ export default async function SuppliersPage({
           Add Supplier
         </button>
       </form>
+
+      {rows.length > 0 && rows.some((r) => r.employeeCount > 0) && (
+        <Panel title="Top suppliers by workforce">
+          <BarList
+            tone="info"
+            items={[...rows]
+              .filter((r) => r.employeeCount > 0)
+              .sort((a, b) => b.employeeCount - a.employeeCount)
+              .slice(0, 5)
+              .map((r) => ({ key: r.id, label: r.isOwnCompany ? `${r.name} (own company)` : r.name, value: r.employeeCount, href: `/suppliers/${r.id}` }))}
+          />
+        </Panel>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState

@@ -6,6 +6,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NewItemForm } from "./new-item-form";
 import { InventoryList } from "./inventory-list";
+import { BarList, type BarListTone } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 
 export default async function InventoryPage() {
   const { branchId } = await requireUserWithBranch();
@@ -36,6 +38,15 @@ export default async function InventoryPage() {
     issued: i.employeeAssignments.reduce((sum, a) => sum + a.quantity, 0),
   }));
 
+  const stockLevels = rows
+    .map((r) => {
+      const available = r.inStock - r.issued;
+      const tone: BarListTone = available <= 0 ? "danger" : available <= 5 ? "warning" : "success";
+      return { id: r.id, name: r.name, available, tone };
+    })
+    .sort((a, b) => a.available - b.available)
+    .slice(0, 8);
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -45,6 +56,17 @@ export default async function InventoryPage() {
       />
 
       <NewItemForm />
+
+      {rows.length > 0 && (
+        <Panel title="Stock on hand, lowest first">
+          <BarList
+            showShare={false}
+            items={stockLevels.map((s) => ({ key: s.id, label: s.name, value: s.available, tone: s.tone }))}
+            format={(n) => `${n} available`}
+            emptyLabel="No inventory items yet."
+          />
+        </Panel>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState

@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { createSkillAction } from "./actions";
 import { TradeTable } from "./trade-table";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 
 export default async function SkillsPage() {
   const [skills, totalEmployees] = await Promise.all([
@@ -95,7 +97,19 @@ export default async function SkillsPage() {
           employee&rsquo;s profile.
         </p>
       ) : (
-        <TradeTable trades={rows} />
+        <>
+          <Panel title="Top trades by headcount" href="/employees">
+            <BarList
+              tone="brand"
+              items={[...rows]
+                .sort((a, b) => b.employeeCount - a.employeeCount)
+                .slice(0, 8)
+                .map((r) => ({ key: r.id, label: r.name, value: r.employeeCount }))}
+              emptyLabel="No employees assigned to a trade yet."
+            />
+          </Panel>
+          <TradeTable trades={rows} />
+        </>
       )}
     </div>
   );

@@ -8,6 +8,9 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
 import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
+import { Nationality } from "@/components/Nationality";
 import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
@@ -101,6 +104,17 @@ export default async function EmployeesPage({
   const benchCount = rows.length - onWorkCount;
   const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
 
+  const byTrade = new Map<string, number>();
+  const byNationality = new Map<string, number>();
+  for (const r of rows) {
+    const t = r.trade ?? "Not set";
+    byTrade.set(t, (byTrade.get(t) ?? 0) + 1);
+    const n = r.nationality ?? "Not set";
+    byNationality.set(n, (byNationality.get(n) ?? 0) + 1);
+  }
+  const topTrades = [...byTrade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const topNationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -125,6 +139,23 @@ export default async function EmployeesPage({
         bench={benchCount}
         complianceIssues={complianceIssuesCount}
       />
+
+      {rows.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Panel title="By trade">
+            <BarList
+              tone="brand"
+              items={topTrades.map(([label, count]) => ({ key: label, label, value: count }))}
+            />
+          </Panel>
+          <Panel title="By nationality">
+            <BarList
+              tone="info"
+              items={topNationalities.map(([label, count]) => ({ key: label, label: <Nationality name={label} />, value: count }))}
+            />
+          </Panel>
+        </div>
+      )}
 
       {entityFilter && (
         <div className="flex items-center gap-1.5 self-start rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">

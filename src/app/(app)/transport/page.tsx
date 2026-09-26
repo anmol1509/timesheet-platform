@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
+import { BarList, type BarListTone } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 import { daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { AddVehicleDialog } from "./add-vehicle-dialog";
@@ -41,6 +43,16 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
   const seats = vehicles.reduce((n, v) => n + (v.capacity ?? 0), 0);
   const riders = vehicles.reduce((n, v) => n + v._count.employees, 0);
   const shown = statusFilter && STATUS[statusFilter] ? vehicles.filter((v) => v.status === statusFilter) : vehicles;
+
+  const utilization = vehicles
+    .filter((v) => v.capacity)
+    .map((v) => {
+      const pct = Math.round((v._count.employees / v.capacity!) * 100);
+      const tone: BarListTone = pct >= 100 ? "danger" : pct >= 75 ? "warning" : "success";
+      return { id: v.id, label: `${v.plateNumber} · ${v._count.employees}/${v.capacity} seats`, pct, tone };
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 8);
 
   const runs = vehicles
     .flatMap((v) => v.routes.map((r) => ({ id: r.id, name: r.name, plate: v.plateNumber, vehicleId: v.id, driver: v.driverName, project: r.project?.name ?? null, first: r.stops[0], last: r.stops[r.stops.length - 1], stops: r.stops.length })))
@@ -78,6 +90,16 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
           </div>
         ))}
       </div>
+
+      {utilization.length > 0 && (
+        <Panel title="Seat utilization by vehicle">
+          <BarList
+            showShare={false}
+            items={utilization.map((v) => ({ key: v.id, label: v.label, value: v.pct, tone: v.tone }))}
+            format={(n) => `${n}%`}
+          />
+        </Panel>
+      )}
 
       {vehicles.length === 0 ? (
         <EmptyState icon={Bus} title="No vehicles yet" description="Vehicles carry workers between the camp and site. Add one to record its plate, capacity and driver, then build pickup routes around it." />

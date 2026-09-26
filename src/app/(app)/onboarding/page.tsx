@@ -7,6 +7,8 @@ import { branchWhere } from "@/lib/branch";
 import { cn } from "@/lib/cn";
 import { STAGES, currentStage, daysSince, isOverdue } from "@/lib/onboarding";
 import { OnboardingTable } from "./onboarding-table";
+import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
+import { Panel } from "@/components/DashboardPanel";
 
 export const metadata = { title: "Candidate onboarding" };
 
@@ -72,17 +74,12 @@ export default async function OnboardingPage() {
         </div>
       </div>
 
-      <div className="card p-4">
-        <p className="mb-3 text-sm font-medium text-primary">Pending by stage</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {STAGES.map((stage) => (
-            <div key={stage.key} className="rounded-lg bg-surface-subtle px-3 py-2">
-              <p className="truncate text-xs text-muted">{stage.label}</p>
-              <p className="text-lg font-semibold text-primary">{stagePending[stage.key]}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Panel title="Pending by stage">
+        <DeploymentPipelineFunnel
+          href="/onboarding"
+          stages={STAGES.map((stage) => ({ key: stage.key, label: stage.label, count: stagePending[stage.key] }))}
+        />
+      </Panel>
 
       {workQueue.length > 0 && (
         <div className="card overflow-x-auto">

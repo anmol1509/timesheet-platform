@@ -2,6 +2,8 @@ import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 import { EmptyState } from "@/components/EmptyState";
 import { Building2, FileCheck2, DollarSign, Plus } from "lucide-react";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
@@ -89,6 +91,20 @@ export default async function ClientsPage() {
           icon={DollarSign}
         />
       </div>
+
+      {rows.length > 0 && rows.some((r) => r.lpoValue > 0) && (
+        <Panel title="Top clients by active LPO value" href="/finance/bills">
+          <BarList
+            tone="info"
+            items={[...rows]
+              .filter((r) => r.lpoValue > 0)
+              .sort((a, b) => b.lpoValue - a.lpoValue)
+              .slice(0, 5)
+              .map((r) => ({ key: r.id, label: r.name, value: Math.round(r.lpoValue), href: `/clients/${r.id}` }))}
+            format={(n) => `AED ${n.toLocaleString("en-AE")}`}
+          />
+        </Panel>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState
