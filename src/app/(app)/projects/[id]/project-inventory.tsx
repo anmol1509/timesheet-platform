@@ -38,10 +38,12 @@ export function ProjectInventory({
   const [quantity, setQuantity] = useState("1");
   const [assignedDate, setAssignedDate] = useState("");
   const [condition, setCondition] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function add() {
     if (!itemName.trim()) return;
+    setError(null);
     const formData = new FormData();
     formData.set("projectId", projectId);
     formData.set("itemName", itemName.trim());
@@ -49,7 +51,11 @@ export function ProjectInventory({
     formData.set("assignedDate", assignedDate);
     formData.set("condition", condition);
     startTransition(async () => {
-      await addProjectInventoryAction(formData);
+      const result = await addProjectInventoryAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       setItemName("");
       setQuantity("1");
       setAssignedDate("");
@@ -149,6 +155,7 @@ export function ProjectInventory({
 
             Add
           </button>
+          {error && <p role="alert" className="w-full text-sm text-[var(--error)]">{error}</p>}
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
+import { availableItemStock } from "@/lib/inventoryStock";
 
 // Every nested mutation (documents, trade rates, holidays, contacts,
 // inventory) takes a projectId rather than looking the project up itself,
@@ -438,7 +439,7 @@ export async function removeProjectContactAction(formData: FormData) {
 
 // --- Inventory Details ---
 
-export async function addProjectInventoryAction(formData: FormData) {
+export async function addProjectInventoryAction(formData: FormData): Promise<{ error?: string } | void> {
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
@@ -449,11 +450,20 @@ export async function addProjectInventoryAction(formData: FormData) {
   if (!projectId || !itemName || !branchId) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
-  const item = await prisma.inventoryItem.upsert({
-    where: { name: itemName },
-    update: {},
-    create: { name: itemName, branchId },
-  });
+  const existing = await prisma.inventoryItem.findUnique({ where: { name: itemName }, select: { id: true, variants: { select: { id: true } } } });
+
+  // Only an item that already exists AND is stock-tracked (has at least one
+  // variant) gets checked against real stock — a brand-new name typed here,
+  // or an existing item nobody has ever recorded stock for, is a free-form
+  // equipment log entry, same as before variants/stock existed.
+  if (existing && existing.variants.length > 0) {
+    const available = await availableItemStock(existing.id);
+    if (quantity > available) {
+      return { error: `Only ${Math.max(0, available)} of "${itemName}" left in stock.` };
+    }
+  }
+
+  const item = existing ?? (await prisma.inventoryItem.create({ data: { name: itemName, branchId } }));
 
   await prisma.projectInventoryAssignment.create({
     data: { projectId, itemId: item.id, quantity, assignedDate, condition },

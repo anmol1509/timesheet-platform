@@ -19,24 +19,35 @@ export default async function InventoryPage() {
       category: true,
       notes: true,
       assignments: { where: { returnDate: null }, select: { id: true, quantity: true } },
-      variants: { select: { stock: true } },
-      employeeAssignments: { where: { returnDate: null }, select: { quantity: true } },
+      variants: { select: { id: true, name: true, sku: true, stock: true }, orderBy: { name: "asc" } },
+      employeeAssignments: { where: { returnDate: null }, select: { quantity: true, variantId: true } },
     },
     orderBy: { name: "asc" },
   });
 
-  const rows = items.map((i) => ({
-    id: i.id,
-    name: i.name,
-    category: i.category,
-    notes: i.notes,
-    activeAssignments: i.assignments.length,
-    assignedQuantity: i.assignments.reduce((sum, a) => sum + a.quantity, 0),
-    // Quantity on hand is the sum over the item's variants; "issued" is what workers
-    // currently hold, so available = on hand - issued.
-    inStock: i.variants.reduce((sum, v) => sum + v.stock, 0),
-    issued: i.employeeAssignments.reduce((sum, a) => sum + a.quantity, 0),
-  }));
+  const rows = items.map((i) => {
+    const issuedByVariant = new Map<string, number>();
+    for (const a of i.employeeAssignments) {
+      if (!a.variantId) continue;
+      issuedByVariant.set(a.variantId, (issuedByVariant.get(a.variantId) ?? 0) + a.quantity);
+    }
+    return {
+      id: i.id,
+      name: i.name,
+      category: i.category,
+      notes: i.notes,
+      activeAssignments: i.assignments.length,
+      assignedQuantity: i.assignments.reduce((sum, a) => sum + a.quantity, 0),
+      // Quantity on hand is the sum over the item's variants; "issued" is what workers
+      // currently hold, so available = on hand - issued.
+      inStock: i.variants.reduce((sum, v) => sum + v.stock, 0),
+      issued: i.employeeAssignments.reduce((sum, a) => sum + a.quantity, 0),
+      variants: i.variants.map((v) => {
+        const issued = issuedByVariant.get(v.id) ?? 0;
+        return { id: v.id, name: v.name, sku: v.sku, stock: v.stock, issued, available: v.stock - issued };
+      }),
+    };
+  });
 
   const stockLevels = rows
     .map((r) => {

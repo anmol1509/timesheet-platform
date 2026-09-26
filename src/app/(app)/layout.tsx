@@ -41,7 +41,7 @@ export default async function AppLayout({
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
     prisma.branch.findMany({
       orderBy: { code: "asc" },
-      select: { id: true, code: true, name: true, isActive: true, logoId: true },
+      select: { id: true, code: true, name: true, isActive: true, logoId: true, emirate: true },
     }),
     prisma.notification.findMany({
       where: { userId: user.id },
@@ -72,6 +72,7 @@ export default async function AppLayout({
   const brand = {
     name: activeBranch?.name ?? "Workforce ERP",
     logoUrl: logoSource?.logoId ? `/api/images/${logoSource.logoId}` : null,
+    city: activeBranch?.emirate ?? null,
   };
 
   const header = (

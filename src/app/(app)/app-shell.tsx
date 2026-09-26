@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
 import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
+import { SupportTicketCard } from "@/components/SupportTicketCard";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
@@ -78,13 +79,13 @@ export function AppShell({
 
         {!collapsed && (
           <div className="shrink-0 px-3 pb-2">
-            <BranchCard brand={brand} />
+            <BranchCard brand={brand} isAdmin={isAdmin} />
           </div>
         )}
 
         <div
           className={cn(
-            "flex-1 overflow-x-hidden overflow-y-auto py-3",
+            "flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-3",
             collapsed ? "px-2" : "px-3"
           )}
         >
@@ -92,8 +93,9 @@ export function AppShell({
         </div>
 
         {!collapsed && (
-          <div className="shrink-0 border-t border-default p-3">
+          <div className="shrink-0 space-y-2 border-t border-default p-3">
             <AskAiCard />
+            <SupportTicketCard />
           </div>
         )}
 

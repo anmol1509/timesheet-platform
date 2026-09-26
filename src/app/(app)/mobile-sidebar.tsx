@@ -6,6 +6,7 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
 import { NavLinks } from "./nav-links";
 import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
+import { SupportTicketCard } from "@/components/SupportTicketCard";
 
 export function MobileSidebar({
   isAdmin,
@@ -47,19 +48,25 @@ export function MobileSidebar({
             </RadixDialog.Close>
           </div>
           <div className="shrink-0 px-3 pb-2">
-            <BranchCard brand={brand} />
+            <BranchCard brand={brand} isAdmin={isAdmin} onNavigate={() => setOpen(false)} />
           </div>
           {/* Only actual navigation (an <a> click) closes the drawer — group-expand toggles are buttons and must not. */}
           <div
-            className="flex-1 overflow-y-auto px-3 py-3"
+            className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
             onClick={(e) => {
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
             <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} />
           </div>
-          <div className="shrink-0 border-t border-default p-3" onClick={() => setOpen(false)}>
-            <AskAiCard />
+          <div className="shrink-0 space-y-2 border-t border-default p-3">
+            <div onClick={() => setOpen(false)}>
+              <AskAiCard />
+            </div>
+            {/* No close-on-click here: it opens its own dialog inside this
+                drawer's React tree, which the drawer closing would unmount
+                mid-open. */}
+            <SupportTicketCard />
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

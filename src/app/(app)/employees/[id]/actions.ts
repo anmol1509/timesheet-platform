@@ -682,6 +682,10 @@ export async function issueEmployeeInventoryAction(
   } else {
     const variantCount = await prisma.inventoryVariant.count({ where: { itemId } });
     if (variantCount > 0) return { error: "Select a variant before issuing this item." };
+    // No variants at all means no stock has ever been recorded for this item
+    // (the inventory list already shows 0 in stock for it) — issuing it
+    // anyway silently created assignments against phantom stock.
+    return { error: "This item has no stock recorded. Add stock (create a variant, or set a quantity when adding the item) before issuing it." };
   }
 
   const created = await prisma.employeeInventoryAssignment.create({

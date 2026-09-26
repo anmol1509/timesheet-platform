@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { deleteInventoryItemAction } from "./actions";
 import { DeleteButton } from "@/components/DeleteButton";
+
+type VariantRow = { id: string; name: string; sku: string | null; stock: number; issued: number; available: number };
 
 type ItemRow = {
   id: string;
@@ -15,7 +18,42 @@ type ItemRow = {
   assignedQuantity: number;
   inStock: number;
   issued: number;
+  variants: VariantRow[];
 };
+
+/** Per-variant stock/issued/available, tucked behind a `<details>` toggle so
+ * the table stays scannable at item level but the breakdown is one click away. */
+function VariantDropdown({ variants }: { variants: VariantRow[] }) {
+  if (variants.length === 0) return <span className="text-xs text-subtle">No variants</span>;
+  return (
+    <details className="group relative" onClick={(e) => e.stopPropagation()}>
+      <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-[var(--brand-primary)]">
+        {variants.length} variant{variants.length === 1 ? "" : "s"}
+        <ChevronDown className="h-3 w-3 transition group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="absolute top-full right-0 z-10 mt-1 w-56 rounded-lg border border-default bg-surface p-2 shadow-lg">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="text-left text-subtle">
+              <th className="pb-1 font-medium">Variant</th>
+              <th className="pb-1 text-right font-medium">Stock</th>
+              <th className="pb-1 text-right font-medium">Avail.</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {variants.map((v) => (
+              <tr key={v.id}>
+                <td className="py-1 pr-2 text-secondary">{v.name}</td>
+                <td className="py-1 text-right tabular text-secondary">{v.stock}</td>
+                <td className={`py-1 text-right tabular font-medium ${v.available <= 0 ? "text-[var(--error)]" : "text-primary"}`}>{v.available}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
 
 export function InventoryList({ items }: { items: ItemRow[] }) {
   const columns: DataTableColumn<ItemRow>[] = [
@@ -58,6 +96,12 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
       },
       csvValue: (i) => i.inStock - i.issued,
       sortValue: (i) => i.inStock - i.issued,
+    },
+    {
+      key: "variants",
+      header: "Variants",
+      render: (i) => <VariantDropdown variants={i.variants} />,
+      csvValue: (i) => i.variants.map((v) => `${v.name}: ${v.available}/${v.stock}`).join("; "),
     },
     {
       key: "status",

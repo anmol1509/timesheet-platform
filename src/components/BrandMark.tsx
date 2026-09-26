@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { Building2, Sparkles, ChevronRight } from "lucide-react";
 import { BRAND_ICON } from "@/lib/brand-assets";
+import { cn } from "@/lib/cn";
 
 export type Brand = {
   name: string;
   /** /api/images/<id> URL of the uploaded company logo, or null for the default mark. */
   logoUrl: string | null;
+  /** The active branch's city/emirate, shown under its name — falls back to a generic label when not set. */
+  city?: string | null;
 };
 
 /** Product wordmark: the ManpowerSync mark + name. Links to the dashboard. */
@@ -37,10 +40,13 @@ export function BrandMark({
   );
 }
 
-/** The active branch (company) — its uploaded logo, or a tinted building tile. */
-export function BranchCard({ brand }: { brand: Brand }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-2.5 py-2">
+/** The active branch (company) — its uploaded logo, or a tinted building tile.
+ * For an admin (who can actually see it), links into the company profile
+ * page — the one place its own details, including this city label, are
+ * edited. Everyone else sees the same card, just not clickable. */
+export function BranchCard({ brand, isAdmin = false, onNavigate }: { brand: Brand; isAdmin?: boolean; onNavigate?: () => void }) {
+  const content = (
+    <>
       {brand.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded, served by our own route
         <img src={brand.logoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg bg-surface object-contain" />
@@ -51,9 +57,17 @@ export function BranchCard({ brand }: { brand: Brand }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-semibold text-primary">{brand.name}</span>
-        <span className="block truncate text-[11px] text-subtle">Manpower ERP</span>
+        <span className="block truncate text-[11px] text-subtle">{brand.city || "Manpower ERP"}</span>
       </span>
-    </div>
+    </>
+  );
+  const className = "flex items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-2.5 py-2";
+  return isAdmin ? (
+    <Link href="/settings/company" onClick={onNavigate} className={cn(className, "transition hover:bg-surface-hover")}>
+      {content}
+    </Link>
+  ) : (
+    <div className={className}>{content}</div>
   );
 }
 
