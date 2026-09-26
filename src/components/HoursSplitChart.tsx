@@ -41,7 +41,7 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
   const ticks = [1, 0.75, 0.5, 0.25, 0].map((f) => Math.round(max * f));
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
         <span className="tabular text-[32px] leading-none font-semibold tracking-[-0.02em] text-primary">
           {split.totalNormal + split.totalOt}h
@@ -57,15 +57,15 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex min-h-44 flex-1 gap-2">
         {/* Y axis */}
-        <div className="flex h-44 flex-col justify-between pb-0 text-right">
+        <div className="flex flex-col justify-between pb-0 text-right">
           {ticks.map((t) => (
             <span key={t} className="tabular -translate-y-1/2 text-[10px] leading-none text-subtle first:translate-y-0 last:translate-y-0">{t}</span>
           ))}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="relative h-44">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="relative flex-1">
             {/* Gridlines */}
             <div className="pointer-events-none absolute inset-0 flex flex-col justify-between" aria-hidden>
               {ticks.map((t, i) => (
