@@ -196,12 +196,12 @@ export function DataTable<T extends { id: string }>({
   const hideable = columns.filter((c) => !c.locked);
   const showToolbar =
     !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0;
-  const cellY = density === "compact" ? "py-1.5" : "py-2.5";
+  const cellY = density === "compact" ? "py-2" : "py-3";
   const colSpan =
     visibleColumns.length + (selectable ? 1 : 0) + (renderRowActions ? 1 : 0);
 
   const toolbarButton =
-    "inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary";
+    "inline-flex h-9 items-center gap-1.5 rounded-control border border-strong bg-surface px-3 text-[13px] font-medium text-secondary shadow-xs transition hover:border-[#c3c8d4] hover:bg-surface-hover hover:text-primary";
 
   return (
     <div className="space-y-3">
@@ -209,9 +209,9 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-wrap items-center gap-2">
           {toolbarExtra}
           {searchable && (
-            <div className="relative min-w-[11rem] flex-1 sm:max-w-xs">
+            <div className="relative min-w-[12rem] flex-1 sm:max-w-sm">
               <Search
-                className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-subtle"
+                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle"
                 aria-hidden
               />
               <input
@@ -223,7 +223,7 @@ export function DataTable<T extends { id: string }>({
                 }}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
-                className="input h-8 w-full py-0 pr-7 pl-8 text-xs"
+                className="input h-9 w-full py-0 pr-8 pl-9 text-sm"
               />
               {query && (
                 <button
@@ -312,8 +312,8 @@ export function DataTable<T extends { id: string }>({
             transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="flex flex-wrap items-center gap-3 rounded-control border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2">
-              <span className="tabular text-xs font-medium text-[var(--brand-primary)]">
+            <div className="flex flex-wrap items-center gap-3 rounded-card border border-[var(--brand-primary-border)] bg-brand-soft px-4 py-2.5 shadow-xs">
+              <span className="tabular text-[13px] font-semibold text-[var(--brand-primary)]">
                 {selected.size} selected
               </span>
               {renderBulkActions && (
@@ -346,13 +346,13 @@ export function DataTable<T extends { id: string }>({
           <table className="w-full text-sm">
             <thead
               className={cn(
-                "border-b border-default bg-surface-subtle text-left text-[11px] font-medium tracking-wide text-muted uppercase",
+                "border-b border-default bg-surface-subtle text-left text-[11px] font-semibold tracking-[0.06em] text-muted uppercase",
                 stickyHeader && "sticky top-0 z-10"
               )}
             >
               <tr>
                 {selectable && (
-                  <th scope="col" className="w-10 px-3 py-2">
+                  <th scope="col" className="w-11 px-4 py-2.5">
                     <Checkbox
                       checked={allSelected}
                       indeterminate={selected.size > 0 && !allSelected}
@@ -378,7 +378,7 @@ export function DataTable<T extends { id: string }>({
                             : undefined
                       }
                       className={cn(
-                        "px-3 py-2 font-medium whitespace-nowrap",
+                        "px-3 py-2.5 font-semibold whitespace-nowrap",
                         c.align === "right" && "text-right"
                       )}
                     >
@@ -448,7 +448,7 @@ export function DataTable<T extends { id: string }>({
                     rowHref && "cursor-pointer",
                     selected.has(row.id)
                       ? "bg-brand-soft"
-                      : "hover:bg-surface-hover"
+                      : "hover:bg-surface-subtle"
                   )}
                   onClick={
                     rowHref
@@ -461,7 +461,7 @@ export function DataTable<T extends { id: string }>({
                   }
                 >
                   {selectable && (
-                    <td className={cn("px-3", cellY)}>
+                    <td className={cn("px-4", cellY)}>
                       <Checkbox
                         checked={selected.has(row.id)}
                         onCheckedChange={() => toggle(row.id)}
@@ -503,7 +503,7 @@ export function DataTable<T extends { id: string }>({
           />
         ) : (
           (query || sort) && (
-            <div className="flex items-center justify-between gap-3 border-t border-default bg-surface-subtle px-3 py-1.5 text-[11px] text-muted">
+            <div className="flex items-center justify-between gap-3 border-t border-default bg-surface-subtle px-4 py-2 text-xs text-muted">
               <span>
                 Showing {sorted.length} of {rows.length}
               </span>

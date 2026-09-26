@@ -35,14 +35,14 @@ export function EmptyState({
       {Icon && (
         <span
           className={cn(
-            "mb-3 flex items-center justify-center rounded-full bg-surface-sunken text-subtle",
-            size === "compact" ? "h-9 w-9" : "h-11 w-11"
+            "mb-4 flex items-center justify-center rounded-2xl bg-surface text-[var(--brand-primary)] shadow-sm ring-1 ring-[var(--brand-primary-border)]",
+            size === "compact" ? "h-10 w-10" : "h-12 w-12"
           )}
         >
-          <Icon className={size === "compact" ? "h-4 w-4" : "h-5 w-5"} aria-hidden />
+          <Icon className={size === "compact" ? "h-4.5 w-4.5" : "h-5.5 w-5.5"} aria-hidden />
         </span>
       )}
-      <p className="text-sm font-medium text-primary">{title}</p>
+      <p className="text-[15px] font-semibold tracking-tight text-primary">{title}</p>
       {description && (
         <p className="mt-1 max-w-sm text-sm text-muted">{description}</p>
       )}

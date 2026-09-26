@@ -5,25 +5,29 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
   ArrowRight,
+  Building2,
   Clock,
-  FileSearch,
+  FileText,
+  FolderKanban,
   Loader2,
-  Package,
   Search,
+  Truck,
   UserPlus,
 } from "lucide-react";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { getNavPages } from "@/app/(app)/nav-links";
 import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
 
 type SearchResults = {
-  employees: { id: string; name: string; employeeIdNo: string; trade: string | null }[];
-  projects: { id: string; name: string; code: string }[];
+  employees: { id: string; name: string; employeeIdNo: string; trade: string | null; hasPhoto: boolean }[];
+  projects: { id: string; name: string; code: string; client: { name: string } | null }[];
   clients: { id: string; name: string; code: string | null }[];
+  suppliers: { id: string; name: string; code: string | null; isOwnCompany: boolean }[];
   documents: { id: string; filename: string; type: string; employeeId: string; employee: { name: string } }[];
 };
 
-const EMPTY_RESULTS: SearchResults = { employees: [], projects: [], clients: [], documents: [] };
+const EMPTY_RESULTS: SearchResults = { employees: [], projects: [], clients: [], suppliers: [], documents: [] };
 
 const RECENT_KEY = "nav-recent-pages";
 const RECENT_MAX = 8;
@@ -152,6 +156,7 @@ export function CommandPalette({
     results.employees.length ||
     results.projects.length ||
     results.clients.length ||
+    results.suppliers.length ||
     results.documents.length;
 
   return (
@@ -243,35 +248,34 @@ export function CommandPalette({
               className="px-1.5 py-1 text-[10px] font-semibold tracking-wider text-subtle uppercase [&_[cmdk-group-items]]:mt-1"
             >
               {results.employees.map((e) => (
-                <Item key={`e-${e.id}`} value={`${e.name} ${e.employeeIdNo} ${e.trade ?? ""}`} onSelect={() => go(`/employees/${e.id}`, e.name, "Employee")} icon={<FileSearch className="h-3.5 w-3.5" />}>
-                  <span className="truncate">{e.name}</span>
-                  <span className="ml-auto shrink-0 text-xs text-subtle">
-                    {[e.employeeIdNo, e.trade].filter(Boolean).join(" · ")}
-                  </span>
+                <Item key={`e-${e.id}`} value={`${e.name} ${e.employeeIdNo} ${e.trade ?? ""}`} onSelect={() => go(`/employees/${e.id}`, e.name, "Employee")} icon={<EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="sm" />}>
+                  <RecordText title={e.name} sub={[e.employeeIdNo, e.trade].filter(Boolean).join(" · ")} type="Employee" />
                 </Item>
               ))}
               {results.projects.map((p) => (
-                <Item key={`p-${p.id}`} value={`${p.name} ${p.code}`} onSelect={() => go(`/projects/${p.id}`, p.name, "Project")} icon={<Package className="h-3.5 w-3.5" />}>
-                  <span className="truncate">{p.name}</span>
-                  <span className="ml-auto shrink-0 text-xs text-subtle">{p.code}</span>
+                <Item key={`p-${p.id}`} value={`${p.name} ${p.code}`} onSelect={() => go(`/projects/${p.id}`, p.name, "Project")} icon={<RecordIcon icon={FolderKanban} />}>
+                  <RecordText title={p.name} sub={[p.code, p.client?.name].filter(Boolean).join(" · ")} type="Project" />
                 </Item>
               ))}
               {results.clients.map((c) => (
-                <Item key={`c-${c.id}`} value={`${c.name} ${c.code ?? ""}`} onSelect={() => go(`/clients/${c.id}`, c.name, "Client")} icon={<Package className="h-3.5 w-3.5" />}>
-                  <span className="truncate">{c.name}</span>
-                  {c.code && <span className="ml-auto shrink-0 text-xs text-subtle">{c.code}</span>}
+                <Item key={`c-${c.id}`} value={`${c.name} ${c.code ?? ""}`} onSelect={() => go(`/clients/${c.id}`, c.name, "Client")} icon={<RecordIcon icon={Building2} />}>
+                  <RecordText title={c.name} sub={c.code ?? ""} type="Client" />
+                </Item>
+              ))}
+              {results.suppliers.map((sp) => (
+                <Item key={`s-${sp.id}`} value={`${sp.name} ${sp.code ?? ""}`} onSelect={() => go(`/suppliers/${sp.id}`, sp.name, "Supplier")} icon={<RecordIcon icon={Truck} />}>
+                  <RecordText title={sp.name} sub={sp.code ?? ""} type={sp.isOwnCompany ? "Own company" : "Supplier"} />
                 </Item>
               ))}
               {results.documents.map((d) => (
-                <Item key={`d-${d.id}`} value={`${d.filename} ${d.employee.name}`} onSelect={() => go(`/employees/${d.employeeId}`, d.employee.name, "Employee")} icon={<FileSearch className="h-3.5 w-3.5" />}>
-                  <span className="truncate">{d.filename}</span>
-                  <span className="ml-auto shrink-0 text-xs text-subtle">{d.employee.name}</span>
+                <Item key={`d-${d.id}`} value={`${d.filename} ${d.employee.name}`} onSelect={() => go(`/employees/${d.employeeId}`, d.employee.name, "Employee")} icon={<RecordIcon icon={FileText} />}>
+                  <RecordText title={d.filename} sub={d.employee.name} type="Document" />
                 </Item>
               ))}
             </Command.Group>
           ) : query.trim().length >= 2 && !loading ? (
             <p className="px-3.5 py-2 text-xs text-subtle">
-              Records search covers employees, projects, clients and documents.
+              Records search covers employees, projects, clients, suppliers and documents.
             </p>
           ) : null}
         </Command.List>
@@ -307,14 +311,34 @@ function Item({
       value={value}
       onSelect={onSelect}
       className={cn(
-        "group flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm text-secondary transition-colors",
-        "data-[selected=true]:bg-surface-hover data-[selected=true]:text-primary"
+        "group flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-secondary transition-colors normal-case tracking-normal",
+        "data-[selected=true]:bg-brand-soft data-[selected=true]:text-primary"
       )}
     >
       <span className="shrink-0 text-subtle">{icon}</span>
       {children}
       <ArrowRight className="ml-1 hidden h-3 w-3 shrink-0 text-subtle group-data-[selected=true]:block" aria-hidden />
     </Command.Item>
+  );
+}
+
+function RecordIcon({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {
+  return (
+    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-sunken text-muted group-data-[selected=true]:bg-surface group-data-[selected=true]:text-[var(--brand-primary)]">
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+}
+
+function RecordText({ title, sub, type }: { title: string; sub: string; type: string }) {
+  return (
+    <>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-primary">{title}</span>
+        {sub && <span className="block truncate text-xs text-subtle">{sub}</span>}
+      </span>
+      <span className="shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-[10.5px] font-medium text-muted">{type}</span>
+    </>
   );
 }
 
@@ -345,11 +369,11 @@ function TriggerButton({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label="Open command palette (⌘K)"
-      className="flex h-9 w-full max-w-md items-center gap-2 rounded-control border border-default bg-surface-subtle px-2.5 text-sm text-subtle transition hover:bg-surface hover:text-muted"
+      className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-3 text-sm text-subtle shadow-xs transition hover:border-strong hover:bg-surface hover:text-muted"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="flex-1 truncate text-left">Search…</span>
-      <kbd className="hidden shrink-0 rounded border border-default bg-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-subtle sm:block">
+      <span className="flex-1 truncate text-left">Search employees, projects, documents, invoices…</span>
+      <kbd className="hidden shrink-0 rounded-md border border-default bg-surface px-1.5 py-0.5 font-sans text-[10px] font-semibold text-muted shadow-xs sm:block">
         ⌘K
       </kbd>
     </button>

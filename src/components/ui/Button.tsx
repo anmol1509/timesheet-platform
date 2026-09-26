@@ -3,9 +3,9 @@ import { cn } from "@/lib/cn";
 
 const VARIANTS = {
   primary:
-    "bg-[var(--brand-primary)] text-white shadow-xs hover:bg-[var(--brand-primary-hover)] active:bg-[var(--brand-primary-active)] disabled:opacity-50",
+    "bg-[var(--brand-primary)] bg-gradient-to-b from-white/12 to-white/0 text-white shadow-[var(--shadow-brand),inset_0_1px_0_rgb(255_255_255/0.14)] hover:bg-[var(--brand-primary-hover)] active:bg-[var(--brand-primary-active)] disabled:opacity-50",
   secondary:
-    "border border-strong bg-surface text-secondary shadow-xs hover:bg-surface-hover hover:text-primary disabled:opacity-50",
+    "border border-strong bg-surface text-secondary shadow-xs hover:border-[#c3c8d4] hover:bg-surface-hover hover:text-primary disabled:opacity-50",
   ghost: "text-secondary hover:bg-surface-hover hover:text-primary disabled:opacity-50",
   danger:
     "bg-[var(--error)] text-white shadow-xs hover:brightness-110 disabled:opacity-50",

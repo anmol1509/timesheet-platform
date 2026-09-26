@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
-import { BrandMark, type Brand } from "@/components/BrandMark";
+import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
@@ -54,16 +54,16 @@ export function AppShell({
       <aside
         className={cn(
           "hidden shrink-0 flex-col border-r border-default bg-surface transition-[width] duration-200 lg:fixed lg:inset-y-0 lg:flex",
-          collapsed ? "w-14" : "w-60"
+          collapsed ? "w-16" : "w-64"
         )}
       >
         <div
           className={cn(
-            "flex h-14 shrink-0 items-center border-b border-default",
-            collapsed ? "justify-center px-2" : "justify-between pr-2 pl-3"
+            "flex h-16 shrink-0 items-center",
+            collapsed ? "justify-center px-2" : "justify-between pr-2.5 pl-4"
           )}
         >
-          <BrandMark brand={brand} collapsed={collapsed} />
+          <BrandMark collapsed={collapsed} />
           {!collapsed && (
             <button
               type="button"
@@ -76,6 +76,12 @@ export function AppShell({
           )}
         </div>
 
+        {!collapsed && (
+          <div className="shrink-0 px-3 pb-2">
+            <BranchCard brand={brand} />
+          </div>
+        )}
+
         <div
           className={cn(
             "flex-1 overflow-x-hidden overflow-y-auto py-3",
@@ -84,6 +90,12 @@ export function AppShell({
         >
           <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} />
         </div>
+
+        {!collapsed && (
+          <div className="shrink-0 border-t border-default p-3">
+            <AskAiCard />
+          </div>
+        )}
 
         {collapsed && (
           <div className="flex shrink-0 justify-center border-t border-default p-2">
@@ -108,11 +120,11 @@ export function AppShell({
           // below its content's min-content width, so a wide table pushed the
           // whole page sideways instead of scrolling inside its own card.
           "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-200",
-          collapsed ? "lg:pl-14" : "lg:pl-60"
+          collapsed ? "lg:pl-16" : "lg:pl-64"
         )}
       >
         {header}
-        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pt-6 pb-24 sm:px-6">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pt-7">
           <SectionTabs />
           {children}
         </main>

@@ -75,13 +75,13 @@ export default async function AppLayout({
   };
 
   const header = (
-    <header className="sticky top-0 z-30 border-b border-default bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-      <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-default bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 lg:max-w-xl">
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {isSuperAdmin && (
             <div className="hidden sm:block">
               <BranchSwitcher branches={branches.filter((b) => b.isActive)} activeBranchId={branchId} />

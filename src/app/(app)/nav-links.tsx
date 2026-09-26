@@ -332,8 +332,9 @@ function groupContainsActive(activeHref: string | null, children: Item[]) {
 // Active state reads as "selected", not as a coloured button: a tinted surface
 // plus a brand rail, so a long nav doesn't turn into a stack of blue blocks.
 const ROW =
-  "group/row relative flex items-center rounded-control text-sm transition-colors";
-const ACTIVE = "bg-brand-soft font-medium text-[var(--brand-primary)]";
+  "group/row relative flex items-center rounded-[10px] text-[13.5px] transition-colors";
+const ACTIVE =
+  "bg-brand-soft font-semibold text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_var(--brand-primary-border)]";
 const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
 
 export function NavLinks({
@@ -414,8 +415,7 @@ export function NavLinks({
         aria-current={active ? "page" : undefined}
         className={cn(
           ROW,
-          "gap-2.5 py-1.5",
-          depth === 0 ? "px-2.5" : "px-2.5",
+          depth === 0 ? "gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-1.5 text-[13px]",
           active ? ACTIVE : INACTIVE
         )}
       >
@@ -423,14 +423,14 @@ export function NavLinks({
           <m.span
             layoutId="nav-active-rail"
             transition={SPRING}
-            className="absolute top-1/2 -left-3 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
+            className="absolute top-1/2 -left-3 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
             aria-hidden
           />
         )}
-        <Icon className={cn("shrink-0", depth === 0 ? "h-4 w-4" : "h-3.5 w-3.5")} />
+        <Icon className={cn("shrink-0", depth === 0 ? "h-[18px] w-[18px]" : "h-4 w-4", !active && "text-muted group-hover/row:text-secondary")} />
         <span className="truncate">{item.label}</span>
         {item.href === "/approvals" && pendingApprovals > 0 && (
-          <span className="ml-auto rounded-full bg-[var(--warning)] px-1.5 text-[10px] font-semibold text-white" aria-label={`${pendingApprovals} waiting`}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>
+          <span className="tabular ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--error)] px-1.5 text-[10.5px] font-semibold text-white" aria-label={`${pendingApprovals} waiting`}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>
         )}
       </Link>
     );
@@ -444,8 +444,8 @@ export function NavLinks({
           <p
             key={`cat-${entry.category}`}
             className={cn(
-              "px-2.5 pt-3 pb-1 text-[10px] font-semibold tracking-wider text-subtle uppercase",
-              i === 0 && "pt-1"
+              "px-2.5 pt-5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase",
+              i === 0 && "pt-1.5"
             )}
           >
             {entry.category}
@@ -532,13 +532,13 @@ export function NavLinks({
               aria-expanded={open}
               className={cn(
                 ROW,
-                "w-full gap-2.5 px-2.5 py-1.5",
-                hasActiveChild && !open
-                  ? "font-medium text-primary"
+                "w-full gap-3 px-2.5 py-2",
+                hasActiveChild
+                  ? "font-semibold text-primary hover:bg-surface-hover"
                   : "text-secondary hover:bg-surface-hover hover:text-primary"
               )}
             >
-              <GroupIcon className="h-4 w-4 shrink-0" />
+              <GroupIcon className={cn("h-[18px] w-[18px] shrink-0", hasActiveChild ? "text-[var(--brand-primary)]" : "text-muted")} />
               <span className="flex-1 truncate text-left">{entry.label}</span>
               {hasActiveChild && !open && (
                 <span
@@ -565,7 +565,7 @@ export function NavLinks({
               }}
             >
               <div className="overflow-hidden">
-                <div className="mt-0.5 ml-[1.0625rem] flex flex-col gap-0.5 border-l border-default pl-3">
+                <div className="mt-0.5 mb-1 ml-[1.125rem] flex flex-col gap-0.5 border-l border-default pl-3">
                   {entry.children.map((child) => renderLeaf(child, 1))}
                 </div>
               </div>
