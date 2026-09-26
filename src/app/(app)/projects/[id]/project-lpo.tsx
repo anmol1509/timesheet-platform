@@ -3,8 +3,8 @@
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { addLpoAction, updateLpoAction, closeLpoAction } from "../actions";
-import { ComboSelect } from "@/components/ui/ComboSelect";
-import { TRADES } from "@/lib/formLists";
+import { Select } from "@/components/ui/Select";
+import { TRADES } from "@/lib/trades";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -94,7 +94,7 @@ export function ProjectLpo({
                   <NumberInput name="quantity" defaultValue={lpo.quantity ?? ""} />
                 </Field>
                 <Field label="Trade">
-                  <ComboSelect name="trade" options={TRADES} defaultValue={lpo.trade} />
+                  <Select name="trade" searchable options={[{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))]} defaultValue={lpo.trade ?? ""} />
                 </Field>
                 <Field label="Rate (AED/hr)">
                   <NumberInput name="rate" defaultValue={lpo.rate ?? ""} step={0.01} />
@@ -198,7 +198,7 @@ export function ProjectLpo({
               <NumberInput name="quantity" />
             </Field>
             <Field label="Trade">
-              <ComboSelect name="trade" options={TRADES} />
+              <Select name="trade" searchable options={[{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))]} defaultValue="" />
             </Field>
             <Field label="Rate (AED/hr)">
               <NumberInput name="rate" step={0.01} />

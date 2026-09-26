@@ -9,6 +9,8 @@ import {
   skillLevelLabel,
 } from "@/lib/skillLevel";
 import { Slider } from "@/components/ui/Slider";
+import { Select } from "@/components/ui/Select";
+import { TRADES } from "@/lib/trades";
 import { addSkillAction, removeSkillAction } from "./actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -27,13 +29,13 @@ export function SkillsSection({
   skills: SkillRow[];
 }) {
   const [pending, startTransition] = useTransition();
-  const nameRef = useRef<HTMLInputElement>(null);
+  const [trade, setTrade] = useState("");
   const [level, setLevel] = useState(DEFAULT_SKILL_LEVEL);
   const rateRef = useRef<HTMLInputElement>(null);
   const [resetKey, setResetKey] = useState(0);
 
   function handleAdd() {
-    const name = nameRef.current?.value.trim();
+    const name = trade.trim();
     if (!name) return;
     const formData = new FormData();
     formData.append("employeeId", employeeId);
@@ -43,7 +45,7 @@ export function SkillsSection({
     startTransition(() => {
       addSkillAction(formData);
     });
-    if (nameRef.current) nameRef.current.value = "";
+    setTrade("");
     setLevel(DEFAULT_SKILL_LEVEL);
     setResetKey((k) => k + 1);
     if (rateRef.current) rateRef.current.value = "";
@@ -56,16 +58,12 @@ export function SkillsSection({
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-[180px] flex-1">
             <span className="mb-1 block text-xs font-medium text-muted">Trade</span>
-            <input
-              ref={nameRef}
-              placeholder="e.g. Welding, Carpentry"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAdd();
-                }
-              }}
-              className="input w-full"
+            <Select
+              value={trade}
+              onChange={setTrade}
+              searchable
+              placeholder="Select a trade…"
+              options={TRADES.map((t) => ({ value: t, label: t }))}
             />
           </div>
           {/* Range and wording match the registration wizard — the two

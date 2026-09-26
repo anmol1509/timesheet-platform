@@ -14,4 +14,3 @@ export const BLOOD_GROUPS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "
 export const INVENTORY_CATEGORIES = ["PPE", "Hand tools", "Power tools", "Equipment", "Consumables", "Uniform", "Safety gear", "Scaffolding"];
 export const SUPPLIER_CATEGORIES = ["Manpower supply", "Subcontractor", "Materials", "Equipment hire", "Transport", "Catering", "Accommodation", "Services"];
 export const RECURRING_ITEMS = ["Phone allowance", "Site allowance", "Attendance bonus", "Fuel allowance", "Overtime guarantee", "Uniform deduction", "Accommodation deduction", "Fine / penalty", "Loan instalment"];
-export const TRADES = ["Helper", "Mason", "Tile Mason", "Steel Fixer", "Shuttering Carpenter", "Finishing Carpenter", "Gypsum Carpenter", "Scaffolder", "Painter", "Electrician", "Plumber", "Rigger", "ARC Welder", "Site Supervisor", "Foreman", "Driver", "Operator"];
