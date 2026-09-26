@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
+import { StatusDonut } from "@/components/Donut";
 import { Badge } from "@/components/Badge";
 import { approvedHeadcount } from "@/lib/demandApproval";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -14,9 +15,14 @@ export default async function DemandDashboardPage() {
   const { branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
-  const [openCount, demands] = await Promise.all([
+  const [openCount, demandsByStatus, demands] = await Promise.all([
     prisma.demandRequest.count({
       where: { ...branchScope, status: { notIn: ["Rejected", "Closed"] } },
+    }),
+    prisma.demandRequest.groupBy({
+      by: ["status"],
+      where: branchScope,
+      _count: { _all: true },
     }),
     prisma.demandRequest.findMany({
       where: { ...branchScope, status: { notIn: ["Rejected", "Closed"] } },
@@ -129,7 +135,6 @@ export default async function DemandDashboardPage() {
         <Panel
           title="Requests short of headcount"
           href="/demand/mobilisation"
-          className="lg:col-span-2"
         >
           {shortfall.length === 0 ? (
             <p className="text-sm text-muted">
@@ -164,6 +169,16 @@ export default async function DemandDashboardPage() {
               ))}
             </ul>
           )}
+        </Panel>
+
+        <Panel title="Requests by status" href="/demand">
+          <StatusDonut
+            items={demandsByStatus.map((r) => ({
+              status: r.status,
+              count: r._count._all,
+            }))}
+            emptyMessage="No demand requests yet."
+          />
         </Panel>
       </div>
     </div>

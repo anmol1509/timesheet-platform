@@ -125,12 +125,14 @@ export default async function WorkforceDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Workforce by trade" icon={HardHat} href="/trades" linkLabel="Trades">
           <BarList
+            tone="brand"
             items={byTrade.map((r) => ({ key: r.trade ?? "none", label: r.trade ?? "No trade set", value: r._count._all }))}
             emptyLabel="No employees yet."
           />
         </Panel>
         <Panel title="Workforce by nationality" icon={Globe2} href="/employees">
           <BarList
+            tone="info"
             items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: <Nationality name={r.nationality ?? "Not set"} />, value: r._count._all }))}
             emptyLabel="No employees yet."
           />

@@ -13,7 +13,7 @@ export default async function FinancePage() {
   const today = new Date();
   const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
   const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5, 1));
-  const [bills, monthExpenses, pending, recent, budgets, topUps, cashRows, owedBack, billsToApprove] = await Promise.all([
+  const [bills, monthExpenses, pending, recent, budgets, topUps, cashRows, owedBack, billsToApprove, recentInvoices, unpaidInvoices] = await Promise.all([
     prisma.supplierBill.findMany({ where: { ...branchWhere(branchId), approvalStatus: "APPROVED" }, include: { supplier: { select: { name: true } }, payments: { select: { amount: true } } } }),
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", date: { gte: monthStart } }, select: { category: true, amount: true, vatAmount: true } }),
     prisma.expense.count({ where: { ...branchWhere(branchId), status: "PENDING" } }),
@@ -23,6 +23,8 @@ export default async function FinancePage() {
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", paymentMethod: "CASH" }, select: { amount: true, vatAmount: true } }),
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", outOfPocket: true, reimbursedAt: null }, select: { amount: true, vatAmount: true } }),
     prisma.supplierBill.count({ where: { ...branchWhere(branchId), approvalStatus: "PENDING" } }),
+    prisma.clientInvoice.findMany({ where: { ...branchWhere(branchId), issueDate: { gte: sixMonthsAgo } }, select: { issueDate: true, totalAmount: true } }),
+    prisma.clientInvoice.findMany({ where: { ...branchWhere(branchId), status: { not: "PAID" }, dueDate: { not: null } }, select: { totalAmount: true, dueDate: true } }),
   ]);
 
   const buckets = AGEING_BUCKETS.map(() => 0);
@@ -51,8 +53,20 @@ export default async function FinancePage() {
     if (spendByMonth.has(k)) spendByMonth.set(k, (spendByMonth.get(k) ?? 0) + t);
     if (k === months[months.length - 1]) spendByProject.set(e.project?.name ?? "No project", (spendByProject.get(e.project?.name ?? "No project") ?? 0) + t);
   }
-  const trendMax = Math.max(1, ...spendByMonth.values());
+  const revenueByMonth = new Map(months.map((m) => [m, 0]));
+  for (const inv of recentInvoices) {
+    const k = monthKey(inv.issueDate);
+    if (revenueByMonth.has(k)) revenueByMonth.set(k, (revenueByMonth.get(k) ?? 0) + inv.totalAmount);
+  }
+  const trendMax = Math.max(1, ...spendByMonth.values(), ...revenueByMonth.values());
   const projectSpend = [...spendByProject.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const receivableBuckets = AGEING_BUCKETS.map(() => 0);
+  let totalReceivable = 0;
+  for (const inv of unpaidInvoices) {
+    totalReceivable += inv.totalAmount;
+    receivableBuckets[ageingBucket(inv.dueDate!, today)] += inv.totalAmount;
+  }
   const budgetRows = budgets.map((b) => ({ category: b.category, limit: Number(b.monthlyLimit), spent: byCategory.get(b.category) ?? 0 })).map((b) => ({ ...b, ...budgetStatus(b.spent, b.limit) }));
   const petty = pettyCashBalance(topUps.map((t) => Number(t.amount)), cashRows.map((e) => Number(e.amount) + Number(e.vatAmount)));
   const owedToStaff = owedBack.reduce((s, e) => s + Number(e.amount) + Number(e.vatAmount), 0);
@@ -66,14 +80,26 @@ export default async function FinancePage() {
         <Link href="/finance/bills?view=REVIEW" className="card block p-4 hover:border-[var(--brand-primary)]"><p className="text-xs font-medium tracking-wide text-muted uppercase">Bills awaiting approval</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{billsToApprove}</p></Link>
         <Link href="/finance/expenses?status=PENDING" className="card block p-4 hover:border-[var(--brand-primary)]"><p className="text-xs font-medium tracking-wide text-muted uppercase">Expenses awaiting approval</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{pending}</p></Link>
       </div>
-      <section className="card p-5">
-        <h2 className="mb-3 text-sm font-semibold text-primary">Payables ageing</h2>
-        <div className="grid gap-3 [&>*]:min-w-0 sm:grid-cols-5">
-          {AGEING_BUCKETS.map((label, i) => (
-            <div key={label}><p className="text-xs text-muted">{label}</p><p className={i >= 3 && buckets[i] > 0 ? "mt-0.5 text-lg font-semibold tabular-nums text-[var(--error)]" : "mt-0.5 text-lg font-semibold tabular-nums text-primary"}>{aed(buckets[i])}</p></div>
-          ))}
-        </div>
-      </section>
+      <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
+        <section className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Payables ageing <span className="font-normal text-muted">· owed to suppliers</span></h2>
+          <div className="grid gap-3 [&>*]:min-w-0 sm:grid-cols-5">
+            {AGEING_BUCKETS.map((label, i) => (
+              <div key={label}><p className="text-xs text-muted">{label}</p><p className={i >= 3 && buckets[i] > 0 ? "mt-0.5 text-lg font-semibold tabular-nums text-[var(--error)]" : "mt-0.5 text-lg font-semibold tabular-nums text-primary"}>{aed(buckets[i])}</p></div>
+            ))}
+          </div>
+        </section>
+        <section className="card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-primary">Receivables ageing <span className="font-normal text-muted">· owed by clients</span></h2>
+          {totalReceivable === 0 ? <p className="text-sm text-muted">Nothing outstanding from clients.</p> : (
+            <div className="grid gap-3 [&>*]:min-w-0 sm:grid-cols-5">
+              {AGEING_BUCKETS.map((label, i) => (
+                <div key={label}><p className="text-xs text-muted">{label}</p><p className={i >= 3 && receivableBuckets[i] > 0 ? "mt-0.5 text-lg font-semibold tabular-nums text-[var(--error)]" : "mt-0.5 text-lg font-semibold tabular-nums text-primary"}>{aed(receivableBuckets[i])}</p></div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
       <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold text-primary">Biggest balances</h2>
@@ -90,15 +116,32 @@ export default async function FinancePage() {
       </div>
       <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-3">
         <section className="card p-5 lg:col-span-2">
-          <h2 className="mb-1 text-sm font-semibold text-primary">Approved spend, last 6 months</h2>
-          <p className="mb-4 text-xs text-subtle">Expenses only. Supplier bills and payroll are tracked in their own modules.</p>
-          <div className="flex h-28 items-end gap-3">
-            {months.map((m, i) => {
-              const v = spendByMonth.get(m) ?? 0;
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <div>
+              <h2 className="text-sm font-semibold text-primary">Revenue vs. expenses, last 6 months</h2>
+              <p className="text-xs text-subtle">Client invoices issued vs. approved expenses. Supplier bills and payroll are tracked in their own modules.</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted">
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--success)]" />Invoiced</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--brand-primary)]" />Expenses</span>
+            </div>
+          </div>
+          <div className="flex h-32 items-end gap-3">
+            {months.map((m) => {
+              const spend = spendByMonth.get(m) ?? 0;
+              const revenue = revenueByMonth.get(m) ?? 0;
               return (
-                <div key={m} className="flex flex-1 flex-col items-center gap-1" title={`${m}: AED ${aed(v)}`}>
-                  {v > 0 && <span className="tabular text-[11px] text-secondary">{Math.round(v).toLocaleString("en-AE")}</span>}
-                  <span className={`w-full max-w-10 rounded-t-[4px] ${i === months.length - 1 ? "bg-[var(--brand-primary)]" : "bg-[var(--brand-primary)]/30"}`} style={{ height: `${Math.max(v > 0 ? 6 : 2, (v / trendMax) * 72)}px` }} />
+                <div key={m} className="flex flex-1 flex-col items-center gap-1">
+                  <div className="flex w-full items-end justify-center gap-1">
+                    <span className="flex max-w-8 flex-1 flex-col items-center gap-1" title={`Invoiced ${m}: AED ${aed(revenue)}`}>
+                      {revenue > 0 && <span className="tabular text-[10px] text-secondary">{Math.round(revenue / 1000)}k</span>}
+                      <span className="w-full rounded-t-[3px] bg-[var(--success)]" style={{ height: `${Math.max(revenue > 0 ? 6 : 2, (revenue / trendMax) * 88)}px` }} />
+                    </span>
+                    <span className="flex max-w-8 flex-1 flex-col items-center gap-1" title={`Expenses ${m}: AED ${aed(spend)}`}>
+                      {spend > 0 && <span className="tabular text-[10px] text-secondary">{Math.round(spend / 1000)}k</span>}
+                      <span className="w-full rounded-t-[3px] bg-[var(--brand-primary)]" style={{ height: `${Math.max(spend > 0 ? 6 : 2, (spend / trendMax) * 88)}px` }} />
+                    </span>
+                  </div>
                   <span className="text-xs text-subtle">{m.slice(5)}</span>
                 </div>
               );

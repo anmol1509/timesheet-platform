@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
-import { StatusBreakdown } from "@/components/StatusBreakdown";
+import { StatusDonut } from "@/components/Donut";
 import { BarList } from "@/components/BarList";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -100,6 +100,7 @@ export default async function BillingDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Invoiced by client" href="/invoices/history" className="lg:col-span-2">
           <BarList
+            tone="info"
             items={byClient.map((r) => ({ key: r.clientId, label: clientName.get(r.clientId) ?? "Unknown client", value: Math.round(r._sum.totalAmount ?? 0), href: `/clients/${r.clientId}` }))}
             format={(n) => `AED ${n.toLocaleString("en-AE")}`}
             emptyLabel="No invoices yet."
@@ -107,12 +108,11 @@ export default async function BillingDashboardPage() {
         </Panel>
 
         <Panel title="Invoices by status" href="/invoices">
-          <StatusBreakdown
+          <StatusDonut
             items={statusBreakdown.map((r) => ({
               status: r.status,
               count: r._count._all,
             }))}
-            unit="invoices"
             emptyMessage="No invoices yet. They appear here once the first one is issued."
           />
         </Panel>

@@ -6,7 +6,7 @@ import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
-import { StatusBreakdown } from "@/components/StatusBreakdown";
+import { StatusDonut } from "@/components/Donut";
 import { Badge } from "@/components/Badge";
 import { getLpoAlerts } from "@/lib/lpoAlerts";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -83,18 +83,18 @@ export default async function ProjectsDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel title="Workforce by project" href="/projects" className="lg:col-span-2">
           <BarList
+            tone="info"
             items={workforceByProject.map((p) => ({ key: p.id, label: `${p.code} · ${p.name}`, value: p._count.employees, href: `/projects/${p.id}` }))}
             emptyLabel="No workers are assigned to a project yet."
           />
         </Panel>
 
         <Panel title="Projects by status" href="/projects">
-          <StatusBreakdown
+          <StatusDonut
             items={projectsByStatus.map((r) => ({
               status: r.status,
               count: r._count._all,
             }))}
-            unit="projects"
             emptyMessage="No projects yet."
           />
         </Panel>

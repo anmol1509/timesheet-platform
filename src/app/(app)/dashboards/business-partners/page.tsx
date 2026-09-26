@@ -6,7 +6,7 @@ import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
-import { StatusBreakdown } from "@/components/StatusBreakdown";
+import { StatusDonut } from "@/components/Donut";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -105,18 +105,18 @@ export default async function BusinessPartnersDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel title="Workforce by supplier" href="/suppliers" className="lg:col-span-2">
           <BarList
+            tone="info"
             items={workforceBySupplier.map((sp) => ({ key: sp.id, label: sp.isOwnCompany ? `${sp.name} (own company)` : sp.name, value: sp._count.employees, href: `/suppliers/${sp.id}` }))}
             emptyLabel="No suppliers have workers on the roster yet."
           />
         </Panel>
 
         <Panel title="Suppliers by status" href="/suppliers">
-          <StatusBreakdown
+          <StatusDonut
             items={suppliersByStatus.map((r) => ({
               status: r.status,
               count: r._count._all,
             }))}
-            unit="suppliers"
             emptyMessage="No suppliers yet."
           />
         </Panel>
