@@ -1,3 +1,4 @@
+import { ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
@@ -54,6 +55,7 @@ export default async function DemandDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={ClipboardList}
         title="Demand overview"
         description="Open manpower requests and how well they are staffed."
       />

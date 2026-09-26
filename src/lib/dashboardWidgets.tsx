@@ -9,6 +9,8 @@ import {
   Stethoscope,
   FolderPlus,
   ClipboardList,
+  FolderKanban,
+  Users,
 } from "lucide-react";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
 import { DashboardKpiCards } from "@/components/DashboardKpiCards";
@@ -81,6 +83,10 @@ export type DashboardData = {
   months: { month: string }[];
   deploymentPipeline: DeploymentStage[];
   recentActivity: RecentActivityRow[];
+  /** Headcount at the end of each of the last six months, oldest first. */
+  headcountTrend: number[];
+  newThisMonth: number;
+  activeProjects: { id: string; name: string; code: string; clientName: string; workers: number }[];
 };
 
 export type DashboardWidget = {
@@ -107,6 +113,8 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
         activeClientCount={d.activeClientCount}
         attentionCount={d.alerts.length + d.lpoAlerts.length}
         expiredCount={d.expiredCount}
+        headcountTrend={d.headcountTrend}
+        newThisMonth={d.newThisMonth}
       />
     ),
   },
@@ -174,6 +182,65 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     ),
   },
   {
+    id: "utilization-projects",
+    label: "Workforce utilization + Active projects",
+    render: (d) => (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Workforce utilization" icon={Users} href="/employees?filter=bench" linkLabel="View bench">
+          <WorkforcePie onWork={d.onWorkCount} bench={d.benchCount} />
+        </Panel>
+        <Panel title="Active projects" icon={FolderKanban} className="lg:col-span-2" href="/projects" bodyClassName="p-0">
+          {d.activeProjects.length === 0 ? (
+            <div className="flex flex-col items-center px-5 py-10 text-center">
+              <p className="text-sm font-medium text-primary">No active projects</p>
+              <p className="mt-1 text-xs text-muted">Projects marked Active appear here with their workforce.</p>
+              <Link href="/projects/new" className="btn btn-secondary btn-sm mt-3">Create project</Link>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b border-default text-left text-xs uppercase">
+                <tr>
+                  <th className="px-5">Project / Client</th>
+                  <th className="px-3 text-right">Workers</th>
+                  <th className="w-2/5 px-5">Share of deployed</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {d.activeProjects.map((p) => {
+                  const share = d.onWorkCount > 0 ? Math.round((p.workers / d.onWorkCount) * 100) : 0;
+                  return (
+                    <tr key={p.id} className="transition-colors hover:bg-surface-subtle">
+                      <td className="px-5 py-3">
+                        <Link href={`/projects/${p.id}`} className="group flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-violet-100 text-[11px] font-bold text-violet-600">
+                            {p.code.slice(-3)}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-primary group-hover:underline">{p.name}</span>
+                            <span className="block truncate text-xs text-subtle">{p.clientName}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="tabular px-3 py-3 text-right font-semibold text-primary">{p.workers}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken">
+                            <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${share}%` }} />
+                          </div>
+                          <span className="tabular w-9 text-right text-xs font-medium text-muted">{share}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
+    ),
+  },
+  {
     id: "deployment-pipeline",
     label: "Deployment pipeline + Recent activity",
     render: (d) => (
@@ -234,17 +301,11 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "composition",
-    label: "Workforce composition + Deployment split",
+    label: "Workforce by type",
     render: (d) => (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Workforce by type" className="lg:col-span-2" href="/employees">
-          <EmployeeTypeBreakdown counts={d.employeeTypeCounts} />
-        </Panel>
-
-        <Panel title="Deployment" href="/employees?filter=bench" linkLabel="View bench">
-          <WorkforcePie onWork={d.onWorkCount} bench={d.benchCount} />
-        </Panel>
-      </div>
+      <Panel title="Workforce by type" icon={Users} href="/employees">
+        <EmployeeTypeBreakdown counts={d.employeeTypeCounts} />
+      </Panel>
     ),
   },
   {
@@ -340,12 +401,25 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
 ];
 
+/**
+ * A saved order plus any widgets added since it was saved. New widgets go in
+ * right after the widget that precedes them in the default order, rather than
+ * all piling up at the bottom of an existing user's dashboard.
+ */
+export function mergeWidgetOrder(saved: string[]): string[] {
+  const ids = DASHBOARD_WIDGETS.map((w) => w.id);
+  const order = saved.filter((id) => ids.includes(id));
+  ids.forEach((id, i) => {
+    if (order.includes(id)) return;
+    const prev = ids.slice(0, i).reverse().find((p) => order.includes(p));
+    order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, id);
+  });
+  return order;
+}
+
 export function orderedVisibleWidgets(hiddenWidgets: string[], widgetOrder: string[]): DashboardWidget[] {
   const byId = new Map(DASHBOARD_WIDGETS.map((w) => [w.id, w]));
-  const known = widgetOrder.filter((id) => byId.has(id));
-  const missing = DASHBOARD_WIDGETS.map((w) => w.id).filter((id) => !known.includes(id));
-  const fullOrder = [...known, ...missing];
-  return fullOrder
+  return mergeWidgetOrder(widgetOrder)
     .filter((id) => !hiddenWidgets.includes(id))
     .map((id) => byId.get(id)!)
     .filter(Boolean);

@@ -1,3 +1,4 @@
+import { FileSpreadsheet } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
@@ -50,6 +51,7 @@ export default async function TimesheetsDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={FileSpreadsheet}
         title="Timesheets overview"
         description="Hours, approvals and attendance."
       />

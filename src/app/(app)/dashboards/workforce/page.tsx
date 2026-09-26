@@ -12,7 +12,9 @@ import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { AlertTriangle } from "lucide-react";
+import { BarList } from "@/components/BarList";
+import { Nationality } from "@/components/Nationality";
+import { AlertTriangle, Globe2, HardHat, Users } from "lucide-react";
 
 export default async function WorkforceDashboardPage() {
   const { branchId } = await requireUserWithBranch();
@@ -26,6 +28,8 @@ export default async function WorkforceDashboardPage() {
     documentExpiryCounts,
     employeeTypeCounts,
     runway,
+    byTrade,
+    byNationality,
   ] = await Promise.all([
     prisma.employee.count({ where: branchScope }),
     prisma.employee.count({
@@ -36,6 +40,20 @@ export default async function WorkforceDashboardPage() {
     getDocumentExpiryCounts(branchId),
     getEmployeeTypeCounts(branchId),
     getComplianceRunway(branchId),
+    prisma.employee.groupBy({
+      by: ["trade"],
+      where: { ...branchScope, status: { not: "TERMINATED" } },
+      _count: { _all: true },
+      orderBy: { _count: { trade: "desc" } },
+      take: 8,
+    }),
+    prisma.employee.groupBy({
+      by: ["nationality"],
+      where: { ...branchScope, status: { not: "TERMINATED" } },
+      _count: { _all: true },
+      orderBy: { _count: { nationality: "desc" } },
+      take: 8,
+    }),
   ]);
 
   const benchCount = employeeCount - onWorkCount;
@@ -44,6 +62,7 @@ export default async function WorkforceDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={Users}
         title="Workforce overview"
         description="Headcount, deployment and document compliance."
       />
@@ -102,6 +121,21 @@ export default async function WorkforceDashboardPage() {
       <Panel title="Workforce by type" href="/employees">
         <EmployeeTypeBreakdown counts={employeeTypeCounts} />
       </Panel>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Panel title="Workforce by trade" icon={HardHat} href="/trades" linkLabel="Trades">
+          <BarList
+            items={byTrade.map((r) => ({ key: r.trade ?? "none", label: r.trade ?? "No trade set", value: r._count._all }))}
+            emptyLabel="No employees yet."
+          />
+        </Panel>
+        <Panel title="Workforce by nationality" icon={Globe2} href="/employees">
+          <BarList
+            items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: <Nationality name={r.nationality ?? "Not set"} />, value: r._count._all }))}
+            emptyLabel="No employees yet."
+          />
+        </Panel>
+      </div>
     </div>
   );
 }

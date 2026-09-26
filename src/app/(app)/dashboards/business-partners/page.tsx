@@ -1,8 +1,10 @@
+import { Handshake } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
+import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
 import { StatusBreakdown } from "@/components/StatusBreakdown";
 import { Badge } from "@/components/Badge";
@@ -29,6 +31,7 @@ export default async function BusinessPartnersDashboardPage() {
     pendingTotal,
     pendingSuppliers,
     suppliersByStatus,
+    workforceBySupplier,
   ] = await Promise.all([
     prisma.supplier.count({ where: branchScope }),
     prisma.client.count({ where: branchScope }),
@@ -51,11 +54,18 @@ export default async function BusinessPartnersDashboardPage() {
       where: branchScope,
       _count: { _all: true },
     }),
+    prisma.supplier.findMany({
+      where: { ...branchScope, employees: { some: {} } },
+      select: { id: true, name: true, isOwnCompany: true, _count: { select: { employees: true } } },
+      orderBy: { employees: { _count: "desc" } },
+      take: 8,
+    }),
   ]);
 
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={Handshake}
         title="Partners overview"
         description="Suppliers, clients and pending approvals."
       />
@@ -93,6 +103,13 @@ export default async function BusinessPartnersDashboardPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Workforce by supplier" href="/suppliers" className="lg:col-span-2">
+          <BarList
+            items={workforceBySupplier.map((sp) => ({ key: sp.id, label: sp.isOwnCompany ? `${sp.name} (own company)` : sp.name, value: sp._count.employees, href: `/suppliers/${sp.id}` }))}
+            emptyLabel="No suppliers have workers on the roster yet."
+          />
+        </Panel>
+
         <Panel title="Suppliers by status" href="/suppliers">
           <StatusBreakdown
             items={suppliersByStatus.map((r) => ({

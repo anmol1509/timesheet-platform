@@ -1,8 +1,10 @@
+import { FolderKanban } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
+import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
 import { StatusBreakdown } from "@/components/StatusBreakdown";
 import { Badge } from "@/components/Badge";
@@ -14,7 +16,7 @@ export default async function ProjectsDashboardPage() {
   const { branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
-  const [activeCount, onHoldCount, siteCount, lpoAlerts, projectsByStatus] =
+  const [activeCount, onHoldCount, siteCount, lpoAlerts, projectsByStatus, workforceByProject] =
     await Promise.all([
       prisma.project.count({ where: { ...branchScope, status: "ACTIVE" } }),
       prisma.project.count({ where: { ...branchScope, status: "ON_HOLD" } }),
@@ -25,6 +27,12 @@ export default async function ProjectsDashboardPage() {
         where: branchScope,
         _count: { _all: true },
       }),
+      prisma.project.findMany({
+        where: { ...branchScope, employees: { some: {} } },
+        select: { id: true, code: true, name: true, _count: { select: { employees: true } } },
+        orderBy: { employees: { _count: "desc" } },
+        take: 8,
+      }),
     ]);
 
   const expiringLpos = lpoAlerts.filter((a) => a.kind === "EXPIRING");
@@ -33,6 +41,7 @@ export default async function ProjectsDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={FolderKanban}
         title="Projects overview"
         description="Active projects, sites and LPO health."
       />
@@ -72,6 +81,13 @@ export default async function ProjectsDashboardPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Workforce by project" href="/projects" className="lg:col-span-2">
+          <BarList
+            items={workforceByProject.map((p) => ({ key: p.id, label: `${p.code} · ${p.name}`, value: p._count.employees, href: `/projects/${p.id}` }))}
+            emptyLabel="No workers are assigned to a project yet."
+          />
+        </Panel>
+
         <Panel title="Projects by status" href="/projects">
           <StatusBreakdown
             items={projectsByStatus.map((r) => ({

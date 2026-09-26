@@ -1,3 +1,4 @@
+import { TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
@@ -53,6 +54,7 @@ export default async function SalesDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={TrendingUp}
         title="Sales overview"
         description="Enquiries, quotations and conversion."
       />

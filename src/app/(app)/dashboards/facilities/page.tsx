@@ -1,3 +1,4 @@
+import { Tent } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
@@ -26,6 +27,7 @@ export default async function FacilitiesDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={Tent}
         title="Facilities overview"
         description="Camps, bed occupancy and the vehicle fleet."
       />

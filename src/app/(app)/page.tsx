@@ -15,11 +15,11 @@ import { getDeploymentPipeline } from "@/lib/deploymentPipeline";
 import { getRecentActivity } from "@/lib/recentActivity";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { DASHBOARD_WIDGETS, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
+import { DASHBOARD_WIDGETS, mergeWidgetOrder, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { CustomizeDashboardButton } from "./customize-dashboard";
-import { UserPlus, Upload as UploadIcon } from "lucide-react";
+import { CalendarDays, UserPlus, Upload as UploadIcon } from "lucide-react";
 
 function greeting() {
   const hour = Number(
@@ -57,6 +57,8 @@ export default async function DashboardPage() {
     entityCounts,
     deploymentPipeline,
     recentActivity,
+    joinDates,
+    activeProjects,
     preference,
   ] = await Promise.all([
     prisma.employee.count({ where: branchScope }),
@@ -91,10 +93,27 @@ export default async function DashboardPage() {
     getEntityCounts(branchId),
     getDeploymentPipeline(branchId),
     getRecentActivity(branchId),
+    // Only the dates — enough to draw the six-month headcount line.
+    prisma.employee.findMany({ where: branchScope, select: { createdAt: true } }),
+    prisma.project.findMany({
+      where: { ...branchScope, status: "ACTIVE" },
+      select: { id: true, name: true, code: true, client: { select: { name: true } }, _count: { select: { employees: true } } },
+      orderBy: { employees: { _count: "desc" } },
+      take: 6,
+    }),
     prisma.dashboardPreference.findUnique({ where: { userId: user.id } }),
   ]);
 
   const benchCount = employeeCount - onWorkCount;
+
+  // Headcount at the end of each of the last six months (records only ever
+  // leave by being deactivated, not deleted, so created-before is headcount).
+  const now = new Date();
+  const monthEnds = Array.from({ length: 6 }, (_, i) => new Date(now.getFullYear(), now.getMonth() - 4 + i, 1));
+  const headcountTrend = monthEnds.map((end) => joinDates.filter((e) => e.createdAt < end).length);
+  headcountTrend[headcountTrend.length - 1] = employeeCount;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const newThisMonth = joinDates.filter((e) => e.createdAt >= monthStart).length;
   const deployedPct =
     employeeCount > 0 ? Math.round((onWorkCount / employeeCount) * 100) : 0;
   const expiredCount = alerts.filter((a) => a.days < 0).length;
@@ -162,22 +181,28 @@ export default async function DashboardPage() {
     months,
     deploymentPipeline,
     recentActivity,
+    headcountTrend,
+    newThisMonth,
+    activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees })),
   };
 
   const hiddenWidgets = preference?.hiddenWidgets ?? [];
-  const fullOrder = [
-    ...(preference?.widgetOrder ?? []).filter((id) => DASHBOARD_WIDGETS.some((w) => w.id === id)),
-  ];
-  for (const w of DASHBOARD_WIDGETS) {
-    if (!fullOrder.includes(w.id)) fullOrder.push(w.id);
-  }
+  const fullOrder = mergeWidgetOrder(preference?.widgetOrder ?? []);
   const visibleWidgets = orderedVisibleWidgets(hiddenWidgets, fullOrder);
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={`${greeting()}, ${firstName}.`}
-        description="Here's what's happening across your workforce today."
+        title={`${greeting()}, ${firstName}`}
+        description={
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>Here&apos;s what needs your attention today.</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-default bg-surface px-2.5 py-0.5 text-xs font-medium text-secondary shadow-xs">
+              <CalendarDays className="h-3.5 w-3.5 text-subtle" aria-hidden />
+              {new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Dubai" }).format(new Date())}
+            </span>
+          </span>
+        }
         actions={
           <>
             <CustomizeDashboardButton
