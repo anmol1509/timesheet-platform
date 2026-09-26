@@ -1260,6 +1260,12 @@
   }
   .mobileMenu {
     display: block;
+    /* navPrimary and navActions are both removed as grid items above, so
+       auto-placement would otherwise drop this into the middle (navPrimary's
+       old) column instead of the right-hand one, leaving a wide dead gap
+       before it and the logo looking squeezed against the left edge. */
+    grid-column: 3;
+    justify-self: end;
   }
   /* iOS Safari can drop/flicker a `position: fixed` element that also has
      `backdrop-filter`, especially during momentum scrolling — the nav would
