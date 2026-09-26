@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { CountUp } from "./CountUp";
 import { toneForStatus } from "./StatusBreakdown";
 
 const TONE_STROKE: Record<string, string> = {
@@ -22,7 +26,7 @@ function pretty(label: string) {
 
 type Slice = { key: string; label: string; count: number; stroke: string };
 
-function Rings({ slices, total }: { slices: Slice[]; total: number }) {
+function Rings({ slices, total, hovered, onHover }: { slices: Slice[]; total: number; hovered: string | null; onHover: (k: string | null) => void }) {
   const radius = 60;
   const stroke = 22;
   const circumference = 2 * Math.PI * radius;
@@ -31,13 +35,21 @@ function Rings({ slices, total }: { slices: Slice[]; total: number }) {
     acc.push(i === 0 ? 0 : acc[i - 1] + lengths[i - 1]);
     return acc;
   }, []);
+  const [swept, setSwept] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSwept(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
     <div className="relative h-[152px] w-[152px] shrink-0">
       <svg width="152" height="152" viewBox="0 0 152 152">
         <circle cx="76" cy="76" r={radius} fill="none" stroke="var(--surface-sunken)" strokeWidth={stroke} />
         {slices.map((s, i) => {
           const len = lengths[i];
-          const dash = `${Math.max(0, len - 1.5)} ${circumference - len + 1.5}`;
+          const dash = swept ? `${Math.max(0, len - 1.5)} ${circumference - len + 1.5}` : `0 ${circumference}`;
+          const isHovered = hovered === s.key;
+          const isDimmed = hovered !== null && !isHovered;
           return (
             <circle
               key={s.key}
@@ -46,38 +58,63 @@ function Rings({ slices, total }: { slices: Slice[]; total: number }) {
               r={radius}
               fill="none"
               stroke={s.stroke}
-              strokeWidth={stroke}
+              strokeWidth={isHovered ? stroke + 4 : stroke}
+              strokeOpacity={isDimmed ? 0.35 : 1}
               strokeDasharray={dash}
               strokeDashoffset={-offsets[i]}
+              strokeLinecap="round"
               transform="rotate(-90 76 76)"
+              className="cursor-pointer transition-[stroke-dasharray,stroke-width,stroke-opacity] duration-700 ease-out"
+              style={{ transitionDelay: swept ? "0ms" : `${i * 90}ms` }}
+              onMouseEnter={() => onHover(s.key)}
+              onMouseLeave={() => onHover(null)}
             />
           );
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="tabular text-2xl font-semibold text-primary">{total}</p>
+        <CountUp value={total} className="tabular text-2xl font-semibold text-primary" />
         <p className="text-xs text-muted">total</p>
       </div>
     </div>
   );
 }
 
-function Legend({ slices, total }: { slices: Slice[]; total: number }) {
+function Legend({ slices, total, hovered, onHover }: { slices: Slice[]; total: number; hovered: string | null; onHover: (k: string | null) => void }) {
   return (
-    <ul className="min-w-0 flex-1 space-y-2">
+    <ul className="min-w-0 flex-1 space-y-1">
       {slices.map((s) => (
-        <li key={s.key} className="flex items-center justify-between gap-3 text-sm">
-          <span className="flex min-w-0 items-center gap-2 text-muted">
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.stroke }} aria-hidden />
-            <span className="truncate">{s.label}</span>
-          </span>
-          <span className="tabular shrink-0 font-semibold text-primary">
-            {s.count}
-            <span className="ml-1.5 text-xs font-normal text-subtle">{Math.round((s.count / total) * 100)}%</span>
-          </span>
+        <li key={s.key}>
+          <div
+            onMouseEnter={() => onHover(s.key)}
+            onMouseLeave={() => onHover(null)}
+            className={cn(
+              "-mx-2 flex cursor-default items-center justify-between gap-3 rounded-lg px-2 py-1 text-sm transition",
+              hovered === s.key ? "bg-surface-hover" : "",
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-2 text-muted">
+              <span className="h-2 w-2 shrink-0 rounded-full transition-transform" style={{ background: s.stroke, transform: hovered === s.key ? "scale(1.3)" : "scale(1)" }} aria-hidden />
+              <span className="truncate">{s.label}</span>
+            </span>
+            <span className="tabular shrink-0 font-semibold text-primary">
+              {s.count}
+              <span className="ml-1.5 text-xs font-normal text-subtle">{Math.round((s.count / total) * 100)}%</span>
+            </span>
+          </div>
         </li>
       ))}
     </ul>
+  );
+}
+
+function DonutBody({ slices, total }: { slices: Slice[]; total: number }) {
+  const [hovered, setHovered] = useState<string | null>(null);
+  return (
+    <div className="flex flex-wrap items-center gap-6">
+      <Rings slices={slices} total={total} hovered={hovered} onHover={setHovered} />
+      <Legend slices={slices} total={total} hovered={hovered} onHover={setHovered} />
+    </div>
   );
 }
 
@@ -94,12 +131,7 @@ export function StatusDonut({
   const slices: Slice[] = items
     .filter((i) => i.count > 0)
     .map((i) => ({ key: i.status, label: pretty(i.status), count: i.count, stroke: TONE_STROKE[toneForStatus(i.status)] }));
-  return (
-    <div className={cn("flex flex-wrap items-center gap-6")}>
-      <Rings slices={slices} total={total} />
-      <Legend slices={slices} total={total} />
-    </div>
-  );
+  return <DonutBody slices={slices} total={total} />;
 }
 
 /** A donut for a plain categorical breakdown (source, category…) with no
@@ -117,10 +149,5 @@ export function CategoryDonut({
   const slices: Slice[] = items
     .filter((i) => i.count > 0)
     .map((i, idx) => ({ key: i.key, label: i.label, count: i.count, stroke: CATEGORY_STROKE[idx % CATEGORY_STROKE.length] }));
-  return (
-    <div className={cn("flex flex-wrap items-center gap-6")}>
-      <Rings slices={slices} total={total} />
-      <Legend slices={slices} total={total} />
-    </div>
-  );
+  return <DonutBody slices={slices} total={total} />;
 }

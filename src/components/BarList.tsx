@@ -1,14 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { m } from "motion/react";
 import { cn } from "@/lib/cn";
 
 export type BarListTone = "brand" | "info" | "success" | "warning" | "danger";
 
-const BAR_COLOR: Record<BarListTone, string> = {
-  brand: "bg-[var(--brand-primary)]",
-  info: "bg-[var(--info)]",
-  success: "bg-[var(--success)]",
-  warning: "bg-[var(--warning)]",
-  danger: "bg-[var(--error)]",
+const BAR_GRADIENT: Record<BarListTone, string> = {
+  brand: "bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary)]/75",
+  info: "bg-gradient-to-r from-[var(--info)] to-[var(--info)]/75",
+  success: "bg-gradient-to-r from-[var(--success)] to-[var(--success)]/75",
+  warning: "bg-gradient-to-r from-[var(--warning)] to-[var(--warning)]/75",
+  danger: "bg-gradient-to-r from-[var(--error)] to-[var(--error)]/75",
 };
 
 export type BarListItem = {
@@ -46,7 +49,7 @@ export function BarList({
   const total = items.reduce((n, i) => n + i.value, 0);
   return (
     <ul className="space-y-2.5">
-      {items.map((item) => {
+      {items.map((item, i) => {
         const row = (
           <>
             <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
@@ -57,9 +60,11 @@ export function BarList({
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
-              <div
-                className={cn("h-full rounded-full transition-[width] duration-500", BAR_COLOR[item.tone ?? tone])}
-                style={{ width: `${(item.value / max) * 100}%` }}
+              <m.div
+                className={cn("h-full rounded-full transition-[filter] duration-300 group-hover:brightness-110", BAR_GRADIENT[item.tone ?? tone])}
+                initial={{ width: "0%" }}
+                animate={{ width: `${(item.value / max) * 100}%` }}
+                transition={{ duration: 0.6, delay: i * 0.035, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
           </>
@@ -67,9 +72,9 @@ export function BarList({
         return (
           <li key={item.key}>
             {item.href ? (
-              <Link href={item.href} className="-mx-2 block rounded-lg px-2 py-1 transition hover:bg-surface-hover">{row}</Link>
+              <Link href={item.href} className="group -mx-2 block rounded-lg px-2 py-1 transition hover:bg-surface-hover">{row}</Link>
             ) : (
-              <div className="py-1">{row}</div>
+              <div className="group py-1">{row}</div>
             )}
           </li>
         );

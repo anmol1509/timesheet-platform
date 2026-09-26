@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { CountUp } from "./CountUp";
+
 export function OccupancyRing({
   occupied,
   vacant,
@@ -12,6 +17,11 @@ export function OccupancyRing({
   const stroke = 20;
   const circumference = 2 * Math.PI * radius;
   const occupiedLength = total > 0 ? (occupied / total) * circumference : 0;
+  const [swept, setSwept] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSwept(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-10">
@@ -22,7 +32,7 @@ export function OccupancyRing({
             cy="90"
             r={radius}
             fill="none"
-            stroke="#DBEAFE"
+            stroke="var(--surface-sunken)"
             strokeWidth={stroke}
           />
           <circle
@@ -30,31 +40,32 @@ export function OccupancyRing({
             cy="90"
             r={radius}
             fill="none"
-            stroke="#2563eb"
+            stroke="var(--brand-primary)"
             strokeWidth={stroke}
             strokeLinecap="round"
-            strokeDasharray={`${occupiedLength} ${circumference - occupiedLength}`}
+            strokeDasharray={swept ? `${occupiedLength} ${circumference - occupiedLength}` : `0 ${circumference}`}
             strokeDashoffset={circumference / 4}
             transform="scale(1,-1) translate(0,-180)"
+            className="transition-[stroke-dasharray] duration-700 ease-out"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-3xl font-semibold text-primary">{pct}%</p>
+          <CountUp value={pct} suffix="%" className="text-3xl font-semibold text-primary" />
           <p className="text-xs text-muted">Occupied</p>
         </div>
       </div>
 
       <div className="flex gap-6 text-center">
         <div>
-          <p className="text-xl tracking-tight text-primary font-semibold">{occupied}</p>
+          <p className="text-xl tracking-tight text-primary font-semibold"><CountUp value={occupied} /></p>
           <p className="text-xs text-muted">Occupied Beds</p>
         </div>
         <div>
-          <p className="text-xl tracking-tight text-primary font-semibold">{vacant}</p>
+          <p className="text-xl tracking-tight text-primary font-semibold"><CountUp value={vacant} /></p>
           <p className="text-xs text-muted">Available Beds</p>
         </div>
         <div>
-          <p className="text-xl tracking-tight text-primary font-semibold">{total}</p>
+          <p className="text-xl tracking-tight text-primary font-semibold"><CountUp value={total} /></p>
           <p className="text-xs text-muted">Total Beds</p>
         </div>
       </div>

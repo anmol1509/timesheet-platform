@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { m } from "motion/react";
 import { ArrowRight } from "lucide-react";
+import { CountUp } from "./CountUp";
 import type { DeploymentStage } from "@/lib/deploymentPipeline";
 
 const STAGE_STYLE = [
@@ -47,7 +49,7 @@ export function DeploymentPipelineFunnel({ stages }: { stages: DeploymentStage[]
             className="group flex items-center gap-3 rounded-lg px-1.5 py-2.5 transition hover:bg-surface-subtle"
           >
             <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-xs font-semibold tabular-nums ${style.chip}`}>
-              {s.count}
+              <CountUp value={s.count} />
             </span>
             <div className="min-w-0 flex-1">
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -55,9 +57,11 @@ export function DeploymentPipelineFunnel({ stages }: { stages: DeploymentStage[]
                 <span className="tabular shrink-0 text-xs text-subtle">{sharePct}%</span>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-surface-sunken">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${style.bar} ${hovered === s.key ? "brightness-110" : ""}`}
-                  style={{ width: `${widthPct}%` }}
+                <m.div
+                  className={`h-full rounded-full transition-[filter] duration-300 ${style.bar} ${hovered === s.key ? "brightness-110" : ""}`}
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${widthPct}%` }}
+                  transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
                 />
               </div>
             </div>
@@ -66,7 +70,7 @@ export function DeploymentPipelineFunnel({ stages }: { stages: DeploymentStage[]
         );
       })}
       <p className="pt-2 text-center text-xs text-subtle">
-        <span className="tabular font-medium text-secondary">{total}</span> total across the pipeline
+        <CountUp value={total} className="tabular font-medium text-secondary" /> total across the pipeline
       </p>
     </div>
   );
