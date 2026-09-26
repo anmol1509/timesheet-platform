@@ -7,9 +7,11 @@ import {
   Upload as UploadIcon,
   FileText,
   Stethoscope,
+  FolderPlus,
+  ClipboardList,
 } from "lucide-react";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
-import { KpiStrip } from "@/components/KpiStrip";
+import { DashboardKpiCards } from "@/components/DashboardKpiCards";
 import { Badge } from "@/components/Badge";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { WorkforcePie } from "@/components/WorkforcePie";
@@ -20,6 +22,9 @@ import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
 import { ComplianceRunway } from "@/components/ComplianceRunway";
 import { HoursSplitChart } from "@/components/HoursSplitChart";
 import { TimesheetPipelineChart } from "@/components/TimesheetPipelineChart";
+import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
+import { RecentActivityFeed } from "@/components/RecentActivityFeed";
+import { ManpowerAiCard } from "@/components/ManpowerAiCard";
 import type { ComplianceRunway as Runway } from "@/lib/complianceRunway";
 import type { HoursSplit } from "@/lib/attendanceHours";
 import type { TimesheetPipeline } from "@/lib/timesheetPipeline";
@@ -30,6 +35,8 @@ import type { AssignedStaffRow } from "@/lib/assignedStaff";
 import type { DocumentExpiryCategory } from "@/lib/documentExpiryCounts";
 import type { EmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import type { EntityCounts } from "@/lib/entityCounts";
+import type { DeploymentStage } from "@/lib/deploymentPipeline";
+import type { RecentActivityRow } from "@/lib/recentActivity";
 import { cn } from "@/lib/cn";
 
 function formatMonthLabel(month: string) {
@@ -72,6 +79,8 @@ export type DashboardData = {
   occupancyPct: number;
   latestUpload: { uploadedAt: Date; uploadedBy: { name: string } } | null;
   months: { month: string }[];
+  deploymentPipeline: DeploymentStage[];
+  recentActivity: RecentActivityRow[];
 };
 
 export type DashboardWidget = {
@@ -87,43 +96,17 @@ export type DashboardWidget = {
 export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   {
     id: "kpi",
-    label: "KPI strip (workforce, deployed, projects, needs attention)",
+    label: "KPI cards (workforce, deployment, projects, attention)",
     render: (d) => (
-      <KpiStrip
-        cells={[
-          {
-            label: "Total workforce",
-            value: d.employeeCount,
-            sub: `${d.onWorkCount} deployed · ${d.benchCount} on bench`,
-            href: "/employees",
-          },
-          {
-            label: "Deployed",
-            value: d.deployedPct,
-            suffix: "%",
-            meter: d.deployedPct,
-            sub: `${d.onWorkCount} of ${d.employeeCount} workers`,
-            href: "/employees?filter=on-work",
-          },
-          {
-            label: "Active projects",
-            value: d.activeProjectCount,
-            sub: `${d.activeClientCount} active clients`,
-            href: "/projects",
-          },
-          {
-            label: "Needs attention",
-            value: d.alerts.length + d.lpoAlerts.length,
-            tone:
-              d.expiredCount > 0
-                ? "danger"
-                : d.alerts.length + d.lpoAlerts.length > 0
-                  ? "warning"
-                  : "success",
-            sub: d.expiredCount > 0 ? `${d.expiredCount} already expired` : "expiring within 30 days",
-            href: "#needs-attention",
-          },
-        ]}
+      <DashboardKpiCards
+        employeeCount={d.employeeCount}
+        onWorkCount={d.onWorkCount}
+        benchCount={d.benchCount}
+        deployedPct={d.deployedPct}
+        activeProjectCount={d.activeProjectCount}
+        activeClientCount={d.activeClientCount}
+        attentionCount={d.alerts.length + d.lpoAlerts.length}
+        expiredCount={d.expiredCount}
       />
     ),
   },
@@ -158,11 +141,11 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
           ) : (
             <ul className="divide-y divide-[var(--border)]">
               {d.attention.map((item) => (
-                <li key={item.key}>
-                  <Link href={item.href} className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-surface-hover">
+                <li key={item.key} className="px-5 py-3">
+                  <div className="flex items-start gap-3">
                     <span
                       className={cn(
-                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
                         item.overdue ? "bg-[var(--error-soft)] text-[var(--error)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"
                       )}
                     >
@@ -173,11 +156,34 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
                       <span className="block truncate text-xs text-muted">{item.sub}</span>
                     </span>
                     <Badge color={item.overdue ? "red" : "amber"}>{item.badge}</Badge>
-                  </Link>
+                  </div>
+                  <div className="mt-2 flex gap-2 pl-10">
+                    <Link href={item.href} className="rounded-full border border-default px-2.5 py-1 text-xs font-medium text-secondary transition hover:border-strong hover:text-primary">
+                      View employee
+                    </Link>
+                    <Link href={item.href} className="rounded-full border border-default px-2.5 py-1 text-xs font-medium text-secondary transition hover:border-strong hover:text-primary">
+                      Renew document
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+        </Panel>
+      </div>
+    ),
+  },
+  {
+    id: "deployment-pipeline",
+    label: "Deployment pipeline + Recent activity",
+    render: (d) => (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Deployment pipeline" className="lg:col-span-2" href="/employees" linkLabel="Workforce">
+          <DeploymentPipelineFunnel stages={d.deploymentPipeline} />
+        </Panel>
+
+        <Panel title="Recent activity">
+          <RecentActivityFeed rows={d.recentActivity} />
         </Panel>
       </div>
     ),
@@ -296,17 +302,23 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "quick-actions",
-    label: "Quick actions",
+    label: "Quick actions + Manpower AI",
     render: () => (
-      <section>
-        <h2 className="mb-2.5 text-sm font-semibold text-primary">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <QuickAction href="/employees/new" icon={UserPlus} label="Add employee" sub="Register a new worker" />
-          <QuickAction href="/upload" icon={UploadIcon} label="Submit timesheet" sub="Record work hours" />
-          <QuickAction href="/documents" icon={FileText} label="Upload documents" sub="Add worker documents" />
-          <QuickAction href="/employees" icon={Stethoscope} label="Medical checks" sub="Review medical expiry" />
-        </div>
-      </section>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <section className="lg:col-span-2">
+          <h2 className="mb-2.5 text-sm font-semibold text-primary">Quick actions</h2>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <QuickAction href="/employees/new" icon={UserPlus} label="Add employee" sub="Register a new worker" />
+            <QuickAction href="/projects/new" icon={FolderPlus} label="Create project" sub="Set up a new project" />
+            <QuickAction href="/demand/new" icon={ClipboardList} label="Add demand" sub="Raise a labour request" />
+            <QuickAction href="/upload" icon={UploadIcon} label="Submit timesheet" sub="Record work hours" />
+            <QuickAction href="/documents" icon={FileText} label="Upload documents" sub="Add worker documents" />
+            <QuickAction href="/employees" icon={Stethoscope} label="Medical checks" sub="Review medical expiry" />
+          </div>
+        </section>
+
+        <ManpowerAiCard />
+      </div>
     ),
   },
   {

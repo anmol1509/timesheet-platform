@@ -11,6 +11,8 @@ import { getAssignedStaff } from "@/lib/assignedStaff";
 import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
+import { getDeploymentPipeline } from "@/lib/deploymentPipeline";
+import { getRecentActivity } from "@/lib/recentActivity";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { DASHBOARD_WIDGETS, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
@@ -53,6 +55,8 @@ export default async function DashboardPage() {
     documentExpiryCounts,
     employeeTypeCounts,
     entityCounts,
+    deploymentPipeline,
+    recentActivity,
     preference,
   ] = await Promise.all([
     prisma.employee.count({ where: branchScope }),
@@ -85,6 +89,8 @@ export default async function DashboardPage() {
     getDocumentExpiryCounts(branchId),
     getEmployeeTypeCounts(branchId),
     getEntityCounts(branchId),
+    getDeploymentPipeline(branchId),
+    getRecentActivity(branchId),
     prisma.dashboardPreference.findUnique({ where: { userId: user.id } }),
   ]);
 
@@ -154,6 +160,8 @@ export default async function DashboardPage() {
     occupancyPct,
     latestUpload,
     months,
+    deploymentPipeline,
+    recentActivity,
   };
 
   const hiddenWidgets = preference?.hiddenWidgets ?? [];

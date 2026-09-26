@@ -105,6 +105,18 @@ export function NavAssistant({
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Lets a dashboard card (or anything else) open the assistant and
+  // optionally ask a question straight away, without prop-drilling state.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      setOpen(true);
+      const text = (e as CustomEvent<{ text?: string }>).detail?.text;
+      if (text) send(text);
+    };
+    window.addEventListener("open-my-assistant", onOpen);
+    return () => window.removeEventListener("open-my-assistant", onOpen);
+  });
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy) return;
