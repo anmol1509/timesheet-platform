@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Check, Pencil, UserPlus, Users, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/Button";
@@ -36,6 +36,7 @@ type EmployeeRow = {
   campName: string | null;
   bedLabel: string | null;
   nextExpiry: { doc: string; days: number } | null;
+  docCounts: { valid: number; expiring: number; expired: number };
 };
 
 const DEPLOY_BADGE: Record<EmployeeRow["status"], { label: string; color: "green" | "amber" | "blue" | "slate" | "red" }> = {
@@ -256,6 +257,25 @@ export function EmployeeList({
         <div className="flex flex-col items-start gap-1">
           <Badge color={DEPLOY_BADGE[e.status].color} dot>{DEPLOY_BADGE[e.status].label}</Badge>
           {e.projectName && <span className="max-w-[180px] truncate text-xs text-muted" title={e.projectName}>{e.projectName}</span>}
+        </div>
+      ),
+    },
+    {
+      key: "documents",
+      header: "Documents",
+      sortValue: (e) => e.docCounts.expired * 1000 + e.docCounts.expiring,
+      csvValue: (e) => `${e.docCounts.valid} valid, ${e.docCounts.expiring} expiring, ${e.docCounts.expired} expired`,
+      render: (e) => (
+        <div className="flex items-center gap-2.5 text-xs font-medium tabular-nums">
+          <span className="flex items-center gap-1 text-[var(--success)]" title="Compliant">
+            <Check className="h-3 w-3" aria-hidden />{e.docCounts.valid}
+          </span>
+          <span className="flex items-center gap-1 text-[var(--warning)]" title="Expiring soon">
+            <AlertTriangle className="h-3 w-3" aria-hidden />{e.docCounts.expiring}
+          </span>
+          <span className="flex items-center gap-1 text-[var(--error)]" title="Expired">
+            <CircleX className="h-3 w-3" aria-hidden />{e.docCounts.expired}
+          </span>
         </div>
       ),
     },

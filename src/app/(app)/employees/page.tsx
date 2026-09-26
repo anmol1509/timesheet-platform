@@ -7,6 +7,7 @@ import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
+import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
 import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
@@ -64,6 +65,11 @@ export default async function EmployeesPage({
     const worstStatus = statuses.sort(
       (a, b) => STATUS_RANK[a] - STATUS_RANK[b]
     )[0];
+    const docCounts = {
+      valid: statuses.filter((s) => s === "valid").length,
+      expiring: statuses.filter((s) => s === "expiring").length,
+      expired: statuses.filter((s) => s === "expired").length,
+    };
     return {
       id: e.id,
       employeeIdNo: e.employeeIdNo,
@@ -82,9 +88,14 @@ export default async function EmployeesPage({
       campName: e.campCheckIns[0]?.camp.name ?? null,
       bedLabel: e.campCheckIns[0]?.bed ? `${e.campCheckIns[0].bed.room.name} · ${e.campCheckIns[0].bed.label}` : null,
       nextExpiry,
+      docCounts,
       complete: isEmployeeComplete(e),
     };
   });
+
+  const onWorkCount = rows.filter((r) => r.onWork).length;
+  const benchCount = rows.length - onWorkCount;
+  const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
 
   return (
     <div className="space-y-5">
@@ -102,6 +113,13 @@ export default async function EmployeesPage({
             Add employee
           </Button>
         }
+      />
+
+      <EmployeeKpiCards
+        total={rows.length}
+        onWork={onWorkCount}
+        bench={benchCount}
+        complianceIssues={complianceIssuesCount}
       />
 
       {entityFilter && (
