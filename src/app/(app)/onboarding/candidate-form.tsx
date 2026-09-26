@@ -7,8 +7,12 @@ import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PhoneField } from "@/components/ui/PhoneField";
+import { TRADES } from "@/lib/trades";
 import { ContactPicker, type AgencyContactOption } from "./contact-picker";
+import { AgencyPicker, type AgencyOption } from "./agency-picker";
 import { createCandidateAction, updateCandidateAction } from "./actions";
+
+const TRADE_OPTIONS = [{ value: "", label: "Not set" }, ...TRADES.map((t) => ({ value: t, label: t }))];
 
 type Option = { id: string; name: string };
 type DemandOption = { id: string; requestNo: number; project: { name: string } };
@@ -67,7 +71,7 @@ export function CandidateForm({
   hrUsers,
 }: {
   candidate?: Candidate;
-  agencies: Option[];
+  agencies: AgencyOption[];
   agencyContacts: AgencyContactOption[];
   projects: (Option & { code: string })[];
   demandRequests: DemandOption[];
@@ -75,6 +79,7 @@ export function CandidateForm({
 }) {
   const router = useRouter();
   const [agencyId, setAgencyId] = useState(candidate?.agencyId ?? "");
+  const [agencyList, setAgencyList] = useState(agencies);
   const [agencyContactId, setAgencyContactId] = useState(candidate?.agencyContactId ?? "");
   const [state, action, pending] = useActionState(
     async (_prev: State, fd: FormData) => {
@@ -97,7 +102,7 @@ export function CandidateForm({
           </label>
           <label className="block">
             <span className={label}>Trade</span>
-            <input name="trade" defaultValue={candidate?.trade ?? ""} className="input w-full" />
+            <Select name="trade" defaultValue={candidate?.trade ?? ""} searchable options={TRADE_OPTIONS} />
           </label>
           <label className="block">
             <span className={label}>Nationality</span>
@@ -145,15 +150,15 @@ export function CandidateForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={label}>Agency</span>
-            <Select
+            <AgencyPicker
               name="agencyId"
+              agencies={agencyList}
               value={agencyId}
-              onChange={(v) => {
-                setAgencyId(v);
+              onChange={(id, list) => {
+                setAgencyId(id);
+                setAgencyList(list);
                 setAgencyContactId("");
               }}
-              searchable
-              options={[{ value: "", label: "None" }, ...agencies.map((a) => ({ value: a.id, label: a.name }))]}
             />
           </label>
           <label className="block">

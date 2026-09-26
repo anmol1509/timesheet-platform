@@ -51,6 +51,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
     }),
   ]);
   const taskByStage = new Map(tasks.map((t) => [t.stage, { ownerId: t.ownerId, ownerName: t.owner?.name ?? null, dueDate: t.dueDate }]));
+  const attachmentsByStage = new Map(STAGES.map((s) => [s.key, attachments.filter((a) => a.docType === s.key).map((a) => ({ id: a.id, filename: a.filename }))]));
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -93,11 +94,13 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           <StageRow
             key={stage.key}
             candidateId={candidate.id}
+            candidateBranchId={candidate.branchId}
             stage={stage}
             status={candidate[stage.field]}
             kind={statusKind(stage, candidate[stage.field])}
             task={taskByStage.get(stage.key) ?? null}
             hrUsers={hrUsers}
+            attachments={attachmentsByStage.get(stage.key) ?? []}
           />
         ))}
       </div>

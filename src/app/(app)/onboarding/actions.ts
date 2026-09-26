@@ -273,6 +273,53 @@ export async function markJoinedAction(_prev: State, formData: FormData): Promis
   return { error: null, ok: true };
 }
 
+export type CreateAgencyResult = { error: string | null; agency?: { id: string; name: string } };
+
+async function nextSupplierCode() {
+  const count = await prisma.supplier.count();
+  return `SUP${String(count + 1).padStart(3, "0")}`;
+}
+
+/** Quick-add for the agency picker — the same "+ add new" pattern as
+ * createAgencyContactAction, so an agency the candidate came from doesn't
+ * have to already exist in Suppliers before onboarding can start. Creates a
+ * real Supplier row (same shape as the Suppliers page's own create action),
+ * just with an inline result instead of a redirect. */
+export async function createAgencyAction(_prev: CreateAgencyResult, formData: FormData): Promise<CreateAgencyResult> {
+  try {
+    assertContactsValid(formData);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
+  }
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const name = stringOrNull(formData.get("name"));
+  if (!name) return { error: "Name is required." };
+  if (!branchId) {
+    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding an agency." : "Your account has no branch assigned — contact an admin." };
+  }
+
+  const existing = await prisma.supplier.findUnique({ where: { name } });
+  if (existing) return { error: "A supplier with that name already exists — search for it instead." };
+
+  const code = await nextSupplierCode();
+  const contactPhone = stringOrNull(formData.get("phone"));
+  const contactEmail = stringOrNull(formData.get("email"));
+  const created = await prisma.supplier.create({ data: { name, code, branchId, contactPhone, contactEmail } });
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: created.id,
+    action: "CREATE",
+    after: { name, code, contactPhone, contactEmail },
+    userId: user.id,
+    userName: user.name,
+    branchId,
+  });
+
+  revalidatePath("/onboarding");
+  revalidatePath("/suppliers");
+  return { error: null, agency: { id: created.id, name: created.name } };
+}
+
 export type CreateContactResult = { error: string | null; contact?: { id: string; name: string } };
 
 /** Quick-add for the agency contact picker — the same coordinator usually

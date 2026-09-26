@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { updateStageAction, assignStageTaskAction } from "./actions";
+import { StageAttachments, type StageAttachmentRow } from "./stage-attachments";
 import type { Stage, StatusKind } from "@/lib/onboarding";
 
 type State = { error: string | null; ok?: boolean };
@@ -32,18 +33,22 @@ function toDateInput(d: Date | null) {
 
 export function StageRow({
   candidateId,
+  candidateBranchId,
   stage,
   status,
   kind,
   task,
   hrUsers,
+  attachments,
 }: {
   candidateId: string;
+  candidateBranchId: string;
   stage: Stage;
   status: string;
   kind: StatusKind;
   task: Task;
   hrUsers: HrOption[];
+  attachments: StageAttachmentRow[];
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -151,6 +156,7 @@ export function StageRow({
               {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
             </div>
           </form>
+          <StageAttachments candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} />
         </div>
       )}
     </div>

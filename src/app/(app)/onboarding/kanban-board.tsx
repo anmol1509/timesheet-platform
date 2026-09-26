@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -40,6 +42,14 @@ export function KanbanBoard({ candidates }: { candidates: Candidate[] }) {
   for (const c of candidates) {
     const key: ColumnKey = c.joined ? "JOINED" : c.readyToJoin ? "READY" : (currentStage(c)?.key ?? "READY");
     buckets.get(key)!.push(c);
+  }
+
+  if (candidates.length === 0) {
+    return (
+      <div className="card p-8 text-center text-sm text-muted">
+        No candidates match this view yet. Add a candidate, or switch the filter above.
+      </div>
+    );
   }
 
   return (
