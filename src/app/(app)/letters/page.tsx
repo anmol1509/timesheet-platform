@@ -1,5 +1,6 @@
-import { FileSignature } from "lucide-react";
+import { FileSignature, Hash, CalendarDays, FileStack } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { StatTile } from "@/components/StatTile";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -14,12 +15,17 @@ export const metadata = { title: "Employee letters" };
 export default async function EmployeeLettersPage() {
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);
-  const [templates, employees, issued, branch] = await Promise.all([
+  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+  const [templates, employees, issued, branch, totalIssued, issuedThisMonth, byTitle] = await Promise.all([
     prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: { name: "asc" } }),
     prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
     branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true } }) : null,
+    prisma.issuedLetter.count({ where: branchWhere(branchId) }),
+    prisma.issuedLetter.count({ where: { ...branchWhere(branchId), createdAt: { gte: monthStart } } }),
+    prisma.issuedLetter.groupBy({ by: ["title"], where: branchWhere(branchId), _count: { _all: true }, orderBy: { _count: { title: "desc" } }, take: 1 }),
   ]);
+  const mostRequested = byTitle[0]?.title ?? "—";
 
   return (
     <div className="space-y-6">
@@ -28,6 +34,13 @@ export default async function EmployeeLettersPage() {
         icon={FileSignature}
         description={<>Salary certificates, experience letters, warnings and more, made from your templates with the employee&apos;s details filled in. Edit the wording under Administration → Letter Templates.</>}
       />
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="Letters issued" value={totalIssued} icon={FileStack} hint="all time" />
+        <StatTile label="Issued this month" value={issuedThisMonth} icon={CalendarDays} hint="since the 1st" />
+        <StatTile label="Templates available" value={templates.length} icon={Hash} />
+        <StatTile label="Most requested" value={mostRequested} icon={FileSignature} />
+      </div>
 
       {!branchId ? (
         <p className="text-sm text-muted">Pick a branch from the switcher to make letters.</p>
