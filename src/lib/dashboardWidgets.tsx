@@ -373,7 +373,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "quick-actions",
-    label: "Quick actions + Manpower AI",
+    label: "Quick actions + Assistant AI",
     render: () => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2">

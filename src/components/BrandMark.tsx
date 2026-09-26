@@ -84,7 +84,7 @@ export function AskAiCard() {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] text-muted">Need help?</span>
-        <span className="block truncate text-[13px] font-semibold text-[var(--brand-primary)]">Ask Manpower AI</span>
+        <span className="block truncate text-[13px] font-semibold text-[var(--brand-primary)]">Ask Assistant AI</span>
       </span>
       <ChevronRight className="h-4 w-4 shrink-0 text-[var(--brand-primary)] transition-transform group-hover:translate-x-0.5" aria-hidden />
     </button>

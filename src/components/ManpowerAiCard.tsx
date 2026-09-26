@@ -17,7 +17,7 @@ export function ManpowerAiCard() {
     <section className="card flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 text-white" style={{ background: GRADIENT }}>
         <Sparkles className="h-4 w-4" aria-hidden />
-        <span className="text-sm font-semibold">Manpower AI</span>
+        <span className="text-sm font-semibold">Assistant AI</span>
         <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">Beta</span>
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
@@ -34,7 +34,7 @@ export function ManpowerAiCard() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Ask anything…"
-            aria-label="Ask Manpower AI"
+            aria-label="Ask Assistant AI"
             className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-primary outline-none placeholder:text-muted"
           />
           <button
