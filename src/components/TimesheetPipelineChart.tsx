@@ -64,7 +64,7 @@ export function TimesheetPipelineChart({ pipeline }: { pipeline: TimesheetPipeli
               title={`${stage.label}: ${stage.count}`}
               className="h-full first:rounded-l-full last:rounded-r-full"
               style={{ backgroundColor: COLORS[i] }}
-              initial={{ width: 0 }}
+              initial={{ width: "0%" }}
               animate={{ width: `${(stage.count / pipeline.total) * 100}%` }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.04 }}
             />

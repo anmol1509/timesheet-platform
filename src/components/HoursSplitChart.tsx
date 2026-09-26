@@ -50,7 +50,7 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
                 {total > 0 ? (
                   <m.div
                     className="flex w-full max-w-7 flex-col-reverse overflow-hidden rounded-t-sm"
-                    initial={{ height: 0 }}
+                    initial={{ height: "0%" }}
                     animate={{ height: `${Math.max(4, heightPct)}%` }}
                     transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                     title={`${day.label} — ${day.normal}h normal, ${day.ot}h overtime`}

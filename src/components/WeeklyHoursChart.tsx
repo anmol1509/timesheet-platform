@@ -25,8 +25,8 @@ export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
               )}
               <m.div
                 title={hasData ? `${d.hours}h logged` : "No hours logged"}
-                initial={{ height: 0 }}
-                animate={{ height: hasData ? `${Math.max(8, Math.round((d.hours / max) * 100))}%` : 2 }}
+                initial={{ height: "0%" }}
+                animate={{ height: hasData ? `${Math.max(8, Math.round((d.hours / max) * 100))}%` : "2%" }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.03 }}
                 className={`w-full max-w-7 rounded-t-[4px] ${
                   isPeak
