@@ -80,7 +80,12 @@ function Logo() {
         alt={SITE.name}
         height={height}
         width={Math.round(height * BRAND_LOGO_ASPECT)}
-        style={{ height, width: "auto" }}
+        // `maxHeight`/`maxWidth` (not a fixed `height`) so the browser scales
+        // both dimensions together when the nav pill is too narrow for the
+        // logo's natural width — a fixed height with only `width: auto` lets
+        // Tailwind's preflight `max-width: 100%` clip the width alone,
+        // squishing the logo on narrow phones.
+        style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: "100%" }}
       />
     </a>
   );
@@ -94,7 +99,7 @@ function FooterLogo() {
   return (
     <span className={s.footerLogoRow}>
       {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-      <img src={BRAND_ICON} alt="" height={height} width={height} style={{ height, width: "auto" }} />
+      <img src={BRAND_ICON} alt="" height={height} width={height} style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: height }} />
       <span className={s.footerWordmark}>{SITE.name}</span>
     </span>
   );
