@@ -11,6 +11,7 @@ type Card = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   tone: "default" | "danger";
+  chip: string;
 };
 
 /** Four icon-led KPI tiles — the headline numbers a manager checks first. */
@@ -41,6 +42,7 @@ export function DashboardKpiCards({
       href: "/employees",
       icon: Users,
       tone: "default",
+      chip: "bg-blue-100 text-blue-600",
     },
     {
       label: "Deployment",
@@ -50,6 +52,7 @@ export function DashboardKpiCards({
       href: "/employees?filter=on-work",
       icon: Target,
       tone: "default",
+      chip: "bg-emerald-100 text-emerald-600",
     },
     {
       label: "Active projects",
@@ -58,6 +61,7 @@ export function DashboardKpiCards({
       href: "/projects",
       icon: Building2,
       tone: "default",
+      chip: "bg-violet-100 text-violet-600",
     },
     {
       label: "Attention",
@@ -66,6 +70,7 @@ export function DashboardKpiCards({
       href: "#needs-attention",
       icon: BellRing,
       tone: attentionCount > 0 ? "danger" : "default",
+      chip: "bg-[var(--error-soft)] text-[var(--error)]",
     },
   ];
 
@@ -82,12 +87,7 @@ export function DashboardKpiCards({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted">{c.label}</span>
-            <span
-              className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                c.tone === "danger" ? "bg-[var(--error-soft)] text-[var(--error)]" : "bg-brand-soft text-[var(--brand-primary)]"
-              )}
-            >
+            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", c.chip)}>
               <c.icon className="h-4 w-4" aria-hidden />
             </span>
           </div>
