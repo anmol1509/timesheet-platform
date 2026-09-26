@@ -32,7 +32,7 @@ export default async function LookupsPage({
         description={<>Manage the dropdown values used across employee forms.</>}
       />
 
-      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-default bg-surface p-2">
+      <div className="flex flex-wrap gap-1.5 rounded-card border border-default bg-surface p-2 shadow-card">
         {LOOKUP_CATEGORIES.map((c) => (
           <Link
             key={c.key}
