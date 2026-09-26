@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Avatar } from "@/components/Avatar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, LayoutGrid, Minus, Table2, X } from "lucide-react";
@@ -170,10 +171,13 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
               return (
                 <tr key={c.id} className={overdue ? "bg-[var(--error-soft,#fee4e2)]/30" : undefined}>
                   <td className="sticky left-0 z-10 bg-surface px-4 py-2.5">
-                    <Link href={`/onboarding/${c.id}`} className="font-medium text-primary hover:underline">
-                      {c.candidateName}
+                    <Link href={`/onboarding/${c.id}`} className="group flex items-center gap-2.5">
+                      <Avatar name={c.candidateName} url={null} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-primary group-hover:underline">{c.candidateName}</span>
+                        <span className="tabular block text-xs text-subtle">#{String(c.candidateNo).padStart(3, "0")}</span>
+                      </span>
                     </Link>
-                    <span className="ml-1.5 text-xs text-subtle">#{String(c.candidateNo).padStart(3, "0")}</span>
                   </td>
                   <td className="px-3 py-2.5 text-secondary">{c.agency?.name ?? "—"}</td>
                   <td className="px-3 py-2.5 text-secondary">{c.trade ?? "—"}</td>

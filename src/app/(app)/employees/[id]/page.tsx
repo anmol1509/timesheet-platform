@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, CalendarDays, ChevronRight, Hash, Home, MapPin, Phone } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -154,52 +154,77 @@ export default async function EmployeeDetailPage({
   });
 
   return (
-    <div className="space-y-8">
-      <div>
-        <Link href="/employees" className="text-sm text-muted hover:underline">
-          ← Employees
+    <div className="space-y-6">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted">
+        <Link href="/" aria-label="Dashboard" className="transition hover:text-primary">
+          <Home className="h-3.5 w-3.5" aria-hidden />
         </Link>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <ChevronRight className="h-3 w-3 text-subtle" aria-hidden />
+        <Link href="/employees" className="font-medium transition hover:text-primary">Employees</Link>
+        <ChevronRight className="h-3 w-3 text-subtle" aria-hidden />
+        <span className="truncate font-medium text-secondary">{employee.name}</span>
+      </nav>
+
+      <section className="card relative overflow-hidden">
+        {/* Soft brand wash behind the identity block — the one decorative
+            touch on the page, so the person reads first. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-[var(--brand-primary-soft)] via-[var(--surface)] to-[var(--surface)]" aria-hidden />
+        <div className="relative flex flex-wrap items-center justify-between gap-6 p-5 sm:p-6">
+          <div className="flex min-w-0 items-center gap-5">
             <PhotoUpload
               employeeId={employee.id}
-              hasPhoto={!!employee.photoData}
+              hasPhoto={!!employee.photoMimeType}
               name={employee.name}
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl tracking-tight text-primary font-semibold">
-                  {employee.name}
-                </h1>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-page-title text-primary">{employee.name}</h1>
                 {employee.supplier?.isOwnCompany && (
                   <span title="Our worker">
-                    <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" aria-label="Our worker" />
+                    <BadgeCheck className="h-5 w-5 shrink-0 text-[var(--brand-primary)]" aria-label="Our worker" />
                   </span>
                 )}
-                <Badge color={employee.active ? "green" : "slate"}>
+              </div>
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                <span className="tabular font-medium text-secondary">{employee.employeeIdNo}</span>
+                <span aria-hidden>·</span>
+                <span>{employee.trade || "No trade set"}</span>
+                <span aria-hidden>·</span>
+                <span>{employee.supplier?.name || "No company"}</span>
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Badge color={employee.active ? "green" : "slate"} dot>
                   {employee.active ? "Active" : "Inactive"}
                 </Badge>
                 {/* Where the worker sits in the mobilisation cycle. The
-                    active/inactive chip above is about the employment; this is
+                    active/inactive chip is about the employment; this is
                     about the job, and they differ often enough to show both. */}
                 <Badge color={STAGE_COLOR[employee.status] ?? "slate"}>
                   {STAGE_LABEL[employee.status] ?? employee.status}
                 </Badge>
-              </div>
-              <p className="mt-1 text-sm text-muted">
-                {employee.employeeIdNo} · {employee.trade || "No trade set"} ·{" "}
-                {employee.supplier?.name || "No company"}
+                {employee.project && (
+                  <Link href={`/projects/${employee.project.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">
+                    <MapPin className="h-3.5 w-3.5 text-subtle" aria-hidden />
+                    {employee.project.name}
+                  </Link>
+                )}
                 {employee.status === "UNDER_MOBILISATION" && employee.mobilisationDate && (
-                  <> · due on site {formatShortDate(employee.mobilisationDate)}</>
+                  <span className="text-xs text-muted">due on site {formatShortDate(employee.mobilisationDate)}</span>
                 )}
                 {employee.status === "ON_SITE" && employee.siteArrivalDate && (
-                  <> · on site since {formatShortDate(employee.siteArrivalDate)}</>
+                  <span className="text-xs text-muted">on site since {formatShortDate(employee.siteArrivalDate)}</span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
+
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
+            <HeaderFact icon={CalendarDays} label="Joined" value={employee.joinDate ? formatShortDate(employee.joinDate) : "—"} />
+            <HeaderFact icon={Hash} label="Category" value={employee.category === "STAFF" ? "Staff" : "Site staff"} />
+            <HeaderFact icon={Phone} label="Mobile" value={employee.mobileNumber || "—"} />
+          </dl>
         </div>
-      </div>
+      </section>
 
       <ProfileSummary
         employee={employee}
@@ -312,6 +337,20 @@ export default async function EmployeeDetailPage({
           </>
         }
       />
+    </div>
+  );
+}
+
+function HeaderFact({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-muted">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[11px] font-medium text-subtle">{label}</dt>
+        <dd className="truncate font-semibold text-primary">{value}</dd>
+      </div>
     </div>
   );
 }

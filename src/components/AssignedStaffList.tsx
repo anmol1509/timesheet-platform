@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
+import { EmployeeAvatar } from "@/components/Avatar";
 import type { AssignedStaffRow } from "@/lib/assignedStaff";
 
 const STATUS_BADGE = {
@@ -8,18 +9,6 @@ const STATUS_BADGE = {
   expired: { label: "Expired", color: "red" as const },
   not_set: { label: "No records", color: "slate" as const },
 };
-
-const AVATAR_COLORS = [
-  "from-rose-400 to-rose-600",
-  "from-amber-400 to-amber-600",
-  "from-sky-400 to-sky-600",
-  "from-violet-400 to-violet-600",
-];
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "?";
-}
 
 export function AssignedStaffList({ staff }: { staff: AssignedStaffRow[] }) {
   if (staff.length === 0) {
@@ -31,22 +20,16 @@ export function AssignedStaffList({ staff }: { staff: AssignedStaffRow[] }) {
   }
 
   return (
-    <div className="space-y-4">
-      {staff.map((s, i) => {
+    <div className="space-y-1">
+      {staff.map((s) => {
         const badge = STATUS_BADGE[s.status];
         return (
           <Link
             key={s.id}
             href={`/employees/${s.id}`}
-            className="flex items-center gap-3 hover:opacity-90"
+            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 transition hover:bg-surface-hover"
           >
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold text-white ${
-                AVATAR_COLORS[i % AVATAR_COLORS.length]
-              }`}
-            >
-              {initials(s.name)}
-            </div>
+<EmployeeAvatar employeeId={s.id} name={s.name} hasPhoto={s.hasPhoto} size="md" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-primary">{s.name}</p>
               <p className="truncate text-xs text-muted">

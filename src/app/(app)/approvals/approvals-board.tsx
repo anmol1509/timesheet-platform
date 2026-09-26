@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCheck, ChevronRight, ExternalLink, Inbox, X } from "lucide-react";
+import { Banknote, CalendarCheck, Check, CheckCheck, ChevronRight, Clock, ExternalLink, FileSpreadsheet, Hourglass, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -20,6 +21,34 @@ type Filters = { type: string; q: string; age: string; min: string; from: string
 const KIND_LABEL: Record<string, string> = {
   EXPENSE: "Expense", BILL: "Supplier bill", PAYROLL: "Payroll", WORKER: "New worker", CHANGE: "Detail change", SUPPLIER: "Supplier", DEMAND: "Demand", TIMESHEET: "Timesheet", CORRECTION: "Attendance",
 };
+// One icon + tint per kind, so the queue scans by type before reading a word.
+const KIND_ICON: Record<string, { icon: React.ComponentType<{ className?: string }>; tint: string }> = {
+  EXPENSE: { icon: Receipt, tint: "bg-[#fff7ed] text-[#c2410c]" },
+  BILL: { icon: Banknote, tint: "bg-[var(--info-soft)] text-[var(--info)]" },
+  PAYROLL: { icon: Wallet, tint: "bg-brand-soft text-[var(--brand-primary)]" },
+  WORKER: { icon: UserPlus, tint: "bg-[var(--success-soft)] text-[var(--success)]" },
+  CHANGE: { icon: UserRoundPen, tint: "bg-[var(--warning-soft)] text-[var(--warning)]" },
+  SUPPLIER: { icon: Truck, tint: "bg-[#ecfeff] text-[#0e7490]" },
+  DEMAND: { icon: ListChecks, tint: "bg-[#fdf2f8] text-[#be185d]" },
+  TIMESHEET: { icon: FileSpreadsheet, tint: "bg-[#eef2ff] text-[#4338ca]" },
+  CORRECTION: { icon: CalendarCheck, tint: "bg-[#f0fdfa] text-[#0f766e]" },
+};
+function KindIcon({ kind, size = "sm" }: { kind: string; size?: "sm" | "lg" }) {
+  const k = KIND_ICON[kind] ?? { icon: Inbox, tint: "bg-surface-sunken text-muted" };
+  return (
+    <span className={cn("flex shrink-0 items-center justify-center rounded-[10px]", k.tint, size === "lg" ? "h-11 w-11" : "h-9 w-9")}>
+      <k.icon className={size === "lg" ? "h-5 w-5" : "h-4 w-4"} aria-hidden />
+    </span>
+  );
+}
+function AgePill({ days }: { days: number }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold", days >= 14 ? "bg-[var(--error-soft)] text-[var(--error)]" : days >= 7 ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-surface-sunken text-muted")}>
+      <Clock className="h-3 w-3" aria-hidden />{age(days)}
+    </span>
+  );
+}
+
 const TONE: Record<Chip["tone"], BadgeColor> = { warning: "amber", danger: "red", success: "green", info: "blue", neutral: "slate" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const age = (d: number) => (d <= 0 ? "today" : d === 1 ? "1 day" : `${d} days`);
@@ -92,16 +121,19 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
 
   return (
     <div className="space-y-4" onKeyDown={(e) => { const t = e.target as HTMLElement; if (["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName)) return; if (e.key === "j") move(1); if (e.key === "k") move(-1); }}>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {[
-          { l: "Waiting for a decision", v: String(visible.length), sub: filters.type || filters.q ? "in this view" : "across all modules" },
-          { l: "Value waiting", v: total > 0 ? `AED ${total.toLocaleString("en-AE", { maximumFractionDigits: 0 })}` : "—", sub: "expenses, bills and payroll" },
-          { l: "Longest wait", v: visible.length ? age(oldest) : "—", sub: oldest >= 7 ? "needs attention" : "within target", warn: oldest >= 7 },
+          { l: "Waiting for a decision", v: String(visible.length), sub: filters.type || filters.q ? "in this view" : "across all modules", icon: Inbox, tint: "bg-brand-soft text-[var(--brand-primary)]" },
+          { l: "Value waiting", v: total > 0 ? `AED ${total.toLocaleString("en-AE", { maximumFractionDigits: 0 })}` : "—", sub: "expenses, bills and payroll", icon: Banknote, tint: "bg-[var(--success-soft)] text-[var(--success)]" },
+          { l: "Longest wait", v: visible.length ? age(oldest) : "—", sub: oldest >= 7 ? "needs attention" : "within target", warn: oldest >= 7, icon: Hourglass, tint: oldest >= 7 ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-surface-sunken text-muted" },
         ].map((t) => (
-          <div key={t.l} className="card px-3 py-2.5 sm:px-4 sm:py-3">
-            <p className="truncate text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
-            <p className={cn("tabular mt-0.5 truncate text-base font-semibold tracking-tight sm:text-xl", t.warn ? "text-[var(--warning)]" : "text-primary")}>{t.v}</p>
-            <p className="hidden text-xs text-subtle sm:block">{t.sub}</p>
+          <div key={t.l} className="card flex items-center gap-3 px-3 py-3 sm:px-4 sm:py-4">
+            <span className={cn("hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex", t.tint)}><t.icon className="h-5 w-5" aria-hidden /></span>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
+              <p className={cn("tabular mt-0.5 truncate text-base font-semibold tracking-tight sm:text-2xl", t.warn ? "text-[var(--warning)]" : "text-primary")}>{t.v}</p>
+              <p className="hidden truncate text-xs text-subtle sm:block">{t.sub}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -150,17 +182,21 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
               {visible.map((i) => {
                 const isActive = active?.key === i.key;
                 return (
-                  <li key={i.key} className={cn("flex items-start gap-2.5 px-3 py-3 transition", isActive ? "bg-brand-soft" : "hover:bg-surface-hover")}>
-                    <span className="pt-0.5"><Checkbox checked={checked.has(i.key)} onCheckedChange={(c) => setChecked((s) => { const n = new Set(s); if (c) n.add(i.key); else n.delete(i.key); return n; })} ariaLabel={`Select ${i.title}`} /></span>
-                    <button type="button" onClick={() => setActiveKey(i.key)} aria-current={isActive} className="min-w-0 flex-1 text-left">
+                  <li key={i.key} className={cn("relative flex items-start gap-3 px-3 py-3 transition", isActive ? "bg-brand-soft" : "hover:bg-surface-subtle")}>
+                    {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[var(--brand-primary)]" aria-hidden />}
+                    <span className="pt-2.5"><Checkbox checked={checked.has(i.key)} onCheckedChange={(c) => setChecked((s) => { const n = new Set(s); if (c) n.add(i.key); else n.delete(i.key); return n; })} ariaLabel={`Select ${i.title}`} /></span>
+                    <button type="button" onClick={() => setActiveKey(i.key)} aria-current={isActive} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                      <KindIcon kind={i.kind} />
+                      <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
-                        <span className="rounded bg-[var(--surface-sunken)] px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted uppercase">{KIND_LABEL[i.kind]}</span>
-                        <span className={cn("text-[11px]", i.ageDays >= 14 ? "font-medium text-[var(--error)]" : i.ageDays >= 7 ? "text-[var(--warning)]" : "text-subtle")}>{age(i.ageDays)}</span>
+                        <span className="text-[10.5px] font-semibold tracking-[0.05em] text-muted uppercase">{KIND_LABEL[i.kind]}</span>
+                        <AgePill days={i.ageDays} />
                       </span>
-                      <span className="mt-1 block truncate text-sm font-medium text-primary">{i.title}</span>
+                      <span className="mt-0.5 block truncate text-sm font-semibold text-primary">{i.title}</span>
                       <span className="flex items-center justify-between gap-2 text-xs text-muted">
                         <span className="truncate">{i.requester ?? i.subtitle}</span>
-                        {i.amount !== null && <span className="tabular shrink-0 font-medium text-secondary">AED {aed(i.amount)}</span>}
+                        {i.amount !== null && <span className="tabular shrink-0 font-semibold text-secondary">AED {aed(i.amount)}</span>}
+                      </span>
                       </span>
                     </button>
                     <ChevronRight className={cn("mt-1 hidden h-4 w-4 shrink-0 lg:block", isActive ? "text-[var(--brand-primary)]" : "text-subtle")} aria-hidden />
@@ -172,15 +208,27 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
 
           {active && (
             <section className="card flex flex-col p-5 lg:sticky lg:top-20 lg:self-start" aria-label="Request detail">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded bg-[var(--surface-sunken)] px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-muted uppercase">{KIND_LABEL[active.kind]}</span>
-                {active.branch && <span className="text-xs text-subtle">{active.branch}</span>}
+              <div className="flex items-start gap-3">
+                <KindIcon kind={active.kind} size="lg" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-semibold tracking-[0.05em] text-muted uppercase">{KIND_LABEL[active.kind]}</span>
+                    <AgePill days={active.ageDays} />
+                    {active.branch && <span className="text-xs text-subtle">{active.branch}</span>}
+                  </div>
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-primary">{active.title}</h2>
+                  <p className="mt-0.5 text-sm text-secondary">{active.subtitle}</p>
+                </div>
               </div>
-              <h2 className="mt-2 text-lg font-semibold tracking-tight text-primary">{active.title}</h2>
-              <p className="mt-1 text-sm text-secondary">{active.subtitle}</p>
 
-              <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div><dt className="text-xs text-muted">Requested by</dt><dd className="text-sm font-medium text-primary">{active.requester ?? "—"}</dd></div>
+              <dl className="mt-5 grid gap-3 rounded-card border border-default bg-surface-subtle p-4 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs text-muted">Requested by</dt>
+                  <dd className="mt-1 flex items-center gap-2 text-sm font-medium text-primary">
+                    {active.requester && <Avatar name={active.requester} url={null} size="xs" />}
+                    <span className="truncate">{active.requester ?? "—"}</span>
+                  </dd>
+                </div>
                 <div><dt className="text-xs text-muted">Waiting</dt><dd className={cn("text-sm font-medium", active.ageDays >= 14 ? "text-[var(--error)]" : active.ageDays >= 7 ? "text-[var(--warning)]" : "text-primary")}>{age(active.ageDays)}</dd></div>
                 <div><dt className="text-xs text-muted">Amount</dt><dd className="tabular text-sm font-semibold text-primary">{active.amount !== null ? `AED ${aed(active.amount)}` : "—"}</dd></div>
               </dl>

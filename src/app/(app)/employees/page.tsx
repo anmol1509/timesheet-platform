@@ -27,6 +27,9 @@ export default async function EmployeesPage({
         ...(supplierId ? { supplierId } : {}),
         ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}),
       },
+      // The photo bytes aren't needed for a list — the avatar loads them
+      // separately from /api/employees/[id]/photo, and only when one exists.
+      omit: { photoData: true },
       include: {
         supplier: { include: { parent: { select: { name: true } } } },
         project: { select: { name: true } },
@@ -74,6 +77,7 @@ export default async function EmployeesPage({
       id: e.id,
       employeeIdNo: e.employeeIdNo,
       name: e.name,
+      hasPhoto: !!e.photoMimeType,
       category: e.category,
       trade: e.trade,
       passportNumber: e.passportNumber,

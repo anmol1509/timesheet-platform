@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { EmployeeAvatar } from "@/components/Avatar";
+import { Nationality } from "@/components/Nationality";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
@@ -21,6 +23,7 @@ type EmployeeRow = {
   id: string;
   employeeIdNo: string;
   name: string;
+  hasPhoto: boolean;
   category: "STAFF" | "SITE_STAFF";
   trade: string | null;
   passportNumber: string | null;
@@ -159,7 +162,8 @@ export function EmployeeList({
     {
       key: "employeeIdNo",
       header: "ID No",
-      locked: true,
+      // Shown under the name already; kept in Columns for sorting/export.
+      defaultHidden: true,
       sortValue: (e) => e.employeeIdNo,
       csvValue: (e) => e.employeeIdNo,
       render: (e) => (
@@ -173,15 +177,8 @@ export function EmployeeList({
       sortValue: (e) => e.name,
       csvValue: (e) => e.name,
       render: (e) => (
-        <Link href={`/employees/${e.id}`} className="group/name flex items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold text-secondary">
-            {e.name
-              .split(/\s+/)
-              .slice(0, 2)
-              .map((p) => p[0])
-              .join("")
-              .toUpperCase()}
-          </span>
+        <Link href={`/employees/${e.id}`} className="group/name flex items-center gap-3">
+          <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="md" />
           <span className="min-w-0">
             <span className="flex items-center gap-1 truncate font-medium text-primary group-hover/name:underline">
               {e.name}
@@ -191,8 +188,8 @@ export function EmployeeList({
                 </span>
               )}
             </span>
-            <span className="block truncate text-[11px] text-subtle">
-              {CATEGORY_LABEL[e.category]}
+            <span className="block truncate text-[11.5px] text-subtle">
+              {CATEGORY_LABEL[e.category]} · <span className="tabular">{e.employeeIdNo}</span>
             </span>
           </span>
         </Link>
@@ -238,7 +235,7 @@ export function EmployeeList({
       header: "Nationality",
       sortValue: (e) => e.nationality,
       csvValue: (e) => e.nationality,
-      render: (e) => e.nationality || <span className="text-subtle">—</span>,
+      render: (e) => <Nationality name={e.nationality} />,
     },
     {
       key: "company",

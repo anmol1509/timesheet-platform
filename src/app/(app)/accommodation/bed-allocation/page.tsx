@@ -16,7 +16,7 @@ export default async function BedAllocationPage() {
       ...(branchId ? { employee: { branchId } } : {}),
     },
     include: {
-      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true, supplier: { select: { id: true, name: true } }, project: { select: { client: { select: { id: true, name: true } } } } } },
+      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true, photoMimeType: true, supplier: { select: { id: true, name: true } }, project: { select: { client: { select: { id: true, name: true } } } } } },
       camp: {
         select: {
           id: true,
@@ -49,6 +49,8 @@ export default async function BedAllocationPage() {
     checkInNo: c.checkInNo,
     employeeName: c.employee.name,
     employeeIdNo: c.employee.employeeIdNo,
+    employeeRecordId: c.employee.id,
+    employeeHasPhoto: !!c.employee.photoMimeType,
     nationality: c.employee.nationality,
     supplierId: c.employee.supplier?.id ?? null,
     supplierName: c.employee.supplier?.name ?? null,

@@ -8,6 +8,7 @@ import { can } from "@/lib/permissions";
 import { isCashMode, wpsGaps } from "@/lib/payroll";
 import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { LineEditor, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
 import { RunStepper, RunVariance, type VarianceRow } from "./run-insights";
@@ -39,7 +40,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
       events: { orderBy: { at: "desc" }, take: 30 },
-      lines: { include: { employee: { select: { id: true, name: true, employeeIdNo: true } } }, orderBy: { employee: { name: "asc" } } },
+      lines: { include: { employee: { select: { id: true, name: true, employeeIdNo: true, photoMimeType: true } } }, orderBy: { employee: { name: "asc" } } },
     },
   });
   if (!run || isOutsideBranch(run.branchId, branchId, isSuperAdmin)) notFound();
@@ -210,8 +211,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 return (
                   <tr key={l.id} className="align-top">
                     <td className="px-3 py-3">
-                      <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                      <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"}</p>
+                      <div className="flex items-center gap-3">
+                        <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
+                        <div className="min-w-0">
+                          <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.basic))}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.allowances))}</td>

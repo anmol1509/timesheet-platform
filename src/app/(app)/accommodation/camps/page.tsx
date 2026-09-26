@@ -67,19 +67,19 @@ export default async function CampsPage({
     campBedEmployeeIds.length > 0
       ? await prisma.employee.findMany({
           where: { id: { in: campBedEmployeeIds } },
-          select: { id: true, name: true, employeeIdNo: true },
+          select: { id: true, name: true, employeeIdNo: true, photoMimeType: true },
         })
       : [];
 
   const unhoused = await prisma.employee.findMany({
     where: { ...branchWhere(branchId), bed: null, active: true, status: { not: "TERMINATED" } },
-    select: { id: true, name: true, employeeIdNo: true, trade: true },
+    select: { id: true, name: true, employeeIdNo: true, trade: true, photoMimeType: true },
     orderBy: { name: "asc" },
     take: 500,
   });
 
   const employeeNames = Object.fromEntries(
-    occupants.map((e) => [e.id, { name: e.name, employeeIdNo: e.employeeIdNo }])
+    occupants.map((e) => [e.id, { id: e.id, name: e.name, employeeIdNo: e.employeeIdNo, hasPhoto: !!e.photoMimeType }])
   );
 
   return (
@@ -195,7 +195,7 @@ export default async function CampsPage({
               })),
             }))}
             employeeNames={employeeNames}
-            unhoused={unhoused}
+            unhoused={unhoused.map(({ photoMimeType, ...u }) => ({ ...u, hasPhoto: !!photoMimeType }))}
           />
         </div>
       ) : (

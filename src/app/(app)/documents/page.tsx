@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { StatTile } from "@/components/StatTile";
+import { PageHeader, CountPill } from "@/components/PageHeader";
 import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
 import { DocumentBrowser } from "./document-browser";
@@ -23,7 +24,7 @@ export default async function DocumentsPage() {
         employeeId: true,
         uploadedAt: true,
         expiryDate: true,
-        employee: { select: { name: true, employeeIdNo: true } },
+        employee: { select: { name: true, employeeIdNo: true, photoMimeType: true } },
         uploadedBy: { select: { name: true } },
       },
       orderBy: { uploadedAt: "desc" },
@@ -48,6 +49,7 @@ export default async function DocumentsPage() {
     employeeId: d.employeeId,
     employeeName: d.employee.name,
     employeeIdNo: d.employee.employeeIdNo,
+    employeeHasPhoto: !!d.employee.photoMimeType,
     uploadedByName: d.uploadedBy.name,
     uploadedAt: d.uploadedAt.toISOString(),
     expiryDate: d.expiryDate ? d.expiryDate.toISOString() : null,
@@ -56,14 +58,13 @@ export default async function DocumentsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">
-          Document Management
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Track employee documents and expiry dates.
-        </p>
-      </div>
+      <PageHeader
+        title="Documents"
+        icon={FileText}
+        breadcrumbs={[{ label: "Workforce", href: "/employees" }, { label: "Documents" }]}
+        meta={<CountPill>{documents.length}</CountPill>}
+        description="Every employee document on file, with its expiry status."
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile

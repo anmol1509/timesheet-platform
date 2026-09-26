@@ -6,7 +6,7 @@ import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
-import { initials, avatarGradient } from "@/lib/avatar";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { cn } from "@/lib/cn";
 import { allocateBedAction, switchToExternalCampAction } from "../checkin-actions";
 import { ExternalCampFields, type Party } from "../external-camp-fields";
@@ -21,6 +21,8 @@ type Row = {
   checkInNo: number;
   employeeName: string;
   employeeIdNo: string;
+  employeeRecordId: string;
+  employeeHasPhoto: boolean;
   nationality: string | null;
   supplierId: string | null;
   supplierName: string | null;
@@ -83,14 +85,7 @@ export function BedAllocationTable({ rows, camps, suppliers, clients }: { rows: 
               !r.bedId && "border-[var(--warning-border)] bg-[var(--warning-soft)]/30"
             )}
           >
-            <div
-              className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white",
-                avatarGradient(r.employeeName)
-              )}
-            >
-              {initials(r.employeeName)}
-            </div>
+<EmployeeAvatar employeeId={r.employeeRecordId} name={r.employeeName} hasPhoto={r.employeeHasPhoto} size="lg" />
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">

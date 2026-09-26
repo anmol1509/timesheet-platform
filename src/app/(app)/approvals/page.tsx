@@ -1,5 +1,6 @@
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { PageHeader } from "@/components/PageHeader";
+import { CheckCheck } from "lucide-react";
+import { PageHeader, CountPill } from "@/components/PageHeader";
 import { APPROVAL_KINDS, allowedKinds, countByKind, filterApprovals, loadApprovals, type ApprovalKind } from "@/lib/approvals";
 import { ApprovalsBoard, type BoardItem } from "./approvals-board";
 
@@ -32,6 +33,8 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
     <div className="space-y-5">
       <PageHeader
         title="Approvals"
+        icon={CheckCheck}
+        meta={all.length > 0 ? <CountPill>{all.length}</CountPill> : undefined}
         description={all.length === 0 ? "Nothing is waiting for a decision." : `${all.length} waiting for a decision${oldest >= 7 ? ` · the oldest has waited ${oldest} days` : ""}. Decide here, or open an item to see it in full.`}
       />
       {kinds.length === 0 ? (

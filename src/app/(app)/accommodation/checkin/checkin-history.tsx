@@ -6,13 +6,15 @@ import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
-import { initials, avatarGradient } from "@/lib/avatar";
+import { EmployeeAvatar } from "@/components/Avatar";
 
 type HistoryRow = {
   checkInId: string;
   checkInNo: number;
   employeeName: string;
   employeeIdNo: string;
+  employeeId: string;
+  employeeHasPhoto: boolean;
   nationality: string | null;
   campId: string;
   campName: string;
@@ -133,13 +135,7 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
                       </td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
-                          <div
-                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[9px] font-semibold text-white ${avatarGradient(
-                              r.employeeName
-                            )}`}
-                          >
-                            {initials(r.employeeName)}
-                          </div>
+<EmployeeAvatar employeeId={r.employeeId} name={r.employeeName} hasPhoto={r.employeeHasPhoto} size="xs" />
                           <div className="min-w-0">
                             <p className="truncate font-medium text-primary">{r.employeeName}</p>
                             <p className="truncate text-[10px] text-subtle">{r.employeeIdNo}</p>

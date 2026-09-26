@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { Pagination } from "@/components/Pagination";
 import {
   deleteDocumentAction,
@@ -23,6 +24,7 @@ type DocRow = {
   employeeId: string;
   employeeName: string;
   employeeIdNo: string;
+  employeeHasPhoto: boolean;
   uploadedByName: string;
   uploadedAt: string;
   expiryDate: string | null;
@@ -172,15 +174,15 @@ export function DocumentBrowser({
                     {d.type.replace("_", " ")}
                   </td>
                   <td className="px-4 py-3 text-secondary">
-                    <Link
-                      href={`/employees/${d.employeeId}`}
-                      className="hover:underline"
-                    >
-                      {d.employeeName}
-                    </Link>
-                    <span className="ml-1 text-xs text-subtle">
-                      {d.employeeIdNo}
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <EmployeeAvatar employeeId={d.employeeId} name={d.employeeName} hasPhoto={d.employeeHasPhoto} size="sm" />
+                      <div className="min-w-0">
+                        <Link href={`/employees/${d.employeeId}`} className="block truncate font-medium text-primary hover:underline">
+                          {d.employeeName}
+                        </Link>
+                        <span className="tabular text-xs text-subtle">{d.employeeIdNo}</span>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {new Date(d.uploadedAt).toLocaleDateString("en-GB", {

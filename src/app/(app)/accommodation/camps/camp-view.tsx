@@ -11,7 +11,7 @@ import { InlineEditRow } from "@/components/InlineEditRow";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Badge } from "@/components/Badge";
-import { initials, avatarGradient } from "@/lib/avatar";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { groupBeds } from "@/lib/bunk";
 import { cn } from "@/lib/cn";
 import {
@@ -31,8 +31,8 @@ type Room = {
   roomType: string | null;
   nationality: string | null;
 };
-type Person = { name: string; employeeIdNo: string };
-type Unhoused = { id: string; name: string; employeeIdNo: string; trade: string | null };
+type Person = { id: string; name: string; employeeIdNo: string; hasPhoto: boolean };
+type Unhoused = { id: string; name: string; employeeIdNo: string; trade: string | null; hasPhoto: boolean };
 
 /** "Add beds" lives in a small popover so the room header stays readable: pick single beds or bunks, and how many. */
 function AddBeds({ roomId }: { roomId: string }) {
@@ -191,7 +191,7 @@ export function CampView({
         {caption && <span className="w-9 shrink-0 text-[10px] font-semibold tracking-wide text-subtle uppercase">{caption}</span>}
         {occupant ? (
           <>
-            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-semibold text-white", avatarGradient(occupant.name))}>{initials(occupant.name)}</span>
+            <EmployeeAvatar employeeId={occupant.id} name={occupant.name} hasPhoto={occupant.hasPhoto} size="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold text-primary" title={occupant.name}>{occupant.name}</span>
               <span className="tabular block truncate text-[10px] text-subtle">{occupant.employeeIdNo}</span>
@@ -326,7 +326,7 @@ export function CampView({
                 }}
                 className="flex cursor-grab items-center gap-2 rounded-lg border border-default bg-surface px-2 py-1.5 active:cursor-grabbing"
               >
-                <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white", avatarGradient(u.name))}>{initials(u.name)}</span>
+                <EmployeeAvatar employeeId={u.id} name={u.name} hasPhoto={u.hasPhoto} size="sm" />
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-medium text-primary">{u.name}</span>
                   <span className="block truncate text-[10px] text-subtle">{u.employeeIdNo}{u.trade ? ` · ${u.trade}` : ""}</span>
@@ -351,7 +351,7 @@ export function CampView({
               {mode === "menu" && occ && (
                 <div className="mt-4 space-y-4">
                   <div className="flex items-center gap-3 rounded-lg border border-default bg-surface-subtle p-3">
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white", avatarGradient(occ.name))}>{initials(occ.name)}</span>
+                    <EmployeeAvatar employeeId={occ.id} name={occ.name} hasPhoto={occ.hasPhoto} size="md" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-primary">{occ.name}</span>
                       <span className="tabular block text-xs text-muted">{occ.employeeIdNo}</span>
@@ -382,7 +382,7 @@ export function CampView({
                     {assignList.map((u) => (
                       <li key={u.id}>
                         <button type="button" onClick={() => assignTo(u.id)} className="flex w-full items-center gap-3 rounded-lg border border-default bg-surface px-3 py-2 text-left transition hover:border-[var(--brand-primary)] hover:bg-brand-soft">
-                          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-semibold text-white", avatarGradient(u.name))}>{initials(u.name)}</span>
+                          <EmployeeAvatar employeeId={u.id} name={u.name} hasPhoto={u.hasPhoto} size="sm" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-primary">{u.name}</span>
                             <span className="tabular block truncate text-xs text-muted">{u.employeeIdNo}{u.trade ? ` · ${u.trade}` : ""}</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar } from "@/components/Avatar";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { STAGES, currentStage, daysSince, isOverdue, type StageKey } from "@/lib/onboarding";
@@ -74,8 +75,13 @@ export function KanbanBoard({ candidates }: { candidates: Candidate[] }) {
                       overdue && "border-[var(--error)]"
                     )}
                   >
-                    <p className="truncate font-medium text-primary">{c.candidateName}</p>
-                    <p className="truncate text-xs text-muted">{c.agency?.name ?? "No agency"}{c.trade ? ` · ${c.trade}` : ""}</p>
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={c.candidateName} url={null} size="sm" />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-primary">{c.candidateName}</p>
+                        <p className="truncate text-xs text-muted">{c.agency?.name ?? "No agency"}{c.trade ? ` · ${c.trade}` : ""}</p>
+                      </div>
+                    </div>
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-[11px] text-subtle">#{String(c.candidateNo).padStart(3, "0")}</span>
                       {col.key === "JOINED" ? (

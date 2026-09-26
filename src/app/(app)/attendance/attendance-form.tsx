@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { Select } from "@/components/ui/Select";
 import { isOnWork } from "@/lib/employeeStage";
 import {
@@ -26,6 +27,7 @@ type EmployeeOption = {
   id: string;
   name: string;
   employeeIdNo: string;
+  hasPhoto: boolean;
   trade: string | null;
   status: string;
   siteArrivalDate: string | null;
@@ -441,7 +443,10 @@ export function AttendanceForm({
                         />
                       </td>
                       <td className="px-2 py-2 text-primary">
-                        {e.name} <span className="text-subtle">{e.employeeIdNo}</span>
+                        <span className="inline-flex items-center gap-2 align-middle">
+                          <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="xs" />
+                          <span>{e.name} <span className="text-subtle">{e.employeeIdNo}</span></span>
+                        </span>
                         {!eligible && (
                           <span
                             className="ml-1.5 text-xs text-[var(--warning)]"
