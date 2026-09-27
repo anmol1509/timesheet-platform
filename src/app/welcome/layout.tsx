@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { DM_Sans, Plus_Jakarta_Sans } from "next/font/google";
 import { BRAND_ICON } from "@/lib/brand-assets";
 import { SITE } from "./content";
@@ -30,5 +31,17 @@ export const metadata: Metadata = {
 };
 
 export default function WelcomeLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`${dmSans.variable} ${jakarta.variable}`}>{children}</div>;
+  return (
+    <div className={`${dmSans.variable} ${jakarta.variable}`}>
+      {/* Microsoft Clarity — marketing-site analytics only, not the authenticated app. */}
+      <Script id="ms-clarity" strategy="afterInteractive">
+        {`(function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "yox1polsck");`}
+      </Script>
+      {children}
+    </div>
+  );
 }
