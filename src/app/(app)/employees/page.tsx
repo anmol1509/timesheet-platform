@@ -9,8 +9,8 @@ import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
 import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
 import { BarList } from "@/components/BarList";
+import { Treemap } from "@/components/Treemap";
 import { Panel } from "@/components/DashboardPanel";
-import { Nationality } from "@/components/Nationality";
 import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
@@ -113,7 +113,7 @@ export default async function EmployeesPage({
     byNationality.set(n, (byNationality.get(n) ?? 0) + 1);
   }
   const topTrades = [...byTrade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const topNationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const nationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-5">
@@ -149,10 +149,7 @@ export default async function EmployeesPage({
             />
           </Panel>
           <Panel title="By nationality">
-            <BarList
-              tone="info"
-              items={topNationalities.map(([label, count]) => ({ key: label, label: <Nationality name={label} />, value: count }))}
-            />
+            <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count }))} />
           </Panel>
         </div>
       )}

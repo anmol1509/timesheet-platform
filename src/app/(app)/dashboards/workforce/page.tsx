@@ -13,7 +13,7 @@ import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { BarList } from "@/components/BarList";
-import { Nationality } from "@/components/Nationality";
+import { Treemap } from "@/components/Treemap";
 import { AlertTriangle, Globe2, HardHat, Users } from "lucide-react";
 
 export default async function WorkforceDashboardPage() {
@@ -131,9 +131,8 @@ export default async function WorkforceDashboardPage() {
           />
         </Panel>
         <Panel title="Workforce by nationality" icon={Globe2} href="/employees">
-          <BarList
-            tone="info"
-            items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: <Nationality name={r.nationality ?? "Not set"} />, value: r._count._all }))}
+          <Treemap
+            items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: r.nationality ?? "Not set", value: r._count._all }))}
             emptyLabel="No employees yet."
           />
         </Panel>
