@@ -137,26 +137,31 @@ export default function ManpowerErpUaePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-5 py-10 text-center">
-        <p className="text-slate-600">
-          Go deeper on the pieces above:{" "}
-          <Link href="/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            timesheet software
-          </Link>
-          ,{" "}
-          <Link href="/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            WPS payroll software
-          </Link>
-          ,{" "}
-          <Link href="/camp-accommodation-management-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            camp &amp; accommodation management
-          </Link>
-          , and the{" "}
-          <Link href="/supplier-portal-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            supplier portal
-          </Link>
-          .
-        </p>
+      <section className="py-14">
+        <div className="mx-auto max-w-4xl px-5">
+          <h2 className="text-center text-2xl font-semibold text-slate-900">Go deeper on each piece</h2>
+          <div className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-2">
+            {[
+              { href: "/timesheet-software-construction-uae", label: "Timesheet software" },
+              { href: "/wps-payroll-software-uae", label: "WPS payroll software" },
+              { href: "/construction-invoicing-software-uae", label: "Billing & VAT invoicing" },
+              { href: "/manpower-demand-mobilization-software-uae", label: "Demand & mobilisation" },
+              { href: "/camp-accommodation-management-software-uae", label: "Camp & accommodation" },
+              { href: "/supplier-portal-software-uae", label: "Supplier portal" },
+              { href: "/employee-self-service-portal-uae", label: "Employee portal" },
+              { href: "/ai-assistant-workforce-management", label: "AI assistant" },
+              { href: "/industries", label: "By industry" },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-full bg-slate-100 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:text-[var(--brand-primary,#5645d4)]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="bg-slate-50 py-14">

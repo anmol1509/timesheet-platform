@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { POSTS } from "./blog/posts";
+import { INDUSTRIES_DATA } from "./industries/industries-data";
 
 const MARKETING_HOST = "manpowersync.com";
 
@@ -12,6 +13,10 @@ const PILLAR_SLUGS = [
   "timesheet-software-construction-uae",
   "camp-accommodation-management-software-uae",
   "supplier-portal-software-uae",
+  "employee-self-service-portal-uae",
+  "ai-assistant-workforce-management",
+  "construction-invoicing-software-uae",
+  "manpower-demand-mobilization-software-uae",
 ];
 
 /**
@@ -38,6 +43,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.9,
+    })),
+    {
+      url: `https://${MARKETING_HOST}/industries`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    ...INDUSTRIES_DATA.map((industry) => ({
+      url: `https://${MARKETING_HOST}/industries/${industry.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     })),
     {
       url: `https://${MARKETING_HOST}/blog`,

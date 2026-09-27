@@ -11,11 +11,16 @@ import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 const MARKETING_CONTENT_PATHS = [
   "/welcome",
   "/blog",
+  "/industries",
   "/manpower-erp-uae",
   "/wps-payroll-software-uae",
   "/timesheet-software-construction-uae",
   "/camp-accommodation-management-software-uae",
   "/supplier-portal-software-uae",
+  "/employee-self-service-portal-uae",
+  "/ai-assistant-workforce-management",
+  "/construction-invoicing-software-uae",
+  "/manpower-demand-mobilization-software-uae",
 ];
 
 const PUBLIC_PATHS = ["/login", ...MARKETING_CONTENT_PATHS];
