@@ -226,12 +226,16 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "How it works", href: "#how" },
       { label: "Portals", href: "#portals" },
       { label: "FAQ", href: "#faq" },
-      { label: "Manpower ERP guide", href: "/welcome/manpower-erp-uae" },
     ],
   },
   {
-    title: "Resources",
-    links: [{ label: "Blog", href: "/welcome/blog" }],
+    title: "Solutions",
+    links: [
+      { label: "Manpower ERP", href: "/welcome/manpower-erp-uae" },
+      { label: "WPS payroll software", href: "/welcome/wps-payroll-software-uae" },
+      { label: "Timesheet software", href: "/welcome/timesheet-software-construction-uae" },
+      { label: "Blog", href: "/welcome/blog" },
+    ],
   },
   {
     title: "Sign in",

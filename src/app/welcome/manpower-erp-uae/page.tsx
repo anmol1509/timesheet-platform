@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ContentShell } from "../content-shell";
 import { CAPABILITIES, DEEP_DIVES, FAQS, SITE, demoHref } from "../content";
 
@@ -130,6 +131,20 @@ export default function ManpowerErpUaePage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-5 py-10 text-center">
+        <p className="text-slate-600">
+          Go deeper on two of the pieces above:{" "}
+          <Link href="/welcome/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+            timesheet software
+          </Link>{" "}
+          and{" "}
+          <Link href="/welcome/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+            WPS payroll software
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="bg-slate-50 py-14">

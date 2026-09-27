@@ -30,6 +30,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: `https://${MARKETING_HOST}/welcome/wps-payroll-software-uae`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `https://${MARKETING_HOST}/welcome/timesheet-software-construction-uae`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
       url: `https://${MARKETING_HOST}/welcome/blog`,
       lastModified: now,
       changeFrequency: "weekly",
