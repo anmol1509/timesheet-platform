@@ -79,6 +79,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
   }
 
+  const category = (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? before?.category;
+
   // Pay structure: only applied when the form actually carried the pay section
   // (`_pay`) AND this user may edit payroll — a hidden section can never blank
   // out figures, and a tampered post from someone without access is ignored.
@@ -86,6 +88,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
   if (formData.get("_pay") === "1" && can(subjectOf(user), "payroll", "edit")) {
     const structure = stringOrNull(formData.get("payStructure"));
     if (structure && !(PAY_STRUCTURES as readonly string[]).includes(structure)) return { error: "Unknown pay structure." };
+    if (structure === "HOURLY" && category === "STAFF") return { error: "Office/corporate staff can't be paid hourly — choose flat or itemised." };
     const money = (k: string) => {
       const v = numberOrNull(formData.get(k));
       return v !== null && v < 0 ? "bad" : v;
@@ -121,13 +124,17 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       ...payData,
       name,
       employeeIdNo,
-      category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+      category: category ?? undefined,
       supplierId: stringOrNull(formData.get("supplierId")),
       sponsorSupplierId: stringOrNull(formData.get("sponsorSupplierId")),
       nationality: stringOrNull(formData.get("nationality")),
       sponsorName: stringOrNull(formData.get("sponsorName")),
       unifiedNo: stringOrNull(formData.get("unifiedNo")),
       position: stringOrNull(formData.get("position")),
+      // Office/corporate staff have a designation + department instead of a
+      // trade — mirrored the same way the create flow keeps them in sync.
+      trade: category === "STAFF" ? null : stringOrNull(formData.get("position")),
+      department: category === "STAFF" ? stringOrNull(formData.get("department")) : null,
       passportNumber: stringOrNull(formData.get("passportNumber")),
       emiratesId: stringOrNull(formData.get("emiratesId")),
       visaExpiry: dateOrNull(formData.get("visaExpiry")),
@@ -321,7 +328,8 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       const data = {
         name,
         category,
-        trade: stringOrNull(r["Trade"] ?? null),
+        trade: category === "STAFF" ? null : stringOrNull(r["Trade"] ?? null),
+        department: category === "STAFF" ? stringOrNull(r["Department"] ?? null) : null,
         nationality: stringOrNull(r["Nationality"] ?? null),
         position: stringOrNull(r["Position"] ?? null),
         passportNumber: stringOrNull(r["Passport number"] ?? null),

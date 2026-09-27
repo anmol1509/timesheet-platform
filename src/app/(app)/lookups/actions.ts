@@ -78,6 +78,8 @@ const LOOKUP_USAGE: Partial<
     prisma.employee.count({ where: { branchId, trade: value } }),
   POSITION: (value, branchId) =>
     prisma.employee.count({ where: { branchId, position: value } }),
+  DEPARTMENT: (value, branchId) =>
+    prisma.employee.count({ where: { branchId, department: value } }),
   BLOOD_GROUP: (value, branchId) =>
     prisma.employee.count({ where: { branchId, bloodGroup: value } }),
   RELIGION: (value, branchId) =>

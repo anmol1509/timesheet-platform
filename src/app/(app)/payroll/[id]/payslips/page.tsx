@@ -18,7 +18,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
       branch: true,
       lines: {
         where: line ? { id: line } : {},
-        include: { employee: { select: { name: true, employeeIdNo: true, trade: true, position: true } } },
+        include: { employee: { select: { name: true, employeeIdNo: true, trade: true, position: true, department: true, category: true } } },
         orderBy: { employee: { name: "asc" } },
       },
     },
@@ -58,7 +58,14 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1">
               <div className="flex justify-between"><dt className="text-muted">Employee</dt><dd className="text-primary">{l.employee.name}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">ID</dt><dd className="text-primary">{l.employee.employeeIdNo}</dd></div>
-              <div className="flex justify-between"><dt className="text-muted">Trade</dt><dd className="text-primary">{l.employee.trade ?? l.employee.position ?? "—"}</dd></div>
+              {l.employee.category === "STAFF" ? (
+                <>
+                  <div className="flex justify-between"><dt className="text-muted">Designation</dt><dd className="text-primary">{l.employee.position ?? "—"}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Department</dt><dd className="text-primary">{l.employee.department ?? "—"}</dd></div>
+                </>
+              ) : (
+                <div className="flex justify-between"><dt className="text-muted">Trade</dt><dd className="text-primary">{l.employee.trade ?? l.employee.position ?? "—"}</dd></div>
+              )}
               <div className="flex justify-between"><dt className="text-muted">Paid by</dt><dd className="text-primary">{/cash/i.test(l.paymentMode ?? "") ? "Cash" : l.bankName ?? "Bank transfer"}</dd></div>
             </dl>
             <table className="w-full">

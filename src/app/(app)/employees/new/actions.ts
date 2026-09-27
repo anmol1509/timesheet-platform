@@ -232,20 +232,25 @@ export async function createEmployeeAction(
   }
 
   const skillEntries = parseSkills(formData.get("skills"));
+  const category = (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined;
+  const isStaff = category === "STAFF";
 
   const data = {
     employeeIdNo,
     name,
     branchId,
-    category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+    category,
     // Supplier and sponsorship are interrelated but distinct: the supplier
     // employs the worker, the sponsorship company holds the visa. Supplier was
     // previously only settable from the edit form, never at creation.
     supplierId,
     sponsorSupplierId,
     nationality: stringOrNull(formData.get("nationality")),
+    // For office/corporate staff `position` is their designation and there's no
+    // trade; for site staff it's the trade name, mirrored onto both fields.
     position: stringOrNull(formData.get("position")),
-    trade: stringOrNull(formData.get("position")),
+    trade: isStaff ? null : stringOrNull(formData.get("position")),
+    department: isStaff ? stringOrNull(formData.get("department")) : null,
     gender: stringOrNull(formData.get("gender")),
     mobileNumber: stringOrNull(formData.get("mobileNumber")),
     joinDate: dateOrNull(formData.get("joinDate")),
@@ -267,7 +272,8 @@ export async function createEmployeeAction(
     emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
     notes: stringOrNull(formData.get("notes")),
     projectId,
-    salaryType: stringOrNull(formData.get("salaryType")),
+    // Office/corporate staff are always paid a fixed monthly salary — never hourly.
+    salaryType: isStaff ? "BASIC" : stringOrNull(formData.get("salaryType")),
     salaryRate: numberOrNull(formData.get("salaryRate")),
     photoData:
       photo instanceof File && photo.size > 0
@@ -383,7 +389,7 @@ export async function createEmployeeAction(
     });
   }
 
-  for (const entry of skillEntries) {
+  for (const entry of isStaff ? [] : skillEntries) {
     // Matched case-insensitively so "Carpentry" and "carpentry" don't become
     // two skills — the same rule the Skills module uses.
     const existingSkill = await prisma.skill.findFirst({
@@ -405,7 +411,7 @@ export async function createEmployeeAction(
 
   // `Employee.trade` is what the roster, demands and timesheets read, so the
   // active trade is mirrored onto it rather than living only on the join.
-  const activeTrade = skillEntries.find((e) => e.isActive);
+  const activeTrade = isStaff ? undefined : skillEntries.find((e) => e.isActive);
   if (activeTrade) {
     await prisma.employee.update({
       where: { id: employee.id },

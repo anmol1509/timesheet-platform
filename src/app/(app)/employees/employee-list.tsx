@@ -26,6 +26,8 @@ type EmployeeRow = {
   hasPhoto: boolean;
   category: "STAFF" | "SITE_STAFF";
   trade: string | null;
+  position: string | null;
+  department: string | null;
   passportNumber: string | null;
   emiratesId: string | null;
   nationality: string | null;
@@ -98,6 +100,7 @@ const IMPORT_COLUMNS = [
   { key: "trade", label: "Trade" },
   { key: "nationality", label: "Nationality" },
   { key: "position", label: "Position" },
+  { key: "department", label: "Department" },
   { key: "passportNumber", label: "Passport number" },
   { key: "emiratesId", label: "Emirates ID" },
   { key: "mobileNumber", label: "Mobile number" },
@@ -197,10 +200,25 @@ export function EmployeeList({
     },
     {
       key: "trade",
-      header: "Trade",
-      sortValue: (e) => e.trade,
-      csvValue: (e) => e.trade,
-      render: (e) => e.trade || <span className="text-subtle">—</span>,
+      header: "Trade / Designation",
+      sortValue: (e) => (e.category === "STAFF" ? e.position : e.trade),
+      csvValue: (e) =>
+        e.category === "STAFF"
+          ? [e.position, e.department].filter(Boolean).join(" · ")
+          : e.trade,
+      render: (e) =>
+        e.category === "STAFF" ? (
+          e.position || e.department ? (
+            <span>
+              {e.position || <span className="text-subtle">—</span>}
+              {e.department && <span className="ml-1 text-xs text-subtle">({e.department})</span>}
+            </span>
+          ) : (
+            <span className="text-subtle">—</span>
+          )
+        ) : (
+          e.trade || <span className="text-subtle">—</span>
+        ),
     },
     {
       key: "passportNumber",

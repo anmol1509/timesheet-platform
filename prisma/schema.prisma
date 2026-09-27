@@ -607,6 +607,9 @@ model Employee {
   photoMimeType      String?
   nationality        String?
   position           String?
+  // Office/corporate roster only (category = STAFF) — "which team", where
+  // `trade` is the equivalent field for the field/manpower roster.
+  department         String?
   passportNumber     String?
   emiratesId         String?
   emiratesIdExpiry   DateTime?

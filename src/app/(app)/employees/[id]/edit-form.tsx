@@ -15,6 +15,7 @@ import { UAE_BANKS } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { MaskedInput } from "@/components/ui/MaskedInput";
+import { TRADES } from "@/lib/trades";
 
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
@@ -29,6 +30,7 @@ type Employee = {
   sponsorSupplierId: string | null;
   nationality: string | null;
   position: string | null;
+  department: string | null;
   passportNumber: string | null;
   emiratesId: string | null;
   visaExpiry: Date | null;
@@ -191,6 +193,7 @@ export function EditForm({
   const [tab, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
     const [payStructure, setPayStructure] = useState(employee.payStructure || "");
+  const [category, setCategory] = useState(employee.category);
   const [nationality, setNationality] = useState(employee.nationality || "");
   const [projectId, setProjectId] = useState(employee.projectId || "");
   const [siteId, setSiteId] = useState(employee.siteId || "");
@@ -269,7 +272,8 @@ export function EditForm({
             <Field label="Category">
               <Select
                 name="category"
-                defaultValue={employee.category}
+                value={category}
+                onChange={(v) => setCategory(v as "STAFF" | "SITE_STAFF")}
                 searchable={false}
                 options={[
                   { value: "SITE_STAFF", label: "Site Staff" },
@@ -355,7 +359,21 @@ export function EditForm({
                 options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
-            <LookupField label="Position" name="position" defaultValue={employee.position} options={lookups.POSITION} />
+            {category === "STAFF" ? (
+              <>
+                <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
+                <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
+              </>
+            ) : (
+              <Field label="Trade">
+                <Select
+                  name="position"
+                  defaultValue={employee.position || ""}
+                  placeholder="Not set"
+                  options={TRADES.map((t) => ({ value: t, label: t }))}
+                />
+              </Field>
+            )}
             <Field label="Date of birth">
               <DatePicker key={`dateOfBirth-${auto.dateOfBirth ?? ""}`} name="dateOfBirth" defaultValue={auto.dateOfBirth ?? toDateInput(employee.dateOfBirth)} />
             </Field>
@@ -634,7 +652,8 @@ export function EditForm({
                   options={[
                     { value: "ITEMISED", label: "Itemised — basic + allowances" },
                     { value: "FLAT", label: "Flat — one monthly rate" },
-                    { value: "HOURLY", label: "Hourly — paid per hour worked" },
+                    // Office/corporate staff are never paid hourly — only the site roster is.
+                    ...(category === "STAFF" ? [] : [{ value: "HOURLY", label: "Hourly — paid per hour worked" }]),
                   ]}
                 />
               </Field>

@@ -5,6 +5,7 @@
 export const LOOKUP_CATEGORIES = [
   { key: "TRADE", label: "Trade" },
   { key: "POSITION", label: "Position" },
+  { key: "DEPARTMENT", label: "Department" },
   { key: "BLOOD_GROUP", label: "Blood Group" },
   { key: "RELIGION", label: "Religion" },
   { key: "STATE", label: "State" },

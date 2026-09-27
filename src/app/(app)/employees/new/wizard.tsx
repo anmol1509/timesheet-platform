@@ -88,6 +88,7 @@ type Fields = {
   gender: string;
   nationality: string;
   position: string;
+  department: string;
   dateOfBirth: string;
   mobileNumber: string;
   joinDate: string;
@@ -120,6 +121,7 @@ const EMPTY_FIELDS: Fields = {
   gender: "",
   nationality: "",
   position: "",
+  department: "",
   dateOfBirth: "",
   mobileNumber: "",
   joinDate: "",
@@ -1069,17 +1071,41 @@ export function EmployeeWizard({
                 ]}
               />
             </Field>
-            <Field label="Position / Trade">
-              <Select
-                value={fields.position}
-                onChange={(v) => set("position", v)}
-                placeholder="Select position"
-                options={(lookups.POSITION ?? []).map((o) => ({
-                  value: o.value,
-                  label: o.value,
-                }))}
-              />
-            </Field>
+            {fields.category === "STAFF" ? (
+              <>
+                <Field label="Designation">
+                  <Select
+                    value={fields.position}
+                    onChange={(v) => set("position", v)}
+                    placeholder="Select designation"
+                    options={(lookups.POSITION ?? []).map((o) => ({
+                      value: o.value,
+                      label: o.value,
+                    }))}
+                  />
+                </Field>
+                <Field label="Department">
+                  <Select
+                    value={fields.department}
+                    onChange={(v) => set("department", v)}
+                    placeholder="Select department"
+                    options={(lookups.DEPARTMENT ?? []).map((o) => ({
+                      value: o.value,
+                      label: o.value,
+                    }))}
+                  />
+                </Field>
+              </>
+            ) : (
+              <Field label="Trade">
+                <Select
+                  value={fields.position}
+                  onChange={(v) => set("position", v)}
+                  placeholder="Select trade"
+                  options={TRADES.map((t) => ({ value: t, label: t }))}
+                />
+              </Field>
+            )}
             <Field label="Nationality">
               <CountrySelect
                 value={fields.nationality}
@@ -1233,28 +1259,37 @@ export function EmployeeWizard({
             title="Salary"
             description="Reference only — billing rates come from the timesheet and invoice flow."
           >
-            <Field label="Salary type">
-              <Select
-                value={fields.salaryType}
-                onChange={(v) => set("salaryType", v)}
-                placeholder="Not set"
-                searchable={false}
-                options={[
-                  { value: "BASIC", label: "Basic salary" },
-                  { value: "HOURLY", label: "Hourly rate" },
-                ]}
-              />
-            </Field>
-            {fields.salaryType && (
-              <Field
-                label={
-                  fields.salaryType === "HOURLY"
-                    ? "Hourly rate (AED)"
-                    : "Basic salary (AED)"
-                }
-              >
-                <NumberInput value={fields.salaryRate} onChange={(v) => set("salaryRate", String(v))} step={0.01} className="w-full" />
+            {fields.category === "STAFF" ? (
+              // Office/corporate roster is always paid a fixed monthly salary — no hourly option.
+              <Field label="Basic salary (AED)">
+                <NumberInput value={fields.salaryRate} onChange={(v) => { set("salaryRate", String(v)); set("salaryType", "BASIC"); }} step={0.01} className="w-full" />
               </Field>
+            ) : (
+              <>
+                <Field label="Salary type">
+                  <Select
+                    value={fields.salaryType}
+                    onChange={(v) => set("salaryType", v)}
+                    placeholder="Not set"
+                    searchable={false}
+                    options={[
+                      { value: "BASIC", label: "Basic salary" },
+                      { value: "HOURLY", label: "Hourly rate" },
+                    ]}
+                  />
+                </Field>
+                {fields.salaryType && (
+                  <Field
+                    label={
+                      fields.salaryType === "HOURLY"
+                        ? "Hourly rate (AED)"
+                        : "Basic salary (AED)"
+                    }
+                  >
+                    <NumberInput value={fields.salaryRate} onChange={(v) => set("salaryRate", String(v))} step={0.01} className="w-full" />
+                  </Field>
+                )}
+              </>
             )}
           </Group>
         </div>
@@ -1263,6 +1298,10 @@ export function EmployeeWizard({
       {/* ---------------- Skills & notes ---------------- */}
       {stepKey === "extras" && (
         <div className="space-y-4">
+          {/* Office/corporate staff have a designation and department instead
+              of a trade — this whole picker only applies to the site roster. */}
+          {fields.category !== "STAFF" && (
+            <>
           {/* A closed list, not free text: typed trades are what produced
               "Carpentry", "carpenter" and "car" as three separate trades. */}
           <Field label="Trades">
@@ -1374,6 +1413,8 @@ export function EmployeeWizard({
               ))}
             </div>
           </div>
+            </>
+          )}
 
           <Field label="Notes">
             <textarea

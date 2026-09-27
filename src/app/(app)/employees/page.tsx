@@ -83,6 +83,8 @@ export default async function EmployeesPage({
       hasPhoto: !!e.photoMimeType,
       category: e.category,
       trade: e.trade,
+      position: e.position,
+      department: e.department,
       passportNumber: e.passportNumber,
       emiratesId: e.emiratesId,
       nationality: e.nationality,
