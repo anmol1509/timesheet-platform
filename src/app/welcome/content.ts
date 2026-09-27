@@ -234,6 +234,8 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "Manpower ERP", href: "/welcome/manpower-erp-uae" },
       { label: "WPS payroll software", href: "/welcome/wps-payroll-software-uae" },
       { label: "Timesheet software", href: "/welcome/timesheet-software-construction-uae" },
+      { label: "Camp & accommodation", href: "/welcome/camp-accommodation-management-software-uae" },
+      { label: "Supplier portal", href: "/welcome/supplier-portal-software-uae" },
       { label: "Blog", href: "/welcome/blog" },
     ],
   },

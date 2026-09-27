@@ -135,13 +135,21 @@ export default function ManpowerErpUaePage() {
 
       <section className="mx-auto max-w-3xl px-5 py-10 text-center">
         <p className="text-slate-600">
-          Go deeper on two of the pieces above:{" "}
+          Go deeper on the pieces above:{" "}
           <Link href="/welcome/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             timesheet software
-          </Link>{" "}
-          and{" "}
+          </Link>
+          ,{" "}
           <Link href="/welcome/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             WPS payroll software
+          </Link>
+          ,{" "}
+          <Link href="/welcome/camp-accommodation-management-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+            camp &amp; accommodation management
+          </Link>
+          , and the{" "}
+          <Link href="/welcome/supplier-portal-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+            supplier portal
           </Link>
           .
         </p>

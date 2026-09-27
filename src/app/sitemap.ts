@@ -4,6 +4,16 @@ import { POSTS } from "./welcome/blog/posts";
 
 const MARKETING_HOST = "manpowersync.com";
 
+// One entry per pillar landing page under /welcome/* — add a slug here
+// whenever a new one ships, instead of a repeated sitemap block.
+const PILLAR_SLUGS = [
+  "manpower-erp-uae",
+  "wps-payroll-software-uae",
+  "timesheet-software-construction-uae",
+  "camp-accommodation-management-software-uae",
+  "supplier-portal-software-uae",
+];
+
 /**
  * Only the marketing domain has anything worth listing — the app domain
  * (login.manpowersync.com) is private and auth-gated. "/welcome" itself is
@@ -23,24 +33,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
-    {
-      url: `https://${MARKETING_HOST}/welcome/manpower-erp-uae`,
+    ...PILLAR_SLUGS.map((slug) => ({
+      url: `https://${MARKETING_HOST}/welcome/${slug}`,
       lastModified: now,
-      changeFrequency: "monthly",
+      changeFrequency: "monthly" as const,
       priority: 0.9,
-    },
-    {
-      url: `https://${MARKETING_HOST}/welcome/wps-payroll-software-uae`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.9,
-    },
-    {
-      url: `https://${MARKETING_HOST}/welcome/timesheet-software-construction-uae`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.9,
-    },
+    })),
     {
       url: `https://${MARKETING_HOST}/welcome/blog`,
       lastModified: now,
