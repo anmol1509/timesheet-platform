@@ -231,12 +231,12 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
   {
     title: "Solutions",
     links: [
-      { label: "Manpower ERP", href: "/welcome/manpower-erp-uae" },
-      { label: "WPS payroll software", href: "/welcome/wps-payroll-software-uae" },
-      { label: "Timesheet software", href: "/welcome/timesheet-software-construction-uae" },
-      { label: "Camp & accommodation", href: "/welcome/camp-accommodation-management-software-uae" },
-      { label: "Supplier portal", href: "/welcome/supplier-portal-software-uae" },
-      { label: "Blog", href: "/welcome/blog" },
+      { label: "Manpower ERP", href: "/manpower-erp-uae" },
+      { label: "WPS payroll software", href: "/wps-payroll-software-uae" },
+      { label: "Timesheet software", href: "/timesheet-software-construction-uae" },
+      { label: "Camp & accommodation", href: "/camp-accommodation-management-software-uae" },
+      { label: "Supplier portal", href: "/supplier-portal-software-uae" },
+      { label: "Blog", href: "/blog" },
     ],
   },
   {

@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ContentShell } from "../content-shell";
+import { ContentShell } from "@/app/welcome/content-shell";
 import { POSTS } from "./posts";
 
 const TITLE = "Blog";
 const DESCRIPTION =
   "Practical guidance on UAE WPS payroll, visa and Emirates ID compliance, and running a manpower supply business — from the team building ManpowerSync.";
-const URL = "https://manpowersync.com/welcome/blog";
+const URL = "https://manpowersync.com/blog";
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
+  // These are root-level pages now, outside welcome/layout.tsx, so they no
+  // longer inherit its robots: { index: true } — the root layout defaults
+  // every other page to noindex, so this has to be explicit here.
+  robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
 };
 
@@ -33,13 +37,13 @@ export default function BlogIndexPage() {
             <li key={post.slug} className="border-b border-slate-100 pb-8 last:border-0">
               <p className="text-xs text-slate-400">{formatDate(post.date)}</p>
               <h2 className="mt-1 text-xl font-semibold text-slate-900">
-                <Link href={`/welcome/blog/${post.slug}`} className="hover:underline">
+                <Link href={`/blog/${post.slug}`} className="hover:underline">
                   {post.title}
                 </Link>
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{post.description}</p>
               <Link
-                href={`/welcome/blog/${post.slug}`}
+                href={`/blog/${post.slug}`}
                 className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary,#5645d4)] hover:underline"
               >
                 Read more &rarr;

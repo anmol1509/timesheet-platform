@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ContentShell } from "../content-shell";
-import { CAPABILITIES, FAQS, SITE, demoHref } from "../content";
+import { ContentShell } from "@/app/welcome/content-shell";
+import { CAPABILITIES, FAQS, SITE, demoHref } from "@/app/welcome/content";
 
 const TITLE = "WPS Payroll Software for UAE Manpower Suppliers";
 const DESCRIPTION =
   "Run payroll for hundreds of workers from approved hours, apply overtime, loans and gratuity automatically, and export a bank-ready WPS SIF file every month.";
-const URL = "https://manpowersync.com/welcome/wps-payroll-software-uae";
+const URL = "https://manpowersync.com/wps-payroll-software-uae";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     "manpower payroll UAE",
   ],
   alternates: { canonical: URL },
+  // These are root-level pages now, outside welcome/layout.tsx, so they no
+  // longer inherit its robots: { index: true } — the root layout defaults
+  // every other page to noindex, so this has to be explicit here.
+  robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
 };
 
@@ -104,11 +108,11 @@ export default function WpsPayrollSoftwarePage() {
       <section className="mx-auto max-w-3xl px-5 py-14 text-center">
         <p className="text-slate-600">
           Payroll runs from hours already approved on the timesheet side — see how{" "}
-          <Link href="/welcome/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             timesheets flow into payroll
           </Link>
           , or read what actually causes a{" "}
-          <Link href="/welcome/blog/wps-sif-rejection-reasons-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/blog/wps-sif-rejection-reasons-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             WPS SIF file to get rejected
           </Link>
           .

@@ -10,7 +10,7 @@ function formatDate(iso: string) {
 export function PostLayout({ post, children }: { post: Post; children: React.ReactNode }) {
   return (
     <article className="mx-auto max-w-2xl px-5 py-14">
-      <Link href="/welcome/blog" className="text-sm font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+      <Link href="/blog" className="text-sm font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
         &larr; Blog
       </Link>
       <p className="mt-6 text-xs text-slate-400">{formatDate(post.date)}</p>

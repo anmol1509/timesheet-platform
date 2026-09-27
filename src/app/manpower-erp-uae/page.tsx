@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ContentShell } from "../content-shell";
-import { CAPABILITIES, DEEP_DIVES, FAQS, SITE, demoHref } from "../content";
+import { ContentShell } from "@/app/welcome/content-shell";
+import { CAPABILITIES, DEEP_DIVES, FAQS, SITE, demoHref } from "@/app/welcome/content";
 
 const TITLE = "Manpower ERP for UAE Manpower Suppliers";
 const DESCRIPTION =
   "A manpower ERP built for UAE labour supply companies: timesheets, WPS payroll, client billing, visa/Emirates ID compliance, camps and transport in one system.";
-const URL = "https://manpowersync.com/welcome/manpower-erp-uae";
+const URL = "https://manpowersync.com/manpower-erp-uae";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     "labour supply ERP Dubai",
   ],
   alternates: { canonical: URL },
+  // These are root-level pages now, outside welcome/layout.tsx, so they no
+  // longer inherit its robots: { index: true } — the root layout defaults
+  // every other page to noindex, so this has to be explicit here.
+  robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
 };
 
@@ -136,19 +140,19 @@ export default function ManpowerErpUaePage() {
       <section className="mx-auto max-w-3xl px-5 py-10 text-center">
         <p className="text-slate-600">
           Go deeper on the pieces above:{" "}
-          <Link href="/welcome/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             timesheet software
           </Link>
           ,{" "}
-          <Link href="/welcome/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             WPS payroll software
           </Link>
           ,{" "}
-          <Link href="/welcome/camp-accommodation-management-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/camp-accommodation-management-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             camp &amp; accommodation management
           </Link>
           , and the{" "}
-          <Link href="/welcome/supplier-portal-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/supplier-portal-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             supplier portal
           </Link>
           .

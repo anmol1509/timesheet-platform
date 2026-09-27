@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
-import { ContentShell } from "../../content-shell";
+import { ContentShell } from "@/app/welcome/content-shell";
 import { PostLayout } from "../post-layout";
 import { POSTS } from "../posts";
 
 const post = POSTS.find((p) => p.slug === "visa-emirates-id-expiry-compliance-checklist")!;
-const URL = `https://manpowersync.com/welcome/blog/${post.slug}`;
+const URL = `https://manpowersync.com/blog/${post.slug}`;
 
 export const metadata: Metadata = {
   title: post.title,
   description: post.description,
   alternates: { canonical: URL },
+  // These are root-level pages now, outside welcome/layout.tsx, so they no
+  // longer inherit its robots: { index: true } — the root layout defaults
+  // every other page to noindex, so this has to be explicit here.
+  robots: { index: true, follow: true },
   openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
 };
 

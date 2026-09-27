@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { POSTS } from "./welcome/blog/posts";
+import { POSTS } from "./blog/posts";
 
 const MARKETING_HOST = "manpowersync.com";
 
-// One entry per pillar landing page under /welcome/* — add a slug here
+// One entry per pillar landing page (root-level route) — add a slug here
 // whenever a new one ships, instead of a repeated sitemap block.
 const PILLAR_SLUGS = [
   "manpower-erp-uae",
@@ -34,19 +34,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     ...PILLAR_SLUGS.map((slug) => ({
-      url: `https://${MARKETING_HOST}/welcome/${slug}`,
+      url: `https://${MARKETING_HOST}/${slug}`,
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.9,
     })),
     {
-      url: `https://${MARKETING_HOST}/welcome/blog`,
+      url: `https://${MARKETING_HOST}/blog`,
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.7,
     },
     ...POSTS.map((post) => ({
-      url: `https://${MARKETING_HOST}/welcome/blog/${post.slug}`,
+      url: `https://${MARKETING_HOST}/blog/${post.slug}`,
       lastModified: new Date(post.date),
       changeFrequency: "monthly" as const,
       priority: 0.6,

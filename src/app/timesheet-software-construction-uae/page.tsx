@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ContentShell } from "../content-shell";
-import { CAPABILITIES, FAQS, STEPS, SITE, demoHref } from "../content";
+import { ContentShell } from "@/app/welcome/content-shell";
+import { CAPABILITIES, FAQS, STEPS, SITE, demoHref } from "@/app/welcome/content";
 
 const TITLE = "Timesheet Software for Construction & Manpower Teams in the UAE";
 const DESCRIPTION =
   "Bring in hours from Excel workbooks, manual entry or supplier submissions, apply overtime and rest-day rules automatically, and send approved hours straight to invoices and payroll.";
-const URL = "https://manpowersync.com/welcome/timesheet-software-construction-uae";
+const URL = "https://manpowersync.com/timesheet-software-construction-uae";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     "client timesheet software UAE",
   ],
   alternates: { canonical: URL },
+  // These are root-level pages now, outside welcome/layout.tsx, so they no
+  // longer inherit its robots: { index: true } — the root layout defaults
+  // every other page to noindex, so this has to be explicit here.
+  robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
 };
 
@@ -114,7 +118,7 @@ export default function TimesheetSoftwarePage() {
         </ul>
         <p className="mt-8 text-center text-slate-600">
           Once hours are approved here, see how they turn into a bank-ready{" "}
-          <Link href="/welcome/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
+          <Link href="/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
             WPS payroll run
           </Link>
           .

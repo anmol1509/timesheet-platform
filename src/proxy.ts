@@ -4,7 +4,21 @@ import { verifySessionToken } from "@/lib/session";
 import { ESS_COOKIE, verifyEssToken } from "@/lib/ess/token";
 import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 
-const PUBLIC_PATHS = ["/login", "/welcome"];
+// The marketing site's homepage content lives at /welcome (rewritten to from
+// "/" on the marketing domain, see below); everything else here is a
+// root-level content/landing page. Kept as one list so both the marketing-
+// domain gate and the general public-path check stay in sync.
+const MARKETING_CONTENT_PATHS = [
+  "/welcome",
+  "/blog",
+  "/manpower-erp-uae",
+  "/wps-payroll-software-uae",
+  "/timesheet-software-construction-uae",
+  "/camp-accommodation-management-software-uae",
+  "/supplier-portal-software-uae",
+];
+
+const PUBLIC_PATHS = ["/login", ...MARKETING_CONTENT_PATHS];
 
 // Static brand assets (the login page's logo/illustration/hero photo) served
 // from `public/brand/*` or `public/brand-assets/*` — file requests only, not
@@ -21,12 +35,13 @@ export async function proxy(request: NextRequest) {
 
   // The marketing site runs on its own domain (e.g. www.example.com) while the
   // app keeps its current one. On that domain, / is the landing page, its
-  // content/blog pages under /welcome/* are reachable too, and nothing else
-  // in the app is reachable.
+  // content/blog/landing pages are reachable too, and nothing else in the
+  // app is reachable.
   const marketingHost = process.env.MARKETING_HOST;
   if (marketingHost && request.headers.get("host") === marketingHost) {
     if (pathname === "/") return NextResponse.rewrite(new URL("/welcome", request.url));
-    if (pathname === "/welcome" || pathname.startsWith("/welcome/")) return NextResponse.next();
+    const isMarketingContent = MARKETING_CONTENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    if (isMarketingContent) return NextResponse.next();
     return NextResponse.redirect(new URL("/", request.url));
   }
 

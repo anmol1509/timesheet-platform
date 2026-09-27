@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { BookDemoButton } from "@/components/BookDemoButton";
 import { FOOTER, SITE, demoHref } from "./content";
+import { MarketingAnalytics } from "./marketing-analytics";
 
 /**
  * Shared chrome for content/blog pages — a plainer header and footer than the
@@ -12,9 +13,10 @@ export function ContentShell({ children }: { children: React.ReactNode }) {
   const logoHeight = 36;
   return (
     <div className="min-h-screen bg-white text-slate-900">
+      <MarketingAnalytics />
       <header className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-          <Link href="/welcome" aria-label={`${SITE.name} home`} className="shrink-0">
+          <Link href="/" aria-label={`${SITE.name} home`} className="shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
             <img
               src={BRAND_LOGO}
