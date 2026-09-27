@@ -222,25 +222,18 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
   {
     title: "Product",
     links: [
-      { label: "Capabilities", href: "#product" },
-      { label: "How it works", href: "#how" },
-      { label: "Portals", href: "#portals" },
-      { label: "FAQ", href: "#faq" },
+      { label: "Features", href: "/features" },
+      { label: "Solutions", href: "/solutions" },
+      { label: "Industries", href: "/industries" },
+      { label: "Pricing", href: "/pricing" },
     ],
   },
   {
-    title: "Solutions",
+    title: "Resources",
     links: [
-      { label: "Manpower ERP", href: "/manpower-erp-uae" },
-      { label: "WPS payroll software", href: "/wps-payroll-software-uae" },
-      { label: "Timesheet software", href: "/timesheet-software-construction-uae" },
-      { label: "Billing & invoicing", href: "/construction-invoicing-software-uae" },
-      { label: "Camp & accommodation", href: "/camp-accommodation-management-software-uae" },
-      { label: "Supplier portal", href: "/supplier-portal-software-uae" },
-      { label: "Employee portal", href: "/employee-self-service-portal-uae" },
-      { label: "AI assistant", href: "/ai-assistant-workforce-management" },
-      { label: "Industries", href: "/industries" },
+      { label: "Guides", href: "/guides" },
       { label: "Blog", href: "/blog" },
+      { label: "FAQ", href: "/faq" },
     ],
   },
   {

@@ -1,23 +1,15 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { POSTS } from "./blog/posts";
+import { GUIDES } from "./guides/guides-data";
 import { INDUSTRIES_DATA } from "./industries/industries-data";
+import { SOLUTIONS_DATA } from "./solutions/solutions-data";
 
 const MARKETING_HOST = "manpowersync.com";
 
-// One entry per pillar landing page (root-level route) — add a slug here
-// whenever a new one ships, instead of a repeated sitemap block.
-const PILLAR_SLUGS = [
-  "manpower-erp-uae",
-  "wps-payroll-software-uae",
-  "timesheet-software-construction-uae",
-  "camp-accommodation-management-software-uae",
-  "supplier-portal-software-uae",
-  "employee-self-service-portal-uae",
-  "ai-assistant-workforce-management",
-  "construction-invoicing-software-uae",
-  "manpower-demand-mobilization-software-uae",
-];
+// Standalone top-level pages with no per-item registry of their own.
+const STATIC_PAGES = ["features", "solutions", "guides", "faq", "pricing", "industries"];
+const STATIC_PAGE_PRIORITY: Record<string, number> = { features: 0.9, solutions: 0.8, pricing: 0.8 };
 
 /**
  * Only the marketing domain has anything worth listing — the app domain
@@ -38,18 +30,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
-    ...PILLAR_SLUGS.map((slug) => ({
-      url: `https://${MARKETING_HOST}/${slug}`,
+    ...SOLUTIONS_DATA.map((solution) => ({
+      url: `https://${MARKETING_HOST}/${solution.slug}`,
       lastModified: now,
       changeFrequency: "monthly" as const,
       priority: 0.9,
     })),
-    {
-      url: `https://${MARKETING_HOST}/industries`,
+    ...STATIC_PAGES.map((page) => ({
+      url: `https://${MARKETING_HOST}/${page}`,
       lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
+      changeFrequency: "monthly" as const,
+      priority: STATIC_PAGE_PRIORITY[page] ?? 0.7,
+    })),
     ...INDUSTRIES_DATA.map((industry) => ({
       url: `https://${MARKETING_HOST}/industries/${industry.slug}`,
       lastModified: now,
@@ -67,6 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(post.date),
       changeFrequency: "monthly" as const,
       priority: 0.6,
+    })),
+    ...GUIDES.map((guide) => ({
+      url: `https://${MARKETING_HOST}/guides/${guide.slug}`,
+      lastModified: new Date(guide.date),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
     })),
   ];
 }

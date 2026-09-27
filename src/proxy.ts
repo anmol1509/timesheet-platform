@@ -11,7 +11,12 @@ import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 const MARKETING_CONTENT_PATHS = [
   "/welcome",
   "/blog",
+  "/guides",
   "/industries",
+  "/solutions",
+  "/features",
+  "/faq",
+  "/pricing",
   "/manpower-erp-uae",
   "/wps-payroll-software-uae",
   "/timesheet-software-construction-uae",

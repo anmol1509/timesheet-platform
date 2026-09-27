@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { CAPABILITIES, DEEP_DIVES, FAQS, SITE, demoHref } from "@/app/welcome/content";
+import { SOLUTIONS_DATA } from "@/app/solutions/solutions-data";
 
 const TITLE = "Manpower ERP for UAE Manpower Suppliers";
 const DESCRIPTION =
@@ -141,25 +142,21 @@ export default function ManpowerErpUaePage() {
         <div className="mx-auto max-w-4xl px-5">
           <h2 className="text-center text-2xl font-semibold text-slate-900">Go deeper on each piece</h2>
           <div className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-2">
-            {[
-              { href: "/timesheet-software-construction-uae", label: "Timesheet software" },
-              { href: "/wps-payroll-software-uae", label: "WPS payroll software" },
-              { href: "/construction-invoicing-software-uae", label: "Billing & VAT invoicing" },
-              { href: "/manpower-demand-mobilization-software-uae", label: "Demand & mobilisation" },
-              { href: "/camp-accommodation-management-software-uae", label: "Camp & accommodation" },
-              { href: "/supplier-portal-software-uae", label: "Supplier portal" },
-              { href: "/employee-self-service-portal-uae", label: "Employee portal" },
-              { href: "/ai-assistant-workforce-management", label: "AI assistant" },
-              { href: "/industries", label: "By industry" },
-            ].map((link) => (
+            {SOLUTIONS_DATA.filter((s) => s.slug !== "manpower-erp-uae").map((solution) => (
               <Link
-                key={link.href}
-                href={link.href}
+                key={solution.slug}
+                href={`/${solution.slug}`}
                 className="rounded-full bg-slate-100 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:text-[var(--brand-primary,#5645d4)]"
               >
-                {link.label}
+                {solution.label}
               </Link>
             ))}
+            <Link
+              href="/industries"
+              className="rounded-full bg-slate-100 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:text-[var(--brand-primary,#5645d4)]"
+            >
+              By industry
+            </Link>
           </div>
         </div>
       </section>
