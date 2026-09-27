@@ -16,15 +16,22 @@ export default async function SkillsPage() {
     prisma.employee.count(),
   ]);
 
-  const [idleRows, demandRows] = await Promise.all([
+  const [idleRows, demandRows, headcountRows] = await Promise.all([
     prisma.employee.groupBy({ by: ["trade"], where: { status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
     prisma.demandRequestTrade.findMany({
       where: { demandRequest: { status: { in: ["Open", "Approved"] } } },
       select: { trade: true, quantity: true, approvedQuantity: true, _count: { select: { allocations: true } } },
     }),
+    // The employee's own `trade` field is what every other trade dropdown
+    // and filter reads — a Skill's `_count.employees` instead counts
+    // EmployeeSkill rows, which only exist once someone manually tags a
+    // "Known Trade Detail" on a profile, so it read ~0 for almost everyone
+    // despite `trade` being populated. Headcount here now matches Employees.
+    prisma.employee.groupBy({ by: ["trade"], where: { trade: { not: null } }, _count: { _all: true } }),
   ]);
   const key = (t: string | null) => (t ?? "").trim().toLowerCase();
   const idleBy = new Map(idleRows.map((r) => [key(r.trade), r._count._all]));
+  const headcountBy = new Map(headcountRows.map((r) => [key(r.trade), r._count._all]));
   const openBy = new Map<string, number>();
   for (const d of demandRows) {
     const gap = Math.max(0, (d.approvedQuantity ?? d.quantity) - d._count.allocations);
@@ -32,7 +39,7 @@ export default async function SkillsPage() {
   }
 
   const rows = skills.map((s) => {
-    const employeeCount = s._count.employees;
+    const employeeCount = headcountBy.get(key(s.name)) ?? 0;
     const popularity = totalEmployees > 0 ? (employeeCount / totalEmployees) * 100 : 0;
     return {
       id: s.id,
