@@ -24,12 +24,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://manpowersync.com"),
   title: {
     default: "Workforce ERP",
     template: "%s • Workforce ERP",
   },
   description:
     "Workforce, projects, timesheets and billing for construction manpower suppliers.",
+  // Default-closed: this app is a private, auth-gated system. Only the
+  // marketing site (welcome/layout.tsx) opts back in to indexing.
+  robots: { index: false, follow: false },
 };
 
 export default async function RootLayout({
