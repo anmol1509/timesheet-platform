@@ -28,6 +28,9 @@ const KEYWORDS = [
   "timesheet software construction UAE",
   "camp and accommodation management software",
   "manpower supplier ERP",
+  "manpower ERP",
+  "manpower ERP UAE",
+  "manpower ERP software",
 ];
 
 const SITE_URL = "https://manpowersync.com";

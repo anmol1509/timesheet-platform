@@ -20,11 +20,13 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // The marketing site runs on its own domain (e.g. www.example.com) while the
-  // app keeps its current one. On that domain, / is the landing page and
-  // nothing else in the app is reachable.
+  // app keeps its current one. On that domain, / is the landing page, its
+  // content/blog pages under /welcome/* are reachable too, and nothing else
+  // in the app is reachable.
   const marketingHost = process.env.MARKETING_HOST;
   if (marketingHost && request.headers.get("host") === marketingHost) {
     if (pathname === "/") return NextResponse.rewrite(new URL("/welcome", request.url));
+    if (pathname === "/welcome" || pathname.startsWith("/welcome/")) return NextResponse.next();
     return NextResponse.redirect(new URL("/", request.url));
   }
 

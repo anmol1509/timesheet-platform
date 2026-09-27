@@ -226,7 +226,12 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "How it works", href: "#how" },
       { label: "Portals", href: "#portals" },
       { label: "FAQ", href: "#faq" },
+      { label: "Manpower ERP guide", href: "/welcome/manpower-erp-uae" },
     ],
+  },
+  {
+    title: "Resources",
+    links: [{ label: "Blog", href: "/welcome/blog" }],
   },
   {
     title: "Sign in",

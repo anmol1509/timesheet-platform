@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { POSTS } from "./welcome/blog/posts";
 
 const MARKETING_HOST = "manpowersync.com";
 
@@ -22,5 +23,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `https://${MARKETING_HOST}/welcome/manpower-erp-uae`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    {
+      url: `https://${MARKETING_HOST}/welcome/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...POSTS.map((post) => ({
+      url: `https://${MARKETING_HOST}/welcome/blog/${post.slug}`,
+      lastModified: new Date(post.date),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
   ];
 }

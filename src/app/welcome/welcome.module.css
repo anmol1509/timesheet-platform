@@ -1167,7 +1167,7 @@
 }
 .footerGrid {
   display: grid;
-  grid-template-columns: 2fr repeat(3, 1fr);
+  grid-template-columns: 2fr repeat(4, 1fr);
   gap: 32px;
 }
 .footerBrand {
@@ -1301,7 +1301,7 @@
     margin-right: auto;
   }
   .footerGrid {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
   }
   .footerBrand {
     grid-column: 1 / -1;
