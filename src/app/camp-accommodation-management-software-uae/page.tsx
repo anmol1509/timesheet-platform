@@ -86,6 +86,15 @@ export default function CampAccommodationPage() {
             points: ["Routes per site", "Vehicle assignment", "Seats & timings"],
           },
         ]}
+        visuals={[
+          {
+            visual: "camps",
+            eyebrow: "Live occupancy",
+            title: "Bed by bed, not a headcount against a building.",
+            body: "Every block, room and bed with its current occupant, so what's free tonight is a number on screen rather than a phone call to the camp boss.",
+            points: ["Room-by-room layout", "Check-in & check-out history", "Routes against live deployment"],
+          },
+        ]}
         relatedTitle="Related"
         related={[
           {

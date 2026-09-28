@@ -71,6 +71,29 @@ export default function ManpowerErpUaePage() {
         cardsTitle="Everything a manpower ERP needs to cover."
         cardsLead="Operations, HR, payroll and finance share one set of records, so the hours your supervisors approve are the hours you bill and the hours you pay."
         cards={CAPABILITIES}
+        visuals={[
+          {
+            visual: "timesheet",
+            eyebrow: "Timesheets & attendance",
+            title: "Hours arrive in every format. They leave in one.",
+            body: "Drop in the monthly workbook and every month tab is detected and reconciled against your roster. Exceptions and overtime are flagged as they come in, and supervisors sign off in one queue.",
+            points: ["Excel workbook import", "Manual & client timesheets", "Overtime and rest-day rules"],
+          },
+          {
+            visual: "documents",
+            eyebrow: "Documents & compliance",
+            title: "Passports, visas and Emirates IDs, read for you.",
+            body: "Upload a scan and the key fields are extracted into the employee record. Expiry dates surface long before they become a fine, and letters and NOCs generate from your own templates in one click.",
+            points: ["AI document extraction", "Expiry alerts", "Letter & NOC templates"],
+          },
+          {
+            visual: "camps",
+            eyebrow: "Accommodation & transport",
+            title: "Know who sleeps where and who rides which bus.",
+            body: "Camps managed room by room with live occupancy, workers checked in and out, and transport routes planned against the sites your crews are working at today.",
+            points: ["Camps & bed allocation", "Live occupancy", "Vehicles & routes"],
+          },
+        ]}
         facts={FACTS}
         chipsEyebrow="Compliance & operations"
         chipsTitle="Covered end to end."

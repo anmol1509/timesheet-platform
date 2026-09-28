@@ -85,6 +85,22 @@ export default function AiAssistantPage() {
             points: DOCUMENTS.points,
           },
         ]}
+        visuals={[
+          {
+            visual: "assistant",
+            eyebrow: "Ask anything",
+            title: "A question in, an answer with links out.",
+            body: "The assistant reads your live records, answers within the asker's own permissions, and links straight to the employee, project or document behind the answer.",
+            points: ["Plain-language questions", "Permission-aware", "Links to records"],
+          },
+          {
+            visual: "documents",
+            eyebrow: "Reading documents",
+            title: "A scan in, a filled-in employee record out.",
+            body: "Upload a passport, visa or Emirates ID and the key fields are extracted onto the record — the same data entry that causes WPS rejections when it's re-typed by hand.",
+            points: ["AI document extraction", "Expiry alerts", "Fewer re-typing errors"],
+          },
+        ]}
         relatedTitle="Where the answers come from"
         related={[
           {

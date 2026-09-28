@@ -5,6 +5,7 @@ import {
   ChipRow,
   CtaBand,
   FaqList,
+  FeatureRow,
   type IconName,
   LinkCardGrid,
   PageHero,
@@ -13,6 +14,7 @@ import {
   StatsRow,
   TintCardGrid,
 } from "./content-blocks";
+import { ProductVisual, type VisualName } from "./product-visuals";
 
 export type SolutionPageData = {
   eyebrow: string;
@@ -34,6 +36,9 @@ export type SolutionPageData = {
   chipsTitle?: string;
   chipsLead?: string;
   chips?: readonly string[];
+  /** Alternating text/product-visual rows — referenced by name, since a
+   * component can't be passed from a server page to a client component. */
+  visuals?: readonly { visual: VisualName; eyebrow: string; title: string; body: string; points?: readonly string[] }[];
   /** Optional stat strip. */
   facts?: readonly { value: string; label: string }[];
   /** Optional related-page cards. */
@@ -63,6 +68,22 @@ export function SolutionPage(data: SolutionPageData) {
       {data.cards && data.cards.length > 0 && (
         <Section eyebrow={data.cardsEyebrow} title={data.cardsTitle} lead={data.cardsLead}>
           <TintCardGrid cards={data.cards} columns={data.cards.length === 3 ? 3 : 2} />
+        </Section>
+      )}
+
+      {data.visuals && data.visuals.length > 0 && (
+        <Section surface={!data.cards}>
+          {data.visuals.map((v, i) => (
+            <FeatureRow
+              key={v.title}
+              eyebrow={v.eyebrow}
+              title={v.title}
+              body={v.body}
+              points={v.points}
+              flip={i % 2 === 1}
+              visual={<ProductVisual name={v.visual} />}
+            />
+          ))}
         </Section>
       )}
 

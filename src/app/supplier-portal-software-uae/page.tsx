@@ -93,6 +93,15 @@ export default function SupplierPortalPage() {
             points: ["Own records only", "Separate sign-in", "No internal access"],
           },
         ]}
+        visuals={[
+          {
+            visual: "supplier",
+            eyebrow: "What a supplier sees",
+            title: "Their demands, their crews, their payments.",
+            body: "A subcontractor signs in to their own portal, quotes against your demand, submits the workers and hours, and follows the payment — without seeing anything else of yours.",
+            points: ["Own records only", "Timesheet submission", "Payment visibility"],
+          },
+        ]}
         relatedTitle="The other portals"
         related={[
           {

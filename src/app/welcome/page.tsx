@@ -18,7 +18,6 @@ import {
   TrendingDown,
   Plus,
   Receipt,
-  Sparkles,
   Users,
   Wallet,
 } from "lucide-react";
@@ -36,6 +35,7 @@ import {
 } from "./content";
 import { BookDemoButton } from "@/components/BookDemoButton";
 import { SiteHeader, SiteFooter } from "./site-chrome";
+import { ProductVisual } from "./product-visuals";
 import {
   AnimatedWords,
   CountUpInView,
@@ -426,217 +426,6 @@ function StepVisual({ index }: { index: number }) {
   );
 }
 
-const fieldVariant = {
-  hidden: { opacity: 0, y: 6 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM } },
-};
-
-function DocumentsVisual() {
-  return (
-    <m.div
-      className={`${s.diveVisual} ${s["tint-sky"]}`}
-      aria-hidden
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, amount: 0.5 }}
-    >
-      <div className={s.diveCard}>
-        <m.div
-          className={s.scan}
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0, delayChildren: 0 } } }}
-        >
-          <m.span
-            className={s.scanThumb}
-            style={{ position: "relative", overflow: "hidden" }}
-            variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3 } } }}
-          >
-            <m.span
-              className={s.scanLine}
-              variants={{
-                hidden: { y: -6, opacity: 0 },
-                show: { y: 60, opacity: [0, 1, 1, 0], transition: { duration: 0.9, ease: "easeInOut", delay: 0.15 } },
-              }}
-            />
-          </m.span>
-          <div>
-            <b>passport_scan.pdf</b>
-            <m.div
-              className={s.miniMuted}
-              style={{ fontSize: 13 }}
-              variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3, delay: 1.05 } } }}
-            >
-              <Sparkles size={13} style={{ verticalAlign: "-2px" }} /> 6 fields extracted
-            </m.div>
-          </div>
-        </m.div>
-        <m.div variants={{ hidden: {}, show: { transition: { staggerChildren: 0.12, delayChildren: 1.2 } } }}>
-          {[
-            ["Full name", "Rajesh Kumar"],
-            ["Passport no.", "Z4821••••"],
-            ["Nationality", "India"],
-            ["Visa expiry", <span key="v" className={`${s.tag} ${s.tagOrange}`}>in 28 days</span>],
-            ["Emirates ID", "784-19••-•••••••-2"],
-          ].map(([k, v], i) => (
-            <m.div key={String(k)} className={s.field} variants={fieldVariant}>
-              <span className={s.fieldLabel}>{k}</span>
-              {i === 3 ? (
-                <m.span
-                  variants={{
-                    hidden: { opacity: 0, scale: 0.85 },
-                    show: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: EASE_PREMIUM } },
-                  }}
-                >
-                  {v}
-                </m.span>
-              ) : (
-                <span>{v}</span>
-              )}
-            </m.div>
-          ))}
-        </m.div>
-      </div>
-    </m.div>
-  );
-}
-
-function CampsVisual() {
-  const rooms = [
-    [1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 0, 0],
-    [1, 1, 1, 1, 1, 1],
-    [1, 1, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1, 0],
-    [1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1, 1],
-  ];
-  return (
-    <m.div
-      className={`${s.diveVisual} ${s["tint-mint"]}`}
-      aria-hidden
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, amount: 0.5 }}
-    >
-      <div className={s.diveCard}>
-        <div className={s.stepLine}>
-          <b>Sonapur Camp · Block C</b>
-          <span className={`${s.tag} ${s.tagGreen}`}>81% occupied</span>
-        </div>
-        <div className={s.bar}>
-          <m.span
-            variants={{ hidden: { width: "0%" }, show: { width: "81%", transition: { duration: 0.9, ease: EASE_PREMIUM, delay: 0.1 } } }}
-          />
-        </div>
-        <m.div
-          className={s.rooms}
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.3 } } }}
-        >
-          {rooms.map((beds, i) => (
-            <m.div key={i} className={s.room} variants={fieldVariant}>
-              C-{101 + i}
-              <div className={s.beds}>
-                {beds.map((b, j) => (
-                  <span key={j} className={`${s.bed} ${b ? s.bedFull : ""}`} />
-                ))}
-              </div>
-            </m.div>
-          ))}
-        </m.div>
-        <m.div
-          className={s.stepLine}
-          style={{ marginTop: 16 }}
-          variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.3, delay: 1.0 } } }}
-        >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Bus size={14} />
-            Route 4 · Sonapur
-            <svg width="36" height="10" viewBox="0 0 36 10" style={{ overflow: "visible" }}>
-              <m.path
-                d="M0 5 H30"
-                stroke="var(--teal)"
-                strokeWidth="1.5"
-                variants={{ hidden: { pathLength: 0 }, show: { pathLength: 1, transition: { duration: 0.6, ease: "easeInOut", delay: 1.1 } } }}
-              />
-              <m.circle
-                cx="30"
-                cy="5"
-                r="2.5"
-                fill="var(--teal)"
-                variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { duration: 0.2, delay: 1.7 } } }}
-              />
-            </svg>
-            Al Quoz
-          </span>
-          <span className={s.miniMuted}>05:30 · 48 seats</span>
-        </m.div>
-      </div>
-    </m.div>
-  );
-}
-
-function AssistantVisual() {
-  return (
-    <m.div
-      className={`${s.diveVisual} ${s["tint-lavender"]}`}
-      aria-hidden
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, amount: 0.5 }}
-    >
-      <div className={`${s.diveCard} ${s.chat}`}>
-        <m.div
-          className={s.bubbleUser}
-          variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM } } }}
-        >
-          Which visas expire in the next 30 days?
-        </m.div>
-        <m.div
-          className={s.thinking}
-          variants={{
-            hidden: { opacity: 0 },
-            show: { opacity: [0, 1, 1, 0], transition: { duration: 0.6, delay: 0.35, times: [0, 0.2, 0.8, 1] } },
-          }}
-          aria-hidden
-        >
-          <span />
-          <span />
-          <span />
-        </m.div>
-        <m.div
-          className={s.bubbleBot}
-          variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM, delay: 0.9 } } }}
-        >
-          7 employees have visas expiring before 30 June:
-          <m.ul variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 1.25 } } }}>
-            <m.li variants={fieldVariant}>
-              <span className={s.linkish}>Rajesh Kumar</span> · 22 Jun
-            </m.li>
-            <m.li variants={fieldVariant}>
-              <span className={s.linkish}>Joseph Santos</span> · 25 Jun
-            </m.li>
-            <m.li variants={fieldVariant}>
-              <span className={s.linkish}>+5 more</span> in Documents
-            </m.li>
-          </m.ul>
-        </m.div>
-        <m.div
-          className={s.bubbleUser}
-          variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE_PREMIUM, delay: 1.75 } } }}
-        >
-          Draft renewal NOCs for them.
-        </m.div>
-      </div>
-    </m.div>
-  );
-}
-
-function DiveVisual({ kind }: { kind: "documents" | "camps" | "assistant" }) {
-  if (kind === "documents") return <DocumentsVisual />;
-  if (kind === "camps") return <CampsVisual />;
-  return <AssistantVisual />;
-}
-
 export default function WelcomePage() {
   return (
     <div id="top" className={s.page}>
@@ -818,7 +607,7 @@ export default function WelcomePage() {
                     ))}
                   </RevealGroup>
                 </Reveal>
-                <DiveVisual kind={d.visual} />
+                <ProductVisual name={d.visual} />
               </div>
             ))}
           </div>

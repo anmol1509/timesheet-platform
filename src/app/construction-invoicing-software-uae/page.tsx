@@ -70,6 +70,15 @@ export default function InvoicingSoftwarePage() {
             points: ["Supplier bills & ageing", "Expenses with approvals", "Payment tracking"],
           },
         ]}
+        visuals={[
+          {
+            visual: "invoice",
+            eyebrow: "Client invoices",
+            title: "Built from approved hours, at each client's own rate.",
+            body: "Trade rates per client and per project, applied to the hours their approver already signed off on, with VAT calculated and the total ready to send.",
+            points: ["Per-client trade rates", "VAT-ready", "Straight from approved hours"],
+          },
+        ]}
         relatedTitle="Where the hours come from"
         related={[
           {

@@ -46,6 +46,22 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
           title: d.title,
           body: d.body,
         }))}
+        visuals={[
+          {
+            visual: "timesheet",
+            eyebrow: "The daily screen",
+            title: "Hours in, approved, and on to payroll and invoices.",
+            body: "Whatever your crews do on site, the office side is the same: hours arrive, exceptions get flagged, a supervisor approves, and the same figures become payroll and the client's invoice.",
+            points: ["One approval queue", "Straight to payroll", "Straight to invoicing"],
+          },
+          {
+            visual: "documents",
+            eyebrow: "Compliance",
+            title: "Expiries surface before they become fines.",
+            body: "Visas, Emirates IDs, labour cards, medicals and any site clearance your work needs, tracked on the employee record with alerts well before the date.",
+            points: ["AI document extraction", "Expiry alerts", "Letters & NOCs"],
+          },
+        ]}
         relatedTitle="The platform behind it"
         related={[
           {

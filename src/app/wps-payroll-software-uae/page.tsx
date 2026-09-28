@@ -95,6 +95,15 @@ export default function WpsPayrollSoftwarePage() {
             points: ["Approval thresholds", "Four-eyes above the limit", "Full audit log"],
           },
         ]}
+        visuals={[
+          {
+            visual: "payroll",
+            eyebrow: "The payroll run",
+            title: "Every figure, calculated the same way each month.",
+            body: "Approved hours, each employee's pay structure, overtime multipliers and loan deductions come together into one run — reviewed before anything moves, then exported for the bank.",
+            points: ["Itemised, flat or hourly", "Overtime & rest-day premiums", "Loans & recurring items"],
+          },
+        ]}
         relatedTitle="Before and after payroll"
         related={[
           {

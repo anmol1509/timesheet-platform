@@ -70,6 +70,15 @@ export default function DemandMobilizationPage() {
             points: ["Mobilisation lists", "Site-arrival confirmation", "Demobilisation records"],
           },
         ]}
+        visuals={[
+          {
+            visual: "demand",
+            eyebrow: "One request, end to end",
+            title: "Enquiry, quote, approval, mobilisation — one record.",
+            body: "Each stage of a client's request stays attached to the same demand, so anyone can see where it stands without reconstructing it from an email thread.",
+            points: ["Enquiries & quotations", "Per-trade approval", "Site arrival & demobilisation"],
+          },
+        ]}
         relatedTitle="What happens next"
         related={[
           {

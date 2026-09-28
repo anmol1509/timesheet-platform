@@ -77,6 +77,15 @@ export default function TimesheetSoftwarePage() {
           title: `${step.n} · ${step.title}`,
           body: step.body,
         }))}
+        visuals={[
+          {
+            visual: "timesheet",
+            eyebrow: "The approval queue",
+            title: "Exceptions surface before month end, not after.",
+            body: "Overtime over threshold, missing days and rest-day work are flagged as hours arrive. Supervisors approve in one queue, and every change lands in the audit log.",
+            points: ["Overtime flagged automatically", "One approval queue", "Full audit trail"],
+          },
+        ]}
         chipsEyebrow="The module"
         chipsTitle={TIMESHEETS.title}
         chipsLead={TIMESHEETS.body}

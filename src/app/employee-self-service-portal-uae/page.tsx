@@ -92,6 +92,15 @@ export default function EmployeeSelfServicePage() {
             points: ["Own documents only", "Expiry dates", "No HR request needed"],
           },
         ]}
+        visuals={[
+          {
+            visual: "employee",
+            eyebrow: "On any phone",
+            title: "A payslip a worker can open on the bus.",
+            body: "Days worked, overtime, basic, allowances and net pay — the same figures payroll approved, in a browser, with no app to install.",
+            points: ["Payslips", "Attendance history", "Personal documents"],
+          },
+        ]}
         relatedTitle="The other portals"
         related={[
           {
