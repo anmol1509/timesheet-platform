@@ -259,6 +259,12 @@
 }
 .megaPanel {
   pointer-events: auto;
+  /* The wrapper is only as wide as the nav's middle column, so without this
+     the panel's `width` is treated as a flex basis and shrinks to fit it.
+     `flex: none` keeps the declared width; justify-content centres the
+     overflow evenly, and the wrapper is viewport-centred, so it stays on
+     screen. */
+  flex: none;
   background: var(--canvas);
   border: 1px solid var(--hairline-soft);
   border-radius: 20px;

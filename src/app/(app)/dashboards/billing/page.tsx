@@ -101,8 +101,16 @@ export default async function BillingDashboardPage() {
         <Panel title="Invoiced by client" href="/invoices/history" className="lg:col-span-2">
           <BarList
             tone="info"
-            items={byClient.map((r) => ({ key: r.clientId, label: clientName.get(r.clientId) ?? "Unknown client", value: Math.round(r._sum.totalAmount ?? 0), href: `/clients/${r.clientId}` }))}
-            format={(n) => `AED ${n.toLocaleString("en-AE")}`}
+            items={byClient.map((r) => {
+              const total = Math.round(r._sum.totalAmount ?? 0);
+              return {
+                key: r.clientId,
+                label: clientName.get(r.clientId) ?? "Unknown client",
+                value: total,
+                valueLabel: `AED ${total.toLocaleString("en-AE")}`,
+                href: `/clients/${r.clientId}`,
+              };
+            })}
             emptyLabel="No invoices yet."
           />
         </Panel>

@@ -95,8 +95,7 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
         <Panel title="Seat utilization by vehicle">
           <BarList
             showShare={false}
-            items={utilization.map((v) => ({ key: v.id, label: v.label, value: v.pct, tone: v.tone }))}
-            format={(n) => `${n}%`}
+            items={utilization.map((v) => ({ key: v.id, label: v.label, value: v.pct, valueLabel: `${v.pct}%`, tone: v.tone }))}
           />
         </Panel>
       )}

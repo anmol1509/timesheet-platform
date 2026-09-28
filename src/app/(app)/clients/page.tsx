@@ -100,8 +100,16 @@ export default async function ClientsPage() {
               .filter((r) => r.lpoValue > 0)
               .sort((a, b) => b.lpoValue - a.lpoValue)
               .slice(0, 5)
-              .map((r) => ({ key: r.id, label: r.name, value: Math.round(r.lpoValue), href: `/clients/${r.id}` }))}
-            format={(n) => `AED ${n.toLocaleString("en-AE")}`}
+              .map((r) => {
+                const value = Math.round(r.lpoValue);
+                return {
+                  key: r.id,
+                  label: r.name,
+                  value,
+                  valueLabel: `AED ${value.toLocaleString("en-AE")}`,
+                  href: `/clients/${r.id}`,
+                };
+              })}
           />
         </Panel>
       )}

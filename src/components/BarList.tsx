@@ -18,6 +18,11 @@ export type BarListItem = {
   label: React.ReactNode;
   key: string;
   value: number;
+  /** Pre-formatted display text for `value` (e.g. "AED 1,200", "84%").
+   * Formatting is done by the caller rather than by a `format` prop,
+   * because this is a client component and a function can't cross the
+   * server/client boundary — passing one throws at render time. */
+  valueLabel?: string;
   href?: string;
   /** Overrides the list-level `tone` for just this row — for severity-coded rows (e.g. occupancy level) inside an otherwise single-tone list. */
   tone?: BarListTone;
@@ -33,13 +38,11 @@ export type BarListItem = {
 export function BarList({
   items,
   emptyLabel = "No data yet.",
-  format = String,
   tone = "brand",
   showShare = true,
 }: {
   items: BarListItem[];
   emptyLabel?: string;
-  format?: (n: number) => string;
   tone?: BarListTone;
   /** Hides the "% of total" badge — turn off when `value` is already a rate/percentage rather than a count that sums to a meaningful whole (e.g. per-camp occupancy). */
   showShare?: boolean;
@@ -55,7 +58,7 @@ export function BarList({
             <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
               <span className="min-w-0 truncate text-secondary">{item.label}</span>
               <span className="tabular shrink-0 font-semibold text-primary">
-                {format(item.value)}
+                {item.valueLabel ?? String(item.value)}
                 {showShare && <span className="ml-1.5 text-xs font-normal text-subtle">{Math.round((item.value / total) * 100)}%</span>}
               </span>
             </div>

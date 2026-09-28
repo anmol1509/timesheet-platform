@@ -110,10 +110,10 @@ export default async function FacilitiesDashboardPage() {
                 key: c.id,
                 label: `${c.name} · ${c.occupied}/${c.total} beds`,
                 value: c.pct,
+                valueLabel: `${c.pct}%`,
                 tone: c.tone,
                 href: `/accommodation/camps`,
               }))}
-              format={(n) => `${n}%`}
               emptyLabel="No camps with beds yet."
             />
           </Panel>
