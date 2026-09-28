@@ -211,16 +211,150 @@
 .navLinkItem {
   position: relative;
 }
-.navLinks a {
+.navLink {
   position: relative;
   z-index: 1;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
+  font-family: inherit;
   color: var(--charcoal);
+  background: none;
+  border: 0;
+  cursor: pointer;
   transition: color var(--ease);
+}
+.navMenuRoot .navLinkActive {
+  color: var(--primary);
+  font-weight: 600;
+}
+.navChevron,
+.navChevronOpen {
+  transition: transform 200ms var(--ease-curve, ease);
+  opacity: 0.65;
+}
+.navChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ---------- Mega menu ---------- */
+.navMenuRoot {
+  position: relative;
+}
+/* The panel is centred under the nav pill via a full-width flex wrapper
+   rather than translateX(-50%): Motion drives the panel's own `transform`
+   for the open animation and would clobber a transform-based centring. */
+.megaWrap {
+  position: absolute;
+  top: calc(100% + 18px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.megaPanel {
+  pointer-events: auto;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px -24px rgba(15, 15, 15, 0.3);
+  padding: 22px;
+  text-align: left;
+}
+.megaCols {
+  display: grid;
+  gap: 8px 20px;
+}
+.megaColTitle {
+  margin: 0 0 6px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+.megaList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.megaLink {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border-radius: 10px;
+  transition: background var(--ease);
+}
+.megaLink:hover {
+  background: var(--surface);
+}
+.megaIcon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--tint-sky);
+  color: var(--primary);
+}
+.megaCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.megaLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.megaDesc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--steel);
+}
+.megaPanel .megaFoot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 10px 10px 2px;
+  border-top: 1px solid var(--hairline-soft);
+  width: 100%;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* ---------- Sign-in menu ---------- */
+.signInRoot {
+  position: relative;
+}
+.signInPanel {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  width: 272px;
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px -24px rgba(15, 15, 15, 0.3);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
 }
 .navHoverPill {
   position: absolute;
@@ -239,40 +373,125 @@
   display: none;
   margin-left: auto;
 }
-.mobileMenu summary {
-  list-style: none;
-  cursor: pointer;
+.mobileTrigger {
   width: 40px;
   height: 40px;
   display: grid;
   place-items: center;
   border-radius: 8px;
   border: 1px solid var(--hairline);
-}
-.mobileMenu summary::-webkit-details-marker {
-  display: none;
-}
-.mobilePanel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 10px);
   background: var(--canvas);
-  border: 1px solid var(--hairline-soft);
-  border-radius: 20px;
-  padding: 12px 24px 20px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ---------- Mobile sheet ---------- */
+.sheetScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 18, 26, 0.42);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+}
+.sheet {
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100dvh - 24px);
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  box-shadow: 0 20px 40px -16px rgba(15, 15, 15, 0.24);
+  background: var(--canvas);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 22px;
+  box-shadow: 0 30px 70px -20px rgba(15, 15, 15, 0.45);
+  overflow: hidden;
 }
-.mobilePanel a:not(.btn) {
-  padding: 12px 4px;
-  font-weight: 500;
+.sheetHead {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--hairline-soft);
 }
-.mobilePanel .btn {
-  margin-top: 12px;
+.sheetTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+.sheetBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 16px 16px;
+}
+.sheetGroup + .sheetGroup {
+  border-top: 1px solid var(--hairline-soft);
+}
+.sheetBody .sheetRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 2px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.sheetSub {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sheetSub a {
+  padding: 11px 2px 11px 14px;
+  font-size: 14.5px;
+  color: var(--slate);
+  border-left: 2px solid var(--hairline);
+}
+.sheetSub a:active {
+  color: var(--primary);
+}
+.sheetSub .sheetViewAll {
+  font-weight: 600;
+  color: var(--primary);
+}
+.sheetSectionLabel {
+  margin: 18px 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stone);
+  border-top: 1px solid var(--hairline-soft);
+  padding-top: 16px;
+}
+.sheetBody .sheetSignIn {
+  display: block;
+  padding: 11px 2px;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--slate);
+}
+.sheetFoot {
+  flex: none;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--hairline-soft);
+  background: var(--canvas);
+}
+.sheetFoot .btn {
+  width: 100%;
 }
 
 /* ---------- Hero ---------- */

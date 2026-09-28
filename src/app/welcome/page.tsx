@@ -27,7 +27,6 @@ import {
   DEEP_DIVES,
   FACTS,
   FAQS,
-  NAV,
   PORTALS,
   SITE,
   STEPS,
@@ -433,7 +432,7 @@ export default function WelcomePage() {
         Skip to content
       </a>
 
-      <SiteHeader links={NAV} logoHref="#top" />
+      <SiteHeader logoHref="#top" />
 
       <main id="main">
         <section className={s.hero} aria-labelledby="hero-title">

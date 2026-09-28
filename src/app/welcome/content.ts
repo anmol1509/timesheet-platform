@@ -18,14 +18,6 @@ export const demoHref = `mailto:${SITE.salesEmail}?subject=${encodeURIComponent(
 
 export type Tint = "peach" | "rose" | "mint" | "lavender" | "sky" | "yellow" | "cream" | "gray";
 
-export const NAV = [
-  { label: "Challenges", href: "#challenges" },
-  { label: "Product", href: "#product" },
-  { label: "How it works", href: "#how" },
-  { label: "Portals", href: "#portals" },
-  { label: "FAQ", href: "#faq" },
-];
-
 export const INDUSTRIES = [
   "Construction manpower",
   "MEP contracting",

@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
-import { NAV } from "@/app/welcome/content";
+import { SITE_NAV } from "@/app/welcome/nav-data";
 import { BookDemoButton } from "@/components/BookDemoButton";
 import { LoginForm } from "./login-form";
 
 // The marketing site nav, floating over the top of the login page so
 // visitors can get back to manpowersync.com. Login lives on its own
-// subdomain, so these links point at the marketing site's absolute URL
-// rather than local anchors.
+// subdomain, so these links point at the marketing site's absolute URL.
+// Top-level entries only — the mega-menu panels don't belong here.
 const MARKETING_URL = "https://manpowersync.com";
 
 function SiteNav() {
@@ -29,10 +29,10 @@ function SiteNav() {
         />
       </a>
       <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-        {NAV.map((item) => (
+        {SITE_NAV.map((item) => (
           <a
             key={item.href}
-            href={`${MARKETING_URL}/${item.href}`}
+            href={`${MARKETING_URL}${item.href}`}
             className="rounded-full px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
           >
             {item.label}
