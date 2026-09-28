@@ -3,10 +3,15 @@ import Link from "next/link";
 import { MapPin, Route, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { RouteList } from "./route-list";
 
 export default async function RoutesPage() {
+  const { branchId } = await requireUserWithBranch();
+  // A route has no branch of its own — it inherits its vehicle's.
   const routes = await prisma.route.findMany({
+    where: { vehicle: branchWhere(branchId) },
     include: { vehicle: true, project: true, stops: true },
     orderBy: { createdAt: "desc" },
   });

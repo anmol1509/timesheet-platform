@@ -30,6 +30,7 @@ export default async function CheckInPage() {
       orderBy: { name: "asc" },
     }),
     prisma.camp.findMany({
+      where: branchWhere(branchId),
       include: {
         owningSupplier: { select: { name: true } },
         rooms: { select: { beds: { select: { employeeId: true } } } },

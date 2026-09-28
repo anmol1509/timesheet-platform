@@ -1,17 +1,23 @@
 import { FilePlus2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { ManualEntryForm } from "./manual-entry-form";
 
 export default async function NewClientTimesheetEntryPage() {
+  const { branchId } = await requireUserWithBranch();
   const [suppliers, clients, projects, sites] = await Promise.all([
-    prisma.supplier.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
-    prisma.client.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.client.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({
+      where: branchWhere(branchId),
       select: { id: true, code: true, name: true },
       orderBy: { name: "asc" },
     }),
+    // Site has no branch of its own — it inherits its project's.
     prisma.site.findMany({
+      where: { project: branchWhere(branchId) },
       select: { id: true, name: true, projectId: true },
       orderBy: { name: "asc" },
     }),

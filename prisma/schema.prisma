@@ -78,6 +78,8 @@ model Branch {
   sheets               GeneratedSheet[]
   items                InventoryItem[]
   entries              TimesheetEntry[]
+  camps                Camp[]
+  vehicles             Vehicle[]
   banks                Bank[]
   lookupValues         LookupValue[]
   demandRequests       DemandRequest[]
@@ -1265,8 +1267,13 @@ model EmployeeSkill {
 
 model Camp {
   id    String @id @default(cuid())
-  name  String @unique
+  name  String
   rooms Room[]
+
+  // Branch-scoped: a camp belongs to one tenant. Room/Bed inherit this
+  // through their parent relation rather than carrying their own copy.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
 
   // Whether this camp is run by the company itself or by a manpower
   // supplier — printed as "Camp Type" on the check-in slip.
@@ -1276,6 +1283,10 @@ model Camp {
   owningSupplierId String?
 
   checkIns CampCheckIn[]
+
+  // Two tenants may each run a camp of the same name.
+  @@unique([branchId, name])
+  @@index([branchId])
 }
 
 // A worker's placement into a camp, ahead of a specific room/bed — the first
@@ -1313,7 +1324,7 @@ model CampCheckIn {
 
 model Vehicle {
   id                 String    @id @default(cuid())
-  plateNumber        String    @unique
+  plateNumber        String
   type               String? // e.g. "Bus", "Hiace Van", "Pickup"
   capacity           Int?
   driverName         String?
@@ -1327,6 +1338,13 @@ model Vehicle {
   employees Employee[]
   projects  VehicleProject[]
   routes    Route[]
+
+  // Branch-scoped: Route/RouteStop/VehicleProject inherit through `vehicle`.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
+
+  @@unique([branchId, plateNumber])
+  @@index([branchId])
 }
 
 // A named, recurring pickup route driven by a Vehicle — not branch-scoped,

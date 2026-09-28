@@ -75,13 +75,13 @@ export default async function EmployeeDetailPage({
         },
       },
     }),
-    prisma.project.findMany({ orderBy: { name: "asc" } }),
+    prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.site.findMany({
       where: { project: branchWhere(branchId) },
       select: { id: true, name: true, projectId: true },
       orderBy: { name: "asc" },
     }),
-    prisma.vehicle.findMany({ orderBy: { plateNumber: "asc" } }),
+    prisma.vehicle.findMany({ where: branchWhere(branchId), orderBy: { plateNumber: "asc" } }),
     prisma.bed.findMany({
       where: { employeeId: null },
       include: { room: { include: { camp: true } } },

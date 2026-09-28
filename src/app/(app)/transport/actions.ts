@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUser, requirePermission } from "@/lib/auth";
+import { requireUser, requirePermission, requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 
@@ -26,19 +27,25 @@ function numberOrNull(value: FormDataEntryValue | null) {
 
 export async function createVehicleAction(formData: FormData) {
   assertContactsValid(formData);
-  const user = await requireUser();
+  const { user, branchId } = await requireUserWithBranch();
   const plateNumber = String(formData.get("plateNumber") || "").trim();
   if (!plateNumber) return;
   const type = stringOrNull(formData.get("type"));
 
-  const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
+  // Scoped to the branch: checking globally would report a clash with another
+  // tenant's vehicle, which both blocks a legitimate plate and reveals that
+  // the other tenant has it.
+  const existing = await prisma.vehicle.findFirst({
+    where: { plateNumber, ...branchWhere(branchId) },
+    select: { id: true },
+  });
   if (existing) {
     redirect(
       `/transport?error=${encodeURIComponent("A vehicle with that plate number already exists.")}`
     );
   }
 
-  const vehicle = await prisma.vehicle.create({ data: { plateNumber, type } });
+  const vehicle = await prisma.vehicle.create({ data: { plateNumber, type, branchId } });
 
   await logAudit({
     entityType: "VEHICLE",

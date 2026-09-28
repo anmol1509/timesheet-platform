@@ -1,6 +1,8 @@
 import { Wrench, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { createSkillAction } from "./actions";
 import { TradeTable } from "./trade-table";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -8,16 +10,17 @@ import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
 
 export default async function SkillsPage() {
+  const { branchId } = await requireUserWithBranch();
   const [skills, totalEmployees] = await Promise.all([
     prisma.skill.findMany({
       include: { _count: { select: { employees: true } } },
       orderBy: { name: "asc" },
     }),
-    prisma.employee.count(),
+    prisma.employee.count({ where: branchWhere(branchId) }),
   ]);
 
   const [idleRows, demandRows, headcountRows] = await Promise.all([
-    prisma.employee.groupBy({ by: ["trade"], where: { status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["trade"], where: { ...branchWhere(branchId), status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
     prisma.demandRequestTrade.findMany({
       where: { demandRequest: { status: { in: ["Open", "Approved"] } } },
       select: { trade: true, quantity: true, approvedQuantity: true, _count: { select: { allocations: true } } },
@@ -27,7 +30,7 @@ export default async function SkillsPage() {
     // EmployeeSkill rows, which only exist once someone manually tags a
     // "Known Trade Detail" on a profile, so it read ~0 for almost everyone
     // despite `trade` being populated. Headcount here now matches Employees.
-    prisma.employee.groupBy({ by: ["trade"], where: { trade: { not: null } }, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["trade"], where: { ...branchWhere(branchId), trade: { not: null } }, _count: { _all: true } }),
   ]);
   const key = (t: string | null) => (t ?? "").trim().toLowerCase();
   const idleBy = new Map(idleRows.map((r) => [key(r.trade), r._count._all]));

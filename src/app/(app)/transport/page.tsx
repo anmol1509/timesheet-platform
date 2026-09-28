@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Bus, CalendarClock, Phone, Route as RouteIcon, ShieldAlert, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -29,7 +31,9 @@ function DocChip({ label, date }: { label: string; date: Date | null }) {
 
 export default async function TransportPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const { error, status: statusFilter } = await searchParams;
+  const { branchId } = await requireUserWithBranch();
   const vehicles = await prisma.vehicle.findMany({
+    where: branchWhere(branchId),
     include: {
       _count: { select: { employees: true } },
       projects: { include: { project: { select: { name: true } } } },

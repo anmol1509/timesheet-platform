@@ -27,6 +27,7 @@ export default async function CampsPage({
   const { branchId } = await requireUserWithBranch();
   const [camps, lookupValues, suppliers] = await Promise.all([
     prisma.camp.findMany({
+      where: branchWhere(branchId),
       include: {
         owningSupplier: { select: { name: true } },
         rooms: {

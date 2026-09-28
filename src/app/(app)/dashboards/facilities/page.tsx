@@ -1,5 +1,7 @@
 import { Tent } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { PageHeader } from "@/components/PageHeader";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
@@ -9,16 +11,17 @@ import { OccupancyRing } from "@/components/OccupancyRing";
 import { BarList, type BarListTone } from "@/components/BarList";
 
 export default async function FacilitiesDashboardPage() {
-  // Camp/Room/Bed/Vehicle aren't branch-scoped (deliberate, see Facilities
-  // module history), so this dashboard stays cross-branch like the main one.
+  const { branchId } = await requireUserWithBranch();
+  // Camp and Vehicle are branch-scoped; Room/Bed/Route inherit through them.
   const [beds, vehicles, camps, awaitingBed] = await Promise.all([
-    prisma.bed.findMany({ select: { employeeId: true } }),
-    prisma.vehicle.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.bed.findMany({ where: { room: { camp: branchWhere(branchId) } }, select: { employeeId: true } }),
+    prisma.vehicle.groupBy({ by: ["status"], where: branchWhere(branchId), _count: { _all: true } }),
     prisma.camp.findMany({
+      where: branchWhere(branchId),
       select: { id: true, name: true, rooms: { select: { beds: { select: { employeeId: true } } } } },
       orderBy: { name: "asc" },
     }),
-    prisma.campCheckIn.count({ where: { status: "CHECKED_IN" } }),
+    prisma.campCheckIn.count({ where: { ...branchWhere(branchId), status: "CHECKED_IN" } }),
   ]);
   const campCount = camps.length;
 

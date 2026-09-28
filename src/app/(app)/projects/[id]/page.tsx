@@ -61,7 +61,7 @@ export default async function ProjectDetailPage({
       },
     }),
     prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
-    prisma.inventoryItem.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.inventoryItem.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: true }, select: { name: true }, orderBy: { name: "asc" } }),
   ]);
   if (!project || isOutsideBranch(project.branchId, branchId, isSuperAdmin)) notFound();

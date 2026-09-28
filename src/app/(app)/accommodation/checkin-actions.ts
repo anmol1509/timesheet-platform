@@ -38,9 +38,18 @@ async function resolveExternalCamp(
   if (!party || isOutsideBranch(party.branchId, scope.branchId, scope.isSuperAdmin)) return { error: `Choose the ${campType === "SUPPLIER" ? "supplier" : "client"}.` };
   if (!name) return { error: "Enter the camp name or location." };
   const fullName = `${party.name} — ${name}`;
+  // The camp belongs to the same branch as the supplier/client that owns it.
+  // That party's branchId is always concrete, whereas scope.branchId is null
+  // for a SUPER_ADMIN viewing all branches — which would leave the camp
+  // unowned and invisible to every branch-scoped user.
   const camp = await prisma.camp.upsert({
-    where: { name: fullName },
-    create: { name: fullName, ownerType: campType, owningSupplierId: campType === "SUPPLIER" ? party.id : null },
+    where: { branchId_name: { branchId: party.branchId, name: fullName } },
+    create: {
+      name: fullName,
+      ownerType: campType,
+      owningSupplierId: campType === "SUPPLIER" ? party.id : null,
+      branchId: party.branchId,
+    },
     update: {},
   });
   return { camp };

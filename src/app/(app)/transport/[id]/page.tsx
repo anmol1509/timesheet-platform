@@ -2,6 +2,8 @@ import { Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EditVehicleForm } from "./edit-form";
@@ -26,6 +28,7 @@ export default async function VehicleDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [vehicle, allProjects, allEmployees] = await Promise.all([
     prisma.vehicle.findUnique({
       where: { id },
@@ -41,8 +44,9 @@ export default async function VehicleDetailPage({
         routes: { include: { stops: true }, orderBy: { createdAt: "desc" } },
       },
     }),
-    prisma.project.findMany({ orderBy: { name: "asc" } }),
+    prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.employee.findMany({
+      where: branchWhere(branchId),
       select: {
         id: true,
         name: true,
@@ -55,7 +59,7 @@ export default async function VehicleDetailPage({
       orderBy: { name: "asc" },
     }),
   ]);
-  if (!vehicle) notFound();
+  if (!vehicle || isOutsideBranch(vehicle.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
     <div className="max-w-3xl space-y-6">

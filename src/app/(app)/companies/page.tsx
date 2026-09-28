@@ -2,6 +2,8 @@ import { Building } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { CompanyGrid } from "./company-grid";
 import { Select } from "@/components/ui/Select";
@@ -13,7 +15,9 @@ export default async function CompaniesPage({
 }) {
   const params = await searchParams;
 
+  const { branchId } = await requireUserWithBranch();
   const monthRows = await prisma.timesheetEntry.findMany({
+    where: branchWhere(branchId),
     distinct: ["month"],
     select: { month: true },
     orderBy: { month: "desc" },
@@ -25,7 +29,7 @@ export default async function CompaniesPage({
 
   const suppliers = selectedMonth
     ? await prisma.supplier.findMany({
-        where: { entries: { some: { month: selectedMonth } } },
+        where: { ...branchWhere(branchId), entries: { some: { month: selectedMonth } } },
         include: {
           entries: {
             where: { month: selectedMonth },

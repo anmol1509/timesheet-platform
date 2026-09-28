@@ -17,7 +17,7 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
   const { branchId } = await requireUserWithBranch();
   const [templates, usage] = await Promise.all([
     prisma.letterTemplate.findMany({ where: branchWhere(branchId), orderBy: [{ category: "asc" }, { name: "asc" }] }),
-    prisma.noc.groupBy({ by: ["templateId"], _count: true }),
+    prisma.noc.groupBy({ by: ["templateId"], where: branchWhere(branchId), _count: true }),
   ]);
   const usedBy = new Map(usage.map((u) => [u.templateId, u._count]));
   const haveKeys = new Set(templates.map((t) => t.presetKey).filter(Boolean));

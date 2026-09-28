@@ -34,7 +34,7 @@ export default async function BedAllocationPage() {
 
   // Every own camp with its rooms and beds, so a placement can be made in any of them.
   const campChoices = await prisma.camp.findMany({
-    where: { ownerType: "OWN" },
+    where: { ...branchWhere(branchId), ownerType: "OWN" },
     select: { id: true, name: true, rooms: { select: { id: true, name: true, beds: { select: { id: true, label: true, employeeId: true } } }, orderBy: { name: "asc" } } },
     orderBy: { name: "asc" },
   });
