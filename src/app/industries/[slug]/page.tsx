@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
-import { SITE, demoHref } from "@/app/welcome/content";
+import { SolutionPage } from "@/app/welcome/solution-page";
+import { SITE } from "@/app/welcome/content";
+import type { IconName } from "@/app/welcome/content-blocks";
 import { INDUSTRIES_DATA } from "../industries-data";
 
 export function generateStaticParams() {
@@ -24,6 +25,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
+const POINT_ICONS: IconName[] = ["hardhat", "wps", "bed"];
+
 export default async function IndustryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const industry = INDUSTRIES_DATA.find((i) => i.slug === slug);
@@ -31,70 +34,39 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
 
   return (
     <ContentShell>
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <p className="text-xs font-semibold tracking-wide text-[var(--brand-primary,#5645d4)] uppercase">
-          For {industry.name}
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{industry.title}</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{industry.description}</p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <a
-            href={demoHref}
-            className="rounded-full bg-[var(--brand-primary,#5645d4)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-          >
-            Book a demo
-          </a>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-3xl px-5 pb-10">
-        <p className="text-center text-slate-600">{industry.intro}</p>
-      </section>
-
-      <section className="bg-slate-50 py-14">
-        <div className="mx-auto max-w-4xl px-5">
-          <h2 className="text-center text-2xl font-semibold text-slate-900">
-            Built for how {industry.name.toLowerCase()} actually staffs
-          </h2>
-          <div className="mt-8 grid gap-8 sm:grid-cols-3">
-            {industry.differentiators.map((d) => (
-              <div key={d.title}>
-                <h3 className="text-base font-semibold text-slate-900">{d.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{d.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-3xl px-5 py-14 text-center">
-        <p className="text-slate-600">
-          See the full{" "}
-          <Link href="/manpower-erp-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            manpower ERP
-          </Link>{" "}
-          this runs on, including{" "}
-          <Link href="/wps-payroll-software-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            WPS payroll
-          </Link>{" "}
-          and{" "}
-          <Link href="/timesheet-software-construction-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            timesheets
-          </Link>
-          .
-        </p>
-      </section>
-
-      <section className="py-16 text-center">
-        <h2 className="text-2xl font-semibold text-slate-900">See {SITE.name} built for {industry.name.toLowerCase()}</h2>
-        <p className="mx-auto mt-3 max-w-md text-slate-600">Bring your current workforce sheet — nothing to re-key before your first month.</p>
-        <a
-          href={demoHref}
-          className="mt-6 inline-block rounded-full bg-[var(--brand-primary,#5645d4)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Book a demo
-        </a>
-      </section>
+      <SolutionPage
+        eyebrow={`For ${industry.name}`}
+        title={industry.title}
+        lead={industry.description}
+        pointsEyebrow="Built for this industry"
+        pointsTitle={`Built for how ${industry.name.toLowerCase()} actually staffs.`}
+        pointsLead={industry.intro}
+        points={industry.differentiators.map((d, i) => ({
+          icon: POINT_ICONS[i % POINT_ICONS.length],
+          title: d.title,
+          body: d.body,
+        }))}
+        relatedTitle="The platform behind it"
+        related={[
+          {
+            href: "/manpower-erp-uae",
+            title: "Manpower ERP",
+            body: "The full platform this runs on — workforce, timesheets, payroll, billing and compliance in one system.",
+          },
+          {
+            href: "/wps-payroll-software-uae",
+            title: "WPS payroll software",
+            body: "Monthly payroll from approved hours, exported as a bank-ready WPS salary file.",
+          },
+          {
+            href: "/timesheet-software-construction-uae",
+            title: "Timesheet software",
+            body: "Excel, manual and supplier-submitted hours reconciled and approved in one queue.",
+          },
+        ]}
+        ctaTitle={`See ${SITE.name} built for ${industry.name.toLowerCase()}.`}
+        ctaLead="Bring your current workforce sheet — nothing to re-key before your first month."
+      />
     </ContentShell>
   );
 }

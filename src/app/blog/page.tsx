@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
+import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
 import { POSTS } from "./posts";
 
 const TITLE = "Blog";
@@ -12,9 +12,6 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
-  // These are root-level pages now, outside welcome/layout.tsx, so they no
-  // longer inherit its robots: { index: true } — the root layout defaults
-  // every other page to noindex, so this has to be explicit here.
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
 };
@@ -26,32 +23,25 @@ function formatDate(iso: string) {
 export default function BlogIndexPage() {
   return (
     <ContentShell>
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Blog</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{DESCRIPTION}</p>
-      </section>
+      <PageHero eyebrow="Blog" title="UAE payroll and compliance, in plain language." lead={DESCRIPTION} />
 
-      <section className="mx-auto max-w-3xl px-5 pb-16">
-        <ul className="space-y-8">
-          {POSTS.map((post) => (
-            <li key={post.slug} className="border-b border-slate-100 pb-8 last:border-0">
-              <p className="text-xs text-slate-400">{formatDate(post.date)}</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-900">
-                <Link href={`/blog/${post.slug}`} className="hover:underline">
-                  {post.title}
-                </Link>
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{post.description}</p>
-              <Link
-                href={`/blog/${post.slug}`}
-                className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary,#5645d4)] hover:underline"
-              >
-                Read more &rarr;
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Section eyebrow="Latest" title="Recent posts.">
+        <LinkCardGrid
+          cards={[...POSTS]
+            .sort((a, b) => b.date.localeCompare(a.date))
+            .map((post) => ({
+              href: `/blog/${post.slug}`,
+              title: post.title,
+              body: post.description,
+              meta: formatDate(post.date),
+            }))}
+        />
+      </Section>
+
+      <CtaBand
+        title="See it on your own numbers."
+        lead="A 30-minute call with your own timesheet workbook is all it takes."
+      />
     </ContentShell>
   );
 }

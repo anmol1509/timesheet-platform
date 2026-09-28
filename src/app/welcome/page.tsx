@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { m, useScroll, useSpring } from "motion/react";
 import {
   ArrowRight,
@@ -28,16 +28,14 @@ import {
   DEEP_DIVES,
   FACTS,
   FAQS,
-  FOOTER,
   NAV,
   PORTALS,
   SITE,
   STEPS,
   appHref,
 } from "./content";
-import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { BookDemoButton } from "@/components/BookDemoButton";
-import { MobileMenu } from "./mobile-menu";
+import { SiteHeader, SiteFooter } from "./site-chrome";
 import {
   AnimatedWords,
   CountUpInView,
@@ -47,7 +45,6 @@ import {
   Reveal,
   RevealGroup,
   RevealItem,
-  useScrolled,
 } from "./motion";
 import s from "./welcome.module.css";
 
@@ -69,41 +66,6 @@ const CHALLENGE_ICONS = {
   bed: BedDouble,
   mail: Mail,
 };
-
-function Logo() {
-  const height = 44;
-  return (
-    <a href="#top" className={s.logo} aria-label={`${SITE.name} home`}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-      <img
-        src={BRAND_LOGO}
-        alt={SITE.name}
-        height={height}
-        width={Math.round(height * BRAND_LOGO_ASPECT)}
-        // `maxHeight`/`maxWidth` (not a fixed `height`) so the browser scales
-        // both dimensions together when the nav pill is too narrow for the
-        // logo's natural width — a fixed height with only `width: auto` lets
-        // Tailwind's preflight `max-width: 100%` clip the width alone,
-        // squishing the logo on narrow phones.
-        style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: "100%" }}
-      />
-    </a>
-  );
-}
-
-// The full BRAND_LOGO wordmark renders "ManpowerSync" in dark navy, so it
-// disappears on the footer's dark background — use the colour icon mark plus
-// a plain white text wordmark instead of the flattened PNG.
-function FooterLogo() {
-  const height = 40;
-  return (
-    <span className={s.footerLogoRow}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-      <img src={BRAND_ICON} alt="" height={height} width={height} style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: height }} />
-      <span className={s.footerWordmark}>{SITE.name}</span>
-    </span>
-  );
-}
 
 const CHALLENGE_CONVERGE = [
   ["Excel", "Paper", "Photo"],
@@ -189,58 +151,6 @@ function HowItWorks() {
         ))}
       </ol>
     </div>
-  );
-}
-
-function NavLinks() {
-  const [hovered, setHovered] = useState<string | null>(null);
-  return (
-    <ul className={s.navLinks} onPointerLeave={() => setHovered(null)}>
-      {NAV.map((n) => (
-        <li key={n.href} className={s.navLinkItem}>
-          <a href={n.href} onPointerEnter={() => setHovered(n.href)}>
-            {n.label}
-          </a>
-          {hovered === n.href && (
-            <m.span
-              layoutId="nav-hover-pill"
-              className={s.navHoverPill}
-              transition={{ type: "spring", stiffness: 420, damping: 34 }}
-            />
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function Nav() {
-  const scrolled = useScrolled();
-  return (
-    <m.header
-      initial={{ opacity: 0, y: -16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: EASE_PREMIUM }}
-      className={`${s.nav} ${scrolled ? s.navScrolled : ""}`}
-    >
-      <div className={`${s.container} ${s.navInner}`}>
-        <Logo />
-        <nav aria-label="Primary" className={s.navPrimary}>
-          <NavLinks />
-        </nav>
-        <div className={s.navActions}>
-          <a href={appHref("/login")} className={`${s.btn} ${s.btnGhost}`}>
-            Sign in
-          </a>
-          <MagneticButton>
-            <BookDemoButton className={`${s.btn} ${s.btnPrimary}`}>
-              Book a demo
-            </BookDemoButton>
-          </MagneticButton>
-        </div>
-        <MobileMenu />
-      </div>
-    </m.header>
   );
 }
 
@@ -734,7 +644,7 @@ export default function WelcomePage() {
         Skip to content
       </a>
 
-      <Nav />
+      <SiteHeader links={NAV} logoHref="#top" />
 
       <main id="main">
         <section className={s.hero} aria-labelledby="hero-title">
@@ -1020,40 +930,7 @@ export default function WelcomePage() {
         </section>
       </main>
 
-      <footer className={s.footer}>
-        <div className={s.container}>
-          <Reveal as="div" className={s.footerGrid} y={16} amount={0.2}>
-            <div className={s.footerBrand}>
-              <FooterLogo />
-              <p className={s.footerAbout}>
-                Timesheets, payroll, billing and operations software for manpower suppliers in the UAE and GCC.
-              </p>
-            </div>
-            {FOOTER.map((col) => (
-              <nav key={col.title} aria-label={col.title}>
-                <p className={s.footerTitle}>{col.title}</p>
-                <ul className={s.footerList}>
-                  {col.links.map((l) => (
-                    <li key={l.label}>
-                      {l.label === "Book a demo" ? (
-                        <BookDemoButton className={s.footerDemoLink}>{l.label}</BookDemoButton>
-                      ) : (
-                        <a href={l.href}>{l.label}</a>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ))}
-          </Reveal>
-          <div className={s.footerBottom}>
-            <span>
-              © {new Date().getFullYear()} {SITE.name}. All rights reserved.
-            </span>
-            <span>Made for the people who build the region.</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

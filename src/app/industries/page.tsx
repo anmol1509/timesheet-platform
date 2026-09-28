@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
+import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
 import { SITE } from "@/app/welcome/content";
 import { INDUSTRIES_DATA } from "./industries-data";
 
@@ -19,28 +19,24 @@ export const metadata: Metadata = {
 export default function IndustriesIndexPage() {
   return (
     <ContentShell>
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Industries</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{DESCRIPTION}</p>
-      </section>
-
-      <section className="mx-auto max-w-4xl px-5 pb-16">
-        <div className="grid gap-6 sm:grid-cols-2">
-          {INDUSTRIES_DATA.map((industry) => (
-            <Link
-              key={industry.slug}
-              href={`/industries/${industry.slug}`}
-              className="rounded-2xl border border-slate-200 p-6 transition-colors hover:border-[var(--brand-primary,#5645d4)]"
-            >
-              <h2 className="text-base font-semibold text-slate-900">{industry.name}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{industry.description}</p>
-              <span className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary,#5645d4)]">
-                Learn more &rarr;
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Industries"
+        title="Built for the way your industry staffs."
+        lead={DESCRIPTION}
+      />
+      <Section eyebrow="Choose yours" title="Six industries, one platform.">
+        <LinkCardGrid
+          cards={INDUSTRIES_DATA.map((i) => ({
+            href: `/industries/${i.slug}`,
+            title: i.name,
+            body: i.description,
+          }))}
+        />
+      </Section>
+      <CtaBand
+        title="Not sure which fits?"
+        lead="Tell us how your workforce is deployed and billed, and we'll show you the parts that matter."
+      />
     </ContentShell>
   );
 }

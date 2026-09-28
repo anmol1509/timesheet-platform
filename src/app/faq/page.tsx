@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
-import { FAQS, SITE, demoHref } from "@/app/welcome/content";
+import { CtaBand, FaqList, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
+import { FAQS, SITE } from "@/app/welcome/content";
 
 const TITLE = "Frequently Asked Questions";
 const DESCRIPTION = `Common questions about ${SITE.name} — getting started, timesheets, payroll and WPS, security, and how subcontractors fit in.`;
@@ -32,39 +32,27 @@ export default function FaqPage() {
           }),
         }}
       />
+      <PageHero eyebrow="FAQ" title="Questions, answered." lead={DESCRIPTION} />
 
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{TITLE}</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{DESCRIPTION}</p>
-      </section>
+      <Section>
+        <FaqList items={FAQS} />
+      </Section>
 
-      <section className="mx-auto max-w-2xl px-5 pb-16">
-        <div className="space-y-8">
-          {FAQS.map((f) => (
-            <div key={f.q} className="border-b border-slate-100 pb-8 last:border-0">
-              <h2 className="text-base font-semibold text-slate-900">{f.q}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <Section surface eyebrow="Still looking" title="Try these instead.">
+        <LinkCardGrid
+          columns={3}
+          cards={[
+            { href: "/guides", title: "Guides", body: "Step-by-step help importing your workforce, running payroll and setting up roles and permissions." },
+            { href: "/blog", title: "Blog", body: "UAE payroll and compliance reading — WPS rejections, gratuity, overtime rules and expiry tracking." },
+            { href: "/pricing", title: "Pricing", body: "How pricing works, what's included, and how to get a quote for your own workforce." },
+          ]}
+        />
+      </Section>
 
-      <section className="bg-slate-50 py-16 text-center">
-        <h2 className="text-2xl font-semibold text-slate-900">Still have a question?</h2>
-        <p className="mx-auto mt-3 max-w-md text-slate-600">
-          See the{" "}
-          <Link href="/guides" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            guides
-          </Link>{" "}
-          for step-by-step help, or talk to us directly.
-        </p>
-        <a
-          href={demoHref}
-          className="mt-6 inline-block rounded-full bg-[var(--brand-primary,#5645d4)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Book a demo
-        </a>
-      </section>
+      <CtaBand
+        title="Still have a question?"
+        lead="A 30-minute call answers more than a page of FAQs ever will."
+      />
     </ContentShell>
   );
 }

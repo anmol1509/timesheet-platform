@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
-import { PORTALS, FAQS, SITE, demoHref } from "@/app/welcome/content";
+import { SolutionPage } from "@/app/welcome/solution-page";
+import { PORTALS, FAQS, SITE } from "@/app/welcome/content";
 
 const TITLE = "Subcontractor & Supplier Portal Software for UAE Manpower Suppliers";
 const DESCRIPTION =
@@ -19,30 +19,12 @@ export const metadata: Metadata = {
     "subcontractor timesheet portal",
   ],
   alternates: { canonical: URL },
-  // These are root-level pages now, outside welcome/layout.tsx, so they no
-  // longer inherit its robots: { index: true } — the root layout defaults
-  // every other page to noindex, so this has to be explicit here.
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
 };
 
 const SUPPLIER_PORTAL = PORTALS.find((p) => p.title === "Supplier portal")!;
 const FAQ_SLICE = FAQS.filter((f) => f.q === "How do subcontractors fit in?");
-
-const DIFFERENTIATORS = [
-  {
-    title: "Subcontractors submit workers and timesheets themselves",
-    body: "Instead of a spreadsheet emailed back and forth, a subcontractor logs into their own portal to submit the crew and hours against a demand — the same record your own team approves from.",
-  },
-  {
-    title: "A demand, its quote and its workers, in one thread",
-    body: "A request for a trade goes out, the subcontractor quotes and proposes workers against it, and the whole exchange stays attached to that one demand instead of scattered across emails.",
-  },
-  {
-    title: "Payment status they can check themselves",
-    body: "A subcontractor can see what's been approved and what's been paid without a phone call to your finance team — fewer \"any update on our payment?\" messages for everyone.",
-  },
-];
 
 export default function SupplierPortalPage() {
   return (
@@ -61,84 +43,73 @@ export default function SupplierPortalPage() {
           }),
         }}
       />
-
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{TITLE}</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{DESCRIPTION}</p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <a
-            href={demoHref}
-            className="rounded-full bg-[var(--brand-primary,#5645d4)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-          >
-            Book a demo
-          </a>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-4xl px-5 py-10">
-        <h2 className="text-center text-2xl font-semibold text-slate-900">
-          Subcontractor crews, off email and into one system
-        </h2>
-        <div className="mt-8 grid gap-8 sm:grid-cols-3">
-          {DIFFERENTIATORS.map((d) => (
-            <div key={d.title}>
-              <h3 className="text-base font-semibold text-slate-900">{d.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{d.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-slate-50 py-14">
-        <div className="mx-auto max-w-3xl px-5">
-          <h2 className="text-center text-2xl font-semibold text-slate-900">{SUPPLIER_PORTAL.title}</h2>
-          <p className="mx-auto mt-3 max-w-xl text-center text-slate-600">{SUPPLIER_PORTAL.body}</p>
-          <ul className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2">
-            {SUPPLIER_PORTAL.points.map((p) => (
-              <li key={p} className="rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm">
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-3xl px-5 py-10 text-center">
-        <p className="text-slate-600">
-          The supplier portal is one of three portals in {SITE.name} — see the full{" "}
-          <Link href="/manpower-erp-uae" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            manpower ERP
-          </Link>
-          .
-        </p>
-      </section>
-
-      {FAQ_SLICE.length > 0 && (
-        <section className="bg-slate-50 py-14">
-          <div className="mx-auto max-w-3xl px-5">
-            <h2 className="text-center text-2xl font-semibold text-slate-900">Common questions</h2>
-            <div className="mt-8 space-y-6">
-              {FAQ_SLICE.map((f) => (
-                <div key={f.q}>
-                  <h3 className="text-base font-semibold text-slate-900">{f.q}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{f.a}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="mx-auto max-w-3xl px-5 py-16 text-center">
-        <h2 className="text-2xl font-semibold text-slate-900">Bring your subcontractors onto {SITE.name}</h2>
-        <p className="mt-3 text-slate-600">Invite a supplier and they can submit their first crew the same day.</p>
-        <a
-          href={demoHref}
-          className="mt-6 inline-block rounded-full bg-[var(--brand-primary,#5645d4)] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Book a demo
-        </a>
-      </section>
+      <SolutionPage
+        eyebrow="Supplier portal"
+        title="Subcontractor crews, off email and into one system."
+        lead={DESCRIPTION}
+        note="Suppliers see their own demands and payments — nothing of yours"
+        pointsEyebrow="How it works for them"
+        pointsTitle="Your subcontractors, working from the same records as you."
+        points={[
+          {
+            icon: "users",
+            title: "Subcontractors submit workers and timesheets themselves",
+            body: "Instead of a spreadsheet emailed back and forth, a subcontractor logs into their own portal to submit the crew and hours against a demand — the same record your own team approves from.",
+          },
+          {
+            icon: "send",
+            title: "A demand, its quote and its workers, in one thread",
+            body: "A request for a trade goes out, the subcontractor quotes and proposes workers against it, and the whole exchange stays attached to that one demand instead of scattered across emails.",
+          },
+          {
+            icon: "wallet",
+            title: "Payment status they can check themselves",
+            body: "A subcontractor can see what's been approved and what's been paid without a phone call to your finance team — fewer “any update on our payment?” messages for everyone.",
+          },
+        ]}
+        cardsEyebrow="The portal"
+        cardsTitle={SUPPLIER_PORTAL.title}
+        cardsLead={SUPPLIER_PORTAL.body}
+        cards={[
+          {
+            tint: "yellow",
+            icon: "send",
+            title: "Demands & workers",
+            body: "Suppliers receive your demand for a trade, quote against it, and propose the specific workers they'd send.",
+            points: ["Demand notifications", "Quotes per trade line", "Worker submissions"],
+          },
+          {
+            tint: "peach",
+            icon: "clock",
+            title: "Timesheets & payments",
+            body: "Their crews' hours are submitted into the same approval queue, and payment status is visible to them without asking.",
+            points: ["Timesheet submission", "Approval visibility", "Payment tracking"],
+          },
+          {
+            tint: "gray",
+            icon: "lock",
+            title: "Walled off from your data",
+            body: "A supplier sees only their own demands, workers and payments — never your clients, margins or other suppliers.",
+            points: ["Own records only", "Separate sign-in", "No internal access"],
+          },
+        ]}
+        relatedTitle="The other portals"
+        related={[
+          {
+            href: "/employee-self-service-portal-uae",
+            title: "Employee portal",
+            body: "Payslips, attendance and documents for every worker, from any phone browser.",
+          },
+          {
+            href: "/manpower-erp-uae",
+            title: "Manpower ERP",
+            body: "The staff workspace the supplier portal feeds into — approvals, payroll and billing.",
+          },
+        ]}
+        faqs={FAQ_SLICE}
+        ctaTitle={`Bring your subcontractors onto ${SITE.name}.`}
+        ctaLead="Invite a supplier and they can submit their first crew the same day."
+      />
     </ContentShell>
   );
 }

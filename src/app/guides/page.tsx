@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
+import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
 import { SITE } from "@/app/welcome/content";
 import { GUIDES } from "./guides-data";
 
@@ -19,31 +19,33 @@ export const metadata: Metadata = {
 export default function GuidesIndexPage() {
   return (
     <ContentShell>
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Guides</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{DESCRIPTION}</p>
-      </section>
+      <PageHero eyebrow="Guides" title="How to run it, step by step." lead={DESCRIPTION} />
 
-      <section className="mx-auto max-w-3xl px-5 pb-16">
-        <ul className="space-y-8">
-          {GUIDES.map((guide) => (
-            <li key={guide.slug} className="border-b border-slate-100 pb-8 last:border-0">
-              <h2 className="text-xl font-semibold text-slate-900">
-                <Link href={`/guides/${guide.slug}`} className="hover:underline">
-                  {guide.title}
-                </Link>
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{guide.description}</p>
-              <Link
-                href={`/guides/${guide.slug}`}
-                className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary,#5645d4)] hover:underline"
-              >
-                Read more &rarr;
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Section eyebrow="Getting started" title="Start here.">
+        <LinkCardGrid
+          cards={GUIDES.map((g) => ({
+            href: `/guides/${g.slug}`,
+            title: g.title,
+            body: g.description,
+          }))}
+        />
+      </Section>
+
+      <Section surface eyebrow="Also useful" title="Reading, rather than how-to.">
+        <LinkCardGrid
+          columns={3}
+          cards={[
+            { href: "/blog", title: "Blog", body: "UAE payroll and compliance reading — WPS rejections, gratuity, overtime rules and expiry tracking." },
+            { href: "/faq", title: "FAQ", body: "The short answers: getting started, timesheets, payroll and WPS, security, subcontractors." },
+            { href: "/features", title: "Features", body: "Every module in one place, from timesheets through to letters, NOCs and the audit trail." },
+          ]}
+        />
+      </Section>
+
+      <CtaBand
+        title="Rather be walked through it?"
+        lead="A 30-minute call with your own timesheet workbook beats any guide."
+      />
     </ContentShell>
   );
 }

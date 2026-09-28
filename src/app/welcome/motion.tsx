@@ -38,7 +38,7 @@ export const STAGGER = 0.08;
 // Reveal — the single workhorse for "this appeared because you scrolled to
 // it". Fade + rise, optional subtle blur for hero-grade moments only.
 // ---------------------------------------------------------------------------
-type Tag = "div" | "li" | "span" | "p" | "ul" | "h2" | "h3" | "article" | "dl";
+type Tag = "div" | "li" | "span" | "p" | "ul" | "h1" | "h2" | "h3" | "article" | "dl";
 
 export function Reveal({
   children,
@@ -48,6 +48,7 @@ export function Reveal({
   duration = DURATION,
   amount = 0.2,
   className,
+  style,
   as: As = "div",
 }: {
   children: React.ReactNode;
@@ -57,6 +58,7 @@ export function Reveal({
   duration?: number;
   amount?: number;
   className?: string;
+  style?: React.CSSProperties;
   as?: Tag;
 }) {
   const Comp = m[As] as typeof m.div;
@@ -67,6 +69,7 @@ export function Reveal({
       viewport={{ once: true, amount }}
       transition={{ duration, delay, ease: EASE_PREMIUM }}
       className={className}
+      style={style}
     >
       {children}
     </Comp>
@@ -110,11 +113,13 @@ export function RevealGroup({
 export function RevealItem({
   children,
   className,
+  style,
   y = 18,
   as = "div",
 }: {
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   y?: number;
   as?: Tag;
 }) {
@@ -126,6 +131,7 @@ export function RevealItem({
         show: { opacity: 1, y: 0, transition: { duration: DURATION, ease: EASE_PREMIUM } },
       }}
       className={className}
+      style={style}
     >
       {children}
     </Comp>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ContentShell } from "@/app/welcome/content-shell";
-import { SITE } from "@/app/welcome/content";
+import { CtaBand, LinkCardGrid, PageHero, Section, StatsRow } from "@/app/welcome/content-blocks";
+import { FACTS, SITE } from "@/app/welcome/content";
 import { SOLUTIONS_DATA } from "./solutions-data";
 
 const TITLE = "Solutions";
@@ -19,38 +19,49 @@ export const metadata: Metadata = {
 export default function SolutionsIndexPage() {
   return (
     <ContentShell>
-      <section className="mx-auto max-w-3xl px-5 pt-14 pb-10 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Solutions</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">{DESCRIPTION}</p>
-      </section>
+      <PageHero eyebrow="Solutions" title="One platform, explored piece by piece." lead={DESCRIPTION} />
 
-      <section className="mx-auto max-w-4xl px-5 pb-10">
-        <div className="grid gap-6 sm:grid-cols-2">
-          {SOLUTIONS_DATA.map((solution) => (
-            <Link
-              key={solution.slug}
-              href={`/${solution.slug}`}
-              className="rounded-2xl border border-slate-200 p-6 transition-colors hover:border-[var(--brand-primary,#5645d4)]"
-            >
-              <h2 className="text-base font-semibold text-slate-900">{solution.label}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">{solution.description}</p>
-              <span className="mt-3 inline-block text-sm font-medium text-[var(--brand-primary,#5645d4)]">
-                Learn more &rarr;
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <Section eyebrow="The platform" title="Nine parts, one set of records.">
+        <LinkCardGrid
+          cards={SOLUTIONS_DATA.map((s) => ({
+            href: `/${s.slug}`,
+            title: s.label,
+            body: s.description,
+          }))}
+        />
+      </Section>
 
-      <section className="mx-auto max-w-3xl px-5 pb-16 text-center">
-        <p className="text-slate-600">
-          Looking for a specific industry instead?{" "}
-          <Link href="/industries" className="font-medium text-[var(--brand-primary,#5645d4)] hover:underline">
-            Browse by industry
-          </Link>
-          .
-        </p>
-      </section>
+      <Section surface flush={false}>
+        <StatsRow facts={FACTS} />
+      </Section>
+
+      <Section eyebrow="By industry" title="Or start from your industry instead.">
+        <LinkCardGrid
+          columns={3}
+          cards={[
+            {
+              href: "/industries",
+              title: "Browse industries",
+              body: "Construction, MEP, facilities management, cleaning & hospitality, oil & gas and security services.",
+            },
+            {
+              href: "/features",
+              title: "All features",
+              body: "The full module list in one place, from timesheets through to letters, NOCs and the audit trail.",
+            },
+            {
+              href: "/pricing",
+              title: "Pricing",
+              body: "How pricing works, what's included, and how to get a quote for your own workforce.",
+            },
+          ]}
+        />
+      </Section>
+
+      <CtaBand
+        title="See the whole thing running."
+        lead="A 30-minute call with your own timesheet workbook is all it takes."
+      />
     </ContentShell>
   );
 }
