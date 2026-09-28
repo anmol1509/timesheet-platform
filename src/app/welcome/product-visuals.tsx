@@ -369,6 +369,7 @@ export function EmployeePhoneVisual() {
       <m.div
         style={{
           width: 240,
+          maxWidth: "100%",
           margin: "0 auto",
           background: "var(--canvas)",
           border: "1px solid var(--hairline)",
@@ -479,7 +480,7 @@ export function PermissionsVisual() {
           <b>Access role · Site Supervisor</b>
           <span className={`${s.tag} ${s.tagGreen}`}>Saved</span>
         </div>
-        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr repeat(4, 44px)", gap: "6px 4px", fontSize: 12 }}>
+        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "minmax(58px, 1fr) repeat(4, minmax(26px, 44px))", gap: "6px 4px", fontSize: 12 }}>
           <span />
           {actions.map((a) => (
             <span key={a} className={s.miniMuted} style={{ textAlign: "center", fontSize: 11 }}>
