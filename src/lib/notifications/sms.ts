@@ -1,5 +1,5 @@
 /**
- * SMS via Twilio's REST API (no SDK), config-gated like the WhatsApp and email
+ * SMS via Twilio's REST API (no SDK), config-gated like the email
  * senders. Needs TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and either
  * TWILIO_SMS_FROM (a Twilio number / alphanumeric sender ID) or
  * TWILIO_MESSAGING_SERVICE_SID.

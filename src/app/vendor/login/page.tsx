@@ -7,8 +7,7 @@ export const metadata = { title: "Supplier sign in" };
 
 export default async function VendorLoginPage() {
   if (await getVendor()) redirect("/vendor");
-  const whatsappConfigured = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_WHATSAPP_FROM);
-  const deliveryConfigured = isSmsConfigured() || whatsappConfigured || process.env.NODE_ENV !== "production";
+  const deliveryConfigured = isSmsConfigured() || process.env.NODE_ENV !== "production";
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas p-4">
       <div className="card w-full max-w-sm space-y-6 p-6 sm:p-8">

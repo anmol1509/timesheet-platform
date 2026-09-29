@@ -126,7 +126,7 @@ export const DEEP_DIVES: {
     eyebrow: "Documents & compliance",
     title: "Passports, visas and Emirates IDs, read for you.",
     body: "Upload a scan and the key fields are extracted into the employee record. Expiry dates surface long before they become a fine, and letters and NOCs generate from your own templates in one click.",
-    points: ["AI document extraction", "Expiry alerts", "Letter & NOC templates", "WhatsApp notifications"],
+    points: ["AI document extraction", "Expiry alerts", "Letter & NOC templates", "Email notifications"],
     visual: "documents",
   },
   {

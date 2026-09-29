@@ -94,7 +94,7 @@ export default async function ProfilePage() {
 
           <section className="card p-5">
             <h2 className="mb-3 text-sm font-semibold text-primary">Notifications</h2>
-            <NotificationPrefsForm notifyEmail={user.notifyEmail} notifyWhatsapp={user.notifyWhatsapp} whatsappNumber={user.whatsappNumber ?? ""} />
+            <NotificationPrefsForm notifyEmail={user.notifyEmail} />
           </section>
 
           <section className="card p-5">

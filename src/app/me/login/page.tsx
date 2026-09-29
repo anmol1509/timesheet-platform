@@ -7,10 +7,9 @@ export const metadata = { title: "Employee sign in" };
 
 export default async function EssLoginPage() {
   if (await getEssEmployee()) redirect("/me");
-  const whatsappConfigured = Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_WHATSAPP_FROM);
   // In development a code is printed to the server log, so the form is usable
   // without a provider; in production it genuinely needs one.
-  const deliveryConfigured = isSmsConfigured() || whatsappConfigured || process.env.NODE_ENV !== "production";
+  const deliveryConfigured = isSmsConfigured() || process.env.NODE_ENV !== "production";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas p-4">

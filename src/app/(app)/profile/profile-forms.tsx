@@ -75,12 +75,8 @@ export function PasswordForm() {
 
 export function NotificationPrefsForm({
   notifyEmail,
-  notifyWhatsapp,
-  whatsappNumber,
 }: {
   notifyEmail: boolean;
-  notifyWhatsapp: boolean;
-  whatsappNumber: string;
 }) {
   const [state, action, pending] = useActionState(saveNotificationPrefsAction, INITIAL);
   return (
@@ -89,10 +85,6 @@ export function NotificationPrefsForm({
       <label className="flex items-center gap-2 text-sm text-secondary">
         <input type="checkbox" name="notifyEmail" defaultChecked={notifyEmail} /> Email me
       </label>
-      <label className="flex items-center gap-2 text-sm text-secondary">
-        <input type="checkbox" name="notifyWhatsapp" defaultChecked={notifyWhatsapp} /> WhatsApp me
-      </label>
-      <PhoneField name="whatsappNumber" defaultValue={whatsappNumber} />
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
         <Message state={state} success="Saved." />
