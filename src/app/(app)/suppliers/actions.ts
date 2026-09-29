@@ -331,7 +331,16 @@ export async function updateSupplierApprovalAction(formData: FormData) {
   revalidatePath(`/suppliers/${id}`);
 }
 
-type ImportResult = { row: number; status: "created" | "updated" | "skipped" | "error"; message?: string };
+const nRows = (n: number) => `${n} row${n === 1 ? "" : "s"}`;
+
+type ImportNote = { tone: "warn" | "info"; title: string; detail?: string };
+type ImportResult = {
+  row: number;
+  name?: string;
+  status: "created" | "updated" | "skipped" | "error";
+  message?: string;
+  notes?: ImportNote[];
+};
 
 /** Import suppliers (and their parent companies) from spreadsheet rows.
  *
@@ -358,7 +367,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
     votes: Map<string, { name: string; n: number }>; // "" = primary
     parentKey: string;
     parentName: string;
-    conflict: string | null;
+    conflict: ImportNote | null;
   };
   const groups = new Map<string, Group>();
   const order: Group[] = [];
@@ -411,8 +420,16 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
       g.parentName = best[1].name;
     }
     if (g.votes.size > 1) {
-      const list = [...g.votes.values()].map((v) => `${v.name || "primary"} ×${v.n}`).join(", ");
-      g.conflict = `Listed under several parents (${list}); ${g.parentKey ? `used ${g.parentName}` : "kept as a primary supplier"}.`;
+      const ranked = [...g.votes.values()].sort((x, y) => y.n - x.n);
+      const winner = g.parentKey ? g.votes.get(g.parentKey)! : g.votes.get("")!;
+      const others = ranked
+        .filter((v) => v !== winner)
+        .map((v) => (v.name ? `under ${v.name} (${nRows(v.n)})` : `as a primary supplier (${nRows(v.n)})`));
+      g.conflict = {
+        tone: "warn",
+        title: "Listed under more than one parent",
+        detail: `${g.parentKey ? `Placed under ${g.parentName}` : "Kept as a primary supplier"} (${nRows(winner.n)}). Also listed ${others.join(" and ")}. Change it on the supplier's page if that's wrong.`,
+      };
     }
   }
 
@@ -427,10 +444,10 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
 
   // A near-match is not merged — it may be a different company — but it is
   // flagged, so an accidental variant ("... Services" / "... Services Est.") is seen.
-  const similarTo = (key: string, exceptId?: string) => {
+  const similarTo = (key: string, ...exceptIds: (string | undefined)[]) => {
     if (key.length < 8) return null;
     for (const [k, x] of byKey) {
-      if (k === key || x.id === exceptId || k.length < 8) continue;
+      if (k === key || exceptIds.includes(x.id) || k.length < 8) continue;
       if (k.includes(key) || key.includes(k)) return x.name;
     }
     return null;
@@ -444,8 +461,8 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
 
   for (const g of sorted) {
     const row = g.firstRow;
-    const notes: string[] = g.conflict ? [g.conflict] : [];
-    const fail = (message: string) => results.push({ row, status: "error", message });
+    const notes: ImportNote[] = g.conflict ? [g.conflict] : [];
+    const fail = (message: string) => results.push({ row, name: g.name, status: "error", message });
     try {
       const existing = byKey.get(g.key);
       const data: Record<string, string> = { ...g.fields };
@@ -477,9 +494,9 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
           byKey.set(g.parentKey, parent);
           codeOwner.set(code, parent.id);
           await audit(parent.id, "CREATE", undefined, { name: g.parentName, code, branchId });
-          notes.push(`Created primary supplier "${g.parentName}" (it wasn't in the list).`);
+          notes.push({ tone: "info", title: `Added parent "${g.parentName}"`, detail: "It wasn't in your list, so it was created as a primary supplier." });
           const near = similarTo(g.parentKey, parent.id);
-          if (near) notes.push(`"${g.parentName}" looks similar to existing "${near}" but was added separately.`);
+          if (near) notes.push({ tone: "warn", title: `"${g.parentName}" looks similar to "${near}"`, detail: "Added separately. Merge them if they're the same company." });
         } else if (parent.parentSupplierId) {
           // A supplier that has no subsidiaries of its own is free to become a
           // parent: the file puts others under it, so it is made primary. (The
@@ -489,7 +506,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
           kids.set(parent.parentSupplierId, (kids.get(parent.parentSupplierId) ?? 1) - 1);
           await audit(parent.id, "UPDATE", { parentSupplierId: parent.parentSupplierId }, { parentSupplierId: null });
           parent.parentSupplierId = null;
-          notes.push(`"${parent.name}" was a subsidiary of ${was}; made a primary supplier because others are listed under it.`);
+          notes.push({ tone: "info", title: `"${parent.name}" made a primary supplier`, detail: `It was a subsidiary of ${was}, but others are listed under it.` });
         }
         parentId = parent.id;
       }
@@ -511,7 +528,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
           Object.assign(existing, update);
           await audit(existing.id, "UPDATE", before, update);
         }
-        results.push({ row, status: "updated", message: notes.join(" ") || undefined });
+        results.push({ row, name: g.name, status: "updated", notes });
       } else {
         const code = data.code ?? pickCode(g.name, taken());
         const create = { name: g.name, ...data, code, ...(parentId ? { parentSupplierId: parentId } : {}), branchId };
@@ -520,9 +537,9 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
         codeOwner.set(code, created.id);
         if (parentId) kids.set(parentId, (kids.get(parentId) ?? 0) + 1);
         await audit(created.id, "CREATE", undefined, create);
-        const near = similarTo(g.key, created.id);
-        if (near) notes.push(`Looks similar to existing "${near}" but was added separately.`);
-        results.push({ row, status: "created", message: notes.join(" ") || undefined });
+        const near = similarTo(g.key, created.id, parentId);
+        if (near) notes.push({ tone: "warn", title: `Looks similar to "${near}"`, detail: "Added separately. Merge them if they're the same company." });
+        results.push({ row, name: g.name, status: "created", notes });
       }
     } catch (e) {
       fail(e instanceof Error ? e.message : "Failed to import row.");
