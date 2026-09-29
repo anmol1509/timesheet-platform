@@ -344,7 +344,7 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
 /**
  * Removes an attendance mark entirely, for the case where a day was recorded
  * against the wrong employee — setting a status can't express "this shouldn't
- * exist". Locked days stay put unless a super admin does it, matching the
+ * exist". Locked days stay put unless an admin does it, matching the
  * edit rule in markAttendanceAction.
  */
 export async function deleteAttendanceAction(
