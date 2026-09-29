@@ -18,9 +18,9 @@ export type BatchUser = { id: string; name: string };
 export type { Analysis, BatchSummary, StoredMapping } from "./wire";
 import type { Analysis, BatchSummary, StoredMapping } from "./wire";
 
-export async function createBatch(a: { kind: ImportKind; filename: string; buffer: Buffer; branchId: string; userId: string }) {
+export async function createBatch(a: { kind: ImportKind; filename: string; buffer: Buffer; branchId: string; userId: string; options?: Record<string, unknown> }) {
   return prisma.importBatch.create({
-    data: { kind: a.kind, filename: a.filename, fileData: new Uint8Array(a.buffer), branchId: a.branchId, createdById: a.userId },
+    data: { kind: a.kind, filename: a.filename, fileData: new Uint8Array(a.buffer), branchId: a.branchId, createdById: a.userId, options: a.options ? JSON.stringify(a.options) : null },
     select: { id: true },
   });
 }

@@ -20,6 +20,8 @@ import { DashboardTabs } from "@/components/DashboardTabs";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { CustomizeDashboardButton } from "./customize-dashboard";
 import { CalendarDays, UserPlus, Upload as UploadIcon } from "lucide-react";
+import { GetStarted } from "@/components/GetStarted";
+import { isAdminRole } from "@/lib/roles";
 
 function greeting() {
   const hour = Number(
@@ -227,6 +229,8 @@ export default async function DashboardPage() {
           </>
         }
       />
+
+      {branchId && isAdminRole(user.role) && <GetStarted branchId={branchId} compact />}
 
       <DashboardTabs />
 

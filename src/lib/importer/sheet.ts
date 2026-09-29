@@ -80,7 +80,10 @@ function uniqueHeaders(row: string[]): string[] {
 
 export async function describeSheets(wb: ExcelJS.Workbook, fields: FieldDef[]): Promise<SheetInfo[]> {
   const out: SheetInfo[] = [];
-  for (const ws of wb.worksheets) {
+  // A template's Example and Notes sheets are for reading, not importing (unless they are all there is).
+  const helper = /^(example|examples|notes|instructions|lists)$/i;
+  const real = wb.worksheets.filter((w) => !helper.test(w.name));
+  for (const ws of real.length ? real : wb.worksheets) {
     if (ws.state !== "visible" || ws.rowCount === 0) continue;
     const grid = gridOf(ws);
     const headerRow = detectHeaderRow(grid, fields);

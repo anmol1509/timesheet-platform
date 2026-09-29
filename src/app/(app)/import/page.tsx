@@ -9,6 +9,9 @@ import { isAdminRole } from "@/lib/roles";
 import { TARGETS } from "@/lib/importer/targets";
 import type { ImportKind } from "@/lib/importer/types";
 import { UndoImportButton } from "./undo-button";
+import { GetStarted } from "@/components/GetStarted";
+import { sampleState } from "@/lib/importer/sample";
+import { SampleCard } from "./sample-card";
 
 const CARDS: { kind: ImportKind; icon: LucideIcon; blurb: string; hint: string }[] = [
   { kind: "TIMESHEETS", icon: CalendarClock, blurb: "Your monthly timesheet workbook. Suppliers, sponsors, clients, workers, hours and attendance are all read from it.", hint: "Best place to start if a spreadsheet is what you use today" },
@@ -39,6 +42,8 @@ export default async function ImportHubPage() {
       })
     : [];
 
+  const sample = branchId ? await sampleState(branchId) : { loaded: false };
+
   return (
     <div className="max-w-5xl space-y-8">
       <PageHeader
@@ -50,6 +55,8 @@ export default async function ImportHubPage() {
           You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the switcher (top right) before importing.
         </p>
       )}
+
+      {branchId && <GetStarted branchId={branchId} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {CARDS.map((c) => (
@@ -65,6 +72,8 @@ export default async function ImportHubPage() {
           </Link>
         ))}
       </div>
+
+      {branchId && <SampleCard loaded={sample.loaded} />}
 
       <section>
         <h2 className="text-sm font-semibold text-primary">Recent imports</h2>

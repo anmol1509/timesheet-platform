@@ -190,6 +190,9 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           <button type="button" disabled={busy} onClick={() => dropRef.current?.click()} className="btn btn-primary">
             Choose a file
           </button>
+          <a href={`/api/import/template/${kind.toLowerCase()}`} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
+            Download a blank {target.label.toLowerCase()} template
+          </a>
         </div>
       )}
 
