@@ -342,16 +342,21 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       const categoryRaw = (r["Category"] || "").trim().toLowerCase();
       const category: "STAFF" | "SITE_STAFF" | undefined =
         categoryRaw === "staff" ? "STAFF" : categoryRaw === "site staff" ? "SITE_STAFF" : undefined;
+      // A blank cell leaves the saved value alone; it never clears it. (The
+      // trade/department pairing only applies when the file says which
+      // category the row is.)
+      const cell = (label: string) => stringOrNull(r[label] ?? null) ?? undefined;
       const data = {
         name,
-        category,
-        trade: category === "STAFF" ? null : stringOrNull(r["Trade"] ?? null),
-        department: category === "STAFF" ? stringOrNull(r["Department"] ?? null) : null,
-        nationality: stringOrNull(r["Nationality"] ?? null),
-        position: stringOrNull(r["Position"] ?? null),
-        passportNumber: stringOrNull(r["Passport number"] ?? null),
-        emiratesId: stringOrNull(r["Emirates ID"] ?? null),
-        mobileNumber: stringOrNull(r["Mobile number"] ?? null),
+        ...(category ? { category } : {}),
+        ...(category === "STAFF"
+          ? { trade: null, department: cell("Department") }
+          : { trade: cell("Trade"), ...(category === "SITE_STAFF" ? { department: null } : { department: cell("Department") }) }),
+        nationality: cell("Nationality"),
+        position: cell("Position"),
+        passportNumber: cell("Passport number"),
+        emiratesId: cell("Emirates ID"),
+        mobileNumber: cell("Mobile number"),
       };
       if (existing) {
         await prisma.employee.update({ where: { id: existing.id }, data });

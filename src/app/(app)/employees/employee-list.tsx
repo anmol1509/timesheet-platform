@@ -32,6 +32,7 @@ type EmployeeRow = {
   emiratesId: string | null;
   nationality: string | null;
   companyDisplayName: string | null;
+  companyCode: string | null;
   isOwnCompanySupplier: boolean;
   onWork: boolean;
   status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
@@ -94,14 +95,14 @@ const STATUS_BADGE: Record<
 };
 
 const IMPORT_COLUMNS = [
-  { key: "employeeIdNo", label: "Employee ID No", required: true },
-  { key: "name", label: "Full name", required: true },
+  { key: "employeeIdNo", label: "Employee ID No", required: true, aliases: ["ID No", "ID", "Employee ID", "Emp ID"] },
+  { key: "name", label: "Full name", required: true, aliases: ["Employee", "Employee name", "Name"] },
   { key: "category", label: "Category" },
-  { key: "trade", label: "Trade" },
+  { key: "trade", label: "Trade", aliases: ["Trade / Designation", "Designation"] },
   { key: "nationality", label: "Nationality" },
   { key: "position", label: "Position" },
   { key: "department", label: "Department" },
-  { key: "passportNumber", label: "Passport number" },
+  { key: "passportNumber", label: "Passport number", aliases: ["Passport No", "Passport"] },
   { key: "emiratesId", label: "Emirates ID" },
   { key: "mobileNumber", label: "Mobile number" },
 ];
@@ -165,8 +166,7 @@ export function EmployeeList({
     {
       key: "employeeIdNo",
       header: "ID No",
-      // Shown under the name already; kept in Columns for sorting/export.
-      defaultHidden: true,
+      csvHeader: "Employee ID No",
       sortValue: (e) => e.employeeIdNo,
       csvValue: (e) => e.employeeIdNo,
       render: (e) => (
@@ -176,6 +176,7 @@ export function EmployeeList({
     {
       key: "name",
       header: "Employee",
+      csvHeader: "Full name",
       locked: true,
       sortValue: (e) => e.name,
       csvValue: (e) => e.name,
@@ -201,6 +202,7 @@ export function EmployeeList({
     {
       key: "trade",
       header: "Trade / Designation",
+      csvHeader: "Trade",
       sortValue: (e) => (e.category === "STAFF" ? e.position : e.trade),
       csvValue: (e) =>
         e.category === "STAFF"
@@ -222,6 +224,7 @@ export function EmployeeList({
     },
     {
       key: "passportNumber",
+      csvHeader: "Passport number",
       // Blank for most of the roster today; still available from Columns.
       defaultHidden: true,
       header: "Passport No",
@@ -261,6 +264,13 @@ export function EmployeeList({
       sortValue: (e) => e.companyDisplayName,
       csvValue: (e) => e.companyDisplayName,
       render: (e) => e.companyDisplayName || <span className="text-subtle">—</span>,
+    },
+    {
+      key: "companyCode",
+      header: "Company code",
+      sortValue: (e) => e.companyCode,
+      csvValue: (e) => e.companyCode,
+      render: (e) => <span className="tabular text-xs text-muted">{e.companyCode || "—"}</span>,
     },
     {
       key: "deployment",

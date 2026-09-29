@@ -34,7 +34,7 @@ export default async function EmployeesPage({
       // separately from /api/employees/[id]/photo, and only when one exists.
       omit: { photoData: true },
       include: {
-        supplier: { include: { parent: { select: { name: true } } } },
+        supplier: { include: { parent: { select: { name: true, code: true } } } },
         project: { select: { name: true } },
         documents: { select: { type: true } },
         campCheckIns: {
@@ -89,6 +89,7 @@ export default async function EmployeesPage({
       emiratesId: e.emiratesId,
       nationality: e.nationality,
       companyDisplayName: e.supplier?.parent?.name ?? e.supplier?.name ?? null,
+      companyCode: e.supplier?.parent ? (e.supplier.parent.code ?? null) : (e.supplier?.code ?? null),
       isOwnCompanySupplier: !!e.supplier?.isOwnCompany,
       onWork: e.active && e.project != null,
       status: e.status,

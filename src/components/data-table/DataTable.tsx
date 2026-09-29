@@ -24,6 +24,8 @@ import { cn } from "@/lib/cn";
 export type DataTableColumn<T> = {
   key: string;
   header: string;
+  /** Heading used in the CSV export, when it should differ from the on-screen one (e.g. to match the import template). */
+  csvHeader?: string;
   align?: "left" | "right";
   render: (row: T) => React.ReactNode;
   // Omit for columns that shouldn't appear in CSV export (e.g. a status Badge).
@@ -168,7 +170,7 @@ export function DataTable<T extends { id: string }>({
             csvValue: NonNullable<DataTableColumn<T>["csvValue"]>;
           } => !!c.csvValue
         )
-        .map((c) => ({ header: c.header, value: c.csvValue }))
+        .map((c) => ({ header: c.csvHeader ?? c.header, value: c.csvValue }))
     );
     downloadCsv(csvFilename, csv);
   }
