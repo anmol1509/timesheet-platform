@@ -102,6 +102,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    "/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|robots.txt|sitemap.xml).*)",
   ],
 };
