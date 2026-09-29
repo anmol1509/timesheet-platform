@@ -17,6 +17,8 @@ type WidgetMeta = { id: string; label: string };
 const TITLES: Record<string, { title: string; hint: string }> = {
   kpi: { title: "Key numbers", hint: "Workforce, deployment, projects, alerts" },
   "trend-attention": { title: "Hours trend & alerts", hint: "Normal vs overtime, plus what needs attention" },
+  "utilization-projects": { title: "Workforce utilization & projects", hint: "Deployed vs bench, plus your active projects" },
+  "deployment-pipeline": { title: "Deployment pipeline & activity", hint: "Idle to mobilising to on site, plus recent changes" },
   "timesheet-pipeline": { title: "Timesheet pipeline", hint: "Where rows sit in approval, hours by weekday" },
   "compliance-runway": { title: "Compliance runway", hint: "Documents expiring in the next 90 days" },
   "document-expiry": { title: "Document expiry", hint: "Employees, clients, projects, suppliers" },

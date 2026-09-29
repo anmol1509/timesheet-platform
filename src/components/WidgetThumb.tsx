@@ -91,6 +91,38 @@ const THUMBS: Record<string, () => React.ReactNode> = {
       </Card>
     </div>
   ),
+  "utilization-projects": () => (
+    <div className="grid h-full grid-cols-3 gap-1">
+      <Card>
+        <Ring />
+      </Card>
+      <Card className="col-span-2 flex flex-col justify-center gap-2">
+        {[80, 55, 35].map((w, i) => (
+          <div key={i} className="space-y-1">
+            <div className={cn(LINE, "w-1/2")} />
+            <div className="h-[3px] overflow-hidden rounded-full bg-[var(--border)]">
+              <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${w}%` }} />
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  ),
+  "deployment-pipeline": () => (
+    <div className="grid h-full grid-cols-3 gap-1">
+      <Card className="col-span-2 flex flex-col justify-center gap-1.5">
+        {[90, 70, 45, 25].map((w, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <span className={cn("h-2 w-2", i === 3 ? BRAND : B)} />
+            <div className="h-[5px] rounded-full bg-[var(--brand-primary)]" style={{ width: `${w}%`, opacity: 1 - i * 0.18 }} />
+          </div>
+        ))}
+      </Card>
+      <Card>
+        <List />
+      </Card>
+    </div>
+  ),
   "timesheet-pipeline": () => (
     <div className="grid h-full grid-cols-3 gap-1">
       <Card className="col-span-2 flex flex-col justify-center gap-2">
