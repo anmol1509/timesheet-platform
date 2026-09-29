@@ -11,6 +11,7 @@ import { SupplierEmployeePanel } from "./supplier-employee-panel";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import { downloadXlsx } from "@/lib/spreadsheet";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { bulkImportSuppliersAction, deleteSupplierAction } from "./actions";
@@ -21,6 +22,10 @@ type SupplierRow = {
   code: string | null;
   contactPerson: string | null;
   contactPhone: string | null;
+  contactEmail: string | null;
+  fullName: string | null;
+  trn: string | null;
+  tradeLicenseNumber: string | null;
   status: string;
   isOwnCompany: boolean;
   parentName: string | null;
@@ -51,11 +56,15 @@ const fmtShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { da
 
 const IMPORT_COLUMNS = [
   { key: "name", label: "Supplier name", required: true },
+  { key: "code", label: "Supplier code" },
+  { key: "parent", label: "Parent supplier" },
   { key: "fullName", label: "Full name" },
   { key: "contactPerson", label: "Contact person" },
   { key: "contactPhone", label: "Contact phone" },
   { key: "contactEmail", label: "Contact email" },
   { key: "tradeLicenseNumber", label: "Trade license number" },
+  { key: "category", label: "Category" },
+  { key: "trn", label: "TRN" },
 ];
 
 export function SupplierList({
@@ -118,20 +127,53 @@ export function SupplierList({
     visible.map((s) => s.id)
   );
 
+  // Each subsidiary is listed right under its parent, and the first columns are
+  // named exactly as the import expects, so an exported file can be edited in
+  // Excel and imported back. The columns after them are for reading only.
+  const EXPORT_COLUMNS: { header: string; value: (s: SupplierRow) => string | number | null }[] = [
+    { header: "Supplier name", value: (s) => s.name },
+    { header: "Supplier code", value: (s) => s.code },
+    { header: "Parent supplier", value: (s) => s.parentName },
+    { header: "Full name", value: (s) => s.fullName },
+    { header: "Contact person", value: (s) => s.contactPerson },
+    { header: "Contact phone", value: (s) => s.contactPhone },
+    { header: "Contact email", value: (s) => s.contactEmail },
+    { header: "Trade license number", value: (s) => s.tradeLicenseNumber },
+    { header: "Category", value: (s) => s.category },
+    { header: "TRN", value: (s) => s.trn },
+    { header: "Employees", value: (s) => s.employeeCount },
+    { header: "Trade licence expiry", value: (s) => (s.licenseExpiry ? s.licenseExpiry.slice(0, 10) : "") },
+    { header: "Owed (AED)", value: (s) => Math.round(s.billBalance) },
+    { header: "Status", value: (s) => s.status },
+  ];
+
+  function exportRows(): SupplierRow[] {
+    const src = selected.size > 0 ? suppliers.filter((s) => selected.has(s.id)) : visible;
+    const ids = new Set(src.map((s) => s.id));
+    const kids = new Map<string, SupplierRow[]>();
+    const tops: SupplierRow[] = [];
+    for (const s of src) {
+      if (s.parentId && ids.has(s.parentId)) {
+        if (!kids.has(s.parentId)) kids.set(s.parentId, []);
+        kids.get(s.parentId)!.push(s);
+      } else tops.push(s);
+    }
+    return tops.flatMap((t) => [t, ...(kids.get(t.id) ?? [])]);
+  }
+
   function exportCsv() {
-    const rows = selected.size > 0 ? suppliers.filter((s) => selected.has(s.id)) : visible;
-    const csv = toCsv(rows, [
-      { header: "Supplier", value: (s) => s.name },
-      { header: "Code", value: (s) => s.code },
-      { header: "Parent", value: (s) => s.parentName },
-      { header: "Contact Person", value: (s) => s.contactPerson },
-      { header: "Contact Phone", value: (s) => s.contactPhone },
-      { header: "Employees", value: (s) => s.employeeCount },
-      { header: "Trade licence expiry", value: (s) => (s.licenseExpiry ? s.licenseExpiry.slice(0, 10) : "") },
-      { header: "Owed (AED)", value: (s) => Math.round(s.billBalance) },
-      { header: "Status", value: (s) => s.status },
-    ]);
+    const csv = toCsv(exportRows(), EXPORT_COLUMNS);
     downloadCsv(`suppliers-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  }
+
+  function exportExcel() {
+    const rows = exportRows();
+    void downloadXlsx(
+      `suppliers-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      "Suppliers",
+      EXPORT_COLUMNS.map((c) => c.header),
+      rows.map((s) => EXPORT_COLUMNS.map((c) => c.value(s))),
+    );
   }
 
   return (
@@ -153,13 +195,12 @@ export function SupplierList({
           importAction={bulkImportSuppliersAction}
           onDone={() => router.refresh()}
         />
-        <button
-          type="button"
-          onClick={exportCsv}
-          className="btn btn-secondary flex gap-1.5 px-3"
-        >
+        <button type="button" onClick={exportExcel} className="btn btn-secondary flex gap-1.5 px-3">
           <Download className="h-4 w-4" />
-          {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
+          {selected.size > 0 ? `Export selected (${selected.size}) to Excel` : "Export Excel"}
+        </button>
+        <button type="button" onClick={exportCsv} className="btn btn-secondary px-3">
+          CSV
         </button>
         </div>
       </div>

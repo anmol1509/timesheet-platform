@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { parseCsv } from "@/lib/csv";
+import { parseSpreadsheetFile } from "@/lib/spreadsheet";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/Dialog";
 
 export type ImportColumn = { key: string; label: string; required?: boolean };
@@ -37,8 +37,21 @@ export function CsvImportDialog({
   async function handleFile(file: File) {
     setError(null);
     setResults(null);
-    const text = await file.text();
-    const parsed = parseCsv(text);
+    let parsed: Record<string, string>[];
+    try {
+      parsed = await parseSpreadsheetFile(file);
+    } catch {
+      setError("That file couldn't be read. Use an Excel (.xlsx) or CSV file.");
+      setRows([]);
+      return;
+    }
+    // "supplier name" or " Supplier Name " in Excel should still match the column.
+    const byLower = new Map(columns.map((c) => [c.label.trim().toLowerCase(), c.label]));
+    parsed = parsed.map((row) => {
+      const out: Record<string, string> = {};
+      for (const [k, v] of Object.entries(row)) out[byLower.get(k.trim().toLowerCase()) ?? k] = v;
+      return out;
+    });
     if (parsed.length === 0) {
       setError("No data rows found in that file.");
       setRows([]);
@@ -103,14 +116,14 @@ export function CsvImportDialog({
           type="button"
           className="btn btn-secondary px-3"
         >
-          Import CSV
+          Import Excel / CSV
         </button>
       </DialogTrigger>
       <DialogContent title={`Import ${entityLabel}`} className="max-h-[85vh] max-w-2xl overflow-y-auto">
         {!results && (
           <>
             <p className="mt-3 mb-3 text-sm text-muted">
-              Upload a CSV with a header row. Existing records are matched and
+              Upload an Excel (.xlsx) or CSV file with a header row. Existing records are matched and
               updated; new ones are created.
             </p>
             <button
@@ -123,7 +136,7 @@ export function CsvImportDialog({
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);

@@ -334,65 +334,126 @@ export async function updateSupplierApprovalAction(formData: FormData) {
 export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
   const { user, branchId } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+  const cell = (r: Record<string, string>, k: string) => (r[k] ?? "").trim();
 
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    const name = (r["Supplier name"] || "").trim();
+  // Parents are imported before the subsidiaries that name them, whatever the
+  // order in the file, so one sheet can hold a whole group. Row numbers stay
+  // those of the sheet (header is row 1).
+  const order = rows
+    .map((r, i) => ({ r, i }))
+    .sort((x, y) => Number(!!cell(x.r, "Parent supplier")) - Number(!!cell(y.r, "Parent supplier")) || x.i - y.i);
+
+  for (const { r, i } of order) {
+    const row = i + 2;
+    const name = cell(r, "Supplier name");
     if (!name) {
-      results.push({ row: i + 2, status: "error", message: "Supplier name is required." });
+      results.push({ row, status: "error", message: "Supplier name is required." });
       continue;
     }
     if (!branchId) {
-      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
+      results.push({ row, status: "error", message: "No branch selected to import into." });
       continue;
     }
     try {
-      // Within this branch only — see the client import for why.
-      const existing = await prisma.supplier.findFirst({ where: { name, branchId } });
-      const data = {
-        fullName: stringOrNull(r["Full name"] ?? null),
-        contactPerson: stringOrNull(r["Contact person"] ?? null),
-        contactPhone: stringOrNull(r["Contact phone"] ?? null),
-        contactEmail: stringOrNull(r["Contact email"] ?? null),
-        tradeLicenseNumber: stringOrNull(r["Trade license number"] ?? null),
+      // Within this branch only — see the client import for why. Excel names
+      // differ in case as often as anything, so matching ignores it.
+      const existing = await prisma.supplier.findFirst({
+        where: { name: { equals: name, mode: "insensitive" }, branchId },
+        include: { _count: { select: { subsidiaries: true } } },
+      });
+
+      // A blank cell leaves the saved value alone; it never clears it.
+      const data: Record<string, string> = {};
+      const put = (field: string, key: string) => {
+        const v = cell(r, key);
+        if (v) data[field] = v;
       };
+      put("fullName", "Full name");
+      put("contactPerson", "Contact person");
+      put("contactPhone", "Contact phone");
+      put("contactEmail", "Contact email");
+      put("tradeLicenseNumber", "Trade license number");
+      put("category", "Category");
+      put("trn", "TRN");
+
+      const typedCode = normalizeCode(cell(r, "Supplier code"));
+      if (typedCode && typedCode !== existing?.code) {
+        const clash = await prisma.supplier.findFirst({
+          where: { branchId, code: typedCode, ...(existing ? { NOT: { id: existing.id } } : {}) },
+          select: { id: true },
+        });
+        if (clash) {
+          results.push({ row, status: "error", message: `The code ${typedCode} is already used by another supplier.` });
+          continue;
+        }
+        data.code = typedCode;
+      }
+
+      const parentName = cell(r, "Parent supplier");
+      let parentSupplierId: string | undefined;
+      if (parentName) {
+        const parent = await prisma.supplier.findFirst({
+          where: { name: { equals: parentName, mode: "insensitive" }, branchId },
+        });
+        if (!parent) {
+          results.push({ row, status: "error", message: `Parent supplier "${parentName}" wasn't found. Add it first, or list it in the same file.` });
+          continue;
+        }
+        if (parent.id === existing?.id) {
+          results.push({ row, status: "error", message: "A supplier can't be its own parent." });
+          continue;
+        }
+        if (parent.parentSupplierId) {
+          results.push({ row, status: "error", message: `"${parent.name}" is itself a subsidiary. A parent must be a primary supplier.` });
+          continue;
+        }
+        if (existing && existing._count.subsidiaries > 0) {
+          results.push({ row, status: "error", message: `"${existing.name}" has subsidiaries of its own, so it can't become one.` });
+          continue;
+        }
+        parentSupplierId = parent.id;
+      }
+
       if (existing) {
         const before = existing as unknown as Record<string, unknown>;
-        await prisma.supplier.update({ where: { id: existing.id }, data });
+        const update = { ...data, ...(parentSupplierId ? { parentSupplierId } : {}) };
+        await prisma.supplier.update({ where: { id: existing.id }, data: update });
         await logAudit({
           entityType: "SUPPLIER",
           entityId: existing.id,
           action: "UPDATE",
           before,
-          after: data,
+          after: update,
           userId: user.id,
           userName: user.name,
           branchId,
         });
-        results.push({ row: i + 2, status: "updated" });
+        results.push({ row, status: "updated" });
       } else {
-        const code = await uniqueSupplierCode(name, branchId);
-        const created = await prisma.supplier.create({ data: { name, code, ...data, branchId } });
+        const code = data.code ?? (await uniqueSupplierCode(name, branchId));
+        const create = { name, ...data, code, ...(parentSupplierId ? { parentSupplierId } : {}), branchId };
+        const created = await prisma.supplier.create({ data: create });
         await logAudit({
           entityType: "SUPPLIER",
           entityId: created.id,
           action: "CREATE",
-          after: { name, code, ...data },
+          after: create,
           userId: user.id,
           userName: user.name,
           branchId,
         });
-        results.push({ row: i + 2, status: "created" });
+        results.push({ row, status: "created" });
       }
     } catch (e) {
       results.push({
-        row: i + 2,
+        row,
         status: "error",
         message: e instanceof Error ? e.message : "Failed to import row.",
       });
     }
   }
 
+  results.sort((x, y) => x.row - y.row);
   revalidatePath("/suppliers");
   return results;
 }
