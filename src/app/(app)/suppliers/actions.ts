@@ -112,7 +112,8 @@ export async function createSubsidiaryAction(
 
   const code = await uniqueSupplierCode(name, parent.branchId!);
   const created = await prisma.supplier.create({
-    data: { name, code, parentSupplierId, branchId: parent.branchId },
+    // A subsidiary of one of our own companies is one of ours, with the same pay setup.
+    data: { name, code, parentSupplierId, branchId: parent.branchId, ...(parent.isOwnCompany ? { isOwnCompany: true, payType: parent.payType, wpsEstablishmentId: parent.wpsEstablishmentId } : {}) },
   });
 
   await logAudit({
@@ -152,6 +153,13 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     if (clash) return { error: `The code ${code} is already used by another supplier.` };
   }
 
+  // Under one of our own companies a subsidiary is always ours too, whatever
+  // the form says; a primary supplier's setting is passed down to its subsidiaries.
+  const parentRow = existing.parentSupplierId
+    ? await prisma.supplier.findUnique({ where: { id: existing.parentSupplierId }, select: { isOwnCompany: true } })
+    : null;
+  const own = parentRow?.isOwnCompany ? true : formData.get("isOwnCompany") === "on";
+
   const data = {
     code,
     fullName: stringOrNull(formData.get("fullName")),
@@ -168,15 +176,18 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     pointOfContact: stringOrNull(formData.get("pointOfContact")),
     supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
     account: stringOrNull(formData.get("account")),
-    isOwnCompany: formData.get("isOwnCompany") === "on",
+    isOwnCompany: own,
     // Pay settings only mean something for our own companies; clear them otherwise.
-    payType: formData.get("isOwnCompany") === "on" && ["BASIC", "HOURLY"].includes(String(formData.get("payType") || "")) ? String(formData.get("payType")) : null,
-    wpsEstablishmentId: formData.get("isOwnCompany") === "on" ? stringOrNull(formData.get("wpsEstablishmentId")) : null,
+    payType: own && ["BASIC", "HOURLY"].includes(String(formData.get("payType") || "")) ? String(formData.get("payType")) : null,
+    wpsEstablishmentId: own ? stringOrNull(formData.get("wpsEstablishmentId")) : null,
     allowManualLabourId: formData.get("allowManualLabourId") === "on",
     overtime: formData.get("overtime") === "on",
   };
 
   await prisma.supplier.update({ where: { id }, data });
+  if (!existing.parentSupplierId) {
+    await prisma.supplier.updateMany({ where: { parentSupplierId: id }, data: { isOwnCompany: own, payType: data.payType, wpsEstablishmentId: data.wpsEstablishmentId } });
+  }
 
   await logAudit({
     entityType: "SUPPLIER",
@@ -224,7 +235,12 @@ export async function setSupplierParentAction(
     if (parent.parentSupplierId) return { error: `${parent.name} is itself a subsidiary. Pick a primary supplier.` };
   }
 
-  await prisma.supplier.update({ where: { id: supplierId }, data: { parentSupplierId: parentId } });
+  let adopt = {};
+  if (parentId) {
+    const p = await prisma.supplier.findUnique({ where: { id: parentId }, select: { isOwnCompany: true } });
+    if (p?.isOwnCompany) adopt = { isOwnCompany: true };
+  }
+  await prisma.supplier.update({ where: { id: supplierId }, data: { parentSupplierId: parentId, ...adopt } });
   await logAudit({
     entityType: "SUPPLIER",
     entityId: supplierId,

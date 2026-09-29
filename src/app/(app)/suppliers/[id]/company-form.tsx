@@ -42,19 +42,29 @@ type Supplier = {
 
 export function SupplierCompanyForm({
   supplier,
+  parentIsOwnCompany = false,
 }: {
   supplier: Supplier;
+  /** The primary supplier above this one is one of our own companies. */
+  parentIsOwnCompany?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState(supplier.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
+  const [ownChoice, setOwnChoice] = useState(supplier.isOwnCompany);
+  const own = parentIsOwnCompany || ownChoice;
 
   return (
     <form
       onInput={guard.onInput}
-      action={(formData) => {
+      // A submit handler rather than a form action: React resets a form after
+      // its action finishes, which flipped the switches back to how they were
+      // when the page loaded.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
         setSaved(false);
         guard.markSaved();
         startTransition(async () => {
@@ -166,11 +176,12 @@ export function SupplierCompanyForm({
         <SwitchField
           label="Our own company"
           name="isOwnCompany"
-          defaultChecked={supplier.isOwnCompany}
-          onChange={guard.onInput}
-          description="Issues documents on our letterhead, and bills this entity rather than paying it."
+          checked={own}
+          disabled={parentIsOwnCompany}
+          onCheckedChange={(v) => { setOwnChoice(v); guard.onInput(); }}
+          description={parentIsOwnCompany ? "Set by the primary supplier: it is one of our own companies, so its subsidiaries are too." : "Issues documents on our letterhead, and bills this entity rather than paying it. Its subsidiaries follow this setting."}
         />
-        {supplier.isOwnCompany && (
+        {own && (
           <>
             <Field label="How this company pays its people">
               <Select name="payType" defaultValue={supplier.payType ?? ""} searchable={false} options={[{ value: "", label: "— not set —" }, { value: "BASIC", label: "Basic — monthly salary, from attendance" }, { value: "HOURLY", label: "Hourly — hours from the timesheet" }]} triggerClassName="w-full" />
@@ -233,15 +244,21 @@ function SwitchField({
   label,
   name,
   defaultChecked,
+  checked,
+  disabled,
   description,
   onChange,
+  onCheckedChange,
 }: {
   label: string;
   name: string;
-  defaultChecked: boolean;
+  defaultChecked?: boolean;
+  checked?: boolean;
+  disabled?: boolean;
   description?: string;
   /** A switch is a button, so it doesn't fire the form's input event by itself. */
   onChange?: () => void;
+  onCheckedChange?: (v: boolean) => void;
 }) {
   return (
     <div className="pt-5">
@@ -249,7 +266,9 @@ function SwitchField({
         name={name}
         value="on"
         defaultChecked={defaultChecked}
-        onCheckedChange={() => onChange?.()}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(v) => { onCheckedChange?.(v); onChange?.(); }}
         label={label}
         description={description}
       />

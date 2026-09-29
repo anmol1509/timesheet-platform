@@ -112,6 +112,7 @@ export async function applySuppliers(ctx: ApplyCtx, input: MappedRow[]): Promise
       }
 
       let parentId: string | undefined;
+      let inheritOwn = false;
       if (g.parentKey) {
         const listedAs = groups.get(g.parentKey);
         if (listedAs?.parentKey) { fail(`"${g.parentName}" is itself listed as a subsidiary, and a parent must be a primary supplier.`); continue; }
@@ -138,11 +139,14 @@ export async function applySuppliers(ctx: ApplyCtx, input: MappedRow[]): Promise
           notes.push({ tone: "info", title: `"${parent.name}" made a primary supplier`, detail: `It was a subsidiary of ${was}, but others are listed under it.` });
         }
         parentId = parent.id;
+        inheritOwn = !!parent.isOwnCompany;
       }
 
       if (existing) {
-        const update: Record<string, string> = { ...data };
+        const update: Record<string, string | boolean> = { ...data };
         if (parentId && parentId !== existing.parentSupplierId) update.parentSupplierId = parentId;
+        // Under one of our own companies, a subsidiary is ours too.
+        if (inheritOwn && !existing.isOwnCompany) update.isOwnCompany = true;
         if (Object.keys(update).length > 0) {
           const before = { ...existing } as unknown as Record<string, unknown>;
           await db.supplier.update({ where: { id: existing.id }, data: update });
@@ -150,7 +154,7 @@ export async function applySuppliers(ctx: ApplyCtx, input: MappedRow[]): Promise
             if (existing.parentSupplierId) kids.set(existing.parentSupplierId, (kids.get(existing.parentSupplierId) ?? 1) - 1);
             kids.set(parentId!, (kids.get(parentId!) ?? 0) + 1);
           }
-          if (update.code) { if (existing.code) codeOwner.delete(existing.code); codeOwner.set(update.code, existing.id); }
+          if (update.code) { if (existing.code) codeOwner.delete(existing.code); codeOwner.set(update.code as string, existing.id); }
           Object.assign(existing, update);
           await audit({ entityType: "SUPPLIER", entityId: existing.id, action: "UPDATE", before, after: update, userId: ctx.user.id, userName: ctx.user.name, branchId });
         }
@@ -158,7 +162,7 @@ export async function applySuppliers(ctx: ApplyCtx, input: MappedRow[]): Promise
         counts.updated++;
       } else {
         const code = data.code ?? pickCode(g.name, taken());
-        const create = { name: g.name, ...data, code, ...(parentId ? { parentSupplierId: parentId } : {}), branchId };
+        const create = { name: g.name, ...data, code, ...(parentId ? { parentSupplierId: parentId } : {}), ...(inheritOwn ? { isOwnCompany: true } : {}), branchId };
         const created = await db.supplier.create({ data: create });
         byKey.set(g.key, created);
         codeOwner.set(code, created.id);

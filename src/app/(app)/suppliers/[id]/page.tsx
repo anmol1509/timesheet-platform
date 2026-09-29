@@ -40,6 +40,7 @@ export default async function SupplierDetailPage({
         select: {
           id: true,
           name: true,
+          isOwnCompany: true,
           subsidiaries: { select: { id: true, name: true }, orderBy: { name: "asc" } },
         },
       },
@@ -213,6 +214,7 @@ export default async function SupplierDetailPage({
                 primaryOptions={parentOptions}
               />
               <SupplierCompanyForm
+                parentIsOwnCompany={!!supplier.parent?.isOwnCompany}
                 supplier={{
                   id: supplier.id,
                   name: supplier.name,
