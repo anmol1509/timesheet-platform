@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { SalesExtras } from "@/components/dashboard/ModuleExtras";
-import { QuerySelect } from "@/components/dashboard/PeriodSelect";
+import { PeriodPicker } from "@/components/dashboard/PeriodSelect";
 import { PERIOD_OPTIONS, resolvePeriod } from "@/lib/dashboardPeriod";
 import { Sec } from "@/components/dashboard/Sec";
 import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
@@ -15,10 +15,14 @@ import { StatusDonut, CategoryDonut } from "@/components/Donut";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
-export default async function SalesDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+export default async function SalesDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
-  const period = resolvePeriod((await searchParams).period, "90d");
+  const sp = await searchParams;
+  const period = resolvePeriod(sp.period, "90d", { from: sp.from, to: sp.to });
   const branchScope = branchWhere(branchId);
+  // Enquiries and quotations are counted by when they were created. Quotations
+  // expiring soon and the open pipeline look forward from today instead.
+  const inPeriod = { ...branchScope, createdAt: { gte: period.from, lt: period.to } };
 
   const [
     openEnquiries,
@@ -28,19 +32,19 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
     convertedCount,
     expiringSoon,
   ] = await Promise.all([
-    prisma.enquiry.count({ where: { ...branchScope, status: "Open" } }),
+    prisma.enquiry.count({ where: { ...inPeriod, status: "Open" } }),
     prisma.enquiry.groupBy({
       by: ["source"],
-      where: branchScope,
+      where: inPeriod,
       _count: { _all: true },
     }),
     prisma.quotation.groupBy({
       by: ["status"],
-      where: branchScope,
+      where: inPeriod,
       _count: { _all: true },
     }),
-    prisma.quotation.count({ where: branchScope }),
-    prisma.quotation.count({ where: { ...branchScope, status: "CONVERTED" } }),
+    prisma.quotation.count({ where: inPeriod }),
+    prisma.quotation.count({ where: { ...inPeriod, status: "CONVERTED" } }),
     prisma.quotation.findMany({
       where: {
         ...branchScope,
@@ -71,8 +75,8 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
       <PageHeader
         icon={TrendingUp}
         title="Sales overview"
-        description="Enquiries, quotations and conversion."
-        actions={<><QuerySelect param="period" value={period.key} options={PERIOD_OPTIONS} /><CustomizeSections module="sales" sections={[{ id: "overview", label: "Quotations and enquiries" }, { id: "expiring", label: "Quotations expiring" }, { id: "extras", label: "Pipeline and win rate" }]} hidden={[...hiddenSections]} /></>}
+        description={`Enquiries and quotations created ${period.label.toLowerCase()}. Expiring quotations and the open pipeline look ahead from today.`}
+        actions={<><PeriodPicker value={period.key} from={sp.from} to={sp.to} options={PERIOD_OPTIONS} /><CustomizeSections module="sales" sections={[{ id: "overview", label: "Quotations and enquiries" }, { id: "expiring", label: "Quotations expiring" }, { id: "extras", label: "Pipeline and win rate" }]} hidden={[...hiddenSections]} /></>}
       />
       <DashboardTabs />
 
@@ -87,7 +91,7 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
           {
             label: "Total quotations",
             value: totalQuotations,
-            sub: "all time",
+            sub: "created in the period",
             href: "/sales/quotations",
           },
           {

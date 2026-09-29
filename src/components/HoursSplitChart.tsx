@@ -102,12 +102,16 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
             </div>
           </div>
           <div className="mt-2 flex gap-1 sm:gap-1.5">
-            {split.days.map((day, i) => (
-              <span key={day.date} className="min-w-0 flex-1 truncate text-center text-[10px] text-subtle">
-                {/* Every other label on narrow screens so 14 dates never collide. */}
-                <span className={i % 2 === 1 ? "hidden sm:inline" : undefined}>{shortDate(day.date)}</span>
-              </span>
-            ))}
+            {split.days.map((day, i) => {
+              // A month or longer has too many bars for every date to fit: label every nth.
+              const step = Math.max(1, Math.ceil(split.days.length / 14));
+              return (
+                <span key={day.date} className="min-w-0 flex-1 text-center text-[10px] text-subtle">
+                  {/* Every other label on narrow screens so 14 dates never collide. */}
+                  <span className={i % step !== 0 ? "invisible" : i % 2 === 1 && step === 1 ? "hidden sm:inline" : undefined}>{shortDate(day.date)}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

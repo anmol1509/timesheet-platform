@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { BillingExtras } from "@/components/dashboard/ModuleExtras";
-import { QuerySelect } from "@/components/dashboard/PeriodSelect";
+import { PeriodPicker } from "@/components/dashboard/PeriodSelect";
 import { PERIOD_OPTIONS, resolvePeriod } from "@/lib/dashboardPeriod";
 import { Sec } from "@/components/dashboard/Sec";
 import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
@@ -16,24 +16,29 @@ import { BarList } from "@/components/BarList";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
-export default async function BillingDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+export default async function BillingDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
-  const period = resolvePeriod((await searchParams).period, "this-month");
+  const sp = await searchParams;
+  const period = resolvePeriod(sp.period, "this-month", { from: sp.from, to: sp.to });
   const branchScope = branchWhere(branchId);
+  // Every figure on this page is for invoices issued in the chosen period;
+  // "Unpaid invoices by age" at the bottom is the exception and shows what is
+  // still unpaid today, whenever it was issued.
+  const inPeriod = { ...branchScope, issueDate: { gte: period.from, lt: period.to } };
 
   const [statusBreakdown, outstanding, overdueInvoices, byClient, clients] = await Promise.all([
     prisma.clientInvoice.groupBy({
       by: ["status"],
-      where: branchScope,
+      where: inPeriod,
       _count: { _all: true },
       _sum: { totalAmount: true },
     }),
     prisma.clientInvoice.aggregate({
-      where: { ...branchScope, status: { not: "PAID" } },
+      where: { ...inPeriod, status: { not: "PAID" } },
       _sum: { totalAmount: true },
     }),
     prisma.clientInvoice.findMany({
-      where: { ...branchScope, status: "OVERDUE" },
+      where: { ...inPeriod, status: "OVERDUE" },
       select: {
         id: true,
         invoiceNumber: true,
@@ -46,7 +51,7 @@ export default async function BillingDashboardPage({ searchParams }: { searchPar
     }),
     prisma.clientInvoice.groupBy({
       by: ["clientId"],
-      where: branchScope,
+      where: inPeriod,
       _sum: { totalAmount: true },
       orderBy: { _sum: { totalAmount: "desc" } },
       take: 8,
@@ -71,8 +76,8 @@ export default async function BillingDashboardPage({ searchParams }: { searchPar
       <PageHeader
         icon={Receipt}
         title="Billing overview"
-        description="Invoice status and outstanding balances."
-        actions={<><QuerySelect param="period" value={period.key} options={PERIOD_OPTIONS} /><CustomizeSections module="billing" sections={[{ id: "overview", label: "Clients, status and overdue" }, { id: "extras", label: "Ageing and collections" }]} hidden={[...hiddenSections]} /></>}
+        description={`Invoices issued ${period.label.toLowerCase()}. The age of unpaid invoices at the bottom covers everything still unpaid today.`}
+        actions={<><PeriodPicker value={period.key} from={sp.from} to={sp.to} options={PERIOD_OPTIONS} /><CustomizeSections module="billing" sections={[{ id: "overview", label: "Clients, status and overdue" }, { id: "extras", label: "Ageing and collections" }]} hidden={[...hiddenSections]} /></>}
       />
       <DashboardTabs />
 
@@ -81,7 +86,7 @@ export default async function BillingDashboardPage({ searchParams }: { searchPar
           {
             label: "Total invoices",
             value: totalInvoices,
-            sub: "issued",
+            sub: "issued in the period",
             href: "/invoices",
           },
           {

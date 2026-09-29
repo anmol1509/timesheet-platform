@@ -13,6 +13,8 @@ import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
 import { getDeploymentPipeline } from "@/lib/deploymentPipeline";
 import { getRecentActivity } from "@/lib/recentActivity";
+import { PeriodPicker } from "@/components/dashboard/PeriodSelect";
+import { PERIOD_OPTIONS, resolvePeriod } from "@/lib/dashboardPeriod";
 import { getApprovalsSummary, getAttendanceToday, getDemandFill, getMoneySnapshot, getPayrollStatus } from "@/lib/dashboardExtras";
 import { can } from "@/lib/permissions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -36,8 +38,11 @@ function greeting() {
   return "Good evening";
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
+  const sp = await searchParams;
+  // Only the hours chart follows the period; everything else is as of today.
+  const period = resolvePeriod(sp.period, "this-month", { from: sp.from, to: sp.to });
   const branchScope = branchWhere(branchId);
   const firstName = user.name.trim().split(/\s+/)[0];
 
@@ -74,7 +79,7 @@ export default async function DashboardPage() {
     getComplianceAlerts(branchId),
     getLpoAlerts(branchId),
     getWeeklyHours(branchId),
-    getHoursSplit(branchId),
+    getHoursSplit(branchId, { from: period.from, to: period.to }),
     getTimesheetPipeline(branchId),
     getComplianceRunway(branchId),
     getAssignedStaff(4, branchId),
@@ -230,6 +235,8 @@ export default async function DashboardPage() {
         }
         actions={
           <>
+            <span className="text-xs text-muted">Hours for</span>
+            <PeriodPicker value={period.key} from={sp.from} to={sp.to} options={PERIOD_OPTIONS} />
             <CustomizeDashboardButton
               widgets={DASHBOARD_WIDGETS.map((w) => ({ id: w.id, label: w.label }))}
               initialOrder={fullOrder}

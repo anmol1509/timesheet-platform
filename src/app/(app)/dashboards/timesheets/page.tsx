@@ -1,8 +1,8 @@
 import { FileSpreadsheet } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
-import { QuerySelect } from "@/components/dashboard/PeriodSelect";
-import { recentMonths } from "@/lib/dashboardPeriod";
+import { PeriodPicker } from "@/components/dashboard/PeriodSelect";
+import { PERIOD_OPTIONS, monthKeysIn, resolvePeriod } from "@/lib/dashboardPeriod";
 import { TimesheetsExtras } from "@/components/dashboard/ModuleExtras";
 import { Sec } from "@/components/dashboard/Sec";
 import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
@@ -26,15 +26,20 @@ function monthKey(d: Date) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export default async function TimesheetsDashboardPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+export default async function TimesheetsDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
-  const { month: monthParam } = await searchParams;
-  const monthOptions = recentMonths(12);
-  const month = monthOptions.some((o) => o.value === monthParam) ? monthParam! : currentMonthKey();
-  const monthLabel = monthOptions.find((o) => o.value === month)?.label ?? month;
+  const sp = await searchParams;
+  const period = resolvePeriod(sp.period, "this-month", { from: sp.from, to: sp.to });
+  // Timesheet rows belong to a month, so a range covers every month it touches;
+  // the pipeline and the six-month chart end at the range's last month.
+  const rowMonths = monthKeysIn(period);
+  const month = rowMonths[rowMonths.length - 1];
+  const isCurrent = period.key === "this-month";
   const today = new Date();
-  const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5, 1));
+  const [selY, selM] = month.split("-").map(Number);
+  const sixMonthsAgo = new Date(Date.UTC(selY, selM - 6, 1));
+  const windowEnd = new Date(Date.UTC(selY, selM, 1));
 
   const [
     thisMonthCount,
@@ -45,30 +50,29 @@ export default async function TimesheetsDashboardPage({ searchParams }: { search
     hoursSplit,
     recentAttendance,
   ] = await Promise.all([
-    prisma.timesheetEntry.count({ where: { ...branchScope, month } }),
+    prisma.timesheetEntry.count({ where: { ...branchScope, month: { in: rowMonths } } }),
     prisma.timesheetEntry.groupBy({
       by: ["status"],
-      where: { ...branchScope, month },
+      where: { ...branchScope, month: { in: rowMonths } },
       _count: { _all: true },
     }),
     prisma.timesheetEntry.count({
-      where: { ...branchScope, month, status: "LOCKED" },
+      where: { ...branchScope, month: { in: rowMonths }, status: "LOCKED" },
     }),
     prisma.attendance.count({
-      where: {
-        ...branchScope,
-        date: { gte: new Date(new Date().toDateString()) },
-      },
+      where: isCurrent
+        ? { ...branchScope, date: { gte: new Date(new Date().toDateString()) } }
+        : { ...branchScope, date: { gte: period.from, lt: period.to } },
     }),
     getTimesheetPipeline(branchId, month),
-    getHoursSplit(branchId),
+    getHoursSplit(branchId, { from: period.from, to: period.to }),
     prisma.attendance.findMany({
-      where: { ...branchScope, date: { gte: sixMonthsAgo } },
+      where: { ...branchScope, date: { gte: sixMonthsAgo, lt: windowEnd } },
       select: { date: true, normalHours: true, otHours: true },
     }),
   ]);
 
-  const months = Array.from({ length: 6 }, (_, i) => monthKey(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5 + i, 1))));
+  const months = Array.from({ length: 6 }, (_, i) => monthKey(new Date(Date.UTC(selY, selM - 6 + i, 1))));
   const normalByMonth = new Map(months.map((m) => [m, 0]));
   const otByMonth = new Map(months.map((m) => [m, 0]));
   for (const a of recentAttendance) {
@@ -86,21 +90,21 @@ export default async function TimesheetsDashboardPage({ searchParams }: { search
       <PageHeader
         icon={FileSpreadsheet}
         title="Timesheets overview"
-        description={`Hours, approvals and attendance. Rows and approvals below are for ${monthLabel}.`}
-        actions={<><QuerySelect param="month" value={month} options={monthOptions} width="w-48" /><CustomizeSections module="timesheets" sections={[{ id: "hours", label: "Hours and approval pipeline" }, { id: "months", label: "Hours, last 6 months" }, { id: "extras", label: "Waiting for approval and attendance" }]} hidden={[...hiddenSections]} /></>}
+        description={`Hours, approvals and attendance for ${period.label.toLowerCase()}. Timesheet rows count whole months.`}
+        actions={<><PeriodPicker value={period.key} from={sp.from} to={sp.to} options={PERIOD_OPTIONS} /><CustomizeSections module="timesheets" sections={[{ id: "hours", label: "Hours and approval pipeline" }, { id: "months", label: "Hours, last 6 months" }, { id: "extras", label: "Waiting for approval and attendance" }]} hidden={[...hiddenSections]} /></>}
       />
       <DashboardTabs />
 
       <KpiStrip
         cells={[
           {
-            label: month === currentMonthKey() ? "This month's rows" : "Rows in the month",
+            label: isCurrent ? "This month's rows" : "Timesheet rows",
             value: thisMonthCount,
             sub: "timesheet entries",
             href: "/invoices/client-timesheet",
           },
           {
-            label: "Marked today",
+            label: isCurrent ? "Marked today" : "Marked in the period",
             value: attendanceToday,
             sub: "attendance records",
             href: "/attendance",

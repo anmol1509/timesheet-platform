@@ -38,8 +38,13 @@ function shortDate(d: Date) {
  * entered in batches, so a fixed "last 14 days" window would read as empty
  * whenever entry lags, even though the data exists.
  */
-export async function getHoursSplit(branchId: string | null = null): Promise<HoursSplit> {
+export async function getHoursSplit(
+  branchId: string | null = null,
+  /** A window to show (`to` exclusive). Without one, the two weeks ending at the latest recorded day. */
+  range?: { from: Date; to: Date },
+): Promise<HoursSplit> {
   const where = branchWhere(branchId);
+  if (range) return getRangeHoursSplit(where, range);
 
   const latest = await prisma.attendance.findFirst({
     where,
@@ -88,4 +93,53 @@ export async function getHoursSplit(branchId: string | null = null): Promise<Hou
     totalOt: Math.round(totalOt * 10) / 10,
     periodLabel: `${shortDate(start)} – ${shortDate(end)}`,
   };
+}
+
+/**
+ * Hours per day across a window. A current month or period stops at today, so
+ * the future doesn't show as empty bars. Windows longer than about six weeks
+ * are summed per week to keep the bars readable.
+ */
+async function getRangeHoursSplit(where: ReturnType<typeof branchWhere>, range: { from: Date; to: Date }): Promise<HoursSplit> {
+  const start = new Date(Date.UTC(range.from.getUTCFullYear(), range.from.getUTCMonth(), range.from.getUTCDate()));
+  const lastDay = new Date(range.to.getTime() - 1);
+  const now = new Date();
+  const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  let end = new Date(Date.UTC(lastDay.getUTCFullYear(), lastDay.getUTCMonth(), lastDay.getUTCDate()));
+  if (end > todayUtc) end = todayUtc;
+  if (end < start) return EMPTY;
+
+  const records = await prisma.attendance.findMany({
+    where: { ...where, date: { gte: start, lte: end } },
+    select: { date: true, normalHours: true, otHours: true },
+  });
+  const dayCount = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const weekly = dayCount > 45;
+  const bucketOf = (d: Date) => {
+    if (!weekly) return isoDate(d);
+    const idx = Math.floor((d.getTime() - start.getTime()) / (7 * 86_400_000));
+    return isoDate(new Date(start.getTime() + idx * 7 * 86_400_000));
+  };
+  const buckets = new Map<string, { normal: number; ot: number }>();
+  const stride = weekly ? 7 : 1;
+  for (let i = 0; i < dayCount; i += stride) {
+    const day = new Date(start.getTime() + i * 86_400_000);
+    buckets.set(isoDate(day), { normal: 0, ot: 0 });
+  }
+  for (const r of records) {
+    const slot = buckets.get(bucketOf(r.date));
+    if (!slot) continue;
+    slot.normal += r.normalHours ?? 0;
+    slot.ot += r.otHours ?? 0;
+  }
+  const days: HoursSplitDay[] = [...buckets.entries()].map(([date, v]) => ({
+    date,
+    label: weekly ? "Week of" : new Date(date).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" }),
+    normal: Math.round(v.normal * 10) / 10,
+    ot: Math.round(v.ot * 10) / 10,
+  }));
+  const totalNormal = days.reduce((a, d) => a + d.normal, 0);
+  const totalOt = days.reduce((a, d) => a + d.ot, 0);
+  if (totalNormal === 0 && totalOt === 0) return EMPTY;
+  return { days, totalNormal: Math.round(totalNormal * 10) / 10, totalOt: Math.round(totalOt * 10) / 10, periodLabel: `${shortDate(start)} – ${shortDate(end)}` };
 }
