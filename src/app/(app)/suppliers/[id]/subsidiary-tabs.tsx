@@ -69,9 +69,9 @@ export function SubsidiaryTabs({
           onClick={() => setAdding((v) => !v)}
           aria-label="Add subsidiary"
           title="Add subsidiary"
-          className="rounded-t-xl px-3 py-2 text-sm font-medium text-subtle transition hover:bg-surface-hover hover:text-secondary"
+          className="inline-flex items-center gap-1 rounded-t-xl px-3 py-2 text-sm font-medium text-secondary transition hover:bg-surface-hover hover:text-primary"
         >
-          +
+          <span aria-hidden>+</span> Add subsidiary
         </button>
         {adding && (
           <form
@@ -81,13 +81,13 @@ export function SubsidiaryTabs({
             <input type="hidden" name="parentSupplierId" value={rootId} />
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">
-                Subsidiary name *</span>
+                Subsidiary of {rootName} *</span>
               <input
                 name="name"
                 required
                 autoFocus
                 disabled={pending}
-                placeholder="e.g. Top Peak - Sharjah"
+                placeholder="e.g. ABCD Sharjah"
                 className="input w-full disabled:opacity-60"
               />
             </label>

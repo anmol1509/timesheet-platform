@@ -42,10 +42,8 @@ type Supplier = {
 
 export function SupplierCompanyForm({
   supplier,
-  parentOptions,
 }: {
   supplier: Supplier;
-  parentOptions: { id: string; name: string }[];
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -73,14 +71,6 @@ export function SupplierCompanyForm({
         <FieldBlock label="Supplier code">
           <SupplierCodeField defaultValue={supplier.code || ""} fixedName={supplier.name} supplierId={supplier.id} />
         </FieldBlock>
-        <Field label="Parent Supplier">
-          <Select
-            name="parentSupplierId"
-            defaultValue={supplier.parentSupplierId || ""}
-            placeholder="None — top-level supplier"
-            options={parentOptions.map((p) => ({ value: p.id, label: p.name }))}
-          />
-        </Field>
         <Field label="Full name (for letterhead)">
           <input
             name="fullName"

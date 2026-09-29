@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
-import { refsBelongToBranch } from "@/lib/refScope";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
 import { assertContactsValid } from "@/lib/validators";
@@ -152,15 +151,8 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     if (clash) return { error: `The code ${code} is already used by another supplier.` };
   }
 
-  const parentSupplierIdRaw = stringOrNull(formData.get("parentSupplierId"));
-  // A parent from another branch would list this supplier as a subsidiary on
-  // that other tenant's page. Only a changed parent is checked.
-  if (parentSupplierIdRaw && parentSupplierIdRaw !== id && parentSupplierIdRaw !== existing.parentSupplierId
-      && !(await refsBelongToBranch(existing.branchId, { supplier: parentSupplierIdRaw }))) return { error: null };
-
   const data = {
     code,
-    parentSupplierId: parentSupplierIdRaw === id ? null : parentSupplierIdRaw,
     fullName: stringOrNull(formData.get("fullName")),
     status: String(formData.get("status") || "ACTIVE"),
     trn: stringOrNull(formData.get("trn")),
@@ -197,6 +189,55 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
   });
 
   revalidatePath(`/suppliers/${id}`);
+  revalidatePath("/suppliers");
+  return { error: null };
+}
+
+/** Move a supplier under a primary supplier, or (parentId null) make it a
+ * primary supplier itself. The hierarchy is two levels, so a supplier that has
+ * subsidiaries can't become one, and the parent must be a primary supplier in
+ * the same branch. The forms confirm before calling this. */
+export async function setSupplierParentAction(
+  supplierId: string,
+  parentId: string | null,
+): Promise<{ error: string | null }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const s = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    include: { _count: { select: { subsidiaries: true } } },
+  });
+  if (!s || isOutsideBranch(s.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
+  if (parentId === s.parentSupplierId) return { error: null };
+
+  if (parentId) {
+    if (parentId === s.id) return { error: "A supplier can't be its own parent." };
+    if (s._count.subsidiaries > 0) {
+      return {
+        error: `${s.name} has subsidiaries of its own. Make them primary suppliers or move them first.`,
+      };
+    }
+    const parent = await prisma.supplier.findUnique({ where: { id: parentId } });
+    if (!parent || parent.branchId !== s.branchId || isOutsideBranch(parent.branchId, branchId, isSuperAdmin)) {
+      return { error: "Primary supplier not found." };
+    }
+    if (parent.parentSupplierId) return { error: `${parent.name} is itself a subsidiary. Pick a primary supplier.` };
+  }
+
+  await prisma.supplier.update({ where: { id: supplierId }, data: { parentSupplierId: parentId } });
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: supplierId,
+    action: "UPDATE",
+    before: { parentSupplierId: s.parentSupplierId },
+    after: { parentSupplierId: parentId },
+    userId: user.id,
+    userName: user.name,
+    branchId: s.branchId,
+  });
+
+  revalidatePath(`/suppliers/${supplierId}`);
+  if (s.parentSupplierId) revalidatePath(`/suppliers/${s.parentSupplierId}`);
+  if (parentId) revalidatePath(`/suppliers/${parentId}`);
   revalidatePath("/suppliers");
   return { error: null };
 }

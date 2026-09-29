@@ -129,7 +129,7 @@ export default async function SuppliersPage({
           <input
             name="name"
             required
-            placeholder="e.g. Top Peak"
+            placeholder="e.g. ABCD"
             className="input w-full"
           />
         </label>

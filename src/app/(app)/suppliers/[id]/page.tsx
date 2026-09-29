@@ -11,10 +11,11 @@ import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { PortalAccessCard } from "./portal-access";
-import { isOutsideBranch, branchWhere } from "@/lib/branch";
+import { isOutsideBranch } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { SupplierTabs } from "./supplier-tabs";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
+import { SupplierHierarchyCard } from "./hierarchy-card";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -57,22 +58,11 @@ export default async function SupplierDetailPage({
       select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
     }),
     prisma.supplier.findMany({
-      where: { ...branchWhere(branchId), parentSupplierId: null, id: { not: supplier.id } },
+      where: { branchId: supplier.branchId, parentSupplierId: null, id: { not: supplier.id } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
   ]);
-
-  // The current parent might belong to a different branch (e.g. legacy data,
-  // or a subsidiary created before parents always matched branches) — always
-  // include it so the Parent Supplier <select> has a matching option to
-  // display its name instead of falling back to the raw id.
-  const parentOptionsWithCurrent =
-    supplier.parent && !parentOptions.some((p) => p.id === supplier.parent!.id)
-      ? [...parentOptions, { id: supplier.parent.id, name: supplier.parent.name }].sort((a, b) =>
-          a.name.localeCompare(b.name)
-        )
-      : parentOptions;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -214,8 +204,15 @@ export default async function SupplierDetailPage({
             id: "company",
             label: "Company",
             content: (
+              <div className="space-y-6">
+              <SupplierHierarchyCard
+                supplierId={supplier.id}
+                supplierName={supplier.name}
+                parent={supplier.parent ? { id: supplier.parent.id, name: supplier.parent.name } : null}
+                subsidiaryCount={supplier.subsidiaries.length}
+                primaryOptions={parentOptions}
+              />
               <SupplierCompanyForm
-                parentOptions={parentOptionsWithCurrent}
                 supplier={{
                   id: supplier.id,
                   name: supplier.name,
@@ -242,6 +239,7 @@ export default async function SupplierDetailPage({
                   overtime: supplier.overtime,
                 }}
               />
+              </div>
             ),
           },
           {
