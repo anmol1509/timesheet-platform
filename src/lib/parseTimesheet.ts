@@ -26,6 +26,9 @@ export type ParsedEntry = {
   employeeName: string;
   supplierName: string;
   clientName: string | null;
+  /** The visa-holding company ("Sponsor" column), when the sheet has one. */
+  sponsorName?: string | null;
+  nationality?: string | null;
   site: string | null;
   siteId?: string | null;
   trade: string;
@@ -155,7 +158,8 @@ function cellText(cell: ExcelJS.Cell | undefined): string {
 function cellDate(cell: ExcelJS.Cell | undefined): Date | null {
   if (!cell || cell.value == null) return null;
   const v = cell.value;
-  if (v instanceof Date) return v;
+  // Excel sometimes hands back an invalid Date for a formula cell it can't evaluate.
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
   return null;
 }
 
@@ -174,6 +178,8 @@ type ColumnMap = {
   idNo: number | null;
   name: number | null;
   supplier: number | null;
+  sponsor: number | null;
+  nationality: number | null;
   client: number | null;
   site: number | null;
   trade: number | null;
@@ -187,7 +193,11 @@ type ColumnMap = {
 const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["idNo", /^i\.?\s*d\.?\s*no\.?$/i],
   ["name", /employee\s*name/i],
-  ["supplier", /^supplier$/i],
+  // Sheets label the supplying company "Supplier", "Main Supplier" or
+  // "Supplier Name" ("Supplier Code" is a different column).
+  ["supplier", /^(main\s*supplier|supplier(\s*name)?)$/i],
+  ["sponsor", /^sponsor(\s*(name|company))?$/i],
+  ["nationality", /^nationality$/i],
   ["client", /client\s*name/i],
   ["site", /^site$/i],
   ["trade", /^trade$/i],
@@ -311,6 +321,8 @@ export async function parseConsolidatedWorkbook(
       idNo: null,
       name: null,
       supplier: null,
+      sponsor: null,
+      nationality: null,
       client: null,
       site: null,
       trade: null,
@@ -356,9 +368,32 @@ export async function parseConsolidatedWorkbook(
     }
 
     const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    // Formula-driven date cells often come back broken (1899-12-31, or nothing
+    // at all) for the first days of the month while the rest are right. Day
+    // columns run one day apiece, so a broken one is worked out from a good
+    // one; with none, the first day column is the 1st of the sheet's month.
+    const dateAt = new Map<number, Date>();
+    if (hasDateRow) {
+      for (let c = dayStart; c <= dayEnd; c++) {
+        const d = cellDate(dateRow.getCell(c));
+        if (d && d.getUTCFullYear() >= 2000) dateAt.set(c, d);
+      }
+    }
+    const DAY_MS = 86_400_000;
+    let anchor: { col: number; date: Date } | null = null;
+    for (const [c, d] of dateAt) {
+      anchor = { col: c, date: d };
+      break;
+    }
+    if (!anchor && hasDateRow) {
+      const [yy, mm] = monthInfo.month.split("-").map(Number);
+      anchor = { col: dayStart, date: new Date(Date.UTC(yy, mm - 1, 1)) };
+    }
     const dayCols: { col: number; date: Date | null; label: string }[] = [];
     for (let c = dayStart; c <= dayEnd; c++) {
-      const date = hasDateRow ? cellDate(dateRow.getCell(c)) : null;
+      const date = hasDateRow
+        ? (dateAt.get(c) ?? (anchor ? new Date(anchor.date.getTime() + (c - anchor.col) * DAY_MS) : null))
+        : null;
       const label = date ? WEEKDAY_ABBR[date.getUTCDay()] : cellText(headerRow.getCell(c));
       if (!label && !date) continue;
       dayCols.push({ col: c, date, label: label || "" });
@@ -373,9 +408,11 @@ export async function parseConsolidatedWorkbook(
       const row = sheet.getRow(r);
       const name = colMap.name ? cellText(row.getCell(colMap.name)) : "";
       const idNo = colMap.idNo ? cellText(row.getCell(colMap.idNo)) : "";
-      const supplierName = colMap.supplier
-        ? cellText(row.getCell(colMap.supplier))
-        : "";
+      const sponsorName = colMap.sponsor ? cellText(row.getCell(colMap.sponsor)) || null : null;
+      // A blank supplier falls back to the sponsor: a worker's visa company is
+      // the next best answer to "whose worker is this".
+      const supplierName =
+        (colMap.supplier ? cellText(row.getCell(colMap.supplier)) : "") || sponsorName || "";
 
       if (!name && !idNo) continue; // blank separator row
       if (!supplierName) {
@@ -385,7 +422,9 @@ export async function parseConsolidatedWorkbook(
           row: r,
           name: name || "(unnamed)",
           idNo: idNo || "(no ID)",
-          reason: "Missing company name",
+          reason: colMap.supplier
+            ? "Missing company name"
+            : 'This sheet has no "Supplier" or "Main Supplier" column (or a "Sponsor" column) to take the company from.',
         });
         continue;
       }
@@ -421,6 +460,8 @@ export async function parseConsolidatedWorkbook(
         employeeName: name || "(unnamed)",
         supplierName,
         clientName,
+        sponsorName,
+        nationality: colMap.nationality ? cellText(row.getCell(colMap.nationality)) || null : null,
         site,
         trade: trade || "(unspecified)",
         rate,

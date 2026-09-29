@@ -24,7 +24,9 @@ export async function deleteUploadAction(formData: FormData) {
 
   const months = upload.months.map((m) => m.month);
   if (months.length > 0) {
-    await prisma.timesheetEntry.deleteMany({ where: { month: { in: months } } });
+    // Only this company's entries: the month alone would also delete every other
+    // company's timesheets for the same month.
+    await prisma.timesheetEntry.deleteMany({ where: { month: { in: months }, branchId: upload.branchId } });
   }
   await prisma.upload.delete({ where: { id: uploadId } });
 

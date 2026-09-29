@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { parseConsolidatedWorkbook } from "@/lib/parseTimesheet";
 import { importParsedMonths } from "@/lib/importTimesheet";
 
+// A consolidated sheet runs to hundreds of workers; each is several writes.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {

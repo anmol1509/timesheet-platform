@@ -10,6 +10,8 @@ export type ImportStats = {
   clientsCreated: number;
   entriesCreated: number;
   entriesUpdated: number;
+  /** Sponsors placed under the main supplier they work for. */
+  subsidiariesLinked?: number;
   rowsSkipped: number;
   skippedRowDetails: SkippedRow[];
   unrecognizedSheets: string[];
@@ -52,6 +54,34 @@ export async function importParsedMonths(
   const supplierByKey = new Map(
     existingSuppliers.map((s) => [normalizeKey(s.name), s])
   );
+  // Suppliers that already have subsidiaries, and the employees this branch
+  // already holds — a re-upload must not overwrite what people set by hand.
+  const hasSubsidiaries = new Set(existingSuppliers.map((s) => s.parentSupplierId).filter(Boolean) as string[]);
+  const knownEmployees = new Map(
+    (
+      await prisma.employee.findMany({
+        where: { branchId, employeeIdNo: { in: uploadedIds } },
+        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true },
+      })
+    ).map((e) => [e.employeeIdNo, e])
+  );
+  // sponsor -> main supplier -> rows ("" = the sponsor is its own main supplier),
+  // and the companies that other sponsors are listed under, to place sponsors
+  // under their main supplier once the whole file has been read.
+  const sponsorVotes = new Map<string, Map<string, number>>();
+  const parentsOfOthers = new Set<string>();
+  const findOrCreateSupplier = async (name: string) => {
+    const key = normalizeKey(name);
+    let s = supplierByKey.get(key);
+    if (!s) {
+      s = await prisma.supplier.create({
+        data: { name: name.trim(), code: await uniqueSupplierCode(name.trim(), branchId), branchId },
+      });
+      supplierByKey.set(key, s);
+      stats.suppliersCreated++;
+    }
+    return s;
+  };
   const clientByKey = new Map(
     existingClients.map((c) => [normalizeKey(c.name), c])
   );
@@ -84,13 +114,18 @@ export async function importParsedMonths(
         continue;
       }
       const supplierKey = normalizeKey(entry.supplierName);
-      let supplier = supplierByKey.get(supplierKey);
-      if (!supplier) {
-        supplier = await prisma.supplier.create({
-          data: { name: entry.supplierName.trim(), code: await uniqueSupplierCode(entry.supplierName.trim(), branchId), branchId },
-        });
-        supplierByKey.set(supplierKey, supplier);
-        stats.suppliersCreated++;
+      const supplier = await findOrCreateSupplier(entry.supplierName);
+
+      // The sponsor (visa-holding company) is a supplier record too.
+      let sponsorId: string | null = null;
+      if (entry.sponsorName) {
+        const sponsorKey = normalizeKey(entry.sponsorName);
+        sponsorId = (await findOrCreateSupplier(entry.sponsorName)).id;
+        const vote = sponsorKey === supplierKey ? "" : supplierKey;
+        if (vote) parentsOfOthers.add(supplierKey);
+        const votes = sponsorVotes.get(sponsorKey) ?? new Map<string, number>();
+        votes.set(vote, (votes.get(vote) ?? 0) + 1);
+        sponsorVotes.set(sponsorKey, votes);
       }
 
       let clientId: string | null = null;
@@ -181,6 +216,11 @@ export async function importParsedMonths(
       // upload-sourced fields (name, trade, supplier) are touched here —
       // compliance dates, photo, nationality, etc. are manually owned and
       // must never be overwritten by a re-upload.
+      const known = knownEmployees.get(entry.employeeIdNo);
+      // Sponsor and nationality only fill an empty field: they are the kind of
+      // detail people correct by hand, and a re-upload must not undo that.
+      const fillSponsor = sponsorId && !known?.sponsorSupplierId ? { sponsorSupplierId: sponsorId } : {};
+      const fillNationality = entry.nationality && !known?.nationality ? { nationality: entry.nationality } : {};
       await prisma.employee.upsert({
         where: { employeeIdNo: entry.employeeIdNo },
         create: {
@@ -189,12 +229,21 @@ export async function importParsedMonths(
           trade: entry.trade,
           supplierId: supplier.id,
           branchId,
+          ...fillSponsor,
+          ...fillNationality,
         },
         update: {
           name: entry.employeeName,
           trade: entry.trade,
           supplierId: supplier.id,
+          ...fillSponsor,
+          ...fillNationality,
         },
+      });
+      knownEmployees.set(entry.employeeIdNo, {
+        employeeIdNo: entry.employeeIdNo,
+        sponsorSupplierId: known?.sponsorSupplierId ?? sponsorId,
+        nationality: known?.nationality ?? entry.nationality ?? null,
       });
     }
 
@@ -214,6 +263,26 @@ export async function importParsedMonths(
       entries: month.entries.length,
     });
   }
+
+  // Place each sponsor under the main supplier it works for most, when that is
+  // safe: nobody is listed under it, it has no subsidiaries or parent yet, and
+  // the main supplier is a primary one.
+  let linked = 0;
+  for (const [sponsorKey, votes] of sponsorVotes) {
+    // A company that other sponsors are listed under is a real parent itself.
+    if (parentsOfOthers.has(sponsorKey)) continue;
+    // Most rows win; a tie stays primary.
+    const mainKey = [...votes.entries()].sort((a, b) => b[1] - a[1] || (a[0] === "" ? -1 : 1))[0]?.[0];
+    if (!mainKey) continue;
+    const sponsor = supplierByKey.get(sponsorKey);
+    const main = supplierByKey.get(mainKey);
+    if (!sponsor || !main || sponsor.id === main.id) continue;
+    if (sponsor.parentSupplierId || hasSubsidiaries.has(sponsor.id) || main.parentSupplierId) continue;
+    await prisma.supplier.update({ where: { id: sponsor.id }, data: { parentSupplierId: main.id } });
+    sponsor.parentSupplierId = main.id;
+    linked++;
+  }
+  stats.subsidiariesLinked = linked;
 
   return stats;
 }

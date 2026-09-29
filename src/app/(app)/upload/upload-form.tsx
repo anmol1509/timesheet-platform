@@ -15,6 +15,7 @@ type UploadStats = {
   monthsProcessed: { month: string; monthLabel: string; entries: number }[];
   suppliersCreated: number;
   clientsCreated: number;
+  subsidiariesLinked?: number;
   entriesCreated: number;
   entriesUpdated: number;
   rowsSkipped: number;
@@ -139,6 +140,8 @@ export function UploadForm() {
                 `, ${result.stats.suppliersCreated} new companies`}
               {result.stats.clientsCreated > 0 &&
                 `, ${result.stats.clientsCreated} new clients`}
+              {(result.stats.subsidiariesLinked ?? 0) > 0 &&
+                `, ${result.stats.subsidiariesLinked} sponsors placed under their main supplier`}
             </li>
             {result.stats.rowsSkipped > 0 && (
               <li className="text-[var(--warning)]">
