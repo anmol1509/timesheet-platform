@@ -1,50 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
-import { SITE_NAV } from "@/app/welcome/nav-data";
-import { BookDemoButton } from "@/components/BookDemoButton";
 import { LoginForm } from "./login-form";
-
-// The marketing site nav, floating over the top of the login page so
-// visitors can get back to manpowersync.com. Login lives on its own
-// subdomain, so these links point at the marketing site's absolute URL.
-// Top-level entries only — the mega-menu panels don't belong here.
-const MARKETING_URL = "https://manpowersync.com";
-
-function SiteNav() {
-  return (
-    <header className="theme-force-light fixed inset-x-3 top-3 z-50 mx-auto flex h-14 max-w-4xl items-center justify-between rounded-full border border-black/5 bg-white px-3 shadow-[0_10px_32px_-16px_rgba(15,15,15,0.3)] sm:px-4">
-      <a
-        href={MARKETING_URL}
-        className="flex shrink-0 items-center"
-        aria-label="ManpowerSync home"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-        <img
-          src={BRAND_LOGO}
-          alt="ManpowerSync"
-          height={28}
-          width={Math.round(28 * BRAND_LOGO_ASPECT)}
-          className="h-7 w-auto"
-        />
-      </a>
-      <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-        {SITE_NAV.map((item) => (
-          <a
-            key={item.href}
-            href={`${MARKETING_URL}${item.href}`}
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          >
-            {item.label}
-          </a>
-        ))}
-      </nav>
-      <BookDemoButton className="shrink-0 rounded-full bg-[var(--brand-primary)] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90">
-        Book a demo
-      </BookDemoButton>
-    </header>
-  );
-}
 
 // The root layout's title template already appends "• Workforce ERP",
 // so this must carry the page name only.
@@ -61,7 +18,6 @@ export default async function LoginPage() {
 
   return (
     <div className="login-brand-panel relative min-h-screen w-full overflow-hidden">
-      <SiteNav />
       {/* Dark panel — a photo with a gradient scrim for legibility, not a
           pattern. Plain CSS background-image (not next/image) since it's an
           external URL and this repo doesn't have a remote-image allowlist
@@ -87,7 +43,7 @@ export default async function LoginPage() {
           alt=""
           width={40}
           height={40}
-          className="absolute top-24 left-12 h-10 w-10 lg:left-16"
+          className="absolute top-12 left-12 h-10 w-10 lg:left-16"
         />
         <div className="max-w-md">
           <p className="text-xs font-semibold tracking-wide text-white/60 uppercase">
@@ -112,7 +68,7 @@ export default async function LoginPage() {
           visitor's theme choice — a public entry point, not somewhere
           personal dark-mode preference should apply. */}
       <div className="theme-force-light absolute inset-y-0 right-0 flex w-full flex-col bg-surface lg:w-[48%]">
-        <div className="relative flex flex-1 items-center justify-center p-6 pt-24 sm:p-10 sm:pt-24 lg:px-20 lg:py-10 lg:pt-24">
+        <div className="relative flex flex-1 items-center justify-center p-6 sm:p-10 lg:px-20 lg:py-10">
           <div className="w-full max-w-sm">
             {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
             <img
@@ -134,6 +90,10 @@ export default async function LoginPage() {
             </div>
 
             <p className="mt-6 text-center text-xs text-muted">
+              <a href="https://manpowersync.com" className="hover:underline">
+                ← Back to manpowersync.com
+              </a>
+              <span aria-hidden> · </span>
               Employee?{" "}
               <a href="/me/login" className="text-[var(--brand-primary)] hover:underline">
                 Sign in to the employee portal

@@ -57,7 +57,7 @@ export function HoursSplitChart({ split }: { split: HoursSplit }) {
         </div>
       </div>
 
-      <div className="flex min-h-44 flex-1 gap-2">
+      <div className="flex h-56 gap-2">
         {/* Y axis */}
         <div className="flex flex-col justify-between pb-0 text-right">
           {ticks.map((t) => (

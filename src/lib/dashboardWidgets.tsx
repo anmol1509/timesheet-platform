@@ -147,7 +147,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
               <p className="mt-1 text-xs text-muted">Nothing expires in the next 30 days.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-[var(--border)]">
+            <ul className="max-h-[22rem] divide-y divide-[var(--border)] overflow-y-auto">
               {d.attention.map((item) => (
                 <li key={item.key} className="px-5 py-3">
                   <div className="flex items-start gap-3">
