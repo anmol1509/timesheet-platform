@@ -1,0 +1,54 @@
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+
+/** A client that can be the real database or a transaction (a dry run is the
+ * real import run inside a transaction that is rolled back). */
+export type Db = PrismaClient | Prisma.TransactionClient;
+
+export type ImportKind = "SUPPLIERS" | "CLIENTS" | "WORKERS" | "TIMESHEETS";
+
+export type FieldDef = {
+  key: string;
+  label: string;
+  required?: boolean;
+  /** Other names this column goes by in the wild. */
+  aliases?: string[];
+  hint?: string;
+};
+
+export type ImportNote = { tone: "warn" | "info"; title: string; detail?: string };
+
+export type RowReport = {
+  /** Row number in the source sheet (header row is not counted as data). */
+  row: number;
+  name?: string;
+  status: "created" | "updated" | "skipped" | "error";
+  message?: string;
+  notes?: ImportNote[];
+};
+
+export type ApplyResult = {
+  rows: RowReport[];
+  counts: Record<string, number>;
+  /** Things about the file as a whole (not tied to one row). */
+  notes: ImportNote[];
+};
+
+export type ApplyCtx = {
+  db: Db;
+  branchId: string;
+  user: { id: string; name: string };
+  /** False during a dry run: audit-log writes go to the real database and would outlive the rollback. */
+  audit: boolean;
+  progress?: (done: number, total: number) => void | Promise<void>;
+};
+
+/** One source row, already mapped to field keys. */
+export type MappedRow = { row: number; values: Record<string, string> };
+
+/** How the user (or the auto-detector) lined the file up with our fields. */
+export type Mapping = {
+  sheet?: string;
+  headerRow?: number;
+  /** field key -> the header text of the source column */
+  columns: Record<string, string>;
+};

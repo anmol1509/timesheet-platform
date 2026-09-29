@@ -76,6 +76,7 @@ model Branch {
   suppliers            Supplier[]
   projects             Project[]
   uploads              Upload[]
+  importBatches        ImportBatch[]
   invoices             ClientInvoice[]
   sheets               GeneratedSheet[]
   items                InventoryItem[]
@@ -165,6 +166,7 @@ model User {
   branchId String?
 
   uploads          Upload[]
+  importBatches    ImportBatch[]
   generatedSheets  GeneratedSheet[]
   documents        Document[]
   clientInvoices   ClientInvoice[]
@@ -2398,4 +2400,47 @@ model AgencyContact {
   candidates CandidateOnboarding[]
 
   @@index([agencyId])
+}
+
+// One run of the import wizard: a file, how its columns were mapped, what a
+// dry run said would happen, and (once run) every record it created or
+// changed, so the whole import can be undone.
+model ImportBatch {
+  id            String    @id @default(cuid())
+  kind          String // "SUPPLIERS" | "CLIENTS" | "WORKERS" | "TIMESHEETS"
+  filename      String
+  fileData      Bytes?
+  status        String    @default("DRAFT") // DRAFT | PREVIEWED | RUNNING | DONE | FAILED | UNDONE
+  mapping       String? // JSON: { sheet, headerRow, columns: { fieldKey: sourceHeader } }
+  options       String? // JSON
+  summary       String? // JSON: counts and the row-by-row report
+  progressDone  Int       @default(0)
+  progressTotal Int       @default(0)
+  error         String?
+  createdAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  undoUntil     DateTime?
+  undoneAt      DateTime?
+
+  branch      Branch @relation(fields: [branchId], references: [id])
+  branchId    String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  changes ImportChange[]
+
+  @@index([branchId, createdAt])
+}
+
+model ImportChange {
+  id       String      @id @default(cuid())
+  batch    ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batchId  String
+  seq      Int
+  model    String // Prisma model name, e.g. "Supplier"
+  recordId String
+  action   String // "CREATE" | "UPDATE"
+  before   String? // JSON of the previous values of the fields an UPDATE changed
+
+  @@index([batchId, seq])
 }

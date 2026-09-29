@@ -1,0 +1,129 @@
+import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
+
+// Every record an import creates or changes is written to ImportChange as it
+// happens, so a whole import can be undone. It is a client extension, so the
+// import code itself doesn't have to remember to record anything.
+
+/** Models the importers write to. A write to one of these is recorded. */
+export const TRACKED_MODELS = new Set(["Supplier", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance"]);
+
+const delegate = (model: string) => (prisma as unknown as Record<string, any>)[model[0].toLowerCase() + model.slice(1)]; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+export function encodeValues(values: Record<string, unknown>): string {
+  return JSON.stringify(values, (_k, v) => {
+    if (v instanceof Date) return { $d: v.toISOString() };
+    if (v instanceof Prisma.Decimal) return { $n: v.toString() };
+    return v;
+  });
+}
+
+export function decodeValues(json: string): Record<string, unknown> {
+  return JSON.parse(json, (_k, v) => {
+    if (v && typeof v === "object" && "$d" in v) return new Date(v.$d);
+    if (v && typeof v === "object" && "$n" in v) return new Prisma.Decimal(v.$n);
+    return v;
+  });
+}
+
+/** Only real columns count: relation inputs in `data` aren't in the stored row. */
+function previousValues(before: Record<string, unknown>, data: Record<string, unknown>) {
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(data)) if (k in before) out[k] = before[k];
+  return out;
+}
+
+export function trackedClient(batchId: string) {
+  let seq = 0;
+  const log = (model: string, recordId: string, action: "CREATE" | "UPDATE", before: Record<string, unknown> | null) =>
+    prisma.importChange.create({
+      data: { batchId, seq: seq++, model, recordId, action, before: before ? encodeValues(before) : null },
+    });
+
+  const refuse = (model: string, op: string) => {
+    throw new Error(`Import code used ${model}.${op}, which can't be undone. Use create/update/upsert.`);
+  };
+
+  return prisma.$extends({
+    query: {
+      $allModels: {
+        async create({ model, args, query }) {
+          const res = await query(args);
+          if (TRACKED_MODELS.has(model)) await log(model, (res as { id: string }).id, "CREATE", null);
+          return res;
+        },
+        async update({ model, args, query }) {
+          if (!TRACKED_MODELS.has(model)) return query(args);
+          const prev = await delegate(model).findUnique({ where: args.where });
+          const res = await query(args);
+          if (prev) await log(model, prev.id, "UPDATE", previousValues(prev, args.data as Record<string, unknown>));
+          return res;
+        },
+        async upsert({ model, args, query }) {
+          if (!TRACKED_MODELS.has(model)) return query(args);
+          const prev = await delegate(model).findUnique({ where: args.where });
+          const res = await query(args);
+          if (prev) await log(model, prev.id, "UPDATE", previousValues(prev, args.update as Record<string, unknown>));
+          else await log(model, (res as { id: string }).id, "CREATE", null);
+          return res;
+        },
+        // Bulk inserts are fine as long as every row carries its own id, which
+        // is what lets each one be recorded (and removed on undo).
+        async createMany({ model, args, query }) {
+          if (!TRACKED_MODELS.has(model)) return query(args);
+          const data = (Array.isArray(args.data) ? args.data : [args.data]) as { id?: string }[];
+          if (data.some((d) => !d.id)) refuse(model, "createMany without ids");
+          // skipDuplicates could silently skip a row that is then "recorded"; a dry run and undo rely on exactness.
+          const res = await query({ ...args, skipDuplicates: false });
+          await prisma.importChange.createMany({
+            data: data.map((d) => ({ batchId, seq: seq++, model, recordId: d.id as string, action: "CREATE" })),
+          });
+          return res;
+        },
+        async updateMany({ model, args, query }) {
+          if (TRACKED_MODELS.has(model)) refuse(model, "updateMany");
+          return query(args);
+        },
+        async delete({ model, args, query }) {
+          if (TRACKED_MODELS.has(model)) refuse(model, "delete");
+          return query(args);
+        },
+        async deleteMany({ model, args, query }) {
+          if (TRACKED_MODELS.has(model)) refuse(model, "deleteMany");
+          return query(args);
+        },
+      },
+    },
+  });
+}
+
+export type UndoOutcome = { restored: number; removed: number; kept: { model: string; recordId: string; reason: string }[] };
+
+/** Reverse a batch newest-first: changed records get their old values back and
+ * created ones are removed. A created record that something else now points
+ * at (say a worker who has since been given attendance) is kept, and reported. */
+export async function undoChanges(batchId: string): Promise<UndoOutcome> {
+  const changes = await prisma.importChange.findMany({ where: { batchId }, orderBy: { seq: "desc" } });
+  const out: UndoOutcome = { restored: 0, removed: 0, kept: [] };
+  for (const c of changes) {
+    const d = delegate(c.model);
+    try {
+      if (c.action === "UPDATE") {
+        if (c.before) await d.update({ where: { id: c.recordId }, data: decodeValues(c.before) });
+        out.restored++;
+      } else {
+        await d.delete({ where: { id: c.recordId } });
+        out.removed++;
+      }
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === "P2025") continue; // already gone
+      out.kept.push({
+        model: c.model,
+        recordId: c.recordId,
+        reason: code === "P2003" ? "still used by other records" : e instanceof Error ? e.message.slice(0, 120) : "could not be removed",
+      });
+    }
+  }
+  return out;
+}

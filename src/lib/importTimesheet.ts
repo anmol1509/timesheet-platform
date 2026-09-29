@@ -3,6 +3,8 @@ import { uniqueClientCode, uniqueSupplierCode } from "@/lib/entityCode";
 import { nameKey } from "@/lib/partyCode";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
+import type { Db } from "@/lib/importer/types";
+import { newAttendanceStats, writeAttendanceFromEntry } from "@/lib/importer/attendance";
 
 export type ImportStats = {
   monthsProcessed: { month: string; monthLabel: string; entries: number }[];
@@ -15,6 +17,13 @@ export type ImportStats = {
   rowsSkipped: number;
   skippedRowDetails: SkippedRow[];
   unrecognizedSheets: string[];
+  /** Attendance days written from the sheet's daily cells (only when the importer is given a user). */
+  attendanceCreated?: number;
+  /** Days that already had different attendance, left untouched. */
+  attendanceConflicts?: number;
+  attendanceLocked?: number;
+  attendanceUnrecognised?: number;
+  unrecognisedValues?: string[];
 };
 
 function normalizeKey(name: string) {
@@ -22,19 +31,32 @@ function normalizeKey(name: string) {
   return nameKey(name);
 }
 
+export type ImportOptions = {
+  /** The database (or a transaction, for a dry run). */
+  db?: Db;
+  /** Who is importing. When given, each worker's days are also written to attendance. */
+  userId?: string;
+  progress?: (done: number, total: number) => void | Promise<void>;
+};
+
 export async function importParsedMonths(
   months: ParsedMonth[],
   uploadId: string,
   branchId: string,
-  projectId: string | null = null
+  projectId: string | null = null,
+  opts: ImportOptions = {}
 ): Promise<ImportStats> {
+  const db = opts.db ?? prisma;
+  const attendance = newAttendanceStats();
+  const totalEntries = months.reduce((n, m) => n + m.entries.length, 0);
+  let processed = 0;
   // Matched by name WITHIN this branch only. Loading every tenant's suppliers
   // and clients meant a sheet naming "ABC Manpower" attached its rows to another
   // company's supplier of that name, so they surfaced in that company's supplier
   // sheets and billing.
   const [existingSuppliers, existingClients] = await Promise.all([
-    prisma.supplier.findMany({ where: { branchId } }),
-    prisma.client.findMany({ where: { branchId } }),
+    db.supplier.findMany({ where: { branchId } }),
+    db.client.findMany({ where: { branchId } }),
   ]);
 
   // An employee ID is unique across the whole system, and the roster upsert
@@ -44,7 +66,7 @@ export async function importParsedMonths(
   const uploadedIds = [...new Set(months.flatMap((m) => m.entries.map((e) => e.employeeIdNo)))];
   const foreignIds = new Set(
     (
-      await prisma.employee.findMany({
+      await db.employee.findMany({
         where: { employeeIdNo: { in: uploadedIds }, NOT: { branchId } },
         select: { employeeIdNo: true },
       })
@@ -59,7 +81,7 @@ export async function importParsedMonths(
   const hasSubsidiaries = new Set(existingSuppliers.map((s) => s.parentSupplierId).filter(Boolean) as string[]);
   const knownEmployees = new Map(
     (
-      await prisma.employee.findMany({
+      await db.employee.findMany({
         where: { branchId, employeeIdNo: { in: uploadedIds } },
         select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true },
       })
@@ -74,8 +96,8 @@ export async function importParsedMonths(
     const key = normalizeKey(name);
     let s = supplierByKey.get(key);
     if (!s) {
-      s = await prisma.supplier.create({
-        data: { name: name.trim(), code: await uniqueSupplierCode(name.trim(), branchId), branchId },
+      s = await db.supplier.create({
+        data: { name: name.trim(), code: await uniqueSupplierCode(name.trim(), branchId, undefined, db), branchId },
       });
       supplierByKey.set(key, s);
       stats.suppliersCreated++;
@@ -133,8 +155,8 @@ export async function importParsedMonths(
         const clientKey = normalizeKey(entry.clientName);
         let client = clientByKey.get(clientKey);
         if (!client) {
-          client = await prisma.client.create({
-            data: { name: entry.clientName.trim(), code: await uniqueClientCode(entry.clientName.trim(), branchId), branchId },
+          client = await db.client.create({
+            data: { name: entry.clientName.trim(), code: await uniqueClientCode(entry.clientName.trim(), branchId, undefined, db), branchId },
           });
           clientByKey.set(clientKey, client);
           stats.clientsCreated++;
@@ -142,7 +164,7 @@ export async function importParsedMonths(
         clientId = client.id;
       }
 
-      const existing = await prisma.timesheetEntry.findUnique({
+      const existing = await db.timesheetEntry.findUnique({
         where: {
           month_supplierId_employeeIdNo_trade: {
             month: month.month,
@@ -161,7 +183,7 @@ export async function importParsedMonths(
         continue;
       }
 
-      await prisma.timesheetEntry.upsert({
+      await db.timesheetEntry.upsert({
         where: {
           month_supplierId_employeeIdNo_trade: {
             month: month.month,
@@ -221,7 +243,7 @@ export async function importParsedMonths(
       // detail people correct by hand, and a re-upload must not undo that.
       const fillSponsor = sponsorId && !known?.sponsorSupplierId ? { sponsorSupplierId: sponsorId } : {};
       const fillNationality = entry.nationality && !known?.nationality ? { nationality: entry.nationality } : {};
-      await prisma.employee.upsert({
+      const employeeRecord = await db.employee.upsert({
         where: { employeeIdNo: entry.employeeIdNo },
         create: {
           employeeIdNo: entry.employeeIdNo,
@@ -240,6 +262,14 @@ export async function importParsedMonths(
           ...fillNationality,
         },
       });
+      if (opts.userId) {
+        await writeAttendanceFromEntry(
+          db,
+          { employeeId: employeeRecord.id, supplierId: supplier.id, branchId, markedById: opts.userId, days: entry.dailyHours },
+          attendance,
+        );
+      }
+      await opts.progress?.(++processed, totalEntries);
       knownEmployees.set(entry.employeeIdNo, {
         employeeIdNo: entry.employeeIdNo,
         sponsorSupplierId: known?.sponsorSupplierId ?? sponsorId,
@@ -247,7 +277,7 @@ export async function importParsedMonths(
       });
     }
 
-    await prisma.uploadMonth.create({
+    await db.uploadMonth.create({
       data: {
         month: month.month,
         monthLabel: month.monthLabel,
@@ -278,11 +308,18 @@ export async function importParsedMonths(
     const main = supplierByKey.get(mainKey);
     if (!sponsor || !main || sponsor.id === main.id) continue;
     if (sponsor.parentSupplierId || hasSubsidiaries.has(sponsor.id) || main.parentSupplierId) continue;
-    await prisma.supplier.update({ where: { id: sponsor.id }, data: { parentSupplierId: main.id } });
+    await db.supplier.update({ where: { id: sponsor.id }, data: { parentSupplierId: main.id } });
     sponsor.parentSupplierId = main.id;
     linked++;
   }
   stats.subsidiariesLinked = linked;
+  if (opts.userId) {
+    stats.attendanceCreated = attendance.attendanceCreated;
+    stats.attendanceConflicts = attendance.attendanceConflicts;
+    stats.attendanceLocked = attendance.attendanceLocked;
+    stats.attendanceUnrecognised = attendance.attendanceUnrecognised;
+    stats.unrecognisedValues = [...attendance.unrecognisedValues];
+  }
 
   return stats;
 }

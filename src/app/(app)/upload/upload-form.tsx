@@ -16,6 +16,11 @@ type UploadStats = {
   suppliersCreated: number;
   clientsCreated: number;
   subsidiariesLinked?: number;
+  attendanceCreated?: number;
+  attendanceConflicts?: number;
+  attendanceLocked?: number;
+  attendanceUnrecognised?: number;
+  unrecognisedValues?: string[];
   entriesCreated: number;
   entriesUpdated: number;
   rowsSkipped: number;
@@ -143,6 +148,21 @@ export function UploadForm() {
               {(result.stats.subsidiariesLinked ?? 0) > 0 &&
                 `, ${result.stats.subsidiariesLinked} sponsors placed under their main supplier`}
             </li>
+            {(result.stats.attendanceCreated ?? 0) > 0 && (
+              <li>{result.stats.attendanceCreated} attendance days recorded from the daily hours</li>
+            )}
+            {((result.stats.attendanceConflicts ?? 0) > 0 || (result.stats.attendanceLocked ?? 0) > 0) && (
+              <li className="text-[var(--warning)]">
+                {(result.stats.attendanceConflicts ?? 0) + (result.stats.attendanceLocked ?? 0)} days already had
+                attendance that differs from the sheet — left as they were
+              </li>
+            )}
+            {(result.stats.attendanceUnrecognised ?? 0) > 0 && (
+              <li className="text-[var(--warning)]">
+                {result.stats.attendanceUnrecognised} cells weren&rsquo;t recognised as attendance (
+                {(result.stats.unrecognisedValues ?? []).join(", ")}) and were skipped
+              </li>
+            )}
             {result.stats.rowsSkipped > 0 && (
               <li className="text-[var(--warning)]">
                 {result.stats.rowsSkipped} row(s) skipped
