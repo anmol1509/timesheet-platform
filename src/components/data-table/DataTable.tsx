@@ -166,7 +166,10 @@ export function DataTable<T extends { id: string }>({
       selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
     const csv = toCsv(
       exportRows,
-      visibleColumns
+      // What's on screen, plus any hidden column that names its own CSV header
+      // (those are the importable fields, so a round trip keeps them).
+      columns
+        .filter((c) => visibleColumns.includes(c) || (c.defaultHidden && c.csvHeader))
         .filter(
           (c): c is DataTableColumn<T> & {
             csvValue: NonNullable<DataTableColumn<T>["csvValue"]>;

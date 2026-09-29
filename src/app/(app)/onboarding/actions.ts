@@ -408,6 +408,21 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
         results.push({ row: i + 2, status: "error", message: dupError });
         continue;
       }
+      // Without a passport or Emirates ID there is nothing to tell two rows
+      // apart but the person's details; the same name with the same phone or
+      // email (or neither given) is the same candidate uploaded twice.
+      if (!passportNumber && !emiratesId) {
+        const phone = stringOrNull(r["Phone"] ?? null);
+        const email = stringOrNull(r["Email"] ?? null);
+        const same = await prisma.candidateOnboarding.findMany({
+          where: { branchId, candidateName: { equals: candidateName, mode: "insensitive" }, passportNumber: null, emiratesId: null },
+          select: { phone: true, email: true },
+        });
+        if (same.some((c) => (!phone && !email && !c.phone && !c.email) || (phone && c.phone === phone) || (email && c.email?.toLowerCase() === email.toLowerCase()))) {
+          results.push({ row: i + 2, status: "error", message: `${candidateName} is already on the list.` });
+          continue;
+        }
+      }
       const agencyRaw = (r["Agency"] || "").trim();
       if (agencyRaw && !agencyByName.has(agencyRaw.toLowerCase())) {
         results.push({ row: i + 2, status: "error", message: `Agency "${agencyRaw}" not found — add it under Suppliers first.` });

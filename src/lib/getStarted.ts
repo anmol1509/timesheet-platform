@@ -72,7 +72,7 @@ export async function getSetupSteps(branchId: string): Promise<SetupStep[]> {
       key: "health",
       title: "Complete your worker records",
       detail: health.workers > 0 ? `${health.overall}% complete — passport, Emirates ID and visa dates drive your renewal alerts` : "Passport, Emirates ID and visa dates drive your renewal alerts.",
-      done: health.workers > 0 && health.overall >= 80, href: "/employees/data-health", action: "See what's missing",
+      done: health.workers > 0 && health.overall >= 80, href: "/data-health", action: "See what's missing",
     },
     {
       key: "team",

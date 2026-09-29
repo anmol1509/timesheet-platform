@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileArchive, Loader2 } from "lucide-react";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -25,6 +25,8 @@ export function CompanyGrid({
   month: string;
 }) {
   const [query, setQuery] = useState("");
+  const [zipping, setZipping] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,6 +54,36 @@ export function CompanyGrid({
     downloadCsv(`companies-${month}.csv`, csv);
   }
 
+  async function downloadPdfs() {
+    setZipping(true);
+    setZipError(null);
+    try {
+      const res = await fetch("/api/generate/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierIds: [...selected], month }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setZipError(body?.error ?? "Couldn't generate the timesheets.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `timesheets-${month}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const left = Number(res.headers.get("X-Skipped") ?? 0);
+      if (left > 0) setZipError(`${left} company(ies) were left out — see NOT-GENERATED.txt in the zip.`);
+    } catch {
+      setZipError("Couldn't generate the timesheets. Try again.");
+    } finally {
+      setZipping(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -75,8 +107,24 @@ export function CompanyGrid({
             <Download className="h-4 w-4" />
             {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
           </button>
+          <button
+            type="button"
+            onClick={downloadPdfs}
+            disabled={selected.size === 0 || zipping}
+            title={selected.size === 0 ? "Select companies first" : "One PDF per company, zipped"}
+            className="btn btn-primary flex gap-1.5 px-3 disabled:opacity-50"
+          >
+            {zipping ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
+            {zipping ? "Generating…" : selected.size > 0 ? `Download PDFs (${selected.size})` : "Download PDFs"}
+          </button>
         </div>
       </div>
+
+      {zipError && (
+        <p role="alert" className="whitespace-pre-line rounded-control bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
+          {zipError}
+        </p>
+      )}
 
       {filtered.length === 0 && (
         <p className="text-sm text-muted">No companies match &ldquo;{query}&rdquo;.</p>

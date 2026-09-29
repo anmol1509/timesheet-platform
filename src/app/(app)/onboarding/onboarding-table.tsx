@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, LayoutGrid, Minus, Table2, X } from "lucide-react";
+import { Check, Download, LayoutGrid, Minus, Table2, X } from "lucide-react";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import { Select } from "@/components/ui/Select";
 import { CsvImportDialog, type ImportRowResult } from "@/components/CsvImportDialog";
 import { cn } from "@/lib/cn";
@@ -62,6 +63,19 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
     const results = await bulkImportCandidatesAction(rows);
     router.refresh();
     return results;
+  }
+
+  function exportCsv() {
+    const csv = toCsv(candidates, [
+      { header: "Candidate no", value: (c) => c.candidateNo },
+      { header: "Candidate name", value: (c) => c.candidateName },
+      { header: "Trade", value: (c) => c.trade },
+      { header: "Agency", value: (c) => c.agency?.name },
+      ...STAGES.map((st) => ({ header: st.label, value: (c: Candidate) => (c as unknown as Record<string, string>)[st.field] })),
+      { header: "Ready to join", value: (c) => (c.readyToJoin ? "Yes" : "No") },
+      { header: "Joined", value: (c) => (c.joined ? "Yes" : "No") },
+    ]);
+    downloadCsv(`onboarding-${new Date().toISOString().slice(0, 10)}.csv`, csv);
   }
 
   const agencyOptions = useMemo(() => {
@@ -123,6 +137,10 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
             columns={IMPORT_COLUMNS}
             importAction={handleImport}
           />
+          <button type="button" onClick={exportCsv} className="btn btn-secondary flex gap-1.5 px-3">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
           <div className="flex gap-1 rounded-lg bg-surface-subtle p-1">
             <button
               type="button"

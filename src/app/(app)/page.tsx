@@ -19,7 +19,7 @@ import { DASHBOARD_WIDGETS, mergeWidgetOrder, orderedVisibleWidgets, type Dashbo
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { CustomizeDashboardButton } from "./customize-dashboard";
-import { CalendarDays, UserPlus, Upload as UploadIcon } from "lucide-react";
+import { CalendarDays, FileText, UserPlus, Upload as UploadIcon } from "lucide-react";
 import { GetStarted } from "@/components/GetStarted";
 import { isAdminRole } from "@/lib/roles";
 
@@ -213,11 +213,18 @@ export default async function DashboardPage() {
               initialHidden={hiddenWidgets}
             />
             <Link
-              href="/upload"
+              href="/import"
               className="inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary"
             >
               <UploadIcon className="h-3.5 w-3.5" aria-hidden />
-              Upload timesheet
+              Upload data
+            </Link>
+            <Link
+              href="/companies"
+              className="inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary"
+            >
+              <FileText className="h-3.5 w-3.5" aria-hidden />
+              Generate timesheets
             </Link>
             <Link
               href="/employees/new"

@@ -2,7 +2,9 @@ import Link from "next/link";
 import { HeartPulse } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/Badge";
+import { notFound } from "next/navigation";
 import { requireUserWithBranch } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 import { HEALTH_FIELDS, HEALTH_KEYS, getDataHealth, type HealthKey } from "@/lib/dataHealth";
 import { cn } from "@/lib/cn";
 
@@ -11,7 +13,8 @@ const LABEL = Object.fromEntries(HEALTH_FIELDS.map((f) => [f.key, f.label])) as 
 const tone = (pct: number) => (pct >= 85 ? "bg-[var(--success)]" : pct >= 50 ? "bg-[var(--warning)]" : "bg-[var(--error)]");
 
 export default async function DataHealthPage({ searchParams }: { searchParams: Promise<{ missing?: string }> }) {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  if (!isAdminRole(user.role)) notFound();
   const { missing } = await searchParams;
   const focus = HEALTH_KEYS.includes(missing as HealthKey) ? (missing as HealthKey) : null;
 
@@ -34,7 +37,7 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
       <PageHeader
         title="Data health"
         icon={HeartPulse}
-        breadcrumbs={[{ label: "Employees", href: "/employees" }, { label: "Data health" }]}
+        breadcrumbs={[{ label: "Administration" }, { label: "Data health" }]}
         description="How complete your worker records are, and what's missing for whom. Fill the gaps from a spreadsheet, or open a worker to edit them."
         actions={<Link href="/import/new/workers" className="btn btn-secondary">Fill from a spreadsheet</Link>}
       />

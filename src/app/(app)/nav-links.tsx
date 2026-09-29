@@ -101,7 +101,6 @@ const NAV: Entry[] = [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
-      { href: "/employees/data-health", label: "Data health", icon: HeartPulse },
       { href: "/documents", label: "Documents", icon: FileText },
       { href: "/trades", label: "Trades", icon: Wrench },
       { href: "/inventory", label: "PPE & Inventory", icon: Package },
@@ -161,7 +160,7 @@ const NAV: Entry[] = [
       // Upload → Generate Sheets → History is one pipeline; three tabs.
       {
         href: "/upload",
-        label: "Import & Generate",
+        label: "Generate",
         icon: UploadIcon,
         alsoMatch: ["/companies", "/history"],
       },
@@ -276,6 +275,7 @@ function adminGroup(): Entry {
     children: [
       { href: "/settings/company", label: "Company Profile", icon: Building },
       { href: "/import", label: "Import Data", icon: UploadIcon },
+      { href: "/data-health", label: "Data health", icon: HeartPulse },
       { href: "/settings/team", label: "Team & Access", icon: UserCog },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },

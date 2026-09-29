@@ -41,7 +41,7 @@ type ClientRow = {
 };
 
 const IMPORT_COLUMNS = [
-  { key: "name", label: "Company name", required: true },
+  { key: "name", label: "Company name", required: true, aliases: ["Company", "Client", "Client name", "Name"] },
   { key: "contactPerson", label: "Contact person" },
   { key: "contactEmail", label: "Contact email" },
   { key: "contactPhone", label: "Contact phone" },
@@ -50,7 +50,7 @@ const IMPORT_COLUMNS = [
 ];
 
 function fmtDate(d: string | null) {
-  if (!d) return "—";
+  if (!d) return "";
   return new Date(d).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
@@ -112,11 +112,11 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
   function exportCsv() {
     const rows = selected.size > 0 ? filtered.filter((c) => selected.has(c.id)) : filtered;
     const csv = toCsv(rows, [
-      { header: "Company", value: (c) => c.name },
+      { header: "Company name", value: (c) => c.name },
       { header: "Code", value: (c) => c.code },
-      { header: "Contact Person", value: (c) => c.contactPerson },
-      { header: "Contact Email", value: (c) => c.contactEmail },
-      { header: "Contact Phone", value: (c) => c.contactPhone },
+      { header: "Contact person", value: (c) => c.contactPerson },
+      { header: "Contact email", value: (c) => c.contactEmail },
+      { header: "Contact phone", value: (c) => c.contactPhone },
       { header: "Basic Rate (AED)", value: (c) => c.basicRate },
       { header: "Hourly Rate (AED)", value: (c) => c.hourlyRate },
       { header: "Contract Start", value: (c) => fmtDate(c.contractStart) },

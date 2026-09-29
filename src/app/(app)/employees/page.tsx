@@ -130,7 +130,7 @@ export default async function EmployeesPage({
         }
         actions={
           <>
-            <Button href="/employees/data-health" size="sm" variant="secondary">
+            <Button href="/data-health" size="sm" variant="secondary">
               Data health
             </Button>
             <Button href="/employees/new" size="sm">

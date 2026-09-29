@@ -350,13 +350,15 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       };
       if (existing) {
         const before = existing as unknown as Record<string, unknown>;
-        await prisma.client.update({ where: { id: existing.id }, data });
+        // A blank cell means "not in this file", not "clear it".
+        const changes = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== null));
+        await prisma.client.update({ where: { id: existing.id }, data: changes });
         await logAudit({
           entityType: "CLIENT",
           entityId: existing.id,
           action: "UPDATE",
           before,
-          after: data,
+          after: changes,
           userId: user.id,
           userName: user.name,
           branchId,
