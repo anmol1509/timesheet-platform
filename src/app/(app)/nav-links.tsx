@@ -45,6 +45,7 @@ import {
   FileClock,
   UserCheck,
   type LucideIcon,
+  HeartPulse,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
@@ -100,6 +101,7 @@ const NAV: Entry[] = [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
+      { href: "/employees/data-health", label: "Data health", icon: HeartPulse },
       { href: "/documents", label: "Documents", icon: FileText },
       { href: "/trades", label: "Trades", icon: Wrench },
       { href: "/inventory", label: "PPE & Inventory", icon: Package },

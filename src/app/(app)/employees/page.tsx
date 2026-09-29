@@ -129,10 +129,15 @@ export default async function EmployeesPage({
           </span>
         }
         actions={
-          <Button href="/employees/new" size="sm">
-            <UserPlus className="h-3.5 w-3.5" aria-hidden />
-            Add employee
-          </Button>
+          <>
+            <Button href="/employees/data-health" size="sm" variant="secondary">
+              Data health
+            </Button>
+            <Button href="/employees/new" size="sm">
+              <UserPlus className="h-3.5 w-3.5" aria-hidden />
+              Add employee
+            </Button>
+          </>
         }
       />
 

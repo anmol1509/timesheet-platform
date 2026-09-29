@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getDataHealth } from "@/lib/dataHealth";
 
 export type SetupStep = {
   key: string;
@@ -16,7 +17,7 @@ export const SAMPLE_MARK = '"sample":true';
 
 /** What has been set up so far, worked out from the company's real data (sample data is not counted). */
 export async function getSetupSteps(branchId: string): Promise<SetupStep[]> {
-  const [branch, suppliers, clients, workers, entries, users, sampleChanges] = await Promise.all([
+  const [branch, suppliers, clients, workers, entries, users, sampleChanges, health] = await Promise.all([
     prisma.branch.findUnique({ where: { id: branchId }, select: { trn: true, address: true, phone: true, logoId: true } }),
     prisma.supplier.count({ where: { branchId } }),
     prisma.client.count({ where: { branchId } }),
@@ -28,6 +29,7 @@ export async function getSetupSteps(branchId: string): Promise<SetupStep[]> {
       where: { action: "CREATE", batch: { branchId, status: "DONE", options: { contains: SAMPLE_MARK } } },
       _count: { _all: true },
     }),
+    getDataHealth(branchId, { realOnly: true }),
   ]);
   const sample = new Map(sampleChanges.map((s) => [s.model, s._count._all]));
   const real = (total: number, model: string) => Math.max(0, total - (sample.get(model) ?? 0));
@@ -65,6 +67,12 @@ export async function getSetupSteps(branchId: string): Promise<SetupStep[]> {
       title: "Bring in a month of timesheets",
       detail: t > 0 ? `${t} timesheet rows` : "Hours and attendance for every worker, from your existing sheet.",
       done: t > 0, count: t, href: "/import/new/timesheets", action: "Import timesheets",
+    },
+    {
+      key: "health",
+      title: "Complete your worker records",
+      detail: health.workers > 0 ? `${health.overall}% complete — passport, Emirates ID and visa dates drive your renewal alerts` : "Passport, Emirates ID and visa dates drive your renewal alerts.",
+      done: health.workers > 0 && health.overall >= 80, href: "/employees/data-health", action: "See what's missing",
     },
     {
       key: "team",

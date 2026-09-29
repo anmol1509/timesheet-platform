@@ -12,7 +12,7 @@ export type WhatsAppSendResult =
   | { sent: true }
   | { sent: false; reason: "not_configured" | "no_recipients" | "request_failed"; detail?: string };
 
-function isConfigured() {
+export function isWhatsAppConfigured() {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID &&
       process.env.TWILIO_AUTH_TOKEN &&
@@ -29,7 +29,7 @@ export function getExpiryDigestRecipients(): string[] {
 }
 
 export async function sendWhatsAppMessage(to: string, body: string): Promise<WhatsAppSendResult> {
-  if (!isConfigured()) {
+  if (!isWhatsAppConfigured()) {
     console.warn("[whatsapp] TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_WHATSAPP_FROM not set — message not sent.");
     return { sent: false, reason: "not_configured" };
   }
