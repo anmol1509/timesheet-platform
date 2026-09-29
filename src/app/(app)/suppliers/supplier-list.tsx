@@ -55,9 +55,9 @@ const fmtAed = (n: number) => Math.round(n).toLocaleString();
 const fmtShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
 const IMPORT_COLUMNS = [
-  { key: "name", label: "Supplier name", required: true },
-  { key: "code", label: "Supplier code" },
-  { key: "parent", label: "Parent supplier" },
+  { key: "name", label: "Supplier name", required: true, aliases: ["Supplier", "Name"] },
+  { key: "code", label: "Supplier code", aliases: ["Code"] },
+  { key: "parent", label: "Parent supplier", aliases: ["Parent", "Parent company"] },
   { key: "fullName", label: "Full name" },
   { key: "contactPerson", label: "Contact person" },
   { key: "contactPhone", label: "Contact phone" },

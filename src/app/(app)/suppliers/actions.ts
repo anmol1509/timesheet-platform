@@ -1,7 +1,7 @@
 "use server";
 
 import { uniqueSupplierCode } from "@/lib/entityCode";
-import { normalizeCode } from "@/lib/partyCode";
+import { nameKey as supplierNameKey, normalizeCode, pickCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -331,125 +331,179 @@ export async function updateSupplierApprovalAction(formData: FormData) {
   revalidatePath(`/suppliers/${id}`);
 }
 
-export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
+type ImportResult = { row: number; status: "created" | "updated" | "skipped" | "error"; message?: string };
+
+/** Import suppliers (and their parent companies) from spreadsheet rows.
+ *
+ * A supplier often appears on many rows — a sheet built from timesheet lines
+ * repeats it once per line — so rows are first merged per supplier. A parent
+ * named on a row that isn't a supplier yet is created as a primary supplier;
+ * a supplier naming itself as parent means "primary"; one listed under several
+ * parents goes under the one named most often, and the result says so. Names
+ * match ignoring case, dots and spacing. Blank cells never clear saved values. */
+export async function bulkImportSuppliersAction(rows: Record<string, string>[]): Promise<ImportResult[]> {
   const { user, branchId } = await requireUserWithBranch();
-  const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+  const results: ImportResult[] = [];
   const cell = (r: Record<string, string>, k: string) => (r[k] ?? "").trim();
+  if (!branchId) {
+    return rows.map((_, i) => ({ row: i + 2, status: "error" as const, message: "No branch selected to import into." }));
+  }
 
-  // Parents are imported before the subsidiaries that name them, whatever the
-  // order in the file, so one sheet can hold a whole group. Row numbers stay
-  // those of the sheet (header is row 1).
-  const order = rows
-    .map((r, i) => ({ r, i }))
-    .sort((x, y) => Number(!!cell(x.r, "Parent supplier")) - Number(!!cell(y.r, "Parent supplier")) || x.i - y.i);
+  type Group = {
+    key: string;
+    name: string;
+    firstRow: number;
+    fields: Record<string, string>;
+    code: string;
+    votes: Map<string, { name: string; n: number }>; // "" = primary
+    parentKey: string;
+    parentName: string;
+    conflict: string | null;
+  };
+  const groups = new Map<string, Group>();
+  const order: Group[] = [];
+  const FIELDS: [string, string][] = [
+    ["fullName", "Full name"],
+    ["contactPerson", "Contact person"],
+    ["contactPhone", "Contact phone"],
+    ["contactEmail", "Contact email"],
+    ["tradeLicenseNumber", "Trade license number"],
+    ["category", "Category"],
+    ["trn", "TRN"],
+  ];
 
-  for (const { r, i } of order) {
+  rows.forEach((r, i) => {
     const row = i + 2;
     const name = cell(r, "Supplier name");
     if (!name) {
       results.push({ row, status: "error", message: "Supplier name is required." });
-      continue;
+      return;
     }
-    if (!branchId) {
-      results.push({ row, status: "error", message: "No branch selected to import into." });
-      continue;
+    const key = supplierNameKey(name);
+    let g = groups.get(key);
+    if (g) {
+      results.push({ row, status: "skipped", message: `Same supplier as row ${g.firstRow}; merged.` });
+    } else {
+      g = { key, name, firstRow: row, fields: {}, code: "", votes: new Map(), parentKey: "", parentName: "", conflict: null };
+      groups.set(key, g);
+      order.push(g);
     }
+    for (const [field, col] of FIELDS) {
+      const v = cell(r, col);
+      if (v && !g.fields[field]) g.fields[field] = v;
+    }
+    if (!g.code) g.code = normalizeCode(cell(r, "Supplier code"));
+    const parent = cell(r, "Parent supplier");
+    if (parent) {
+      const pk = supplierNameKey(parent);
+      const vote = pk === key ? "" : pk; // naming itself = "this is a primary supplier"
+      const cur = g.votes.get(vote);
+      if (cur) cur.n++;
+      else g.votes.set(vote, { name: vote === "" ? "" : parent, n: 1 });
+    }
+  });
+
+  for (const g of order) {
+    let best: [string, { name: string; n: number }] | null = null;
+    for (const e of g.votes) if (!best || e[1].n > best[1].n || (e[1].n === best[1].n && e[0] === "")) best = e;
+    if (best) {
+      g.parentKey = best[0];
+      g.parentName = best[1].name;
+    }
+    if (g.votes.size > 1) {
+      const list = [...g.votes.values()].map((v) => `${v.name || "primary"} ×${v.n}`).join(", ");
+      g.conflict = `Listed under several parents (${list}); ${g.parentKey ? `used ${g.parentName}` : "kept as a primary supplier"}.`;
+    }
+  }
+
+  // The branch's suppliers, loaded once and kept current as rows are applied.
+  const all = await prisma.supplier.findMany({ where: { branchId } });
+  const byKey = new Map(all.map((x) => [supplierNameKey(x.name), x]));
+  const codeOwner = new Map<string, string>();
+  for (const x of all) if (x.code) codeOwner.set(x.code, x.id);
+  const kids = new Map<string, number>();
+  for (const x of all) if (x.parentSupplierId) kids.set(x.parentSupplierId, (kids.get(x.parentSupplierId) ?? 0) + 1);
+  const taken = () => new Set<string | null>(codeOwner.keys());
+
+  const audit = (entityId: string, action: "CREATE" | "UPDATE", before: Record<string, unknown> | undefined, after: Record<string, unknown>) =>
+    logAudit({ entityType: "SUPPLIER", entityId, action, before, after, userId: user.id, userName: user.name, branchId });
+
+  // Suppliers with no parent first, so every parent exists before its subsidiaries.
+  const sorted = [...order].sort((x, y) => Number(!!x.parentKey) - Number(!!y.parentKey) || x.firstRow - y.firstRow);
+
+  for (const g of sorted) {
+    const row = g.firstRow;
+    const notes: string[] = g.conflict ? [g.conflict] : [];
+    const fail = (message: string) => results.push({ row, status: "error", message });
     try {
-      // Within this branch only — see the client import for why. Excel names
-      // differ in case as often as anything, so matching ignores it.
-      const existing = await prisma.supplier.findFirst({
-        where: { name: { equals: name, mode: "insensitive" }, branchId },
-        include: { _count: { select: { subsidiaries: true } } },
-      });
+      const existing = byKey.get(g.key);
+      const data: Record<string, string> = { ...g.fields };
 
-      // A blank cell leaves the saved value alone; it never clears it.
-      const data: Record<string, string> = {};
-      const put = (field: string, key: string) => {
-        const v = cell(r, key);
-        if (v) data[field] = v;
-      };
-      put("fullName", "Full name");
-      put("contactPerson", "Contact person");
-      put("contactPhone", "Contact phone");
-      put("contactEmail", "Contact email");
-      put("tradeLicenseNumber", "Trade license number");
-      put("category", "Category");
-      put("trn", "TRN");
-
-      const typedCode = normalizeCode(cell(r, "Supplier code"));
-      if (typedCode && typedCode !== existing?.code) {
-        const clash = await prisma.supplier.findFirst({
-          where: { branchId, code: typedCode, ...(existing ? { NOT: { id: existing.id } } : {}) },
-          select: { id: true },
-        });
-        if (clash) {
-          results.push({ row, status: "error", message: `The code ${typedCode} is already used by another supplier.` });
+      if (g.code && g.code !== existing?.code) {
+        const owner = codeOwner.get(g.code);
+        if (owner && owner !== existing?.id) {
+          fail(`The code ${g.code} is already used by another supplier.`);
           continue;
         }
-        data.code = typedCode;
+        data.code = g.code;
       }
 
-      const parentName = cell(r, "Parent supplier");
-      let parentSupplierId: string | undefined;
-      if (parentName) {
-        const parent = await prisma.supplier.findFirst({
-          where: { name: { equals: parentName, mode: "insensitive" }, branchId },
-        });
+      let parentId: string | undefined;
+      if (g.parentKey) {
+        const listedAs = groups.get(g.parentKey);
+        if (listedAs?.parentKey) {
+          fail(`"${g.parentName}" is itself listed as a subsidiary, and a parent must be a primary supplier.`);
+          continue;
+        }
+        if (existing && (kids.get(existing.id) ?? 0) > 0) {
+          fail(`"${existing.name}" has subsidiaries of its own, so it can't become one.`);
+          continue;
+        }
+        let parent = byKey.get(g.parentKey);
         if (!parent) {
-          results.push({ row, status: "error", message: `Parent supplier "${parentName}" wasn't found. Add it first, or list it in the same file.` });
+          const code = pickCode(g.parentName, taken());
+          parent = await prisma.supplier.create({ data: { name: g.parentName, code, branchId } });
+          byKey.set(g.parentKey, parent);
+          codeOwner.set(code, parent.id);
+          await audit(parent.id, "CREATE", undefined, { name: g.parentName, code, branchId });
+          notes.push(`Created primary supplier "${g.parentName}" (it wasn't in the list).`);
+        } else if (parent.parentSupplierId) {
+          fail(`"${parent.name}" is itself a subsidiary, and a parent must be a primary supplier.`);
           continue;
         }
-        if (parent.id === existing?.id) {
-          results.push({ row, status: "error", message: "A supplier can't be its own parent." });
-          continue;
-        }
-        if (parent.parentSupplierId) {
-          results.push({ row, status: "error", message: `"${parent.name}" is itself a subsidiary. A parent must be a primary supplier.` });
-          continue;
-        }
-        if (existing && existing._count.subsidiaries > 0) {
-          results.push({ row, status: "error", message: `"${existing.name}" has subsidiaries of its own, so it can't become one.` });
-          continue;
-        }
-        parentSupplierId = parent.id;
+        parentId = parent.id;
       }
 
       if (existing) {
-        const before = existing as unknown as Record<string, unknown>;
-        const update = { ...data, ...(parentSupplierId ? { parentSupplierId } : {}) };
-        await prisma.supplier.update({ where: { id: existing.id }, data: update });
-        await logAudit({
-          entityType: "SUPPLIER",
-          entityId: existing.id,
-          action: "UPDATE",
-          before,
-          after: update,
-          userId: user.id,
-          userName: user.name,
-          branchId,
-        });
-        results.push({ row, status: "updated" });
+        const update: Record<string, string> = { ...data };
+        if (parentId && parentId !== existing.parentSupplierId) update.parentSupplierId = parentId;
+        if (Object.keys(update).length > 0) {
+          const before = { ...existing } as unknown as Record<string, unknown>;
+          await prisma.supplier.update({ where: { id: existing.id }, data: update });
+          if (update.parentSupplierId) {
+            if (existing.parentSupplierId) kids.set(existing.parentSupplierId, (kids.get(existing.parentSupplierId) ?? 1) - 1);
+            kids.set(parentId!, (kids.get(parentId!) ?? 0) + 1);
+          }
+          if (update.code) {
+            if (existing.code) codeOwner.delete(existing.code);
+            codeOwner.set(update.code, existing.id);
+          }
+          Object.assign(existing, update);
+          await audit(existing.id, "UPDATE", before, update);
+        }
+        results.push({ row, status: "updated", message: notes.join(" ") || undefined });
       } else {
-        const code = data.code ?? (await uniqueSupplierCode(name, branchId));
-        const create = { name, ...data, code, ...(parentSupplierId ? { parentSupplierId } : {}), branchId };
+        const code = data.code ?? pickCode(g.name, taken());
+        const create = { name: g.name, ...data, code, ...(parentId ? { parentSupplierId: parentId } : {}), branchId };
         const created = await prisma.supplier.create({ data: create });
-        await logAudit({
-          entityType: "SUPPLIER",
-          entityId: created.id,
-          action: "CREATE",
-          after: create,
-          userId: user.id,
-          userName: user.name,
-          branchId,
-        });
-        results.push({ row, status: "created" });
+        byKey.set(g.key, created);
+        codeOwner.set(code, created.id);
+        if (parentId) kids.set(parentId, (kids.get(parentId) ?? 0) + 1);
+        await audit(created.id, "CREATE", undefined, create);
+        results.push({ row, status: "created", message: notes.join(" ") || undefined });
       }
     } catch (e) {
-      results.push({
-        row,
-        status: "error",
-        message: e instanceof Error ? e.message : "Failed to import row.",
-      });
+      fail(e instanceof Error ? e.message : "Failed to import row.");
     }
   }
 

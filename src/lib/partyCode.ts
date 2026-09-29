@@ -40,3 +40,18 @@ export function normalizeCode(raw: string): string {
     .replace(/[^A-Z0-9-]/g, "")
     .slice(0, 12);
 }
+
+/** Names from spreadsheets differ in case, dots and spacing ("Cont." vs "cont"). */
+export function nameKey(name: string): string {
+  const k = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return k || name.trim().toLowerCase();
+}
+
+/** The first candidate code for `name` that isn't in `taken` (a number as a last resort). */
+export function pickCode(name: string, taken: Set<string | null>, prefix: string = SUPPLIER_PREFIX): string {
+  const candidates = codeCandidates(name, prefix);
+  const free = candidates.find((c) => !taken.has(c));
+  if (free) return free;
+  const base = candidates[candidates.length - 1];
+  for (let n = 2; ; n++) if (!taken.has(`${base}${n}`)) return `${base}${n}`;
+}

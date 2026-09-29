@@ -81,3 +81,21 @@ export async function downloadXlsx(
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+export type HeaderColumn = { label: string; aliases?: string[] };
+
+/** Rename each row's headers to the canonical column labels, ignoring case and
+ * spacing and accepting aliases — so a file exported by an older version, or
+ * typed as "supplier name", still lines up. */
+export function remapHeaders(rows: Record<string, string>[], columns: HeaderColumn[]): Record<string, string>[] {
+  const canon = new Map<string, string>();
+  for (const c of columns) {
+    canon.set(c.label.trim().toLowerCase(), c.label);
+    for (const a of c.aliases ?? []) canon.set(a.trim().toLowerCase(), c.label);
+  }
+  return rows.map((row) => {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(row)) out[canon.get(k.trim().toLowerCase()) ?? k] = v;
+    return out;
+  });
+}

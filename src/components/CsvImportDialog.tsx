@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { parseSpreadsheetFile } from "@/lib/spreadsheet";
+import { parseSpreadsheetFile, remapHeaders } from "@/lib/spreadsheet";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/Dialog";
 
-export type ImportColumn = { key: string; label: string; required?: boolean };
-export type ImportRowResult = { row: number; status: "created" | "updated" | "error"; message?: string };
+export type ImportColumn = { key: string; label: string; required?: boolean; aliases?: string[] };
+export type ImportRowResult = { row: number; status: "created" | "updated" | "skipped" | "error"; message?: string };
 
 export function CsvImportDialog({
   entityLabel,
@@ -45,18 +45,7 @@ export function CsvImportDialog({
       setRows([]);
       return;
     }
-    // "supplier name" or " Supplier Name " in Excel should still match the column.
-    const byLower = new Map(columns.map((c) => [c.label.trim().toLowerCase(), c.label]));
-    parsed = parsed.map((row) => {
-      const out: Record<string, string> = {};
-      for (const [k, v] of Object.entries(row)) out[byLower.get(k.trim().toLowerCase()) ?? k] = v;
-      return out;
-    });
-    if (parsed.length === 0) {
-      setError("No data rows found in that file.");
-      setRows([]);
-      return;
-    }
+    parsed = remapHeaders(parsed, columns);
     const missing = columns
       .filter((c) => c.required)
       .filter((c) => !(c.label in parsed[0]));
@@ -101,7 +90,9 @@ export function CsvImportDialog({
 
   const createdCount = results?.filter((r) => r.status === "created").length ?? 0;
   const updatedCount = results?.filter((r) => r.status === "updated").length ?? 0;
+  const skippedCount = results?.filter((r) => r.status === "skipped").length ?? 0;
   const errorRows = results?.filter((r) => r.status === "error") ?? [];
+  const noteRows = results?.filter((r) => r.status !== "error" && r.status !== "skipped" && r.message) ?? [];
 
   return (
     <Dialog
@@ -199,8 +190,19 @@ export function CsvImportDialog({
         {results && (
           <div className="mt-3 space-y-3">
             <p className="text-sm text-secondary">
-              {createdCount} created, {updatedCount} updated, {errorRows.length} failed.
+              {createdCount} created, {updatedCount} updated
+              {skippedCount > 0 ? `, ${skippedCount} repeated rows merged` : ""}, {errorRows.length} failed.
             </p>
+            {noteRows.length > 0 && (
+              <div className="max-h-40 overflow-auto rounded-lg border border-default bg-surface-subtle p-3 text-xs text-secondary">
+                <p className="mb-1 font-medium text-primary">Worth a look</p>
+                {noteRows.map((r) => (
+                  <p key={r.row}>
+                    Row {r.row}: {r.message}
+                  </p>
+                ))}
+              </div>
+            )}
             {errorRows.length > 0 && (
               <div className="max-h-48 overflow-auto rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
                 {errorRows.map((r) => (
