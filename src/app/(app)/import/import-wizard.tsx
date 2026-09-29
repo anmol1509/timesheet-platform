@@ -61,6 +61,8 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   const [columns, setColumns] = useState<Record<string, string>>({});
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [summary, setSummary] = useState<BatchSummary | null>(null);
+  /** The column choices the current preview was made with; the review is only reachable while they still match. */
+  const [previewedKey, setPreviewedKey] = useState<string | null>(null);
   const [status, setStatus] = useState<BatchStatus | null>(null);
   const dropRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -85,6 +87,9 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       const res = await call<{ batchId: string; analysis: Analysis }>("/api/import", { method: "POST", body: form });
       setBatchId(res.batchId);
       setFilename(file.name);
+      setSummary(null);
+      setPreviewedKey(null);
+      setOverrides({});
       setAnalysis(res.analysis);
       if (res.analysis.kind !== "TIMESHEETS") setColumns(res.analysis.columns);
       setStep("map");
@@ -107,6 +112,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
+      setPreviewedKey(mappingKey);
       setStep("review");
     });
   }
@@ -152,17 +158,39 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
+  const mappingKey = JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides });
+  // Steps can be revisited freely until the import starts; Review only while its preview still matches the choices.
+  const locked = step === "running" || step === "done";
+  const reachable = (key: Step) =>
+    !locked && (key === "upload" || (key === "map" && !!analysis) || (key === "review" && !!summary && previewedKey === mappingKey));
 
   return (
     <div className="space-y-6">
       {/* stepper */}
       <ol className="flex flex-wrap items-center gap-2 text-xs">
-        {STEPS.map((s, i) => (
-          <li key={s.key} className={cn("flex items-center gap-2 rounded-full border px-3 py-1.5", i < idx ? "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]" : i === idx ? "border-[var(--brand-primary-border)] bg-brand-soft font-medium text-[var(--brand-primary)]" : "border-default text-muted")}>
-            <span className="tabular font-semibold">{i < idx ? "✓" : i + 1}</span>
-            {s.label}
-          </li>
-        ))}
+        {STEPS.map((s, i) => {
+          const go = reachable(s.key) && s.key !== step;
+          const tone = i < idx || (reachable(s.key) && s.key !== step && i > idx)
+            ? "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]"
+            : i === idx
+              ? "border-[var(--brand-primary-border)] bg-brand-soft font-medium text-[var(--brand-primary)]"
+              : "border-default text-muted";
+          return (
+            <li key={s.key}>
+              <button
+                type="button"
+                disabled={!go || busy}
+                onClick={() => setStep(s.key)}
+                aria-current={i === idx ? "step" : undefined}
+                title={go ? `Go to ${s.label.toLowerCase()}` : undefined}
+                className={cn("flex items-center gap-2 rounded-full border px-3 py-1.5 transition", tone, go && !busy ? "cursor-pointer hover:shadow-sm hover:brightness-95" : "cursor-default")}
+              >
+                <span className="tabular font-semibold">{i < idx || (go && i > idx) ? "✓" : i + 1}</span>
+                {s.label}
+              </button>
+            </li>
+          );
+        })}
       </ol>
 
       {error && (
@@ -170,6 +198,16 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {error}
         </p>
+      )}
+
+      {step === "upload" && analysis && (
+        <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+          <p className="flex items-center gap-2 text-sm text-primary">
+            <FileSpreadsheet className="h-4 w-4 text-[var(--brand-primary)]" aria-hidden /> <span className="font-medium">{filename}</span>
+            <span className="text-muted">is loaded. Choose a different file below, or keep it.</span>
+          </p>
+          <button type="button" className="btn btn-secondary" onClick={() => setStep("map")}>Keep this file</button>
+        </div>
       )}
 
       {step === "upload" && (
