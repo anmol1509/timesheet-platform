@@ -45,6 +45,18 @@ type EmployeeRow = {
   docCounts: { valid: number; expiring: number; expired: number };
 };
 
+/**
+ * Deployed means linked to a project. The stored stage can say ACTIVE for
+ * people who were only imported, so for the two plain stages the project link
+ * decides what the badge reads.
+ */
+function deployBadge(e: Pick<EmployeeRow, "status" | "projectName">) {
+  if (e.status === "ACTIVE" || e.status === "IDLE") {
+    return e.projectName ? { label: "Deployed", color: "green" as const } : { label: "On bench", color: "amber" as const };
+  }
+  return DEPLOY_BADGE[e.status];
+}
+
 const DEPLOY_BADGE: Record<EmployeeRow["status"], { label: string; color: "green" | "amber" | "blue" | "slate" | "red" }> = {
   ACTIVE: { label: "Active", color: "green" },
   IDLE: { label: "On bench", color: "amber" },
@@ -276,11 +288,11 @@ export function EmployeeList({
       key: "deployment",
       header: "Deployment",
       sortValue: (e) => e.status,
-      csvValue: (e) => `${DEPLOY_BADGE[e.status].label}${e.projectName ? " - " + e.projectName : ""}`,
+      csvValue: (e) => `${deployBadge(e).label}${e.projectName ? " - " + e.projectName : ""}`,
       searchValue: (e) => e.projectName,
       render: (e) => (
         <div className="flex flex-col items-start gap-1">
-          <Badge color={DEPLOY_BADGE[e.status].color} dot>{DEPLOY_BADGE[e.status].label}</Badge>
+          <Badge color={deployBadge(e).color} dot>{deployBadge(e).label}</Badge>
           {e.projectName && <span className="max-w-[180px] truncate text-xs text-muted" title={e.projectName}>{e.projectName}</span>}
         </div>
       ),
@@ -318,6 +330,54 @@ export function EmployeeList({
         ) : (
           <span className="text-subtle">Not housed</span>
         ),
+    },
+    {
+      key: "project",
+      header: "Project",
+      defaultHidden: true,
+      sortValue: (e) => e.projectName,
+      csvValue: (e) => e.projectName ?? "",
+      render: (e) => e.projectName ? <span className="text-secondary">{e.projectName}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "camp",
+      header: "Camp",
+      defaultHidden: true,
+      sortValue: (e) => e.campName,
+      csvValue: (e) => e.campName ?? "",
+      render: (e) => e.campName ? <span className="text-secondary">{e.campName}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "bed",
+      header: "Room / Bed",
+      defaultHidden: true,
+      sortValue: (e) => e.bedLabel,
+      csvValue: (e) => e.bedLabel ?? "",
+      render: (e) => e.bedLabel ? <span className="text-secondary">{e.bedLabel}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "position",
+      header: "Position",
+      defaultHidden: true,
+      sortValue: (e) => e.position,
+      csvValue: (e) => e.position ?? "",
+      render: (e) => e.position ? <span className="text-secondary">{e.position}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "department",
+      header: "Department",
+      defaultHidden: true,
+      sortValue: (e) => e.department,
+      csvValue: (e) => e.department ?? "",
+      render: (e) => e.department ? <span className="text-secondary">{e.department}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "category",
+      header: "Category",
+      defaultHidden: true,
+      sortValue: (e) => (e.category === "STAFF" ? "Staff" : "Site staff"),
+      csvValue: (e) => (e.category === "STAFF" ? "Staff" : "Site staff"),
+      render: (e) => <span className="text-secondary">{e.category === "STAFF" ? "Staff" : "Site staff"}</span>,
     },
     {
       key: "status",

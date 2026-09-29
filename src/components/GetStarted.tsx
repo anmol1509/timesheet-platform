@@ -2,9 +2,16 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { getSetupSteps } from "@/lib/getStarted";
 import { cn } from "@/lib/cn";
+import { cookies } from "next/headers";
+import { setGetStartedHidden } from "./getStartedActions";
+
+const HIDE_COOKIE = "hide_get_started";
 
 /** Setup progress for a company that hasn't finished moving in. Renders nothing once every step is done. */
 export async function GetStarted({ branchId, compact = false }: { branchId: string; compact?: boolean }) {
+  const hidden = (await cookies()).get(HIDE_COOKIE)?.value === "1";
+  // The dashboard copy can be dismissed; the Import Data page always shows it and can bring it back.
+  if (compact && hidden) return null;
   const steps = await getSetupSteps(branchId);
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
@@ -18,11 +25,18 @@ export async function GetStarted({ branchId, compact = false }: { branchId: stri
           <h2 className="text-sm font-semibold text-primary">Get started</h2>
           <p className="mt-0.5 text-xs text-muted">{done} of {steps.length} done &middot; next: {next.title.toLowerCase()}</p>
         </div>
-        <div className="flex w-full items-center gap-3 sm:w-64">
+        <div className="flex w-full items-center gap-3 sm:w-auto">
+          <div className="flex w-full items-center gap-3 sm:w-64">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
             <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${Math.max(pct, 3)}%` }} />
           </div>
           <span className="tabular text-xs font-medium text-secondary">{pct}%</span>
+          </div>
+          <form action={setGetStartedHidden.bind(null, compact ? true : !hidden)}>
+            <button type="submit" className="btn btn-sm btn-secondary shrink-0 whitespace-nowrap" title={compact ? "You can bring it back from Import Data" : undefined}>
+              {compact ? "Hide" : hidden ? "Show on dashboard" : "Hide from dashboard"}
+            </button>
+          </form>
         </div>
       </div>
       <ol className={cn("divide-y divide-[var(--border)]", compact && "hidden sm:block")}>

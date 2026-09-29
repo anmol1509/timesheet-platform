@@ -173,7 +173,7 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[]): Promise<A
         rows.push({ row: g.firstRow, name: v.name, status: "updated", notes });
         counts.updated++;
       } else {
-        const created = await db.employee.create({ data: { employeeIdNo: g.id.trim(), ...(data as object), branchId } as never });
+        const created = await db.employee.create({ data: { employeeIdNo: g.id.trim(), status: "IDLE", ...(data as object), branchId } as never });
         knownByKey.set(idKey(g.id), { id: created.id, employeeIdNo: g.id, branchId, name: v.name });
         await audit({ entityType: "EMPLOYEE", entityId: created.id, action: "CREATE", after: { employeeIdNo: g.id, ...data }, userId: ctx.user.id, userName: ctx.user.name, branchId });
         rows.push({ row: g.firstRow, name: v.name, status: "created", notes });

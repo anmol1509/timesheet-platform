@@ -285,6 +285,7 @@ export async function importParsedMonths(
           trade: entry.trade,
           supplierId: supplier.id,
           branchId,
+          status: "IDLE", // on the books; mobilising them is a separate step
           ...fillSponsor,
           ...fillNationality,
         },
