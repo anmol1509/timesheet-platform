@@ -167,6 +167,7 @@ export function SupplierCompanyForm({
           label="Our own company"
           name="isOwnCompany"
           defaultChecked={supplier.isOwnCompany}
+          onChange={guard.onInput}
           description="Issues documents on our letterhead, and bills this entity rather than paying it."
         />
         {supplier.isOwnCompany && (
@@ -183,8 +184,9 @@ export function SupplierCompanyForm({
           label="Allow manual labour ID"
           name="allowManualLabourId"
           defaultChecked={supplier.allowManualLabourId}
+          onChange={guard.onInput}
         />
-        <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} />
+        <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} onChange={guard.onInput} />
       </div>
 
       {error && (
@@ -223,8 +225,8 @@ function FieldBlock({ label, children }: { label: string; children: React.ReactN
 }
 
 /**
- * A supplier setting that takes effect on its own, so it reads as a switch
- * rather than a checkbox. Unchecked switches submit nothing, which is what
+ * A supplier setting that reads as a switch rather than a checkbox. It is part
+ * of the form and only saved with it, so flipping it raises the Save bar. Unchecked switches submit nothing, which is what
  * the `=== "on"` parse in the save action expects.
  */
 function SwitchField({
@@ -232,11 +234,14 @@ function SwitchField({
   name,
   defaultChecked,
   description,
+  onChange,
 }: {
   label: string;
   name: string;
   defaultChecked: boolean;
   description?: string;
+  /** A switch is a button, so it doesn't fire the form's input event by itself. */
+  onChange?: () => void;
 }) {
   return (
     <div className="pt-5">
@@ -244,6 +249,7 @@ function SwitchField({
         name={name}
         value="on"
         defaultChecked={defaultChecked}
+        onCheckedChange={() => onChange?.()}
         label={label}
         description={description}
       />
