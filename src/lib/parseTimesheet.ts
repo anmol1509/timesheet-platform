@@ -250,7 +250,7 @@ function normalizeTradeCasing(entries: ParsedEntry[]) {
 function mergeDuplicateRows(entries: ParsedEntry[]): ParsedEntry[] {
   const groups = new Map<string, ParsedEntry[]>();
   for (const entry of entries) {
-    const key = `${entry.supplierName.trim().toLowerCase()}||${entry.employeeIdNo}||${entry.trade}`;
+    const key = `${entry.supplierName.trim().toLowerCase()}||${entry.employeeIdNo.trim().toUpperCase()}||${entry.trade.trim().toLowerCase()}`;
     const group = groups.get(key);
     if (group) group.push(entry);
     else groups.set(key, [entry]);
@@ -456,7 +456,7 @@ export async function parseConsolidatedWorkbook(
       }
 
       entries.push({
-        employeeIdNo: idNo || `NOID-${name}-${r}`,
+        employeeIdNo: (idNo || `NOID-${name}-${r}`).trim(),
         employeeName: name || "(unnamed)",
         supplierName,
         clientName,

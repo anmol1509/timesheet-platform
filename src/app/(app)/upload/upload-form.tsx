@@ -21,6 +21,8 @@ type UploadStats = {
   attendanceLocked?: number;
   attendanceUnrecognised?: number;
   unrecognisedValues?: string[];
+  nationalityNotSaved?: number;
+  nationalityNotSavedValues?: string[];
   entriesCreated: number;
   entriesUpdated: number;
   rowsSkipped: number;
@@ -161,6 +163,12 @@ export function UploadForm() {
               <li className="text-[var(--warning)]">
                 {result.stats.attendanceUnrecognised} cells weren&rsquo;t recognised as attendance (
                 {(result.stats.unrecognisedValues ?? []).join(", ")}) and were skipped
+              </li>
+            )}
+            {(result.stats.nationalityNotSaved ?? 0) > 0 && (
+              <li className="text-[var(--warning)]">
+                {result.stats.nationalityNotSaved} workers have a Nationality that isn&rsquo;t a country (
+                {(result.stats.nationalityNotSavedValues ?? []).join(", ")}) &mdash; not saved. Use the country, e.g. India.
               </li>
             )}
             {result.stats.rowsSkipped > 0 && (

@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { uniqueClientCode, uniqueSupplierCode } from "@/lib/entityCode";
 import { nameKey } from "@/lib/partyCode";
+import { normalizeNationality } from "@/lib/nationality";
+import { loadTradeCanon } from "@/lib/canon";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
 import type { Db } from "@/lib/importer/types";
@@ -24,6 +26,9 @@ export type ImportStats = {
   attendanceLocked?: number;
   attendanceUnrecognised?: number;
   unrecognisedValues?: string[];
+  /** Workers whose Nationality cell wasn't a country (e.g. "Asian"), so none was saved. */
+  nationalityNotSaved?: number;
+  nationalityNotSavedValues?: string[];
 };
 
 function normalizeKey(name: string) {
@@ -50,6 +55,8 @@ export async function importParsedMonths(
   const attendance = newAttendanceStats();
   const totalEntries = months.reduce((n, m) => n + m.entries.length, 0);
   let processed = 0;
+  let skippedNationality = 0;
+  const skippedNationalityValues = new Set<string>();
   // Matched by name WITHIN this branch only. Loading every tenant's suppliers
   // and clients meant a sheet naming "ABC Manpower" attached its rows to another
   // company's supplier of that name, so they surfaced in that company's supplier
@@ -62,16 +69,37 @@ export async function importParsedMonths(
   // An employee ID is unique across the whole system, and the roster upsert
   // below is keyed on it — so a row carrying another company's ID would
   // rewrite that company's employee. Find which IDs in this upload already
-  // belong to a different branch and refuse those rows.
-  const uploadedIds = [...new Set(months.flatMap((m) => m.entries.map((e) => e.employeeIdNo)))];
-  const foreignIds = new Set(
-    (
-      await db.employee.findMany({
-        where: { employeeIdNo: { in: uploadedIds }, NOT: { branchId } },
-        select: { employeeIdNo: true },
-      })
-    ).map((e) => e.employeeIdNo)
+  // belong to a different branch and refuse those rows. IDs are compared
+  // ignoring case, and a worker this branch already has keeps its own spelling
+  // ("bacc146" in a sheet is the worker stored as "BACC146", not a new one).
+  const idKey = (id: string) => id.trim().toUpperCase();
+  const rawIds = [...new Set(months.flatMap((m) => m.entries.map((e) => e.employeeIdNo.trim())))];
+  const idMatch = rawIds.map((id) => ({ employeeIdNo: { equals: id, mode: "insensitive" as const } }));
+  const branchIds = new Map(
+    (rawIds.length
+      ? await db.employee.findMany({ where: { branchId, OR: idMatch }, select: { employeeIdNo: true } })
+      : []
+    ).map((e) => [idKey(e.employeeIdNo), e.employeeIdNo])
   );
+  const foreignKeys = new Set(
+    (rawIds.length
+      ? await db.employee.findMany({ where: { NOT: { branchId }, OR: idMatch }, select: { employeeIdNo: true } })
+      : []
+    ).map((e) => idKey(e.employeeIdNo))
+  );
+  const firstSpelling = new Map<string, string>();
+  for (const m of months) {
+    for (const e of m.entries) {
+      const k = idKey(e.employeeIdNo);
+      e.employeeIdNo = branchIds.get(k) ?? firstSpelling.get(k) ?? e.employeeIdNo.trim();
+      if (!firstSpelling.has(k)) firstSpelling.set(k, e.employeeIdNo);
+    }
+  }
+  const uploadedIds = [...new Set(months.flatMap((m) => m.entries.map((e) => e.employeeIdNo)))];
+  const foreignIds = new Set(uploadedIds.filter((id) => foreignKeys.has(idKey(id))));
+  // Trades likewise: "STEEL FIXER" is the trade already on file as "Steel Fixer".
+  const canonTrade = await loadTradeCanon(db, branchId);
+  for (const m of months) for (const e of m.entries) e.trade = canonTrade(e.trade);
 
   const supplierByKey = new Map(
     existingSuppliers.map((s) => [normalizeKey(s.name), s])
@@ -239,10 +267,16 @@ export async function importParsedMonths(
       // compliance dates, photo, nationality, etc. are manually owned and
       // must never be overwritten by a re-upload.
       const known = knownEmployees.get(entry.employeeIdNo);
+      const nat = normalizeNationality(entry.nationality);
+      const nationality = nat.value;
+      if (entry.nationality && !nationality && nat.status !== "empty") {
+        skippedNationality++;
+        if (skippedNationalityValues.size < 5) skippedNationalityValues.add(entry.nationality.trim());
+      }
       // Sponsor and nationality only fill an empty field: they are the kind of
       // detail people correct by hand, and a re-upload must not undo that.
       const fillSponsor = sponsorId && !known?.sponsorSupplierId ? { sponsorSupplierId: sponsorId } : {};
-      const fillNationality = entry.nationality && !known?.nationality ? { nationality: entry.nationality } : {};
+      const fillNationality = nationality && !known?.nationality ? { nationality } : {};
       const employeeRecord = await db.employee.upsert({
         where: { employeeIdNo: entry.employeeIdNo },
         create: {
@@ -273,7 +307,7 @@ export async function importParsedMonths(
       knownEmployees.set(entry.employeeIdNo, {
         employeeIdNo: entry.employeeIdNo,
         sponsorSupplierId: known?.sponsorSupplierId ?? sponsorId,
-        nationality: known?.nationality ?? entry.nationality ?? null,
+        nationality: known?.nationality ?? nationality ?? null,
       });
     }
 
@@ -313,6 +347,10 @@ export async function importParsedMonths(
     linked++;
   }
   stats.subsidiariesLinked = linked;
+  if (skippedNationality > 0) {
+    stats.nationalityNotSaved = skippedNationality;
+    stats.nationalityNotSavedValues = [...skippedNationalityValues];
+  }
   if (opts.userId) {
     stats.attendanceCreated = attendance.attendanceCreated;
     stats.attendanceConflicts = attendance.attendanceConflicts;

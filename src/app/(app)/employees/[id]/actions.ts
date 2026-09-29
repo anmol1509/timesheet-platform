@@ -1,5 +1,7 @@
 "use server";
 
+import { loadTradeCanon } from "@/lib/canon";
+import { normalizeNationality } from "@/lib/nationality";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
@@ -320,13 +322,14 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+  const canonTrade = branchId ? await loadTradeCanon(prisma, branchId) : (t: string) => t;
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const employeeIdNo = (r["Employee ID No"] || "").trim();
+    const employeeIdNo = (r["Employee code"] || r["Employee ID No"] || "").trim();
     const name = (r["Full name"] || "").trim();
     if (!employeeIdNo || !name) {
-      results.push({ row: i + 2, status: "error", message: "Employee ID No and Full name are required." });
+      results.push({ row: i + 2, status: "error", message: "Employee code and Full name are required." });
       continue;
     }
     if (!branchId) {
@@ -334,7 +337,7 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       continue;
     }
     try {
-      const existing = await prisma.employee.findUnique({ where: { employeeIdNo } });
+      const existing = await prisma.employee.findFirst({ where: { employeeIdNo: { equals: employeeIdNo, mode: "insensitive" } } });
       if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
         results.push({ row: i + 2, status: "error", message: "That ID belongs to a different branch." });
         continue;
@@ -351,8 +354,8 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
         ...(category ? { category } : {}),
         ...(category === "STAFF"
           ? { trade: null, department: cell("Department") }
-          : { trade: cell("Trade"), ...(category === "SITE_STAFF" ? { department: null } : { department: cell("Department") }) }),
-        nationality: cell("Nationality"),
+          : { trade: cell("Trade") ? canonTrade(cell("Trade")!) : undefined, ...(category === "SITE_STAFF" ? { department: null } : { department: cell("Department") }) }),
+        nationality: normalizeNationality(cell("Nationality")).value ?? undefined,
         position: cell("Position"),
         passportNumber: cell("Passport number"),
         emiratesId: cell("Emirates ID"),

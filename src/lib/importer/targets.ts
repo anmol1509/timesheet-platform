@@ -30,7 +30,7 @@ const CLIENTS: FieldDef[] = [
 ];
 
 const WORKERS: FieldDef[] = [
-  { key: "employeeIdNo", label: "Worker ID", required: true, aliases: ["id", "id no", "i d no", "emp id", "emp no", "employee id", "employee no", "employee code", "staff id", "worker id", "labour id", "badge", "badge no", "code"] },
+  { key: "employeeIdNo", label: "Employee code", required: true, aliases: ["id", "employee code", "emp code", "id no", "i d no", "emp id", "emp no", "employee id", "employee no", "employee code", "staff id", "worker id", "labour id", "badge", "badge no", "code"] },
   { key: "name", label: "Worker name", required: true, aliases: ["employee name", "worker name", "emp name", "name", "full name", "staff name", "labour name"] },
   { key: "trade", label: "Trade", aliases: ["trade", "designation", "job title", "position", "profession", "occupation", "skill"] },
   { key: "supplier", label: "Supplier", aliases: ["supplier", "main supplier", "company", "employer", "agency", "manpower supplier", "supplier name"] },

@@ -95,7 +95,7 @@ const STATUS_BADGE: Record<
 };
 
 const IMPORT_COLUMNS = [
-  { key: "employeeIdNo", label: "Employee ID No", required: true, aliases: ["ID No", "ID", "Employee ID", "Emp ID"] },
+  { key: "employeeIdNo", label: "Employee code", required: true, aliases: ["Employee ID No", "ID No", "ID", "Employee ID", "Emp ID", "Emp code", "Code"] },
   { key: "name", label: "Full name", required: true, aliases: ["Employee", "Employee name", "Name"] },
   { key: "category", label: "Category" },
   { key: "trade", label: "Trade", aliases: ["Trade / Designation", "Designation"] },
@@ -165,8 +165,8 @@ export function EmployeeList({
   const columns: DataTableColumn<EmployeeRow>[] = [
     {
       key: "employeeIdNo",
-      header: "ID No",
-      csvHeader: "Employee ID No",
+      header: "Employee code",
+      csvHeader: "Employee code",
       sortValue: (e) => e.employeeIdNo,
       csvValue: (e) => e.employeeIdNo,
       render: (e) => (
