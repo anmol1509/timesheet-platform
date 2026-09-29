@@ -31,7 +31,8 @@ export type DataTableColumn<T> = {
   /** Heading used in the CSV export, when it should differ from the on-screen one (e.g. to match the import template). */
   csvHeader?: string;
   align?: "left" | "right";
-  render: (row: T) => React.ReactNode;
+  /** `ctx` is only supplied by tables that show rows as a tree (see the `tree` prop). */
+  render: (row: T, ctx?: DataTableRowContext) => React.ReactNode;
   // Omit for columns that shouldn't appear in CSV export (e.g. a status Badge).
   csvValue?: (row: T) => string | number | null | undefined;
   /** Sort key. Omit to leave the column unsortable. */
@@ -52,6 +53,14 @@ export type DataTableImportConfig = {
   importAction: (rows: Record<string, string>[]) => Promise<ImportRowResult[]>;
   /** Where the guided import for this kind of data lives, when there is one. */
   wizardHref?: string;
+};
+
+/** Where a row sits when the table is shown as a tree of parents and children. */
+export type DataTableRowContext = {
+  depth: number;
+  childCount: number;
+  expanded: boolean;
+  toggle: () => void;
 };
 
 /** A dropdown that narrows the rows: "All …" plus one option per value. */
@@ -88,6 +97,8 @@ export function DataTable<T extends { id: string }>({
   toolbarExtra,
   pageSize,
   filters,
+  initialFilters,
+  tree,
 }: {
   rows: T[];
   columns: DataTableColumn<T>[];
@@ -111,11 +122,15 @@ export function DataTable<T extends { id: string }>({
   pageSize?: number;
   /** Dropdown filters shown beside the search box. */
   filters?: DataTableFilter<T>[];
+  /** Filter values selected on first load, by filter key (e.g. from the URL). */
+  initialFilters?: Record<string, string>;
+  /** Shows children under their parent (collapsed until opened). Searching or filtering flattens it, so a match is never hidden inside a closed parent. */
+  tree?: { parentId: (row: T) => string | null };
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilters ?? {});
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.key))
   );
@@ -164,8 +179,37 @@ export function DataTable<T extends { id: string }>({
     });
   }, [filtered, sort, columns]);
 
+  const sortedIds = useMemo(() => new Set(sorted.map((r) => r.id)), [sorted]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const anyFilter = query.trim() !== "" || Object.values(filterValues).some(Boolean);
+  const treeActive = !!tree && !anyFilter;
+
+  // Every row's children, when shown as a tree. A row whose parent isn't in
+  // the list stays at the top level.
+  const childMap = useMemo(() => {
+    const map = new Map<string, T[]>();
+    if (!tree) return map;
+    const ids = new Set(sorted.map((r) => r.id));
+    for (const r of sorted) {
+      const pid = tree.parentId(r);
+      if (pid && ids.has(pid)) map.set(pid, [...(map.get(pid) ?? []), r]);
+    }
+    return map;
+  }, [tree, sorted]);
+
+  const displayRows = useMemo(() => {
+    if (!tree || !treeActive) return sorted;
+    const ids = new Set(sorted.map((r) => r.id));
+    return sorted
+      .filter((r) => {
+        const pid = tree.parentId(r);
+        return !(pid && ids.has(pid));
+      })
+      .flatMap((top) => [top, ...(expandedIds.has(top.id) ? (childMap.get(top.id) ?? []) : [])]);
+  }, [tree, treeActive, sorted, childMap, expandedIds]);
+
   const [page, setPage] = useState(1);
-  const pageCount = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  const pageCount = pageSize ? Math.max(1, Math.ceil(displayRows.length / pageSize)) : 1;
 
   // Clamped during render rather than corrected in an effect: filtering can
   // shrink the list out from under the current page, and syncing that back
@@ -173,8 +217,8 @@ export function DataTable<T extends { id: string }>({
   const currentPage = Math.min(page, pageCount);
 
   const visibleRows = pageSize
-    ? sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : sorted;
+    ? displayRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : displayRows;
 
   // Selection spans the whole filtered set, not just the visible page, so
   // "select all" then "export" behaves the way the old per-module tables did.
@@ -183,7 +227,20 @@ export function DataTable<T extends { id: string }>({
   );
 
   function exportCells() {
-    const exportRows = selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
+    const picked = selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
+    let exportRows = picked;
+    if (tree) {
+      // Each child is written right under its parent, so an exported file reads the way it looks.
+      const ids = new Set(picked.map((r) => r.id));
+      const kids = new Map<string, T[]>();
+      const tops: T[] = [];
+      for (const r of picked) {
+        const pid = tree.parentId(r);
+        if (pid && ids.has(pid)) kids.set(pid, [...(kids.get(pid) ?? []), r]);
+        else tops.push(r);
+      }
+      exportRows = tops.flatMap((t) => [t, ...(kids.get(t.id) ?? [])]);
+    }
     // What's on screen, plus any hidden column that names its own CSV header
     // (those are the importable fields, so a round trip keeps them).
     const cols = columns
@@ -566,7 +623,7 @@ export function DataTable<T extends { id: string }>({
                         !c.wrap && "whitespace-nowrap"
                       )}
                     >
-                      {c.render(row)}
+                      {c.render(row, tree ? { depth: treeActive && tree.parentId(row) && sortedIds.has(tree.parentId(row)!) ? 1 : 0, childCount: treeActive ? (childMap.get(row.id)?.length ?? 0) : 0, expanded: expandedIds.has(row.id), toggle: () => setExpandedIds((prev) => { const next = new Set(prev); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next; }) } : undefined)}
                     </td>
                   ))}
                   {renderRowActions && (
@@ -585,7 +642,7 @@ export function DataTable<T extends { id: string }>({
             page={currentPage}
             pageCount={pageCount}
             onPageChange={setPage}
-            totalItems={sorted.length}
+            totalItems={displayRows.length}
             pageSize={pageSize}
           />
         ) : (

@@ -125,8 +125,8 @@ export default async function ClientsPage() {
             </Link>
           }
           secondaryAction={
-            <Link href="/upload" className="btn btn-secondary btn-sm">
-              Upload a timesheet
+            <Link href="/import/new/clients" className="btn btn-secondary btn-sm">
+              Import clients
             </Link>
           }
         />

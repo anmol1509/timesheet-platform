@@ -184,8 +184,8 @@ export default async function SuppliersPage({
           title="No suppliers yet"
           description="Suppliers provide the manpower you deploy. Add one above to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
           action={
-            <Link href="/upload" className="btn btn-secondary btn-sm">
-              Upload a timesheet
+            <Link href="/import/new/suppliers" className="btn btn-secondary btn-sm">
+              Import suppliers
             </Link>
           }
         />
