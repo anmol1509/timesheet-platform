@@ -19,6 +19,7 @@ import { CsvImportDialog, type ImportColumn, type ImportRowResult } from "@/comp
 import { Pagination } from "@/components/Pagination";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import { ScrollRestore } from "@/components/ScrollRestore";
 import { cn } from "@/lib/cn";
 
 export type DataTableColumn<T> = {
@@ -345,7 +346,8 @@ export function DataTable<T extends { id: string }>({
         {/* `overflow-x-auto` makes this a scroll container, so the sticky
             header below sticks to *this* box rather than the viewport — hence
             top-0 and a capped height, instead of offsetting the app header. */}
-        <div
+        <ScrollRestore
+          id="table"
           className={cn(
             "overflow-x-auto",
             stickyHeader && "max-h-[calc(100vh-15rem)] overflow-y-auto"
@@ -499,7 +501,7 @@ export function DataTable<T extends { id: string }>({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRestore>
 
         {pageSize && pageCount > 1 ? (
           <Pagination

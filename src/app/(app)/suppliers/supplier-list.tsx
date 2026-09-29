@@ -11,6 +11,7 @@ import { SupplierEmployeePanel } from "./supplier-employee-panel";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import { ScrollRestore } from "@/components/ScrollRestore";
 import { downloadXlsx } from "@/lib/spreadsheet";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { useRowSelection } from "@/lib/useRowSelection";
@@ -207,6 +208,7 @@ export function SupplierList({
       </div>
 
       <div className="card overflow-hidden">
+        <ScrollRestore id="table" className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
             <tr>
@@ -365,6 +367,7 @@ export function SupplierList({
             })}
           </tbody>
         </table>
+        </ScrollRestore>
         {visible.length === 0 && (
           <p className="px-4 py-10 text-center text-sm text-muted">
             No supplier matches “{query}”.
