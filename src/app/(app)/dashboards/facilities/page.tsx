@@ -4,6 +4,9 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { PageHeader } from "@/components/PageHeader";
 import { FacilitiesExtras } from "@/components/dashboard/ModuleExtras";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -12,7 +15,7 @@ import { OccupancyRing } from "@/components/OccupancyRing";
 import { BarList, type BarListTone } from "@/components/BarList";
 
 export default async function FacilitiesDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   // Camp and Vehicle are branch-scoped; Room/Bed/Route inherit through them.
   const [beds, vehicles, camps, awaitingBed] = await Promise.all([
     prisma.bed.findMany({ where: { room: { camp: branchWhere(branchId) } }, select: { employeeId: true } }),
@@ -44,12 +47,15 @@ export default async function FacilitiesDashboardPage() {
     totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
   const totalVehicles = vehicles.reduce((sum, v) => sum + v._count._all, 0);
 
+  const hiddenSections = await getHiddenSections(user.id, "facilities");
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={Tent}
         title="Facilities overview"
         description="Camps, bed occupancy and the vehicle fleet."
+      actions={<CustomizeSections module="facilities" sections={[{ id: "overview", label: "Occupancy and vehicles" }, { id: "extras", label: "Vehicle documents and movement" }]} hidden={[...hiddenSections]} />}
       />
       <DashboardTabs />
 
@@ -85,6 +91,7 @@ export default async function FacilitiesDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {totalBeds > 0 && (
           <Panel title="Camp occupancy" href="/accommodation/camps">
@@ -123,8 +130,11 @@ export default async function FacilitiesDashboardPage() {
           </Panel>
         )}
       </div>
+      </Sec>
 
+      <Sec id="extras" hidden={hiddenSections}>
       <FacilitiesExtras branchId={branchId} />
+      </Sec>
     </div>
   );
 }

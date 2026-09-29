@@ -3,6 +3,11 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { BillingExtras } from "@/components/dashboard/ModuleExtras";
+import { QuerySelect } from "@/components/dashboard/PeriodSelect";
+import { PERIOD_OPTIONS, resolvePeriod } from "@/lib/dashboardPeriod";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -11,8 +16,9 @@ import { BarList } from "@/components/BarList";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
-export default async function BillingDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+export default async function BillingDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const { user, branchId } = await requireUserWithBranch();
+  const period = resolvePeriod((await searchParams).period, "this-month");
   const branchScope = branchWhere(branchId);
 
   const [statusBreakdown, outstanding, overdueInvoices, byClient, clients] = await Promise.all([
@@ -58,12 +64,15 @@ export default async function BillingDashboardPage() {
   const overdueCount =
     statusBreakdown.find((s) => s.status === "OVERDUE")?._count._all ?? 0;
 
+  const hiddenSections = await getHiddenSections(user.id, "billing");
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={Receipt}
         title="Billing overview"
         description="Invoice status and outstanding balances."
+        actions={<><QuerySelect param="period" value={period.key} options={PERIOD_OPTIONS} /><CustomizeSections module="billing" sections={[{ id: "overview", label: "Clients, status and overdue" }, { id: "extras", label: "Ageing and collections" }]} hidden={[...hiddenSections]} /></>}
       />
       <DashboardTabs />
 
@@ -98,6 +107,7 @@ export default async function BillingDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Invoiced by client" href="/invoices/history" className="lg:col-span-2">
           <BarList
@@ -150,8 +160,11 @@ export default async function BillingDashboardPage() {
           )}
         </Panel>
       </div>
+      </Sec>
 
-      <BillingExtras branchId={branchId} />
+      <Sec id="extras" hidden={hiddenSections}>
+      <BillingExtras branchId={branchId} period={period} />
+      </Sec>
     </div>
   );
 }

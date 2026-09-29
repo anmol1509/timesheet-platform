@@ -3,6 +3,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { DemandExtras } from "@/components/dashboard/ModuleExtras";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -13,7 +16,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
 export default async function DemandDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
   const [openCount, demandsByStatus, demands] = await Promise.all([
@@ -59,12 +62,15 @@ export default async function DemandDashboardPage() {
   const shortfall = rows.filter((r) => r.filled < r.needed);
   const pendingApprovalCount = rows.filter((r) => r.pendingApproval).length;
 
+  const hiddenSections = await getHiddenSections(user.id, "demand");
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={ClipboardList}
         title="Demand overview"
         description="Open manpower requests and how well they are staffed."
+      actions={<CustomizeSections module="demand" sections={[{ id: "overview", label: "Fulfilment, requests and status" }, { id: "extras", label: "Shortfall, ageing and mobilisation" }]} hidden={[...hiddenSections]} />}
       />
       <DashboardTabs />
 
@@ -105,6 +111,7 @@ export default async function DemandDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel
           title="Fulfilment"
@@ -182,8 +189,11 @@ export default async function DemandDashboardPage() {
           />
         </Panel>
       </div>
+      </Sec>
 
+      <Sec id="extras" hidden={hiddenSections}>
       <DemandExtras branchId={branchId} />
+      </Sec>
     </div>
   );
 }

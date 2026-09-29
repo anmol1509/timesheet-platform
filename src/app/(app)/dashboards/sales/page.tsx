@@ -3,6 +3,11 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { SalesExtras } from "@/components/dashboard/ModuleExtras";
+import { QuerySelect } from "@/components/dashboard/PeriodSelect";
+import { PERIOD_OPTIONS, resolvePeriod } from "@/lib/dashboardPeriod";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -10,8 +15,9 @@ import { StatusDonut, CategoryDonut } from "@/components/Donut";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
-export default async function SalesDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+export default async function SalesDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const { user, branchId } = await requireUserWithBranch();
+  const period = resolvePeriod((await searchParams).period, "90d");
   const branchScope = branchWhere(branchId);
 
   const [
@@ -58,12 +64,15 @@ export default async function SalesDashboardPage() {
       ? Math.round((convertedCount / totalQuotations) * 100)
       : 0;
 
+  const hiddenSections = await getHiddenSections(user.id, "sales");
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={TrendingUp}
         title="Sales overview"
         description="Enquiries, quotations and conversion."
+        actions={<><QuerySelect param="period" value={period.key} options={PERIOD_OPTIONS} /><CustomizeSections module="sales" sections={[{ id: "overview", label: "Quotations and enquiries" }, { id: "expiring", label: "Quotations expiring" }, { id: "extras", label: "Pipeline and win rate" }]} hidden={[...hiddenSections]} /></>}
       />
       <DashboardTabs />
 
@@ -102,6 +111,7 @@ export default async function SalesDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Quotations by status" href="/sales/quotations">
           <StatusDonut
@@ -124,7 +134,9 @@ export default async function SalesDashboardPage() {
           />
         </Panel>
       </div>
+      </Sec>
 
+      <Sec id="expiring" hidden={hiddenSections}>
       <Panel
         title="Quotations expiring within 14 days"
         href="/sales/quotations"
@@ -151,8 +163,11 @@ export default async function SalesDashboardPage() {
           </ul>
         )}
       </Panel>
+      </Sec>
 
-      <SalesExtras branchId={branchId} />
+      <Sec id="extras" hidden={hiddenSections}>
+      <SalesExtras branchId={branchId} period={period} />
+      </Sec>
     </div>
   );
 }

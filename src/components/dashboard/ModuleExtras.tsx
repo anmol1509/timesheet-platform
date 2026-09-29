@@ -7,6 +7,7 @@ import { BarList } from "@/components/BarList";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { getDataHealth } from "@/lib/dataHealth";
+import type { Period } from "@/lib/dashboardPeriod";
 import { getDemandFill, getAttendanceToday, getMoneySnapshot } from "@/lib/dashboardExtras";
 
 // Extra sections for the module dashboards. Each is a small server component
@@ -41,7 +42,7 @@ export async function WorkforceExtras({ branchId, isAdmin }: { branchId: string 
       <Panel title="On bench by trade" icon={Users} href="/employees?filter=idle" className="lg:col-span-2">
         <BarList
           tone="warning"
-          items={bench.map((r) => ({ key: r.trade ?? "none", label: r.trade ?? "No trade set", value: r._count._all, href: `/employees?filter=idle` }))}
+          items={bench.map((r) => ({ key: r.trade ?? "none", label: r.trade ?? "No trade set", value: r._count._all, href: r.trade ? `/employees?filter=idle&trade=${encodeURIComponent(r.trade)}` : "/employees?filter=idle" }))}
           emptyLabel="Nobody is on the bench."
         />
       </Panel>
@@ -364,15 +365,14 @@ export async function PartnersExtras({ branchId, canBills }: { branchId: string 
 
 // ----------------------------------------------------------------- sales
 
-export async function SalesExtras({ branchId }: { branchId: string | null }) {
+export async function SalesExtras({ branchId, period }: { branchId: string | null; period: Period }) {
   const bw = branchWhere(branchId);
-  const since = new Date(new Date().getTime() - 90 * DAY);
   const [openQuotes, decided] = await Promise.all([
     prisma.quotation.findMany({
       where: { ...bw, status: { in: ["SENT", "NEGOTIATION", "APPROVED", "ACCEPTED"] } },
       select: { status: true, lines: { select: { quantity: true, rate: true } } },
     }),
-    prisma.quotation.groupBy({ by: ["status"], where: { ...bw, createdAt: { gte: since }, status: { in: ["ACCEPTED", "CONVERTED", "REJECTED"] } }, _count: { _all: true } }),
+    prisma.quotation.groupBy({ by: ["status"], where: { ...bw, createdAt: { gte: period.from, lt: period.to }, status: { in: ["ACCEPTED", "CONVERTED", "REJECTED"] } }, _count: { _all: true } }),
   ]);
   const won = decided.filter((d) => d.status !== "REJECTED").reduce((n, d) => n + d._count._all, 0);
   const lost = decided.find((d) => d.status === "REJECTED")?._count._all ?? 0;
@@ -408,9 +408,9 @@ export async function SalesExtras({ branchId }: { branchId: string | null }) {
           </table>
         )}
       </Panel>
-      <Panel title="Win rate, last 90 days" href="/sales/quotations">
+      <Panel title={`Win rate · ${period.label.toLowerCase()}`} href="/sales/quotations">
         {rate === null ? (
-          empty("No quotation has been decided yet.")
+          empty("No quotation was decided in this period.")
         ) : (
           <div>
             <p className="tabular text-3xl font-semibold text-primary">{rate}%</p>
@@ -424,23 +424,22 @@ export async function SalesExtras({ branchId }: { branchId: string | null }) {
 
 // --------------------------------------------------------------- billing
 
-export async function BillingExtras({ branchId }: { branchId: string | null }) {
+export async function BillingExtras({ branchId, period }: { branchId: string | null; period: Period }) {
   const bw = branchWhere(branchId);
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const since = new Date(now.getTime() - 90 * DAY);
   const [unpaid, collected, invoiced, paid] = await Promise.all([
-    prisma.clientInvoice.findMany({ where: { ...bw, status: { in: ["SENT", "OVERDUE"] } }, select: { totalAmount: true, dueDate: true, issueDate: true } }),
-    prisma.clientInvoice.aggregate({ where: { ...bw, status: "PAID", paidDate: { gte: monthStart } }, _sum: { totalAmount: true } }),
-    prisma.clientInvoice.aggregate({ where: { ...bw, status: { not: "DRAFT" }, issueDate: { gte: monthStart } }, _sum: { totalAmount: true } }),
-    prisma.clientInvoice.findMany({ where: { ...bw, status: "PAID", paidDate: { gte: since } }, select: { issueDate: true, paidDate: true } }),
+    prisma.clientInvoice.findMany({ where: { ...bw, status: { in: ["SENT", "OVERDUE"] } }, select: { totalAmount: true, dueDate: true, issueDate: true, status: true } }),
+    prisma.clientInvoice.aggregate({ where: { ...bw, status: "PAID", paidDate: { gte: period.from, lt: period.to } }, _sum: { totalAmount: true } }),
+    prisma.clientInvoice.aggregate({ where: { ...bw, status: { not: "DRAFT" }, issueDate: { gte: period.from, lt: period.to } }, _sum: { totalAmount: true } }),
+    prisma.clientInvoice.findMany({ where: { ...bw, status: "PAID", paidDate: { gte: period.from, lt: period.to } }, select: { issueDate: true, paidDate: true } }),
   ]);
   const labels = ["Not yet due", "1–30 days late", "31–60 days late", "Over 60 days late"];
   const totals = [0, 0, 0, 0];
   for (const i of unpaid) {
     const due = i.dueDate ?? new Date(i.issueDate.getTime() + 30 * DAY);
     const late = Math.floor((now.getTime() - due.getTime()) / DAY);
-    totals[late <= 0 ? 0 : late <= 30 ? 1 : late <= 60 ? 2 : 3] += i.totalAmount;
+    // An invoice marked overdue is late even when it has no due date to measure from.
+    totals[late <= 0 ? (i.status === "OVERDUE" ? 1 : 0) : late <= 30 ? 1 : late <= 60 ? 2 : 3] += i.totalAmount;
   }
   const days = paid.filter((p) => p.paidDate).map((p) => (p.paidDate!.getTime() - p.issueDate.getTime()) / DAY);
   const avgDays = days.length ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : null;
@@ -456,13 +455,13 @@ export async function BillingExtras({ branchId }: { branchId: string | null }) {
           />
         )}
       </Panel>
-      <Panel title="This month">
+      <Panel title={period.label}>
         <ul className="space-y-1.5 text-sm">
           <li className="flex justify-between text-secondary"><span>Invoiced</span><span className="tabular font-medium text-primary">{aed(invoiced._sum.totalAmount ?? 0)}</span></li>
           <li className="flex justify-between text-secondary"><span>Collected</span><span className="tabular font-medium text-primary">{aed(collected._sum.totalAmount ?? 0)}</span></li>
           <li className="flex justify-between text-secondary"><span>Average days to be paid</span><span className="tabular font-medium text-primary">{avgDays === null ? "—" : `${avgDays} days`}</span></li>
         </ul>
-        <p className="mt-2 text-[11px] text-subtle">Average is over invoices paid in the last 90 days.</p>
+        <p className="mt-2 text-[11px] text-subtle">Average is over invoices paid in this period.</p>
       </Panel>
     </div>
   );

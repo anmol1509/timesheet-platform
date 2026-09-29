@@ -1,7 +1,12 @@
 import { FileSpreadsheet } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { QuerySelect } from "@/components/dashboard/PeriodSelect";
+import { recentMonths } from "@/lib/dashboardPeriod";
 import { TimesheetsExtras } from "@/components/dashboard/ModuleExtras";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -21,10 +26,13 @@ function monthKey(d: Date) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export default async function TimesheetsDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+export default async function TimesheetsDashboardPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+  const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
-  const month = currentMonthKey();
+  const { month: monthParam } = await searchParams;
+  const monthOptions = recentMonths(12);
+  const month = monthOptions.some((o) => o.value === monthParam) ? monthParam! : currentMonthKey();
+  const monthLabel = monthOptions.find((o) => o.value === month)?.label ?? month;
   const today = new Date();
   const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5, 1));
 
@@ -40,11 +48,11 @@ export default async function TimesheetsDashboardPage() {
     prisma.timesheetEntry.count({ where: { ...branchScope, month } }),
     prisma.timesheetEntry.groupBy({
       by: ["status"],
-      where: branchScope,
+      where: { ...branchScope, month },
       _count: { _all: true },
     }),
     prisma.timesheetEntry.count({
-      where: { ...branchScope, status: "LOCKED" },
+      where: { ...branchScope, month, status: "LOCKED" },
     }),
     prisma.attendance.count({
       where: {
@@ -52,7 +60,7 @@ export default async function TimesheetsDashboardPage() {
         date: { gte: new Date(new Date().toDateString()) },
       },
     }),
-    getTimesheetPipeline(branchId),
+    getTimesheetPipeline(branchId, month),
     getHoursSplit(branchId),
     prisma.attendance.findMany({
       where: { ...branchScope, date: { gte: sixMonthsAgo } },
@@ -71,19 +79,22 @@ export default async function TimesheetsDashboardPage() {
   }
   const monthlyMax = Math.max(1, ...months.map((m) => (normalByMonth.get(m) ?? 0) + (otByMonth.get(m) ?? 0)));
 
+  const hiddenSections = await getHiddenSections(user.id, "timesheets");
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={FileSpreadsheet}
         title="Timesheets overview"
-        description="Hours, approvals and attendance."
+        description={`Hours, approvals and attendance. Rows and approvals below are for ${monthLabel}.`}
+        actions={<><QuerySelect param="month" value={month} options={monthOptions} width="w-48" /><CustomizeSections module="timesheets" sections={[{ id: "hours", label: "Hours and approval pipeline" }, { id: "months", label: "Hours, last 6 months" }, { id: "extras", label: "Waiting for approval and attendance" }]} hidden={[...hiddenSections]} /></>}
       />
       <DashboardTabs />
 
       <KpiStrip
         cells={[
           {
-            label: "This month's rows",
+            label: month === currentMonthKey() ? "This month's rows" : "Rows in the month",
             value: thisMonthCount,
             sub: "timesheet entries",
             href: "/invoices/client-timesheet",
@@ -111,6 +122,7 @@ export default async function TimesheetsDashboardPage() {
         ]}
       />
 
+      <Sec id="hours" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel
           title="Hours — normal vs overtime"
@@ -125,7 +137,9 @@ export default async function TimesheetsDashboardPage() {
           <TimesheetPipelineChart pipeline={pipeline} />
         </Panel>
       </div>
+      </Sec>
 
+      <Sec id="months" hidden={hiddenSections}>
       <Panel title="Hours, last 6 months" href="/attendance">
         {months.every((m) => (normalByMonth.get(m) ?? 0) + (otByMonth.get(m) ?? 0) === 0) ? (
           <p className="py-10 text-center text-sm text-muted">
@@ -157,8 +171,11 @@ export default async function TimesheetsDashboardPage() {
         </>
         )}
       </Panel>
+      </Sec>
 
+      <Sec id="extras" hidden={hiddenSections}>
       <TimesheetsExtras branchId={branchId} />
+      </Sec>
     </div>
   );
 }

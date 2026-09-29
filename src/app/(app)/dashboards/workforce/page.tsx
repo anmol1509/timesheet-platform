@@ -2,6 +2,9 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { WorkforceExtras } from "@/components/dashboard/ModuleExtras";
 import { isAdminRole } from "@/lib/roles";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -61,12 +64,15 @@ export default async function WorkforceDashboardPage() {
   const benchCount = employeeCount - onWorkCount;
   const expiredCount = alerts.filter((a) => a.days < 0).length;
 
+  const hiddenSections = await getHiddenSections(user.id, "workforce");
+
   return (
     <div className="space-y-5">
       <PageHeader
         icon={Users}
         title="Workforce overview"
         description="Headcount, deployment and document compliance."
+      actions={<CustomizeSections module="workforce" sections={[{ id: "runway", label: "Compliance runway" }, { id: "documents", label: "Document expiry" }, { id: "type", label: "Workforce by type" }, { id: "breakdown", label: "Trade and nationality" }, { id: "extras", label: "Bench, movement and data health" }]} hidden={[...hiddenSections]} />}
       />
       <DashboardTabs />
 
@@ -104,6 +110,7 @@ export default async function WorkforceDashboardPage() {
         ]}
       />
 
+      <Sec id="runway" hidden={hiddenSections}>
       <Panel
         title="Compliance runway"
         icon={AlertTriangle}
@@ -112,23 +119,29 @@ export default async function WorkforceDashboardPage() {
       >
         <ComplianceRunway runway={runway} />
       </Panel>
+      </Sec>
 
+      <Sec id="documents" hidden={hiddenSections}>
       <section>
         <h2 className="mb-2.5 text-sm font-semibold text-primary">
           Document expiry
         </h2>
         <DocumentExpiryWidget categories={documentExpiryCounts} />
       </section>
+      </Sec>
 
+      <Sec id="type" hidden={hiddenSections}>
       <Panel title="Workforce by type" href="/employees">
         <EmployeeTypeBreakdown counts={employeeTypeCounts} />
       </Panel>
+      </Sec>
 
+      <Sec id="breakdown" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel title="Workforce by trade" icon={HardHat} href="/trades" linkLabel="Trades">
           <BarList
             tone="brand"
-            items={byTrade.map((r) => ({ key: r.trade ?? "none", label: r.trade ?? "No trade set", value: r._count._all }))}
+            items={byTrade.map((r) => ({ key: r.trade ?? "none", label: r.trade ?? "No trade set", value: r._count._all, href: r.trade ? `/employees?trade=${encodeURIComponent(r.trade)}` : undefined }))}
             emptyLabel="No employees yet."
           />
         </Panel>
@@ -140,14 +153,17 @@ export default async function WorkforceDashboardPage() {
             </p>
           ) : (
             <Treemap
-              items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: r.nationality ?? "Not set", value: r._count._all }))}
+              items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: r.nationality ?? "Not set", value: r._count._all, href: r.nationality ? `/employees?nationality=${encodeURIComponent(r.nationality)}` : undefined }))}
               emptyLabel="No employees yet."
             />
           )}
         </Panel>
       </div>
+      </Sec>
 
+      <Sec id="extras" hidden={hiddenSections}>
       <WorkforceExtras branchId={branchId} isAdmin={isAdminRole(user.role)} />
+      </Sec>
     </div>
   );
 }

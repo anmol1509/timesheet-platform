@@ -18,9 +18,9 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string }>;
+  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string; trade?: string; nationality?: string }>;
 }) {
-  const { filter, supplier: supplierId, sponsor: sponsorId, registered } = await searchParams;
+  const { filter, supplier: supplierId, sponsor: sponsorId, registered, trade, nationality } = await searchParams;
   const { branchId } = await requireUserWithBranch();
 
   const [employees, entityFilter] = await Promise.all([
@@ -29,6 +29,8 @@ export default async function EmployeesPage({
         ...branchWhere(branchId),
         ...(supplierId ? { supplierId } : {}),
         ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}),
+        ...(trade ? { trade: { equals: trade, mode: "insensitive" as const } } : {}),
+        ...(nationality ? { nationality: { equals: nationality, mode: "insensitive" as const } } : {}),
       },
       // The photo bytes aren't needed for a list — the avatar loads them
       // separately from /api/employees/[id]/photo, and only when one exists.
@@ -46,7 +48,11 @@ export default async function EmployeesPage({
       },
       orderBy: { name: "asc" },
     }),
-    supplierId
+    trade
+      ? Promise.resolve({ label: "Trade", name: trade })
+      : nationality
+        ? Promise.resolve({ label: "Nationality", name: nationality })
+        : supplierId
       ? prisma.supplier.findUnique({ where: { id: supplierId }, select: { name: true } }).then(
           (s) => (s ? { label: "Supplier", name: s.name } : null)
         )

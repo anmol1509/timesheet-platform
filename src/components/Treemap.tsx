@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { squarify } from "@/lib/squarify";
 
-export type TreemapItem = { key: string; label: string; value: number };
+export type TreemapItem = { key: string; label: string; value: number; href?: string };
 
 const LOGICAL_W = 1000;
 const LOGICAL_H = 480;
@@ -27,6 +28,7 @@ export function Treemap({ items, emptyLabel = "No data yet." }: { items: Treemap
 
   const rects = squarify(items, LOGICAL_W, LOGICAL_H);
   const max = Math.max(...items.map((i) => i.value), 1);
+  const hrefOf = new Map(items.map((i) => [i.key, i.href]));
 
   return (
     <div className="relative w-full" style={{ aspectRatio: `${LOGICAL_W} / ${LOGICAL_H}` }}>
@@ -48,10 +50,10 @@ export function Treemap({ items, emptyLabel = "No data yet." }: { items: Treemap
               padding: "1px",
             }}
           >
-            <div
-              className="flex h-full w-full flex-col justify-center overflow-hidden rounded-[3px] px-2 py-1 transition-[filter] duration-150 group-hover:brightness-110"
-              style={{ background: fillFor(ratio) }}
-            >
+            {(() => {
+              const box = "flex h-full w-full flex-col justify-center overflow-hidden rounded-[3px] px-2 py-1 transition-[filter] duration-150 group-hover:brightness-110";
+              const inner = (
+                <>
               {canLabel && (
                 <>
                   <span className={`truncate text-[11px] leading-tight font-medium ${ratio > 0.45 ? "text-white" : "text-primary"}`}>
@@ -64,7 +66,15 @@ export function Treemap({ items, emptyLabel = "No data yet." }: { items: Treemap
                   )}
                 </>
               )}
-            </div>
+                </>
+              );
+              const href = hrefOf.get(r.key);
+              return href ? (
+                <Link href={href} className={box} style={{ background: fillFor(ratio) }}>{inner}</Link>
+              ) : (
+                <div className={box} style={{ background: fillFor(ratio) }}>{inner}</div>
+              );
+            })()}
             {/* Native tooltip covers the boxes too small for an inline label. */}
             <span className="sr-only">
               {r.label}: {r.value} ({Math.round((r.value / total) * 100)}%)
