@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BadgeCheck, ChevronRight, Download, Pencil } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronRight, Download, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -11,6 +11,7 @@ import { SupplierEmployeePanel } from "./supplier-employee-panel";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import * as Popover from "@radix-ui/react-popover";
 import { ScrollRestore } from "@/components/ScrollRestore";
 import { downloadXlsx } from "@/lib/spreadsheet";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
@@ -197,13 +198,29 @@ export function SupplierList({
           wizardHref="/import/new/suppliers"
           onDone={() => router.refresh()}
         />
-        <button type="button" onClick={exportExcel} className="btn btn-secondary flex gap-1.5 px-3">
-          <Download className="h-4 w-4" />
-          {selected.size > 0 ? `Export selected (${selected.size}) to Excel` : "Export Excel"}
-        </button>
-        <button type="button" onClick={exportCsv} className="btn btn-secondary px-3">
-          CSV
-        </button>
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button type="button" className="btn btn-secondary flex gap-1.5 px-3">
+              <Download className="h-4 w-4" />
+              {selected.size > 0 ? `Export selected (${selected.size})` : "Export"}
+              <ChevronDown className="h-3.5 w-3.5 text-muted" aria-hidden />
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content align="end" sideOffset={6} className="z-50 w-44 rounded-xl border border-default bg-surface p-1 shadow-lg">
+              <Popover.Close asChild>
+                <button type="button" onClick={exportExcel} className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-secondary hover:bg-surface-hover hover:text-primary">
+                  Excel (.xlsx)
+                </button>
+              </Popover.Close>
+              <Popover.Close asChild>
+                <button type="button" onClick={exportCsv} className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-secondary hover:bg-surface-hover hover:text-primary">
+                  CSV (.csv)
+                </button>
+              </Popover.Close>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
         </div>
       </div>
 
