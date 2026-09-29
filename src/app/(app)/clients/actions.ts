@@ -1,6 +1,6 @@
 "use server";
 
-import { uniqueClientCode } from "@/lib/entityCode";
+import { findClientByName, uniqueClientCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -62,7 +62,7 @@ export async function createClientAction(
   }
 
   // Names are unique within a branch: several suppliers share the same big clients.
-  const existing = await prisma.client.findFirst({ where: { name, branchId }, select: { id: true } });
+  const existing = await findClientByName(name, branchId);
   if (existing) return { error: "A client with that name already exists." };
 
   // A code typed into the form wins; blank means "generate it from the name".
@@ -340,7 +340,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       // Looked up within this branch only: matching another company's client
       // would update it, and refusing with "belongs to a different branch" would
       // tell you a client of that name exists elsewhere.
-      const existing = await prisma.client.findFirst({ where: { name, branchId } });
+      const existing = await findClientByName(name, branchId);
       const data = {
         contactPerson: stringOrNull(r["Contact person"] ?? null),
         contactEmail: stringOrNull(r["Contact email"] ?? null),

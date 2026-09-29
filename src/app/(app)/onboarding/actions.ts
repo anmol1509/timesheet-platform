@@ -1,6 +1,6 @@
 "use server";
 
-import { uniqueSupplierCode } from "@/lib/entityCode";
+import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -294,7 +294,7 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
     return { error: isSuperAdmin ? "Pick a branch from the switcher before adding an agency." : "Your account has no branch assigned — contact an admin." };
   }
 
-  const existing = await prisma.supplier.findFirst({ where: { name, branchId }, select: { id: true } });
+  const existing = await findSupplierByName(name, branchId);
   if (existing) return { error: "A supplier with that name already exists — search for it instead." };
 
   const code = await uniqueSupplierCode(name, branchId);

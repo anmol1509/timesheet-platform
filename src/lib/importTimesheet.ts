@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { uniqueClientCode, uniqueSupplierCode } from "@/lib/entityCode";
+import { nameKey } from "@/lib/partyCode";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
 
@@ -15,7 +16,8 @@ export type ImportStats = {
 };
 
 function normalizeKey(name: string) {
-  return name.trim().toLowerCase();
+  // Case, dots and spacing differ between sheets ("Cont." / "cont"); they are one company.
+  return nameKey(name);
 }
 
 export async function importParsedMonths(

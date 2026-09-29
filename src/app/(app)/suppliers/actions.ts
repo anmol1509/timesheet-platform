@@ -1,6 +1,6 @@
 "use server";
 
-import { uniqueSupplierCode } from "@/lib/entityCode";
+import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { nameKey as supplierNameKey, normalizeCode, pickCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -45,7 +45,7 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  const existing = await prisma.supplier.findFirst({ where: { name, branchId }, select: { id: true } });
+  const existing = await findSupplierByName(name, branchId);
   if (existing) {
     redirect(
       `/suppliers?error=${encodeURIComponent("A supplier with that name already exists.")}`
@@ -104,7 +104,7 @@ export async function createSubsidiaryAction(
     return { error: "Parent supplier not found." };
   }
 
-  const existing = await prisma.supplier.findFirst({ where: { name, branchId: parent.branchId }, select: { id: true } });
+  const existing = await findSupplierByName(name, parent.branchId!);
   if (existing) {
     return { error: "A supplier with that name already exists." };
   }
@@ -425,6 +425,17 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
   for (const x of all) if (x.parentSupplierId) kids.set(x.parentSupplierId, (kids.get(x.parentSupplierId) ?? 0) + 1);
   const taken = () => new Set<string | null>(codeOwner.keys());
 
+  // A near-match is not merged — it may be a different company — but it is
+  // flagged, so an accidental variant ("... Services" / "... Services Est.") is seen.
+  const similarTo = (key: string, exceptId?: string) => {
+    if (key.length < 8) return null;
+    for (const [k, x] of byKey) {
+      if (k === key || x.id === exceptId || k.length < 8) continue;
+      if (k.includes(key) || key.includes(k)) return x.name;
+    }
+    return null;
+  };
+
   const audit = (entityId: string, action: "CREATE" | "UPDATE", before: Record<string, unknown> | undefined, after: Record<string, unknown>) =>
     logAudit({ entityType: "SUPPLIER", entityId, action, before, after, userId: user.id, userName: user.name, branchId });
 
@@ -467,6 +478,8 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
           codeOwner.set(code, parent.id);
           await audit(parent.id, "CREATE", undefined, { name: g.parentName, code, branchId });
           notes.push(`Created primary supplier "${g.parentName}" (it wasn't in the list).`);
+          const near = similarTo(g.parentKey, parent.id);
+          if (near) notes.push(`"${g.parentName}" looks similar to existing "${near}" but was added separately.`);
         } else if (parent.parentSupplierId) {
           // A supplier that has no subsidiaries of its own is free to become a
           // parent: the file puts others under it, so it is made primary. (The
@@ -507,6 +520,8 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
         codeOwner.set(code, created.id);
         if (parentId) kids.set(parentId, (kids.get(parentId) ?? 0) + 1);
         await audit(created.id, "CREATE", undefined, create);
+        const near = similarTo(g.key, created.id);
+        if (near) notes.push(`Looks similar to existing "${near}" but was added separately.`);
         results.push({ row, status: "created", message: notes.join(" ") || undefined });
       }
     } catch (e) {
