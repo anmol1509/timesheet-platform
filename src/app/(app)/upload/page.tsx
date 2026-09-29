@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Upload } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
@@ -16,6 +17,9 @@ export default async function UploadPage() {
     include: { uploadedBy: true, months: true },
   });
   const isAdmin = user.role === "SUPER_ADMIN" || user.role === "BRANCH_ADMIN";
+  // Uploading now happens in Import Data (with a preview and undo); only
+  // people who can't use that keep this page.
+  if (isAdmin) redirect("/import/new/timesheets");
 
   return (
     <div className="space-y-5">

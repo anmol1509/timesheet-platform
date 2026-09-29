@@ -21,7 +21,7 @@ const LISTS: Record<ImportKind, { href: string; label: string }> = {
   SUPPLIERS: { href: "/suppliers", label: "Go to suppliers" },
   CLIENTS: { href: "/clients", label: "Go to clients" },
   WORKERS: { href: "/employees", label: "Go to employees" },
-  TIMESHEETS: { href: "/upload", label: "Go to timesheets" },
+  TIMESHEETS: { href: "/companies", label: "Go to timesheets" },
 };
 
 function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {

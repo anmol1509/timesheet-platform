@@ -54,8 +54,7 @@ export const SECTION_TABS: SectionTab[][] = [
   ],
   // Timesheet import pipeline
   [
-    { href: "/upload", label: "Upload", match: under("/upload") },
-    { href: "/companies", label: "Generate sheets", match: under("/companies") },
+    { href: "/companies", label: "Generate sheets", match: (p) => under("/companies")(p) || under("/upload")(p) },
     { href: "/history", label: "History", match: under("/history") },
   ],
   // Client timesheet. The attendance-sync review is reached from a banner on

@@ -46,6 +46,7 @@ import {
   UserCheck,
   type LucideIcon,
   HeartPulse,
+  FileOutput,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
@@ -157,12 +158,12 @@ const NAV: Entry[] = [
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
       // Daily view and Attendance sync are tabs of this row.
       { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
-      // Upload → Generate Sheets → History is one pipeline; three tabs.
+      // Generate Sheets and History are the tabs of this row.
       {
-        href: "/upload",
+        href: "/companies",
         label: "Generate",
-        icon: UploadIcon,
-        alsoMatch: ["/companies", "/history"],
+        icon: FileOutput,
+        alsoMatch: ["/history", "/upload"],
       },
     ],
   },
