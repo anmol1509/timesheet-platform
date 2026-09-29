@@ -10,6 +10,11 @@ import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 import { availableItemStock } from "@/lib/inventoryStock";
+import { cellOf, rowError } from "@/lib/bulkImport";
+import { nameKey } from "@/lib/partyCode";
+import { findClientByName } from "@/lib/entityCode";
+import { parseLooseDate } from "@/lib/looseDate";
+import type { ImportRowResult } from "@/components/import/report";
 
 // Every nested mutation (documents, trade rates, holidays, contacts,
 // inventory) takes a projectId rather than looking the project up itself,
@@ -730,4 +735,108 @@ export async function deleteSiteAction(formData: FormData) {
   }
 
   revalidatePath(`/projects/${projectId}`);
+}
+
+const PROJECT_STATUSES = ["PLANNING", "ACTIVE", "COMPLETED", "ON_HOLD"];
+
+/**
+ * Bulk add/update projects. A project is matched by its code, else by name
+ * (ignoring case and spacing) within this company; the client must already
+ * exist. Empty cells leave saved values alone.
+ */
+export async function bulkImportProjectsAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
+  await requirePermission("projects", "create");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!branchId) {
+    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin.";
+    return rows.map((_, i) => rowError(i, undefined, message));
+  }
+  const existingProjects = await prisma.project.findMany({ where: { branchId } });
+  const byCode = new Map(existingProjects.map((p) => [p.code.toLowerCase(), p]));
+  const byName = new Map(existingProjects.map((p) => [nameKey(p.name), p]));
+  let codeCounter = await prisma.project.count();
+  const takenCodes = new Set((await prisma.project.findMany({ select: { code: true } })).map((p) => p.code.toLowerCase()));
+  const nextCode = () => {
+    do codeCounter++; while (takenCodes.has(`prj${String(codeCounter).padStart(3, "0")}`));
+    const code = `PRJ${String(codeCounter).padStart(3, "0")}`;
+    takenCodes.add(code.toLowerCase());
+    return code;
+  };
+  const results: ImportRowResult[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const name = cellOf(r, "Project name");
+    if (!name) { results.push(rowError(i, undefined, "Project name is required.")); continue; }
+    try {
+      const notes: NonNullable<ImportRowResult["notes"]> = [];
+      const codeCell = cellOf(r, "Code").toUpperCase();
+      const existing = (codeCell && byCode.get(codeCell.toLowerCase())) || byName.get(nameKey(name)) || null;
+      if (codeCell && !existing && takenCodes.has(codeCell.toLowerCase())) {
+        results.push(rowError(i, name, `The code ${codeCell} belongs to another project.`));
+        continue;
+      }
+
+      const clientName = cellOf(r, "Client");
+      let clientId: string | undefined;
+      if (clientName) {
+        const client = await findClientByName(clientName, branchId);
+        if (!client) { results.push(rowError(i, name, `Client "${clientName}" isn't in your clients yet. Add it (or import your clients) first.`)); continue; }
+        clientId = client.id;
+      } else if (!existing) {
+        results.push(rowError(i, name, "Client is required for a new project."));
+        continue;
+      }
+
+      const data: Record<string, string | number | Date | null> = {};
+      const put = (label: string, key: string) => { const v = cellOf(r, label); if (v) data[key] = v; };
+      put("Description", "description"); put("Address", "address");
+      put("Project manager", "manager"); put("Manager phone", "managerPhone"); put("Manager email", "managerEmail");
+      put("Coordinator", "projectCoordinator"); put("Coordinator phone", "projectCoordinatorPhone");
+      put("Sales executive", "salesExecutive"); put("Sales executive phone", "salesExecutivePhone");
+
+      const statusRaw = cellOf(r, "Status");
+      if (statusRaw) {
+        const status = statusRaw.toUpperCase().replace(/[\s-]+/g, "_");
+        if (PROJECT_STATUSES.includes(status)) data.status = status;
+        else notes.push({ tone: "warn", title: `Status "${statusRaw}" isn't recognised`, detail: "Use Planning, Active, Completed or On hold. That field was skipped." });
+      }
+      for (const [label, key] of [["Start date", "timelineStart"], ["End date", "timelineEnd"]] as const) {
+        const raw = cellOf(r, label);
+        if (!raw) continue;
+        const d = parseLooseDate(raw);
+        if (d === "invalid") notes.push({ tone: "warn", title: `${label} "${raw}" isn't a date`, detail: "Use day/month/year, e.g. 25/12/2026. That field was skipped." });
+        else if (d) data[key] = d;
+      }
+      const reqRaw = cellOf(r, "Workers required");
+      if (reqRaw) {
+        const n = Number(reqRaw.replace(/,/g, ""));
+        if (Number.isFinite(n) && n >= 0) data.noOfEmployeesRequired = Math.trunc(n);
+        else notes.push({ tone: "warn", title: `Workers required "${reqRaw}" isn't a number`, detail: "That field was skipped." });
+      }
+      if (data.manager && !data.managerPhone && !(existing?.managerPhone)) notes.push({ tone: "info", title: "Project manager has no phone number", detail: "Add one on the project's page so they can be reached." });
+      const email = data.managerEmail;
+      if (typeof email === "string" && !/^\S+@\S+\.\S+$/.test(email)) { delete data.managerEmail; notes.push({ tone: "warn", title: `Manager email "${email}" isn't valid`, detail: "That field was skipped." }); }
+
+      if (existing) {
+        const changes = { ...data, ...(clientId && clientId !== existing.clientId ? { clientId } : {}), ...(name !== existing.name ? { name } : {}) };
+        await prisma.project.update({ where: { id: existing.id }, data: changes });
+        await logAudit({ entityType: "PROJECT", entityId: existing.id, action: "UPDATE", before: existing as unknown as Record<string, unknown>, after: changes, userId: user.id, userName: user.name, branchId });
+        Object.assign(existing, changes);
+        results.push({ row: i + 2, name, status: "updated", notes });
+      } else {
+        const code = codeCell || nextCode();
+        takenCodes.add(code.toLowerCase());
+        const created = await prisma.project.create({ data: { code, name, clientId: clientId!, branchId, status: "PLANNING", ...data } as never });
+        await logAudit({ entityType: "PROJECT", entityId: created.id, action: "CREATE", after: { code, name, clientId, ...data }, userId: user.id, userName: user.name, branchId });
+        byCode.set(code.toLowerCase(), created);
+        byName.set(nameKey(name), created);
+        results.push({ row: i + 2, name, status: "created", notes });
+      }
+    } catch (e) {
+      results.push(rowError(i, name, e instanceof Error ? e.message : "Failed to import row."));
+    }
+  }
+  revalidatePath("/projects");
+  return results;
 }

@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { Package } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NewItemForm } from "./new-item-form";
@@ -57,15 +56,7 @@ export default async function InventoryPage() {
 
       <NewItemForm />
 
-      {rows.length === 0 ? (
-        <EmptyState
-          icon={Package}
-          title="No inventory items yet"
-          description="Track tools, PPE and equipment here. Add an item above to record stock levels and assign units to employees."
-        />
-      ) : (
-        <InventoryList items={rows} />
-      )}
+      <InventoryList items={rows} />
     </div>
   );
 }

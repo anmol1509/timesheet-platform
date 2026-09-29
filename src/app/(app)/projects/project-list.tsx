@@ -8,7 +8,7 @@ import type { BadgeColor } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
-import { deleteProjectAction } from "./actions";
+import { bulkImportProjectsAction, deleteProjectAction } from "./actions";
 
 type ProjectRow = {
   id: string;
@@ -53,7 +53,46 @@ function fmtDate(d: string | null) {
   });
 }
 
-export function ProjectList({ projects }: { projects: ProjectRow[] }) {
+/** A column kept out of the way on screen, but exported (and importable) under its own heading. */
+function hiddenText(key: string, header: string, get: (p: ProjectRow) => string | number | null): DataTableColumn<ProjectRow> {
+  return {
+    key,
+    header,
+    csvHeader: header,
+    defaultHidden: true,
+    sortValue: get,
+    searchValue: get,
+    csvValue: get,
+    render: (p) => {
+      const v = get(p);
+      return v === null || v === "" ? <span className="text-subtle">—</span> : <span className="text-secondary">{v}</span>;
+    },
+  };
+}
+
+const IMPORT_COLUMNS = [
+  { key: "name", label: "Project name", required: true, aliases: ["Project", "Name"] },
+  { key: "code", label: "Code", aliases: ["Project code"] },
+  { key: "client", label: "Client", required: true, aliases: ["Client name", "Company"] },
+  { key: "description", label: "Description" },
+  { key: "address", label: "Address", aliases: ["Location"] },
+  { key: "manager", label: "Project manager", aliases: ["Manager"] },
+  { key: "managerPhone", label: "Manager phone" },
+  { key: "managerEmail", label: "Manager email" },
+  { key: "coordinator", label: "Coordinator", aliases: ["Project coordinator"] },
+  { key: "coordinatorPhone", label: "Coordinator phone" },
+  { key: "salesExecutive", label: "Sales executive" },
+  { key: "salesExecutivePhone", label: "Sales executive phone" },
+  { key: "status", label: "Status" },
+  { key: "start", label: "Start date", aliases: ["Timeline start", "Start"] },
+  { key: "end", label: "End date", aliases: ["Timeline end", "End"] },
+  { key: "required", label: "Workers required", aliases: ["No of employees required", "Required"] },
+];
+
+const STATUS_OPTIONS = ["ACTIVE", "PLANNING", "ON_HOLD", "COMPLETED"].map((v) => ({ value: v, label: v.replace("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) }));
+
+export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; emptyState?: React.ReactNode }) {
+  const clientOptions = [...new Set(projects.map((p) => p.clientName))].sort().map((v) => ({ value: v, label: v }));
   const columns: DataTableColumn<ProjectRow>[] = [
     {
       key: "name",
@@ -61,6 +100,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       locked: true,
       sortValue: (p) => p.name,
       searchValue: (p) => `${p.name} ${p.description ?? ""}`,
+      csvHeader: "Project name",
       csvValue: (p) => p.name,
       render: (p) => (
         <Link href={`/projects/${p.id}`} className="group flex items-center gap-3">
@@ -77,6 +117,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
     {
       key: "code",
       header: "Code",
+      csvHeader: "Code",
       sortValue: (p) => p.code,
       csvValue: (p) => p.code,
       render: (p) => <span className="tabular text-muted">{p.code}</span>,
@@ -84,6 +125,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
     {
       key: "client",
       header: "Client",
+      csvHeader: "Client",
       sortValue: (p) => p.clientName,
       csvValue: (p) => p.clientName,
       render: (p) => <span className="text-secondary">{p.clientName}</span>,
@@ -91,6 +133,7 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
     {
       key: "address",
       header: "Address",
+      csvHeader: "Address",
       defaultHidden: true,
       sortValue: (p) => p.address,
       searchValue: (p) => p.address,
@@ -100,9 +143,10 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
     {
       key: "manager",
       header: "Project Manager",
+      csvHeader: "Project manager",
       sortValue: (p) => p.manager,
       searchValue: (p) => p.manager,
-      csvValue: (p) => `${p.manager ?? ""} ${p.managerPhone ?? ""}`.trim(),
+      csvValue: (p) => p.manager,
       render: (p) =>
         p.manager ? (
           <div className="flex flex-col text-sm" onClick={(e) => e.stopPropagation()}>
@@ -125,10 +169,11 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
     {
       key: "coordinator",
       header: "Coordinator",
+      csvHeader: "Coordinator",
       defaultHidden: true,
       sortValue: (p) => p.coordinator,
       searchValue: (p) => p.coordinator,
-      csvValue: (p) => `${p.coordinator ?? ""} ${p.coordinatorPhone ?? ""}`.trim(),
+      csvValue: (p) => p.coordinator,
       render: (p) =>
         p.coordinator ? (
           <div className="flex flex-col text-sm">
@@ -142,10 +187,11 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
     {
       key: "salesExecutive",
       header: "Sales executive",
+      csvHeader: "Sales executive",
       defaultHidden: true,
       sortValue: (p) => p.salesExecutive,
       searchValue: (p) => p.salesExecutive,
-      csvValue: (p) => `${p.salesExecutive ?? ""} ${p.salesExecutivePhone ?? ""}`.trim(),
+      csvValue: (p) => p.salesExecutive,
       render: (p) =>
         p.salesExecutive ? (
           <div className="flex flex-col text-sm">
@@ -207,7 +253,6 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
       key: "timeline",
       header: "Timeline",
       sortValue: (p) => p.timelineStart,
-      csvValue: (p) => `${fmtDate(p.timelineStart)} – ${fmtDate(p.timelineEnd)}`,
       render: (p) => (
         <div className="flex flex-col">
           <span className="tabular text-muted">
@@ -221,9 +266,18 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
         </div>
       ),
     },
+    hiddenText("managerPhone", "Manager phone", (p) => p.managerPhone),
+    hiddenText("managerEmail", "Manager email", (p) => p.managerEmail),
+    hiddenText("coordinatorPhone", "Coordinator phone", (p) => p.coordinatorPhone),
+    hiddenText("salesExecutivePhone", "Sales executive phone", (p) => p.salesExecutivePhone),
+    hiddenText("description", "Description", (p) => p.description),
+    hiddenText("timelineStart", "Start date", (p) => (p.timelineStart ? p.timelineStart.slice(0, 10) : null)),
+    hiddenText("timelineEnd", "End date", (p) => (p.timelineEnd ? p.timelineEnd.slice(0, 10) : null)),
+    hiddenText("required", "Workers required", (p) => p.required),
     {
       key: "status",
       header: "Status",
+      csvHeader: "Status",
       sortValue: (p) => p.status,
       csvValue: (p) => p.status,
       render: (p) => (
@@ -237,11 +291,18 @@ export function ProjectList({ projects }: { projects: ProjectRow[] }) {
   return (
     <DataTable
       rows={projects}
+      emptyState={emptyState}
       columns={columns}
       searchable
       searchPlaceholder="Search projects by name, code, site, or manager…"
       pageSize={25}
       csvFilename={`projects-${new Date().toISOString().slice(0, 10)}.csv`}
+      importConfig={{ entityLabel: "projects", columns: IMPORT_COLUMNS, importAction: bulkImportProjectsAction }}
+      filters={[
+        { key: "status", label: "All statuses", options: STATUS_OPTIONS, get: (p) => p.status },
+        { key: "client", label: "All clients", options: clientOptions, get: (p) => p.clientName },
+        { key: "demand", label: "Any demand", options: [{ value: "open", label: "Has open demand" }, { value: "none", label: "No open demand" }], get: (p) => (p.openDemands > 0 ? "open" : "none") },
+      ]}
       renderRowActions={(p) => (
         <div className="flex items-center justify-end gap-3">
           <Link

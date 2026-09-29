@@ -1,12 +1,10 @@
 import { PageHeader } from "@/components/PageHeader";
-import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { EmptyState } from "@/components/EmptyState";
-import { DeleteButton } from "@/components/DeleteButton";
-import { createSiteAction, deleteSiteAction } from "./actions";
+import { createSiteAction } from "./actions";
+import { SiteTable } from "./site-table";
 import { Select } from "@/components/ui/Select";
 
 /**
@@ -39,7 +37,6 @@ export default async function SitesPage() {
     orderBy: { name: "asc" },
   });
 
-  const siteCount = projects.reduce((sum, p) => sum + p.sites.length, 0);
 
   return (
     <div className="space-y-5">
@@ -74,72 +71,21 @@ export default async function SitesPage() {
         </button>
       </form>
 
-      {siteCount === 0 ? (
-        <EmptyState
-          icon={MapPin}
-          title="No sites yet"
-          description="Add a site above and it will appear under its project."
+      <SiteTable
+          sites={projects.flatMap((p) =>
+            p.sites.map((site) => ({
+              id: site.id,
+              name: site.name,
+              address: site.address,
+              projectId: p.id,
+              projectCode: p.code,
+              projectName: p.name,
+              clientName: p.client?.name ?? null,
+              workers: site._count.employees,
+              timesheetRows: site._count.timesheetEntries,
+            })),
+          )}
         />
-      ) : (
-        <div className="space-y-4">
-          {projects
-            .filter((p) => p.sites.length > 0)
-            .map((project) => (
-              <div key={project.id} className="card overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-default bg-surface-subtle px-4 py-2.5">
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {project.code} — {project.name}
-                  </Link>
-                  <span className="text-xs text-muted">
-                    {project.client?.name ?? "No client"} · {project.sites.length} site
-                    {project.sites.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-                <ul className="divide-y divide-[var(--border)]">
-                  {project.sites.map((site) => {
-                    const inUse =
-                      site._count.employees > 0 || site._count.timesheetEntries > 0;
-                    return (
-                      <li key={site.id} className="flex items-center gap-3 px-4 py-2.5">
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-primary">
-                            {site.name}
-                          </span>
-                          {site.address && (
-                            <span className="block truncate text-xs text-subtle">
-                              {site.address}
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-xs text-muted">
-                          {site._count.employees} worker
-                          {site._count.employees === 1 ? "" : "s"}
-                        </span>
-                        {inUse ? (
-                          <span
-                            className="text-xs text-subtle"
-                            title="In use by workers or timesheet rows — clear those first"
-                          >
-                            In use
-                          </span>
-                        ) : (
-                          <DeleteButton
-                            action={deleteSiteAction}
-                            hiddenFields={{ siteId: site.id }}
-                            confirmMessage={`Delete site "${site.name}"?`}
-                          />
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-        </div>
-      )}
     </div>
   );
 }

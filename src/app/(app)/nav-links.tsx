@@ -104,7 +104,7 @@ const NAV: Entry[] = [
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
       { href: "/documents", label: "Documents", icon: FileText },
       { href: "/trades", label: "Trades", icon: Wrench },
-      { href: "/inventory", label: "PPE & Inventory", icon: Package },
+      { href: "/inventory", label: "Inventory", icon: Package },
     ],
   },
   {

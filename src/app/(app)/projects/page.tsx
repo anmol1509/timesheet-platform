@@ -94,20 +94,21 @@ export default async function ProjectsPage({
         />
       )}
 
-      {rows.length === 0 ? (
-        <EmptyState
-          icon={ClipboardList}
-          title="No projects yet"
-          description="Projects are where workers get deployed and hours get billed. Create one to assign labour, track LPOs, and generate client timesheets."
-          action={
-            <Button href="/projects/new" size="sm">
-              Add project
-            </Button>
-          }
-        />
-      ) : (
-        <ProjectList projects={rows} />
-      )}
+      <ProjectList
+        projects={rows}
+        emptyState={
+          <EmptyState
+            icon={ClipboardList}
+            title="No projects yet"
+            description="Projects are where workers get deployed and hours get billed. Create one, or import a list, to assign labour, track LPOs, and generate client timesheets."
+            action={
+              <Button href="/projects/new" size="sm">
+                Add project
+              </Button>
+            }
+          />
+        }
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ChevronsUpDown,
   Columns3,
   Download,
@@ -19,6 +20,8 @@ import { CsvImportDialog, type ImportColumn, type ImportRowResult } from "@/comp
 import { Pagination } from "@/components/Pagination";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import { downloadXlsx } from "@/lib/spreadsheet";
+import { Select } from "@/components/ui/Select";
 import { ScrollRestore } from "@/components/ScrollRestore";
 import { cn } from "@/lib/cn";
 
@@ -51,6 +54,15 @@ export type DataTableImportConfig = {
   wizardHref?: string;
 };
 
+/** A dropdown that narrows the rows: "All …" plus one option per value. */
+export type DataTableFilter<T> = {
+  key: string;
+  /** Shown as the "All …" option, e.g. "All statuses". */
+  label: string;
+  options: { value: string; label: string }[];
+  get: (row: T) => string | null | undefined;
+};
+
 type SortState = { key: string; direction: "asc" | "desc" } | null;
 
 // Generalizes the table shell (checkbox selection, CSV import/export, row
@@ -75,6 +87,7 @@ export function DataTable<T extends { id: string }>({
   stickyHeader = true,
   toolbarExtra,
   pageSize,
+  filters,
 }: {
   rows: T[];
   columns: DataTableColumn<T>[];
@@ -96,10 +109,13 @@ export function DataTable<T extends { id: string }>({
   toolbarExtra?: React.ReactNode;
   /** Rows per page. Omit to render every row without pagination. */
   pageSize?: number;
+  /** Dropdown filters shown beside the search box. */
+  filters?: DataTableFilter<T>[];
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.key))
   );
@@ -109,17 +125,22 @@ export function DataTable<T extends { id: string }>({
     [columns, hidden]
   );
 
+  const narrowed = useMemo(() => {
+    if (!filters || filters.length === 0) return rows;
+    return rows.filter((row) => filters.every((f) => !filterValues[f.key] || f.get(row) === filterValues[f.key]));
+  }, [rows, filters, filterValues]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
+    if (!q) return narrowed;
     const matchers = columns
       .map((c) => c.searchValue ?? c.csvValue)
       .filter(Boolean) as ((row: T) => string | number | null | undefined)[];
-    if (matchers.length === 0) return rows;
-    return rows.filter((row) =>
+    if (matchers.length === 0) return narrowed;
+    return narrowed.filter((row) =>
       matchers.some((get) => String(get(row) ?? "").toLowerCase().includes(q))
     );
-  }, [rows, query, columns]);
+  }, [narrowed, query, columns]);
 
   const sorted = useMemo(() => {
     if (!sort) return filtered;
@@ -161,24 +182,36 @@ export function DataTable<T extends { id: string }>({
     sorted.map((r) => r.id)
   );
 
+  function exportCells() {
+    const exportRows = selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
+    // What's on screen, plus any hidden column that names its own CSV header
+    // (those are the importable fields, so a round trip keeps them).
+    const cols = columns
+      .filter((c) => visibleColumns.includes(c) || (c.defaultHidden && c.csvHeader))
+      .filter(
+        (c): c is DataTableColumn<T> & { csvValue: NonNullable<DataTableColumn<T>["csvValue"]> } => !!c.csvValue
+      );
+    return { exportRows, cols };
+  }
+
   function exportCsv() {
     if (!csvFilename) return;
-    const exportRows =
-      selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
-    const csv = toCsv(
-      exportRows,
-      // What's on screen, plus any hidden column that names its own CSV header
-      // (those are the importable fields, so a round trip keeps them).
-      columns
-        .filter((c) => visibleColumns.includes(c) || (c.defaultHidden && c.csvHeader))
-        .filter(
-          (c): c is DataTableColumn<T> & {
-            csvValue: NonNullable<DataTableColumn<T>["csvValue"]>;
-          } => !!c.csvValue
-        )
-        .map((c) => ({ header: c.csvHeader ?? c.header, value: c.csvValue }))
+    const { exportRows, cols } = exportCells();
+    downloadCsv(
+      csvFilename,
+      toCsv(exportRows, cols.map((c) => ({ header: c.csvHeader ?? c.header, value: c.csvValue })))
     );
-    downloadCsv(csvFilename, csv);
+  }
+
+  function exportExcel() {
+    if (!csvFilename) return;
+    const { exportRows, cols } = exportCells();
+    void downloadXlsx(
+      csvFilename.replace(/\.csv$/i, ".xlsx"),
+      "Export",
+      cols.map((c) => c.csvHeader ?? c.header),
+      exportRows.map((r) => cols.map((c) => c.csvValue(r)))
+    );
   }
 
   function toggleSort(key: string) {
@@ -190,7 +223,7 @@ export function DataTable<T extends { id: string }>({
   }
 
   // Nothing at all to show — the empty state stands alone, without a toolbar.
-  if (rows.length === 0 && emptyState) return <>{emptyState}</>;
+  if (rows.length === 0 && emptyState && !importConfig) return <>{emptyState}</>;
 
   // Row checkboxes carry no visible label, so name them after the row itself —
   // otherwise a screen reader announces 25 identical "checkbox, unchecked".
@@ -203,7 +236,7 @@ export function DataTable<T extends { id: string }>({
 
   const hideable = columns.filter((c) => !c.locked);
   const showToolbar =
-    !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0;
+    !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0 || !!filters?.length;
   const cellY = density === "compact" ? "py-2" : "py-3";
   const colSpan =
     visibleColumns.length + (selectable ? 1 : 0) + (renderRowActions ? 1 : 0);
@@ -248,6 +281,22 @@ export function DataTable<T extends { id: string }>({
               )}
             </div>
           )}
+
+          {filters?.map((f) => (
+            <div key={f.key} className="w-44 shrink-0">
+            <Select
+              value={filterValues[f.key] ?? ""}
+              onChange={(v) => {
+                setFilterValues((prev) => ({ ...prev, [f.key]: v }));
+                setPage(1);
+              }}
+              triggerClassName="h-9"
+              searchable={f.options.length > 8}
+              placeholder={f.label}
+              options={[{ value: "", label: f.label }, ...f.options]}
+            />
+            </div>
+          ))}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {hideable.length > 0 && (
@@ -302,10 +351,33 @@ export function DataTable<T extends { id: string }>({
               />
             )}
             {csvFilename && (
-              <button type="button" onClick={exportCsv} className={toolbarButton}>
-                <Download className="h-3.5 w-3.5" aria-hidden />
-                {selected.size > 0 ? `Export ${selected.size}` : "Export CSV"}
-              </button>
+              <Popover.Root>
+                <Popover.Trigger asChild>
+                  <button type="button" className={toolbarButton}>
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                    {selected.size > 0 ? `Export ${selected.size}` : "Export"}
+                    <ChevronDown className="h-3 w-3 text-muted" aria-hidden />
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    align="end"
+                    sideOffset={6}
+                    className="rx-popover z-50 w-44 rounded-card border border-default bg-surface p-1 shadow-popover"
+                  >
+                    <Popover.Close asChild>
+                      <button type="button" onClick={exportExcel} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
+                        Excel (.xlsx)
+                      </button>
+                    </Popover.Close>
+                    <Popover.Close asChild>
+                      <button type="button" onClick={exportCsv} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
+                        CSV (.csv)
+                      </button>
+                    </Popover.Close>
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
             )}
           </div>
         </div>
@@ -430,7 +502,12 @@ export function DataTable<T extends { id: string }>({
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {sorted.length === 0 && (
+              {sorted.length === 0 && rows.length === 0 && emptyState && (
+                <tr>
+                  <td colSpan={colSpan}>{emptyState}</td>
+                </tr>
+              )}
+              {sorted.length === 0 && !(rows.length === 0 && emptyState) && (
                 <tr>
                   <td colSpan={colSpan} className="px-3 py-10 text-center">
                     <p className="text-sm font-medium text-primary">

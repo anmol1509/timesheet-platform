@@ -49,6 +49,7 @@ export default async function SkillsPage() {
     return {
       id: s.id,
       name: s.name,
+      code: s.code,
       category: s.category,
       trending: s.trending,
       // Shared trades are read-only to a client; only their own can be changed.
@@ -106,26 +107,19 @@ export default async function SkillsPage() {
         </button>
       </form>
 
-      {rows.length === 0 ? (
-        <p className="empty-state text-sm text-muted">
-          No skills tracked yet. Add one above, or tag skills from an
-          employee&rsquo;s profile.
-        </p>
-      ) : (
-        <>
-          <Panel title="Top trades by headcount" href="/employees">
-            <BarList
-              tone="brand"
-              items={[...rows]
-                .sort((a, b) => b.employeeCount - a.employeeCount)
-                .slice(0, 8)
-                .map((r) => ({ key: r.id, label: r.name, value: r.employeeCount }))}
-              emptyLabel="No employees assigned to a trade yet."
-            />
-          </Panel>
-          <TradeTable trades={rows} />
-        </>
+      {rows.length > 0 && (
+        <Panel title="Top trades by headcount" href="/employees">
+          <BarList
+            tone="brand"
+            items={[...rows]
+              .sort((a, b) => b.employeeCount - a.employeeCount)
+              .slice(0, 8)
+              .map((r) => ({ key: r.id, label: r.name, value: r.employeeCount }))}
+            emptyLabel="No employees assigned to a trade yet."
+          />
+        </Panel>
       )}
+      <TradeTable trades={rows} />
     </div>
   );
 }
