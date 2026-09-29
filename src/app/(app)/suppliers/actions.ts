@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
 import { assertContactsValid } from "@/lib/validators";
@@ -49,7 +50,7 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  const existing = await prisma.supplier.findUnique({ where: { name } });
+  const existing = await prisma.supplier.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) {
     redirect(
       `/suppliers?error=${encodeURIComponent("A supplier with that name already exists.")}`
@@ -103,7 +104,7 @@ export async function createSubsidiaryAction(
     return { error: "Parent supplier not found." };
   }
 
-  const existing = await prisma.supplier.findUnique({ where: { name } });
+  const existing = await prisma.supplier.findFirst({ where: { name, branchId: parent.branchId }, select: { id: true } });
   if (existing) {
     return { error: "A supplier with that name already exists." };
   }
@@ -140,6 +141,10 @@ export async function updateSupplierCompanyAction(formData: FormData) {
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
 
   const parentSupplierIdRaw = stringOrNull(formData.get("parentSupplierId"));
+  // A parent from another branch would list this supplier as a subsidiary on
+  // that other tenant's page. Only a changed parent is checked.
+  if (parentSupplierIdRaw && parentSupplierIdRaw !== id && parentSupplierIdRaw !== existing.parentSupplierId
+      && !(await refsBelongToBranch(existing.branchId, { supplier: parentSupplierIdRaw }))) return;
 
   const data = {
     parentSupplierId: parentSupplierIdRaw === id ? null : parentSupplierIdRaw,
@@ -265,7 +270,7 @@ export async function updateSupplierApprovalAction(formData: FormData) {
 }
 
 export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -280,11 +285,8 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
       continue;
     }
     try {
-      const existing = await prisma.supplier.findUnique({ where: { name } });
-      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
-        results.push({ row: i + 2, status: "error", message: "That name belongs to a different branch." });
-        continue;
-      }
+      // Within this branch only — see the client import for why.
+      const existing = await prisma.supplier.findFirst({ where: { name, branchId } });
       const data = {
         fullName: stringOrNull(r["Full name"] ?? null),
         contactPerson: stringOrNull(r["Contact person"] ?? null),

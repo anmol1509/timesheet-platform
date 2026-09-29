@@ -1,6 +1,6 @@
 import { Settings } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { updateIssuedToAction } from "./actions";
@@ -10,12 +10,13 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 export default async function SettingsPage() {
   const admin = await requireAdmin();
   const isSuperAdmin = admin.role === "SUPER_ADMIN";
-  const [settings, branches] = await Promise.all([
-    prisma.settings.upsert({
-      where: { id: "singleton" },
-      update: {},
-      create: { id: "singleton" },
-    }),
+  // The billing details belong to a branch: a branch admin edits their own; a
+  // super admin edits whichever branch is selected in the switcher.
+  const billingBranchId = isSuperAdmin ? await resolveSuperAdminBranchId() : admin.branchId;
+  const [billingBranch, branches] = await Promise.all([
+    billingBranchId
+      ? prisma.branch.findUnique({ where: { id: billingBranchId }, select: { id: true, name: true, issuedTo: true, trn: true } })
+      : Promise.resolve(null),
     isSuperAdmin ? prisma.branch.findMany({ orderBy: { code: "asc" } }) : Promise.resolve([]),
   ]);
 
@@ -31,17 +32,24 @@ export default async function SettingsPage() {
         <h2 className="mb-3 text-sm font-semibold text-primary">
           Billing entity
         </h2>
+        {!billingBranch ? (
+          <p className="card max-w-md p-5 text-sm text-muted">
+            Pick a branch from the switcher (top right) to edit its billing details.
+          </p>
+        ) : (
         <form
           action={updateIssuedToAction}
           className="card max-w-md p-5"
         >
+          <input type="hidden" name="branchId" value={billingBranch.id} />
+          <p className="mb-3 text-xs text-muted">Billing details for <span className="font-medium text-primary">{billingBranch.name}</span>.</p>
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">
               &ldquo;Issued To&rdquo; name (your company, as billed by suppliers)
             </span>
             <input
               name="issuedTo"
-              defaultValue={settings.issuedTo}
+              defaultValue={billingBranch.issuedTo ?? billingBranch.name}
               className="input w-full"
             />
           </label>
@@ -51,7 +59,7 @@ export default async function SettingsPage() {
             </span>
             <MaskedInput kind="trn"
               name="companyTrn"
-              defaultValue={settings.companyTrn ?? ""}
+              defaultValue={billingBranch.trn ?? ""}
               className="input w-full"
             />
           </label>
@@ -62,6 +70,7 @@ export default async function SettingsPage() {
             Save
           </button>
         </form>
+        )}
       </section>
 
       {isSuperAdmin && (

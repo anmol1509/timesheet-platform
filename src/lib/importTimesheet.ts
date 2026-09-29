@@ -23,10 +23,28 @@ export async function importParsedMonths(
   branchId: string,
   projectId: string | null = null
 ): Promise<ImportStats> {
+  // Matched by name WITHIN this branch only. Loading every tenant's suppliers
+  // and clients meant a sheet naming "ABC Manpower" attached its rows to another
+  // company's supplier of that name, so they surfaced in that company's supplier
+  // sheets and billing.
   const [existingSuppliers, existingClients] = await Promise.all([
-    prisma.supplier.findMany(),
-    prisma.client.findMany(),
+    prisma.supplier.findMany({ where: { branchId } }),
+    prisma.client.findMany({ where: { branchId } }),
   ]);
+
+  // An employee ID is unique across the whole system, and the roster upsert
+  // below is keyed on it — so a row carrying another company's ID would
+  // rewrite that company's employee. Find which IDs in this upload already
+  // belong to a different branch and refuse those rows.
+  const uploadedIds = [...new Set(months.flatMap((m) => m.entries.map((e) => e.employeeIdNo)))];
+  const foreignIds = new Set(
+    (
+      await prisma.employee.findMany({
+        where: { employeeIdNo: { in: uploadedIds }, NOT: { branchId } },
+        select: { employeeIdNo: true },
+      })
+    ).map((e) => e.employeeIdNo)
+  );
 
   const supplierByKey = new Map(
     existingSuppliers.map((s) => [normalizeKey(s.name), s])
@@ -50,7 +68,18 @@ export async function importParsedMonths(
     stats.rowsSkipped += month.skippedRows;
     stats.skippedRowDetails.push(...month.skippedRowDetails);
 
-    for (const entry of month.entries) {
+    for (const [entryIndex, entry] of month.entries.entries()) {
+      if (foreignIds.has(entry.employeeIdNo)) {
+        stats.rowsSkipped++;
+        stats.skippedRowDetails.push({
+          sheetName: month.sheetName,
+          row: entryIndex + 1,
+          name: entry.employeeName,
+          idNo: entry.employeeIdNo,
+          reason: "This employee ID is already in use by another company. Use a different ID.",
+        });
+        continue;
+      }
       const supplierKey = normalizeKey(entry.supplierName);
       let supplier = supplierByKey.get(supplierKey);
       if (!supplier) {

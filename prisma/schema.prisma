@@ -33,6 +33,8 @@ model Branch {
   fax      String?
   poBox    String?
   trn      String? // Tax Registration Number
+  // "Issued To" name printed on supplier timesheets (the company as billed by suppliers). Falls back to `name`.
+  issuedTo String?
 
   // Company logo, shown in the sidebar and on generated letterheads.
   logo   StoredImage? @relation("BranchLogo", fields: [logoId], references: [id], onDelete: SetNull)
@@ -80,6 +82,7 @@ model Branch {
   entries              TimesheetEntry[]
   camps                Camp[]
   vehicles             Vehicle[]
+  skills               Skill[]
   banks                Bank[]
   lookupValues         LookupValue[]
   demandRequests       DemandRequest[]
@@ -262,8 +265,8 @@ model UploadMonth {
 
 model Supplier {
   id        String   @id @default(cuid())
-  name      String   @unique
-  code      String?  @unique
+  name      String
+  code      String?
   fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
   createdAt DateTime @default(now())
 
@@ -354,12 +357,17 @@ model Supplier {
   bills                SupplierBill[]
   candidateOnboardings CandidateOnboarding[]
   agencyContacts       AgencyContact[]
+
+  // Unique within a branch, not across the platform: two companies can each have a
+  // supplier called "ABC Manpower", and adding one must not reveal that another has it.
+  @@unique([branchId, name])
+  @@unique([branchId, code])
 }
 
 model Client {
   id            String    @id @default(cuid())
-  name          String    @unique
-  code          String?   @unique
+  name          String
+  code          String?
   branch        Branch    @relation(fields: [branchId], references: [id])
   branchId      String
   contactPerson String?
@@ -406,6 +414,10 @@ model Client {
   lpos           Lpo[]
   enquiries      Enquiry[]
   quotations     Quotation[]
+
+  // Unique within a branch: several manpower suppliers share the same big clients.
+  @@unique([branchId, name])
+  @@unique([branchId, code])
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -1154,7 +1166,7 @@ model ProjectContact {
 
 model InventoryItem {
   id       String  @id @default(cuid())
-  name     String  @unique
+  name     String
   category String?
   notes    String?
 
@@ -1164,6 +1176,8 @@ model InventoryItem {
   assignments         ProjectInventoryAssignment[]
   employeeAssignments EmployeeInventoryAssignment[]
   variants            InventoryVariant[]
+
+  @@unique([branchId, name])
 }
 
 // A distinct purchasable/issuable option of an item — size, colour, or any
@@ -1235,15 +1249,28 @@ model EmployeeInventoryAssignment {
 
 model Skill {
   id       String  @id @default(cuid())
-  name     String  @unique
+  name     String
   // Short mnemonic (HLP, MSN, SFX) printed on timesheets and letters, where a
   // full trade name doesn't fit a column.
-  code     String? @unique
+  code     String?
   category String?
   trending Boolean @default(false)
 
+  // null = the shared catalogue every branch sees and only a super admin edits.
+  // Otherwise a trade the branch added itself, which only that branch sees and
+  // can change. This used to be one global list that any tenant could edit, and
+  // that every tenant's demand requests quietly added to.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
+
   employees    EmployeeSkill[]
   demandTrades DemandRequestTrade[]
+
+  // Postgres treats NULLs as distinct, so shared rows are not constrained by
+  // these; the application checks names within the shared scope itself.
+  @@unique([branchId, name])
+  @@unique([branchId, code])
+  @@index([branchId])
 }
 
 model EmployeeSkill {

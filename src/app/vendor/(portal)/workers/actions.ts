@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { findVisibleSkill } from "@/lib/skillScope";
 import { getVendor } from "@/lib/vendor/session";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { parseDay } from "@/lib/dates";
@@ -33,7 +34,8 @@ export async function submitWorkerAction(_prev: State, formData: FormData): Prom
   if (!emiratesId) return { error: "Enter the Emirates ID number (or the ICP registration number if the card is not issued yet)." };
   if (!dateOfBirth) return { error: "Enter the date of birth." };
   if (dateOfBirth.getTime() > Date.now() - 16 * 365 * 86_400_000) return { error: "That date of birth is too recent for a worker." };
-  const skill = await prisma.skill.findUnique({ where: { name: trade }, select: { id: true } });
+  // Only the shared catalogue and this supplier's own company's trades are on offer.
+  const skill = await findVisibleSkill(trade, vendor.branchId);
   if (!skill) return { error: "Choose a trade from the list." };
 
   const files: { file: File; docType: string }[] = [];
@@ -46,9 +48,12 @@ export async function submitWorkerAction(_prev: State, formData: FormData): Prom
   }
 
   // Deliberately vague: it must not reveal which other supplier already has this person.
+  // Compared within this supplier's own company only. Searching every tenant would
+  // tell a supplier whether a passport or Emirates ID is registered at any other
+  // company on the platform.
   const clash = await Promise.all([
-    prisma.employee.count({ where: { OR: [{ passportNumber: { equals: passportNumber, mode: "insensitive" } }, { emiratesId }] } }),
-    prisma.workerSubmission.count({ where: { status: "PENDING", OR: [{ passportNumber: { equals: passportNumber, mode: "insensitive" } }, { emiratesId }] } }),
+    prisma.employee.count({ where: { branchId: vendor.branchId, OR: [{ passportNumber: { equals: passportNumber, mode: "insensitive" } }, { emiratesId }] } }),
+    prisma.workerSubmission.count({ where: { branchId: vendor.branchId, status: "PENDING", OR: [{ passportNumber: { equals: passportNumber, mode: "insensitive" } }, { emiratesId }] } }),
   ]);
   if (clash[0] + clash[1] > 0) return { error: "A worker with this passport or Emirates ID is already registered or waiting for approval. Please contact us if you think this is a mistake." };
 

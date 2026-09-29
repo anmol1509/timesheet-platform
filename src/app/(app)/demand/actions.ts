@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { getOrCreateSkill } from "@/lib/skillScope";
 import { logAudit } from "@/lib/audit";
 import { approvedHeadcount, validateApproval } from "@/lib/demandApproval";
 import {
@@ -44,6 +46,8 @@ export async function createDemandRequestAction(formData: FormData) {
 
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { branchId: true } });
   if (!project || isOutsideBranch(project.branchId, branchId, isSuperAdmin)) return;
+  // The request is filed under the project's branch, so the client must be that branch's too.
+  if (!(await refsBelongToBranch(project.branchId, { client: clientId }))) return;
 
   let trades: TradeInput[];
   try {
@@ -59,11 +63,9 @@ export async function createDemandRequestAction(formData: FormData) {
   // converging on what the workforce actually does rather than drifting apart.
   const skillIdByTrade = new Map<string, string>();
   for (const name of new Set(trades.map((t) => t.trade.trim()))) {
-    const existing = await prisma.skill.findFirst({
-      where: { name: { equals: name, mode: "insensitive" } },
-      select: { id: true },
-    });
-    const skill = existing ?? (await prisma.skill.create({ data: { name } }));
+    // Resolved within the request's own branch: a trade name typed into one
+    // client's demand request must not be added to every other client's list.
+    const skill = await getOrCreateSkill(name, project.branchId);
     skillIdByTrade.set(name.toLowerCase(), skill.id);
   }
   if (trades.length === 0) return;
@@ -386,11 +388,7 @@ export async function changeEmployeeTradeAction(
 
   // Keep the Trades taxonomy in step with what's actually recorded, the same
   // way raising a demand does.
-  const existingSkill = await prisma.skill.findFirst({
-    where: { name: { equals: trade, mode: "insensitive" } },
-    select: { id: true },
-  });
-  const skill = existingSkill ?? (await prisma.skill.create({ data: { name: trade } }));
+  const skill = await getOrCreateSkill(trade, employee.branchId);
 
   await prisma.employee.update({
     where: { id: employeeId },

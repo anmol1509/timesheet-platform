@@ -64,7 +64,8 @@ export async function createClientAction(
     };
   }
 
-  const existing = await prisma.client.findUnique({ where: { name } });
+  // Names are unique within a branch: several suppliers share the same big clients.
+  const existing = await prisma.client.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) return { error: "A client with that name already exists." };
 
   const data = {
@@ -304,7 +305,7 @@ export async function deleteClientDocumentAction(formData: FormData) {
 }
 
 export async function bulkImportClientsAction(rows: Record<string, string>[]) {
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -319,11 +320,10 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       continue;
     }
     try {
-      const existing = await prisma.client.findUnique({ where: { name } });
-      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
-        results.push({ row: i + 2, status: "error", message: "That name belongs to a different branch." });
-        continue;
-      }
+      // Looked up within this branch only: matching another company's client
+      // would update it, and refusing with "belongs to a different branch" would
+      // tell you a client of that name exists elsewhere.
+      const existing = await prisma.client.findFirst({ where: { name, branchId } });
       const data = {
         contactPerson: stringOrNull(r["Contact person"] ?? null),
         contactEmail: stringOrNull(r["Contact email"] ?? null),

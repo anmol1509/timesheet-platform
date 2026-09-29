@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { mayEditSkill, visibleSkillWhere } from "@/lib/skillScope";
 import { createSkillAction } from "./actions";
 import { TradeTable } from "./trade-table";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -10,10 +11,11 @@ import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
 
 export default async function SkillsPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [skills, totalEmployees] = await Promise.all([
     prisma.skill.findMany({
-      include: { _count: { select: { employees: true } } },
+      // The shared catalogue plus this branch's own trades — never another branch's.
+      where: visibleSkillWhere(branchId),
       orderBy: { name: "asc" },
     }),
     prisma.employee.count({ where: branchWhere(branchId) }),
@@ -22,7 +24,7 @@ export default async function SkillsPage() {
   const [idleRows, demandRows, headcountRows] = await Promise.all([
     prisma.employee.groupBy({ by: ["trade"], where: { ...branchWhere(branchId), status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
     prisma.demandRequestTrade.findMany({
-      where: { demandRequest: { status: { in: ["Open", "Approved"] } } },
+      where: { demandRequest: { ...branchWhere(branchId), status: { in: ["Open", "Approved"] } } },
       select: { trade: true, quantity: true, approvedQuantity: true, _count: { select: { allocations: true } } },
     }),
     // The employee's own `trade` field is what every other trade dropdown
@@ -49,6 +51,9 @@ export default async function SkillsPage() {
       name: s.name,
       category: s.category,
       trending: s.trending,
+      // Shared trades are read-only to a client; only their own can be changed.
+      shared: s.branchId === null,
+      editable: mayEditSkill(s, { branchId, isSuperAdmin }),
       employeeCount,
       popularity,
       idle: idleBy.get(key(s.name)) ?? 0,

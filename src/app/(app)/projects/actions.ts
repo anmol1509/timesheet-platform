@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -95,6 +96,8 @@ export async function createProjectAction(
     };
   }
 
+  if (!(await refsBelongToBranch(branchId, { client: clientId }))) return { error: "Choose one of this branch's clients." };
+
   const people = readPeople(formData, ["manager"]);
   if (people.error) return { error: people.error };
 
@@ -144,9 +147,15 @@ export async function updateProjectAction(formData: FormData): Promise<{ error?:
 
   const before = await prisma.project.findUnique({ where: { id } });
 
+  // Only a changed client is checked, so a legacy link never blocks an unrelated edit.
+  const nextClientId = String(formData.get("clientId") || "");
+  if (nextClientId && nextClientId !== before?.clientId && !(await refsBelongToBranch(before?.branchId ?? null, { client: nextClientId }))) {
+    return { error: "Choose one of this branch's clients." };
+  }
+
   const data = {
     ...(name ? { name } : {}),
-    clientId: String(formData.get("clientId") || ""),
+    clientId: nextClientId,
     ...people.data,
     timelineStart: dateOrNull(formData.get("timelineStart")),
     timelineEnd: dateOrNull(formData.get("timelineEnd")),
@@ -325,6 +334,8 @@ export async function addProjectTradeRateAction(formData: FormData) {
   const rate = numberOrNull(formData.get("rate"));
   if (!projectId || !clientId || !trade || rate == null) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+  const owner = await prisma.project.findUnique({ where: { id: projectId }, select: { branchId: true } });
+  if (!(await refsBelongToBranch(owner?.branchId ?? null, { client: clientId }))) return;
 
   const existing = await prisma.clientTradeRate.findFirst({
     where: { clientId, projectId, trade },
@@ -450,7 +461,12 @@ export async function addProjectInventoryAction(formData: FormData): Promise<{ e
   if (!projectId || !itemName || !branchId) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
 
-  const existing = await prisma.inventoryItem.findUnique({ where: { name: itemName }, select: { id: true, variants: { select: { id: true } } } });
+  // The item is looked up (and, if new, created) in the PROJECT's branch. An
+  // unscoped lookup by name matched another company's item of the same name,
+  // attached it to this project, and drew down their stock.
+  const projectBranch = (await prisma.project.findUnique({ where: { id: projectId }, select: { branchId: true } }))?.branchId;
+  if (!projectBranch) return;
+  const existing = await prisma.inventoryItem.findFirst({ where: { name: itemName, branchId: projectBranch }, select: { id: true, variants: { select: { id: true } } } });
 
   // Only an item that already exists AND is stock-tracked (has at least one
   // variant) gets checked against real stock — a brand-new name typed here,
@@ -463,7 +479,7 @@ export async function addProjectInventoryAction(formData: FormData): Promise<{ e
     }
   }
 
-  const item = existing ?? (await prisma.inventoryItem.create({ data: { name: itemName, branchId } }));
+  const item = existing ?? (await prisma.inventoryItem.create({ data: { name: itemName, branchId: projectBranch } }));
 
   await prisma.projectInventoryAssignment.create({
     data: { projectId, itemId: item.id, quantity, assignedDate, condition },
@@ -592,6 +608,7 @@ export async function addLpoAction(formData: FormData) {
   const clientId = String(formData.get("clientId") || "");
   if (!projectId || !clientId || !branchId) return;
   if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+  if (!(await refsBelongToBranch(branchId, { client: clientId }))) return;
 
   const lpoNumber = await nextLpoNumber();
   const data = {

@@ -75,7 +75,7 @@ export async function createCheckInAction(
   let camp: { id: string; name: string } | null = null;
   if (campType === "OWN") {
     const own = await prisma.camp.findUnique({ where: { id: String(formData.get("campId") || "") } });
-    if (!own || own.ownerType !== "OWN") return { error: "Select one of your own camps." };
+    if (!own || own.ownerType !== "OWN" || isOutsideBranch(own.branchId, branchId, isSuperAdmin)) return { error: "Select one of your own camps." };
     camp = own;
   } else {
     const resolved = await resolveExternalCamp(campType as "SUPPLIER" | "CLIENT", String(formData.get("partyId") || ""), String(formData.get("campName") || ""), { branchId, isSuperAdmin });
@@ -83,6 +83,7 @@ export async function createCheckInAction(
     camp = resolved.camp;
   }
   const campId = camp.id;
+  const campBranchId = (await prisma.camp.findUnique({ where: { id: campId }, select: { branchId: true } }))?.branchId ?? null;
 
   const employees = await prisma.employee.findMany({
     where: { id: { in: employeeIds } },
@@ -93,6 +94,9 @@ export async function createCheckInAction(
   for (const employeeId of employeeIds) {
     const employee = employees.find((e) => e.id === employeeId);
     if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) continue;
+    // A worker is only ever placed in a camp of their own branch — this holds for
+    // a super admin too, who could otherwise check one tenant's people into another's.
+    if (employee.branchId !== campBranchId) continue;
     // Already housed, or already checked into a camp — neither belongs here.
     if (employee.bed) continue;
     const alreadyOpen = await prisma.campCheckIn.findFirst({
@@ -144,7 +148,7 @@ export async function switchCampAction(formData: FormData) {
   if (checkIn.campId === newCampId) return;
 
   const newCamp = await prisma.camp.findUnique({ where: { id: newCampId } });
-  if (!newCamp) return;
+  if (!newCamp || isOutsideBranch(newCamp.branchId, branchId, isSuperAdmin) || newCamp.branchId !== checkIn.employee.branchId) return;
 
   await prisma.$transaction(async (tx) => {
     if (checkIn.bedId && checkIn.bed) {
@@ -198,6 +202,7 @@ export async function allocateBedAction(formData: FormData) {
   const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { room: { include: { camp: true } } } });
   // The bed may be in a different own camp than the one checked into; the check-in then follows the bed.
   if (!bed || bed.room.camp.ownerType !== "OWN") return;
+  if (isOutsideBranch(bed.room.camp.branchId, branchId, isSuperAdmin) || bed.room.camp.branchId !== checkIn.employee.branchId) return;
   if (bed.employeeId && bed.employeeId !== checkIn.employeeId) return; // occupied by someone else
 
   const employeeId = checkIn.employeeId;

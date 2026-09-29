@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { visibleSkillWhere } from "@/lib/skillScope";
 import { getVendor } from "@/lib/vendor/session";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { STAGE_LABEL } from "@/lib/employeeStage";
@@ -27,7 +28,7 @@ export default async function VendorWorkersPage() {
       },
     }),
     prisma.workerSubmission.findMany({ where: { supplierId: vendor.id, status: { in: ["PENDING", "REJECTED"] } }, orderBy: { submittedAt: "desc" } }),
-    prisma.skill.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.skill.findMany({ where: visibleSkillWhere(vendor.branchId), select: { name: true }, orderBy: { name: "asc" } }),
   ]);
   const rows: SubmissionRow[] = subs.map((s) => ({
     id: s.id, name: [s.firstName, s.middleName, s.lastName].filter(Boolean).join(" "), trade: s.trade, status: s.status, note: s.note,

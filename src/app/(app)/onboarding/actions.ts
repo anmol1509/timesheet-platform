@@ -298,7 +298,7 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
     return { error: isSuperAdmin ? "Pick a branch from the switcher before adding an agency." : "Your account has no branch assigned — contact an admin." };
   }
 
-  const existing = await prisma.supplier.findUnique({ where: { name } });
+  const existing = await prisma.supplier.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) return { error: "A supplier with that name already exists — search for it instead." };
 
   const code = await nextSupplierCode();

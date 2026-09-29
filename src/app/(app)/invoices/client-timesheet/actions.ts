@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { isAdminRole } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import type { DailyHourCell, ParsedEntry, ParsedMonth } from "@/lib/parseTimesheet";
@@ -51,7 +53,10 @@ export async function submitManualEntryAction(
   // older Excel-sourced rows that still carry independent site text, unless
   // a specific Site under that project was also picked, which takes
   // priority.
-  const project = projectId ? await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } }) : null;
+  // Looked up inside the branch: an unscoped lookup would copy another tenant's
+  // project name into this branch's timesheet rows.
+  const project = projectId ? await prisma.project.findFirst({ where: { id: projectId, branchId }, select: { name: true } }) : null;
+  if (projectId && !project) return { error: "That project isn't part of this branch." };
   const pickedSite =
     siteIdInput && projectId
       ? await prisma.site.findFirst({ where: { id: siteIdInput, projectId } })
@@ -189,6 +194,10 @@ export async function submitDailyTimesheetAction(
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !supplierId || !projectId) {
     return { saved: 0, requested: 0, error: "Pick a supplier, a project, and a date." };
   }
+  // supplierId is part of the entry's unique key and is written onto every row.
+  if (!(await refsBelongToBranch(branchId, { supplier: supplierId }))) {
+    return { saved: 0, requested: 0, error: "That supplier isn't part of this branch." };
+  }
 
   // Site is optional — only set when the chosen project actually has one
   // picked; a project with no sites defined behaves exactly as before.
@@ -233,7 +242,7 @@ export async function submitDailyTimesheetAction(
     });
 
     if (existing) {
-      if (existing.status === "LOCKED" && !isSuperAdmin) continue;
+      if (existing.status === "LOCKED" && !isAdminRole(user.role)) continue;
       let days: DailyHourCell[];
       try {
         days = JSON.parse(existing.dailyHours);
@@ -431,7 +440,7 @@ export async function updateDailyHoursAction(formData: FormData) {
 
   const before = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
   if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return;
-  if (before.status === "LOCKED" && !isSuperAdmin) return;
+  if (before.status === "LOCKED" && !isAdminRole(user.role)) return;
 
   let days: DailyHourCell[];
   try {
@@ -485,7 +494,7 @@ export async function batchUpdateHoursAction(formData: FormData) {
   for (const entryId of entryIds) {
     const entry = await prisma.timesheetEntry.findUnique({ where: { id: entryId } });
     if (!entry || isOutsideBranch(entry.branchId, branchId, isSuperAdmin)) continue;
-    if (entry.status === "LOCKED" && !isSuperAdmin) continue;
+    if (entry.status === "LOCKED" && !isAdminRole(user.role)) continue;
 
     let days: DailyHourCell[];
     try {
@@ -531,7 +540,7 @@ export async function batchUpdateHoursAction(formData: FormData) {
  * phantom row on the client's sheet.
  *
  * A locked row has been through approval and may already sit on an invoice,
- * so it stays unless a super admin removes it, matching the edit rule in
+ * so it stays unless an admin removes it, matching the edit rule in
  * updateDailyHoursAction.
  */
 export async function deleteTimesheetEntryAction(
@@ -547,7 +556,7 @@ export async function deleteTimesheetEntryAction(
   if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) {
     return { deleted: 0 };
   }
-  if (before.status === "LOCKED" && !isSuperAdmin) {
+  if (before.status === "LOCKED" && !isAdminRole(user.role)) {
     return { deleted: 0, error: "That row is locked — only an admin can remove it." };
   }
 

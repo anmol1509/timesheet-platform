@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { getOrCreateSkill } from "@/lib/skillScope";
 import { can } from "@/lib/permissions";
 import { subjectOf } from "@/lib/auth";
 import { PAY_STRUCTURES } from "@/lib/payroll";
@@ -207,6 +209,21 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       drivingLicenceType: stringOrNull(formData.get("drivingLicenceType")),
       drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
   };
+
+  // supplierId / sponsorSupplierId / projectId / vehicleId arrive from the form.
+  // Only links that actually changed are checked, so an existing (legacy)
+  // link never blocks an unrelated edit; a new link must be in this branch.
+  const changed = <T extends string | null | undefined>(next: T, prev: string | null | undefined) => (next && next !== prev ? next : null);
+  if (
+    before &&
+    !(await refsBelongToBranch(before.branchId, {
+      supplier: [changed(data.supplierId, before.supplierId), changed(data.sponsorSupplierId, before.sponsorSupplierId)],
+      project: changed(data.projectId, before.projectId),
+      vehicle: changed(data.vehicleId, before.vehicleId),
+    }))
+  ) {
+    return { error: "That supplier, project or vehicle isn't part of this branch." };
+  }
 
   if (before && data.supplierId && before.supplierId !== data.supplierId) {
     const newSupplier = await prisma.supplier.findUnique({
@@ -489,16 +506,13 @@ export async function addSkillAction(formData: FormData) {
   const proficiencyPercent = numberOrNull(formData.get("proficiencyPercent"));
   const rate = numberOrNull(formData.get("rate"));
   if (!employeeId || !skillName) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  const skillOwner = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!skillOwner || isOutsideBranch(skillOwner.branchId, branchId, isSuperAdmin)) return;
 
   // Case-insensitive, so adding "carpenter" here folds into an existing
-  // "Carpentry" rather than creating a second skill — the third and last place
-  // this upsert was still exact-matching.
-  const existingSkill = await prisma.skill.findFirst({
-    where: { name: { equals: skillName, mode: "insensitive" } },
-  });
-  const skill =
-    existingSkill ?? (await prisma.skill.create({ data: { name: skillName } }));
+  // "Carpentry" rather than creating a second skill. A new trade belongs to the
+  // employee's own branch — never the shared catalogue.
+  const skill = await getOrCreateSkill(skillName, skillOwner.branchId);
 
   const detail = {
     proficiencyPercent:
@@ -663,7 +677,13 @@ export async function issueEmployeeInventoryAction(
   const employeeId = String(formData.get("employeeId") || "");
   const itemId = String(formData.get("itemId") || "");
   if (!employeeId || !itemId) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  const owner = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!owner || isOutsideBranch(owner.branchId, branchId, isSuperAdmin)) return;
+  // Stock belongs to a branch too: the item and variant must be the employee's
+  // own branch's, or one tenant could issue — and use up — another's inventory.
+  if (!(await refsBelongToBranch(owner.branchId, { inventoryItem: itemId, inventoryVariant: stringOrNull(formData.get("variantId")) }))) {
+    return { error: "That item isn't part of this branch's inventory." };
+  }
 
   const quantity = numberOrNull(formData.get("quantity")) ?? 1;
   const condition = stringOrNull(formData.get("condition"));

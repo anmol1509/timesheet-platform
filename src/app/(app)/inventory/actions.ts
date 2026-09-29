@@ -34,7 +34,7 @@ export async function createInventoryItemAction(
     };
   }
 
-  const existing = await prisma.inventoryItem.findUnique({ where: { name } });
+  const existing = await prisma.inventoryItem.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) return { error: "An item with that name already exists." };
 
   const data = {

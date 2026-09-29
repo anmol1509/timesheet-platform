@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { isAdminRole } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { markActiveFromAttendance } from "@/lib/employeeStageTransitions";
 import { syncAttendanceDay, type SyncResult } from "@/lib/attendanceTimesheetSync";
@@ -89,6 +91,10 @@ export async function markAttendanceAction(
   const supplierId = String(formData.get("supplierId") || "").trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { saved: 0, requested: 0, error: "Pick a valid date." };
+  }
+  // Both are written onto every row saved below, so they must be this branch's.
+  if (!(await refsBelongToBranch(branchId, { project: projectId, supplier: supplierId }))) {
+    return { saved: 0, requested: 0, error: "That project or supplier isn't part of this branch." };
   }
 
   let rows: AttendanceRow[];
@@ -210,7 +216,7 @@ export async function markAttendanceAction(
 export async function approveAttendanceDayAction(formData: FormData) {
   assertContactsValid(formData);
   await requirePermission("timesheets", "approve");
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
   const projectId = String(formData.get("projectId") || "").trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { updated: 0 };
@@ -220,7 +226,9 @@ export async function approveAttendanceDayAction(formData: FormData) {
     date: dateValue,
     projectId,
     locked: false,
-    ...(isSuperAdmin ? {} : { branchId: branchId ?? undefined }),
+    // Scope to the branch in view for everyone, super admins included: with no
+    // filter, approving "no project" for a date locked every tenant's rows on it.
+    ...(branchId ? { branchId } : {}),
   };
 
   const rows = await prisma.attendance.findMany({ where });
@@ -244,16 +252,6 @@ export async function approveAttendanceDayAction(formData: FormData) {
 
   revalidatePath("/attendance");
   return { updated: result.count };
-}
-
-/**
- * Whether this role may override an approved-and-locked attendance day. That is
- * every admin, not only a super admin: a client's branch admin is the highest
- * authority inside their own company, so "ask an admin" must not end with them.
- * Branch containment is enforced separately by isOutsideBranch.
- */
-function isAdminRole(role: string) {
-  return role === "SUPER_ADMIN" || role === "BRANCH_ADMIN";
 }
 
 export async function requestAttendanceCorrectionAction(formData: FormData) {

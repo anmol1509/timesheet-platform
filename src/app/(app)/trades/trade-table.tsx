@@ -15,6 +15,10 @@ type TradeRow = {
   popularity: number;
   idle: number;
   openDemand: number;
+  /** In the catalogue every branch shares, rather than one this branch added. */
+  shared: boolean;
+  /** Whether the current user may rename, retag or delete it. */
+  editable: boolean;
 };
 
 
@@ -136,6 +140,12 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                         <td className="px-4 py-3 font-medium text-primary">
                           <div className="flex items-center gap-2">
                             {s.name}
+                            {s.shared && (
+                              <span className="rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-medium text-subtle" title="Part of the standard catalogue shared by every company">
+                                Standard
+                              </span>
+                            )}
+                            {s.editable ? (
                             <form action={toggleTrendingAction}>
                               <input type="hidden" name="skillId" value={s.id} />
                               <input
@@ -155,6 +165,12 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                                 <TrendingUp className="h-3 w-3" /> Trending
                               </button>
                             </form>
+                            ) : s.trending ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--info-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--brand-primary)]">
+                                <TrendingUp className="h-3 w-3" /> Trending
+                              </span>
+                            ) : null}
+                            {s.editable && (
                             <button
                               type="button"
                               onClick={() => startEdit(s)}
@@ -162,6 +178,7 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                             >
                               Edit
                             </button>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-secondary">
@@ -208,11 +225,13 @@ export function TradeTable({ trades: skills }: { trades: TradeRow[] }) {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {s.editable && (
                       <DeleteButton
                         action={deleteSkillAction}
                         hiddenFields={{ skillId: s.id }}
                         confirmMessage={`Delete the "${s.name}" trade? It will be removed from ${s.employeeCount} employee(s).`}
                       />
+                      )}
                     </td>
                   </tr>
                 );

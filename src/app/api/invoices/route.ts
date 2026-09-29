@@ -54,11 +54,14 @@ export async function POST(request: Request) {
   }
 
   const monthLabel = monthLabelFromKey(month);
-  const settings = await prisma.settings.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton" },
+  // Issued by the branch this client belongs to. This used to read one global
+  // Settings row, so every tenant's invoices named the same company (by default
+  // the original one) and printed its tax number instead of their own.
+  const issuer = await prisma.branch.findUnique({
+    where: { id: client.branchId },
+    select: { name: true, issuedTo: true, trn: true },
   });
+  if (!issuer) return NextResponse.json({ error: "Client not found." }, { status: 404 });
 
   const lines = entries.map((e) => ({
     employeeIdNo: e.employeeIdNo,
@@ -112,8 +115,8 @@ export async function POST(request: Request) {
 
   const genInput = {
     invoiceNumber,
-    issuedByName: settings.issuedTo,
-    issuedByTrn: settings.companyTrn,
+    issuedByName: issuer.issuedTo || issuer.name,
+    issuedByTrn: issuer.trn,
     monthLabel,
     issueDate,
     dueDate: save ? dueDate : null,

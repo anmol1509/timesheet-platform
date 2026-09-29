@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { ReviewClient } from "./review-client";
 
@@ -14,16 +16,16 @@ export default async function GeneratePage({
   const { id } = await params;
   const { month } = await searchParams;
 
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({ where: { id } });
-  if (!supplier || !month) notFound();
+  // A guessed URL must not open another branch's supplier sheet.
+  if (!supplier || !month || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [entries, settings] = await Promise.all([
+  // The "Issued To" default comes from the supplier's own branch — it used to be
+  // one global setting, so every tenant's sheets were prefilled with the same company.
+  const [entries, issuer] = await Promise.all([
     getSupplierMonthEntries(id, month),
-    prisma.settings.upsert({
-      where: { id: "singleton" },
-      update: {},
-      create: { id: "singleton" },
-    }),
+    prisma.branch.findUnique({ where: { id: supplier.branchId }, select: { name: true, issuedTo: true } }),
   ]);
 
   if (entries.length === 0) notFound();
@@ -48,7 +50,7 @@ export default async function GeneratePage({
       supplier={{ id: supplier.id, name: supplier.name, fullName: supplier.fullName }}
       month={month}
       monthLabel={monthLabelFromKey(month)}
-      issuedTo={settings.issuedTo}
+      issuedTo={issuer?.issuedTo || issuer?.name || ""}
       entries={entries.map((e) => ({
         id: e.id,
         employeeIdNo: e.employeeIdNo,

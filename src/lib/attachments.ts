@@ -6,6 +6,18 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 
+/**
+ * The record types a generic attachment may be filed against, each with a lookup
+ * for the branch that record really belongs to. An unlisted type is refused
+ * rather than trusted.
+ */
+const ATTACHABLE: Record<string, (id: string) => Promise<{ branchId: string | null } | null>> = {
+  SUPPLIER: (id) => prisma.supplier.findUnique({ where: { id }, select: { branchId: true } }),
+  SUPPLIER_BILL: (id) => prisma.supplierBill.findUnique({ where: { id }, select: { branchId: true } }),
+  EXPENSE: (id) => prisma.expense.findUnique({ where: { id }, select: { branchId: true } }),
+  CANDIDATE_ONBOARDING: (id) => prisma.candidateOnboarding.findUnique({ where: { id }, select: { branchId: true } }),
+};
+
 // One shared upload path for entity types that don't have a dedicated
 // *Document model (Supplier docs today; Payslips/Visa docs in later
 // phases), instead of copy-pasting the Document/ClientDocument/
@@ -13,9 +25,10 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 // every other document-upload action in the app (e.g.
 // addClientDocumentAction), so <AttachmentUploader> is a plain <form>.
 //
-// The form must include a hidden "entityBranchId" field set server-side by
-// the page that renders the uploader (never trust a client-submitted
-// branchId) — see AttachmentUploader's `entityBranchId` prop.
+// The branch a file is stored under is looked up here from the record it is
+// attached to. The form still carries an "entityBranchId" hidden field, but it
+// is ignored: a hidden field is client-controlled, and trusting it let a user
+// name another tenant's record and their own branch, and the check passed.
 export async function uploadAttachmentAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
@@ -23,7 +36,6 @@ export async function uploadAttachmentAction(
 
   const entityType = String(formData.get("entityType") || "");
   const entityId = String(formData.get("entityId") || "");
-  const entityBranchId = String(formData.get("entityBranchId") || "") || null;
   const docType = String(formData.get("docType") || "OTHER");
   const expiryRaw = String(formData.get("expiryDate") || "").trim();
   const expiryDate = expiryRaw ? new Date(expiryRaw) : null;
@@ -33,9 +45,13 @@ export async function uploadAttachmentAction(
   // Every rejection used to be a bare `return`, so an oversize file looked
   // exactly like a broken button. Say what went wrong instead.
   if (!entityType || !entityId) return { error: "Nothing to attach this file to." };
-  if (isOutsideBranch(entityBranchId, branchId, isSuperAdmin)) {
+  const lookup = ATTACHABLE[entityType];
+  if (!lookup) return { error: "Files can't be attached to that kind of record." };
+  const entity = await lookup(entityId);
+  if (!entity || isOutsideBranch(entity.branchId, branchId, isSuperAdmin)) {
     return { error: "That record belongs to another branch." };
   }
+  const entityBranchId = entity.branchId;
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file to upload." };
   }

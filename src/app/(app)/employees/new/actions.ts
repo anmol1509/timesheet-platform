@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { getOrCreateSkill } from "@/lib/skillScope";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
@@ -134,8 +135,12 @@ export async function generateEmployeeIdAction(
   }
 
   // Scan existing IDs under this prefix and continue from the highest serial.
+  // Deliberately across ALL branches: employee IDs are unique across the whole
+  // system, so counting only this branch's would hand two companies whose names
+  // share initials the same ID (BAA001) and the second one would fail to save.
+  // Only the ID strings are read, never the employees behind them.
   const existing = await prisma.employee.findMany({
-    where: { ...branchWhere(branchId), employeeIdNo: { startsWith: prefix } },
+    where: { employeeIdNo: { startsWith: prefix } },
     select: { employeeIdNo: true },
   });
 
@@ -391,12 +396,9 @@ export async function createEmployeeAction(
 
   for (const entry of isStaff ? [] : skillEntries) {
     // Matched case-insensitively so "Carpentry" and "carpentry" don't become
-    // two skills — the same rule the Skills module uses.
-    const existingSkill = await prisma.skill.findFirst({
-      where: { name: { equals: entry.name, mode: "insensitive" } },
-    });
-    const skill =
-      existingSkill ?? (await prisma.skill.create({ data: { name: entry.name } }));
+    // two skills. A trade the branch doesn't have yet is created as the
+    // branch's own, not added to the catalogue every other branch reads.
+    const skill = await getOrCreateSkill(entry.name, branchId);
     await prisma.employeeSkill.create({
       data: {
         employeeId: employee.id,
