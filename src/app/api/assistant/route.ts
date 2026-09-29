@@ -89,7 +89,9 @@ export async function POST(request: Request) {
       const response = await client.messages.create({
         model: ASSISTANT_MODEL,
         max_tokens: 600,
-        system,
+        // Tools + this prompt are identical from one question to the next for a
+        // given user, so mark the end of it as a cache breakpoint.
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
         output_config: { format: { type: "json_schema", schema: REPLY_SCHEMA } },
         messages: convo,
         ...(round < MAX_TOOL_ROUNDS ? { tools: TOOLS } : {}),
