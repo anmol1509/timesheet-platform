@@ -54,15 +54,16 @@ function profileFields(formData: FormData) {
  * another candidate, or as a real employee) — the same duplicate guard
  * approveWorkerSubmission() applies before creating an Employee, just moved
  * earlier so it catches the mistake at intake instead of at "Mark joined". */
-async function findDuplicate(passportNumber: string | null, emiratesId: string | null, excludeId?: string) {
+async function findDuplicate(branchId: string, passportNumber: string | null, emiratesId: string | null, excludeId?: string) {
   if (!passportNumber && !emiratesId) return null;
   const or = [
     ...(passportNumber ? [{ passportNumber: { equals: passportNumber, mode: "insensitive" as const } }] : []),
     ...(emiratesId ? [{ emiratesId }] : []),
   ];
   const [employee, candidate] = await Promise.all([
-    prisma.employee.findFirst({ where: { OR: or }, select: { id: true, name: true } }),
-    prisma.candidateOnboarding.findFirst({ where: { OR: or, id: excludeId ? { not: excludeId } : undefined }, select: { id: true, candidateName: true } }),
+    // Inside this company only: the same passport at another company is a different record, and must not reveal that company's workers.
+    prisma.employee.findFirst({ where: { branchId, OR: or }, select: { id: true, name: true } }),
+    prisma.candidateOnboarding.findFirst({ where: { branchId, OR: or, id: excludeId ? { not: excludeId } : undefined }, select: { id: true, candidateName: true } }),
   ]);
   if (employee) return `An employee with this passport or Emirates ID already exists (${employee.name}).`;
   if (candidate) return `Another candidate already has this passport or Emirates ID (${candidate.candidateName}).`;
@@ -81,7 +82,7 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
   if (!branchId) {
     return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a candidate." : "Your account has no branch assigned — contact an admin." };
   }
-  const dupError = await findDuplicate(fields.passportNumber, fields.emiratesId);
+  const dupError = await findDuplicate(branchId, fields.passportNumber, fields.emiratesId);
   if (dupError) return { error: dupError };
 
   const data = { ...fields, branchId };
@@ -114,7 +115,7 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
 
   const before = await prisma.candidateOnboarding.findUnique({ where: { id } });
   if (!before) return { error: "Candidate not found." };
-  const dupError = await findDuplicate(fields.passportNumber, fields.emiratesId, id);
+  const dupError = await findDuplicate(before.branchId, fields.passportNumber, fields.emiratesId, id);
   if (dupError) return { error: dupError };
 
   await prisma.candidateOnboarding.update({ where: { id }, data: fields });
@@ -207,7 +208,7 @@ export async function markJoinedAction(_prev: State, formData: FormData): Promis
     return { error: "Add passport number, Emirates ID and phone to the candidate's profile before marking them joined." };
   }
 
-  const dupError = await findDuplicate(candidate.passportNumber, candidate.emiratesId, id);
+  const dupError = await findDuplicate(candidate.branchId, candidate.passportNumber, candidate.emiratesId, id);
   if (dupError) return { error: dupError };
 
   const prefix = initialsOf(candidate.agency.name);
@@ -402,7 +403,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
     const passportNumber = stringOrNull(r["Passport number"] ?? null);
     const emiratesId = stringOrNull(r["Emirates ID"] ?? null);
     try {
-      const dupError = await findDuplicate(passportNumber, emiratesId);
+      const dupError = await findDuplicate(branchId, passportNumber, emiratesId);
       if (dupError) {
         results.push({ row: i + 2, status: "error", message: dupError });
         continue;
