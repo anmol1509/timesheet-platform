@@ -218,6 +218,8 @@ export default async function SupplierDetailPage({
                 parentOptions={parentOptionsWithCurrent}
                 supplier={{
                   id: supplier.id,
+                  name: supplier.name,
+                  code: supplier.code,
                   isOwnCompany: supplier.isOwnCompany,
                   payType: supplier.payType,
                   wpsEstablishmentId: supplier.wpsEstablishmentId,

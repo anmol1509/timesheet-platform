@@ -4,6 +4,7 @@ import { CitySelect } from "@/components/ui/CitySelect";
 import { useState, useTransition } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateSupplierCompanyAction } from "../actions";
+import { SupplierCodeField } from "../supplier-code-field";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -15,6 +16,8 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Supplier = {
   id: string;
+  name: string;
+  code: string | null;
   parentSupplierId: string | null;
   fullName: string | null;
   status: string;
@@ -46,6 +49,7 @@ export function SupplierCompanyForm({
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState(supplier.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
 
@@ -56,8 +60,9 @@ export function SupplierCompanyForm({
         setSaved(false);
         guard.markSaved();
         startTransition(async () => {
-          await updateSupplierCompanyAction(formData);
-          setSaved(true);
+          const res = await updateSupplierCompanyAction(formData);
+          setError(res.error);
+          setSaved(!res.error);
         });
       }}
       className="card space-y-4 p-6"
@@ -65,6 +70,9 @@ export function SupplierCompanyForm({
       <input type="hidden" name="supplierId" value={supplier.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FieldBlock label="Supplier code">
+          <SupplierCodeField defaultValue={supplier.code || ""} fixedName={supplier.name} supplierId={supplier.id} />
+        </FieldBlock>
         <Field label="Parent Supplier">
           <Select
             name="parentSupplierId"
@@ -189,6 +197,11 @@ export function SupplierCompanyForm({
         <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} />
       </div>
 
+      {error && (
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+          {error}
+        </p>
+      )}
       <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
     </form>
   );

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { SupplierCodeField } from "./supplier-code-field";
 import Link from "next/link";
 import { Truck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
@@ -132,6 +133,10 @@ export default async function SuppliersPage({
             className="input w-full"
           />
         </label>
+        <div className="block min-w-[200px] flex-1">
+          <span className="mb-1 block text-xs font-medium text-muted">Supplier code</span>
+          <SupplierCodeField />
+        </div>
         <label className="block flex-1 min-w-[220px]">
           <span className="mb-1 block text-xs font-medium text-muted">
             Full name (for letterhead)

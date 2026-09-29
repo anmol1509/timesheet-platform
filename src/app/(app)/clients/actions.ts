@@ -1,5 +1,6 @@
 "use server";
 
+import { nextClientCode } from "@/lib/entityCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -34,11 +35,6 @@ function stringOrNull(value: FormDataEntryValue | null) {
   return s || null;
 }
 
-async function nextClientCode() {
-  const count = await prisma.client.count();
-  return `CLI${String(count + 1).padStart(3, "0")}`;
-}
-
 function billingFields(formData: FormData) {
   const billingType = String(formData.get("billingType") || "");
   const billingRate = numberOrNull(formData.get("billingRate"));
@@ -70,7 +66,7 @@ export async function createClientAction(
 
   const data = {
     name,
-    code: await nextClientCode(),
+    code: await nextClientCode(branchId),
     branchId,
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
@@ -347,7 +343,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
         results.push({ row: i + 2, status: "updated" });
       } else {
         const created = await prisma.client.create({
-          data: { name, code: await nextClientCode(), branchId, ...data },
+          data: { name, code: await nextClientCode(branchId), branchId, ...data },
         });
         await logAudit({
           entityType: "CLIENT",

@@ -1,5 +1,7 @@
 "use server";
 
+import { uniqueSupplierCode } from "@/lib/entityCode";
+import { normalizeCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -27,12 +29,6 @@ function numberOrNull(value: FormDataEntryValue | null) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Same "PREFIX + zero-padded sequence" shape as Client's nextClientCode().
-async function nextSupplierCode() {
-  const count = await prisma.supplier.count();
-  return `SUP${String(count + 1).padStart(3, "0")}`;
-}
-
 export async function createSupplierAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -57,7 +53,12 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  const code = await nextSupplierCode();
+  // A code typed into the form wins; blank means "generate it from the name".
+  const typed = normalizeCode(String(formData.get("code") || ""));
+  if (typed && (await prisma.supplier.findFirst({ where: { branchId, code: typed }, select: { id: true } }))) {
+    redirect(`/suppliers?error=${encodeURIComponent(`The code ${typed} is already used by another supplier.`)}`);
+  }
+  const code = typed || (await uniqueSupplierCode(name, branchId));
   const created = await prisma.supplier.create({ data: { name, code, fullName, branchId } });
 
   await logAudit({
@@ -109,7 +110,7 @@ export async function createSubsidiaryAction(
     return { error: "A supplier with that name already exists." };
   }
 
-  const code = await nextSupplierCode();
+  const code = await uniqueSupplierCode(name, parent.branchId!);
   const created = await prisma.supplier.create({
     data: { name, code, parentSupplierId, branchId: parent.branchId },
   });
@@ -131,22 +132,34 @@ export async function createSubsidiaryAction(
 
 // Company & Compliance tab — every field this action writes lives in that
 // tab's form, so a save here never touches Contact/Payment fields.
-export async function updateSupplierCompanyAction(formData: FormData) {
+export async function updateSupplierCompanyAction(formData: FormData): Promise<{ error: string | null }> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
-  if (!id) return;
+  if (!id) return { error: null };
 
   const existing = await prisma.supplier.findUnique({ where: { id } });
-  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return { error: null };
+
+  // Blank keeps the current code (or makes one if the supplier never had one).
+  const typedCode = normalizeCode(String(formData.get("code") || ""));
+  const code = typedCode || existing.code || (await uniqueSupplierCode(existing.name, existing.branchId!));
+  if (code !== existing.code) {
+    const clash = await prisma.supplier.findFirst({
+      where: { branchId: existing.branchId, code, NOT: { id } },
+      select: { id: true },
+    });
+    if (clash) return { error: `The code ${code} is already used by another supplier.` };
+  }
 
   const parentSupplierIdRaw = stringOrNull(formData.get("parentSupplierId"));
   // A parent from another branch would list this supplier as a subsidiary on
   // that other tenant's page. Only a changed parent is checked.
   if (parentSupplierIdRaw && parentSupplierIdRaw !== id && parentSupplierIdRaw !== existing.parentSupplierId
-      && !(await refsBelongToBranch(existing.branchId, { supplier: parentSupplierIdRaw }))) return;
+      && !(await refsBelongToBranch(existing.branchId, { supplier: parentSupplierIdRaw }))) return { error: null };
 
   const data = {
+    code,
     parentSupplierId: parentSupplierIdRaw === id ? null : parentSupplierIdRaw,
     fullName: stringOrNull(formData.get("fullName")),
     status: String(formData.get("status") || "ACTIVE"),
@@ -185,6 +198,14 @@ export async function updateSupplierCompanyAction(formData: FormData) {
 
   revalidatePath(`/suppliers/${id}`);
   revalidatePath("/suppliers");
+  return { error: null };
+}
+
+/** The code the "Auto" button fills in: the name's acronym, made unique in the branch. */
+export async function suggestSupplierCodeAction(name: string, supplierId?: string): Promise<string> {
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return "";
+  return uniqueSupplierCode(name.trim(), branchId, supplierId);
 }
 
 // Contact & Payment tab — every field this action writes lives in that
@@ -309,7 +330,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]) 
         });
         results.push({ row: i + 2, status: "updated" });
       } else {
-        const code = await nextSupplierCode();
+        const code = await uniqueSupplierCode(name, branchId);
         const created = await prisma.supplier.create({ data: { name, code, ...data, branchId } });
         await logAudit({
           entityType: "SUPPLIER",

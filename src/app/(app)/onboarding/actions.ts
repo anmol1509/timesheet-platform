@@ -1,5 +1,6 @@
 "use server";
 
+import { uniqueSupplierCode } from "@/lib/entityCode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -275,11 +276,6 @@ export async function markJoinedAction(_prev: State, formData: FormData): Promis
 
 export type CreateAgencyResult = { error: string | null; agency?: { id: string; name: string } };
 
-async function nextSupplierCode() {
-  const count = await prisma.supplier.count();
-  return `SUP${String(count + 1).padStart(3, "0")}`;
-}
-
 /** Quick-add for the agency picker — the same "+ add new" pattern as
  * createAgencyContactAction, so an agency the candidate came from doesn't
  * have to already exist in Suppliers before onboarding can start. Creates a
@@ -301,7 +297,7 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
   const existing = await prisma.supplier.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) return { error: "A supplier with that name already exists — search for it instead." };
 
-  const code = await nextSupplierCode();
+  const code = await uniqueSupplierCode(name, branchId);
   const contactPhone = stringOrNull(formData.get("phone"));
   const contactEmail = stringOrNull(formData.get("email"));
   const created = await prisma.supplier.create({ data: { name, code, branchId, contactPhone, contactEmail } });

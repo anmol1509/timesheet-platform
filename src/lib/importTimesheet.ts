@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { nextClientCode, uniqueSupplierCode } from "@/lib/entityCode";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
 
@@ -84,7 +85,7 @@ export async function importParsedMonths(
       let supplier = supplierByKey.get(supplierKey);
       if (!supplier) {
         supplier = await prisma.supplier.create({
-          data: { name: entry.supplierName.trim(), branchId },
+          data: { name: entry.supplierName.trim(), code: await uniqueSupplierCode(entry.supplierName.trim(), branchId), branchId },
         });
         supplierByKey.set(supplierKey, supplier);
         stats.suppliersCreated++;
@@ -96,7 +97,7 @@ export async function importParsedMonths(
         let client = clientByKey.get(clientKey);
         if (!client) {
           client = await prisma.client.create({
-            data: { name: entry.clientName.trim(), branchId },
+            data: { name: entry.clientName.trim(), code: await nextClientCode(branchId), branchId },
           });
           clientByKey.set(clientKey, client);
           stats.clientsCreated++;
