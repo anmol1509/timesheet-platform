@@ -12,6 +12,7 @@ import {
   FolderKanban,
   Users,
 } from "lucide-react";
+import type { ApprovalsSummary, AttendanceToday, DemandFill, MoneySnapshot, PayrollStatus } from "@/lib/dashboardExtras";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
 import { DashboardKpiCards } from "@/components/DashboardKpiCards";
 import { Badge } from "@/components/Badge";
@@ -86,6 +87,13 @@ export type DashboardData = {
   /** Headcount at the end of each of the last six months, oldest first. */
   headcountTrend: number[];
   newThisMonth: number;
+  /** Optional sections; null when the person may not see them or has switched them off. */
+  approvalsSummary: ApprovalsSummary | null;
+  attendanceToday: AttendanceToday | null;
+  /** Wrapped so "no payroll run yet" (run: null) differs from "may not see payroll" (null). */
+  payrollStatus: { run: PayrollStatus } | null;
+  money: MoneySnapshot | null;
+  demandFill: DemandFill | null;
   activeProjects: { id: string; name: string; code: string; clientName: string; workers: number; required: number | null }[];
 };
 
@@ -117,6 +125,169 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
         newThisMonth={d.newThisMonth}
       />
     ),
+  },
+  {
+    id: "today",
+    label: "Needs doing today (approvals, attendance, payroll)",
+    render: (d) => {
+      const a = d.approvalsSummary;
+      const t = d.attendanceToday;
+      const p = d.payrollStatus;
+      if (!a && !t && !p) return null;
+      const count = [a, t, p].filter(Boolean).length;
+      return (
+        <div className={`grid grid-cols-1 gap-4 ${count >= 3 ? "lg:grid-cols-3" : count === 2 ? "lg:grid-cols-2" : ""}`}>
+          {a && (
+            <Panel title="Approvals waiting" icon={CheckCircle2} href="/approvals" linkLabel="Open inbox">
+              {a.total === 0 ? (
+                <p className="py-4 text-center text-sm text-muted">Nothing is waiting for your decision.</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="flex items-baseline gap-2">
+                    <span className="tabular text-3xl font-semibold text-primary">{a.total}</span>
+                    <span className="text-xs text-muted">{a.oldestDays > 0 ? `oldest waiting ${a.oldestDays} day${a.oldestDays === 1 ? "" : "s"}` : "all new today"}</span>
+                  </p>
+                  <ul className="space-y-1.5">
+                    {a.byKind.slice(0, 4).map((k) => (
+                      <li key={k.kind}>
+                        <Link href={`/approvals?type=${k.kind}`} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm text-secondary transition hover:bg-surface-hover hover:text-primary">
+                          <span>{k.label}</span>
+                          <span className="tabular font-medium text-primary">{k.count}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Panel>
+          )}
+
+          {t && (
+            <Panel title="Attendance today" icon={Users} href="/attendance" linkLabel="Mark attendance">
+              {t.expected === 0 ? (
+                <p className="py-4 text-center text-sm text-muted">No one is linked to a project yet, so no attendance is expected.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex h-2 overflow-hidden rounded-full bg-surface-sunken">
+                    <span className="bg-[var(--success)]" style={{ width: `${(t.present / t.expected) * 100}%` }} />
+                    <span className="bg-[var(--error)]" style={{ width: `${(t.absent / t.expected) * 100}%` }} />
+                    <span className="bg-[var(--border-strong)]" style={{ width: `${(t.offOrLeave / t.expected) * 100}%` }} />
+                  </div>
+                  <p className="text-xs text-secondary">
+                    <span className="font-medium text-primary">{t.present}</span> present · <span className="font-medium text-primary">{t.absent}</span> absent ·{" "}
+                    <span className="font-medium text-primary">{t.offOrLeave}</span> off/leave · <span className={t.unmarked > 0 ? "font-medium text-[var(--warning)]" : "font-medium text-primary"}>{t.unmarked}</span> not marked
+                    <span className="text-subtle"> (of {t.expected})</span>
+                  </p>
+                  {t.byProject.length > 0 && (
+                    <ul className="space-y-1">
+                      {t.byProject.map((pr) => (
+                        <li key={pr.projectId}>
+                          <Link href="/attendance" className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs text-secondary transition hover:bg-surface-hover hover:text-primary">
+                            <span className="truncate">{pr.name}</span>
+                            <span className="tabular shrink-0 font-medium text-[var(--warning)]">{pr.unmarked} not marked</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </Panel>
+          )}
+
+          {p && (
+            <Panel title="Payroll" icon={FileText} href={p.run ? `/payroll/${p.run.runId}` : "/payroll"} linkLabel={p.run ? "Open run" : "Payroll"}>
+              {!p.run ? (
+                <p className="py-4 text-center text-sm text-muted">No payroll run yet. Start one from the Payroll page when a month closes.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="flex items-center gap-2">
+                    <span className="text-base font-semibold whitespace-nowrap text-primary">{formatMonthLabel(p.run.month)}</span>
+                    <Badge color={p.run.status === "PAID" ? "green" : p.run.status === "APPROVED" ? "blue" : p.run.submitted ? "amber" : "slate"} dot>
+                      {p.run.status === "DRAFT" && p.run.submitted ? "Awaiting approval" : p.run.status.toLowerCase()}
+                    </Badge>
+                  </p>
+                  <p className="text-sm text-secondary">
+                    <span className="tabular font-medium text-primary">{p.run.workers}</span> workers · net{" "}
+                    <span className="tabular font-medium text-primary">AED {Math.round(p.run.netTotal).toLocaleString()}</span>
+                  </p>
+                  {!p.run.hasCurrentMonth && <p className="text-xs text-muted">No run yet for this month.</p>}
+                </div>
+              )}
+            </Panel>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    id: "money-demand",
+    label: "Money in and out + Demand fill",
+    render: (d) => {
+      const m = d.money;
+      const f = d.demandFill;
+      if (!m && !f) return null;
+      const aed = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
+      return (
+        <div className={`grid grid-cols-1 gap-4 ${m && f ? "lg:grid-cols-2" : ""}`}>
+          {m && (
+            <Panel title="Money in and out" icon={FileText} href={m.scope.invoices ? "/dashboards/billing" : "/finance/bills"} linkLabel={m.scope.invoices ? "Billing" : "Bills"}>
+              <div className="grid grid-cols-2 gap-3">
+                {m.scope.invoices && (
+                  <>
+                    <Stat label="Invoiced this month" value={aed(m.invoicedThisMonth)} sub={`${m.invoicedCount} invoice${m.invoicedCount === 1 ? "" : "s"}`} />
+                    <Stat label="Waiting to be paid" value={aed(m.outstanding)} sub={`${m.outstandingCount} invoice${m.outstandingCount === 1 ? "" : "s"}`} />
+                    <Stat label="Overdue from clients" value={aed(m.overdue)} sub={`${m.overdueCount} invoice${m.overdueCount === 1 ? "" : "s"}`} tone={m.overdue > 0 ? "danger" : undefined} href="/invoices/history" />
+                  </>
+                )}
+                {m.scope.bills && (
+                  <>
+                    <Stat label="Supplier bills due in 7 days" value={aed(m.billsDueSoon.amount)} sub={`${m.billsDueSoon.count} bill${m.billsDueSoon.count === 1 ? "" : "s"}`} tone={m.billsDueSoon.count > 0 ? "warning" : undefined} href="/finance/bills" />
+                    <Stat label="Supplier bills overdue" value={aed(m.billsOverdue.amount)} sub={`${m.billsOverdue.count} bill${m.billsOverdue.count === 1 ? "" : "s"}`} tone={m.billsOverdue.count > 0 ? "danger" : undefined} href="/finance/bills" />
+                    <Stat label="We owe suppliers" value={aed(m.owedToSuppliers)} sub="approved bills, unpaid" href="/finance/bills" />
+                  </>
+                )}
+              </div>
+            </Panel>
+          )}
+
+          {f && (
+            <Panel title="Demand fill" icon={ClipboardList} href="/demand" linkLabel="Demands">
+              {f.openRequests === 0 ? (
+                <p className="py-4 text-center text-sm text-muted">No open demand requests.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="flex items-baseline gap-2">
+                      <span className="tabular text-3xl font-semibold text-primary">{f.needed > 0 ? Math.round((f.filled / f.needed) * 100) : 0}%</span>
+                      <span className="text-xs text-muted">{f.filled} of {f.needed} workers mobilised across {f.openRequests} open request{f.openRequests === 1 ? "" : "s"}</span>
+                    </p>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-sunken">
+                      <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${f.needed > 0 ? (f.filled / f.needed) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                  {f.gaps.length === 0 ? (
+                    <p className="text-xs text-[var(--success)]">Every open request is fully staffed.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {f.gaps.map((g) => (
+                        <li key={g.trade} className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs">
+                          <span className="text-secondary">{g.trade}</span>
+                          <span className="tabular">
+                            <span className="font-medium text-[var(--warning)]">short by {g.short}</span>
+                            <span className="text-muted"> · {g.bench >= g.short ? `${g.bench} on bench covers it` : `${g.bench} on bench`}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </Panel>
+          )}
+        </div>
+      );
+    },
   },
   {
     id: "trend-attention",
@@ -433,4 +604,19 @@ export function orderedVisibleWidgets(hiddenWidgets: string[], widgetOrder: stri
     .filter((id) => !hiddenWidgets.includes(id))
     .map((id) => byId.get(id)!)
     .filter(Boolean);
+}
+
+function Stat({ label, value, sub, tone, href }: { label: string; value: string; sub?: string; tone?: "danger" | "warning"; href?: string }) {
+  const body = (
+    <>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`tabular mt-0.5 text-lg font-semibold ${tone === "danger" ? "text-[var(--error)]" : tone === "warning" ? "text-[var(--warning)]" : "text-primary"}`}>{value}</p>
+      {sub && <p className="text-[11px] text-subtle">{sub}</p>}
+    </>
+  );
+  return href ? (
+    <Link href={href} className="block rounded-lg border border-default p-3 transition hover:bg-surface-hover">{body}</Link>
+  ) : (
+    <div className="rounded-lg border border-default p-3">{body}</div>
+  );
 }

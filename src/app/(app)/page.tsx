@@ -13,7 +13,9 @@ import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
 import { getDeploymentPipeline } from "@/lib/deploymentPipeline";
 import { getRecentActivity } from "@/lib/recentActivity";
-import { requireUserWithBranch } from "@/lib/auth";
+import { getApprovalsSummary, getAttendanceToday, getDemandFill, getMoneySnapshot, getPayrollStatus } from "@/lib/dashboardExtras";
+import { can } from "@/lib/permissions";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { DASHBOARD_WIDGETS, mergeWidgetOrder, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
 import { DashboardTabs } from "@/components/DashboardTabs";
@@ -107,6 +109,23 @@ export default async function DashboardPage() {
 
   const benchCount = employeeCount - onWorkCount;
 
+  // Optional sections: worked out only when the person may see them and hasn't
+  // switched them off, so an unused section costs nothing.
+  const subject = subjectOf(user);
+  const off = new Set(preference?.hiddenWidgets ?? []);
+  const wantsToday = !off.has("today");
+  const wantsMoneyDemand = !off.has("money-demand");
+  const canInvoices = can(subject, "billing", "view");
+  const canBills = can(subject, "finance", "view");
+  const approvalScope = { branchId, isSuperAdmin: user.role === "SUPER_ADMIN", subject, role: user.role };
+  const [approvalsSummary, attendanceToday, payrollStatus, money, demandFill] = await Promise.all([
+    wantsToday ? getApprovalsSummary(approvalScope).catch(() => null) : null,
+    wantsToday && can(subject, "timesheets", "view") ? getAttendanceToday(branchId).catch(() => null) : null,
+    wantsToday && can(subject, "payroll", "view") ? getPayrollStatus(branchId).then((p) => ({ run: p })).catch(() => null) : null,
+    wantsMoneyDemand && (canInvoices || canBills) ? getMoneySnapshot(branchId, { invoices: canInvoices, bills: canBills }).catch(() => null) : null,
+    wantsMoneyDemand && can(subject, "demand", "view") ? getDemandFill(branchId).catch(() => null) : null,
+  ]);
+
   // Headcount at the end of each of the last six months (records only ever
   // leave by being deactivated, not deleted, so created-before is headcount).
   const now = new Date();
@@ -184,6 +203,11 @@ export default async function DashboardPage() {
     recentActivity,
     headcountTrend,
     newThisMonth,
+    approvalsSummary,
+    attendanceToday,
+    payrollStatus,
+    money,
+    demandFill,
     activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees, required: p.noOfEmployeesRequired })),
   };
 

@@ -17,6 +17,8 @@ type WidgetMeta = { id: string; label: string };
 const TITLES: Record<string, { title: string; hint: string }> = {
   kpi: { title: "Key numbers", hint: "Workforce, deployment, projects, alerts" },
   "trend-attention": { title: "Hours trend & alerts", hint: "Normal vs overtime, plus what needs attention" },
+  today: { title: "Needs doing today", hint: "Approvals waiting, today's attendance, payroll status" },
+  "money-demand": { title: "Money and demand", hint: "Invoices and bills, and how much of the open demand is filled" },
   "utilization-projects": { title: "Workforce utilization & projects", hint: "Deployed vs bench, plus your active projects" },
   "deployment-pipeline": { title: "Deployment pipeline & activity", hint: "Idle to mobilising to on site, plus recent changes" },
   "timesheet-pipeline": { title: "Timesheet pipeline", hint: "Where rows sit in approval, hours by weekday" },

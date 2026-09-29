@@ -91,6 +91,42 @@ const THUMBS: Record<string, () => React.ReactNode> = {
       </Card>
     </div>
   ),
+  today: () => (
+    <div className="grid h-full grid-cols-3 gap-1">
+      <Card>
+        <div className={cn("mb-1.5 h-3 w-4", BRAND)} />
+        <List rows={3} />
+      </Card>
+      <Card className="flex flex-col justify-center gap-2">
+        <Segmented parts={[55, 10, 15, 20]} />
+        <div className={cn(LINE, "w-3/4")} />
+        <div className={cn(LINE, "w-1/2")} />
+      </Card>
+      <Card className="flex flex-col justify-center gap-1.5">
+        <div className={cn("h-2.5 w-6", B)} />
+        <div className={cn(LINE, "w-full")} />
+      </Card>
+    </div>
+  ),
+  "money-demand": () => (
+    <div className="grid h-full grid-cols-2 gap-1">
+      <Card>
+        <div className="grid h-full grid-cols-2 gap-1">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded-[2px] border border-default p-0.5">
+              <div className={cn(LINE, "w-1/2")} />
+              <div className={cn("mt-1 h-1.5 w-2/3", i === 2 ? BRAND : B)} />
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card className="flex flex-col justify-center gap-2">
+        <div className={cn("h-2.5 w-6", BRAND)} />
+        <Segmented parts={[60, 40]} />
+        <List rows={2} />
+      </Card>
+    </div>
+  ),
   "utilization-projects": () => (
     <div className="grid h-full grid-cols-3 gap-1">
       <Card>
