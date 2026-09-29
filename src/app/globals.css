@@ -868,3 +868,9 @@ main .card > div > table > thead > tr:first-child > th:last-child {
     min-height: 2.25rem;
   }
 }
+
+/* The full wordmark is dark navy; flip it to white on dark surfaces. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo { filter: brightness(0) invert(1); }
+}
+:root[data-theme="dark"] .brand-logo { filter: brightness(0) invert(1); }
