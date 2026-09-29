@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { WorkforceExtras } from "@/components/dashboard/ModuleExtras";
+import { isAdminRole } from "@/lib/roles";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -17,7 +19,7 @@ import { Treemap } from "@/components/Treemap";
 import { AlertTriangle, Globe2, HardHat, Users } from "lucide-react";
 
 export default async function WorkforceDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
   const [
@@ -144,6 +146,8 @@ export default async function WorkforceDashboardPage() {
           )}
         </Panel>
       </div>
+
+      <WorkforceExtras branchId={branchId} isAdmin={isAdminRole(user.role)} />
     </div>
   );
 }

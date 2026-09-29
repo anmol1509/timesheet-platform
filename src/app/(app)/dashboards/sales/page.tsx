@@ -2,6 +2,7 @@ import { TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { SalesExtras } from "@/components/dashboard/ModuleExtras";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
@@ -150,6 +151,8 @@ export default async function SalesDashboardPage() {
           </ul>
         )}
       </Panel>
+
+      <SalesExtras branchId={branchId} />
     </div>
   );
 }

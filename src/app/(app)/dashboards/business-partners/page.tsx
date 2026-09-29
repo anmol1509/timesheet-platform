@@ -2,6 +2,9 @@ import { Handshake } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { PartnersExtras } from "@/components/dashboard/ModuleExtras";
+import { can } from "@/lib/permissions";
+import { subjectOf } from "@/lib/auth";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { BarList } from "@/components/BarList";
@@ -12,7 +15,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
 export default async function BusinessPartnersDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
   const pendingWhere = {
@@ -155,6 +158,8 @@ export default async function BusinessPartnersDashboardPage() {
           )}
         </Panel>
       </div>
+
+      <PartnersExtras branchId={branchId} canBills={can(subjectOf(user), "finance", "view")} />
     </div>
   );
 }
