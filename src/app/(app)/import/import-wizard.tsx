@@ -333,7 +333,7 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
     <div className="space-y-3">
       <div className="card overflow-hidden">
         <div className="border-b border-default bg-surface-subtle px-4 py-2.5 text-xs text-muted">
-          Header found on row {analysis.headerRow} &middot; {sheet?.dataRows ?? 0} rows of data. Tell us which of your columns is which; we&rsquo;ve matched what we could.
+          Header found on row {analysis.headerRow} &middot; {sheet?.dataRows ?? 0} rows of data. Tell us which of your columns is which; we&rsquo;ve matched what we could. One column can fill more than one detail (for example the same name for both Supplier name and Full name).
         </div>
         <ul className="divide-y divide-[var(--border)]">
           {fields.map((f) => {
@@ -350,7 +350,7 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
                   <select className="input w-full" value={chosen} onChange={(e) => setColumns({ ...columns, [f.key]: e.target.value })} aria-label={`Column for ${f.label}`}>
                     <option value="">{f.required ? "Choose a column…" : "Not in my file"}</option>
                     {headers.map((h) => (
-                      <option key={h} value={h} disabled={used.has(h) && chosen !== h}>{h}</option>
+                      <option key={h} value={h}>{h}</option>
                     ))}
                   </select>
                   {chosen && (
