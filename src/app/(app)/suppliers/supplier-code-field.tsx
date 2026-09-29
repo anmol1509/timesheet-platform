@@ -46,7 +46,7 @@ export function SupplierCodeField({
           name="code"
           defaultValue={defaultValue}
           maxLength={12}
-          placeholder="e.g. BAW"
+          placeholder="e.g. SBAA"
           className="input w-full uppercase"
         />
         <button type="button" onClick={auto} disabled={pending} className="btn btn-secondary btn-sm shrink-0">
@@ -55,7 +55,7 @@ export function SupplierCodeField({
         </button>
       </div>
       <p className="mt-1 text-xs text-muted">
-        {hint ?? "Initials of the name (Burj Al Aweer → BAW). Leave blank to generate on save, or edit it."}
+        {hint ?? "S + initials of the name (Burj Al Aweer → SBAA). Leave blank to generate on save, or edit it."}
       </p>
     </div>
   );

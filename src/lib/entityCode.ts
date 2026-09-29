@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { acronymFor } from "@/lib/partyCode";
+import { codeCandidates } from "@/lib/partyCode";
 
 // Supplier and client codes are "PREFIX + zero-padded sequence" and unique
 // within a branch. The next one is the highest number already used in that
@@ -15,15 +15,17 @@ async function nextCode(prefix: string, codes: (string | null)[]) {
   return `${prefix}${String(max + 1).padStart(3, "0")}`;
 }
 
-/** The acronym of `name`, with a number added if the branch already uses it. */
+/** The name's code, with more letters (and as a last resort a number) if the branch already uses it. */
 export async function uniqueSupplierCode(name: string, branchId: string, excludeId?: string) {
-  const base = acronymFor(name);
+  const candidates = codeCandidates(name);
   const rows = await prisma.supplier.findMany({
     where: { branchId, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
     select: { code: true },
   });
   const taken = new Set(rows.map((r) => r.code));
-  if (!taken.has(base)) return base;
+  const free = candidates.find((c) => !taken.has(c));
+  if (free) return free;
+  const base = candidates[candidates.length - 1];
   for (let n = 2; ; n++) {
     if (!taken.has(`${base}${n}`)) return `${base}${n}`;
   }
