@@ -172,6 +172,7 @@ export function SupplierList({
                 <Checkbox checked={allSelected} onCheckedChange={() => toggleAll()} />
               </th>
               <th className="px-4 py-3">Supplier</th>
+              <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3 text-right">Employees</th>
               <th className="px-4 py-3">Trade licence</th>
@@ -227,9 +228,10 @@ export function SupplierList({
                     )}
                   </span>
                   <div className="tabular mt-0.5 text-xs font-normal text-muted" style={isChild ? { paddingLeft: 36 } : { paddingLeft: 20 }}>
-                    {[row.code, row.category, row.parentName && `Sub of ${row.parentName}`].filter(Boolean).join(" · ") || "—"}
+                    {[row.category, row.parentName && `Sub of ${row.parentName}`].filter(Boolean).join(" · ") || "—"}
                   </div>
                 </td>
+                <td className="tabular px-4 py-3 text-muted">{row.code || "—"}</td>
                 <td className="px-4 py-3 text-secondary">
                   {row.contactPerson || row.contactPhone ? (
                     <>
