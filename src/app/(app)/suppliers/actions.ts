@@ -468,8 +468,15 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
           await audit(parent.id, "CREATE", undefined, { name: g.parentName, code, branchId });
           notes.push(`Created primary supplier "${g.parentName}" (it wasn't in the list).`);
         } else if (parent.parentSupplierId) {
-          fail(`"${parent.name}" is itself a subsidiary, and a parent must be a primary supplier.`);
-          continue;
+          // A supplier that has no subsidiaries of its own is free to become a
+          // parent: the file puts others under it, so it is made primary. (The
+          // file listing it under yet another supplier was rejected above.)
+          const was = all.find((x) => x.id === parent!.parentSupplierId)?.name ?? "another supplier";
+          await prisma.supplier.update({ where: { id: parent.id }, data: { parentSupplierId: null } });
+          kids.set(parent.parentSupplierId, (kids.get(parent.parentSupplierId) ?? 1) - 1);
+          await audit(parent.id, "UPDATE", { parentSupplierId: parent.parentSupplierId }, { parentSupplierId: null });
+          parent.parentSupplierId = null;
+          notes.push(`"${parent.name}" was a subsidiary of ${was}; made a primary supplier because others are listed under it.`);
         }
         parentId = parent.id;
       }
