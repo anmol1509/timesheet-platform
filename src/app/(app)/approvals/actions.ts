@@ -25,11 +25,19 @@ const fd = (fields: Record<string, string>, many?: Record<string, string[]>) => 
 };
 
 /**
- * Emails the client on an approval a super admin just made — a client-facing
+ * True for an approver whose decision is final. Staff approvals stay internal;
+ * an admin's — super or branch — is the last word, and a client's branch admin
+ * is the top of their own company, so they must reach their own customers too.
+ */
+function isFinalApprover(role: string) {
+  return role === "SUPER_ADMIN" || role === "BRANCH_ADMIN";
+}
+
+/**
+ * Emails the client on an approval an admin just made — a client-facing
  * confirmation, not the internal staff notification `notifyUsers` already
- * sends. Deliberately restricted to SUPER_ADMIN: a branch admin or staff
- * approval is still an internal decision until a super admin has signed off,
- * so only that final approval should reach the client's inbox. Best-effort —
+ * sends. Only a final approver's decision should reach the client's inbox (see
+ * isFinalApprover); a staff approval is still an internal step. Best-effort —
  * a failed send must never fail the approval itself.
  */
 async function notifyClientOfApproval(to: string | null, clientName: string, subject: string, body: string) {
@@ -87,7 +95,7 @@ export async function decideApprovalAction(input: Input): Promise<State> {
         const r = await setTradeApprovalAction(fd({ tradeId: t.id, approvedQuantity: approve ? String(t.quantity) : "0" }));
         if (r && "error" in r && r.error) return { error: `${t.trade}: ${r.error}` };
       }
-      if (approve && user.role === "SUPER_ADMIN") {
+      if (approve && isFinalApprover(user.role)) {
         const demandRequestId = trades[0].demandRequestId;
         const dr = await prisma.demandRequest.findUnique({
           where: { id: demandRequestId },
@@ -110,7 +118,7 @@ export async function decideApprovalAction(input: Input): Promise<State> {
       if (ids.length === 0) return { error: "No timesheet rows selected." };
       const r = approve ? await approveTimesheetAction(fd({}, { entryId: ids })) : await rejectTimesheetAction(fd({}, { entryId: ids }));
       if (r && r.updated < r.requested) return { error: `${r.updated} of ${r.requested} rows could be updated; the rest are in a status that can't move that way.` };
-      if (approve && user.role === "SUPER_ADMIN") {
+      if (approve && isFinalApprover(user.role)) {
         const entries = await prisma.timesheetEntry.findMany({
           where: { id: { in: ids }, clientId: { not: null } },
           select: { clientId: true, client: { select: { name: true, contactEmail: true } } },

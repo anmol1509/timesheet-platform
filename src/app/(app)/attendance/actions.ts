@@ -134,7 +134,7 @@ export async function markAttendanceAction(
     const existing = await prisma.attendance.findUnique({
       where: { employeeId_date: { employeeId: employee.id, date: dateValue } },
     });
-    if (existing?.locked && !isSuperAdmin) continue;
+    if (existing?.locked && !isAdminRole(user.role)) continue;
 
     const data = {
       status,
@@ -246,6 +246,16 @@ export async function approveAttendanceDayAction(formData: FormData) {
   return { updated: result.count };
 }
 
+/**
+ * Whether this role may override an approved-and-locked attendance day. That is
+ * every admin, not only a super admin: a client's branch admin is the highest
+ * authority inside their own company, so "ask an admin" must not end with them.
+ * Branch containment is enforced separately by isOutsideBranch.
+ */
+function isAdminRole(role: string) {
+  return role === "SUPER_ADMIN" || role === "BRANCH_ADMIN";
+}
+
 export async function requestAttendanceCorrectionAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -353,7 +363,7 @@ export async function deleteAttendanceAction(
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
     return { deleted: 0 };
   }
-  if (existing.locked && !isSuperAdmin) {
+  if (existing.locked && !isAdminRole(user.role)) {
     return { deleted: 0, error: "That day is approved and locked — ask an admin." };
   }
 
