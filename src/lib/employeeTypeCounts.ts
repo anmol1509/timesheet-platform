@@ -10,7 +10,7 @@ export type EmployeeTypeCounts = {
   // subcontractor. Mutually exclusive with supplierLabour (split on the same
   // isOwnCompany flag), so both belong in the same partition total.
   ourWorkers: number;
-  idle: number; // status IDLE
+  idle: number; // active, not on leave, and not linked to a project — the same rule as "on bench" everywhere else
   onVacation: number; // status ON_VACATION
   active: number; // status ACTIVE
 };
@@ -24,7 +24,7 @@ export async function getEmployeeTypeCounts(
   branchId: string | null
 ): Promise<EmployeeTypeCounts> {
   const where = branchWhere(branchId);
-  const [supplierLabour, ourWorkers, siteStaff, officeStaff, statusCounts] = await Promise.all([
+  const [supplierLabour, ourWorkers, siteStaff, officeStaff, statusCounts, idle] = await Promise.all([
     prisma.employee.count({ where: { ...where, supplierId: { not: null }, supplier: { isOwnCompany: false } } }),
     prisma.employee.count({ where: { ...where, supplierId: { not: null }, supplier: { isOwnCompany: true } } }),
     prisma.employee.count({
@@ -38,6 +38,9 @@ export async function getEmployeeTypeCounts(
       where,
       _count: { _all: true },
     }),
+    // Deployed means linked to a project, so anyone active without one is idle,
+    // whatever their stored stage says.
+    prisma.employee.count({ where: { ...where, active: true, projectId: null, status: { notIn: ["TERMINATED", "ON_VACATION"] } } }),
   ]);
 
   const byStatus = Object.fromEntries(statusCounts.map((s) => [s.status, s._count._all]));
@@ -47,7 +50,7 @@ export async function getEmployeeTypeCounts(
     officeStaff,
     supplierLabour,
     ourWorkers,
-    idle: byStatus.IDLE ?? 0,
+    idle,
     onVacation: byStatus.ON_VACATION ?? 0,
     active: byStatus.ACTIVE ?? 0,
   };

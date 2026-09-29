@@ -76,9 +76,8 @@ export default async function DashboardPage() {
     getTimesheetPipeline(branchId),
     getComplianceRunway(branchId),
     getAssignedStaff(4, branchId),
-    // Camp/Room/Bed aren't branch-scoped yet (deferred to a later phase),
-    // so occupancy stays cross-branch for now.
-    prisma.bed.findMany({ select: { employeeId: true } }),
+    // A camp belongs to one company; rooms and beds inherit that through it.
+    prisma.bed.findMany({ where: { room: { camp: branchWhere(branchId) } }, select: { employeeId: true } }),
     prisma.upload.findFirst({
       where: branchScope,
       orderBy: { uploadedAt: "desc" },

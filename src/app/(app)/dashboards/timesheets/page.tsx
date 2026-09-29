@@ -126,6 +126,12 @@ export default async function TimesheetsDashboardPage() {
       </div>
 
       <Panel title="Hours, last 6 months" href="/attendance">
+        {months.every((m) => (normalByMonth.get(m) ?? 0) + (otByMonth.get(m) ?? 0) === 0) ? (
+          <p className="py-10 text-center text-sm text-muted">
+            No hours recorded in the last six months. Mark attendance or import a timesheet to see the monthly trend.
+          </p>
+        ) : (
+        <>
         <div className="mb-3 flex items-center gap-3 text-xs text-muted">
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--brand-primary)]" />Normal</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--warning)]" />Overtime</span>
@@ -142,11 +148,13 @@ export default async function TimesheetsDashboardPage() {
                   {normal > 0 && <span className="w-full bg-[var(--brand-primary)]" style={{ height: `${(normal / total) * 100}%` }} />}
                   {ot > 0 && <span className="w-full bg-[var(--warning)]" style={{ height: `${(ot / total) * 100}%` }} />}
                 </div>
-                <span className="text-xs text-subtle">{m.slice(5)}</span>
+                <span className="text-xs text-subtle">{new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}</span>
               </div>
             );
           })}
         </div>
+        </>
+        )}
       </Panel>
     </div>
   );

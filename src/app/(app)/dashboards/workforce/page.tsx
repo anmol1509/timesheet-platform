@@ -131,10 +131,17 @@ export default async function WorkforceDashboardPage() {
           />
         </Panel>
         <Panel title="Workforce by nationality" icon={Globe2} href="/employees">
-          <Treemap
-            items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: r.nationality ?? "Not set", value: r._count._all }))}
-            emptyLabel="No employees yet."
-          />
+          {byNationality.length === 1 ? (
+            // One block filling the whole card says nothing a sentence doesn't.
+            <p className="py-10 text-center text-sm text-muted">
+              All {byNationality[0]._count._all} workers are <span className="font-medium text-primary">{byNationality[0].nationality ?? "not set"}</span>.
+            </p>
+          ) : (
+            <Treemap
+              items={byNationality.map((r) => ({ key: r.nationality ?? "none", label: r.nationality ?? "Not set", value: r._count._all }))}
+              emptyLabel="No employees yet."
+            />
+          )}
         </Panel>
       </div>
     </div>

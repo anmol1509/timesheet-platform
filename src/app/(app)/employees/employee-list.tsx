@@ -164,7 +164,8 @@ export function EmployeeList({
       case "our-workers":
         return employees.filter((e) => e.isOwnCompanySupplier);
       case "idle":
-        return employees.filter((e) => e.status === "IDLE");
+        // Same rule as the dashboard: active, not on leave, not linked to a project.
+        return employees.filter((e) => !e.onWork && e.status !== "ON_VACATION" && e.status !== "TERMINATED");
       case "vacation":
         return employees.filter((e) => e.status === "ON_VACATION");
       case "incomplete":

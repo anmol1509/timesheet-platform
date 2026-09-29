@@ -13,9 +13,12 @@ const STATUS_BADGE = {
 export function AssignedStaffList({ staff }: { staff: AssignedStaffRow[] }) {
   if (staff.length === 0) {
     return (
-      <p className="text-sm text-muted">
-        No employees currently assigned to a project.
-      </p>
+      <div className="py-6 text-center">
+        <p className="text-sm text-muted">No employees are linked to a project yet.</p>
+        <Link href="/employees" className="mt-1.5 inline-block text-xs font-medium text-[var(--brand-primary)] hover:underline">
+          Open employees
+        </Link>
+      </div>
     );
   }
 
