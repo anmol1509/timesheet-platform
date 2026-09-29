@@ -211,6 +211,85 @@ const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["invoiceValue", /invoice\s*value/i],
 ];
 
+export type TimesheetColumnKey = keyof ColumnMap;
+/** Header text chosen by hand for a column the detector missed, by field. */
+export type TimesheetOverrides = Partial<Record<TimesheetColumnKey, string>>;
+
+const normHeader = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+function emptyColMap(): ColumnMap {
+  return {
+    idNo: null, name: null, supplier: null, sponsor: null, nationality: null, client: null, site: null,
+    trade: null, rate: null, total: null, absentCount: null, absentDeduction: null, invoiceValue: null,
+  };
+}
+
+/** Which column holds what, by the header's wording — then any that were picked by hand. */
+function detectColumns(sheet: ExcelJS.Worksheet, headerRowNum: number, overrides: TimesheetOverrides = {}): ColumnMap {
+  const headerRow = sheet.getRow(headerRowNum);
+  const colMap = emptyColMap();
+  const lastCol = sheet.columnCount;
+  for (let c = 1; c <= lastCol; c++) {
+    const text = cellText(headerRow.getCell(c));
+    if (!text) continue;
+    for (const [key, pattern] of HEADER_PATTERNS) {
+      if (colMap[key] == null && pattern.test(text)) {
+        colMap[key] = c;
+        break;
+      }
+    }
+  }
+  for (const [key, wanted] of Object.entries(overrides) as [TimesheetColumnKey, string][]) {
+    if (!wanted) continue;
+    for (let c = 1; c <= lastCol; c++) {
+      if (normHeader(cellText(headerRow.getCell(c))) === normHeader(wanted)) {
+        colMap[key] = c;
+        break;
+      }
+    }
+  }
+  return colMap;
+}
+
+export type TimesheetSheetInfo = {
+  sheet: string;
+  month: string | null;
+  headerRow: number | null;
+  headers: string[];
+  /** For each field, the header text of the column that was detected, or null. */
+  detected: Record<string, string | null>;
+  /** Data rows under the header (a rough count, for the review screen). */
+  rows: number;
+};
+
+/** What the parser sees in each sheet, without importing anything. */
+export async function describeTimesheetWorkbook(buffer: Buffer, overrides: TimesheetOverrides = {}): Promise<TimesheetSheetInfo[]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+  const out: TimesheetSheetInfo[] = [];
+  for (const sheet of workbook.worksheets) {
+    const monthInfo = parseMonthFromSheetName(sheet.name);
+    const headerRowNum = findHeaderRow(sheet);
+    if (!headerRowNum) {
+      out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: null, headers: [], detected: {}, rows: 0 });
+      continue;
+    }
+    const headerRow = sheet.getRow(headerRowNum);
+    const headers: string[] = [];
+    for (let c = 1; c <= sheet.columnCount; c++) {
+      const t = cellText(headerRow.getCell(c));
+      if (t && !headers.includes(t)) headers.push(t);
+    }
+    const colMap = detectColumns(sheet, headerRowNum, overrides);
+    const detected: Record<string, string | null> = {};
+    for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "trade", "rate", "nationality"] as const) {
+      detected[key] = colMap[key] ? cellText(headerRow.getCell(colMap[key]!)) || null : null;
+    }
+    out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: headerRowNum, headers, detected, rows: Math.max(0, sheet.rowCount - headerRowNum - 1) });
+  }
+  return out;
+}
+
 function findHeaderRow(sheet: ExcelJS.Worksheet): number | null {
   for (let r = 1; r <= Math.min(10, sheet.rowCount); r++) {
     const row = sheet.getRow(r);
@@ -295,7 +374,8 @@ function mergeDuplicateRows(entries: ParsedEntry[]): ParsedEntry[] {
 }
 
 export async function parseConsolidatedWorkbook(
-  buffer: Buffer
+  buffer: Buffer,
+  overrides: TimesheetOverrides = {}
 ): Promise<ParseResult> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
@@ -317,33 +397,8 @@ export async function parseConsolidatedWorkbook(
     }
 
     const headerRow = sheet.getRow(headerRowNum);
-    const colMap: ColumnMap = {
-      idNo: null,
-      name: null,
-      supplier: null,
-      sponsor: null,
-      nationality: null,
-      client: null,
-      site: null,
-      trade: null,
-      rate: null,
-      total: null,
-      absentCount: null,
-      absentDeduction: null,
-      invoiceValue: null,
-    };
-
     const lastCol = sheet.columnCount;
-    for (let c = 1; c <= lastCol; c++) {
-      const text = cellText(headerRow.getCell(c));
-      if (!text) continue;
-      for (const [key, pattern] of HEADER_PATTERNS) {
-        if (colMap[key] == null && pattern.test(text)) {
-          colMap[key] = c;
-          break;
-        }
-      }
-    }
+    const colMap = detectColumns(sheet, headerRowNum, overrides);
 
     // Day columns sit strictly between "total" and the next known trailing
     // column (absentCount / absentDeduction / invoiceValue), whichever comes

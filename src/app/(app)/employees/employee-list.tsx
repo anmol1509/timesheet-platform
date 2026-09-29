@@ -389,6 +389,7 @@ export function EmployeeList({
         entityLabel: "employees",
         columns: IMPORT_COLUMNS,
         importAction: bulkImportEmployeesAction,
+        wizardHref: "/import/new/workers",
       }}
       getRowClassName={(e) =>
         cn(

@@ -21,9 +21,16 @@ function similarity(a: string, b: string): number {
 }
 
 /** How well a source header matches a field, 0..1. */
+// "Trade licence number" and "Trade licence expiry" share most of their words
+// but are different columns: a date column never fills a number field, or the
+// other way round.
+const DATEY = /\b(expiry|expires|expiration|exp|date|dob)\b/i;
+const fieldIsDatey = (f: FieldDef) => DATEY.test(`${f.label} ${f.key.replace(/([A-Z])/g, " $1")}`);
+
 export function scoreHeader(header: string, field: FieldDef): number {
   const h = norm(header);
   if (!h) return 0;
+  if (DATEY.test(header) !== fieldIsDatey(field)) return 0;
   const names = [field.label, field.key, ...(field.aliases ?? [])];
   let best = 0;
   for (const name of names) {

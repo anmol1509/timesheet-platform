@@ -193,6 +193,7 @@ export function SupplierList({
           entityLabel="suppliers"
           columns={IMPORT_COLUMNS}
           importAction={bulkImportSuppliersAction}
+          wizardHref="/import/new/suppliers"
           onDone={() => router.refresh()}
         />
         <button type="button" onClick={exportExcel} className="btn btn-secondary flex gap-1.5 px-3">

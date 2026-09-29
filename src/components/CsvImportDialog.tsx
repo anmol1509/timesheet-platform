@@ -2,144 +2,21 @@
 
 import { useRef, useState } from "react";
 import { parseSpreadsheetFile, remapHeaders } from "@/lib/spreadsheet";
-import { AlertTriangle, CheckCircle2, ChevronDown, Info, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ResultSection, Tile, type ImportRowResult } from "@/components/import/report";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/Dialog";
-import { cn } from "@/lib/cn";
 
 export type ImportColumn = { key: string; label: string; required?: boolean; aliases?: string[] };
-export type ImportNote = { tone: "warn" | "info"; title: string; detail?: string };
-export type ImportRowResult = {
-  row: number;
-  /** What the row was about (a supplier name), shown on its card. */
-  name?: string;
-  status: "created" | "updated" | "skipped" | "error";
-  message?: string;
-  notes?: ImportNote[];
-};
-
-const PREVIEW = 8;
-
-function Tile({ label, value, tone, hint }: { label: string; value: number; tone: "success" | "info" | "error" | "neutral"; hint?: string }) {
-  const tones = {
-    success: "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]",
-    info: "border-[var(--info-border)] bg-[var(--info-soft)] text-[var(--info)]",
-    error: "border-[var(--error-border)] bg-[var(--error-soft)] text-[var(--error)]",
-    neutral: "border-default bg-surface-subtle text-secondary",
-  } as const;
-  return (
-    <div className={cn("rounded-xl border px-3 py-2.5", tones[tone])}>
-      <div className="tabular text-2xl leading-none font-semibold">{value}</div>
-      <div className="mt-1 text-xs font-medium">{label}</div>
-      {hint && <div className="text-[11px] opacity-80">{hint}</div>}
-    </div>
-  );
-}
-
-function RowCard({ result, tone }: { result: ImportRowResult; tone: "warn" | "info" | "error" }) {
-  const accent = {
-    warn: "border-l-[var(--warning)]",
-    info: "border-l-[var(--info)]",
-    error: "border-l-[var(--error)]",
-  }[tone];
-  const notes: ImportNote[] =
-    result.notes && result.notes.length > 0
-      ? result.notes
-      : result.message
-        ? [{ tone: tone === "error" ? "warn" : "info", title: result.message }]
-        : [];
-  return (
-    <li className={cn("rounded-lg border border-default border-l-4 bg-surface p-3", accent)}>
-      <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 text-sm font-medium break-words text-primary">{result.name || `Row ${result.row}`}</p>
-        {result.name && (
-          <span className="tabular shrink-0 rounded-md bg-surface-sunken px-1.5 py-0.5 text-[11px] font-medium text-muted">
-            Row {result.row}
-          </span>
-        )}
-      </div>
-      {tone === "error" ? (
-        <p className="mt-1.5 flex items-start gap-1.5 text-xs text-[var(--error)]">
-          <XCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span>{result.message || "Unknown error"}</span>
-        </p>
-      ) : (
-        <ul className="mt-1.5 space-y-1.5">
-          {notes.map((n, i) => (
-            <li key={i} className="flex items-start gap-1.5 text-xs">
-              {n.tone === "warn" ? (
-                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-[var(--warning)]" aria-hidden />
-              ) : (
-                <Info className="mt-px h-3.5 w-3.5 shrink-0 text-[var(--info)]" aria-hidden />
-              )}
-              <span>
-                <span className="font-medium text-primary">{n.title}</span>
-                {n.detail && <span className="block text-muted">{n.detail}</span>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
-
-function ResultSection({
-  title,
-  help,
-  items,
-  tone,
-  defaultOpen,
-}: {
-  title: string;
-  help: string;
-  items: ImportRowResult[];
-  tone: "warn" | "info" | "error";
-  defaultOpen: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const [all, setAll] = useState(false);
-  if (items.length === 0) return null;
-  const shown = all ? items : items.slice(0, PREVIEW);
-  return (
-    <section>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left hover:bg-surface-hover"
-      >
-        <span>
-          <span className="text-sm font-semibold text-primary">
-            {title} <span className="tabular font-normal text-muted">· {items.length}</span>
-          </span>
-          <span className="block text-xs text-muted">{help}</span>
-        </span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-subtle transition-transform", open && "rotate-180")} aria-hidden />
-      </button>
-      {open && (
-        <>
-          <ul className="mt-2 space-y-2">
-            {shown.map((r) => (
-              <RowCard key={r.row} result={r} tone={tone} />
-            ))}
-          </ul>
-          {items.length > PREVIEW && (
-            <button type="button" onClick={() => setAll((v) => !v)} className="mt-2 text-xs font-medium text-[var(--brand-primary)] hover:underline">
-              {all ? "Show fewer" : `Show all ${items.length}`}
-            </button>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
+export type { ImportNote, ImportRowResult } from "@/components/import/report";
 
 export function CsvImportDialog({
   entityLabel,
   columns,
   importAction,
   onDone,
+  wizardHref,
 }: {
+  wizardHref?: string;
   entityLabel: string;
   columns: ImportColumn[];
   importAction: (rows: Record<string, string>[]) => Promise<ImportRowResult[]>;
@@ -249,6 +126,12 @@ export function CsvImportDialog({
               Upload an Excel (.xlsx) or CSV file with a header row. Existing records are matched and
               updated; new ones are created.
             </p>
+            {wizardHref && (
+              <p className="mb-3 rounded-lg bg-surface-subtle px-3 py-2 text-xs text-secondary">
+                Want to see what will happen before anything is saved, and be able to undo it?{" "}
+                <a href={wizardHref} className="font-medium text-[var(--brand-primary)] hover:underline">Use the import wizard</a>.
+              </p>
+            )}
             <button
               type="button"
               onClick={downloadTemplate}

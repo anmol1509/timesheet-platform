@@ -155,6 +155,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
             entityLabel="clients"
             columns={IMPORT_COLUMNS}
             importAction={bulkImportClientsAction}
+            wizardHref="/import/new/clients"
             onDone={() => router.refresh()}
           />
           <button

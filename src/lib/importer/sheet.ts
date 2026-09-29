@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { Readable } from "node:stream";
 import type { FieldDef, MappedRow, Mapping } from "./types";
 import { scoreHeader } from "./mapping";
 
@@ -25,8 +26,13 @@ function cellText(v: unknown): string {
   return String(v).trim();
 }
 
-export async function loadWorkbook(buffer: Buffer | ArrayBuffer): Promise<ExcelJS.Workbook> {
+/** An .xlsx, or a .csv read as a one-sheet workbook. */
+export async function loadWorkbook(buffer: Buffer | ArrayBuffer, filename = ""): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
+  if (/\.csv$/i.test(filename)) {
+    await wb.csv.read(Readable.from(Buffer.from(buffer as ArrayBuffer)));
+    return wb;
+  }
   await wb.xlsx.load(buffer as ArrayBuffer);
   return wb;
 }

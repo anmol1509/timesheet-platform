@@ -25,6 +25,13 @@ export default async function UploadPage() {
         description={<>Upload the consolidated time sheet workbook. Each month tab (e.g. &ldquo;MAY-25&rdquo;) is detected automatically, and re-uploading the same month just refreshes the hours already on file.</>}
       />
 
+      {isAdmin && (
+        <p className="rounded-xl border border-default bg-surface-subtle px-4 py-3 text-sm text-secondary">
+          New: <Link href="/import/new/timesheets" className="font-medium text-[var(--brand-primary)] hover:underline">import a timesheet with a preview and undo</Link>.
+          You see exactly what will be created before anything is saved, and can undo it afterwards.
+        </p>
+      )}
+
       <UploadForm />
 
       {recentUploads.length > 0 && (

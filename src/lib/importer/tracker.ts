@@ -99,30 +99,59 @@ export function trackedClient(batchId: string) {
 
 export type UndoOutcome = { restored: number; removed: number; kept: { model: string; recordId: string; reason: string }[] };
 
-/** Reverse a batch newest-first: changed records get their old values back and
- * created ones are removed. A created record that something else now points
- * at (say a worker who has since been given attendance) is kept, and reported. */
+// Children first, so a parent is never deleted while something in the same
+// import still points at it.
+const DELETE_ORDER = ["Attendance", "TimesheetEntry", "UploadMonth", "Upload", "Employee", "Client", "Supplier"];
+const CHUNK = 500;
+
+/** Reverse a batch. Changed records get their old values back and created ones
+ * are removed. Deleting is done in bulk, children before parents. A created
+ * record that something else now points at (say a worker who has since been
+ * given attendance) is kept, and reported. Safe to run again if interrupted:
+ * whatever is already gone is skipped. */
 export async function undoChanges(batchId: string): Promise<UndoOutcome> {
   const changes = await prisma.importChange.findMany({ where: { batchId }, orderBy: { seq: "desc" } });
   const out: UndoOutcome = { restored: 0, removed: 0, kept: [] };
+  const created = new Set(changes.filter((c) => c.action === "CREATE").map((c) => `${c.model}:${c.recordId}`));
+
+  // 1. Put changed records back (newest first, so the oldest values win).
+  //    A record this import also created is about to be deleted; skip it.
   for (const c of changes) {
-    const d = delegate(c.model);
+    if (c.action !== "UPDATE" || !c.before || created.has(`${c.model}:${c.recordId}`)) continue;
     try {
-      if (c.action === "UPDATE") {
-        if (c.before) await d.update({ where: { id: c.recordId }, data: decodeValues(c.before) });
-        out.restored++;
-      } else {
-        await d.delete({ where: { id: c.recordId } });
-        out.removed++;
-      }
+      await delegate(c.model).update({ where: { id: c.recordId }, data: decodeValues(c.before) });
+      out.restored++;
     } catch (e) {
-      const code = (e as { code?: string }).code;
-      if (code === "P2025") continue; // already gone
-      out.kept.push({
-        model: c.model,
-        recordId: c.recordId,
-        reason: code === "P2003" ? "still used by other records" : e instanceof Error ? e.message.slice(0, 120) : "could not be removed",
-      });
+      if ((e as { code?: string }).code !== "P2025") {
+        out.kept.push({ model: c.model, recordId: c.recordId, reason: e instanceof Error ? e.message.slice(0, 120) : "could not be restored" });
+      }
+    }
+  }
+
+  // 2. Remove what was created, model by model, in chunks.
+  const byModel = new Map<string, string[]>();
+  for (const c of changes) if (c.action === "CREATE") byModel.set(c.model, [...(byModel.get(c.model) ?? []), c.recordId]);
+  const models = [...DELETE_ORDER.filter((m) => byModel.has(m)), ...[...byModel.keys()].filter((m) => !DELETE_ORDER.includes(m))];
+  for (const model of models) {
+    const d = delegate(model);
+    const ids = byModel.get(model)!;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const chunk = ids.slice(i, i + CHUNK);
+      try {
+        out.removed += (await d.deleteMany({ where: { id: { in: chunk } } })).count;
+      } catch {
+        // Something in the chunk is still in use: find out which, one by one.
+        for (const id of chunk) {
+          try {
+            await d.delete({ where: { id } });
+            out.removed++;
+          } catch (e) {
+            const code = (e as { code?: string }).code;
+            if (code === "P2025") continue;
+            out.kept.push({ model, recordId: id, reason: code === "P2003" ? "still used by other records" : e instanceof Error ? e.message.slice(0, 120) : "could not be removed" });
+          }
+        }
+      }
     }
   }
   return out;

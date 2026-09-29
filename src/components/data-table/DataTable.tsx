@@ -46,6 +46,8 @@ export type DataTableImportConfig = {
   entityLabel: string;
   columns: ImportColumn[];
   importAction: (rows: Record<string, string>[]) => Promise<ImportRowResult[]>;
+  /** Where the guided import for this kind of data lives, when there is one. */
+  wizardHref?: string;
 };
 
 type SortState = { key: string; direction: "asc" | "desc" } | null;
@@ -291,6 +293,7 @@ export function DataTable<T extends { id: string }>({
                 entityLabel={importConfig.entityLabel}
                 columns={importConfig.columns}
                 importAction={importConfig.importAction}
+                wizardHref={importConfig.wizardHref}
                 onDone={() => router.refresh()}
               />
             )}

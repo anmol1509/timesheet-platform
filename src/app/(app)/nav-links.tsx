@@ -273,6 +273,7 @@ function adminGroup(): Entry {
     category: "Administration",
     children: [
       { href: "/settings/company", label: "Company Profile", icon: Building },
+      { href: "/import", label: "Import Data", icon: UploadIcon },
       { href: "/settings/team", label: "Team & Access", icon: UserCog },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },
