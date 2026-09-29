@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { nextClientCode, uniqueSupplierCode } from "@/lib/entityCode";
+import { uniqueClientCode, uniqueSupplierCode } from "@/lib/entityCode";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
 
@@ -97,7 +97,7 @@ export async function importParsedMonths(
         let client = clientByKey.get(clientKey);
         if (!client) {
           client = await prisma.client.create({
-            data: { name: entry.clientName.trim(), code: await nextClientCode(branchId), branchId },
+            data: { name: entry.clientName.trim(), code: await uniqueClientCode(entry.clientName.trim(), branchId), branchId },
           });
           clientByKey.set(clientKey, client);
           stats.clientsCreated++;

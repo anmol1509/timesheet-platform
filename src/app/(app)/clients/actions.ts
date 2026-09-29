@@ -1,6 +1,7 @@
 "use server";
 
-import { nextClientCode } from "@/lib/entityCode";
+import { uniqueClientCode } from "@/lib/entityCode";
+import { normalizeCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -64,9 +65,15 @@ export async function createClientAction(
   const existing = await prisma.client.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) return { error: "A client with that name already exists." };
 
+  // A code typed into the form wins; blank means "generate it from the name".
+  const typed = normalizeCode(String(formData.get("code") || ""));
+  if (typed && (await prisma.client.findFirst({ where: { branchId, code: typed }, select: { id: true } }))) {
+    return { error: `The code ${typed} is already used by another client.` };
+  }
+
   const data = {
     name,
-    code: await nextClientCode(branchId),
+    code: typed || (await uniqueClientCode(name, branchId)),
     branchId,
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
@@ -93,16 +100,29 @@ export async function createClientAction(
   redirect(`/clients/${client.id}`);
 }
 
-export async function updateClientAction(formData: FormData) {
+export async function updateClientAction(formData: FormData): Promise<{ error: string | null }> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
-  if (!id) return;
-  if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return;
+  if (!id) return { error: null };
+  if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return { error: null };
 
   const before = await prisma.client.findUnique({ where: { id } });
+  if (!before) return { error: null };
+
+  // Blank keeps the current code (or makes one if the client never had one).
+  const typedCode = normalizeCode(String(formData.get("code") || ""));
+  const code = typedCode || before.code || (await uniqueClientCode(before.name, before.branchId!));
+  if (code !== before.code) {
+    const clash = await prisma.client.findFirst({
+      where: { branchId: before.branchId, code, NOT: { id } },
+      select: { id: true },
+    });
+    if (clash) return { error: `The code ${code} is already used by another client.` };
+  }
 
   const data = {
+    code,
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
     contactPhone: stringOrNull(formData.get("contactPhone")),
@@ -148,6 +168,7 @@ export async function updateClientAction(formData: FormData) {
 
   revalidatePath(`/clients/${id}`);
   revalidatePath("/clients");
+  return { error: null };
 }
 
 export async function addClientContactAction(formData: FormData) {
@@ -343,7 +364,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
         results.push({ row: i + 2, status: "updated" });
       } else {
         const created = await prisma.client.create({
-          data: { name, code: await nextClientCode(branchId), branchId, ...data },
+          data: { name, code: await uniqueClientCode(name, branchId), branchId, ...data },
         });
         await logAudit({
           entityType: "CLIENT",
@@ -458,4 +479,11 @@ export async function deleteClientsAction(
 
   revalidatePath("/clients");
   return { deleted, blocked };
+}
+
+/** The code the "Auto" button fills in: the name's initials, made unique in the branch. */
+export async function suggestClientCodeAction(name: string, clientId?: string): Promise<string> {
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return "";
+  return uniqueClientCode(name.trim(), branchId, clientId);
 }

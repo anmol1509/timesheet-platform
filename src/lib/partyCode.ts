@@ -1,9 +1,10 @@
-// Supplier codes are "S" plus the initials of the name — "Burj Al Aweer" is
+// Supplier codes are "S" (clients "C") plus the initials of the name — "Burj Al Aweer" is
 // SBAA — so a code reads at a glance without looking like a running count of
 // companies. Pure, so the form's button and the server agree on the rule.
 const SKIP = new Set(["and", "the", "of", "&"]);
 const MAX_INITIALS = 4;
 export const SUPPLIER_PREFIX = "S";
+export const CLIENT_PREFIX = "C";
 
 function words(name: string): string[] {
   return name.split(/[^A-Za-z0-9]+/).filter((w) => w && !SKIP.has(w.toLowerCase()));
@@ -12,17 +13,17 @@ function words(name: string): string[] {
 /** Candidate codes for a name, best first. Later ones take more letters of the
  * first word, so "Bahar Al Aweer" (SBAAA) stays apart from "Burj Al Aweer"
  * (SBAA) without a number. */
-export function codeCandidates(name: string): string[] {
+export function codeCandidates(name: string, prefix: string = SUPPLIER_PREFIX): string[] {
   const w = words(name);
-  if (w.length === 0) return [SUPPLIER_PREFIX + "SUP"];
+  if (w.length === 0) return [prefix + (prefix === CLIENT_PREFIX ? "CLI" : "SUP")];
   // One word ("Emaar") has no initials to combine; use its first letters.
   if (w.length === 1) {
-    return [2, 3, 4, 5].map((n) => SUPPLIER_PREFIX + w[0].slice(0, n).toUpperCase());
+    return [2, 3, 4, 5].map((n) => prefix + w[0].slice(0, n).toUpperCase());
   }
   const rest = w.slice(1, MAX_INITIALS).map((x) => x[0]).join("");
   const out: string[] = [];
   for (let n = 1; n <= Math.min(4, w[0].length); n++) {
-    out.push((SUPPLIER_PREFIX + w[0].slice(0, n) + rest).toUpperCase());
+    out.push((prefix + w[0].slice(0, n) + rest).toUpperCase());
   }
   return out;
 }

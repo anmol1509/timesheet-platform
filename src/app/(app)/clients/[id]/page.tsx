@@ -77,6 +77,8 @@ export default async function ClientDetailPage({
       <EditClientForm
         client={{
           id: client.id,
+          name: client.name,
+          code: client.code,
           contactPerson: client.contactPerson,
           contactEmail: client.contactEmail,
           contactPhone: client.contactPhone,

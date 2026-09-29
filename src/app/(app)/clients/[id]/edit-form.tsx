@@ -6,6 +6,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { useState, useTransition } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateClientAction } from "../actions";
+import { ClientCodeField } from "../client-code-field";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { ComboSelect } from "@/components/ui/ComboSelect";
@@ -48,9 +49,12 @@ type Client = {
   telephone: string | null;
 };
 
-export function EditClientForm({ client }: { client: Client }) {
+type CodeProps = { name: string; code: string | null };
+
+export function EditClientForm({ client }: { client: Client & CodeProps }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState(client.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
   const [billingType, setBillingType] = useState(
@@ -64,8 +68,9 @@ export function EditClientForm({ client }: { client: Client }) {
         setSaved(false);
         guard.markSaved();
         startTransition(async () => {
-          await updateClientAction(formData);
-          setSaved(true);
+          const res = await updateClientAction(formData);
+          setError(res.error);
+          setSaved(!res.error);
         });
       }}
       className="card space-y-6 p-6"
@@ -73,6 +78,10 @@ export function EditClientForm({ client }: { client: Client }) {
       <input type="hidden" name="clientId" value={client.id} />
 
       <Section title="Company">
+        <div>
+          <span className="mb-1 block text-xs font-medium text-muted">Client code</span>
+          <ClientCodeField defaultValue={client.code || ""} fixedName={client.name} clientId={client.id} />
+        </div>
         <Field label="Country">
           <CountrySelect name="country" value={country} onChange={setCountry} />
         </Field>
@@ -249,6 +258,11 @@ export function EditClientForm({ client }: { client: Client }) {
         </Field>
       </Section>
 
+      {error && (
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+          {error}
+        </p>
+      )}
       <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
     </form>
   );
