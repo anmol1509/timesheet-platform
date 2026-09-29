@@ -9,7 +9,6 @@ const TABS = [
   { href: "/me/payslips", label: "Payslips" },
   { href: "/me/attendance", label: "Attendance" },
   { href: "/me/documents", label: "Documents" },
-  { href: "/me/profile", label: "My details" },
 ];
 
 export function PortalNav() {

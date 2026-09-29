@@ -2,7 +2,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getEssEmployee } from "@/lib/ess/session";
 import { Badge, type BadgeColor } from "@/components/Badge";
-import { PROFILE_FIELDS } from "@/lib/ess/profileFields";
 
 export const metadata = { title: "My portal" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -11,8 +10,6 @@ const day = (d: Date) => d.toISOString().slice(0, 10);
 export default async function PortalHome() {
   const employee = (await getEssEmployee())!;
   const today = new Date();
-  const record = (await prisma.employee.findUnique({ where: { id: employee.id } })) as Record<string, unknown> | null;
-  const missingCount = PROFILE_FIELDS.filter((f) => !record || record[f.key] === null || record[f.key] === undefined || String(record[f.key]).trim() === "").length;
   const [slip, docs] = await Promise.all([
     prisma.payrollLine.findFirst({
       where: { employeeId: employee.id, run: { status: { in: ["APPROVED", "PAID"] } } },
@@ -39,13 +36,6 @@ export default async function PortalHome() {
           {employee.site && ` · ${employee.site.name}`}
         </p>
       </section>
-
-      {missingCount > 0 && (
-        <Link href="/me/profile" className="card block border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 transition hover:border-[var(--warning)]">
-          <p className="text-sm font-semibold text-[var(--warning)]">Complete your details</p>
-          <p className="mt-0.5 text-xs text-secondary">{missingCount} detail{missingCount === 1 ? "" : "s"} missing from your record &mdash; it takes 2 minutes.</p>
-        </Link>
-      )}
 
       <div className="grid gap-4">
         <Link href="/me/payslips" className="card block p-4 transition hover:border-[var(--brand-primary)]">

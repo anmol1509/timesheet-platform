@@ -3,17 +3,15 @@ import { HeartPulse } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
-import { isAdminRole } from "@/lib/roles";
 import { HEALTH_FIELDS, HEALTH_KEYS, getDataHealth, type HealthKey } from "@/lib/dataHealth";
 import { cn } from "@/lib/cn";
-import { HealthActions } from "./health-actions";
 
 export const metadata = { title: "Data health" };
 const LABEL = Object.fromEntries(HEALTH_FIELDS.map((f) => [f.key, f.label])) as Record<HealthKey, string>;
 const tone = (pct: number) => (pct >= 85 ? "bg-[var(--success)]" : pct >= 50 ? "bg-[var(--warning)]" : "bg-[var(--error)]");
 
 export default async function DataHealthPage({ searchParams }: { searchParams: Promise<{ missing?: string }> }) {
-  const { user, branchId } = await requireUserWithBranch();
+  const { branchId } = await requireUserWithBranch();
   const { missing } = await searchParams;
   const focus = HEALTH_KEYS.includes(missing as HealthKey) ? (missing as HealthKey) : null;
 
@@ -37,8 +35,8 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
         title="Data health"
         icon={HeartPulse}
         breadcrumbs={[{ label: "Employees", href: "/employees" }, { label: "Data health" }]}
-        description="How complete your worker records are, and what's missing for whom. Fill the gaps from a spreadsheet, or ask the workers to add their own details."
-        actions={isAdminRole(user.role) ? <HealthActions missing={focus} incomplete={h.list.filter((w) => w.score < 100).length} /> : undefined}
+        description="How complete your worker records are, and what's missing for whom. Fill the gaps from a spreadsheet, or open a worker to edit them."
+        actions={<Link href="/import/new/workers" className="btn btn-secondary">Fill from a spreadsheet</Link>}
       />
 
       {h.workers === 0 ? (
@@ -57,9 +55,6 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
               <p className="mt-3 text-xs text-muted">
                 {h.workers} workers &middot; {h.buckets.complete} complete &middot; {h.buckets.good} nearly there &middot; {h.buckets.partial} half done &middot; {h.buckets.poor} mostly empty
               </p>
-              {h.withoutMobile > 0 && (
-                <p className="mt-2 text-xs text-[var(--warning)]">{h.withoutMobile} have no mobile number, so they can&rsquo;t be asked to fill in their own details.</p>
-              )}
             </div>
 
             <div className="card p-5">
