@@ -7,8 +7,10 @@ import { ResetModuleCard } from "./reset-module-card";
 import { ResetAllCard } from "./reset-all-card";
 
 export default async function DataResetPage() {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  if (!isSuperAdmin) redirect("/");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  // Same rule as the actions: a super admin, or a branch admin who belongs to a
+  // branch. Everyone else — including a branch-less branch admin — is turned away.
+  if (!isSuperAdmin && !(user.role === "BRANCH_ADMIN" && branchId)) redirect("/");
 
   const modules = await Promise.all(
     RESET_MODULES.map(async (m) => ({
@@ -35,7 +37,7 @@ export default async function DataResetPage() {
         <div>
           <p className="font-medium">This runs against the live database — there is no separate staging environment.</p>
           <p className="mt-0.5 text-[var(--error)]">
-            Anything deleted here is gone for good. Super Admin only. Each module requires typing its name to confirm.
+            Anything deleted here is gone for good. Admins only{branchId ? ", and only for your own branch" : ""}. Each module requires typing its name to confirm.
           </p>
         </div>
       </div>
@@ -48,7 +50,7 @@ export default async function DataResetPage() {
         </p>
       )}
 
-      <ResetAllCard totalCount={modules.reduce((sum, m) => sum + m.count, 0)} />
+      <ResetAllCard totalCount={modules.reduce((sum, m) => sum + m.count, 0)} allBranches={!branchId} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {modules.map((m) => (

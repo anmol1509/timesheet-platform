@@ -235,7 +235,7 @@ export function getNavPages(
   isSuperAdmin: boolean,
   allowedModules: string[] | null = null
 ): NavPage[] {
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
   const pages: NavPage[] = [];
   for (const entry of entries) {
     if (entry.type === "link") {
@@ -265,7 +265,7 @@ function visibleEntries(entries: Entry[], allowed: string[] | null): Entry[] {
   });
 }
 
-function adminGroup(isSuperAdmin: boolean): Entry {
+function adminGroup(): Entry {
   return {
     type: "group",
     label: "Administration",
@@ -277,11 +277,9 @@ function adminGroup(isSuperAdmin: boolean): Entry {
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },
       { href: "/audit-log", label: "Audit Log", icon: History },
-      // Deletes real data — kept out of the nav (and the page itself
-      // redirects away) for anyone but a Super Admin.
-      ...(isSuperAdmin
-        ? [{ href: "/settings/data-reset", label: "Data Reset", icon: Trash2 }]
-        : []),
+      // Deletes real data. The whole group is admin-only; the page and its
+      // actions additionally confine a branch admin to their own branch.
+      { href: "/settings/data-reset", label: "Data Reset", icon: Trash2 },
     ],
   };
 }
@@ -339,7 +337,6 @@ const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
 
 export function NavLinks({
   isAdmin,
-  isSuperAdmin,
   allowedModules = null,
   collapsed = false,
   pendingApprovals = 0,
@@ -354,7 +351,7 @@ export function NavLinks({
   pendingApprovals?: number;
 }) {
   const pathname = usePathname();
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
 
   // One winner across the *whole* nav, not per group — fixes two rows (in
   // different groups, or a group row and a top-level item) lighting up for

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { resetAllAction } from "./actions";
 
-export function ResetAllCard({ totalCount }: { totalCount: number }) {
+export function ResetAllCard({ totalCount, allBranches }: { totalCount: number; allBranches: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,7 +26,7 @@ export function ResetAllCard({ totalCount }: { totalCount: number }) {
         Reset Everything
       </Button>
 
-      <ResetAllDialog open={open} totalCount={totalCount} onClose={() => setOpen(false)} />
+      <ResetAllDialog open={open} totalCount={totalCount} allBranches={allBranches} onClose={() => setOpen(false)} />
     </div>
   );
 }
@@ -34,10 +34,12 @@ export function ResetAllCard({ totalCount }: { totalCount: number }) {
 function ResetAllDialog({
   open,
   totalCount,
+  allBranches,
   onClose,
 }: {
   open: boolean;
   totalCount: number;
+  allBranches: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -115,8 +117,9 @@ function ResetAllDialog({
                 className="mt-0.5"
               />
               <span>
-                I understand this deletes every module&apos;s data, including data that isn&apos;t split by branch
-                and every branch&apos;s data if none is selected.
+                {allBranches
+                  ? "I understand this deletes every module's data across every branch, because no specific branch is selected."
+                  : "I understand this deletes every module's data for this branch."}
               </span>
             </label>
             <label className="block">

@@ -60,7 +60,7 @@ export const HINTS: Record<string, string> = {
   "/lookups": "Dropdown lists (nationalities, banks, etc.)",
   "/letter-templates": "Edit templates used by Employee Letters",
   "/audit-log": "Who changed what, and when",
-  "/settings/data-reset": "Bulk-delete test data by module (Super Admin only)",
+  "/settings/data-reset": "Bulk-delete test data by module (admins only; a branch admin can only reset their own branch)",
 };
 
 export const EXTRA_PAGES: GuidePage[] = [

@@ -22,7 +22,9 @@ export type ResetModule = {
   id: string;
   label: string;
   description: string;
-  /** False for data that was deliberately never split by branch (Camps, Vehicles). */
+  /** False only for data that is genuinely shared by every branch. Every
+   * module is currently scoped: Camp and Vehicle gained a branchId, so
+   * Accommodation and Transport no longer clear other branches' data. */
   branchScoped: boolean;
   /** Shown as a "reset these first" hint, not enforced. */
   dependsOn?: string[];
@@ -132,26 +134,33 @@ export const RESET_MODULES: ResetModule[] = [
   {
     id: "accommodation",
     label: "Accommodation",
-    description: "Camps, rooms, beds, check-ins, and accommodation history. Camps aren't split by branch, so this clears them for everyone.",
-    branchScoped: false,
-    count: () => prisma.camp.count(),
-    run: async (_branchId, db) => {
-      const checkIns = await db.campCheckIn.deleteMany({});
-      const history = await db.accommodationHistory.deleteMany({});
-      const rooms = await db.room.deleteMany({}); // cascades Bed
-      const camps = await db.camp.deleteMany({});
+    description: "Camps, rooms, beds, check-ins, and accommodation history.",
+    branchScoped: true,
+    count: (branchId) => prisma.camp.count({ where: branchId ? { branchId } : {} }),
+    run: async (branchId, db) => {
+      const campWhere = branchId ? { branchId } : {};
+      // Check-ins are matched through their camp, not their own branchId:
+      // CampCheckIn -> Camp has no cascade, so any check-in left pointing at a
+      // camp about to be deleted would fail the whole reset.
+      const checkIns = await db.campCheckIn.deleteMany({ where: { camp: campWhere } });
+      // History has no branch of its own; it belongs to the employee it records.
+      const history = await db.accommodationHistory.deleteMany({ where: { employee: campWhere } });
+      const rooms = await db.room.deleteMany({ where: { camp: campWhere } }); // cascades Bed
+      const camps = await db.camp.deleteMany({ where: campWhere });
       return { campCheckIns: checkIns.count, accommodationHistory: history.count, rooms: rooms.count, camps: camps.count };
     },
   },
   {
     id: "transport",
     label: "Transport",
-    description: "Vehicles and routes. Not split by branch, so this clears them for everyone.",
-    branchScoped: false,
-    count: () => prisma.vehicle.count(),
-    run: async (_branchId, db) => {
-      const routes = await db.route.deleteMany({}); // cascades RouteStop
-      const vehicles = await db.vehicle.deleteMany({}); // cascades VehicleProject
+    description: "Vehicles and routes.",
+    branchScoped: true,
+    count: (branchId) => prisma.vehicle.count({ where: branchId ? { branchId } : {} }),
+    run: async (branchId, db) => {
+      const vehicleWhere = branchId ? { branchId } : {};
+      // A route has no branch of its own — it belongs to its vehicle's.
+      const routes = await db.route.deleteMany({ where: { vehicle: vehicleWhere } }); // cascades RouteStop
+      const vehicles = await db.vehicle.deleteMany({ where: vehicleWhere }); // cascades VehicleProject
       return { routes: routes.count, vehicles: vehicles.count };
     },
   },
