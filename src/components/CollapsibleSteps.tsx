@@ -20,7 +20,7 @@ export function CollapsibleSteps({ summary, defaultCollapsed, children }: { summ
   }
   return (
     <>
-      <div className={cn("flex flex-wrap items-center justify-between gap-3 bg-surface-subtle px-5 py-4", !collapsed && "border-b border-default")}>
+      <div className={cn("flex flex-wrap items-center justify-between gap-3 border-b bg-surface-subtle px-5 py-4 transition-colors duration-300", collapsed ? "border-transparent" : "border-default")}>
         {summary}
         <button
           type="button"
@@ -33,7 +33,17 @@ export function CollapsibleSteps({ summary, defaultCollapsed, children }: { summ
           <ChevronDown className={cn("h-4 w-4 transition-transform", !collapsed && "rotate-180")} aria-hidden />
         </button>
       </div>
-      <div hidden={collapsed}>{children}</div>
+      {/* 0fr -> 1fr animates the height without measuring it. */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+          collapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
+        )}
+        aria-hidden={collapsed}
+        inert={collapsed}
+      >
+        <div className="min-h-0 overflow-hidden">{children}</div>
+      </div>
     </>
   );
 }
