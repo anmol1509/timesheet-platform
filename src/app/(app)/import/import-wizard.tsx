@@ -419,8 +419,10 @@ const TS_REQUIRED: { key: string; label: string }[] = [
 const TS_OPTIONAL: { key: string; label: string }[] = [
   { key: "sponsor", label: "Sponsor" },
   { key: "client", label: "Client" },
+  { key: "project", label: "Project" },
   { key: "trade", label: "Trade" },
   { key: "rate", label: "Rate" },
+  { key: "payRate", label: "Pay rate (per hour)" },
   { key: "nationality", label: "Nationality" },
 ];
 

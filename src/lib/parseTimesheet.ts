@@ -31,6 +31,10 @@ export type ParsedEntry = {
   nationality?: string | null;
   site: string | null;
   siteId?: string | null;
+  /** Project code or name from the sheet's Project column, when it has one. */
+  projectName?: string | null;
+  /** The worker's own hourly pay rate (not the billing Rate), when the sheet has a Pay Rate column. */
+  payRate?: number | null;
   trade: string;
   rate: number;
   dailyHours: DailyHourCell[];
@@ -182,6 +186,8 @@ type ColumnMap = {
   nationality: number | null;
   client: number | null;
   site: number | null;
+  project: number | null;
+  payRate: number | null;
   trade: number | null;
   rate: number | null;
   total: number | null;
@@ -200,6 +206,9 @@ const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["nationality", /^nationality$/i],
   ["client", /client\s*name/i],
   ["site", /^site$/i],
+  ["project", /^project(\s*(code|name))?$/i],
+  // The worker's own pay per hour, for payroll. Deliberately not "Rate", which is what the client is billed.
+  ["payRate", /^(pay\s*rate(\s*\/?\s*(hr|hour))?|hourly\s*pay(\s*rate)?)$/i],
   ["trade", /^trade$/i],
   // The billing rate column is labeled "Rate" or "Sale Rate" depending on
   // the sheet. Matched as an exact phrase so it never picks up "Purchase
@@ -219,7 +228,7 @@ const normHeader = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 function emptyColMap(): ColumnMap {
   return {
-    idNo: null, name: null, supplier: null, sponsor: null, nationality: null, client: null, site: null,
+    idNo: null, name: null, supplier: null, sponsor: null, nationality: null, client: null, site: null, project: null, payRate: null,
     trade: null, rate: null, total: null, absentCount: null, absentDeduction: null, invoiceValue: null,
   };
 }
@@ -282,7 +291,7 @@ export async function describeTimesheetWorkbook(buffer: Buffer, overrides: Times
     }
     const colMap = detectColumns(sheet, headerRowNum, overrides);
     const detected: Record<string, string | null> = {};
-    for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "trade", "rate", "nationality"] as const) {
+    for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "project", "trade", "rate", "payRate", "nationality"] as const) {
       detected[key] = colMap[key] ? cellText(headerRow.getCell(colMap[key]!)) || null : null;
     }
     out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: headerRowNum, headers, detected, rows: Math.max(0, sheet.rowCount - headerRowNum - 1) });
@@ -488,6 +497,8 @@ export async function parseConsolidatedWorkbook(
         ? cellText(row.getCell(colMap.client)) || null
         : null;
       const site = colMap.site ? cellText(row.getCell(colMap.site)) || null : null;
+      const projectName = colMap.project ? cellText(row.getCell(colMap.project)) || null : null;
+      const payRate = colMap.payRate ? cellNumber(row.getCell(colMap.payRate)) : null;
       const trade = colMap.trade ? cellText(row.getCell(colMap.trade)) : "";
       const rate = colMap.rate ? cellNumber(row.getCell(colMap.rate)) ?? 0 : 0;
 
@@ -518,6 +529,8 @@ export async function parseConsolidatedWorkbook(
         sponsorName,
         nationality: colMap.nationality ? cellText(row.getCell(colMap.nationality)) || null : null,
         site,
+        projectName,
+        payRate: payRate != null && payRate > 0 ? payRate : null,
         trade: trade || "(unspecified)",
         rate,
         dailyHours,

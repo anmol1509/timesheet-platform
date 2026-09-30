@@ -17,6 +17,9 @@ type UploadStats = {
   clientsCreated: number;
   subsidiariesLinked?: number;
   attendanceCreated?: number;
+  projectsNotFound?: string[];
+  workersLinkedToProject?: number;
+  payRatesSet?: number;
   attendanceConflicts?: number;
   attendanceLocked?: number;
   attendanceUnrecognised?: number;
@@ -152,6 +155,17 @@ export function UploadForm() {
             </li>
             {(result.stats.attendanceCreated ?? 0) > 0 && (
               <li>{result.stats.attendanceCreated} attendance days recorded from the daily hours</li>
+            )}
+            {(result.stats.workersLinkedToProject ?? 0) > 0 && (
+              <li>{result.stats.workersLinkedToProject} workers linked to their project</li>
+            )}
+            {(result.stats.payRatesSet ?? 0) > 0 && (
+              <li>{result.stats.payRatesSet} workers given an hourly pay rate for payroll</li>
+            )}
+            {(result.stats.projectsNotFound ?? []).length > 0 && (
+              <li className="text-[var(--warning)]">
+                Projects not found: {(result.stats.projectsNotFound ?? []).join(", ")} &mdash; those rows weren&rsquo;t linked to a project
+              </li>
             )}
             {((result.stats.attendanceConflicts ?? 0) > 0 || (result.stats.attendanceLocked ?? 0) > 0) && (
               <li className="text-[var(--warning)]">

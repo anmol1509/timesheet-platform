@@ -29,6 +29,12 @@ export type ImportStats = {
   /** Workers whose Nationality cell wasn't a country (e.g. "Asian"), so none was saved. */
   nationalityNotSaved?: number;
   nationalityNotSavedValues?: string[];
+  /** Project names in the sheet that match no project, so those rows weren't linked. */
+  projectsNotFound?: string[];
+  /** Workers given an hourly pay rate from the sheet's Pay Rate column. */
+  payRatesSet?: number;
+  /** Workers linked to a project from the sheet's Project column. */
+  workersLinkedToProject?: number;
 };
 
 function normalizeKey(name: string) {
@@ -101,6 +107,15 @@ export async function importParsedMonths(
   const canonTrade = await loadTradeCanon(db, branchId);
   for (const m of months) for (const e of m.entries) e.trade = canonTrade(e.trade);
 
+  // Projects the sheet may name, by code or name, within this branch.
+  const branchProjects = (await db.project.findMany({ where: { branchId }, select: { id: true, code: true, name: true } }));
+  const projectByKey = new Map<string, string>();
+  for (const p of branchProjects) { projectByKey.set(p.name.trim().toLowerCase(), p.id); projectByKey.set(p.code.trim().toLowerCase(), p.id); }
+  const projectsNotFound = new Set<string>();
+  let payRatesSet = 0;
+  const payRateGiven = new Set<string>();
+  let linkedToProject = 0;
+
   const supplierByKey = new Map(
     existingSuppliers.map((s) => [normalizeKey(s.name), s])
   );
@@ -111,7 +126,7 @@ export async function importParsedMonths(
     (
       await db.employee.findMany({
         where: { branchId, employeeIdNo: { in: uploadedIds } },
-        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true },
+        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true, projectId: true, hourlyRate: true },
       })
     ).map((e) => [e.employeeIdNo, e])
   );
@@ -192,6 +207,13 @@ export async function importParsedMonths(
         clientId = client.id;
       }
 
+      let sheetProjectId: string | null = null;
+      if (entry.projectName) {
+        sheetProjectId = projectByKey.get(entry.projectName.trim().toLowerCase()) ?? null;
+        if (!sheetProjectId && projectsNotFound.size < 10) projectsNotFound.add(entry.projectName.trim());
+      }
+      const entryProjectId = projectId ?? sheetProjectId;
+
       const existing = await db.timesheetEntry.findUnique({
         where: {
           month_supplierId_employeeIdNo_trade: {
@@ -237,7 +259,7 @@ export async function importParsedMonths(
           branchId,
           supplierId: supplier.id,
           clientId,
-          projectId,
+          projectId: entryProjectId,
         },
         update: {
           employeeName: entry.employeeName,
@@ -252,7 +274,7 @@ export async function importParsedMonths(
           // Only touch projectId/siteId when this import explicitly carries
           // one (manual entry) — a plain Excel re-upload must not clobber a
           // project/site tag set on a prior pass for the same row.
-          ...(projectId ? { projectId } : {}),
+          ...(entryProjectId ? { projectId: entryProjectId } : {}),
           ...(entry.siteId ? { siteId: entry.siteId } : {}),
           // Preserve any manually-entered absent deduction from a prior
           // review unless the recomputed absent count changed.
@@ -277,6 +299,13 @@ export async function importParsedMonths(
       // detail people correct by hand, and a re-upload must not undo that.
       const fillSponsor = sponsorId && !known?.sponsorSupplierId ? { sponsorSupplierId: sponsorId } : {};
       const fillNationality = nationality && !known?.nationality ? { nationality } : {};
+      // Linked to a project means deployed, so a worker the sheet puts on a
+      // project is linked to it — but only when they aren't on one already.
+      const fillProject = sheetProjectId && !known?.projectId ? { projectId: sheetProjectId } : {};
+      const needsPay = !!entry.payRate && !Number(known?.hourlyRate ?? 0) && !payRateGiven.has(entry.employeeIdNo);
+      const fillPay = needsPay ? { hourlyRate: entry.payRate } : {};
+      if (sheetProjectId && !known?.projectId) linkedToProject++;
+      if (needsPay) { payRatesSet++; payRateGiven.add(entry.employeeIdNo); }
       const employeeRecord = await db.employee.upsert({
         where: { employeeIdNo: entry.employeeIdNo },
         create: {
@@ -288,6 +317,8 @@ export async function importParsedMonths(
           status: "IDLE", // on the books; mobilising them is a separate step
           ...fillSponsor,
           ...fillNationality,
+          ...fillProject,
+          ...fillPay,
         },
         update: {
           name: entry.employeeName,
@@ -295,12 +326,14 @@ export async function importParsedMonths(
           supplierId: supplier.id,
           ...fillSponsor,
           ...fillNationality,
+          ...fillProject,
+          ...fillPay,
         },
       });
       if (opts.userId) {
         await writeAttendanceFromEntry(
           db,
-          { employeeId: employeeRecord.id, supplierId: supplier.id, branchId, markedById: opts.userId, days: entry.dailyHours },
+          { employeeId: employeeRecord.id, supplierId: supplier.id, branchId, markedById: opts.userId, projectId: entryProjectId ?? known?.projectId ?? employeeRecord.projectId ?? null, days: entry.dailyHours },
           attendance,
         );
       }
@@ -309,6 +342,8 @@ export async function importParsedMonths(
         employeeIdNo: entry.employeeIdNo,
         sponsorSupplierId: known?.sponsorSupplierId ?? sponsorId,
         nationality: known?.nationality ?? nationality ?? null,
+        projectId: known?.projectId ?? sheetProjectId,
+        hourlyRate: known?.hourlyRate ?? null,
       });
     }
 
@@ -352,6 +387,9 @@ export async function importParsedMonths(
     stats.nationalityNotSaved = skippedNationality;
     stats.nationalityNotSavedValues = [...skippedNationalityValues];
   }
+  if (projectsNotFound.size > 0) stats.projectsNotFound = [...projectsNotFound];
+  if (payRatesSet > 0) stats.payRatesSet = payRatesSet;
+  if (linkedToProject > 0) stats.workersLinkedToProject = linkedToProject;
   if (opts.userId) {
     stats.attendanceCreated = attendance.attendanceCreated;
     stats.attendanceConflicts = attendance.attendanceConflicts;

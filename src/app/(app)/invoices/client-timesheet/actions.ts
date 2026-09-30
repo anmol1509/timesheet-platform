@@ -158,7 +158,7 @@ export async function submitManualEntryAction(
     branchId,
   });
 
-  await importParsedMonths([parsedMonth], upload.id, branchId, projectId);
+  await importParsedMonths([parsedMonth], upload.id, branchId, projectId, { userId: user.id });
 
   revalidatePath("/upload");
   revalidatePath("/history");

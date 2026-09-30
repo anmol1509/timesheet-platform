@@ -73,6 +73,28 @@ export async function applyTimesheets(
       detail: `${(stats.nationalityNotSavedValues ?? []).join(", ")} — not saved. Use the country, e.g. India.`,
     });
   }
+  if ((stats.projectsNotFound ?? []).length > 0) {
+    notes.push({
+      tone: "warn",
+      title: "Some projects in the sheet don't exist",
+      detail: `${(stats.projectsNotFound ?? []).join(", ")} — those rows weren't linked to a project. Create the project first, or match its code or name exactly, then re-upload.`,
+    });
+  }
+  if ((stats.workersLinkedToProject ?? 0) > 0) {
+    notes.push({ tone: "info", title: `${stats.workersLinkedToProject} workers linked to their project`, detail: "From the Project column. A worker already on a project keeps it." });
+  }
+  if ((stats.payRatesSet ?? 0) > 0) {
+    notes.push({ tone: "info", title: `${stats.payRatesSet} workers given an hourly pay rate`, detail: "From the Pay Rate column, for payroll. A rate already on file is never replaced." });
+  }
+  const months = parsed.months.map((m) => m.month);
+  const drafts = await ctx.db.payrollRun.findMany({ where: { branchId: ctx.branchId, month: { in: months }, status: "DRAFT" }, select: { month: true } });
+  if (drafts.length > 0) {
+    notes.push({
+      tone: "info",
+      title: `Payroll drafts for ${[...new Set(drafts.map((d) => d.month))].join(", ")} need recalculating`,
+      detail: "A draft run keeps the figures it had when it was built. Open it on the Payroll page and press Recalculate to pick up this timesheet and its attendance.",
+    });
+  }
   if (stats.rowsSkipped > stats.skippedRowDetails.length) {
     notes.push({ tone: "info", title: `${stats.rowsSkipped - stats.skippedRowDetails.length} rows left unchanged`, detail: "Timesheets that are already locked (invoiced) are never overwritten." });
   }

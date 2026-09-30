@@ -92,16 +92,26 @@ async function buildTimesheetTemplate(wb: ExcelJS.Workbook, when: Date): Promise
   const days = new Date(year, month + 1, 0).getDate();
   const name = `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month]} ${String(year).slice(2)}`;
   const ws = wb.addWorksheet(name);
-  const lead = ["S. N.", "I. D. No", "EMPLOYEE NAME", "Nationality", "Sponsor", "Main Supplier", "Client Name", "Site", "TRADE", "Rate", "TOTAL"];
+  const lead = ["S. N.", "I. D. No", "EMPLOYEE NAME", "Nationality", "Sponsor", "Main Supplier", "Client Name", "Site", "Project", "TRADE", "Rate", "Pay Rate", "TOTAL"];
   const trailing = ["No. Of Absent", "Absent Deduction", "Invoice Value"];
   const head = ws.addRow([...lead, ...Array.from({ length: days }, () => ""), ...trailing]);
   const dates = ws.addRow([...lead.map(() => ""), ...Array.from({ length: days }, (_, d) => new Date(Date.UTC(year, month, d + 1))), ...trailing.map(() => "")]);
   head.font = { bold: true };
   head.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDEBFB" } }; });
   dates.eachCell((c, col) => { if (col > lead.length && col <= lead.length + days) { c.numFmt = "d"; c.font = { bold: true }; c.alignment = { horizontal: "center" }; } });
-  ws.getColumn(3).width = 26; ws.getColumn(5).width = 24; ws.getColumn(6).width = 24; ws.getColumn(7).width = 22;
+  ws.getColumn(8).width = 18; ws.getColumn(9).width = 16; ws.getColumn(3).width = 26; ws.getColumn(5).width = 24; ws.getColumn(6).width = 24; ws.getColumn(7).width = 22;
   for (let c = lead.length + 1; c <= lead.length + days; c++) ws.getColumn(c).width = 5;
   ws.views = [{ state: "frozen", xSplit: 3, ySplit: 2 }];
+
+  // A filled-in copy showing each kind of day; ignored by the importer (its name isn't a month).
+  const ex = wb.addWorksheet("Example");
+  ex.addRow([...lead, ...Array.from({ length: days }, (_, d) => d + 1), ...trailing]).font = { bold: true };
+  const sample = (n: number, id: string, name: string, nat: string, sponsor: string, supplier: string, client: string, site: string, project: string, trade: string, rate: number, pay: number, day: (d: number) => string | number) => ex.addRow([n, id, name, nat, sponsor, supplier, client, site, project, trade, rate, pay, "", ...Array.from({ length: days }, (_, d) => day(d + 1)), "", "", ""]);
+  const weekday = (d: number) => new Date(Date.UTC(year, month, d)).getUTCDay();
+  sample(1, "EMP-001", "Ravi Kumar", "India", "", "Your Company", "Client A", "Tower 1", "PRJ-001", "Carpenter", 12, 8, (d) => (weekday(d) === 5 ? "OFF" : d === 10 ? "A" : 10));
+  sample(2, "EMP-002", "Sunil Thapa", "Nepal", "", "Your Company", "Client A", "Tower 1", "PRJ-001", "Painter", 11, 7.5, (d) => (weekday(d) === 5 ? "OFF" : d === 4 ? "L" : d === 20 ? "H" : 9));
+  ex.getColumn(3).width = 22; ex.getColumn(6).width = 20;
+  ex.properties.tabColor = { argb: "FF9CA3AF" };
 
   const notes = wb.addWorksheet("Notes");
   notes.addRow(["How to fill this in"]).font = { bold: true };
@@ -110,6 +120,11 @@ async function buildTimesheetTemplate(wb: ExcelJS.Workbook, when: Date): Promise
     "One row per worker. I. D. No, EMPLOYEE NAME and Main Supplier are needed; the rest is optional.",
     "In each day: the hours worked (10), A for absent, L / SL / SICK for leave, H for holiday, OFF for the weekly off.",
     "Sponsor is the company holding the worker's visa, if different from the Main Supplier.",
+    "Project: the project's code or name exactly as it appears under Projects. It links the worker to that project (which marks them deployed) and puts their attendance on it. Leave blank to skip.",
+    "Rate is what the client is billed per hour. Pay Rate is what the worker is paid per hour, used by payroll for hourly companies; it is only filled in where the worker has no pay rate yet.",
+    "Every day you fill in also becomes an Attendance record (hours = present, A = absent, L = leave, H = holiday, OFF = weekly off). Days that already have attendance are left alone.",
+    "Overtime and salaried (basic) pay are not set here: mark overtime under Attendance, and set basic salary on the worker or in the Workers import.",
+    "After uploading, open the month's payroll draft and press Recalculate to pick the new hours up.",
     "Your own file doesn't have to look like this — the importer finds your columns — this is just the simplest layout.",
   ]) notes.addRow([line]);
   notes.getColumn(1).width = 120;

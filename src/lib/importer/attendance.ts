@@ -61,6 +61,8 @@ export async function writeAttendanceFromEntry(
     supplierId: string;
     branchId: string;
     markedById: string;
+    /** The project the sheet put this worker on, so the days belong to it. */
+    projectId?: string | null;
     days: DailyHourCell[];
   },
   stats: AttendanceStats,
@@ -87,7 +89,7 @@ export async function writeAttendanceFromEntry(
 
   const create: {
     id: string; date: Date; status: string; normalHours: number | null; otHours: number | null;
-    markedById: string; employeeId: string; supplierId: string; branchId: string;
+    markedById: string; employeeId: string; supplierId: string; branchId: string; projectId: string | null;
   }[] = [];
   for (const { date, day } of wanted) {
     const prior = have.get(date);
@@ -106,6 +108,7 @@ export async function writeAttendanceFromEntry(
       employeeId: args.employeeId,
       supplierId: args.supplierId,
       branchId: args.branchId,
+      projectId: args.projectId ?? null,
     });
   }
   if (create.length > 0) {
