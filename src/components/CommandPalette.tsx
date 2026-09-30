@@ -166,7 +166,8 @@ export function CommandPalette({
         open={open}
         onOpenChange={setOpen}
         label="Command palette"
-        className="rx-content fixed top-[12%] left-1/2 z-50 w-[calc(100vw-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl border border-default bg-surface shadow-modal"
+        contentClassName="rx-palette-host"
+        className="rx-palette fixed top-[12%] left-1/2 z-50 w-[calc(100vw-2rem)] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl border border-default bg-surface shadow-modal"
         onKeyDown={(e) => {
           if (e.key === "Escape") setOpen(false);
         }}

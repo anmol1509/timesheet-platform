@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
 import { Banknote, CalendarCheck, Check, CheckCheck, ChevronRight, Clock, ExternalLink, FileSpreadsheet, Hourglass, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -179,10 +180,11 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
             </div>
             {bulkMsg && <p role="status" className="border-b border-default px-3 py-2 text-xs text-secondary">{bulkMsg}</p>}
             <ul className="max-h-[70vh] divide-y divide-[var(--border)] overflow-y-auto">
+              <AnimatePresence initial={false}>
               {visible.map((i) => {
                 const isActive = active?.key === i.key;
                 return (
-                  <li key={i.key} className={cn("relative flex items-start gap-3 px-3 py-3 transition", isActive ? "bg-brand-soft" : "hover:bg-surface-subtle")}>
+                  <m.li key={i.key} layout="position" exit={{ opacity: 0, x: 24, height: 0, paddingTop: 0, paddingBottom: 0 }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} className={cn("relative flex items-start gap-3 overflow-hidden px-3 py-3 transition", isActive ? "bg-brand-soft" : "hover:bg-surface-subtle")}>
                     {isActive && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-[var(--brand-primary)]" aria-hidden />}
                     <span className="pt-2.5"><Checkbox checked={checked.has(i.key)} onCheckedChange={(c) => setChecked((s) => { const n = new Set(s); if (c) n.add(i.key); else n.delete(i.key); return n; })} ariaLabel={`Select ${i.title}`} /></span>
                     <button type="button" onClick={() => setActiveKey(i.key)} aria-current={isActive} className="flex min-w-0 flex-1 items-start gap-3 text-left">
@@ -200,9 +202,10 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
                       </span>
                     </button>
                     <ChevronRight className={cn("mt-1 hidden h-4 w-4 shrink-0 lg:block", isActive ? "text-[var(--brand-primary)]" : "text-subtle")} aria-hidden />
-                  </li>
+                  </m.li>
                 );
               })}
+              </AnimatePresence>
             </ul>
           </div>
 

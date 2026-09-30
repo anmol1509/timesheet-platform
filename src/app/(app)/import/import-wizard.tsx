@@ -200,6 +200,8 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
         </p>
       )}
 
+      {/* Keyed on the step so each one eases in rather than swapping abruptly. */}
+      <div key={step} className="step-enter space-y-6">
       {step === "upload" && analysis && (
         <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
           <p className="flex items-center gap-2 text-sm text-primary">
@@ -343,6 +345,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

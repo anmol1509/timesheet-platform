@@ -642,6 +642,18 @@ summary:focus-visible,
   from { opacity: 1; transform: translateX(0) scale(1); }
   to { opacity: 0; transform: translateX(24px) scale(0.98); }
 }
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes palette-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes palette-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
@@ -669,6 +681,11 @@ summary:focus-visible,
 .rx-popover[data-state="closed"] {
   animation: popover-out var(--duration-fast) var(--ease) forwards;
 }
+/* The command palette positions with the translate property, so its motion uses transform only. */
+.rx-palette { animation: palette-in var(--duration) var(--ease); }
+.rx-palette[data-state="closed"] { animation: palette-out var(--duration-fast) var(--ease) forwards; }
+.rx-palette-host[data-state="closed"] { animation: overlay-fade-out var(--duration-fast) var(--ease) forwards; }
+.step-enter { animation: step-in 220ms var(--ease); }
 .toast-leave {
   animation: toast-out 180ms var(--ease) forwards;
 }
@@ -692,6 +709,9 @@ summary:focus-visible,
   .rx-popover,
   .toast-enter,
   .toast-leave,
+  .rx-palette,
+  .rx-palette-host,
+  .step-enter,
   .skeleton {
     animation: none;
   }
