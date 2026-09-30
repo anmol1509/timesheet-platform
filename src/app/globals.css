@@ -626,6 +626,22 @@ summary:focus-visible,
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes overlay-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes content-pop-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
+}
+@keyframes popover-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(24px) scale(0.98); }
+}
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
@@ -642,6 +658,19 @@ summary:focus-visible,
 }
 .toast-enter {
   animation: toast-in var(--duration) var(--ease);
+}
+/* Radix keeps a closing overlay/popover mounted until its exit animation ends. */
+.rx-overlay[data-state="closed"] {
+  animation: overlay-fade-out var(--duration-fast) var(--ease) forwards;
+}
+.rx-content.rx-dialog[data-state="closed"] {
+  animation: content-pop-out var(--duration-fast) var(--ease) forwards;
+}
+.rx-popover[data-state="closed"] {
+  animation: popover-out var(--duration-fast) var(--ease) forwards;
+}
+.toast-leave {
+  animation: toast-out 180ms var(--ease) forwards;
 }
 
 /* Skeleton shimmer used by loading states. */
@@ -662,6 +691,7 @@ summary:focus-visible,
   .rx-content,
   .rx-popover,
   .toast-enter,
+  .toast-leave,
   .skeleton {
     animation: none;
   }

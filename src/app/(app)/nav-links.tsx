@@ -566,7 +566,15 @@ export function NavLinks({
               }}
             >
               <div className="overflow-hidden">
-                <div className="mt-0.5 mb-1 ml-[1.125rem] flex flex-col gap-0.5 border-l border-default pl-3">
+                <div
+                  className="mt-0.5 mb-1 ml-[1.125rem] flex flex-col gap-0.5 border-l border-default pl-3"
+                  style={{
+                    opacity: open ? 1 : 0,
+                    transform: open ? "translateY(0)" : "translateY(-4px)",
+                    transition: "opacity var(--duration) var(--ease), transform var(--duration) var(--ease)",
+                  }}
+                  inert={!open}
+                >
                   {entry.children.map((child) => renderLeaf(child, 1))}
                 </div>
               </div>
