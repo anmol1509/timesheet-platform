@@ -7,8 +7,13 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReportView, type TileSpec } from "@/components/import/report";
 import { cn } from "@/lib/cn";
 import { NOT_USED } from "@/lib/importer/columnKeys";
+import { CountrySelect } from "@/components/ui/CountrySelect";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { PhoneField } from "@/components/ui/PhoneField";
+import { Select } from "@/components/ui/Select";
+import { COUNTRIES } from "@/lib/countries";
 import { TARGETS } from "@/lib/importer/targets";
-import type { Fix, Fixable, ImportKind } from "@/lib/importer/types";
+import type { Fix, Fixable, ImportKind, NewSupplier, SupplierDecision } from "@/lib/importer/types";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
@@ -68,6 +73,8 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   const [aliases, setAliases] = useState<Record<string, string>>({});
   /** Corrections typed in on the review screen (rates, hours, nationalities); sent with every preview and the final run. */
   const [fixes, setFixes] = useState<Fix[]>([]);
+  /** What to do with each supplier name that isn't on record: nothing is added until the person chooses. */
+  const [supplierDecisions, setSupplierDecisions] = useState<Record<string, SupplierDecision>>({});
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   /** The column choices the current preview was made with; the review is only reachable while they still match. */
   const [previewedKey, setPreviewedKey] = useState<string | null>(null);
@@ -100,6 +107,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       setOverrides({});
       setAliases({});
       setFixes([]);
+      setSupplierDecisions({});
       setCopilot(null);
       setAnalysis(res.analysis);
       if (res.analysis.kind !== "TIMESHEETS") setColumns(res.analysis.columns);
@@ -141,15 +149,15 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     });
   }
 
-  function preview(fixList: Fix[] = fixes) {
+  function preview(fixList: Fix[] = fixes, decisions: Record<string, SupplierDecision> = supplierDecisions) {
     void wrap(async () => {
       const mapping =
         analysis?.kind === "TIMESHEETS"
-          ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList }
-          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList };
+          ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList, supplierDecisions: decisions }
+          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
-      setPreviewedKey(keyFor(fixList));
+      setPreviewedKey(keyFor(fixList, decisions));
       setStep("review");
     });
   }
@@ -195,8 +203,9 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
-  const keyFor = (fixList: Fix[]) => JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList });
+  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions) => JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
   const mappingKey = keyFor(fixes);
+  const unresolvedSuppliers = (summary?.newSuppliers ?? []).filter((n) => !supplierDecisions[n.key]).length;
   // Steps can be revisited freely until the import starts; Review only while its preview still matches the choices.
   const locked = step === "running" || step === "done";
   const reachable = (key: Step) =>
@@ -336,6 +345,19 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
             <p className="text-sm font-semibold text-primary">Here&rsquo;s what will happen</p>
             <p className="mt-1 text-xs text-muted">This is a dry run: nothing has been saved. After importing you can undo it for 30 days.</p>
           </div>
+          {(summary.newSuppliers?.length ?? 0) > 0 && (
+            <SupplierDecisions
+              kind={kind}
+              items={summary.newSuppliers!}
+              existing={summary.existingSuppliers ?? []}
+              applied={supplierDecisions}
+              busy={busy}
+              onApply={(next) => {
+                setSupplierDecisions(next);
+                preview(fixes, next);
+              }}
+            />
+          )}
           {(summary.fixables?.length ?? 0) > 0 && (
             <FixPanel
               fixables={summary.fixables!}
@@ -353,7 +375,8 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           <ReportView tiles={tilesFor(kind, summary.counts)} rows={summary.rows} notes={summary.notes} truncated={summary.truncated} />
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("map")} disabled={busy}>Back to columns</button>
-            <button type="button" className="btn btn-primary" onClick={start} disabled={busy || ((summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 0)}>
+            {unresolvedSuppliers > 0 && <p className="text-xs text-[var(--warning)]">Decide on the {unresolvedSuppliers} new supplier{unresolvedSuppliers === 1 ? "" : "s"} above to continue.</p>}
+            <button type="button" className="btn btn-primary" onClick={start} disabled={busy || unresolvedSuppliers > 0 || ((summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 0)}>
               Import {(summary.counts.created ?? 0) + (summary.counts.updated ?? 0)} {target.noun}{(summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 1 ? "" : "s"}
             </button>
           </div>
@@ -485,6 +508,133 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
   );
 }
 
+/** New supplier names in the file. Nothing is added on its own: each is added (optionally renamed), pointed at an existing supplier, or ignored. */
+function SupplierDecisions({ kind, items, existing, applied, busy, onApply }: {
+  kind: ImportKind;
+  items: NewSupplier[];
+  existing: { id: string; name: string }[];
+  applied: Record<string, SupplierDecision>;
+  busy: boolean;
+  onApply: (d: Record<string, SupplierDecision>) => void;
+}) {
+  type Draft = { action: "" | "add" | "existing" | "ignore"; name: string; supplierId: string };
+  const [draft, setDraft] = useState<Record<string, Draft>>(() =>
+    Object.fromEntries(items.map((n) => {
+      const a = applied[n.key];
+      return [n.key, a ? { action: a.action, name: a.action === "add" ? (a.name ?? n.name) : n.name, supplierId: a.action === "existing" ? a.supplierId : "" } : { action: "", name: n.name, supplierId: "" }];
+    })),
+  );
+  const set = (key: string, patch: Partial<Draft>) => setDraft((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  const ready = items.every((n) => {
+    const d = draft[n.key];
+    return d && (d.action === "ignore" || (d.action === "add" && d.name.trim()) || (d.action === "existing" && d.supplierId));
+  });
+  const ignoreNote = kind === "TIMESHEETS" ? "Rows for this supplier are left out." : "Workers are imported without this supplier.";
+  return (
+    <div className="card space-y-3 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-primary">New suppliers in this file &middot; {items.length}</p>
+          <p className="mt-0.5 text-xs text-muted">These names aren&rsquo;t in your suppliers yet. Nothing is added unless you choose to &mdash; add it (you can fix the name), use one you already have, or ignore it.</p>
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, v.action ? v : { ...v, action: "add" }])))}>
+          Add all as new
+        </button>
+      </div>
+      <ul className="divide-y divide-[var(--border)] rounded-lg border border-default">
+        {items.map((n) => {
+          const d = draft[n.key] ?? { action: "" as const, name: n.name, supplierId: "" };
+          return (
+            <li key={n.key} className="space-y-2 px-3 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-primary">
+                  <span className="font-medium">{n.name}</span>
+                  <span className="text-muted"> &mdash; {n.rows} row{n.rows === 1 ? "" : "s"}{n.role === "sponsor" ? ", as sponsor" : n.role === "both" ? ", as supplier and sponsor" : ""}</span>
+                </p>
+                <div className="inline-flex overflow-hidden rounded-lg border border-default text-xs font-medium" role="group" aria-label={`What to do with ${n.name}`}>
+                  {([["add", "Add"], ["existing", "Use existing"], ["ignore", "Ignore"]] as const).map(([action, label]) => (
+                    <button key={action} type="button" aria-pressed={d.action === action} onClick={() => set(n.key, { action })} className={cn("px-3 py-1.5 transition", d.action === action ? "bg-[var(--brand-primary)] text-white" : "bg-surface text-secondary hover:bg-surface-hover")}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {d.action === "add" && (
+                <label className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                  Name to add
+                  <input value={d.name} onChange={(e) => set(n.key, { name: e.target.value })} className="input w-72 px-2 py-1.5 text-sm" aria-label={`Name to add for ${n.name}`} />
+                </label>
+              )}
+              {d.action === "existing" && (
+                <div className="w-80">
+                  <Select value={d.supplierId} onChange={(v) => set(n.key, { supplierId: v })} placeholder="Choose a supplier…" searchPlaceholder="Search suppliers…" options={existing.map((x) => ({ value: x.id, label: x.name }))} />
+                </div>
+              )}
+              {d.action === "ignore" && <p className="text-xs text-muted">{ignoreNote}</p>}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex items-center justify-end gap-3">
+        {!ready && <span className="text-xs text-muted">Choose an option for each supplier.</span>}
+        <button
+          type="button"
+          disabled={busy || !ready}
+          className="btn btn-primary"
+          onClick={() =>
+            onApply(Object.fromEntries(items.map((n) => {
+              const d = draft[n.key] ?? { action: "" as const, name: n.name, supplierId: "" };
+              const decision: SupplierDecision = d.action === "add" ? { action: "add", name: d.name.trim() } : d.action === "existing" ? { action: "existing", supplierId: d.supplierId } : { action: "ignore" };
+              return [n.key, decision];
+            })))
+          }
+        >
+          {busy ? "Checking…" : "Apply and re-check"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The right control for a correction: a dropdown for a choice, a country-code picker for a phone number, a date picker for a date. */
+function FixInput({ f, value, onChange, label }: { f: Fixable; value: string; onChange: (v: string) => void; label: string }) {
+  const kind = f.type === "nationality" ? "country" : f.type === "field" ? (f.kind ?? "text") : "number";
+  if (kind === "country") {
+    return <div className="w-56"><CountrySelect value={value} onChange={onChange} placeholder="Choose country…" /></div>;
+  }
+  if (kind === "gender") {
+    return (
+      <div className="w-40">
+        <Select value={value} onChange={onChange} searchable={false} placeholder="Choose…" options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+      </div>
+    );
+  }
+  if (kind === "phone") {
+    return (
+      <div className="w-72">
+        <PhoneField
+          value={value}
+          // A country code with no number isn't an answer yet.
+          onChange={(v) => onChange(COUNTRIES.some((c) => c.dial === v) ? "" : v)}
+        />
+      </div>
+    );
+  }
+  if (kind === "date") {
+    return <div className="w-44"><DatePicker value={value || null} onChange={onChange} fromYear={1950} toYear={2100} ariaLabel={label} /></div>;
+  }
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={kind === "number" ? (f.type === "hours" ? "Hours" : "Rate") : "Correct value"}
+      inputMode={kind === "number" ? "decimal" : "text"}
+      aria-label={label}
+      className="input w-32 px-2 py-1.5"
+    />
+  );
+}
+
 /** Problems in the file that can be corrected here, before anything is imported. Typing a value and applying re-runs the preview, so a fixed problem disappears. */
 function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: boolean; onApply: (fixes: Fix[]) => void }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -492,10 +642,9 @@ function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: bool
   const groups: { type: Fixable["type"]; title: string; hint: string; placeholder: string }[] = [
     { type: "rate", title: "Rate is 0", hint: "Enter the hourly rate to bill for this worker.", placeholder: "Rate" },
     { type: "hours", title: "Unusual hours", hint: "Enter the hours worked that day (0 to leave the day empty).", placeholder: "Hours" },
-    { type: "nationality", title: "Nationality is not a country", hint: "Enter the country, e.g. India.", placeholder: "Country" },
-    { type: "field", title: "Details to correct", hint: "Dates are day/month/year, e.g. 25/12/2026. Gender is Male or Female.", placeholder: "Correct value" },
+    { type: "nationality", title: "Nationality is not a country", hint: "Choose the country.", placeholder: "Country" },
+    { type: "field", title: "Details to correct", hint: "Pick or type the right value for each.", placeholder: "Correct value" },
   ];
-  const holder = (f: Fixable) => (f.kind === "date" ? "dd/mm/yyyy" : f.kind === "country" ? "Country" : f.kind === "gender" ? "Male / Female" : "Correct value");
   const entered = fixables.filter((f) => (draft[idOf(f)] ?? "").trim() !== "");
   return (
     <div className="card space-y-4 p-4">
@@ -517,13 +666,11 @@ function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: bool
                     <span className="font-medium">{f.name}</span> <span className="text-subtle">{f.id}</span>
                     <span className="text-muted"> &mdash; {f.type === "hours" ? `${f.date}: ${f.current} hours` : f.type === "nationality" ? `“${f.current}”` : f.type === "field" ? `${f.label}: “${f.current}” ${f.reason}` : f.monthLabel}</span>
                   </span>
-                  <input
+                  <FixInput
+                    f={f}
                     value={draft[idOf(f)] ?? ""}
-                    onChange={(e) => setDraft((prev) => ({ ...prev, [idOf(f)]: e.target.value }))}
-                    placeholder={g.type === "field" ? holder(f) : g.placeholder}
-                    inputMode={g.type === "rate" || g.type === "hours" ? "decimal" : "text"}
-                    aria-label={g.type === "field" ? `${f.label} for ${f.name}` : `${g.placeholder} for ${f.name}`}
-                    className="input w-32 px-2 py-1.5"
+                    onChange={(v) => setDraft((prev) => ({ ...prev, [idOf(f)]: v }))}
+                    label={g.type === "field" ? `${f.label} for ${f.name}` : `${g.placeholder} for ${f.name}`}
                   />
                 </li>
               ))}

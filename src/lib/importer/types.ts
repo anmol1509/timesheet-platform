@@ -33,7 +33,7 @@ export type Fixable = {
   field?: string;
   label?: string;
   reason?: string;
-  kind?: "country" | "gender" | "date" | "text";
+  kind?: "country" | "gender" | "date" | "text" | "phone";
   /** The worker's employee code, as in the sheet. */
   id: string;
   name: string;
@@ -49,6 +49,10 @@ export type Fixable = {
 /** A correction the person typed in: replaces the value from the sheet when the import runs. */
 export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: string; field?: string; value: string };
 
+/** What to do with a supplier name in the file that isn't on record yet. Nothing is added unless the person chose to. */
+export type SupplierDecision = { action: "add"; name?: string } | { action: "existing"; supplierId: string } | { action: "ignore" };
+export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number };
+
 export type ApplyResult = {
   rows: RowReport[];
   counts: Record<string, number>;
@@ -56,6 +60,10 @@ export type ApplyResult = {
   notes: ImportNote[];
   /** Problems that can be corrected on the review screen before importing. */
   fixables?: Fixable[];
+  /** Supplier names in the file that aren't on record; each needs a decision before importing. */
+  newSuppliers?: NewSupplier[];
+  /** The suppliers already on record, to pick from. */
+  existingSuppliers?: { id: string; name: string }[];
 };
 
 export type ApplyCtx = {

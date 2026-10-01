@@ -3,7 +3,7 @@ import { normalizeNationality } from "@/lib/nationality";
 import { loadTradeCanon } from "@/lib/canon";
 import { looseMatch } from "@/lib/looseName";
 import { WORKER_FIX_FIELDS, checkWorkerFix, dateProblem, workerProblems } from "../workerChecks";
-import type { ApplyCtx, ApplyResult, Fix, Fixable, ImportNote, MappedRow, RowReport } from "../types";
+import type { ApplyCtx, ApplyResult, Fix, Fixable, ImportNote, MappedRow, NewSupplier, RowReport, SupplierDecision } from "../types";
 import { auditor, clean, parseLooseDate } from "./shared";
 
 const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber"] as const;
@@ -28,7 +28,7 @@ function gender(v: string): "MALE" | "FEMALE" | null {
 /** Import workers. A worker is identified by ID; a row for an ID that
  * another company already holds is refused (IDs are unique platform-wide, so
  * an update would rewrite their worker). Blank cells never clear saved values. */
-export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix[] = []): Promise<ApplyResult> {
+export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix[] = [], decisions: Record<string, SupplierDecision> = {}): Promise<ApplyResult> {
   const { db, branchId } = ctx;
   const audit = auditor(ctx);
   const rows: RowReport[] = [];
@@ -92,31 +92,50 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
   const suppliers = await db.supplier.findMany({ where: { branchId } });
   const supplierByKey = new Map(suppliers.map((s) => [nameKey(s.name), s]));
   const codes = new Set<string | null>(suppliers.map((s) => s.code));
-  const supplierNotes = new Set<string>();
-  const supplierFor = async (name: string, notes: ImportNote[], role: string) => {
+  // A supplier name that isn't on record is never added on its own: it is listed for the person to add, rename,
+  // point at an existing supplier, or ignore. Until they choose, the worker is imported without it.
+  const newSuppliers = new Map<string, NewSupplier>();
+  const noteNew = (name: string, role: "supplier" | "sponsor", key: string) => {
+    const n = newSuppliers.get(key);
+    if (n) {
+      n.rows++;
+      if (n.role !== role) n.role = "both";
+    } else newSuppliers.set(key, { key, name, role, rows: 1 });
+  };
+  const supplierFor = async (name: string, notes: ImportNote[], role: "supplier" | "sponsor") => {
     const key = nameKey(name);
-    let s = supplierByKey.get(key);
-    if (!s) {
-      // "Prime Build Workforce LLC" is the "Prime Build Workforce" already on file: use it rather than adding a second copy.
-      const near = looseMatch(name, [...supplierByKey.values()]);
-      if (near) {
-        supplierByKey.set(key, near);
-        notes.push({ tone: "info", title: `"${name}" matched to your supplier "${near.name}"`, detail: "Same company apart from LLC / Co / Ltd. If they are different companies, rename one of them first." });
-        return near;
-      }
+    const found = supplierByKey.get(key);
+    if (found) return found;
+    // "Prime Build Workforce LLC" is the "Prime Build Workforce" already on file.
+    const near = looseMatch(name, [...supplierByKey.values()]);
+    if (near) {
+      supplierByKey.set(key, near);
+      notes.push({ tone: "info", title: `"${name}" matched to your supplier "${near.name}"`, detail: "Same company apart from LLC / Co / Ltd. If they are different companies, rename one of them first." });
+      return near;
     }
-    if (!s) {
-      const code = pickCode(name, codes);
-      s = await db.supplier.create({ data: { name, code, branchId } });
-      supplierByKey.set(key, s);
-      codes.add(code);
-      counts.suppliersCreated++;
-      await audit({ entityType: "SUPPLIER", entityId: s.id, action: "CREATE", after: { name, code, branchId }, userId: ctx.user.id, userName: ctx.user.name, branchId });
+    noteNew(name, role, key);
+    const d = decisions[key];
+    if (!d || d.action === "ignore") return null;
+    if (d.action === "existing") {
+      const chosen = suppliers.find((x) => x.id === d.supplierId);
+      if (chosen) supplierByKey.set(key, chosen);
+      return chosen ?? null;
     }
-    if (!supplierNotes.has(key + role)) {
-      supplierNotes.add(key + role);
+    const finalName = clean(d.name) || name;
+    const again = supplierByKey.get(nameKey(finalName)) ?? looseMatch(finalName, [...supplierByKey.values()]);
+    if (again) {
+      supplierByKey.set(key, again);
+      return again;
     }
-    return s;
+    const code = pickCode(finalName, codes);
+    const created = await db.supplier.create({ data: { name: finalName, code, branchId } });
+    supplierByKey.set(key, created);
+    supplierByKey.set(nameKey(finalName), created);
+    codes.add(code);
+    counts.suppliersCreated++;
+    notes.push({ tone: "info", title: `Added supplier "${finalName}"`, detail: "You chose to add it." });
+    await audit({ entityType: "SUPPLIER", entityId: created.id, action: "CREATE", after: { name: finalName, code, branchId }, userId: ctx.user.id, userName: ctx.user.name, branchId });
+    return created;
   };
 
   let done = 0;
@@ -178,15 +197,14 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
       }
       const supplierName = clean(v.supplier);
       if (supplierName) {
-        const before = supplierByKey.has(nameKey(supplierName)) || !!looseMatch(supplierName, [...supplierByKey.values()]);
-        data.supplierId = (await supplierFor(supplierName, notes, "S")).id;
-        if (!before) notes.push({ tone: "info", title: `Added supplier "${supplierName}"`, detail: "It wasn't in your suppliers yet." });
+        const sup = await supplierFor(supplierName, notes, "supplier");
+        if (sup) data.supplierId = sup.id;
+        else notes.push({ tone: "warn", title: `Supplier "${supplierName}" isn't on record`, detail: "Decide what to do with it in the box above. Until then this worker is imported without a supplier." });
       }
       const sponsorName = clean(v.sponsor);
       if (sponsorName) {
-        const before = supplierByKey.has(nameKey(sponsorName)) || !!looseMatch(sponsorName, [...supplierByKey.values()]);
-        data.sponsorSupplierId = (await supplierFor(sponsorName, notes, "P")).id;
-        if (!before) notes.push({ tone: "info", title: `Added sponsor "${sponsorName}"`, detail: "It wasn't in your suppliers yet." });
+        const sp = await supplierFor(sponsorName, notes, "sponsor");
+        if (sp) data.sponsorSupplierId = sp.id;
       }
 
       if (other) {
@@ -218,5 +236,5 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
       fixables.push({ type: "field", id: g.id, name: clean(g.values.name), field: p.field, label: p.label, reason: p.reason, kind: p.kind, current: p.current });
     }
   }
-  return { rows, counts, notes: [], fixables };
+  return { rows, counts, notes: [], fixables, newSuppliers: [...newSuppliers.values()], existingSuppliers: suppliers.slice(0, 300).map((x) => ({ id: x.id, name: x.name })) };
 }

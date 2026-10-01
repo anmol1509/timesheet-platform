@@ -2,7 +2,7 @@ import { computeImportWarnings, parseConsolidatedWorkbook, type TimesheetOverrid
 import { applyFixes, collectFixables } from "../fixes";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import { nameKey } from "@/lib/partyCode";
-import type { ApplyCtx, ApplyResult, Fix, ImportNote, RowReport } from "../types";
+import type { ApplyCtx, ApplyResult, Fix, ImportNote, RowReport, SupplierDecision } from "../types";
 
 /** Import a consolidated timesheet workbook: suppliers, sponsors, clients,
  * workers, the monthly timesheet rows, and the days as attendance. */
@@ -12,6 +12,7 @@ export async function applyTimesheets(
   overrides: TimesheetOverrides = {},
   aliases: Record<string, string> = {},
   fixes: Fix[] = [],
+  supplierDecisions: Record<string, SupplierDecision> = {},
 ): Promise<ApplyResult> {
   const parsed = await parseConsolidatedWorkbook(file.buffer, overrides);
   // Corrections typed in on the review screen replace what the sheet has, then the warnings are worked out again so a fixed problem stops being reported.
@@ -43,6 +44,7 @@ export async function applyTimesheets(
     db: ctx.db,
     userId: ctx.user.id,
     progress: ctx.progress,
+    supplierChoice: { decisions: supplierDecisions },
   });
 
   const rows: RowReport[] = stats.skippedRowDetails.map((r) => ({
@@ -128,6 +130,8 @@ export async function applyTimesheets(
     rows,
     notes,
     fixables: collectFixables(parsed.months),
+    newSuppliers: stats.newSuppliers,
+    existingSuppliers: stats.existingSuppliers,
     counts: {
       created: stats.entriesCreated,
       updated: stats.entriesUpdated,

@@ -6,7 +6,7 @@ import { parseLooseDate } from "@/lib/looseDate";
  * The same rules decide both what gets flagged and whether a correction typed
  * on the review screen is accepted, so a fix can't introduce a new problem.
  */
-export type WorkerProblem = { field: string; label: string; reason: string; kind: "country" | "gender" | "date" | "text"; current: string };
+export type WorkerProblem = { field: string; label: string; reason: string; kind: "country" | "gender" | "date" | "text" | "phone"; current: string };
 
 const DATES: [key: string, label: string][] = [
   ["dateOfBirth", "Date of birth"],
@@ -72,7 +72,7 @@ export function workerProblems(values: Record<string, string>, now = new Date())
   const eid = clean(values.emiratesId);
   if (eid && digits(eid).length !== 15) out.push({ field: "emiratesId", label: "Emirates ID", reason: "should have 15 digits (784-YYYY-NNNNNNN-C)", kind: "text", current: eid });
   const mob = clean(values.mobileNumber);
-  if (mob && (digits(mob).length < 9 || digits(mob).length > 15)) out.push({ field: "mobileNumber", label: "Mobile number", reason: "doesn't look like a phone number", kind: "text", current: mob });
+  if (mob && (digits(mob).length < 9 || digits(mob).length > 15)) out.push({ field: "mobileNumber", label: "Mobile number", reason: "doesn't look like a phone number", kind: "phone", current: mob });
   return out;
 }
 

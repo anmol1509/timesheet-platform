@@ -6,7 +6,7 @@ import { normalizeNationality } from "@/lib/nationality";
 import { loadTradeCanon } from "@/lib/canon";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction } from "@/lib/deductions";
-import type { Db } from "@/lib/importer/types";
+import type { Db, NewSupplier, SupplierDecision } from "@/lib/importer/types";
 import { newAttendanceStats, writeAttendanceFromEntry } from "@/lib/importer/attendance";
 
 export type ImportStats = {
@@ -34,6 +34,9 @@ export type ImportStats = {
   projectsNotFound?: string[];
   /** Workers given an hourly pay rate from the sheet's Pay Rate column. */
   payRatesSet?: number;
+  /** Supplier and sponsor names not on record, needing a decision (only when the importer was given supplierChoice). */
+  newSuppliers?: NewSupplier[];
+  existingSuppliers?: { id: string; name: string }[];
   /** Names in the sheet used as an existing company or client that differs only by LLC / Co / Ltd. */
   nearMatches?: { from: string; to: string }[];
   /** Workers linked to a project from the sheet's Project column. */
@@ -46,6 +49,8 @@ function normalizeKey(name: string) {
 }
 
 export type ImportOptions = {
+  /** When given, a supplier name that isn't on record is never added on its own: it is listed for a decision, and rows wait for one. */
+  supplierChoice?: { decisions: Record<string, SupplierDecision> };
   /** The database (or a transaction, for a dry run). */
   db?: Db;
   /** Who is importing. When given, each worker's days are also written to attendance. */
@@ -139,25 +144,47 @@ export async function importParsedMonths(
   const sponsorVotes = new Map<string, Map<string, number>>();
   const parentsOfOthers = new Set<string>();
   const nearMatches = new Map<string, string>();
-  const findOrCreateSupplier = async (name: string) => {
+  const pendingSuppliers = new Map<string, NewSupplier>();
+  const findOrCreateSupplier = async (name: string, role: "supplier" | "sponsor" = "supplier") => {
     const key = normalizeKey(name);
-    let s = supplierByKey.get(key);
-    if (!s) {
-      const near = looseMatch(name, [...supplierByKey.values()]);
-      if (near) {
-        supplierByKey.set(key, near);
-        nearMatches.set(name.trim(), near.name);
-        return near;
+    const found = supplierByKey.get(key);
+    if (found) return found;
+    const near = looseMatch(name, [...supplierByKey.values()]);
+    if (near) {
+      supplierByKey.set(key, near);
+      nearMatches.set(name.trim(), near.name);
+      return near;
+    }
+    const choice = opts.supplierChoice;
+    if (choice) {
+      // Never added on its own: it waits for the person to add, rename, point at an existing supplier, or ignore it.
+      const p = pendingSuppliers.get(key);
+      if (p) {
+        p.rows++;
+        if (p.role !== role) p.role = "both";
+      } else pendingSuppliers.set(key, { key, name: name.trim(), role, rows: 1 });
+      const d = choice.decisions[key];
+      if (!d || d.action === "ignore") return null;
+      if (d.action === "existing") {
+        const chosen = existingSuppliers.find((x) => x.id === d.supplierId) ?? null;
+        if (chosen) supplierByKey.set(key, chosen);
+        return chosen;
       }
+      const finalName = (d.name ?? "").replace(/\s+/g, " ").trim() || name.trim();
+      const again = supplierByKey.get(normalizeKey(finalName)) ?? looseMatch(finalName, [...supplierByKey.values()]);
+      if (again) {
+        supplierByKey.set(key, again);
+        return again;
+      }
+      name = finalName;
     }
-    if (!s) {
-      s = await db.supplier.create({
-        data: { name: name.trim(), code: await uniqueSupplierCode(name.trim(), branchId, undefined, db), branchId },
-      });
-      supplierByKey.set(key, s);
-      stats.suppliersCreated++;
-    }
-    return s;
+    const created = await db.supplier.create({
+      data: { name: name.trim(), code: await uniqueSupplierCode(name.trim(), branchId, undefined, db), branchId },
+    });
+    supplierByKey.set(key, created);
+    supplierByKey.set(normalizeKey(name), created);
+    stats.suppliersCreated++;
+    return created;
   };
   const clientByKey = new Map(
     existingClients.map((c) => [normalizeKey(c.name), c])
@@ -191,13 +218,19 @@ export async function importParsedMonths(
         continue;
       }
       const supplierKey = normalizeKey(entry.supplierName);
-      const supplier = await findOrCreateSupplier(entry.supplierName);
+      const supplier = await findOrCreateSupplier(entry.supplierName, "supplier");
+      if (!supplier) {
+        // Waiting for a decision on this supplier (or it was ignored): the row isn't imported.
+        stats.rowsSkipped++;
+        stats.skippedRowDetails.push({ sheetName: month.sheetName, row: entryIndex + 1, name: entry.employeeName, idNo: entry.employeeIdNo, reason: `Supplier "${entry.supplierName}" isn't on record — add it, pick an existing one, or ignore it above.` });
+        continue;
+      }
 
       // The sponsor (visa-holding company) is a supplier record too.
       let sponsorId: string | null = null;
       if (entry.sponsorName) {
         const sponsorKey = normalizeKey(entry.sponsorName);
-        sponsorId = (await findOrCreateSupplier(entry.sponsorName)).id;
+        sponsorId = (await findOrCreateSupplier(entry.sponsorName, "sponsor"))?.id ?? null;
         const vote = sponsorKey === supplierKey ? "" : supplierKey;
         if (vote) parentsOfOthers.add(supplierKey);
         const votes = sponsorVotes.get(sponsorKey) ?? new Map<string, number>();
@@ -406,6 +439,10 @@ export async function importParsedMonths(
   if (skippedNationality > 0) {
     stats.nationalityNotSaved = skippedNationality;
     stats.nationalityNotSavedValues = [...skippedNationalityValues];
+  }
+  if (opts.supplierChoice) {
+    stats.newSuppliers = [...pendingSuppliers.values()];
+    stats.existingSuppliers = existingSuppliers.slice(0, 300).map((x) => ({ id: x.id, name: x.name }));
   }
   if (nearMatches.size > 0) stats.nearMatches = [...nearMatches].map(([from, to]) => ({ from, to })).slice(0, 20);
   if (projectsNotFound.size > 0) stats.projectsNotFound = [...projectsNotFound];
