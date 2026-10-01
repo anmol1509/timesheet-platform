@@ -657,9 +657,9 @@ export function EditForm({
                   options={[
                     { value: "ITEMISED", label: "Itemised — basic + allowances" },
                     { value: "FLAT", label: "Flat — one monthly rate" },
-                    // Hourly pay is not offered any more: the rate comes from the worker's trade
-                    // (Known Trade Details). Kept only for a worker already set up that way.
-                    ...(category !== "STAFF" && employee.payStructure === "HOURLY" ? [{ value: "HOURLY", label: "Hourly — paid per hour worked" }] : []),
+                    // Office/corporate staff are never paid hourly — only the site roster is.
+                    // The hourly rate is not typed here: it is the rate on the worker's trade (Known Trade Details).
+                    ...(category === "STAFF" ? [] : [{ value: "HOURLY", label: "Hourly — paid per hour worked" }]),
                   ]}
                 />
               </Field>
@@ -669,9 +669,9 @@ export function EditForm({
                 </Field>
               )}
               {payStructure === "HOURLY" && (
-                <Field label="Hourly rate (AED per normal hour)">
-                  <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
-                </Field>
+                <p className="rounded-lg border border-default bg-surface-subtle px-4 py-2 text-xs text-secondary sm:col-span-2">
+                  Paid per hour worked at the rate on this worker&apos;s trade — set it in Known Trade Details above.
+                </p>
               )}
               {payStructure === "ITEMISED" && (
                 <>

@@ -171,7 +171,7 @@ export function payDataGap(
   type: CompanyPayType | null,
   e: { payStructure: string | null; basicSalary: number; flatMonthlyRate: number; hourlyRate: number }
 ): string | null {
-  if (type === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate";
+  if (type === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate (set a rate on their trade)";
   if (type === "BASIC") {
     if (e.payStructure !== "ITEMISED" && e.payStructure !== "FLAT") return "no monthly pay set up";
     return (e.payStructure === "FLAT" ? e.flatMonthlyRate : e.basicSalary) > 0 ? null : "no basic salary";
