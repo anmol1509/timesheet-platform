@@ -15,7 +15,6 @@ import { UAE_BANKS } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { MaskedInput } from "@/components/ui/MaskedInput";
-import { TRADES } from "@/lib/trades";
 
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
@@ -256,6 +255,9 @@ export function EditForm({
         ))}
       </div>
 
+      {/* Known trades come first on this tab; they own their own forms, so they sit above the main form, not in it. */}
+      <div className={tab === "trade" ? "mb-8 space-y-8" : "hidden"}>{tradesContent}</div>
+
       <form
         onInput={() => {
           if (!dirty) setDirty(true);
@@ -371,6 +373,12 @@ export function EditForm({
                 options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
+            {category === "STAFF" && (
+              <>
+                <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
+                <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
+              </>
+            )}
             <Field label="Date of birth">
               <DatePicker key={`dateOfBirth-${auto.dateOfBirth ?? ""}`} name="dateOfBirth" defaultValue={auto.dateOfBirth ?? toDateInput(employee.dateOfBirth)} />
             </Field>
@@ -630,27 +638,6 @@ export function EditForm({
       </div>
 
       <div className={tab === "trade" ? "space-y-8" : "hidden"}>
-        <section>
-          <h2 className="mb-1 text-sm font-semibold text-primary">{category === "STAFF" ? "Designation" : "Trade"}</h2>
-          <p className="mb-3 text-xs text-muted">Choose the trade first, then set what this worker is paid for it.</p>
-          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
-            {category === "STAFF" ? (
-              <>
-                <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
-                <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
-              </>
-            ) : (
-              <Field label="Trade">
-                <Select
-                  name="position"
-                  defaultValue={employee.position || ""}
-                  placeholder="Not set"
-                  options={TRADES.map((t) => ({ value: t, label: t }))}
-                />
-              </Field>
-            )}
-          </div>
-        </section>
         {pay && (
           <section>
             <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
@@ -819,7 +806,6 @@ export function EditForm({
       </form>
 
       {/* Each of these owns its own <form>, so they sit beside the main form rather than in it. */}
-      <div className={tab === "trade" ? "mt-8 space-y-8" : "hidden"}>{tradesContent}</div>
       <div className={tab === "project" ? "mt-8 space-y-8" : "hidden"}>{siteContent}</div>
       <div className={tab === "documents" ? "mt-8 space-y-8" : "hidden"}>{documentsContent}</div>
       <div className={tab === "records" ? "space-y-8" : "hidden"}>

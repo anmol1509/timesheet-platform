@@ -143,10 +143,16 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       nationality: stringOrNull(formData.get("nationality")),
       sponsorName: stringOrNull(formData.get("sponsorName")),
       unifiedNo: stringOrNull(formData.get("unifiedNo")),
-      position: stringOrNull(formData.get("position")),
-      // Office/corporate staff have a designation + department instead of a
-      // trade — mirrored the same way the create flow keeps them in sync.
-      trade: category === "STAFF" ? null : stringOrNull(formData.get("position")),
+      // Site staff's trade comes from Known Trade Details (kept in sync there), so the form
+      // does not carry it; only a form that sends `position` (office staff) changes it.
+      ...(formData.has("position")
+        ? {
+            position: stringOrNull(formData.get("position")),
+            // Office/corporate staff have a designation + department instead of a
+            // trade — mirrored the same way the create flow keeps them in sync.
+            trade: category === "STAFF" ? null : stringOrNull(formData.get("position")),
+          }
+        : {}),
       department: category === "STAFF" ? stringOrNull(formData.get("department")) : null,
       passportNumber: stringOrNull(formData.get("passportNumber")),
       emiratesId: stringOrNull(formData.get("emiratesId")),
@@ -542,8 +548,28 @@ export async function addSkillAction(formData: FormData) {
     create: { employeeId, skillId: skill.id, ...detail },
   });
 
+  await syncTradeFromSkills(employeeId, skill.name);
+
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/trades");
+}
+
+/**
+ * A site worker's trade is their first known trade: it is filled in when they
+ * have none (or one they no longer hold), and moves to another known trade when
+ * theirs is removed. Office staff keep their designation, which is not a trade.
+ */
+async function syncTradeFromSkills(employeeId: string, justAdded?: string) {
+  const e = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { category: true, position: true, trade: true, skills: { select: { skill: { select: { name: true } } }, orderBy: { skillId: "asc" } } },
+  });
+  if (!e || e.category === "STAFF") return;
+  const names = e.skills.map((s) => s.skill.name);
+  const current = e.trade ?? e.position;
+  if (current && names.some((n) => n.toLowerCase() === current.toLowerCase())) return;
+  const next = justAdded ?? names[0] ?? null;
+  await prisma.employee.update({ where: { id: employeeId }, data: { position: next, trade: next } });
 }
 
 export async function addVisaApplicationAction(formData: FormData) {
@@ -668,6 +694,7 @@ export async function removeSkillAction(formData: FormData) {
   await prisma.employeeSkill
     .delete({ where: { employeeId_skillId: { employeeId, skillId } } })
     .catch(() => {});
+  await syncTradeFromSkills(employeeId);
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/trades");
 }
