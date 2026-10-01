@@ -37,6 +37,7 @@ export type ImportStats = {
   /** Supplier and sponsor names not on record, needing a decision (only when the importer was given supplierChoice). */
   newSuppliers?: NewSupplier[];
   existingSuppliers?: { id: string; name: string }[];
+  existingClients?: { id: string; name: string }[];
   /** Names in the sheet used as an existing company or client that differs only by LLC / Co / Ltd. */
   nearMatches?: { from: string; to: string }[];
   /** Workers linked to a project from the sheet's Project column. */
@@ -145,6 +146,26 @@ export async function importParsedMonths(
   const parentsOfOthers = new Set<string>();
   const nearMatches = new Map<string, string>();
   const pendingSuppliers = new Map<string, NewSupplier>();
+  // A row held back for its supplier still lists its sponsor and client, so every decision is asked for in one go rather than in rounds.
+  const noteSponsorOfHeldRow = (sponsorName: string | null | undefined) => {
+    if (!sponsorName || !opts.supplierChoice) return;
+    const key = normalizeKey(sponsorName);
+    if (supplierByKey.has(key) || looseMatch(sponsorName, [...supplierByKey.values()])) return;
+    const p = pendingSuppliers.get(key);
+    if (p) {
+      p.rows++;
+      if (p.role !== "sponsor") p.role = "both";
+    } else pendingSuppliers.set(key, { key, name: sponsorName.trim(), role: "sponsor", rows: 1 });
+  };
+  const noteClientOfHeldRow = (clientName: string | null) => {
+    if (!clientName || !opts.supplierChoice) return;
+    const key = normalizeKey(clientName);
+    if (clientByKey.has(key) || looseMatch(clientName, [...clientByKey.values()])) return;
+    const dKey = `client:${key}`;
+    const p = pendingSuppliers.get(dKey);
+    if (p) p.rows++;
+    else pendingSuppliers.set(dKey, { key: dKey, name: clientName.trim(), role: "supplier", rows: 1, party: "client" });
+  };
   const findOrCreateSupplier = async (name: string, role: "supplier" | "sponsor" = "supplier") => {
     const key = normalizeKey(name);
     const found = supplierByKey.get(key);
@@ -220,6 +241,8 @@ export async function importParsedMonths(
       const supplierKey = normalizeKey(entry.supplierName);
       const supplier = await findOrCreateSupplier(entry.supplierName, "supplier");
       if (!supplier) {
+        noteClientOfHeldRow(entry.clientName);
+        noteSponsorOfHeldRow(entry.sponsorName);
         // Waiting for a decision on this supplier (or it was ignored): the row isn't imported.
         stats.rowsSkipped++;
         stats.skippedRowDetails.push({ sheetName: month.sheetName, row: entryIndex + 1, name: entry.employeeName, idNo: entry.employeeIdNo, reason: `Supplier "${entry.supplierName}" isn't on record — add it, pick an existing one, or ignore it above.` });
@@ -250,14 +273,37 @@ export async function importParsedMonths(
             client = near;
           }
         }
-        if (!client) {
+        if (!client && opts.supplierChoice) {
+          // A client that isn't on record is never added on its own either: add, rename, use an existing one, or leave it off.
+          const dKey = `client:${clientKey}`;
+          const p = pendingSuppliers.get(dKey);
+          if (p) p.rows++;
+          else pendingSuppliers.set(dKey, { key: dKey, name: entry.clientName.trim(), role: "supplier", rows: 1, party: "client" });
+          const d = opts.supplierChoice.decisions[dKey];
+          if (d?.action === "existing") {
+            client = existingClients.find((x) => x.id === d.supplierId);
+            if (client) clientByKey.set(clientKey, client);
+          } else if (d?.action === "add") {
+            const finalName = (d.name ?? "").replace(/\s+/g, " ").trim() || entry.clientName.trim();
+            client = clientByKey.get(normalizeKey(finalName)) ?? looseMatch(finalName, [...clientByKey.values()]) ?? undefined;
+            if (!client) {
+              client = await db.client.create({
+                data: { name: finalName, code: await uniqueClientCode(finalName, branchId, undefined, db), branchId },
+              });
+              clientByKey.set(normalizeKey(finalName), client);
+              stats.clientsCreated++;
+            }
+            clientByKey.set(clientKey, client);
+          }
+          // Ignored or undecided: the rows are imported without a client.
+        } else if (!client) {
           client = await db.client.create({
             data: { name: entry.clientName.trim(), code: await uniqueClientCode(entry.clientName.trim(), branchId, undefined, db), branchId },
           });
           clientByKey.set(clientKey, client);
           stats.clientsCreated++;
         }
-        clientId = client.id;
+        clientId = client?.id ?? null;
       }
 
       let sheetProjectId: string | null = null;
@@ -443,6 +489,7 @@ export async function importParsedMonths(
   if (opts.supplierChoice) {
     stats.newSuppliers = [...pendingSuppliers.values()];
     stats.existingSuppliers = existingSuppliers.slice(0, 300).map((x) => ({ id: x.id, name: x.name }));
+    stats.existingClients = existingClients.slice(0, 300).map((x) => ({ id: x.id, name: x.name }));
   }
   if (nearMatches.size > 0) stats.nearMatches = [...nearMatches].map(([from, to]) => ({ from, to })).slice(0, 20);
   if (projectsNotFound.size > 0) stats.projectsNotFound = [...projectsNotFound];

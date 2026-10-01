@@ -132,6 +132,7 @@ export async function applyTimesheets(
     fixables: collectFixables(parsed.months),
     newSuppliers: stats.newSuppliers,
     existingSuppliers: stats.existingSuppliers,
+    existingClients: stats.existingClients,
     counts: {
       created: stats.entriesCreated,
       updated: stats.entriesUpdated,

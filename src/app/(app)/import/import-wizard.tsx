@@ -350,6 +350,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               kind={kind}
               items={summary.newSuppliers!}
               existing={summary.existingSuppliers ?? []}
+              existingClients={summary.existingClients ?? []}
               applied={supplierDecisions}
               busy={busy}
               onApply={(next) => {
@@ -375,7 +376,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           <ReportView tiles={tilesFor(kind, summary.counts)} rows={summary.rows} notes={summary.notes} truncated={summary.truncated} />
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("map")} disabled={busy}>Back to columns</button>
-            {unresolvedSuppliers > 0 && <p className="text-xs text-[var(--warning)]">Decide on the {unresolvedSuppliers} new supplier{unresolvedSuppliers === 1 ? "" : "s"} above to continue.</p>}
+            {unresolvedSuppliers > 0 && <p className="text-xs text-[var(--warning)]">Decide on the {unresolvedSuppliers} new name{unresolvedSuppliers === 1 ? "" : "s"} above to continue.</p>}
             <button type="button" className="btn btn-primary" onClick={start} disabled={busy || unresolvedSuppliers > 0 || ((summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 0)}>
               Import {(summary.counts.created ?? 0) + (summary.counts.updated ?? 0)} {target.noun}{(summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 1 ? "" : "s"}
             </button>
@@ -509,10 +510,11 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
 }
 
 /** New supplier names in the file. Nothing is added on its own: each is added (optionally renamed), pointed at an existing supplier, or ignored. */
-function SupplierDecisions({ kind, items, existing, applied, busy, onApply }: {
+function SupplierDecisions({ kind, items, existing, existingClients, applied, busy, onApply }: {
   kind: ImportKind;
   items: NewSupplier[];
   existing: { id: string; name: string }[];
+  existingClients: { id: string; name: string }[];
   applied: Record<string, SupplierDecision>;
   busy: boolean;
   onApply: (d: Record<string, SupplierDecision>) => void;
@@ -529,15 +531,16 @@ function SupplierDecisions({ kind, items, existing, applied, busy, onApply }: {
     const d = draft[n.key];
     return d && (d.action === "ignore" || (d.action === "add" && d.name.trim()) || (d.action === "existing" && d.supplierId));
   });
-  const ignoreNote = kind === "TIMESHEETS" ? "Rows for this supplier are left out." : "Workers are imported without this supplier.";
+  const hasClients = items.some((n) => n.party === "client");
+  const ignoreNote = (n: NewSupplier) => (n.party === "client" ? "These rows are imported without a client." : kind === "TIMESHEETS" ? "Rows for this supplier are left out." : "Workers are imported without this supplier.");
   return (
     <div className="card space-y-3 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-primary">New suppliers in this file &middot; {items.length}</p>
-          <p className="mt-0.5 text-xs text-muted">These names aren&rsquo;t in your suppliers yet. Nothing is added unless you choose to &mdash; add it (you can fix the name), use one you already have, or ignore it.</p>
+          <p className="text-sm font-semibold text-primary">New {hasClients ? "suppliers and clients" : "suppliers"} in this file &middot; {items.length}</p>
+          <p className="mt-0.5 text-xs text-muted">These names aren&rsquo;t on record yet. Nothing is added unless you choose to &mdash; add it (you can fix the name), use one you already have, or ignore it.</p>
         </div>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft((prev) => Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, v.action ? v : { ...v, action: "add" }])))}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft((prev) => Object.fromEntries(items.map((n) => { const v = prev[n.key] ?? { action: "" as const, name: n.name, supplierId: "" }; return [n.key, v.action ? v : { ...v, action: "add" as const }]; })))}>
           Add all as new
         </button>
       </div>
@@ -549,6 +552,7 @@ function SupplierDecisions({ kind, items, existing, applied, busy, onApply }: {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm text-primary">
                   <span className="font-medium">{n.name}</span>
+                  {hasClients && <span className={cn("ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium", n.party === "client" ? "bg-[var(--info-soft)] text-[var(--info)]" : "bg-surface-sunken text-secondary")}>{n.party === "client" ? "Client" : "Supplier"}</span>}
                   <span className="text-muted"> &mdash; {n.rows} row{n.rows === 1 ? "" : "s"}{n.role === "sponsor" ? ", as sponsor" : n.role === "both" ? ", as supplier and sponsor" : ""}</span>
                 </p>
                 <div className="inline-flex overflow-hidden rounded-lg border border-default text-xs font-medium" role="group" aria-label={`What to do with ${n.name}`}>
@@ -567,10 +571,10 @@ function SupplierDecisions({ kind, items, existing, applied, busy, onApply }: {
               )}
               {d.action === "existing" && (
                 <div className="w-80">
-                  <Select value={d.supplierId} onChange={(v) => set(n.key, { supplierId: v })} placeholder="Choose a supplier…" searchPlaceholder="Search suppliers…" options={existing.map((x) => ({ value: x.id, label: x.name }))} />
+                  <Select value={d.supplierId} onChange={(v) => set(n.key, { supplierId: v })} placeholder={n.party === "client" ? "Choose a client…" : "Choose a supplier…"} searchPlaceholder={n.party === "client" ? "Search clients…" : "Search suppliers…"} options={(n.party === "client" ? existingClients : existing).map((x) => ({ value: x.id, label: x.name }))} />
                 </div>
               )}
-              {d.action === "ignore" && <p className="text-xs text-muted">{ignoreNote}</p>}
+              {d.action === "ignore" && <p className="text-xs text-muted">{ignoreNote(n)}</p>}
             </li>
           );
         })}

@@ -56,7 +56,7 @@ function summarise(res: ApplyResult): BatchSummary {
   // Plain successes are in the counts; the report lists what needs attention.
   const interesting = res.rows.filter((r) => r.status === "error" || (r.notes && r.notes.length > 0));
   const kept = [...interesting].slice(0, MAX_REPORT_ROWS);
-  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers };
+  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers, existingClients: res.existingClients };
 }
 
 class DryRun extends Error {

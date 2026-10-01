@@ -51,7 +51,8 @@ export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: st
 
 /** What to do with a supplier name in the file that isn't on record yet. Nothing is added unless the person chose to. */
 export type SupplierDecision = { action: "add"; name?: string } | { action: "existing"; supplierId: string } | { action: "ignore" };
-export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number };
+/** A name in the file that isn't on record. `party` says whether it is a supplier or a client; the decision key for a client starts with "client:". For a client, `existing` means a client. */
+export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" };
 
 export type ApplyResult = {
   rows: RowReport[];
@@ -64,6 +65,7 @@ export type ApplyResult = {
   newSuppliers?: NewSupplier[];
   /** The suppliers already on record, to pick from. */
   existingSuppliers?: { id: string; name: string }[];
+  existingClients?: { id: string; name: string }[];
 };
 
 export type ApplyCtx = {

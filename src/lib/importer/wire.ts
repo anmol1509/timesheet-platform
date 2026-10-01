@@ -34,6 +34,7 @@ export type BatchSummary = {
   fixables?: Fixable[];
   newSuppliers?: NewSupplier[];
   existingSuppliers?: { id: string; name: string }[];
+  existingClients?: { id: string; name: string }[];
   undo?: { restored: number; removed: number; kept: number };
 };
 
