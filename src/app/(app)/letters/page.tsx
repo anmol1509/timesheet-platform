@@ -12,7 +12,8 @@ import { IssueLetter } from "./issue-letter";
 
 export const metadata = { title: "Employee letters" };
 
-export default async function EmployeeLettersPage() {
+export default async function EmployeeLettersPage({ searchParams }: { searchParams: Promise<{ employee?: string; template?: string }> }) {
+  const sp = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
@@ -46,6 +47,8 @@ export default async function EmployeeLettersPage() {
         <p className="text-sm text-muted">Pick a branch from the switcher to make letters.</p>
       ) : (
         <IssueLetter
+          initialEmployeeId={sp.employee}
+          preferTemplate={sp.template}
           canIssue={can(subject, "workforce", "create")}
           companyName={(branch?.name ?? "").toUpperCase()}
           today={formatLetterDate(new Date())}

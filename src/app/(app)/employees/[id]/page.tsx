@@ -252,6 +252,11 @@ export default async function EmployeeDetailPage({
         </div>
       </section>
 
+      {canViewPay && (
+        <div className="flex justify-end">
+          <Link href={`/letters?employee=${employee.id}&template=salary`} className="btn btn-secondary text-sm">Salary certificate</Link>
+        </div>
+      )}
       <ProfileSummary
         employee={employee}
         project={

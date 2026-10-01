@@ -215,7 +215,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
                           <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                          <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"}</p>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></p>
                         </div>
                       </div>
                     </td>
@@ -234,7 +234,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">
                       {n(l.otherEarnings) > 0 && <span className="block text-[var(--success)]">+{aed(n(l.otherEarnings))}</span>}
                       {n(l.otherDeductions) > 0 && <span className="block">−{aed(n(l.otherDeductions))}</span>}
-                      {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && "—"}
+                      {n(l.gasCharge) > 0 && <span className="block" title="Gas charge">−{aed(n(l.gasCharge))} gas</span>}
+                      {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && n(l.gasCharge) === 0 && "—"}
                     </td>
                     <td className="px-3 py-3">
                       <LineEditor

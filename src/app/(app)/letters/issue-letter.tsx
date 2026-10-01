@@ -11,7 +11,7 @@ export type EmployeeOption = { id: string; name: string; idNo: string; trade: st
 
 export type BranchDefaults = { signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; letterheadUrl: string | null };
 
-export function IssueLetter({ employees, templates, companyName, today, canIssue, defaults }: { employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
+export function IssueLetter({ employees, templates, companyName, today, canIssue, defaults, initialEmployeeId, preferTemplate }: { initialEmployeeId?: string; preferTemplate?: string; employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
   // Printing choices. All optional; signature and stamp start off so nothing is signed or stamped by accident.
   const [signatoryName, setSignatoryName] = useState(defaults.signatoryName);
   const [signatoryTitle, setSignatoryTitle] = useState(defaults.signatoryTitle);
@@ -19,8 +19,8 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
   const [showStamp, setShowStamp] = useState(false);
   const [onLetterhead, setOnLetterhead] = useState(false);
   const [allowEmpty, setAllowEmpty] = useState(false);
-  const [employeeId, setEmployeeId] = useState("");
-  const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [employeeId, setEmployeeId] = useState(employees.some((e) => e.id === initialEmployeeId) ? initialEmployeeId! : "");
+  const [templateId, setTemplateId] = useState(templates.find((t) => preferTemplate && t.name.toLowerCase().includes(preferTemplate.toLowerCase()))?.id ?? templates[0]?.id ?? "");
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<{ html?: string; title?: string; missing?: string[]; empty?: string[]; error?: string } | null>(null);
   const [loading, startPreview] = useTransition();

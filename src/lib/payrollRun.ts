@@ -19,7 +19,7 @@ type PayEmployee = {
 };
 
 /** Pay comes from the worker's trade (per company) unless their own record overrides it. */
-async function loadPayOf(branchId: string, employees: PayEmployee[]) {
+export async function loadPayOf(branchId: string, employees: PayEmployee[]) {
   const tradePays = await prisma.tradePay.findMany({ where: { branchId, supplierId: { in: [...new Set(employees.map((e) => e.supplierId).filter((x): x is string => !!x))] } } });
   const tradeFigures = new Map(tradePays.map((t) => [`${t.supplierId}|${tradeKey(t.trade)}`, tradeToFigures(t)]));
   return (e: PayEmployee) =>
