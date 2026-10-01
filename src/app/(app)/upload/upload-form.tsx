@@ -18,6 +18,7 @@ type UploadStats = {
   subsidiariesLinked?: number;
   attendanceCreated?: number;
   projectsNotFound?: string[];
+  newSuppliers?: { key: string; name: string; rows: number; party?: "supplier" | "client" }[];
   workersLinkedToProject?: number;
   payRatesSet?: number;
   attendanceConflicts?: number;
@@ -161,6 +162,17 @@ export function UploadForm() {
             )}
             {(result.stats.payRatesSet ?? 0) > 0 && (
               <li>{result.stats.payRatesSet} workers given an hourly pay rate for payroll</li>
+            )}
+            {(result.stats.newSuppliers ?? []).some((n) => n.party !== "client") && (
+              <li className="text-[var(--warning)]">
+                Left out &mdash; these suppliers aren&rsquo;t on record: {(result.stats.newSuppliers ?? []).filter((n) => n.party !== "client").map((n) => `${n.name} (${n.rows} row${n.rows === 1 ? "" : "s"})`).join(", ")}.
+                Ask an administrator to add them (or import this file from Import Data, which lets them decide), then upload again.
+              </li>
+            )}
+            {(result.stats.newSuppliers ?? []).some((n) => n.party === "client") && (
+              <li className="text-[var(--warning)]">
+                These clients aren&rsquo;t on record, so those rows were imported without a client: {(result.stats.newSuppliers ?? []).filter((n) => n.party === "client").map((n) => n.name).join(", ")}.
+              </li>
             )}
             {(result.stats.projectsNotFound ?? []).length > 0 && (
               <li className="text-[var(--warning)]">

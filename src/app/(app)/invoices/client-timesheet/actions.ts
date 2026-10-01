@@ -9,6 +9,8 @@ import { refsBelongToBranch } from "@/lib/refScope";
 import { isAdminRole } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { importParsedMonths } from "@/lib/importTimesheet";
+import { nameKey } from "@/lib/partyCode";
+import { looseMatch } from "@/lib/looseName";
 import type { DailyHourCell, ParsedEntry, ParsedMonth } from "@/lib/parseTimesheet";
 import {
   WEEKDAY_ABBR,
@@ -128,6 +130,21 @@ export async function submitManualEntryAction(
       absentCount,
       invoiceValue: rate * totalHours,
     });
+  }
+
+  // Names are picked from the lists on the form, so one that isn't on record means the list was stale or the request was
+  // altered. Nothing is added on its own: say which, and import nothing.
+  const [onRecordSuppliers, onRecordClients] = await Promise.all([
+    prisma.supplier.findMany({ where: { branchId }, select: { name: true } }),
+    prisma.client.findMany({ where: { branchId }, select: { name: true } }),
+  ]);
+  const known = (list: { name: string }[], name: string) => list.some((x) => nameKey(x.name) === nameKey(name)) || !!looseMatch(name, list);
+  const unknownSuppliers = [...new Set(entries.map((e) => e.supplierName).filter((n) => !known(onRecordSuppliers, n)))];
+  const unknownClients = [...new Set(entries.map((e) => e.clientName).filter((n): n is string => !!n && !known(onRecordClients, n)))];
+  if (unknownSuppliers.length > 0 || unknownClients.length > 0) {
+    return {
+      error: `${[unknownSuppliers.length ? `Supplier ${unknownSuppliers.join(", ")}` : "", unknownClients.length ? `Client ${unknownClients.join(", ")}` : ""].filter(Boolean).join(" and ")} isn't on record. Add it under Business Partners first, then try again.`,
+    };
   }
 
   const monthLabel = storedMonthLabel(month);
