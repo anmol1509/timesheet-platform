@@ -5,7 +5,7 @@ import { looseMatch } from "@/lib/looseName";
 import { normalizeNationality } from "@/lib/nationality";
 import { loadTradeCanon } from "@/lib/canon";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
-import { calculateAbsentDeduction } from "@/lib/deductions";
+import { calculateAbsentDeduction, absenceRuleOf } from "@/lib/deductions";
 import type { Db, NewSupplier, SupplierDecision } from "@/lib/importer/types";
 import { newAttendanceStats, writeAttendanceFromEntry } from "@/lib/importer/attendance";
 
@@ -353,7 +353,7 @@ export async function importParsedMonths(
           dailyHours: JSON.stringify(entry.dailyHours),
           totalHours: entry.totalHours,
           absentCount: entry.absentCount,
-          absentDeduction: calculateAbsentDeduction(entry.absentCount),
+          absentDeduction: calculateAbsentDeduction(entry.absentCount, absenceRuleOf(supplier)),
           invoiceValue: entry.invoiceValue,
           branchId,
           supplierId: supplier.id,

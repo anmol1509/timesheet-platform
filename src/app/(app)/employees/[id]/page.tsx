@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { tradeKey } from "@/lib/payroll";
 import Link from "next/link";
 import { BadgeCheck, CalendarDays, ChevronRight, Hash, Home, MapPin, Phone } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -136,30 +135,19 @@ export default async function EmployeeDetailPage({
       })
     : null;
   const n = (d: { toString(): string } | null | undefined) => (d == null ? "" : String(Number(d.toString())));
-  const tradeName = employee.trade ?? employee.position;
-  const tradeRow =
-    payRow && tradeName && employee.supplierId
-      ? (await prisma.tradePay.findMany({ where: { supplierId: employee.supplierId } })).find((t) => tradeKey(t.trade) === tradeKey(tradeName)) ?? null
-      : null;
-  // A worker with no pay of their own yet starts from their trade's default; what is saved is theirs.
-  const prefill = !employee.payStructure && tradeRow ? tradeRow : null;
-  const src = prefill ?? payRow;
-  const tradePay = prefill ? { trade: prefill.trade } : null;
   const pay = payRow
     ? {
         canEdit: canEditPay,
-        tradePay,
-        basicSalary: n(src!.basicSalary),
-        housingAllowance: n(src!.housingAllowance),
-        foodAllowance: n(src!.foodAllowance),
-        transportAllowance: n(src!.transportAllowance),
-        otherAllowance: n(src!.otherAllowance),
-        flatMonthlyRate: n(src!.flatMonthlyRate),
-        hourlyRate: n(src!.hourlyRate),
-        otMultiplier: n(src!.otMultiplier) || "1.25",
-        dailyHours: n(src!.dailyHours) || "8",
-        restOtMultiplier: n(src!.restOtMultiplier) || "1.5",
-        prefillStructure: prefill?.payStructure ?? null,
+        basicSalary: n(payRow.basicSalary),
+        housingAllowance: n(payRow.housingAllowance),
+        foodAllowance: n(payRow.foodAllowance),
+        transportAllowance: n(payRow.transportAllowance),
+        otherAllowance: n(payRow.otherAllowance),
+        flatMonthlyRate: n(payRow.flatMonthlyRate),
+        hourlyRate: n(payRow.hourlyRate),
+        otMultiplier: n(payRow.otMultiplier) || "1.25",
+        dailyHours: n(payRow.dailyHours) || "8",
+        restOtMultiplier: n(payRow.restOtMultiplier) || "1.5",
       }
     : null;
 

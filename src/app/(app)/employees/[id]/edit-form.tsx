@@ -121,6 +121,7 @@ type LookupsByCategory = Record<string, { value: string }[]>;
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "documents", label: "Documents" },
+  { id: "trade", label: "Trade & pay" },
   { id: "payroll", label: "Payroll & WPS" },
   { id: "project", label: "Project & Site" },
   { id: "records", label: "Trades & Records" },
@@ -148,8 +149,6 @@ export type PayFormValues = {
   otMultiplier: string;
   dailyHours: string;
   restOtMultiplier: string;
-  tradePay: { trade: string } | null;
-  prefillStructure: string | null;
 };
 
 function toDateInput(d: Date | null) {
@@ -199,7 +198,7 @@ export function EditForm({
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
-    const [payStructure, setPayStructure] = useState(employee.payStructure || pay?.prefillStructure || "");
+    const [payStructure, setPayStructure] = useState(employee.payStructure || "");
   const [category, setCategory] = useState(employee.category);
   const [nationality, setNationality] = useState(employee.nationality || "");
   const [projectId, setProjectId] = useState(employee.projectId || "");
@@ -366,21 +365,6 @@ export function EditForm({
                 options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
-            {category === "STAFF" ? (
-              <>
-                <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
-                <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
-              </>
-            ) : (
-              <Field label="Trade">
-                <Select
-                  name="position"
-                  defaultValue={employee.position || ""}
-                  placeholder="Not set"
-                  options={TRADES.map((t) => ({ value: t, label: t }))}
-                />
-              </Field>
-            )}
             <Field label="Date of birth">
               <DatePicker key={`dateOfBirth-${auto.dateOfBirth ?? ""}`} name="dateOfBirth" defaultValue={auto.dateOfBirth ?? toDateInput(employee.dateOfBirth)} />
             </Field>
@@ -639,7 +623,28 @@ export function EditForm({
         </section>
       </div>
 
-      <div className={tab === "payroll" ? "space-y-8" : "hidden"}>
+      <div className={tab === "trade" ? "space-y-8" : "hidden"}>
+        <section>
+          <h2 className="mb-1 text-sm font-semibold text-primary">{category === "STAFF" ? "Designation" : "Trade"}</h2>
+          <p className="mb-3 text-xs text-muted">Choose the trade first, then set what this worker is paid for it.</p>
+          <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            {category === "STAFF" ? (
+              <>
+                <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
+                <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
+              </>
+            ) : (
+              <Field label="Trade">
+                <Select
+                  name="position"
+                  defaultValue={employee.position || ""}
+                  placeholder="Not set"
+                  options={TRADES.map((t) => ({ value: t, label: t }))}
+                />
+              </Field>
+            )}
+          </div>
+        </section>
         {pay && (
           <section>
             <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
@@ -648,15 +653,6 @@ export function EditForm({
               {!pay.canEdit && " You can view these figures but not change them."}
             </p>
             <input type="hidden" name="_pay" value="1" />
-            <p className="mb-3 text-sm text-secondary">
-              Trade: <span className="font-medium text-primary">{employee.trade || employee.position || "not set"}</span>
-              <span className="text-muted"> — change it on the Overview tab; pay follows the trade.</span>
-            </p>
-            {pay.tradePay && (
-              <p className="mb-3 rounded-lg border border-default bg-surface-subtle px-4 py-2 text-xs text-secondary">
-                Filled in from the {pay.tradePay.trade} default pay. Change anything for this worker, then save — the figures saved here are what this worker is paid.
-              </p>
-            )}
             <fieldset disabled={!pay.canEdit} className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
               <Field label="Pay structure">
                 <Select
@@ -724,6 +720,9 @@ export function EditForm({
             </label>
           </section>
         )}
+      </div>
+
+      <div className={tab === "payroll" ? "space-y-8" : "hidden"}>
         <section>
           <h2 className="mb-3 text-sm font-semibold text-primary">
             Payroll & WPS

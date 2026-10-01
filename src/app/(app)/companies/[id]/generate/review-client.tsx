@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
-import { calculateAbsentDeduction, calculateGasDeduction } from "@/lib/deductions";
+import { calculateAbsentDeduction, calculateGasDeduction, type AbsenceRule, type GasRule } from "@/lib/deductions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 type Entry = {
@@ -17,6 +17,7 @@ type Entry = {
   absentDeduction: number;
   dailyHours: DailyHourCell[];
   clientName: string | null;
+  checkIn: string | null;
 };
 
 export function ReviewClient({
@@ -24,7 +25,11 @@ export function ReviewClient({
   month,
   monthLabel,
   entries,
+  absenceRule,
+  gasRule,
 }: {
+  absenceRule: AbsenceRule;
+  gasRule: GasRule;
   supplier: { id: string; name: string; fullName: string | null };
   month: string;
   monthLabel: string;
@@ -33,16 +38,17 @@ export function ReviewClient({
   const defaultAbsentDeductions = useMemo(
     () =>
       Object.fromEntries(
-        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount)])
+        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount, absenceRule)])
       ),
-    [entries]
+    [entries, absenceRule]
   );
+  const [gasWaived, setGasWaived] = useState(false);
   const defaultGasDeductions = useMemo(
     () =>
       Object.fromEntries(
-        entries.map((e) => [e.id, calculateGasDeduction(e.dailyHours)])
+        entries.map((e) => [e.id, gasWaived ? 0 : calculateGasDeduction(e.dailyHours, gasRule, { checkIn: e.checkIn ? new Date(e.checkIn) : null, month })])
       ),
-    [entries]
+    [entries, gasRule, gasWaived, month]
   );
 
   const [deductions, setDeductions] = useState<Record<string, number>>(() =>
@@ -57,6 +63,14 @@ export function ReviewClient({
   function resetRow(id: string) {
     setDeductions((d) => ({ ...d, [id]: defaultAbsentDeductions[id] }));
     setGasDeductions((d) => ({ ...d, [id]: defaultGasDeductions[id] }));
+  }
+
+  /** Waiving zeroes every worker's gas; switching it off restores the calculated amounts. */
+  function waiveGas(on: boolean) {
+    setGasWaived(on);
+    setGasDeductions(
+      Object.fromEntries(entries.map((e) => [e.id, on ? 0 : calculateGasDeduction(e.dailyHours, gasRule, { checkIn: e.checkIn ? new Date(e.checkIn) : null, month })]))
+    );
   }
 
   function resetAll() {
@@ -184,7 +198,12 @@ export function ReviewClient({
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-primary">Employees</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <h2 className="text-sm font-semibold text-primary">Employees</h2>
+            <label className="flex items-center gap-2 text-sm text-secondary">
+              <input type="checkbox" checked={gasWaived} onChange={(e) => waiveGas(e.target.checked)} /> Waive gas charge for this company
+            </label>
+          </div>
           {anyEdited && (
             <button
               type="button"

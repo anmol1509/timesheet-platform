@@ -181,7 +181,7 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     wpsEstablishmentId: own ? stringOrNull(formData.get("wpsEstablishmentId")) : null,
     allowManualLabourId: formData.get("allowManualLabourId") === "on",
     overtime: formData.get("overtime") === "on",
-    ...(own && formData.has("ruleSent")
+    ...(formData.has("ruleSent")
       ? {
           absentFreeDays: Math.min(31, Math.max(0, Math.trunc(numberOrNull(formData.get("absentFreeDays")) ?? 2))),
           absentDeductionPerDay: Math.max(0, numberOrNull(formData.get("absentDeductionPerDay")) ?? 30),

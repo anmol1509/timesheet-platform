@@ -7,18 +7,21 @@ import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateTimesheetPdf, DEFAULT_TIMESHEET_NOTES } from "@/lib/generateTimesheetPdf";
 import { buildLetterhead } from "@/lib/letterhead";
+import { calculateGasDeduction, gasRuleOf } from "@/lib/deductions";
 
 export const maxDuration = 60;
 
 const bodySchema = z.object({
   supplierIds: z.array(z.string().min(1)).min(1).max(60),
   month: z.string().regex(/^\d{4}-\d{2}$/),
+  /** supplierId → true when that company's gas charge is waived. A company not listed is charged. */
+  gasWaived: z.record(z.string(), z.boolean()).default({}),
 });
 
 /**
  * One PDF per selected company, zipped. Each sheet uses what's already saved
- * (absence deductions, the company's letterhead name) with no gas deduction —
- * the same defaults the review screen opens with. Companies that can't be
+ * (absence deductions, the company's letterhead name) and the gas charge the
+ * review screen opens with, unless the company is waived. Companies that can't be
  * generated (not invoice-approved, no hours that month) are left out and listed
  * in a note inside the zip instead of failing the whole download.
  */
@@ -26,7 +29,7 @@ export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { supplierIds, month } = parsed.data;
+  const { supplierIds, month, gasWaived } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
       { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned — contact an admin." },
@@ -74,9 +77,16 @@ export async function POST(request: Request) {
     }
     const roster = await prisma.employee.findMany({
       where: { employeeIdNo: { in: entries.map((e) => e.employeeIdNo) } },
-      select: { employeeIdNo: true, project: { select: { code: true } } },
+      select: { employeeIdNo: true, siteArrivalDate: true, project: { select: { code: true } } },
     });
     const projectById = new Map(roster.filter((r) => r.project).map((r) => [r.employeeIdNo, r.project!.code] as const));
+
+    // Gas: the company's rate from each worker's check-in date, capped per worker per month; nothing when waived.
+    const waived = gasWaived[supplier.id] === true;
+    const checkInById = new Map(roster.map((r) => [r.employeeIdNo, r.siteArrivalDate] as const));
+    const gasTotal = waived
+      ? 0
+      : entries.reduce((sum, e) => sum + calculateGasDeduction(e.dailyHours, gasRuleOf(supplier), { checkIn: checkInById.get(e.employeeIdNo) ?? null, month }), 0);
 
     const pdf = await generateTimesheetPdf({
       letterhead,
@@ -95,7 +105,7 @@ export async function POST(request: Request) {
         projectCode: e.project?.code ?? projectById.get(e.employeeIdNo) ?? null,
       })),
       additions: 0,
-      safetyDeduction: 0,
+      safetyDeduction: gasTotal,
       otherDeduction: 0,
       vatPercent: 5,
       preparedBy: user.name,
@@ -113,7 +123,7 @@ export async function POST(request: Request) {
     zip.file(`${base}.pdf`, pdf);
 
     await prisma.generatedSheet.create({
-      data: { month, monthLabel, format: "pdf", gasDeduction: 0, issuedTo, supplierId: supplier.id, generatedById: user.id, branchId },
+      data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: supplier.id, generatedById: user.id, branchId },
     });
   }
 

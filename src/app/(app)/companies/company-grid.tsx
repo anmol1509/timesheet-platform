@@ -6,6 +6,7 @@ import { Download, FileArchive, Loader2 } from "lucide-react";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 
 type CompanyRow = {
   id: string;
@@ -27,6 +28,8 @@ export function CompanyGrid({
   const [query, setQuery] = useState("");
   const [zipping, setZipping] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
+  const [askGas, setAskGas] = useState(false);
+  const [waived, setWaived] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,14 +57,15 @@ export function CompanyGrid({
     downloadCsv(`companies-${month}.csv`, csv);
   }
 
-  async function downloadPdfs() {
+  async function downloadPdfs(gasWaived: Record<string, boolean>) {
+    setAskGas(false);
     setZipping(true);
     setZipError(null);
     try {
       const res = await fetch("/api/generate/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierIds: [...selected], month }),
+        body: JSON.stringify({ supplierIds: [...selected], month, gasWaived }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -109,7 +113,7 @@ export function CompanyGrid({
           </button>
           <button
             type="button"
-            onClick={downloadPdfs}
+            onClick={() => { setWaived({}); setAskGas(true); }}
             disabled={selected.size === 0 || zipping}
             title={selected.size === 0 ? "Select companies first" : "One PDF per company, zipped"}
             className="btn btn-primary flex gap-1.5 px-3 disabled:opacity-50"
@@ -119,6 +123,34 @@ export function CompanyGrid({
           </button>
         </div>
       </div>
+
+      <Dialog open={askGas} onOpenChange={setAskGas}>
+        <DialogContent title="Waive gas charge?" description="Gas is charged on each timesheet unless you waive it. Tick the companies that do not pay gas.">
+          <div className="mt-4 space-y-3">
+            <ul className="max-h-72 divide-y divide-[var(--border)] overflow-y-auto rounded-control border border-default">
+              {companies.filter((c) => selected.has(c.id)).map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <span className="min-w-0 truncate text-sm text-primary">{c.name}</span>
+                  <label className="flex shrink-0 items-center gap-2 text-sm text-secondary">
+                    <input type="checkbox" checked={waived[c.id] === true} onChange={(e) => setWaived((w) => ({ ...w, [c.id]: e.target.checked }))} />
+                    Waive gas
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex gap-3 text-xs">
+                <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={() => setWaived(Object.fromEntries([...selected].map((id) => [id, true])))}>Waive for all</button>
+                <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={() => setWaived({})}>Charge all</button>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" className="btn btn-secondary" onClick={() => setAskGas(false)}>Cancel</button>
+                <button type="button" className="btn btn-primary" onClick={() => void downloadPdfs(waived)}>Generate {selected.size} PDF{selected.size === 1 ? "" : "s"}</button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {zipError && (
         <p role="alert" className="whitespace-pre-line rounded-control bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
