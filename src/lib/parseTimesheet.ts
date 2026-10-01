@@ -83,7 +83,7 @@ const IMPLAUSIBLE_DAILY_HOURS = 24;
 // but flag rows likely caused by a parsing mismatch (e.g. the "Sale Rate"
 // header incident) or a typo in the source sheet, so they get reviewed
 // instead of silently trusted.
-function computeImportWarnings(months: ParsedMonth[]): {
+export function computeImportWarnings(months: ParsedMonth[]): {
   zeroRateCount: number;
   zeroRateSample: ImportWarning[];
   implausibleHoursCount: number;

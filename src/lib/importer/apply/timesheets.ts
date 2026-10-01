@@ -1,7 +1,8 @@
-import { parseConsolidatedWorkbook, type TimesheetOverrides } from "@/lib/parseTimesheet";
+import { computeImportWarnings, parseConsolidatedWorkbook, type TimesheetOverrides } from "@/lib/parseTimesheet";
+import { applyFixes, collectFixables } from "../fixes";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import { nameKey } from "@/lib/partyCode";
-import type { ApplyCtx, ApplyResult, ImportNote, RowReport } from "../types";
+import type { ApplyCtx, ApplyResult, Fix, ImportNote, RowReport } from "../types";
 
 /** Import a consolidated timesheet workbook: suppliers, sponsors, clients,
  * workers, the monthly timesheet rows, and the days as attendance. */
@@ -10,8 +11,12 @@ export async function applyTimesheets(
   file: { buffer: Buffer; filename: string },
   overrides: TimesheetOverrides = {},
   aliases: Record<string, string> = {},
+  fixes: Fix[] = [],
 ): Promise<ApplyResult> {
   const parsed = await parseConsolidatedWorkbook(file.buffer, overrides);
+  // Corrections typed in on the review screen replace what the sheet has, then the warnings are worked out again so a fixed problem stops being reported.
+  applyFixes(parsed.months, fixes);
+  const warn = computeImportWarnings(parsed.months);
   // Names the person said are an existing company or client: use the existing spelling, so no duplicate is made.
   const alias = new Map(Object.entries(aliases).map(([from, to]) => [nameKey(from), to]));
   if (alias.size > 0) {
@@ -51,18 +56,18 @@ export async function applyTimesheets(
   for (const s of parsed.unrecognizedSheets) {
     notes.push({ tone: "info", title: `Sheet "${s}" was skipped`, detail: "Its name isn't a month (like \"Aug 26\") or it has no EMPLOYEE NAME column." });
   }
-  if (parsed.zeroRateCount > 0) {
+  if (warn.zeroRateCount > 0) {
     notes.push({
       tone: "warn",
-      title: `${parsed.zeroRateCount} rows have a rate of 0`,
-      detail: `Usually a column heading that wasn't recognised. e.g. ${parsed.zeroRateSample.slice(0, 3).map((w) => `${w.employeeName} (${w.employeeIdNo})`).join(", ")}`,
+      title: `${warn.zeroRateCount} rows have a rate of 0`,
+      detail: `Usually a column heading that wasn't recognised. e.g. ${warn.zeroRateSample.slice(0, 3).map((w) => `${w.employeeName} (${w.employeeIdNo})`).join(", ")}`,
     });
   }
-  if (parsed.implausibleHoursCount > 0) {
+  if (warn.implausibleHoursCount > 0) {
     notes.push({
       tone: "warn",
-      title: `${parsed.implausibleHoursCount} days have an unusual hours value`,
-      detail: `Negative or over 24 hours. e.g. ${parsed.implausibleHoursSample.slice(0, 3).map((w) => `${w.employeeName}: ${w.detail}`).join("; ")}`,
+      title: `${warn.implausibleHoursCount} days have an unusual hours value`,
+      detail: `Negative or over 24 hours. e.g. ${warn.implausibleHoursSample.slice(0, 3).map((w) => `${w.employeeName}: ${w.detail}`).join("; ")}`,
     });
   }
   if ((stats.attendanceConflicts ?? 0) + (stats.attendanceLocked ?? 0) > 0) {
@@ -115,6 +120,7 @@ export async function applyTimesheets(
   return {
     rows,
     notes,
+    fixables: collectFixables(parsed.months),
     counts: {
       created: stats.entriesCreated,
       updated: stats.entriesUpdated,

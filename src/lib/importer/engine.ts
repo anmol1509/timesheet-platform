@@ -43,7 +43,7 @@ export async function analyzeBatch(batchId: string, mapping?: StoredMapping): Pr
 
 async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Array | null; filename: string }, mapping: StoredMapping): Promise<ApplyResult> {
   const buffer = Buffer.from(batch.fileData ?? []);
-  if (kind === "TIMESHEETS") return applyTimesheets(ctx, { buffer, filename: batch.filename }, mapping.timesheetOverrides ?? {}, mapping.aliases ?? {});
+  if (kind === "TIMESHEETS") return applyTimesheets(ctx, { buffer, filename: batch.filename }, mapping.timesheetOverrides ?? {}, mapping.aliases ?? {}, mapping.fixes ?? []);
   const fields = TARGETS[kind].fields;
   const wb = await loadWorkbook(buffer, batch.filename);
   const rows = extractRows(wb, mapping, fields);
@@ -56,7 +56,7 @@ function summarise(res: ApplyResult): BatchSummary {
   // Plain successes are in the counts; the report lists what needs attention.
   const interesting = res.rows.filter((r) => r.status === "error" || (r.notes && r.notes.length > 0));
   const kept = [...interesting].slice(0, MAX_REPORT_ROWS);
-  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length };
+  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables };
 }
 
 class DryRun extends Error {

@@ -26,11 +26,31 @@ export type RowReport = {
   notes?: ImportNote[];
 };
 
+/** Something in a timesheet file that can be corrected before it is imported. */
+export type Fixable = {
+  type: "rate" | "hours" | "nationality";
+  /** The worker's employee code, as in the sheet. */
+  id: string;
+  name: string;
+  /** Month key ("2026-09") the row is in; nationality belongs to the worker, not a month. */
+  month?: string;
+  monthLabel?: string;
+  /** For an hours fix: the day. */
+  date?: string;
+  /** What the sheet has now. */
+  current: string;
+};
+
+/** A correction the person typed in: replaces the value from the sheet when the import runs. */
+export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: string; value: string };
+
 export type ApplyResult = {
   rows: RowReport[];
   counts: Record<string, number>;
   /** Things about the file as a whole (not tied to one row). */
   notes: ImportNote[];
+  /** Problems that can be corrected on the review screen before importing. */
+  fixables?: Fixable[];
 };
 
 export type ApplyCtx = {

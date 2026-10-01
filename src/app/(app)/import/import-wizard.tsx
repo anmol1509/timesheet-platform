@@ -7,7 +7,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReportView, type TileSpec } from "@/components/import/report";
 import { cn } from "@/lib/cn";
 import { TARGETS } from "@/lib/importer/targets";
-import type { ImportKind } from "@/lib/importer/types";
+import type { Fix, Fixable, ImportKind } from "@/lib/importer/types";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
@@ -65,6 +65,8 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   const [copilot, setCopilot] = useState<CopilotResult | null>(null);
   const [checking, setChecking] = useState(false);
   const [aliases, setAliases] = useState<Record<string, string>>({});
+  /** Corrections typed in on the review screen (rates, hours, nationalities); sent with every preview and the final run. */
+  const [fixes, setFixes] = useState<Fix[]>([]);
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   /** The column choices the current preview was made with; the review is only reachable while they still match. */
   const [previewedKey, setPreviewedKey] = useState<string | null>(null);
@@ -96,6 +98,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       setPreviewedKey(null);
       setOverrides({});
       setAliases({});
+      setFixes([]);
       setCopilot(null);
       setAnalysis(res.analysis);
       if (res.analysis.kind !== "TIMESHEETS") setColumns(res.analysis.columns);
@@ -124,15 +127,15 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     });
   }
 
-  function preview() {
+  function preview(fixList: Fix[] = fixes) {
     void wrap(async () => {
       const mapping =
         analysis?.kind === "TIMESHEETS"
-          ? { columns: {}, timesheetOverrides: overrides, aliases }
+          ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList }
           : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
-      setPreviewedKey(mappingKey);
+      setPreviewedKey(keyFor(fixList));
       setStep("review");
     });
   }
@@ -178,7 +181,8 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
-  const mappingKey = JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases });
+  const keyFor = (fixList: Fix[]) => JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList });
+  const mappingKey = keyFor(fixes);
   // Steps can be revisited freely until the import starts; Review only while its preview still matches the choices.
   const locked = step === "running" || step === "done";
   const reachable = (key: Step) =>
@@ -303,7 +307,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted">Nothing is saved yet. Next you&rsquo;ll see exactly what would happen.</p>
-            <button type="button" onClick={preview} disabled={busy || !canContinue(kind, analysis, columns)} className="btn btn-primary">
+            <button type="button" onClick={() => preview()} disabled={busy || !canContinue(kind, analysis, columns)} className="btn btn-primary">
               {busy ? "Checking…" : "Check and preview"}
             </button>
           </div>
@@ -316,6 +320,20 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
             <p className="text-sm font-semibold text-primary">Here&rsquo;s what will happen</p>
             <p className="mt-1 text-xs text-muted">This is a dry run: nothing has been saved. After importing you can undo it for 30 days.</p>
           </div>
+          {(summary.fixables?.length ?? 0) > 0 && (
+            <FixPanel
+              fixables={summary.fixables!}
+              busy={busy}
+              onApply={(entered) => {
+                const key = (f: Fix) => `${f.type}|${f.id.toUpperCase()}|${f.month ?? ""}|${f.date ?? ""}`;
+                const merged = new Map(fixes.map((f) => [key(f), f]));
+                for (const f of entered) merged.set(key(f), f);
+                const next = [...merged.values()];
+                setFixes(next);
+                preview(next);
+              }}
+            />
+          )}
           <ReportView tiles={tilesFor(kind, summary.counts)} rows={summary.rows} notes={summary.notes} truncated={summary.truncated} />
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("map")} disabled={busy}>Back to columns</button>
@@ -447,6 +465,68 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
       {headers.filter((h) => !used.has(h)).length > 0 && (
         <p className="text-xs text-muted">Not imported: {headers.filter((h) => !used.has(h)).slice(0, 12).join(", ")}{headers.filter((h) => !used.has(h)).length > 12 ? "…" : ""}</p>
       )}
+    </div>
+  );
+}
+
+/** Problems in the file that can be corrected here, before anything is imported. Typing a value and applying re-runs the preview, so a fixed problem disappears. */
+function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: boolean; onApply: (fixes: Fix[]) => void }) {
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const idOf = (f: Fixable) => `${f.type}|${f.id}|${f.month ?? ""}|${f.date ?? ""}`;
+  const groups: { type: Fixable["type"]; title: string; hint: string; placeholder: string }[] = [
+    { type: "rate", title: "Rate is 0", hint: "Enter the hourly rate to bill for this worker.", placeholder: "Rate" },
+    { type: "hours", title: "Unusual hours", hint: "Enter the hours worked that day (0 to leave the day empty).", placeholder: "Hours" },
+    { type: "nationality", title: "Nationality is not a country", hint: "Enter the country, e.g. India.", placeholder: "Country" },
+  ];
+  const entered = fixables.filter((f) => (draft[idOf(f)] ?? "").trim() !== "");
+  return (
+    <div className="card space-y-4 p-4">
+      <div>
+        <p className="text-sm font-semibold text-primary">Fix before importing</p>
+        <p className="mt-0.5 text-xs text-muted">Correct these here and press Apply &mdash; the preview is re-checked. Your original file isn&rsquo;t changed, and anything you leave is imported as it is.</p>
+      </div>
+      {groups.map((g) => {
+        const rows = fixables.filter((f) => f.type === g.type);
+        if (rows.length === 0) return null;
+        return (
+          <div key={g.type} className="space-y-2">
+            <p className="text-xs font-semibold tracking-wide text-muted uppercase">{g.title} &middot; {rows.length}</p>
+            <p className="text-xs text-muted">{g.hint}</p>
+            <ul className="divide-y divide-[var(--border)] rounded-lg border border-default">
+              {rows.map((f) => (
+                <li key={idOf(f)} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span className="min-w-0 text-primary">
+                    <span className="font-medium">{f.name}</span> <span className="text-subtle">{f.id}</span>
+                    <span className="text-muted"> &mdash; {f.type === "hours" ? `${f.date}: ${f.current} hours` : f.type === "nationality" ? `“${f.current}”` : f.monthLabel}</span>
+                  </span>
+                  <input
+                    value={draft[idOf(f)] ?? ""}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, [idOf(f)]: e.target.value }))}
+                    placeholder={g.placeholder}
+                    inputMode={g.type === "nationality" ? "text" : "decimal"}
+                    aria-label={`${g.placeholder} for ${f.name}`}
+                    className="input w-32 px-2 py-1.5"
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+      <div className="flex items-center justify-end gap-3">
+        {entered.length > 0 && <span className="text-xs text-muted">{entered.length} to apply</span>}
+        <button
+          type="button"
+          disabled={busy || entered.length === 0}
+          onClick={() => {
+            onApply(entered.map((f) => ({ type: f.type, id: f.id, month: f.month, date: f.date, value: (draft[idOf(f)] ?? "").trim() })));
+            setDraft({});
+          }}
+          className="btn btn-primary"
+        >
+          {busy ? "Checking…" : "Apply and re-check"}
+        </button>
+      </div>
     </div>
   );
 }
