@@ -63,6 +63,8 @@ export async function writeAttendanceFromEntry(
     markedById: string;
     /** The project the sheet put this worker on, so the days belong to it. */
     projectId?: string | null;
+    /** The worker's current site-arrival date and stage, so a first attendance can confirm the one and promote the other. */
+    worker?: { siteArrivalDate: Date | null; status: string };
     days: DailyHourCell[];
   },
   stats: AttendanceStats,
@@ -114,5 +116,17 @@ export async function writeAttendanceFromEntry(
   if (create.length > 0) {
     await db.attendance.createMany({ data: create });
     stats.attendanceCreated += create.length;
+    // Days worked are evidence the worker is on site. Without an arrival date the
+    // Attendance screen greys them out ("not yet arrived") and refuses new marks,
+    // and a worker still IDLE is hidden by its default "On work" filter.
+    const worked = create.filter((c) => c.status === "PRESENT").map((c) => c.date.getTime());
+    if (worked.length > 0 && args.worker) {
+      const first = new Date(Math.min(...worked));
+      const data: { siteArrivalDate?: Date; status?: "ACTIVE" } = {};
+      if (!args.worker.siteArrivalDate) data.siteArrivalDate = first;
+      else if (first < args.worker.siteArrivalDate) data.siteArrivalDate = first;
+      if (args.worker.status === "IDLE") data.status = "ACTIVE";
+      if (Object.keys(data).length > 0) await db.employee.update({ where: { id: args.employeeId }, data });
+    }
   }
 }
