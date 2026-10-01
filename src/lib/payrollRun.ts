@@ -1,9 +1,38 @@
 import { prisma } from "@/lib/db";
-import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, type PayStructure } from "@/lib/payroll";
+import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, tradeKey, type PayFigures, type PayStructure } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
 export type RunScope = { id: string; branchId: string; month: string; companyId: string | null; payType: string | null };
+type TradePayRow = { payStructure: string; basicSalary: unknown; housingAllowance: unknown; foodAllowance: unknown; transportAllowance: unknown; otherAllowance: unknown; flatMonthlyRate: unknown; hourlyRate: unknown; dailyHours: unknown; paysOvertime: boolean; otMultiplier: unknown; restOtMultiplier: unknown };
+const n2 = (d: unknown) => num(d as { toString(): string } | null);
+export const tradeToFigures = (t: TradePayRow): PayFigures => ({
+  payStructure: t.payStructure, basicSalary: n2(t.basicSalary), housingAllowance: n2(t.housingAllowance), foodAllowance: n2(t.foodAllowance), transportAllowance: n2(t.transportAllowance),
+  otherAllowance: n2(t.otherAllowance), flatMonthlyRate: n2(t.flatMonthlyRate), hourlyRate: n2(t.hourlyRate), dailyHours: n2(t.dailyHours) || 8, paysOvertime: t.paysOvertime,
+  otMultiplier: n2(t.otMultiplier) || 1.25, restOtMultiplier: n2(t.restOtMultiplier) || 1.5,
+});
+
+type PayEmployee = {
+  supplierId: string | null; trade: string | null; position: string | null; payOverride: boolean; payStructure: string | null; basicSalary: unknown; housingAllowance: unknown;
+  foodAllowance: unknown; transportAllowance: unknown; otherAllowance: unknown; flatMonthlyRate: unknown; hourlyRate: unknown; dailyHours: unknown; paysOvertime: boolean;
+  otMultiplier: unknown; restOtMultiplier: unknown;
+};
+
+/** Pay comes from the worker's trade (per company) unless their own record overrides it. */
+async function loadPayOf(branchId: string, employees: PayEmployee[]) {
+  const tradePays = await prisma.tradePay.findMany({ where: { branchId, supplierId: { in: [...new Set(employees.map((e) => e.supplierId).filter((x): x is string => !!x))] } } });
+  const tradeFigures = new Map(tradePays.map((t) => [`${t.supplierId}|${tradeKey(t.trade)}`, tradeToFigures(t)]));
+  return (e: PayEmployee) =>
+    effectivePay(
+      {
+        payStructure: e.payStructure, basicSalary: n2(e.basicSalary), housingAllowance: n2(e.housingAllowance), foodAllowance: n2(e.foodAllowance), transportAllowance: n2(e.transportAllowance),
+        otherAllowance: n2(e.otherAllowance), flatMonthlyRate: n2(e.flatMonthlyRate), hourlyRate: n2(e.hourlyRate), dailyHours: n2(e.dailyHours) || 8, paysOvertime: e.paysOvertime,
+        otMultiplier: n2(e.otMultiplier) || 1.25, restOtMultiplier: n2(e.restOtMultiplier) || 1.5, payOverride: e.payOverride,
+      },
+      tradeFigures.get(`${e.supplierId}|${tradeKey(e.trade ?? e.position)}`) ?? null
+    );
+}
+
 export type SkippedEmployee = { id: string; name: string; reason: string };
 
 /**
@@ -40,7 +69,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) },
       },
       select: {
-        id: true, name: true, employeeIdNo: true, projectId: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+        id: true, name: true, employeeIdNo: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
         otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
         wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
       },
@@ -60,10 +89,13 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     }),
   ]);
 
+  const payOf = await loadPayOf(run.branchId, employees);
+
   // Who can actually be paid under this run's type.
   const skipped: SkippedEmployee[] = [];
   const payable = employees.filter((e) => {
-    const gap = payDataGap(type, { payStructure: e.payStructure, basicSalary: num(e.basicSalary), flatMonthlyRate: num(e.flatMonthlyRate), hourlyRate: num(e.hourlyRate) });
+    const pf = payOf(e);
+    const gap = payDataGap(type, { payStructure: pf.payStructure, basicSalary: pf.basicSalary, flatMonthlyRate: pf.flatMonthlyRate, hourlyRate: pf.hourlyRate });
     if (gap) skipped.push({ id: e.id, name: e.name, reason: gap });
     return !gap;
   });
@@ -83,7 +115,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     : [];
   const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
 
-  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: num(e.dailyHours) || 8, weeklyOffDays: e.project?.weeklyOffDays ?? [5] }]));
+  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: payOf(e).dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [5] }]));
   const att = new Map<string, { absent: number; idle: number; sick: number; ot: number; normal: number; rest: number }>();
   for (const a of attendance) {
     const row = att.get(a.employeeId) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
@@ -119,12 +151,13 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     const isHourly = type === "HOURLY";
     const hours = isHourly ? sheetHours.get(e.employeeIdNo) ?? 0 : 0;
     const facts = att.get(e.id) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
+    const pf = payOf(e);
     const r = computePay(
       {
-        payStructure: (isHourly ? "HOURLY" : e.payStructure) as PayStructure,
-        basic: num(e.basicSalary), housing: num(e.housingAllowance), food: num(e.foodAllowance), transport: num(e.transportAllowance), other: num(e.otherAllowance),
-        flat: num(e.flatMonthlyRate), hourly: num(e.hourlyRate), paysOvertime: isHourly ? false : e.paysOvertime, otMultiplier: num(e.otMultiplier) || 1.25,
-        dailyHours: num(e.dailyHours) || 8, restOtMultiplier: num(e.restOtMultiplier) || 1.5,
+        payStructure: (isHourly ? "HOURLY" : pf.payStructure) as PayStructure,
+        basic: pf.basicSalary, housing: pf.housingAllowance, food: pf.foodAllowance, transport: pf.transportAllowance, other: pf.otherAllowance,
+        flat: pf.flatMonthlyRate, hourly: pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
+        dailyHours: pf.dailyHours, restOtMultiplier: pf.restOtMultiplier,
         absenceFreeDays: e.supplier?.absentFreeDays ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
       },
       isHourly
@@ -152,7 +185,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       : round2(planLoanRecovery(loansByEmployee.get(e.id) ?? [], beforeAdvance).reduce((sum, x) => sum + x.amount, 0));
 
     return {
-      runId: run.id, employeeId: e.id, projectId: e.projectId, payStructure: (isHourly ? "HOURLY" : e.payStructure) as string, daysInMonth: days,
+      runId: run.id, employeeId: e.id, projectId: e.projectId, payStructure: (isHourly ? "HOURLY" : pf.payStructure) as string, daysInMonth: days,
       absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
@@ -216,10 +249,15 @@ export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
   const type = isPayType(run.payType) ? run.payType : null;
   const employees = await prisma.employee.findMany({
     where: { branchId: run.branchId, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) } },
-    select: { id: true, name: true, payStructure: true, basicSalary: true, flatMonthlyRate: true, hourlyRate: true },
+    select: {
+      id: true, name: true, supplierId: true, trade: true, position: true, payOverride: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true,
+      transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true,
+    },
   });
+  const payOf = await loadPayOf(run.branchId, employees);
   return employees.flatMap((e) => {
-    const reason = payDataGap(type, { payStructure: e.payStructure, basicSalary: num(e.basicSalary), flatMonthlyRate: num(e.flatMonthlyRate), hourlyRate: num(e.hourlyRate) });
+    const pf = payOf(e);
+    const reason = payDataGap(type, { payStructure: pf.payStructure, basicSalary: pf.basicSalary, flatMonthlyRate: pf.flatMonthlyRate, hourlyRate: pf.hourlyRate });
     return reason ? [{ id: e.id, name: e.name, reason }] : [];
   });
 }

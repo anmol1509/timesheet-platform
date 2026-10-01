@@ -43,6 +43,8 @@ type Employee = {
   payStructure: string | null;
   paysOvertime: boolean;
   gasWaived: boolean;
+  payOverride: boolean;
+  trade: string | null;
   essEnabled: boolean;
   projectId: string | null;
   siteId: string | null;
@@ -146,6 +148,7 @@ export type PayFormValues = {
   otMultiplier: string;
   dailyHours: string;
   restOtMultiplier: string;
+  tradePay: { trade: string; summary: string; detail: string } | null;
 };
 
 function toDateInput(d: Date | null) {
@@ -196,6 +199,7 @@ export function EditForm({
   const [tab, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
     const [payStructure, setPayStructure] = useState(employee.payStructure || "");
+    const [ownPay, setOwnPay] = useState(employee.payOverride);
   const [category, setCategory] = useState(employee.category);
   const [nationality, setNationality] = useState(employee.nationality || "");
   const [projectId, setProjectId] = useState(employee.projectId || "");
@@ -640,10 +644,27 @@ export function EditForm({
           <section>
             <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
             <p className="mb-3 text-xs text-muted">
-              Choose how this worker is paid. Overtime hours from attendance are paid on top (monthly pay: basic ÷ 240 × multiplier; hourly: rate × multiplier).
+              Choose how this worker is paid. Overtime is worked out from attendance hours beyond the standard day (rate = basic ÷ 30 ÷ standard hours).
               {!pay.canEdit && " You can view these figures but not change them."}
             </p>
             <input type="hidden" name="_pay" value="1" />
+            <p className="mb-3 text-sm text-secondary">
+              Trade: <span className="font-medium text-primary">{employee.trade || employee.position || "not set"}</span>
+              <span className="text-muted"> — change it on the Overview tab; pay follows the trade.</span>
+            </p>
+            {pay.tradePay && !ownPay && (
+              <div className="card mb-3 space-y-1 p-5">
+                <input type="hidden" name="_tradePay" value="1" />
+                <p className="text-sm font-medium text-primary">Paid as a {pay.tradePay.trade}: {pay.tradePay.summary}</p>
+                <p className="text-xs text-muted">{pay.tradePay.detail}. Set on the Payroll → Trade pay page.</p>
+              </div>
+            )}
+            {pay.tradePay && (
+              <label className="mb-3 flex items-center gap-2 text-sm text-secondary">
+                <input type="checkbox" checked={ownPay} disabled={!pay.canEdit} onChange={(ev) => setOwnPay(ev.target.checked)} /> Set this worker&apos;s pay individually (an exception to the trade pay)
+              </label>
+            )}
+            {(!pay.tradePay || ownPay) && (
             <fieldset disabled={!pay.canEdit} className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
               <Field label="Pay structure">
                 <Select
@@ -694,9 +715,6 @@ export function EditForm({
                   <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
                     <input type="checkbox" name="paysOvertime" defaultChecked={employee.paysOvertime} /> Paid for overtime
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
-                    <input type="checkbox" name="gasWaived" defaultChecked={employee.gasWaived} /> Waive gas charge for this worker
-                  </label>
                   <Field label="Standard hours per day">
                     <NumberInput name="dailyHours" defaultValue={pay.dailyHours} min={1} max={16} step={0.25} className="w-full" />
                   </Field>
@@ -709,6 +727,10 @@ export function EditForm({
                 </>
               )}
             </fieldset>
+            )}
+            <label className="mt-3 flex items-center gap-2 text-sm text-secondary">
+              <input type="checkbox" name="gasWaived" defaultChecked={employee.gasWaived} disabled={!pay.canEdit} /> Waive gas charge for this worker
+            </label>
           </section>
         )}
         <section>

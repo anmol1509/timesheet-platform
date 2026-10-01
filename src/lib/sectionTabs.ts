@@ -46,8 +46,10 @@ export const SECTION_TABS: SectionTab[][] = [
         under("/payroll")(p) &&
         !under("/payroll/loans")(p) &&
         !under("/payroll/recurring")(p) &&
+        !under("/payroll/trade-pay")(p) &&
         !under("/payroll/end-of-service")(p),
     },
+    { href: "/payroll/trade-pay", label: "Trade pay", match: under("/payroll/trade-pay") },
     { href: "/payroll/loans", label: "Loans & advances", match: under("/payroll/loans") },
     { href: "/payroll/recurring", label: "Recurring items", match: under("/payroll/recurring") },
     { href: "/payroll/end-of-service", label: "End of service", match: under("/payroll/end-of-service") },

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { tradeKey } from "@/lib/payroll";
 import Link from "next/link";
 import { BadgeCheck, CalendarDays, ChevronRight, Hash, Home, MapPin, Phone } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -135,9 +136,28 @@ export default async function EmployeeDetailPage({
       })
     : null;
   const n = (d: { toString(): string } | null | undefined) => (d == null ? "" : String(Number(d.toString())));
+  const tradeName = employee.trade ?? employee.position;
+  const tradeRow =
+    payRow && tradeName && employee.supplierId
+      ? (await prisma.tradePay.findMany({ where: { supplierId: employee.supplierId } })).find((t) => tradeKey(t.trade) === tradeKey(tradeName)) ?? null
+      : null;
+  const money0 = (d: { toString(): string } | null) => (d == null ? 0 : Number(d.toString()));
+  const tradePay = tradeRow
+    ? {
+        trade: tradeRow.trade,
+        summary:
+          tradeRow.payStructure === "HOURLY"
+            ? `AED ${money0(tradeRow.hourlyRate)} per hour`
+            : tradeRow.payStructure === "FLAT"
+              ? `AED ${money0(tradeRow.flatMonthlyRate)} flat per month`
+              : `Basic AED ${money0(tradeRow.basicSalary)}, allowances AED ${money0(tradeRow.housingAllowance) + money0(tradeRow.foodAllowance) + money0(tradeRow.transportAllowance) + money0(tradeRow.otherAllowance)}`,
+        detail: `${money0(tradeRow.dailyHours)} h day, overtime ×${money0(tradeRow.otMultiplier)}, rest day ×${money0(tradeRow.restOtMultiplier)}`,
+      }
+    : null;
   const pay = payRow
     ? {
         canEdit: canEditPay,
+        tradePay,
         basicSalary: n(payRow.basicSalary),
         housingAllowance: n(payRow.housingAllowance),
         foodAllowance: n(payRow.foodAllowance),

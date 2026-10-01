@@ -124,6 +124,25 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   return { basic: round2(basic), allowances: round2(allowances), fixed, deductions, overtimePay };
 }
 
+export type PayFigures = {
+  payStructure: string | null;
+  basicSalary: number; housingAllowance: number; foodAllowance: number; transportAllowance: number; otherAllowance: number;
+  flatMonthlyRate: number; hourlyRate: number;
+  dailyHours: number; paysOvertime: boolean; otMultiplier: number; restOtMultiplier: number;
+};
+
+/** Case- and space-insensitive key for matching a worker's trade to a trade pay row. */
+export const tradeKey = (t: string | null | undefined) => (t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * The pay figures to use for a worker: the trade's, unless they have their own
+ * set (payOverride) or their trade has no pay row.
+ */
+export function effectivePay(own: PayFigures & { payOverride: boolean }, trade: PayFigures | null): PayFigures & { fromTrade: boolean } {
+  if (trade && !own.payOverride) return { ...trade, fromTrade: true };
+  return { ...own, fromTrade: false };
+}
+
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
 /** Standing earnings/deductions and loan recovery layered on top of computePay. */
