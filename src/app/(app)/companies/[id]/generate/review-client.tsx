@@ -23,18 +23,13 @@ export function ReviewClient({
   supplier,
   month,
   monthLabel,
-  issuedTo: initialIssuedTo,
   entries,
 }: {
   supplier: { id: string; name: string; fullName: string | null };
   month: string;
   monthLabel: string;
-  issuedTo: string;
   entries: Entry[];
 }) {
-  const [fullName, setFullName] = useState(supplier.fullName || supplier.name);
-  const [issuedTo, setIssuedTo] = useState(initialIssuedTo);
-
   const defaultAbsentDeductions = useMemo(
     () =>
       Object.fromEntries(
@@ -121,8 +116,6 @@ export function ReviewClient({
           supplierId: supplier.id,
           month,
           format,
-          fullName,
-          issuedTo,
           gasDeductions,
           deductions,
         }),
@@ -187,23 +180,6 @@ export function ReviewClient({
             {error}
           </div>
         )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Letterhead name (as it appears on the document)">
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="input w-full"
-          />
-        </Field>
-        <Field label="Issued to">
-          <input
-            value={issuedTo}
-            onChange={(e) => setIssuedTo(e.target.value)}
-            className="input w-full"
-          />
-        </Field>
       </div>
 
       <div>
@@ -368,22 +344,6 @@ export function ReviewClient({
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 function SummaryRow({
   label,

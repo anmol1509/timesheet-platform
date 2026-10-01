@@ -21,12 +21,7 @@ export default async function GeneratePage({
   // A guessed URL must not open another branch's supplier sheet.
   if (!supplier || !month || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
-  // The "Issued To" default comes from the supplier's own branch — it used to be
-  // one global setting, so every tenant's sheets were prefilled with the same company.
-  const [entries, issuer] = await Promise.all([
-    getSupplierMonthEntries(id, month),
-    prisma.branch.findUnique({ where: { id: supplier.branchId }, select: { name: true, issuedTo: true } }),
-  ]);
+  const entries = await getSupplierMonthEntries(id, month);
 
   if (entries.length === 0) notFound();
 
@@ -50,7 +45,6 @@ export default async function GeneratePage({
       supplier={{ id: supplier.id, name: supplier.name, fullName: supplier.fullName }}
       month={month}
       monthLabel={monthLabelFromKey(month)}
-      issuedTo={issuer?.issuedTo || issuer?.name || ""}
       entries={entries.map((e) => ({
         id: e.id,
         employeeIdNo: e.employeeIdNo,

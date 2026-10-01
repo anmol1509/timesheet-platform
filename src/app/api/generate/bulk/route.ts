@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   }
 
   const [suppliers, branch] = await Promise.all([
-    prisma.supplier.findMany({ where: { id: { in: supplierIds } }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { id: { in: supplierIds } }, include: { parent: { select: { name: true, fullName: true, mohrePermitNumber: true } } }, orderBy: { name: "asc" } }),
     prisma.branch.findUnique({ where: { id: branchId } }),
   ]);
   const mine = suppliers.filter((s) => !isOutsideBranch(s.branchId, branchId, isSuperAdmin));
@@ -80,9 +80,9 @@ export async function POST(request: Request) {
 
     const pdf = await generateTimesheetPdf({
       letterhead,
-      // Each sheet names its own supplier, as the single download does.
-      subContractor: supplier.fullName || supplier.name,
-      subContractorCode: supplier.mohrePermitNumber ?? null,
+      // The main (parent) supplier, or the supplier itself when it has none.
+      subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name,
+      subContractorCode: (supplier.parent ?? supplier).mohrePermitNumber ?? null,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),
       entries: entries.map((e) => ({

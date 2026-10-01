@@ -15,8 +15,6 @@ const bodySchema = z.object({
   supplierId: z.string().min(1),
   month: z.string().regex(/^\d{4}-\d{2}$/),
   format: z.enum(["xlsx", "pdf"]),
-  fullName: z.string().min(1),
-  issuedTo: z.string().min(1),
   gasDeductions: z.record(z.string(), z.number()),
   deductions: z.record(z.string(), z.number()),
 });
@@ -28,11 +26,13 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { supplierId, month, format, fullName, issuedTo, gasDeductions, deductions } =
-    parsed.data;
+  const { supplierId, month, format, gasDeductions, deductions } = parsed.data;
   const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
-  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    include: { parent: { select: { name: true, fullName: true, mohrePermitNumber: true } } },
+  });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
   }
@@ -78,9 +78,14 @@ export async function POST(request: Request) {
     )
   );
 
-  if (fullName !== (supplier.fullName || supplier.name)) {
-    await prisma.supplier.update({ where: { id: supplierId }, data: { fullName } });
-  }
+  // Nothing to type on this screen any more: the supplier's own name goes on
+  // the Excel, the branch it bills is "Issued To", and the PDF's sub-contractor
+  // is the main (parent) supplier, or the supplier itself when it has no parent.
+  const fullName = supplier.fullName || supplier.name;
+  const issuer = await prisma.branch.findUnique({ where: { id: supplier.branchId }, select: { name: true, issuedTo: true } });
+  const issuedTo = issuer?.issuedTo || issuer?.name || fullName;
+  const mainSupplier = supplier.parent ?? supplier;
+  const subContractor = mainSupplier.fullName || mainSupplier.name;
 
   const entries = await getSupplierMonthEntries(supplierId, month);
   if (entries.length === 0) {
@@ -142,10 +147,8 @@ export async function POST(request: Request) {
         poBox: branch?.poBox ?? null,
         trn: branch?.trn ?? null,
       }),
-      // The company supplying the labour — the supplier — not the branch the
-      // sheet is issued to (that stays on the Excel's "Issued To" line).
-      subContractor: fullName,
-      subContractorCode: supplier.mohrePermitNumber ?? null,
+      subContractor,
+      subContractorCode: mainSupplier.mohrePermitNumber ?? null,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),
       entries: genInput.entries.map((e, i) => ({
