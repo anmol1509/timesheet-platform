@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, type PayStructure } from "@/lib/payroll";
+import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, type PayStructure } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -41,7 +41,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       },
       select: {
         id: true, name: true, employeeIdNo: true, projectId: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
-        otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
+        otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, weeklyOffDays: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
         wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
       },
     }),
@@ -72,7 +72,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   // Attendance for basic (and legacy) runs; timesheet hours for hourly runs.
   const attendance = type === "HOURLY" || ids.length === 0 ? [] : await prisma.attendance.findMany({
     where: { branchId: run.branchId, employeeId: { in: ids }, date: { gte: start, lt: nextMonth } },
-    select: { employeeId: true, status: true, otHours: true, normalHours: true },
+    select: { employeeId: true, date: true, status: true, otHours: true, normalHours: true },
   });
   const sheetRows = type === "HOURLY" && ids.length > 0
     ? await prisma.timesheetEntry.groupBy({
@@ -83,12 +83,15 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     : [];
   const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
 
-  const att = new Map<string, { absent: number; ot: number; normal: number }>();
+  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: num(e.dailyHours) || 8, weeklyOffDays: e.weeklyOffDays ?? [5] }]));
+  const att = new Map<string, { absent: number; ot: number; normal: number; rest: number }>();
   for (const a of attendance) {
-    const row = att.get(a.employeeId) ?? { absent: 0, ot: 0, normal: 0 };
+    const row = att.get(a.employeeId) ?? { absent: 0, ot: 0, normal: 0, rest: 0 };
     if (a.status === "ABSENT") row.absent += 1;
-    row.ot += a.otHours ?? 0;
-    row.normal += a.normalHours ?? 0;
+    const split = splitDayHours(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [5] });
+    row.ot += split.ot;
+    row.normal += split.normal;
+    row.rest += split.rest;
     att.set(a.employeeId, row);
   }
 
@@ -113,16 +116,17 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const lines = payable.map((e) => {
     const isHourly = type === "HOURLY";
     const hours = isHourly ? sheetHours.get(e.employeeIdNo) ?? 0 : 0;
-    const facts = att.get(e.id) ?? { absent: 0, ot: 0, normal: 0 };
+    const facts = att.get(e.id) ?? { absent: 0, ot: 0, normal: 0, rest: 0 };
     const r = computePay(
       {
         payStructure: (isHourly ? "HOURLY" : e.payStructure) as PayStructure,
         basic: num(e.basicSalary), housing: num(e.housingAllowance), food: num(e.foodAllowance), transport: num(e.transportAllowance), other: num(e.otherAllowance),
         flat: num(e.flatMonthlyRate), hourly: num(e.hourlyRate), paysOvertime: isHourly ? false : e.paysOvertime, otMultiplier: num(e.otMultiplier) || 1.25,
+        dailyHours: num(e.dailyHours) || 8, restOtMultiplier: num(e.restOtMultiplier) || 1.5,
       },
       isHourly
         ? { absentDays: 0, unpaidLeaveDays: 0, otHours: 0, normalHours: hours }
-        : { absentDays: facts.absent, unpaidLeaveDays: 0, otHours: facts.ot, normalHours: facts.normal }
+        : { absentDays: facts.absent, unpaidLeaveDays: 0, otHours: facts.ot, restHours: facts.rest, normalHours: facts.normal }
     );
     const old = prev.get(e.id);
     const adjustment = num(old?.adjustment);
@@ -141,7 +145,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
 
     return {
       runId: run.id, employeeId: e.id, projectId: e.projectId, payStructure: (isHourly ? "HOURLY" : e.payStructure) as string, daysInMonth: days,
-      absentDays: isHourly ? 0 : facts.absent, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, timesheetHours: hours,
+      absentDays: isHourly ? 0 : facts.absent, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
       manualDeduction, deductionNote: old?.deductionNote ?? null,

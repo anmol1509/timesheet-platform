@@ -5,8 +5,10 @@
  * Conventions (UAE labour-law practice; change here, not at call sites):
  *  - A pay month is 30 days for absence deductions: daily rate = fixed / 30.
  *  - Overtime is paid on the *basic* wage only (for a FLAT rate, the flat rate
- *    is treated as the basic): hourly = basic / 240 (30 days x 8 hours),
- *    times the employee's multiplier (default 1.25).
+ *    is treated as the basic): hourly = basic / 30 / the employee's daily hours
+ *    (default 8, i.e. basic / 240). Hours beyond the day's standard on a working
+ *    day pay at otMultiplier (default 1.25); hours worked on a weekly off day or
+ *    holiday pay at restOtMultiplier (default 1.5).
  *  - HOURLY workers are paid normal hours x hourly rate (so there is nothing to
  *    deduct for absence), and overtime at hourly rate x multiplier.
  *  - Allowances are fixed monthly amounts and are not used for overtime.
@@ -35,13 +37,16 @@ export type PayProfile = {
   hourly: number; // HOURLY rate per normal hour
   paysOvertime: boolean;
   otMultiplier: number;
+  dailyHours?: number; // standard hours in a working day (default 8)
+  restOtMultiplier?: number; // rest-day / holiday work (default 1.5)
 };
 
 export type PayPeriodFacts = {
   normalHours: number;
   absentDays: number;
   unpaidLeaveDays: number;
-  otHours: number;
+  otHours: number; // overtime hours on working days
+  restHours?: number; // hours worked on weekly off days / holidays
 };
 
 export type PayResult = {
@@ -52,10 +57,30 @@ export type PayResult = {
   overtimePay: number;
 };
 
+const dailyHoursOf = (p: { dailyHours?: number }) => (p.dailyHours && p.dailyHours > 0 ? p.dailyHours : 8);
+
+function overtimeAmount(rate: number, p: PayProfile, f: PayPeriodFacts) {
+  const rest = p.restOtMultiplier && p.restOtMultiplier > 0 ? p.restOtMultiplier : 1.5;
+  return round2(Math.max(0, f.otHours) * rate * p.otMultiplier + Math.max(0, f.restHours ?? 0) * rate * rest);
+}
+
+/** How a day's recorded hours split into normal, working-day overtime and rest-day hours. */
+export function splitDayHours(
+  day: { date: Date; status: string; normalHours: number | null; otHours: number | null },
+  pattern: { dailyHours: number; weeklyOffDays: number[] }
+): { normal: number; ot: number; rest: number } {
+  const total = (day.normalHours ?? 0) + (day.otHours ?? 0);
+  if (day.status === "ABSENT" || day.status === "LEAVE" || total <= 0) return { normal: 0, ot: 0, rest: 0 };
+  const restDay = day.status === "HOLIDAY" || day.status === "OFF" || pattern.weeklyOffDays.includes(day.date.getUTCDay());
+  if (restDay) return { normal: 0, ot: 0, rest: total };
+  const limit = pattern.dailyHours > 0 ? pattern.dailyHours : 8;
+  return { normal: Math.min(total, limit), ot: Math.max(0, total - limit), rest: 0 };
+}
+
 export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   if (p.payStructure === "HOURLY") {
     const earned = round2(Math.max(0, f.normalHours) * p.hourly);
-    const overtimePay = p.paysOvertime ? round2(Math.max(0, f.otHours) * p.hourly * p.otMultiplier) : 0;
+    const overtimePay = p.paysOvertime ? overtimeAmount(p.hourly, p, f) : 0;
     return { basic: earned, allowances: 0, fixed: earned, deductions: 0, overtimePay };
   }
   const basic = p.payStructure === "FLAT" ? p.flat : p.basic;
@@ -65,8 +90,8 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   const unpaidDays = Math.max(0, f.absentDays) + Math.max(0, f.unpaidLeaveDays);
   const deductions = Math.min(fixed, round2((fixed / 30) * unpaidDays));
 
-  const hourly = basic / 240;
-  const overtimePay = p.paysOvertime ? round2(Math.max(0, f.otHours) * hourly * p.otMultiplier) : 0;
+  const hourly = basic / 30 / dailyHoursOf(p);
+  const overtimePay = p.paysOvertime ? overtimeAmount(hourly, p, f) : 0;
 
   return { basic: round2(basic), allowances: round2(allowances), fixed, deductions, overtimePay };
 }

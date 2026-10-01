@@ -605,6 +605,12 @@ model Employee {
   hourlyRate         Decimal?            @db.Decimal(12, 2)
   paysOvertime       Boolean             @default(true)
   otMultiplier       Decimal             @default(1.25) @db.Decimal(4, 2)
+  // Working pattern: hours beyond dailyHours on a working day are overtime at
+  // otMultiplier; hours on a weekly off day (0=Sun..6=Sat) or a HOLIDAY/OFF day
+  // are paid at restOtMultiplier. Overtime rate = basic / 30 / dailyHours.
+  dailyHours         Decimal             @default(8) @db.Decimal(4, 2)
+  weeklyOffDays      Int[]               @default([5])
+  restOtMultiplier   Decimal             @default(1.5) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
   loans              EmployeeLoan[]
   payAdjustments     PayrollAdjustment[]
@@ -1724,6 +1730,7 @@ model PayrollLine {
   unpaidLeaveDays Int    @default(0)
   normalHours     Float  @default(0)
   otHours         Float  @default(0)
+  restHours       Float  @default(0) // hours worked on a weekly off day / holiday
 
   basic           Decimal @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
   allowances      Decimal @default(0) @db.Decimal(12, 2)

@@ -109,7 +109,15 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (structure === "HOURLY" && !parsed.hourlyRate) return { error: "Enter the hourly rate for an hourly pay structure." };
     const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
     if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
+    const daily = numberOrNull(formData.get("dailyHours")) ?? 8;
+    if (daily < 1 || daily > 16) return { error: "Daily hours must be between 1 and 16." };
+    const restMult = numberOrNull(formData.get("restOtMultiplier")) ?? 1.5;
+    if (restMult < 1 || restMult > 3) return { error: "Rest-day multiplier must be between 1 and 3." };
+    const weeklyOffDays = formData.getAll("weeklyOffDays").map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
     payData = {
+      dailyHours: daily,
+      restOtMultiplier: restMult,
+      weeklyOffDays: [...new Set(weeklyOffDays)].sort(),
       payStructure: structure,
       // Clear the figures the chosen structure doesn't use, so a switch can't leave stale pay behind.
       basicSalary: structure === "ITEMISED" ? parsed.basicSalary : null,

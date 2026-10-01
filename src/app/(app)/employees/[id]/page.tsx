@@ -50,6 +50,8 @@ export default async function EmployeeDetailPage({
         flatMonthlyRate: true,
         hourlyRate: true,
         otMultiplier: true,
+        dailyHours: true,
+        restOtMultiplier: true,
       },
       include: {
         supplier: true,
@@ -127,6 +129,8 @@ export default async function EmployeeDetailPage({
           flatMonthlyRate: true,
           hourlyRate: true,
           otMultiplier: true,
+        dailyHours: true,
+        restOtMultiplier: true,
         },
       })
     : null;
@@ -142,6 +146,8 @@ export default async function EmployeeDetailPage({
         flatMonthlyRate: n(payRow.flatMonthlyRate),
         hourlyRate: n(payRow.hourlyRate),
         otMultiplier: n(payRow.otMultiplier) || "1.25",
+        dailyHours: n(payRow.dailyHours) || "8",
+        restOtMultiplier: n(payRow.restOtMultiplier) || "1.5",
       }
     : null;
 
