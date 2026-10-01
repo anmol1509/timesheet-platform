@@ -13,12 +13,14 @@ export function MobileSidebar({
   isSuperAdmin,
   allowedModules,
   pendingApprovals,
+  badges,
   brand,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   allowedModules: string[] | null;
   pendingApprovals?: number;
+  badges?: Record<string, number>;
   brand: Brand;
 }) {
   const [open, setOpen] = useState(false);
@@ -57,7 +59,7 @@ export function MobileSidebar({
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
-            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} />
+            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} badges={badges} />
           </div>
           <div className="shrink-0 space-y-2 border-t border-default p-3">
             <div onClick={() => setOpen(false)}>

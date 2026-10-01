@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { m } from "motion/react";
 import { SPRING } from "@/lib/motion";
@@ -47,6 +47,8 @@ import {
   type LucideIcon,
   HeartPulse,
   FileOutput,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
@@ -339,11 +341,48 @@ const ACTIVE =
   "bg-brand-soft font-semibold text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_var(--brand-primary-border)]";
 const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
 
+/* ---- Per-browser sidebar preferences (open group, pinned pages) -------------
+ * Read through useSyncExternalStore so the server render and first client
+ * render agree (both see "nothing saved") and the saved value then arrives
+ * without an effect pushing state around. */
+const OPEN_KEY = "nav.openGroup";
+const PINS_KEY = "nav.pins";
+const MAX_PINS = 6;
+const PREFS_EVENT = "nav-prefs";
+
+function subscribePrefs(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(PREFS_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(PREFS_EVENT, cb);
+  };
+}
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode: the choice just isn't remembered */
+  }
+  window.dispatchEvent(new Event(PREFS_EVENT));
+}
+function usePref(key: string) {
+  return useSyncExternalStore(subscribePrefs, () => readPref(key), () => null);
+}
+
 export function NavLinks({
   isAdmin,
   allowedModules = null,
   collapsed = false,
   pendingApprovals = 0,
+  badges = {},
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -353,6 +392,8 @@ export function NavLinks({
   collapsed?: boolean;
   /** Items waiting for this person, shown as a count on the Approvals row. */
   pendingApprovals?: number;
+  /** Other rows that need someone to act, by href — shown as a count. */
+  badges?: Record<string, number>;
 }) {
   const pathname = usePathname();
   const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
@@ -367,26 +408,65 @@ export function NavLinks({
     : entries;
   const activeHref = resolveActiveHref(pathname, navCandidates);
 
-  // Only records groups the user explicitly toggled. Whether a group is *open*
-  // is derived below, so navigating into a group (via search or a deep link)
-  // reveals it without an effect syncing state back after the fact.
-  const [overrides, setOverrides] = useState<Map<string, boolean>>(new Map());
+  // One group open at a time. What is open comes from, in order: a choice made
+  // on this page (cleared by navigating), the group holding the current page,
+  // then the group that was open last time. Navigating into a group (via
+  // search or a deep link) therefore reveals it with no effect syncing state.
+  const [choice, setChoice] = useState<{ path: string; group: string | null } | null>(null);
+  const rememberedRaw = usePref(OPEN_KEY);
+  const remembered = rememberedRaw || null;
+  let activeGroup: string | null = null;
+  for (const e of entries) if (e.type === "group" && groupContainsActive(activeHref, e.children)) activeGroup = e.label;
+  const chosen = choice && choice.path === pathname ? choice : null;
+  const openLabel = chosen ? chosen.group : (activeGroup ?? remembered);
 
-  function isOpen(label: string, children: Item[]) {
-    const override = overrides.get(label);
-    if (override !== undefined) return override;
-    return groupContainsActive(activeHref, children);
+  // Remember the group you were last working in, for the next visit.
+  useEffect(() => {
+    if (activeGroup) writePref(OPEN_KEY, activeGroup);
+  }, [activeGroup]);
+
+  function isOpen(label: string) {
+    return openLabel === label;
   }
 
-  function toggle(label: string, children: Item[]) {
-    setOverrides((prev) => {
-      const next = new Map(prev);
-      next.set(label, !isOpen(label, children));
-      return next;
-    });
+  function toggle(label: string) {
+    const next = openLabel === label ? null : label;
+    setChoice({ path: pathname, group: next });
+    writePref(OPEN_KEY, next ?? "");
   }
 
-  function renderLeaf(item: Item, depth: 0 | 1, keyPrefix = "") {
+  // Pinned pages: a short list kept at the top, saved in this browser. Only pages
+  // this person can open are kept (entries is already permission-filtered).
+  const pinsRaw = usePref(PINS_KEY);
+  const itemByHref = useMemo(() => {
+    const m = new Map<string, Item>();
+    for (const e of entries) {
+      if (e.type === "link") m.set(e.item.href, e.item);
+      else for (const c of e.children) m.set(c.href, c);
+    }
+    if (isAdmin) m.set(ADMIN_ITEM.href, ADMIN_ITEM);
+    return m;
+  }, [entries, isAdmin]);
+  const pins = useMemo(() => {
+    let list: string[] = [];
+    try {
+      const parsed = JSON.parse(pinsRaw ?? "[]");
+      if (Array.isArray(parsed)) list = parsed.filter((h): h is string => typeof h === "string");
+    } catch {
+      /* ignore a corrupt value */
+    }
+    return list.filter((h) => itemByHref.has(h)).slice(0, MAX_PINS);
+  }, [pinsRaw, itemByHref]);
+
+  function togglePin(href: string) {
+    const next = pins.includes(href) ? pins.filter((h) => h !== href) : pins.length < MAX_PINS ? [...pins, href] : pins;
+    writePref(PINS_KEY, JSON.stringify(next));
+  }
+
+  const countFor = (href: string) => (href === "/approvals" ? pendingApprovals : badges[href] ?? 0);
+
+  function renderLeaf(item: Item, depth: 0 | 1, keyPrefix = "", opts: { rail?: boolean; pin?: boolean } = {}) {
+    const { rail = true, pin = true } = opts;
     const active = item.href === activeHref;
     const Icon = item.icon;
 
@@ -409,36 +489,67 @@ export function NavLinks({
       );
     }
 
+    const count = countFor(item.href);
+    const isPinned = pins.includes(item.href);
+    const canPin = pin && (isPinned || pins.length < MAX_PINS);
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        aria-current={active ? "page" : undefined}
-        className={cn(
-          ROW,
-          depth === 0 ? "gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-1.5 text-[13px]",
-          active ? ACTIVE : INACTIVE
+      <div key={keyPrefix + item.href} className="group/pin relative">
+        <Link
+          href={item.href}
+          aria-current={active ? "page" : undefined}
+          className={cn(
+            ROW,
+            depth === 0 ? "gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-1.5 text-[13px]",
+            active ? ACTIVE : INACTIVE
+          )}
+        >
+          {active && rail && (
+            <m.span
+              layoutId="nav-active-rail"
+              transition={SPRING}
+              className="absolute top-1/2 -left-3 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
+              aria-hidden
+            />
+          )}
+          <Icon className={cn("shrink-0", depth === 0 ? "h-[18px] w-[18px]" : "h-4 w-4", !active && "text-muted group-hover/row:text-secondary")} />
+          <span className="truncate">{item.label}</span>
+          {count > 0 && (
+            <span
+              className={cn(
+                "tabular ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold text-white transition-opacity group-hover/pin:opacity-0 group-focus-within/pin:opacity-0",
+                item.href === "/approvals" ? "bg-[var(--error)]" : "bg-[var(--warning)]"
+              )}
+              aria-label={`${count} need attention`}
+            >
+              {count > 99 ? "99+" : count}
+            </span>
+          )}
+        </Link>
+        {pin && (
+          <button
+            type="button"
+            onClick={() => togglePin(item.href)}
+            disabled={!canPin}
+            aria-label={isPinned ? `Unpin ${item.label}` : `Pin ${item.label}`}
+            aria-pressed={isPinned}
+            title={isPinned ? "Unpin" : canPin ? "Pin to the top" : `You can pin up to ${MAX_PINS} pages`}
+            className="absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-subtle opacity-0 transition hover:bg-surface-hover hover:text-primary focus-visible:opacity-100 group-hover/pin:opacity-100 disabled:cursor-not-allowed disabled:opacity-0"
+          >
+            {isPinned ? <PinOff className="h-3.5 w-3.5" aria-hidden /> : <Pin className="h-3.5 w-3.5" aria-hidden />}
+          </button>
         )}
-      >
-        {active && (
-          <m.span
-            layoutId="nav-active-rail"
-            transition={SPRING}
-            className="absolute top-1/2 -left-3 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
-            aria-hidden
-          />
-        )}
-        <Icon className={cn("shrink-0", depth === 0 ? "h-[18px] w-[18px]" : "h-4 w-4", !active && "text-muted group-hover/row:text-secondary")} />
-        <span className="truncate">{item.label}</span>
-        {item.href === "/approvals" && pendingApprovals > 0 && (
-          <span className="tabular ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--error)] px-1.5 text-[10.5px] font-semibold text-white" aria-label={`${pendingApprovals} waiting`}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>
-        )}
-      </Link>
+      </div>
     );
   }
 
   return (
     <nav className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
+      {!collapsed && pins.length > 0 && (
+        <div className="contents">
+          <p className="px-2.5 pt-1.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase">Pinned</p>
+          {pins.map((href) => renderLeaf(itemByHref.get(href)!, 0, "pin-", { rail: false, pin: false }))}
+        </div>
+      )}
       {entries.map((entry, i) => {
         const showCategory = !collapsed && entry.category !== entries[i - 1]?.category;
         const categoryHeader = showCategory && (
@@ -479,8 +590,9 @@ export function NavLinks({
         }
 
         const GroupIcon = entry.icon;
-        const open = isOpen(entry.label, entry.children);
+        const open = isOpen(entry.label);
         const hasActiveChild = groupContainsActive(activeHref, entry.children);
+        const groupCount = entry.children.reduce((n, c) => n + countFor(c.href), 0);
 
         // Collapsed rail: one icon per GROUP (not per child — flattening every
         // child into the rail left ~40 near-identical icons with no way to
@@ -529,7 +641,7 @@ export function NavLinks({
             <div>
             <button
               type="button"
-              onClick={() => toggle(entry.label, entry.children)}
+              onClick={() => toggle(entry.label)}
               aria-expanded={open}
               className={cn(
                 ROW,
@@ -541,9 +653,10 @@ export function NavLinks({
             >
               <GroupIcon className={cn("h-[18px] w-[18px] shrink-0", hasActiveChild ? "text-[var(--brand-primary)]" : "text-muted")} />
               <span className="flex-1 truncate text-left">{entry.label}</span>
-              {hasActiveChild && !open && (
+              {!open && (hasActiveChild || groupCount > 0) && (
                 <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-primary)]"
+                  className={cn("h-1.5 w-1.5 shrink-0 rounded-full", groupCount > 0 ? "bg-[var(--error)]" : "bg-[var(--brand-primary)]")}
+                  title={groupCount > 0 ? `${groupCount} need attention` : undefined}
                   aria-hidden
                 />
               )}

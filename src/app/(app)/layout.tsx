@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { viewableModules } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
+import { branchWhere } from "@/lib/branch";
 import { AppShell } from "./app-shell";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { MobileSidebar } from "./mobile-sidebar";
@@ -62,6 +63,15 @@ export default async function AppLayout({
   // A failed count must never take the page down: the badge just doesn't show.
   const pendingApprovals = await countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }).catch(() => 0);
 
+  // Sidebar badges, only where somebody has to act: documents expiring or
+  // expired, and supplier tickets still waiting for a reply. Both degrade to
+  // "no badge" rather than failing the page.
+  const openTickets = await prisma.supplierTicket.count({ where: { ...branchWhere(branchId), status: "OPEN" } }).catch(() => 0);
+  const badges: Record<string, number> = {
+    "/employees/renewals": alerts.length,
+    "/suppliers/tickets": openTickets,
+  };
+
   // Sidebar brand: the active branch's own name and uploaded logo. A super
   // admin viewing "all branches" (branchId null) keeps the group name and
   // borrows the first uploaded logo, so uploading one is visible immediately.
@@ -78,7 +88,7 @@ export default async function AppLayout({
   const header = (
     <header className="sticky top-0 z-30 border-b border-default bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} />
+        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} badges={badges} />
         <div className="min-w-0 flex-1 lg:max-w-xl">
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
@@ -115,6 +125,7 @@ export default async function AppLayout({
         isSuperAdmin={isSuperAdmin}
         allowedModules={allowedModules}
         pendingApprovals={pendingApprovals}
+        badges={badges}
         brand={brand}
         defaultCollapsed={sidebarCollapsed}
         header={header}
