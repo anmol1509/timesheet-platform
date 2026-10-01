@@ -28,7 +28,12 @@ export type RowReport = {
 
 /** Something in a timesheet file that can be corrected before it is imported. */
 export type Fixable = {
-  type: "rate" | "hours" | "nationality";
+  type: "rate" | "hours" | "nationality" | "field";
+  /** For a worker field fix: which field, what to call it, why it was flagged and what kind of value it takes. */
+  field?: string;
+  label?: string;
+  reason?: string;
+  kind?: "country" | "gender" | "date" | "text";
   /** The worker's employee code, as in the sheet. */
   id: string;
   name: string;
@@ -42,7 +47,7 @@ export type Fixable = {
 };
 
 /** A correction the person typed in: replaces the value from the sheet when the import runs. */
-export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: string; value: string };
+export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: string; field?: string; value: string };
 
 export type ApplyResult = {
   rows: RowReport[];

@@ -146,7 +146,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       const mapping =
         analysis?.kind === "TIMESHEETS"
           ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList }
-          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns };
+          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
       setPreviewedKey(keyFor(fixList));
@@ -341,7 +341,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               fixables={summary.fixables!}
               busy={busy}
               onApply={(entered) => {
-                const key = (f: Fix) => `${f.type}|${f.id.toUpperCase()}|${f.month ?? ""}|${f.date ?? ""}`;
+                const key = (f: Fix) => `${f.type}|${f.id.toUpperCase()}|${f.month ?? ""}|${f.date ?? ""}|${f.field ?? ""}`;
                 const merged = new Map(fixes.map((f) => [key(f), f]));
                 for (const f of entered) merged.set(key(f), f);
                 const next = [...merged.values()];
@@ -488,12 +488,14 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
 /** Problems in the file that can be corrected here, before anything is imported. Typing a value and applying re-runs the preview, so a fixed problem disappears. */
 function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: boolean; onApply: (fixes: Fix[]) => void }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
-  const idOf = (f: Fixable) => `${f.type}|${f.id}|${f.month ?? ""}|${f.date ?? ""}`;
+  const idOf = (f: Fixable) => `${f.type}|${f.id}|${f.month ?? ""}|${f.date ?? ""}|${f.field ?? ""}`;
   const groups: { type: Fixable["type"]; title: string; hint: string; placeholder: string }[] = [
     { type: "rate", title: "Rate is 0", hint: "Enter the hourly rate to bill for this worker.", placeholder: "Rate" },
     { type: "hours", title: "Unusual hours", hint: "Enter the hours worked that day (0 to leave the day empty).", placeholder: "Hours" },
     { type: "nationality", title: "Nationality is not a country", hint: "Enter the country, e.g. India.", placeholder: "Country" },
+    { type: "field", title: "Details to correct", hint: "Dates are day/month/year, e.g. 25/12/2026. Gender is Male or Female.", placeholder: "Correct value" },
   ];
+  const holder = (f: Fixable) => (f.kind === "date" ? "dd/mm/yyyy" : f.kind === "country" ? "Country" : f.kind === "gender" ? "Male / Female" : "Correct value");
   const entered = fixables.filter((f) => (draft[idOf(f)] ?? "").trim() !== "");
   return (
     <div className="card space-y-4 p-4">
@@ -513,14 +515,14 @@ function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: bool
                 <li key={idOf(f)} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
                   <span className="min-w-0 text-primary">
                     <span className="font-medium">{f.name}</span> <span className="text-subtle">{f.id}</span>
-                    <span className="text-muted"> &mdash; {f.type === "hours" ? `${f.date}: ${f.current} hours` : f.type === "nationality" ? `“${f.current}”` : f.monthLabel}</span>
+                    <span className="text-muted"> &mdash; {f.type === "hours" ? `${f.date}: ${f.current} hours` : f.type === "nationality" ? `“${f.current}”` : f.type === "field" ? `${f.label}: “${f.current}” ${f.reason}` : f.monthLabel}</span>
                   </span>
                   <input
                     value={draft[idOf(f)] ?? ""}
                     onChange={(e) => setDraft((prev) => ({ ...prev, [idOf(f)]: e.target.value }))}
-                    placeholder={g.placeholder}
-                    inputMode={g.type === "nationality" ? "text" : "decimal"}
-                    aria-label={`${g.placeholder} for ${f.name}`}
+                    placeholder={g.type === "field" ? holder(f) : g.placeholder}
+                    inputMode={g.type === "rate" || g.type === "hours" ? "decimal" : "text"}
+                    aria-label={g.type === "field" ? `${f.label} for ${f.name}` : `${g.placeholder} for ${f.name}`}
                     className="input w-32 px-2 py-1.5"
                   />
                 </li>
@@ -535,7 +537,7 @@ function FixPanel({ fixables, busy, onApply }: { fixables: Fixable[]; busy: bool
           type="button"
           disabled={busy || entered.length === 0}
           onClick={() => {
-            onApply(entered.map((f) => ({ type: f.type, id: f.id, month: f.month, date: f.date, value: (draft[idOf(f)] ?? "").trim() })));
+            onApply(entered.map((f) => ({ type: f.type, id: f.id, month: f.month, date: f.date, field: f.field, value: (draft[idOf(f)] ?? "").trim() })));
             setDraft({});
           }}
           className="btn btn-primary"

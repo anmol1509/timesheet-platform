@@ -91,6 +91,13 @@ export async function applyTimesheets(
       detail: `${(stats.nationalityNotSavedValues ?? []).join(", ")} — not saved. Use the country, e.g. India.`,
     });
   }
+  if ((stats.nearMatches ?? []).length > 0) {
+    notes.push({
+      tone: "info",
+      title: `${stats.nearMatches!.length} name${stats.nearMatches!.length === 1 ? " was" : "s were"} matched to an existing company or client`,
+      detail: stats.nearMatches!.slice(0, 5).map((m) => `"${m.from}" → "${m.to}"`).join("; ") + ". Same name apart from LLC / Co / Ltd. If they are different companies, rename one first.",
+    });
+  }
   if ((stats.projectsNotFound ?? []).length > 0) {
     notes.push({
       tone: "warn",

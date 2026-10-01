@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { uniqueClientCode, uniqueSupplierCode } from "@/lib/entityCode";
 import { nameKey } from "@/lib/partyCode";
+import { looseMatch } from "@/lib/looseName";
 import { normalizeNationality } from "@/lib/nationality";
 import { loadTradeCanon } from "@/lib/canon";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
@@ -33,6 +34,8 @@ export type ImportStats = {
   projectsNotFound?: string[];
   /** Workers given an hourly pay rate from the sheet's Pay Rate column. */
   payRatesSet?: number;
+  /** Names in the sheet used as an existing company or client that differs only by LLC / Co / Ltd. */
+  nearMatches?: { from: string; to: string }[];
   /** Workers linked to a project from the sheet's Project column. */
   workersLinkedToProject?: number;
 };
@@ -135,9 +138,18 @@ export async function importParsedMonths(
   // under their main supplier once the whole file has been read.
   const sponsorVotes = new Map<string, Map<string, number>>();
   const parentsOfOthers = new Set<string>();
+  const nearMatches = new Map<string, string>();
   const findOrCreateSupplier = async (name: string) => {
     const key = normalizeKey(name);
     let s = supplierByKey.get(key);
+    if (!s) {
+      const near = looseMatch(name, [...supplierByKey.values()]);
+      if (near) {
+        supplierByKey.set(key, near);
+        nearMatches.set(name.trim(), near.name);
+        return near;
+      }
+    }
     if (!s) {
       s = await db.supplier.create({
         data: { name: name.trim(), code: await uniqueSupplierCode(name.trim(), branchId, undefined, db), branchId },
@@ -197,6 +209,14 @@ export async function importParsedMonths(
       if (entry.clientName) {
         const clientKey = normalizeKey(entry.clientName);
         let client = clientByKey.get(clientKey);
+        if (!client) {
+          const near = looseMatch(entry.clientName, [...clientByKey.values()]);
+          if (near) {
+            clientByKey.set(clientKey, near);
+            nearMatches.set(entry.clientName.trim(), near.name);
+            client = near;
+          }
+        }
         if (!client) {
           client = await db.client.create({
             data: { name: entry.clientName.trim(), code: await uniqueClientCode(entry.clientName.trim(), branchId, undefined, db), branchId },
@@ -387,6 +407,7 @@ export async function importParsedMonths(
     stats.nationalityNotSaved = skippedNationality;
     stats.nationalityNotSavedValues = [...skippedNationalityValues];
   }
+  if (nearMatches.size > 0) stats.nearMatches = [...nearMatches].map(([from, to]) => ({ from, to })).slice(0, 20);
   if (projectsNotFound.size > 0) stats.projectsNotFound = [...projectsNotFound];
   if (payRatesSet > 0) stats.payRatesSet = payRatesSet;
   if (linkedToProject > 0) stats.workersLinkedToProject = linkedToProject;

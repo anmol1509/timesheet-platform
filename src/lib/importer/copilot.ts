@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { ASSISTANT_MODEL } from "@/lib/constants";
 import { nameKey } from "@/lib/partyCode";
+import { looseNameKey } from "@/lib/looseName";
 import { describeTimesheetWorkbook, parseConsolidatedWorkbook, type TimesheetOverrides } from "@/lib/parseTimesheet";
 
 /**
@@ -178,11 +179,11 @@ export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: stri
 
   const existingSuppliers = suppliers.map((s) => s.name);
   const existingClients = clients.map((c) => c.name);
-  const known = (names: string[]) => new Set(names.map(nameKey));
+  const known = (names: string[]) => new Set(names.map(looseNameKey));
   const knownSuppliers = known(existingSuppliers);
   const knownClients = known(existingClients);
-  const newSuppliers = [...new Set([...suppliersIn.keys(), ...sponsorsIn.keys()])].filter((n) => !knownSuppliers.has(nameKey(n)));
-  const newClients = [...clientsIn.keys()].filter((n) => !knownClients.has(nameKey(n)));
+  const newSuppliers = [...new Set([...suppliersIn.keys(), ...sponsorsIn.keys()])].filter((n) => !knownSuppliers.has(looseNameKey(n)));
+  const newClients = [...clientsIn.keys()].filter((n) => !knownClients.has(looseNameKey(n)));
 
   const header = new Set<string>();
   for (const s of monthSheets) for (const h of s.headers) header.add(h);

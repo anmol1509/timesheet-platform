@@ -1,7 +1,9 @@
 import { nameKey, pickCode } from "@/lib/partyCode";
 import { normalizeNationality } from "@/lib/nationality";
 import { loadTradeCanon } from "@/lib/canon";
-import type { ApplyCtx, ApplyResult, ImportNote, MappedRow, RowReport } from "../types";
+import { looseMatch } from "@/lib/looseName";
+import { WORKER_FIX_FIELDS, checkWorkerFix, dateProblem, workerProblems } from "../workerChecks";
+import type { ApplyCtx, ApplyResult, Fix, Fixable, ImportNote, MappedRow, RowReport } from "../types";
 import { auditor, clean, parseLooseDate } from "./shared";
 
 const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber"] as const;
@@ -26,11 +28,19 @@ function gender(v: string): "MALE" | "FEMALE" | null {
 /** Import workers. A worker is identified by ID; a row for an ID that
  * another company already holds is refused (IDs are unique platform-wide, so
  * an update would rewrite their worker). Blank cells never clear saved values. */
-export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[]): Promise<ApplyResult> {
+export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix[] = []): Promise<ApplyResult> {
   const { db, branchId } = ctx;
   const audit = auditor(ctx);
   const rows: RowReport[] = [];
   const counts = { created: 0, updated: 0, merged: 0, failed: 0, suppliersCreated: 0 };
+
+  // Corrections typed in on the review screen replace what the file has, if they pass the same checks.
+  const fixList = (Array.isArray(fixes) ? fixes : []).filter((f) => f && f.type === "field" && typeof f.id === "string" && typeof f.field === "string" && WORKER_FIX_FIELDS.has(f.field) && typeof f.value === "string").slice(0, 500);
+  for (const f of fixList) {
+    const ok = checkWorkerFix(f.field!, f.value);
+    if (ok == null) continue;
+    for (const r of input) if (idKey(clean(r.values.employeeIdNo)) === idKey(f.id)) r.values[f.field!] = ok;
+  }
 
   type Group = { id: string; firstRow: number; values: Record<string, string>; names: string[] };
   const groups = new Map<string, Group>();
@@ -86,6 +96,15 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[]): Promise<A
   const supplierFor = async (name: string, notes: ImportNote[], role: string) => {
     const key = nameKey(name);
     let s = supplierByKey.get(key);
+    if (!s) {
+      // "Prime Build Workforce LLC" is the "Prime Build Workforce" already on file: use it rather than adding a second copy.
+      const near = looseMatch(name, [...supplierByKey.values()]);
+      if (near) {
+        supplierByKey.set(key, near);
+        notes.push({ tone: "info", title: `"${name}" matched to your supplier "${near.name}"`, detail: "Same company apart from LLC / Co / Ltd. If they are different companies, rename one of them first." });
+        return near;
+      }
+    }
     if (!s) {
       const code = pickCode(name, codes);
       s = await db.supplier.create({ data: { name, code, branchId } });
@@ -151,17 +170,21 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[]): Promise<A
         if (!raw) continue;
         const d = parseLooseDate(raw);
         if (d === "invalid") notes.push({ tone: "warn", title: `${label} "${raw}" isn't a date`, detail: "Use day/month/year, e.g. 25/12/2026. That field was skipped." });
-        else if (d) data[key] = d;
+        else if (d) {
+          const why = dateProblem(key, d);
+          if (why) notes.push({ tone: "warn", title: `${label} "${raw}" ${why}`, detail: "That field was skipped. Correct it in the \"Fix before importing\" box, or set it on the worker's page." });
+          else data[key] = d;
+        }
       }
       const supplierName = clean(v.supplier);
       if (supplierName) {
-        const before = supplierByKey.has(nameKey(supplierName));
+        const before = supplierByKey.has(nameKey(supplierName)) || !!looseMatch(supplierName, [...supplierByKey.values()]);
         data.supplierId = (await supplierFor(supplierName, notes, "S")).id;
         if (!before) notes.push({ tone: "info", title: `Added supplier "${supplierName}"`, detail: "It wasn't in your suppliers yet." });
       }
       const sponsorName = clean(v.sponsor);
       if (sponsorName) {
-        const before = supplierByKey.has(nameKey(sponsorName));
+        const before = supplierByKey.has(nameKey(sponsorName)) || !!looseMatch(sponsorName, [...supplierByKey.values()]);
         data.sponsorSupplierId = (await supplierFor(sponsorName, notes, "P")).id;
         if (!before) notes.push({ tone: "info", title: `Added sponsor "${sponsorName}"`, detail: "It wasn't in your suppliers yet." });
       }
@@ -186,5 +209,14 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[]): Promise<A
     await ctx.progress?.(++done, order.length);
   }
   rows.sort((a, b) => a.row - b.row);
-  return { rows, counts, notes: [] };
+
+  // What can still be corrected before importing: shown on the review screen, and gone once fixed.
+  const fixables: Fixable[] = [];
+  for (const g of order) {
+    for (const p of workerProblems(g.values)) {
+      if (fixables.length >= 200) break;
+      fixables.push({ type: "field", id: g.id, name: clean(g.values.name), field: p.field, label: p.label, reason: p.reason, kind: p.kind, current: p.current });
+    }
+  }
+  return { rows, counts, notes: [], fixables };
 }

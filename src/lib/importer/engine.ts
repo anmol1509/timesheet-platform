@@ -49,7 +49,7 @@ async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Ar
   const rows = extractRows(wb, mapping, fields);
   if (kind === "SUPPLIERS") return applySuppliers(ctx, rows);
   if (kind === "CLIENTS") return applyClients(ctx, rows);
-  return applyWorkers(ctx, rows);
+  return applyWorkers(ctx, rows, mapping.fixes ?? []);
 }
 
 function summarise(res: ApplyResult): BatchSummary {
