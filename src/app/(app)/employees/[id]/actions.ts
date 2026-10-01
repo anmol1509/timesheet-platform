@@ -110,11 +110,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
     const daily = numberOrNull(formData.get("dailyHours")) ?? 8;
     if (daily < 1 || daily > 16) return { error: "Daily hours must be between 1 and 16." };
-    const restMult = numberOrNull(formData.get("restOtMultiplier")) ?? 1.5;
-    if (restMult < 1 || restMult > 3) return { error: "Rest-day multiplier must be between 1 and 3." };
     payData = {
       dailyHours: daily,
-      restOtMultiplier: restMult,
       payStructure: structure,
       // Pay typed on the worker is theirs, even if their trade gets a pay row later.
       payOverride: !!structure,

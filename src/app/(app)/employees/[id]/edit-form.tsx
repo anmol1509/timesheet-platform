@@ -147,7 +147,6 @@ export type PayFormValues = {
   hourlyRate: string;
   otMultiplier: string;
   dailyHours: string;
-  restOtMultiplier: string;
 };
 
 function toDateInput(d: Date | null) {
@@ -700,11 +699,8 @@ export function EditForm({
                   <Field label="Standard hours per day">
                     <NumberInput name="dailyHours" defaultValue={pay.dailyHours} min={1} max={16} step={0.25} className="w-full" />
                   </Field>
-                  <Field label="Overtime multiplier (extra hours on a working day)">
+                  <Field label="Overtime multiplier">
                     <NumberInput name="otMultiplier" defaultValue={pay.otMultiplier} min={1} max={3} step={0.01} className="w-full" />
-                  </Field>
-                  <Field label="Rest-day / holiday multiplier">
-                    <NumberInput name="restOtMultiplier" defaultValue={pay.restOtMultiplier} min={1} max={3} step={0.01} className="w-full" />
                   </Field>
                 </>
               )}

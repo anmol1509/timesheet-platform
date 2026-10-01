@@ -164,7 +164,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         payStructure: (isHourly ? "HOURLY" : pf.payStructure) as PayStructure,
         basic: pf.basicSalary, housing: pf.housingAllowance, food: pf.foodAllowance, transport: pf.transportAllowance, other: pf.otherAllowance,
         flat: pf.flatMonthlyRate, hourly: pf.hourlyRate, paysOvertime: isHourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier,
-        dailyHours: pf.dailyHours, restOtMultiplier: pf.restOtMultiplier,
+        dailyHours: pf.dailyHours, restOtMultiplier: pf.otMultiplier, // rest-day and holiday hours use the same multiplier
         absenceFreeDays: e.supplier?.absentFreeDays ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
       },
       isHourly

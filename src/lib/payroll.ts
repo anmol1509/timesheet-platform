@@ -8,7 +8,7 @@
  *    is treated as the basic): hourly = basic / 30 / the employee's daily hours
  *    (default 8, i.e. basic / 240). Hours beyond the day's standard on a working
  *    day pay at otMultiplier (default 1.25); hours worked on a weekly off day or
- *    holiday pay at restOtMultiplier (default 1.5).
+ *    holiday use the same multiplier.
  *  - HOURLY workers are paid normal hours x hourly rate (so there is nothing to
  *    deduct for absence), and overtime at hourly rate x multiplier.
  *  - Allowances are fixed monthly amounts and are not used for overtime.

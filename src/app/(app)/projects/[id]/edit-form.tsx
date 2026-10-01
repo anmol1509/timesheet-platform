@@ -179,7 +179,7 @@ export function EditProjectForm({
         </Field>
         <Field label="Weekly off day(s) on this project" className="sm:col-span-2">
           <WeekdayPicker name="weeklyOffDays" defaultValue={project.weeklyOffDays} />
-          <p className="mt-1 text-xs text-secondary">Work on these days is paid at the rest-day rate in payroll.</p>
+          <p className="mt-1 text-xs text-secondary">Work on these days is paid as overtime in payroll.</p>
         </Field>
         <CheckboxField label="Inter transfer" name="interTransfer" defaultChecked={project.interTransfer} />
         <CheckboxField label="Internal use" name="internalUse" defaultChecked={project.internalUse} />
