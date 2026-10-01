@@ -26,6 +26,8 @@ export type CopilotResult = {
   /** False when the model could not be reached; the code checks are still returned. */
   ai: boolean;
   summary: string;
+  /** True when there is something only judgement can settle (a missing column, or new company names that might be ones already on file). */
+  needsAi: boolean;
   findings: CopilotFinding[];
   mappingSuggestions: { field: string; label: string; header: string; reason: string }[];
   nameMatches: { from: string; to: string; kind: "supplier" | "client"; reason: string }[];
@@ -101,8 +103,8 @@ const bump = (m: Counted, k: string | null | undefined) => {
 };
 const top = (m: Counted, n = CAP) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 
-export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: string; overrides?: TimesheetOverrides }): Promise<CopilotResult> {
-  const { buffer, branchId, overrides = {} } = args;
+export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: string; overrides?: TimesheetOverrides; useAi?: boolean }): Promise<CopilotResult> {
+  const { buffer, branchId, overrides = {}, useAi = true } = args;
   const [sheets, parsed, suppliers, clients, skills] = await Promise.all([
     describeTimesheetWorkbook(buffer, overrides),
     parseConsolidatedWorkbook(buffer, overrides),
@@ -186,10 +188,13 @@ export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: stri
   for (const s of monthSheets) for (const h of s.headers) header.add(h);
   const headers = [...header].slice(0, 80);
 
-  const result: CopilotResult = { ai: false, summary: "", findings, mappingSuggestions: [], nameMatches: [] };
+  // The model is only worth asking when it has something to judge.
+  const undetectedRequired = undetected.filter((f) => REQUIRED.includes(f));
+  const couldMatchNames = (newSuppliers.length > 0 || newClients.length > 0) && existingSuppliers.length + existingClients.length > 0;
+  const result: CopilotResult = { ai: false, summary: "", needsAi: undetectedRequired.length > 0 || couldMatchNames, findings, mappingSuggestions: [], nameMatches: [] };
   result.summary = `${rows} worker rows across ${parsed.months.length} month${parsed.months.length === 1 ? "" : "s"}; ${newSuppliers.length} new compan${newSuppliers.length === 1 ? "y" : "ies"} and ${newClients.length} new client${newClients.length === 1 ? "" : "s"} would be created.`;
 
-  if (!process.env.ANTHROPIC_API_KEY || rows === 0) return result;
+  if (!useAi || !process.env.ANTHROPIC_API_KEY || rows === 0) return result;
 
   const digest = {
     headers,

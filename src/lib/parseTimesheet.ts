@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { NOT_USED } from "@/lib/importer/columnKeys";
 
 const MONTH_NAMES = [
   "jan",
@@ -250,6 +251,11 @@ function detectColumns(sheet: ExcelJS.Worksheet, headerRowNum: number, overrides
   }
   for (const [key, wanted] of Object.entries(overrides) as [TimesheetColumnKey, string][]) {
     if (!wanted) continue;
+    // "Not used": the person said this detected column is not that field.
+    if (wanted === NOT_USED) {
+      colMap[key] = null;
+      continue;
+    }
     for (let c = 1; c <= lastCol; c++) {
       if (normHeader(cellText(headerRow.getCell(c))) === normHeader(wanted)) {
         colMap[key] = c;
@@ -267,6 +273,8 @@ export type TimesheetSheetInfo = {
   headers: string[];
   /** For each field, the header text of the column that was detected, or null. */
   detected: Record<string, string | null>;
+  /** Up to three example values from the first rows under each detected column, so a match can be checked by eye. */
+  samples: Record<string, string[]>;
   /** Data rows under the header (a rough count, for the review screen). */
   rows: number;
 };
@@ -280,7 +288,7 @@ export async function describeTimesheetWorkbook(buffer: Buffer, overrides: Times
     const monthInfo = parseMonthFromSheetName(sheet.name);
     const headerRowNum = findHeaderRow(sheet);
     if (!headerRowNum) {
-      out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: null, headers: [], detected: {}, rows: 0 });
+      out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: null, headers: [], detected: {}, samples: {}, rows: 0 });
       continue;
     }
     const headerRow = sheet.getRow(headerRowNum);
@@ -291,10 +299,20 @@ export async function describeTimesheetWorkbook(buffer: Buffer, overrides: Times
     }
     const colMap = detectColumns(sheet, headerRowNum, overrides);
     const detected: Record<string, string | null> = {};
+    const samples: Record<string, string[]> = {};
     for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "project", "trade", "rate", "payRate", "nationality"] as const) {
       detected[key] = colMap[key] ? cellText(headerRow.getCell(colMap[key]!)) || null : null;
+      if (colMap[key]) {
+        const vals: string[] = [];
+        // The row under the heading often holds dates, which are blank in these columns, so blanks are skipped.
+        for (let r = headerRowNum + 1; r <= Math.min(sheet.rowCount, headerRowNum + 12) && vals.length < 3; r++) {
+          const t = cellText(sheet.getRow(r).getCell(colMap[key]!));
+          if (t && !vals.includes(t)) vals.push(t.slice(0, 40));
+        }
+        samples[key] = vals;
+      }
     }
-    out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: headerRowNum, headers, detected, rows: Math.max(0, sheet.rowCount - headerRowNum - 1) });
+    out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: headerRowNum, headers, detected, samples, rows: Math.max(0, sheet.rowCount - headerRowNum - 1) });
   }
   return out;
 }

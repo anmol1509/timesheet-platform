@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Sparkles, Undo2,
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReportView, type TileSpec } from "@/components/import/report";
 import { cn } from "@/lib/cn";
+import { NOT_USED } from "@/lib/importer/columnKeys";
 import { TARGETS } from "@/lib/importer/targets";
 import type { Fix, Fixable, ImportKind } from "@/lib/importer/types";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
@@ -103,14 +104,27 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       setAnalysis(res.analysis);
       if (res.analysis.kind !== "TIMESHEETS") setColumns(res.analysis.columns);
       setStep("map");
+      if (res.analysis.kind === "TIMESHEETS") void runChecks({}, res.batchId);
     });
   }
 
+  /** The built-in checks: free, instant, and nothing leaves the server. Run whenever the file or the column choices change. */
+  async function runChecks(ov: Record<string, string>, id: string | null = batchId) {
+    if (!id) return;
+    try {
+      const res = await call<{ result: CopilotResult }>(`/api/import/${id}/copilot`, { method: "POST", body: JSON.stringify({ timesheetOverrides: ov, ai: false }), headers: { "content-type": "application/json" } });
+      setCopilot(res.result);
+    } catch {
+      /* the checks are a help, not a gate: a failure just leaves them out */
+    }
+  }
+
+  /** The AI part, asked for on purpose. */
   async function runCopilot() {
     setChecking(true);
     setError(null);
     try {
-      const res = await call<{ result: CopilotResult }>(`/api/import/${batchId}/copilot`, { method: "POST", body: JSON.stringify({ timesheetOverrides: overrides }), headers: { "content-type": "application/json" } });
+      const res = await call<{ result: CopilotResult }>(`/api/import/${batchId}/copilot`, { method: "POST", body: JSON.stringify({ timesheetOverrides: overrides, ai: true }), headers: { "content-type": "application/json" } });
       setCopilot(res.result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -286,6 +300,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               const next = { ...overrides, [field]: header };
               setOverrides(next);
               reanalyse({ timesheetOverrides: next });
+              void runChecks(next);
             }} />
           )}
 
@@ -300,6 +315,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
                 const next = { ...overrides, [field]: header };
                 setOverrides(next);
                 reanalyse({ timesheetOverrides: next });
+                void runChecks(next);
               }}
               overrides={overrides}
             />
@@ -541,65 +557,78 @@ function CopilotPanel({ result, checking, onRun, aliases, onAlias, onPick, overr
   overrides: Record<string, string>;
 }) {
   const TONE = { high: "bg-[var(--error)]", medium: "bg-[var(--warning)]", low: "bg-[var(--info)]" } as const;
+  if (!result) {
+    return (
+      <div className="card flex items-center gap-2 p-4 text-sm text-muted">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Checking the file&hellip;
+      </div>
+    );
+  }
+  const clean = result.findings.length === 0 && !result.needsAi;
   return (
     <div className="card space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Sparkles className="h-4 w-4 text-[var(--brand-primary)]" aria-hidden /> Check this file with AI
+            {clean ? <CheckCircle2 className="h-4 w-4 text-[var(--success)]" aria-hidden /> : <Sparkles className="h-4 w-4 text-[var(--brand-primary)]" aria-hidden />}
+            {clean ? "Nothing needs a second look" : "Checks on this file"}
           </p>
-          <p className="mt-0.5 text-xs text-muted">Looks for missing columns, clashing codes and company names you already have. It sends a summary of company, client and trade names — not hours or salaries — and changes nothing until you say so.</p>
+          <p className="mt-0.5 text-xs text-muted">{result.summary}</p>
         </div>
-        <button type="button" onClick={onRun} disabled={checking} className="btn btn-secondary inline-flex items-center gap-1.5">
-          {checking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
-          {checking ? "Checking…" : result ? "Check again" : "Check with AI"}
-        </button>
+        {result.needsAi && !result.ai && (
+          <button type="button" onClick={onRun} disabled={checking} className="btn btn-secondary inline-flex items-center gap-1.5">
+            {checking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
+            {checking ? "Checking…" : "Ask AI for help"}
+          </button>
+        )}
+        {!result.needsAi && !result.ai && (
+          <button type="button" onClick={onRun} disabled={checking} className="text-xs font-medium text-muted underline hover:text-primary disabled:opacity-60">
+            {checking ? "Checking…" : "Check with AI anyway"}
+          </button>
+        )}
       </div>
 
-      {result && (
-        <div className="space-y-3 border-t border-default pt-3">
-          <p className="text-sm text-secondary">{result.summary}</p>
-          {!result.ai && <p className="text-xs text-muted">The AI part wasn&rsquo;t available just now, so only the built-in checks ran.</p>}
+      {result.needsAi && !result.ai && (
+        <p className="rounded-lg bg-brand-soft px-3 py-2 text-xs text-secondary">
+          Some of this needs judgement &mdash; a column that wasn&rsquo;t found, or company names that might be ones you already have. AI can suggest answers. It sends only a summary of company, client and trade names (no hours or salaries) and changes nothing until you say so.
+        </p>
+      )}
 
-          {result.mappingSuggestions.map((m) => {
-            const applied = overrides[m.field] === m.header;
-            return (
-              <div key={m.field} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft px-3 py-2 text-sm">
-                <p className="text-primary">
-                  <span className="font-medium">{m.label}</span> looks like the column <span className="font-medium">&ldquo;{m.header}&rdquo;</span>
-                  <span className="text-muted"> &mdash; {m.reason}</span>
-                </p>
-                <button type="button" disabled={applied} onClick={() => onPick(m.field, m.header)} className="btn btn-secondary btn-sm">{applied ? "Using it" : "Use this column"}</button>
-              </div>
-            );
-          })}
+      {result.mappingSuggestions.map((m) => {
+        const applied = overrides[m.field] === m.header;
+        return (
+          <div key={m.field} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft px-3 py-2 text-sm">
+            <p className="text-primary">
+              <span className="font-medium">{m.label}</span> looks like the column <span className="font-medium">&ldquo;{m.header}&rdquo;</span>
+              <span className="text-muted"> &mdash; {m.reason}</span>
+            </p>
+            <button type="button" disabled={applied} onClick={() => onPick(m.field, m.header)} className="btn btn-secondary btn-sm">{applied ? "Using it" : "Use this column"}</button>
+          </div>
+        );
+      })}
 
-          {result.nameMatches.map((n) => {
-            const applied = aliases[n.from] === n.to;
-            return (
-              <div key={n.from} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft px-3 py-2 text-sm">
-                <p className="text-primary">
-                  <span className="font-medium">&ldquo;{n.from}&rdquo;</span> looks like your existing {n.kind} <span className="font-medium">&ldquo;{n.to}&rdquo;</span>
-                  <span className="text-muted"> &mdash; {n.reason}</span>
-                </p>
-                <button type="button" onClick={() => onAlias(n.from, applied ? null : n.to)} className="btn btn-secondary btn-sm">{applied ? "Undo" : "Treat as the same"}</button>
-              </div>
-            );
-          })}
+      {result.nameMatches.map((n) => {
+        const applied = aliases[n.from] === n.to;
+        return (
+          <div key={n.from} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft px-3 py-2 text-sm">
+            <p className="text-primary">
+              <span className="font-medium">&ldquo;{n.from}&rdquo;</span> looks like your existing {n.kind} <span className="font-medium">&ldquo;{n.to}&rdquo;</span>
+              <span className="text-muted"> &mdash; {n.reason}</span>
+            </p>
+            <button type="button" onClick={() => onAlias(n.from, applied ? null : n.to)} className="btn btn-secondary btn-sm">{applied ? "Undo" : "Treat as the same"}</button>
+          </div>
+        );
+      })}
 
-          {result.findings.length > 0 ? (
-            <ul className="space-y-2">
-              {result.findings.map((f, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm">
-                  <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", TONE[f.severity])} aria-hidden />
-                  <span><span className="font-medium text-primary">{f.title}.</span> <span className="text-secondary">{f.detail}</span></span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="flex items-center gap-2 text-sm text-[var(--success)]"><CheckCircle2 className="h-4 w-4" aria-hidden /> Nothing to flag.</p>
-          )}
-        </div>
+      {result.findings.length > 0 && (
+        <ul className="space-y-2">
+          {result.findings.map((f, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-sm">
+              <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", TONE[f.severity])} aria-hidden />
+              <span><span className="font-medium text-primary">{f.title}.</span> <span className="text-secondary">{f.detail}</span></span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -613,6 +642,7 @@ const TS_REQUIRED: { key: string; label: string }[] = [
 const TS_OPTIONAL: { key: string; label: string }[] = [
   { key: "sponsor", label: "Sponsor" },
   { key: "client", label: "Client" },
+  { key: "site", label: "Site" },
   { key: "project", label: "Project" },
   { key: "trade", label: "Trade" },
   { key: "rate", label: "Rate" },
@@ -624,48 +654,58 @@ function TimesheetSheets({ analysis, overrides, onPick }: { analysis: Extract<An
   const months = analysis.sheets.filter((s) => s.month && s.headerRow);
   const skipped = analysis.sheets.filter((s) => !s.month || !s.headerRow);
   const allHeaders = [...new Set(months.flatMap((s) => s.headers))];
+  const first = months[0];
+  // The table shows the first tab; every tab is matched the same way, so a tab where a needed column is missing is called out instead.
+  const lacking = months.slice(1).filter((s) => TS_REQUIRED.some((f) => !s.detected[f.key]));
+  const rows = [...TS_REQUIRED.map((f) => ({ ...f, required: true })), ...TS_OPTIONAL.map((f) => ({ ...f, required: false }))];
   return (
     <div className="space-y-3">
       <div className="card overflow-hidden">
         <div className="border-b border-default bg-surface-subtle px-4 py-2.5 text-xs text-muted">
-          {months.length} month{months.length === 1 ? "" : "s"} found. Each tab is read on its own, so the columns can sit in different places.
+          {months.length} month{months.length === 1 ? "" : "s"} found{first ? <> &mdash; showing <span className="font-medium text-secondary">{first.sheet}</span> ({first.rows} rows)</> : null}. Check each match against the example values; change any that are wrong.
         </div>
-        <ul className="divide-y divide-[var(--border)]">
-          {months.map((s) => (
-            <li key={s.sheet} className="space-y-2 px-4 py-3">
-              <p className="text-sm font-medium text-primary">
-                {s.sheet} <span className="tabular ml-1 rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs text-muted">{s.month}</span>
-                <span className="ml-2 text-xs font-normal text-muted">{s.rows} rows</span>
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {TS_REQUIRED.map((f) => (
-                  <span key={f.key} className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", s.detected[f.key] ? "bg-[var(--success-soft)] text-[var(--success)]" : "bg-[var(--error-soft)] text-[var(--error)]")}>
-                    {f.label}: {s.detected[f.key] ?? "not found"}
-                  </span>
-                ))}
-                {TS_OPTIONAL.filter((f) => s.detected[f.key]).map((f) => (
-                  <span key={f.key} className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] text-secondary">{f.label}: {s.detected[f.key]}</span>
-                ))}
-              </div>
-            </li>
-          ))}
-        </ul>
+        {first && (
+          <ul className="divide-y divide-[var(--border)]">
+            {rows.map((f) => {
+              const detected = first.detected[f.key] ?? "";
+              const override = overrides[f.key];
+              const chosen = override && override !== NOT_USED ? override : detected;
+              const sample = first.samples?.[f.key] ?? [];
+              return (
+                <li key={f.key} className="grid grid-cols-1 items-center gap-2 px-4 py-3 sm:grid-cols-[minmax(150px,1fr)_minmax(200px,1.4fr)_1.4fr]">
+                  <p className="text-sm font-medium text-primary">
+                    {f.label}
+                    {f.required && <span className="text-[var(--error)]"> *</span>}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      className="input w-full"
+                      value={chosen || (f.required ? "" : NOT_USED)}
+                      onChange={(e) => { if (e.target.value) onPick(f.key, e.target.value); }}
+                      aria-label={`Column for ${f.label}`}
+                    >
+                      {f.required ? <option value="">Choose a column…</option> : <option value={NOT_USED}>Not in my file</option>}
+                      {allHeaders.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    {chosen ? (
+                      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", override && override !== NOT_USED ? "bg-surface-sunken text-muted" : "bg-[var(--success-soft)] text-[var(--success)]")}>
+                        {override && override !== NOT_USED ? "Chosen" : "Matched"}
+                      </span>
+                    ) : f.required ? (
+                      <span className="shrink-0 rounded-full bg-[var(--error-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--error)]">Needed</span>
+                    ) : null}
+                  </div>
+                  <p className="truncate text-xs text-muted">{chosen ? sample.join(" · ") || "—" : ""}</p>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
-      {TS_REQUIRED.some((f) => months.some((s) => !s.detected[f.key])) && (
-        <div className="card space-y-3 p-4">
-          <p className="text-sm font-medium text-primary">Some columns weren&rsquo;t found &mdash; pick them</p>
-          {TS_REQUIRED.filter((f) => months.some((s) => !s.detected[f.key])).map((f) => (
-            <label key={f.key} className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="w-40 font-medium text-primary">{f.label}</span>
-              <select className="input min-w-[220px]" value={overrides[f.key] ?? ""} onChange={(e) => onPick(f.key, e.target.value)}>
-                <option value="">Choose a column…</option>
-                {allHeaders.map((h) => (
-                  <option key={h} value={h}>{h}</option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </div>
+      {lacking.length > 0 && (
+        <p className="text-xs text-[var(--warning)]">A needed column wasn&rsquo;t found on: {lacking.map((s) => s.sheet).join(", ")}. Those tabs are matched separately and their rows can&rsquo;t be read until the column is named like the others.</p>
       )}
       {skipped.length > 0 && (
         <p className="text-xs text-muted">Skipped (not a month tab, or no EMPLOYEE NAME column): {skipped.map((s) => s.sheet).join(", ")}.</p>
