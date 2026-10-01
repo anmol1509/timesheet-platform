@@ -226,10 +226,11 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               ? "An Excel (.xlsx) timesheet with a tab per month. Suppliers, sponsors, clients, workers, hours and attendance are all read from it."
               : "An Excel (.xlsx) or CSV file with a header row. Your column names don't have to match ours — you'll confirm the matches next."}
           </p>
-          <input ref={dropRef} type="file" accept={kind === "TIMESHEETS" ? ".xlsx" : ".xlsx,.csv"} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
-          <button type="button" disabled={busy} onClick={() => dropRef.current?.click()} className="btn btn-primary">
+          {/* A real <label> around the input: the browser opens the picker itself, with no script click in between. */}
+          <label className={cn("btn btn-primary cursor-pointer", busy && "pointer-events-none opacity-60")}>
             Choose a file
-          </button>
+            <input ref={dropRef} type="file" disabled={busy} accept={kind === "TIMESHEETS" ? ".xlsx" : ".xlsx,.csv"} className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
+          </label>
           <a href={`/api/import/template/${kind.toLowerCase()}`} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
             Download a blank {target.label.toLowerCase()} template
           </a>
