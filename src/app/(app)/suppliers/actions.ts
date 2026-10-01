@@ -173,7 +173,6 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     previousId: stringOrNull(formData.get("previousId")),
     country: stringOrNull(formData.get("country")),
     emirate: stringOrNull(formData.get("emirate")),
-    pointOfContact: stringOrNull(formData.get("pointOfContact")),
     supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
     account: stringOrNull(formData.get("account")),
     isOwnCompany: own,

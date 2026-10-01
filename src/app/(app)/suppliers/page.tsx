@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
-import { SupplierCodeField } from "./supplier-code-field";
 import Link from "next/link";
 import { Truck, Plus } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
@@ -11,7 +11,6 @@ import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
-import { createSupplierAction } from "./actions";
 import { SupplierList } from "./supplier-list";
 
 function outstanding(bills: { amount: unknown; vatAmount: unknown; dueDate: Date; payments: { amount: unknown }[] }[]) {
@@ -112,6 +111,12 @@ export default async function SuppliersPage({
         title="Suppliers"
         icon={Truck}
         description={<>Manage the manpower suppliers/subcontractors referenced across timesheets and employees.</>}
+        actions={
+          <Button href="/suppliers/new" size="sm">
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add supplier
+          </Button>
+        }
       />
 
       {error && (
@@ -126,44 +131,6 @@ export default async function SuppliersPage({
           switcher (top right) before adding a supplier.
         </p>
       )}
-
-      <form
-        action={createSupplierAction}
-        className="card flex flex-wrap items-end gap-3 p-4"
-      >
-        <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Supplier name *</span>
-          <input
-            name="name"
-            required
-            placeholder="e.g. ABCD"
-            className="input w-full"
-          />
-        </label>
-        <div className="block min-w-[200px] flex-1">
-          <span className="mb-1 block text-xs font-medium text-muted">Supplier code</span>
-          <SupplierCodeField />
-        </div>
-        <label className="block flex-1 min-w-[220px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Full name (for letterhead)
-          </span>
-          <input
-            name="fullName"
-            placeholder="e.g. TOP PEAK GENERAL CONTRACTING"
-            className="input w-full"
-          />
-        </label>
-        <button
-          type="submit"
-          className="btn btn-primary"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-
-          Add Supplier
-        </button>
-      </form>
 
       {rows.length > 0 && rows.some((r) => r.employeeCount > 0) && (
         <Panel title="Top suppliers by workforce">
@@ -182,7 +149,7 @@ export default async function SuppliersPage({
         <EmptyState
           icon={Truck}
           title="No suppliers yet"
-          description="Suppliers provide the manpower you deploy. Add one above to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
+          description="Suppliers provide the manpower you deploy. Use Add supplier to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
           action={
             <Link href="/import/new/suppliers" className="btn btn-secondary btn-sm">
               Import suppliers

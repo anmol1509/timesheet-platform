@@ -234,7 +234,6 @@ export default async function SupplierDetailPage({
                   previousId: supplier.previousId,
                   country: supplier.country,
                   emirate: supplier.emirate,
-                  pointOfContact: supplier.pointOfContact,
                   supplierAmountLimit: supplier.supplierAmountLimit,
                   account: supplier.account,
                   allowManualLabourId: supplier.allowManualLabourId,

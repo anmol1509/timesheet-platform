@@ -30,7 +30,6 @@ type Supplier = {
   previousId: string | null;
   country: string | null;
   emirate: string | null;
-  pointOfContact: string | null;
   supplierAmountLimit: number | null;
   account: string | null;
   isOwnCompany: boolean;
@@ -153,13 +152,6 @@ export function SupplierCompanyForm({
         </Field>
         <Field label="Emirate">
           <CitySelect name="emirate" country={country} defaultValue={supplier.emirate ?? ""} />
-        </Field>
-        <Field label="Point of contact">
-          <input
-            name="pointOfContact"
-            defaultValue={supplier.pointOfContact || ""}
-            className="input w-full"
-          />
         </Field>
         <FieldBlock label="Supplier amount limit (credit limit)">
           <NumberInput
