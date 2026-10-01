@@ -40,7 +40,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) },
       },
       select: {
-        id: true, name: true, employeeIdNo: true, projectId: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+        id: true, name: true, employeeIdNo: true, projectId: true, project: { select: { client: { select: { weeklyOffDays: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
         otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, weeklyOffDays: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
         wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
       },
@@ -83,7 +83,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     : [];
   const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
 
-  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: num(e.dailyHours) || 8, weeklyOffDays: e.weeklyOffDays ?? [5] }]));
+  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: num(e.dailyHours) || 8, weeklyOffDays: e.weeklyOffDays?.length ? e.weeklyOffDays : e.project?.client?.weeklyOffDays ?? [5] }]));
   const att = new Map<string, { absent: number; ot: number; normal: number; rest: number }>();
   for (const a of attendance) {
     const row = att.get(a.employeeId) ?? { absent: 0, ot: 0, normal: 0, rest: 0 };

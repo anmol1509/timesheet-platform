@@ -93,6 +93,7 @@ export default async function ClientDetailPage({
           billingAddress: client.billingAddress,
           paymentTerms: client.paymentTerms,
           retentionPercent: client.retentionPercent,
+          weeklyOffDays: client.weeklyOffDays,
           secondContactName: client.secondContactName,
           secondContactPhone: client.secondContactPhone,
           secondContactEmail: client.secondContactEmail,

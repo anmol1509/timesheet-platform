@@ -381,6 +381,9 @@ model Client {
   contractEnd   DateTime?
   status        String    @default("ACTIVE")
   createdAt     DateTime  @default(now())
+  // Days this client's sites are closed (0=Sun..6=Sat). Workers placed here follow
+  // it unless their own record sets different off days.
+  weeklyOffDays Int[]     @default([5])
 
   trn                String? // Tax Registration Number
   tradeLicenseNumber String?
@@ -609,7 +612,7 @@ model Employee {
   // otMultiplier; hours on a weekly off day (0=Sun..6=Sat) or a HOLIDAY/OFF day
   // are paid at restOtMultiplier. Overtime rate = basic / 30 / dailyHours.
   dailyHours         Decimal             @default(8) @db.Decimal(4, 2)
-  weeklyOffDays      Int[]               @default([5])
+  weeklyOffDays      Int[]               @default([]) // empty = follow the client's off days
   restOtMultiplier   Decimal             @default(1.5) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
   loans              EmployeeLoan[]
