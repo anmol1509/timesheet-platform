@@ -1,0 +1,10 @@
+-- Supplier pay rules (absence + gas), project off days, new payroll line facts.
+ALTER TABLE "Supplier" ADD COLUMN "absentFreeDays" INTEGER NOT NULL DEFAULT 2;
+ALTER TABLE "Supplier" ADD COLUMN "absentDeductionPerDay" DECIMAL(10,2) NOT NULL DEFAULT 30;
+ALTER TABLE "Supplier" ADD COLUMN "gasPerDay" DECIMAL(6,2) NOT NULL DEFAULT 1;
+ALTER TABLE "Supplier" ADD COLUMN "gasMonthlyCap" DECIMAL(8,2) NOT NULL DEFAULT 30;
+ALTER TABLE "Employee" ADD COLUMN "gasWaived" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Project" ADD COLUMN "weeklyOffDays" INTEGER[] DEFAULT ARRAY[5]::INTEGER[];
+ALTER TABLE "PayrollLine" ADD COLUMN "idleDays" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "PayrollLine" ADD COLUMN "sickDays" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "PayrollLine" ADD COLUMN "gasCharge" DECIMAL(12,2) NOT NULL DEFAULT 0;

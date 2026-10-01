@@ -136,9 +136,6 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
     billingAddress: stringOrNull(formData.get("billingAddress")),
     paymentTerms: stringOrNull(formData.get("paymentTerms")),
     retentionPercent: numberOrNull(formData.get("retentionPercent")),
-    ...(formData.has("offDaysSent")
-      ? { weeklyOffDays: [...new Set(formData.getAll("weeklyOffDays").map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort() }
-      : {}),
     secondContactName: stringOrNull(formData.get("secondContactName")),
     secondContactPhone: stringOrNull(formData.get("secondContactPhone")),
     secondContactEmail: stringOrNull(formData.get("secondContactEmail")),

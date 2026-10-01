@@ -8,7 +8,7 @@ import type { Db } from "./types";
 // cell), so the two stay in step: whatever is written here reads back as the
 // same cell.
 
-type Day = { status: "PRESENT" | "ABSENT" | "LEAVE" | "HOLIDAY" | "OFF"; normalHours: number | null };
+type Day = { status: "PRESENT" | "ABSENT" | "LEAVE" | "SICK_LEAVE" | "IDLE" | "HOLIDAY" | "OFF"; normalHours: number | null };
 
 /** What a cell means as attendance, or null when it means nothing (blank, zero) or isn't recognised. */
 export function cellToAttendance(raw: string): Day | null | "unknown" {
@@ -22,7 +22,9 @@ export function cellToAttendance(raw: string): Day | null | "unknown" {
   }
   switch (v.toUpperCase()) {
     case "A": case "ABS": case "ABSENT": return { status: "ABSENT", normalHours: null };
-    case "L": case "LEAVE": case "AL": case "SL": case "SICK": case "SICK LEAVE": case "ANNUAL LEAVE": return { status: "LEAVE", normalHours: null };
+    case "L": case "LEAVE": case "AL": case "ANNUAL LEAVE": return { status: "LEAVE", normalHours: null };
+    case "SL": case "SICK": case "SICK LEAVE": return { status: "SICK_LEAVE", normalHours: null };
+    case "I": case "IDLE": return { status: "IDLE", normalHours: null };
     case "H": case "HOL": case "HOLIDAY": case "PH": return { status: "HOLIDAY", normalHours: null };
     case "OFF": case "O": case "WO": case "W/O": return { status: "OFF", normalHours: null };
     default: return "unknown";

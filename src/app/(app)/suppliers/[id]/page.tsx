@@ -239,6 +239,10 @@ export default async function SupplierDetailPage({
                   account: supplier.account,
                   allowManualLabourId: supplier.allowManualLabourId,
                   overtime: supplier.overtime,
+                  absentFreeDays: supplier.absentFreeDays,
+                  absentDeductionPerDay: Number(supplier.absentDeductionPerDay),
+                  gasPerDay: Number(supplier.gasPerDay),
+                  gasMonthlyCap: Number(supplier.gasMonthlyCap),
                 }}
               />
               </div>

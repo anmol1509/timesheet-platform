@@ -1,5 +1,6 @@
 "use server";
 
+import { parseWeekdays } from "@/components/WeekdayPicker";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -181,6 +182,7 @@ export async function updateProjectAction(formData: FormData): Promise<{ error?:
     nightShiftEnd: stringOrNull(formData.get("nightShiftEnd")),
     interTransfer: formData.get("interTransfer") === "on",
     internalUse: formData.get("internalUse") === "on",
+    weeklyOffDays: parseWeekdays(formData.getAll("weeklyOffDays")),
   };
 
   await prisma.project.update({ where: { id }, data });

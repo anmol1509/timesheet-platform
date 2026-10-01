@@ -74,6 +74,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
                 {n(l.allowances) > 0 && <tr><td className="py-1.5 text-secondary">Allowances</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.allowances))}</td></tr>}
                 {n(l.overtimePay) > 0 && <tr><td className="py-1.5 text-secondary">Overtime ({l.otHours} h{l.restHours > 0 ? ` + ${l.restHours} h rest day/holiday` : ""})</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.overtimePay))}</td></tr>}
                 {n(l.deductions) > 0 && <tr><td className="py-1.5 text-secondary">Absence ({unpaidDays} day{unpaidDays === 1 ? "" : "s"})</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.deductions))}</td></tr>}
+                {n(l.gasCharge) > 0 && <tr><td className="py-1.5 text-secondary">Gas charge</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.gasCharge))}</td></tr>}
                 {n(l.otherEarnings) > 0 && <tr><td className="py-1.5 text-secondary">Other earnings</td><td className="py-1.5 text-right tabular-nums">{aed(n(l.otherEarnings))}</td></tr>}
                 {n(l.otherDeductions) > 0 && <tr><td className="py-1.5 text-secondary">Other deductions</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.otherDeductions))}</td></tr>}
                 {n(l.manualDeduction) > 0 && <tr><td className="py-1.5 text-secondary">Deduction{l.deductionNote ? ` — ${l.deductionNote}` : ""}</td><td className="py-1.5 text-right tabular-nums">−{aed(n(l.manualDeduction))}</td></tr>}

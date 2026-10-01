@@ -32,7 +32,6 @@ type Client = {
   billingAddress: string | null;
   paymentTerms: string | null;
   retentionPercent: number | null;
-  weeklyOffDays: number[];
   secondContactName: string | null;
   secondContactPhone: string | null;
   secondContactEmail: string | null;
@@ -210,18 +209,6 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
         <Field label="Retention (%)">
           <NumberInput name="retentionPercent" defaultValue={client.retentionPercent ?? ""} step={0.1} className="w-full" />
         </Field>
-        <fieldset className="sm:col-span-2">
-          <input type="hidden" name="offDaysSent" value="1" />
-          <legend className="mb-1 text-xs text-secondary">Weekly off day(s) at this client&apos;s sites</legend>
-          <div className="flex flex-wrap gap-3 text-sm text-secondary">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
-              <label key={d} className="flex items-center gap-1">
-                <input type="checkbox" name="weeklyOffDays" value={i} defaultChecked={client.weeklyOffDays.includes(i)} /> {d}
-              </label>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-secondary">Used for payroll: work on these days is paid at the rest-day rate. A worker can have their own off days set on their record.</p>
-        </fieldset>
         <Field label="Billing address" className="sm:col-span-2">
           <input
             name="billingAddress"

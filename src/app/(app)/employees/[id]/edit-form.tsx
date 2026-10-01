@@ -42,7 +42,7 @@ type Employee = {
   salaryRate: number | null;
   payStructure: string | null;
   paysOvertime: boolean;
-  weeklyOffDays: number[];
+  gasWaived: boolean;
   essEnabled: boolean;
   projectId: string | null;
   siteId: string | null;
@@ -694,6 +694,9 @@ export function EditForm({
                   <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
                     <input type="checkbox" name="paysOvertime" defaultChecked={employee.paysOvertime} /> Paid for overtime
                   </label>
+                  <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
+                    <input type="checkbox" name="gasWaived" defaultChecked={employee.gasWaived} /> Waive gas charge for this worker
+                  </label>
                   <Field label="Standard hours per day">
                     <NumberInput name="dailyHours" defaultValue={pay.dailyHours} min={1} max={16} step={0.25} className="w-full" />
                   </Field>
@@ -703,17 +706,6 @@ export function EditForm({
                   <Field label="Rest-day / holiday multiplier">
                     <NumberInput name="restOtMultiplier" defaultValue={pay.restOtMultiplier} min={1} max={3} step={0.01} className="w-full" />
                   </Field>
-                  <fieldset className="sm:col-span-2">
-                    <legend className="mb-1 text-xs text-secondary">Weekly off day(s) — leave all unticked to follow the client&apos;s days</legend>
-                    <div className="flex flex-wrap gap-3 text-sm text-secondary">
-                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => (
-                        <label key={d} className="flex items-center gap-1">
-                          <input type="checkbox" name="weeklyOffDays" value={i} defaultChecked={employee.weeklyOffDays.includes(i)} /> {d}
-                        </label>
-                      ))}
-                    </div>
-                    <p className="mt-1 text-xs text-secondary">Overtime rate = basic ÷ 30 ÷ standard hours. Hours past the standard day are overtime; work on an off day, or a day marked Holiday/Off in attendance, is paid at the rest-day multiplier.</p>
-                  </fieldset>
                 </>
               )}
             </fieldset>

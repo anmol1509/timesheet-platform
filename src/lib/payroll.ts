@@ -39,6 +39,11 @@ export type PayProfile = {
   otMultiplier: number;
   dailyHours?: number; // standard hours in a working day (default 8)
   restOtMultiplier?: number; // rest-day / holiday work (default 1.5)
+  // The supplier's absence rule: the first absenceFreeDays absences in the month
+  // cost nothing, every one after that deducts absencePerDay. Unset = the old
+  // rule of one thirtieth of pay per absent day.
+  absenceFreeDays?: number;
+  absencePerDay?: number;
 };
 
 export type PayPeriodFacts = {
@@ -57,6 +62,27 @@ export type PayResult = {
   overtimePay: number;
 };
 
+/** What the supplier's absence rule takes off for the absences in the period. */
+function absencePenalty(p: PayProfile, f: PayPeriodFacts, fixed = 0) {
+  const absent = Math.max(0, f.absentDays);
+  if (p.absencePerDay == null) return round2((fixed / 30) * absent);
+  return round2(Math.max(0, absent - (p.absenceFreeDays ?? 0)) * p.absencePerDay);
+}
+
+/**
+ * Gas charge for a month: `perDay` for each day from the check-in date (inclusive)
+ * to the end of the month, never more than `cap`. Nothing without a check-in
+ * date, after the month, or when waived.
+ */
+export function gasChargeFor(o: { checkIn: Date | null; monthStart: Date; daysInMonth: number; perDay: number; cap: number; waived: boolean }): number {
+  if (o.waived || !o.checkIn || o.perDay <= 0) return 0;
+  const monthEnd = Date.UTC(o.monthStart.getUTCFullYear(), o.monthStart.getUTCMonth(), o.daysInMonth);
+  const from = Date.UTC(o.checkIn.getUTCFullYear(), o.checkIn.getUTCMonth(), o.checkIn.getUTCDate());
+  if (from > monthEnd) return 0;
+  const days = Math.min(o.daysInMonth, Math.floor((monthEnd - Math.max(from, o.monthStart.getTime())) / 86400000) + 1);
+  return round2(Math.min(Math.max(0, o.cap), days * o.perDay));
+}
+
 const dailyHoursOf = (p: { dailyHours?: number }) => (p.dailyHours && p.dailyHours > 0 ? p.dailyHours : 8);
 
 function overtimeAmount(rate: number, p: PayProfile, f: PayPeriodFacts) {
@@ -70,7 +96,7 @@ export function splitDayHours(
   pattern: { dailyHours: number; weeklyOffDays: number[] }
 ): { normal: number; ot: number; rest: number } {
   const total = (day.normalHours ?? 0) + (day.otHours ?? 0);
-  if (day.status === "ABSENT" || day.status === "LEAVE" || total <= 0) return { normal: 0, ot: 0, rest: 0 };
+  if (day.status === "ABSENT" || day.status === "LEAVE" || day.status === "SICK_LEAVE" || day.status === "IDLE" || total <= 0) return { normal: 0, ot: 0, rest: 0 };
   const restDay = day.status === "HOLIDAY" || day.status === "OFF" || pattern.weeklyOffDays.includes(day.date.getUTCDay());
   if (restDay) return { normal: 0, ot: 0, rest: total };
   const limit = pattern.dailyHours > 0 ? pattern.dailyHours : 8;
@@ -81,14 +107,16 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   if (p.payStructure === "HOURLY") {
     const earned = round2(Math.max(0, f.normalHours) * p.hourly);
     const overtimePay = p.paysOvertime ? overtimeAmount(p.hourly, p, f) : 0;
-    return { basic: earned, allowances: 0, fixed: earned, deductions: 0, overtimePay };
+    // Hourly pay is already only for hours worked; the supplier's absence penalty still applies on top.
+    const penalty = Math.min(earned, absencePenalty(p, f));
+    return { basic: earned, allowances: 0, fixed: earned, deductions: penalty, overtimePay };
   }
   const basic = p.payStructure === "FLAT" ? p.flat : p.basic;
   const allowances = p.payStructure === "ITEMISED" ? p.housing + p.food + p.transport + p.other : 0;
   const fixed = round2(basic + allowances);
 
-  const unpaidDays = Math.max(0, f.absentDays) + Math.max(0, f.unpaidLeaveDays);
-  const deductions = Math.min(fixed, round2((fixed / 30) * unpaidDays));
+  const unpaidLeave = round2((fixed / 30) * Math.max(0, f.unpaidLeaveDays));
+  const deductions = Math.min(fixed, round2(absencePenalty(p, f, fixed) + unpaidLeave));
 
   const hourly = basic / 30 / dailyHoursOf(p);
   const overtimePay = p.paysOvertime ? overtimeAmount(hourly, p, f) : 0;
@@ -99,14 +127,14 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
 /** Standing earnings/deductions and loan recovery layered on top of computePay. */
-export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number };
+export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number; gasCharge?: number };
 
 /**
  * Net pay including recurring items, the advance recovered (loanDeduction) and
  * the deduction typed on the run (manualDeduction).
  */
 export const netPayWithExtras = (r: PayResult, adjustment: number, x: PayExtras) =>
-  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0));
+  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0) - (x.gasCharge ?? 0));
 
 /** How a company pays everyone in it. */
 export const PAY_TYPES = ["BASIC", "HOURLY"] as const;

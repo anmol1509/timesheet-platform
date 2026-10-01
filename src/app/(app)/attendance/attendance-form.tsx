@@ -41,7 +41,7 @@ type EmployeeOption = {
 };
 type ExistingRow = { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean };
 
-const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "HOLIDAY", "OFF"];
+const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "SICK_LEAVE", "IDLE", "HOLIDAY", "OFF"];
 
 /**
  * A standard site day. Pre-filled for active workers so marking a day is a

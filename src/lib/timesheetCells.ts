@@ -108,6 +108,10 @@ export function attendanceCellValue(a: {
       return "A";
     case "LEAVE":
       return "L";
+    case "SICK_LEAVE":
+      return "SL";
+    case "IDLE":
+      return "I";
     case "HOLIDAY":
       return "H";
     case "OFF":

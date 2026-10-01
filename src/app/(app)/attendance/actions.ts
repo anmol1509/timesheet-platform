@@ -52,7 +52,7 @@ type AttendanceRow = {
   otHours: string;
 };
 
-const VALID_STATUSES = new Set(["PRESENT", "ABSENT", "LEAVE", "HOLIDAY", "OFF"]);
+const VALID_STATUSES = new Set(["PRESENT", "ABSENT", "LEAVE", "SICK_LEAVE", "IDLE", "HOLIDAY", "OFF"]);
 
 function numberOrNull(value: string) {
   const s = value.trim();

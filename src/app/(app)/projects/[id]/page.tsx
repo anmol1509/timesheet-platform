@@ -152,6 +152,7 @@ export default async function ProjectDetailPage({
                   nightShiftEnd: project.nightShiftEnd,
                   interTransfer: project.interTransfer,
                   internalUse: project.internalUse,
+                  weeklyOffDays: project.weeklyOffDays,
                 }}
                 clients={clients.map((c) => ({ id: c.id, name: c.name }))}
               />

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, type PayStructure } from "@/lib/payroll";
+import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, type PayStructure } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -40,8 +40,8 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) },
       },
       select: {
-        id: true, name: true, employeeIdNo: true, projectId: true, project: { select: { client: { select: { weeklyOffDays: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
-        otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, weeklyOffDays: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
+        id: true, name: true, employeeIdNo: true, projectId: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+        otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
         wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
       },
     }),
@@ -70,7 +70,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const ids = payable.map((e) => e.id);
 
   // Attendance for basic (and legacy) runs; timesheet hours for hourly runs.
-  const attendance = type === "HOURLY" || ids.length === 0 ? [] : await prisma.attendance.findMany({
+  const attendance = ids.length === 0 ? [] : await prisma.attendance.findMany({
     where: { branchId: run.branchId, employeeId: { in: ids }, date: { gte: start, lt: nextMonth } },
     select: { employeeId: true, date: true, status: true, otHours: true, normalHours: true },
   });
@@ -83,11 +83,13 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     : [];
   const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
 
-  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: num(e.dailyHours) || 8, weeklyOffDays: e.weeklyOffDays?.length ? e.weeklyOffDays : e.project?.client?.weeklyOffDays ?? [5] }]));
-  const att = new Map<string, { absent: number; ot: number; normal: number; rest: number }>();
+  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: num(e.dailyHours) || 8, weeklyOffDays: e.project?.weeklyOffDays ?? [5] }]));
+  const att = new Map<string, { absent: number; idle: number; sick: number; ot: number; normal: number; rest: number }>();
   for (const a of attendance) {
-    const row = att.get(a.employeeId) ?? { absent: 0, ot: 0, normal: 0, rest: 0 };
+    const row = att.get(a.employeeId) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
     if (a.status === "ABSENT") row.absent += 1;
+    else if (a.status === "IDLE") row.idle += 1;
+    else if (a.status === "SICK_LEAVE") row.sick += 1;
     const split = splitDayHours(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [5] });
     row.ot += split.ot;
     row.normal += split.normal;
@@ -116,22 +118,28 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const lines = payable.map((e) => {
     const isHourly = type === "HOURLY";
     const hours = isHourly ? sheetHours.get(e.employeeIdNo) ?? 0 : 0;
-    const facts = att.get(e.id) ?? { absent: 0, ot: 0, normal: 0, rest: 0 };
+    const facts = att.get(e.id) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
     const r = computePay(
       {
         payStructure: (isHourly ? "HOURLY" : e.payStructure) as PayStructure,
         basic: num(e.basicSalary), housing: num(e.housingAllowance), food: num(e.foodAllowance), transport: num(e.transportAllowance), other: num(e.otherAllowance),
         flat: num(e.flatMonthlyRate), hourly: num(e.hourlyRate), paysOvertime: isHourly ? false : e.paysOvertime, otMultiplier: num(e.otMultiplier) || 1.25,
         dailyHours: num(e.dailyHours) || 8, restOtMultiplier: num(e.restOtMultiplier) || 1.5,
+        absenceFreeDays: e.supplier?.absentFreeDays ?? 2, absencePerDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30,
       },
       isHourly
-        ? { absentDays: 0, unpaidLeaveDays: 0, otHours: 0, normalHours: hours }
+        ? { absentDays: facts.absent, unpaidLeaveDays: 0, otHours: 0, normalHours: hours }
         : { absentDays: facts.absent, unpaidLeaveDays: 0, otHours: facts.ot, restHours: facts.rest, normalHours: facts.normal }
     );
     const old = prev.get(e.id);
     const adjustment = num(old?.adjustment);
     const ex = extras.get(e.id) ?? { earn: 0, deduct: 0 };
-    const recurring = { otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction: 0, manualDeduction: 0 };
+    // Gas never takes pay below zero: it can only take what is left after deductions.
+    const gasCharge = Math.min(
+      gasChargeFor({ checkIn: e.siteArrivalDate, monthStart: start, daysInMonth: days, perDay: e.supplier ? num(e.supplier.gasPerDay) : 1, cap: e.supplier ? num(e.supplier.gasMonthlyCap) : 30, waived: e.gasWaived }),
+      Math.max(0, round2(r.fixed - r.deductions + r.overtimePay))
+    );
+    const recurring = { otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction: 0, manualDeduction: 0, gasCharge };
 
     // Typed entries can never push net pay below zero: the deduction takes what it
     // can first, then the advance takes what is left of that.
@@ -145,7 +153,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
 
     return {
       runId: run.id, employeeId: e.id, projectId: e.projectId, payStructure: (isHourly ? "HOURLY" : e.payStructure) as string, daysInMonth: days,
-      absentDays: isHourly ? 0 : facts.absent, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
+      absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
       manualDeduction, deductionNote: old?.deductionNote ?? null,
