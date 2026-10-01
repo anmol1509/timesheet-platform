@@ -4,7 +4,11 @@ import type { TimesheetOverrides, TimesheetSheetInfo } from "@/lib/parseTimeshee
 import type { ImportKind, Mapping, RowReport, ImportNote } from "./types";
 import type { SheetInfo } from "./sheet";
 
-export type StoredMapping = Mapping & { timesheetOverrides?: TimesheetOverrides };
+export type StoredMapping = Mapping & {
+  timesheetOverrides?: TimesheetOverrides;
+  /** Names in the sheet that mean a company or client already on file, e.g. "AL NOOR MANPOWER SUPPLY LLC" -> "Al Noor Manpower Supply". */
+  aliases?: Record<string, string>;
+};
 
 export type Analysis =
   | {

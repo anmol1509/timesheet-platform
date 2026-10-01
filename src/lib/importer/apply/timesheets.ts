@@ -1,5 +1,6 @@
 import { parseConsolidatedWorkbook, type TimesheetOverrides } from "@/lib/parseTimesheet";
 import { importParsedMonths } from "@/lib/importTimesheet";
+import { nameKey } from "@/lib/partyCode";
 import type { ApplyCtx, ApplyResult, ImportNote, RowReport } from "../types";
 
 /** Import a consolidated timesheet workbook: suppliers, sponsors, clients,
@@ -8,8 +9,20 @@ export async function applyTimesheets(
   ctx: ApplyCtx,
   file: { buffer: Buffer; filename: string },
   overrides: TimesheetOverrides = {},
+  aliases: Record<string, string> = {},
 ): Promise<ApplyResult> {
   const parsed = await parseConsolidatedWorkbook(file.buffer, overrides);
+  // Names the person said are an existing company or client: use the existing spelling, so no duplicate is made.
+  const alias = new Map(Object.entries(aliases).map(([from, to]) => [nameKey(from), to]));
+  if (alias.size > 0) {
+    for (const m of parsed.months) {
+      for (const e of m.entries) {
+        e.supplierName = alias.get(nameKey(e.supplierName)) ?? e.supplierName;
+        if (e.sponsorName) e.sponsorName = alias.get(nameKey(e.sponsorName)) ?? e.sponsorName;
+        if (e.clientName) e.clientName = alias.get(nameKey(e.clientName)) ?? e.clientName;
+      }
+    }
+  }
   if (parsed.months.length === 0) {
     return {
       rows: [],

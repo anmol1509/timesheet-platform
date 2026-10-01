@@ -43,7 +43,7 @@ export async function analyzeBatch(batchId: string, mapping?: StoredMapping): Pr
 
 async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Array | null; filename: string }, mapping: StoredMapping): Promise<ApplyResult> {
   const buffer = Buffer.from(batch.fileData ?? []);
-  if (kind === "TIMESHEETS") return applyTimesheets(ctx, { buffer, filename: batch.filename }, mapping.timesheetOverrides ?? {});
+  if (kind === "TIMESHEETS") return applyTimesheets(ctx, { buffer, filename: batch.filename }, mapping.timesheetOverrides ?? {}, mapping.aliases ?? {});
   const fields = TARGETS[kind].fields;
   const wb = await loadWorkbook(buffer, batch.filename);
   const rows = extractRows(wb, mapping, fields);

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Undo2, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Sparkles, Undo2, UploadCloud } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReportView, type TileSpec } from "@/components/import/report";
 import { cn } from "@/lib/cn";
 import { TARGETS } from "@/lib/importer/targets";
 import type { ImportKind } from "@/lib/importer/types";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
+import type { CopilotResult } from "@/lib/importer/copilot";
 
 type Step = "upload" | "map" | "review" | "running" | "done";
 const STEPS: { key: Step; label: string }[] = [
@@ -60,6 +61,10 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [columns, setColumns] = useState<Record<string, string>>({});
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  /** The AI check's answer, and the company names the person agreed are ones already on file. */
+  const [copilot, setCopilot] = useState<CopilotResult | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [aliases, setAliases] = useState<Record<string, string>>({});
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   /** The column choices the current preview was made with; the review is only reachable while they still match. */
   const [previewedKey, setPreviewedKey] = useState<string | null>(null);
@@ -90,10 +95,25 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       setSummary(null);
       setPreviewedKey(null);
       setOverrides({});
+      setAliases({});
+      setCopilot(null);
       setAnalysis(res.analysis);
       if (res.analysis.kind !== "TIMESHEETS") setColumns(res.analysis.columns);
       setStep("map");
     });
+  }
+
+  async function runCopilot() {
+    setChecking(true);
+    setError(null);
+    try {
+      const res = await call<{ result: CopilotResult }>(`/api/import/${batchId}/copilot`, { method: "POST", body: JSON.stringify({ timesheetOverrides: overrides }), headers: { "content-type": "application/json" } });
+      setCopilot(res.result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setChecking(false);
+    }
   }
 
   function reanalyse(body: object) {
@@ -108,7 +128,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     void wrap(async () => {
       const mapping =
         analysis?.kind === "TIMESHEETS"
-          ? { columns: {}, timesheetOverrides: overrides }
+          ? { columns: {}, timesheetOverrides: overrides, aliases }
           : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
@@ -158,7 +178,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
-  const mappingKey = JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides });
+  const mappingKey = JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases });
   // Steps can be revisited freely until the import starts; Review only while its preview still matches the choices.
   const locked = step === "running" || step === "done";
   const reachable = (key: Step) =>
@@ -263,6 +283,22 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               setOverrides(next);
               reanalyse({ timesheetOverrides: next });
             }} />
+          )}
+
+          {analysis.kind === "TIMESHEETS" && (
+            <CopilotPanel
+              result={copilot}
+              checking={checking}
+              onRun={runCopilot}
+              aliases={aliases}
+              onAlias={(from, to) => setAliases((prev) => { const next = { ...prev }; if (to) next[from] = to; else delete next[from]; return next; })}
+              onPick={(field, header) => {
+                const next = { ...overrides, [field]: header };
+                setOverrides(next);
+                reanalyse({ timesheetOverrides: next });
+              }}
+              overrides={overrides}
+            />
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -410,6 +446,80 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
       {missing.length > 0 && <p className="text-xs text-[var(--error)]">Still needed: {missing.map((f) => f.label).join(", ")}.</p>}
       {headers.filter((h) => !used.has(h)).length > 0 && (
         <p className="text-xs text-muted">Not imported: {headers.filter((h) => !used.has(h)).slice(0, 12).join(", ")}{headers.filter((h) => !used.has(h)).length > 12 ? "…" : ""}</p>
+      )}
+    </div>
+  );
+}
+
+function CopilotPanel({ result, checking, onRun, aliases, onAlias, onPick, overrides }: {
+  result: CopilotResult | null;
+  checking: boolean;
+  onRun: () => void;
+  aliases: Record<string, string>;
+  onAlias: (from: string, to: string | null) => void;
+  onPick: (field: string, header: string) => void;
+  overrides: Record<string, string>;
+}) {
+  const TONE = { high: "bg-[var(--error)]", medium: "bg-[var(--warning)]", low: "bg-[var(--info)]" } as const;
+  return (
+    <div className="card space-y-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+            <Sparkles className="h-4 w-4 text-[var(--brand-primary)]" aria-hidden /> Check this file with AI
+          </p>
+          <p className="mt-0.5 text-xs text-muted">Looks for missing columns, clashing codes and company names you already have. It sends a summary of company, client and trade names — not hours or salaries — and changes nothing until you say so.</p>
+        </div>
+        <button type="button" onClick={onRun} disabled={checking} className="btn btn-secondary inline-flex items-center gap-1.5">
+          {checking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Sparkles className="h-4 w-4" aria-hidden />}
+          {checking ? "Checking…" : result ? "Check again" : "Check with AI"}
+        </button>
+      </div>
+
+      {result && (
+        <div className="space-y-3 border-t border-default pt-3">
+          <p className="text-sm text-secondary">{result.summary}</p>
+          {!result.ai && <p className="text-xs text-muted">The AI part wasn&rsquo;t available just now, so only the built-in checks ran.</p>}
+
+          {result.mappingSuggestions.map((m) => {
+            const applied = overrides[m.field] === m.header;
+            return (
+              <div key={m.field} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft px-3 py-2 text-sm">
+                <p className="text-primary">
+                  <span className="font-medium">{m.label}</span> looks like the column <span className="font-medium">&ldquo;{m.header}&rdquo;</span>
+                  <span className="text-muted"> &mdash; {m.reason}</span>
+                </p>
+                <button type="button" disabled={applied} onClick={() => onPick(m.field, m.header)} className="btn btn-secondary btn-sm">{applied ? "Using it" : "Use this column"}</button>
+              </div>
+            );
+          })}
+
+          {result.nameMatches.map((n) => {
+            const applied = aliases[n.from] === n.to;
+            return (
+              <div key={n.from} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft px-3 py-2 text-sm">
+                <p className="text-primary">
+                  <span className="font-medium">&ldquo;{n.from}&rdquo;</span> looks like your existing {n.kind} <span className="font-medium">&ldquo;{n.to}&rdquo;</span>
+                  <span className="text-muted"> &mdash; {n.reason}</span>
+                </p>
+                <button type="button" onClick={() => onAlias(n.from, applied ? null : n.to)} className="btn btn-secondary btn-sm">{applied ? "Undo" : "Treat as the same"}</button>
+              </div>
+            );
+          })}
+
+          {result.findings.length > 0 ? (
+            <ul className="space-y-2">
+              {result.findings.map((f, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm">
+                  <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", TONE[f.severity])} aria-hidden />
+                  <span><span className="font-medium text-primary">{f.title}.</span> <span className="text-secondary">{f.detail}</span></span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-[var(--success)]"><CheckCircle2 className="h-4 w-4" aria-hidden /> Nothing to flag.</p>
+          )}
+        </div>
       )}
     </div>
   );
