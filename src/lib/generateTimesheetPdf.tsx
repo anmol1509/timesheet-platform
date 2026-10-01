@@ -144,14 +144,13 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.4,
     borderColor: "#94A3B8",
   },
+  // In the flow, after the summary, rather than pinned to the page foot: a
+  // pinned block drew over the totals whenever the summary ran long.
   signatureRow: {
-    position: "absolute",
-    bottom: 34,
-    left: 16,
-    right: 16,
+    marginTop: 22,
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 24,
+    gap: 14,
   },
   signatureBox: { flex: 1 },
   signatureLabel: { fontSize: 7, fontFamily: "Helvetica-Bold" },
@@ -578,26 +577,25 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
               </Text>
             ))}
 
+            {/* Under the notes, beside the money lines: that column has the room,
+                and below the summary there is none once a sheet runs long. In
+                one piece so a signature box is never split across pages. */}
+          <View style={s.signatureRow} wrap={false}>
+            {[
+              ["PREPARED BY", input.preparedBy, input.preparedByRole],
+              ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
+              ["APPROVED BY", input.approvedBy, input.approvedByRole],
+            ].map(([label, name, role]) => (
+              <View key={label as string} style={s.signatureBox}>
+                <Text style={s.signatureLabel}>{label}</Text>
+                <View style={{ height: 30 }} />
+                <View style={s.signatureLine} />
+                <Text style={s.signatureName}>{name || ""}</Text>
+                {role && <Text style={s.signatureRole}>{role}</Text>}
+              </View>
+            ))}
           </View>
-        </View>
-
-        {/* Pinned to the foot of the page and spread across its width: these
-            are signed by three different people, so each needs its own space
-            rather than being stacked beside the notes. */}
-        <View style={s.signatureRow}>
-          {[
-            ["PREPARED BY", input.preparedBy, input.preparedByRole],
-            ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
-            ["APPROVED BY", input.approvedBy, input.approvedByRole],
-          ].map(([label, name, role]) => (
-            <View key={label as string} style={s.signatureBox}>
-              <Text style={s.signatureLabel}>{label}</Text>
-              <View style={{ height: 34 }} />
-              <View style={s.signatureLine} />
-              <Text style={s.signatureName}>{name || ""}</Text>
-              {role && <Text style={s.signatureRole}>{role}</Text>}
-            </View>
-          ))}
+          </View>
         </View>
 
         <Text
