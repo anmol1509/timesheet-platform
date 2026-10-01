@@ -27,7 +27,7 @@ export async function loadPayOf(branchId: string, employees: PayEmployee[]) {
       {
         payStructure: e.payStructure, basicSalary: n2(e.basicSalary), housingAllowance: n2(e.housingAllowance), foodAllowance: n2(e.foodAllowance), transportAllowance: n2(e.transportAllowance),
         otherAllowance: n2(e.otherAllowance), flatMonthlyRate: n2(e.flatMonthlyRate), hourlyRate: n2(e.hourlyRate), dailyHours: n2(e.dailyHours) || 8, paysOvertime: e.paysOvertime,
-        otMultiplier: n2(e.otMultiplier) || 1.25, restOtMultiplier: n2(e.restOtMultiplier) || 1.5, payOverride: e.payOverride,
+        otMultiplier: n2(e.otMultiplier) || 1.25, restOtMultiplier: n2(e.restOtMultiplier) || 1.5, payOverride: e.payOverride || !!e.payStructure,
       },
       tradeFigures.get(`${e.supplierId}|${tradeKey(e.trade ?? e.position)}`) ?? null
     );

@@ -89,10 +89,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
   // (`_pay`) AND this user may edit payroll — a hidden section can never blank
   // out figures, and a tampered post from someone without access is ignored.
   let payData: Record<string, unknown> = {};
-  if (formData.get("_pay") === "1" && formData.get("_tradePay") === "1" && can(subjectOf(user), "payroll", "edit")) {
-    // Following the trade's pay: the worker's own figures are left exactly as they were.
-    payData = { payOverride: false, gasWaived: formData.get("gasWaived") === "on" };
-  } else if (formData.get("_pay") === "1" && can(subjectOf(user), "payroll", "edit")) {
+  if (formData.get("_pay") === "1" && can(subjectOf(user), "payroll", "edit")) {
     const structure = stringOrNull(formData.get("payStructure"));
     if (structure && !(PAY_STRUCTURES as readonly string[]).includes(structure)) return { error: "Unknown pay structure." };
     if (structure === "HOURLY" && category === "STAFF") return { error: "Office/corporate staff can't be paid hourly — choose flat or itemised." };

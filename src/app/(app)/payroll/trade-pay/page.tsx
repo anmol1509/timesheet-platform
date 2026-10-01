@@ -24,7 +24,7 @@ export default async function TradePayPage() {
     <div className="space-y-5">
       <PageHeader
         title="Trade pay"
-        description="What each of your companies pays for a trade. Workers follow their trade's pay automatically; only set pay on a worker's own record for an exception."
+        description="Default pay for a trade. It fills in a new worker's pay form (and pays workers who have none of their own yet); each worker's own figures, set on their record, are what is paid."
       />
       <TradePayBoard companies={companies} rows={data} canEdit={can(subject, "payroll", "edit")} />
     </div>

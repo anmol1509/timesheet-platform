@@ -141,33 +141,25 @@ export default async function EmployeeDetailPage({
     payRow && tradeName && employee.supplierId
       ? (await prisma.tradePay.findMany({ where: { supplierId: employee.supplierId } })).find((t) => tradeKey(t.trade) === tradeKey(tradeName)) ?? null
       : null;
-  const money0 = (d: { toString(): string } | null) => (d == null ? 0 : Number(d.toString()));
-  const tradePay = tradeRow
-    ? {
-        trade: tradeRow.trade,
-        summary:
-          tradeRow.payStructure === "HOURLY"
-            ? `AED ${money0(tradeRow.hourlyRate)} per hour`
-            : tradeRow.payStructure === "FLAT"
-              ? `AED ${money0(tradeRow.flatMonthlyRate)} flat per month`
-              : `Basic AED ${money0(tradeRow.basicSalary)}, allowances AED ${money0(tradeRow.housingAllowance) + money0(tradeRow.foodAllowance) + money0(tradeRow.transportAllowance) + money0(tradeRow.otherAllowance)}`,
-        detail: `${money0(tradeRow.dailyHours)} h day, overtime ×${money0(tradeRow.otMultiplier)}, rest day ×${money0(tradeRow.restOtMultiplier)}`,
-      }
-    : null;
+  // A worker with no pay of their own yet starts from their trade's default; what is saved is theirs.
+  const prefill = !employee.payStructure && tradeRow ? tradeRow : null;
+  const src = prefill ?? payRow;
+  const tradePay = prefill ? { trade: prefill.trade } : null;
   const pay = payRow
     ? {
         canEdit: canEditPay,
         tradePay,
-        basicSalary: n(payRow.basicSalary),
-        housingAllowance: n(payRow.housingAllowance),
-        foodAllowance: n(payRow.foodAllowance),
-        transportAllowance: n(payRow.transportAllowance),
-        otherAllowance: n(payRow.otherAllowance),
-        flatMonthlyRate: n(payRow.flatMonthlyRate),
-        hourlyRate: n(payRow.hourlyRate),
-        otMultiplier: n(payRow.otMultiplier) || "1.25",
-        dailyHours: n(payRow.dailyHours) || "8",
-        restOtMultiplier: n(payRow.restOtMultiplier) || "1.5",
+        basicSalary: n(src!.basicSalary),
+        housingAllowance: n(src!.housingAllowance),
+        foodAllowance: n(src!.foodAllowance),
+        transportAllowance: n(src!.transportAllowance),
+        otherAllowance: n(src!.otherAllowance),
+        flatMonthlyRate: n(src!.flatMonthlyRate),
+        hourlyRate: n(src!.hourlyRate),
+        otMultiplier: n(src!.otMultiplier) || "1.25",
+        dailyHours: n(src!.dailyHours) || "8",
+        restOtMultiplier: n(src!.restOtMultiplier) || "1.5",
+        prefillStructure: prefill?.payStructure ?? null,
       }
     : null;
 

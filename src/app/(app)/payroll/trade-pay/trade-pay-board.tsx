@@ -96,7 +96,7 @@ export function TradePayBoard({ companies, rows, canEdit }: { companies: { id: s
         )}
       </div>
       {mine.length === 0 ? (
-        <div className="empty-state"><p className="text-sm text-muted">No trade pay set for this company yet. Add a trade and every worker in it is paid from it.</p></div>
+        <div className="empty-state"><p className="text-sm text-muted">No default pay set for this company yet. Add a trade to pre-fill the pay of workers in it.</p></div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
@@ -114,7 +114,7 @@ export function TradePayBoard({ companies, rows, canEdit }: { companies: { id: s
                     {canEdit && (
                       <span className="flex justify-end gap-3">
                         <button type="button" className="text-xs font-medium text-[var(--brand-primary)] hover:underline" onClick={() => setEditing(r)}>Edit</button>
-                        <button type="button" className="text-xs font-medium text-[var(--error)] hover:underline" onClick={() => { if (!confirm(`Remove the pay for ${r.trade}? Workers in this trade will need pay set on their own record.`)) return; const fd = new FormData(); fd.set("id", r.id); start(async () => { await deleteTradePayAction(fd); }); }}>Remove</button>
+                        <button type="button" className="text-xs font-medium text-[var(--error)] hover:underline" onClick={() => { if (!confirm(`Remove the pay for ${r.trade}? Workers with their own pay are not affected.`)) return; const fd = new FormData(); fd.set("id", r.id); start(async () => { await deleteTradePayAction(fd); }); }}>Remove</button>
                       </span>
                     )}
                   </td>
@@ -125,7 +125,7 @@ export function TradePayBoard({ companies, rows, canEdit }: { companies: { id: s
         </div>
       )}
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent title={editing === "new" || editing === null ? "Add trade pay" : `Pay for ${editing.trade}`} description="Every worker of this company in this trade is paid from this.">
+        <DialogContent title={editing === "new" || editing === null ? "Add trade pay" : `Pay for ${editing.trade}`} description="Starting figures for workers of this company in this trade. Each worker can then be set to their own pay.">
           {editing !== null && <TradeForm key={editing === "new" ? "new" : editing.id} supplierId={companyId} row={editing === "new" ? null : editing} onDone={() => setEditing(null)} />}
         </DialogContent>
       </Dialog>
