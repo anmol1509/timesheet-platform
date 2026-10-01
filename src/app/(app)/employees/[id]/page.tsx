@@ -261,7 +261,7 @@ export default async function EmployeeDetailPage({
         suppliers={suppliers}
         documents={employee.documents}
         lookups={lookups}
-        recordsContent={
+        tradesContent={
           <>
             <SkillsSection
               employeeId={employee.id}
@@ -272,7 +272,10 @@ export default async function EmployeeDetailPage({
                 rate: s.rate,
               }))}
             />
-
+          </>
+        }
+        recordsContent={
+          <>
 <NotesSection
               employeeId={employee.id}
               notes={employee.noteEntries.map((note) => ({
@@ -283,7 +286,10 @@ export default async function EmployeeDetailPage({
                 documents: note.documents,
               }))}
             />
-
+          </>
+        }
+        siteContent={
+          <>
             {/* Below the identity form, not above it: a camp and bed matter less
                 than who this is, and this card is empty for most workers. */}
             <AccommodationSection
@@ -305,23 +311,6 @@ export default async function EmployeeDetailPage({
                 campName: b.room.camp.name,
               }))}
             />
-
-            <VisaHistorySection
-              employeeId={employee.id}
-              entries={employee.visaApplications}
-              stages={lookups.VISA_APPLICATION_STAGE}
-              documents={documentOptions}
-            />
-
-            <LabourCardHistorySection
-              employeeId={employee.id}
-              entries={employee.labourCardApplications}
-              stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
-              documents={documentOptions}
-            />
-
-            <DocumentsSection employeeId={employee.id} documents={employee.documents} />
-
             <InventorySection
               employeeId={employee.id}
               assignments={employee.inventoryAssignments.map((a) => ({
@@ -345,6 +334,23 @@ export default async function EmployeeDetailPage({
                 })),
               }))}
             />
+          </>
+        }
+        documentsContent={
+          <>
+            <VisaHistorySection
+              employeeId={employee.id}
+              entries={employee.visaApplications}
+              stages={lookups.VISA_APPLICATION_STAGE}
+              documents={documentOptions}
+            />
+            <LabourCardHistorySection
+              employeeId={employee.id}
+              entries={employee.labourCardApplications}
+              stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
+              documents={documentOptions}
+            />
+            <DocumentsSection employeeId={employee.id} documents={employee.documents} />
           </>
         }
       />

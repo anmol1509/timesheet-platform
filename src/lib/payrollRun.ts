@@ -10,15 +10,30 @@ type PayEmployee = {
   supplierId: string | null; trade: string | null; position: string | null; payOverride: boolean; payStructure: string | null; basicSalary: unknown; housingAllowance: unknown;
   foodAllowance: unknown; transportAllowance: unknown; otherAllowance: unknown; flatMonthlyRate: unknown; hourlyRate: unknown; dailyHours: unknown; paysOvertime: boolean;
   otMultiplier: unknown; restOtMultiplier: unknown;
+  skills?: { rate: number | null; isActive: boolean; skill: { name: string } }[];
 };
 
 /** The pay figures to use for a worker: what is on their own record. */
+/**
+ * An hourly worker's rate: the one on their record if there is one, otherwise
+ * the rate on their trade in Known Trade Details (the trade they are
+ * deployed as, then the one matching their designation, then any with a rate).
+ */
+function hourlyRateOf(e: PayEmployee): number {
+  const own = n2(e.hourlyRate);
+  if (own > 0) return own;
+  const withRate = (e.skills ?? []).filter((k) => (k.rate ?? 0) > 0);
+  const want = (e.trade ?? e.position ?? "").trim().toLowerCase();
+  const pick = withRate.find((k) => k.isActive) ?? withRate.find((k) => k.skill.name.trim().toLowerCase() === want) ?? withRate[0];
+  return pick?.rate ?? 0;
+}
+
 export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
   return (e: PayEmployee) =>
     effectivePay(
       {
         payStructure: e.payStructure, basicSalary: n2(e.basicSalary), housingAllowance: n2(e.housingAllowance), foodAllowance: n2(e.foodAllowance), transportAllowance: n2(e.transportAllowance),
-        otherAllowance: n2(e.otherAllowance), flatMonthlyRate: n2(e.flatMonthlyRate), hourlyRate: n2(e.hourlyRate), dailyHours: n2(e.dailyHours) || 8, paysOvertime: e.paysOvertime,
+        otherAllowance: n2(e.otherAllowance), flatMonthlyRate: n2(e.flatMonthlyRate), hourlyRate: hourlyRateOf(e), dailyHours: n2(e.dailyHours) || 8, paysOvertime: e.paysOvertime,
         otMultiplier: n2(e.otMultiplier) || 1.25, restOtMultiplier: n2(e.restOtMultiplier) || 1.5, payOverride: true,
       },
       null
@@ -61,7 +76,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) },
       },
       select: {
-        id: true, name: true, employeeIdNo: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+        id: true, name: true, employeeIdNo: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
         otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
         wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
       },
@@ -242,7 +257,7 @@ export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
   const employees = await prisma.employee.findMany({
     where: { branchId: run.branchId, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) } },
     select: {
-      id: true, name: true, supplierId: true, trade: true, position: true, payOverride: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true,
+      id: true, name: true, supplierId: true, trade: true, position: true, payOverride: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true,
       transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true,
     },
   });

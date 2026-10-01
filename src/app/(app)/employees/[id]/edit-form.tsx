@@ -124,7 +124,7 @@ const TABS = [
   { id: "trade", label: "Trade & pay" },
   { id: "payroll", label: "Payroll & WPS" },
   { id: "project", label: "Project & Site" },
-  { id: "records", label: "Trades & Records" },
+  { id: "records", label: "Notes" },
 ];
 
 const INACTIVE_REASONS = [
@@ -166,6 +166,9 @@ export function EditForm({
   documents,
   lookups,
   recordsContent,
+  tradesContent,
+  siteContent,
+  documentsContent,
   pay,
 }: {
   employee: Employee;
@@ -183,6 +186,9 @@ export function EditForm({
   // single <form> (nested forms are invalid HTML and silently break).
   // Rendered as a sibling, still switched by the same tab state.
   recordsContent: React.ReactNode;
+  tradesContent: React.ReactNode;
+  siteContent: React.ReactNode;
+  documentsContent: React.ReactNode;
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -664,8 +670,9 @@ export function EditForm({
                   options={[
                     { value: "ITEMISED", label: "Itemised — basic + allowances" },
                     { value: "FLAT", label: "Flat — one monthly rate" },
-                    // Office/corporate staff are never paid hourly — only the site roster is.
-                    ...(category === "STAFF" ? [] : [{ value: "HOURLY", label: "Hourly — paid per hour worked" }]),
+                    // Hourly pay is not offered any more: the rate comes from the worker's trade
+                    // (Known Trade Details). Kept only for a worker already set up that way.
+                    ...(category !== "STAFF" && employee.payStructure === "HOURLY" ? [{ value: "HOURLY", label: "Hourly — paid per hour worked" }] : []),
                   ]}
                 />
               </Field>
@@ -811,6 +818,10 @@ export function EditForm({
       )}
       </form>
 
+      {/* Each of these owns its own <form>, so they sit beside the main form rather than in it. */}
+      <div className={tab === "trade" ? "mt-8 space-y-8" : "hidden"}>{tradesContent}</div>
+      <div className={tab === "project" ? "mt-8 space-y-8" : "hidden"}>{siteContent}</div>
+      <div className={tab === "documents" ? "mt-8 space-y-8" : "hidden"}>{documentsContent}</div>
       <div className={tab === "records" ? "space-y-8" : "hidden"}>
         {recordsContent}
       </div>
