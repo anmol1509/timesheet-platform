@@ -80,7 +80,8 @@ export async function POST(request: Request) {
 
     const pdf = await generateTimesheetPdf({
       letterhead,
-      subContractor: issuedTo,
+      // Each sheet names its own supplier, as the single download does.
+      subContractor: supplier.fullName || supplier.name,
       subContractorCode: supplier.mohrePermitNumber ?? null,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),

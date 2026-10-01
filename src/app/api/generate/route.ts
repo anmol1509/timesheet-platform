@@ -142,7 +142,9 @@ export async function POST(request: Request) {
         poBox: branch?.poBox ?? null,
         trn: branch?.trn ?? null,
       }),
-      subContractor: issuedTo,
+      // The company supplying the labour — the supplier — not the branch the
+      // sheet is issued to (that stays on the Excel's "Issued To" line).
+      subContractor: fullName,
       subContractorCode: supplier.mohrePermitNumber ?? null,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),
