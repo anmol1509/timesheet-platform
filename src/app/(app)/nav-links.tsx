@@ -83,42 +83,44 @@ const NAV: Entry[] = [
       icon: LayoutDashboard,
       alsoMatch: ["/dashboards"],
     },
-    category: "Workspace",
+    category: "Home",
   },
   {
     type: "link",
     item: { href: "/approvals", label: "Approvals", icon: ShieldCheck },
-    category: "Workspace",
+    category: "Home",
   },
   {
     type: "link",
     item: { href: "/drafts", label: "Drafts", icon: FileClock },
-    category: "Workspace",
+    category: "Home",
+  },
+  // People: the journey of a worker, from candidate to employee.
+  {
+    type: "group",
+    label: "Onboarding",
+    icon: UserCheck,
+    category: "People",
+    children: [
+      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
+      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
+    ],
   },
   {
     type: "group",
     label: "Workforce",
     icon: Users,
-    category: "Operations",
+    category: "People",
     children: [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
       { href: "/documents", label: "Documents", icon: FileText },
-      { href: "/trades", label: "Trades", icon: Wrench },
-      { href: "/inventory", label: "Inventory", icon: Package },
+      { href: "/letters", label: "Employee Letters", icon: FileSignature },
+      { href: "/operations/nocs", label: "NOCs", icon: FileText },
     ],
   },
-  {
-    type: "group",
-    label: "Projects",
-    icon: ClipboardList,
-    category: "Operations",
-    children: [
-      { href: "/projects", label: "Projects", icon: ClipboardList },
-      { href: "/sites", label: "Sites", icon: MapPin },
-    ],
-  },
+  // Operations: demand, the projects it serves, and the camps and transport behind it.
   {
     type: "group",
     label: "Demand",
@@ -140,6 +142,16 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
+    label: "Projects",
+    icon: ClipboardList,
+    category: "Operations",
+    children: [
+      { href: "/projects", label: "Projects", icon: ClipboardList },
+      { href: "/sites", label: "Sites", icon: MapPin },
+    ],
+  },
+  {
+    type: "group",
     label: "Facilities",
     icon: BedDouble,
     category: "Operations",
@@ -149,13 +161,15 @@ const NAV: Entry[] = [
       { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
       // Vehicles and Routes are tabs of this one row.
       { href: "/transport", label: "Transport", icon: Bus },
+      { href: "/inventory", label: "Inventory", icon: Package },
     ],
   },
+  // Time & Billing: hours worked, then what is invoiced and paid for them.
   {
     type: "group",
     label: "Timesheets",
     icon: FileSpreadsheet,
-    category: "Operations",
+    category: "Time & Billing",
     children: [
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
       // Daily view and Attendance sync are tabs of this row.
@@ -171,36 +185,19 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
-    label: "Onboarding",
-    icon: UserCheck,
-    category: "Operations",
+    label: "Finance",
+    icon: Landmark,
+    category: "Time & Billing",
     children: [
-      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
-      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
+      { href: "/finance", label: "Overview", icon: Landmark, exact: true },
+      // Invoice history is a tab of Invoices.
+      { href: "/invoices", label: "Invoices", icon: Receipt },
+      { href: "/payroll", label: "Payroll", icon: Banknote },
+      { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
+      { href: "/finance/expenses", label: "Expenses", icon: Wallet },
     ],
   },
-  {
-    type: "group",
-    label: "Letters",
-    icon: FileSignature,
-    category: "Operations",
-    children: [
-      { href: "/letters", label: "Employee Letters", icon: FileSignature },
-      { href: "/operations/nocs", label: "NOCs", icon: FileText },
-    ],
-  },
-  {
-    type: "group",
-    label: "Business Partners",
-    icon: Building2,
-    category: "Commercial",
-    children: [
-      { href: "/clients", label: "Clients", icon: Building2 },
-      { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/suppliers/tickets", label: "Supplier Messages", icon: Inbox, alsoMatch: ["/suppliers/contacts"] },
-      { href: "/banks", label: "Banks", icon: Wallet },
-    ],
-  },
+  // Commercial: who you sell to and buy from.
   {
     type: "group",
     label: "Sales",
@@ -213,16 +210,24 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
-    label: "Finance",
-    icon: Landmark,
+    label: "Business Partners",
+    icon: Building2,
     category: "Commercial",
     children: [
-      { href: "/finance", label: "Overview", icon: Landmark, exact: true },
-      // Invoice history is a tab of Invoices.
-      { href: "/invoices", label: "Invoices", icon: Receipt },
-      { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
-      { href: "/finance/expenses", label: "Expenses", icon: Wallet },
-      { href: "/payroll", label: "Payroll", icon: Banknote },
+      { href: "/clients", label: "Clients", icon: Building2 },
+      { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/suppliers/tickets", label: "Supplier Messages", icon: Inbox, alsoMatch: ["/suppliers/contacts"] },
+    ],
+  },
+  // Setup: reference lists that change rarely.
+  {
+    type: "group",
+    label: "Reference Data",
+    icon: Wrench,
+    category: "Setup",
+    children: [
+      { href: "/trades", label: "Trades", icon: Wrench },
+      { href: "/banks", label: "Banks", icon: Wallet },
     ],
   },
 ];
@@ -274,7 +279,7 @@ function adminGroup(): Entry {
     type: "group",
     label: "Administration",
     icon: ListChecks,
-    category: "Administration",
+    category: "Setup",
     children: [
       { href: "/settings/company", label: "Company Profile", icon: Building },
       { href: "/import", label: "Import Data", icon: UploadIcon },
