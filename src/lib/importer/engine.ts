@@ -53,7 +53,7 @@ async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Ar
   const rows = extractRows(wb, mapping, fields);
   if (kind === "SUPPLIERS") return applySuppliers(ctx, rows);
   if (kind === "CLIENTS") return applyClients(ctx, rows);
-  if (kind === "CAMPS") return applyCamps(ctx, rows, mapping.workerDecisions ?? {});
+  if (kind === "CAMPS") return applyCamps(ctx, rows, mapping.workerDecisions ?? {}, mapping.campOptions ?? {});
   if (kind === "VEHICLES") return applyVehicles(ctx, rows);
   return applyWorkers(ctx, rows, mapping.fixes ?? [], mapping.supplierDecisions ?? {});
 }

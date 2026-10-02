@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Sparkles, UserX } from "lucide-react";
+import { Check, Sparkles, UserPlus, UserX } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { PlacementIssue, PlacementRow, WorkerChoice } from "@/lib/importer/types";
 
@@ -19,13 +19,17 @@ export function WorkerMatchPanel({ issues, applied, busy, onApply }: {
   onApply: (next: Record<string, WorkerChoice>) => void;
 }) {
   const [draft, setDraft] = useState<Record<string, string>>(() =>
-    Object.fromEntries(issues.flatMap((i) => (applied[i.key] ? [[i.key, applied[i.key].action === "skip" ? "skip" : (applied[i.key] as { employeeId: string }).employeeId]] : []))),
+    Object.fromEntries(issues.flatMap((i) => { const a = applied[i.key]; return a ? [[i.key, a.action === "use" ? a.employeeId : a.action]] : []; })),
   );
+  const unknown = issues.filter((i) => i.kind === "unknown");
+  const others = issues.filter((i) => i.kind !== "unknown");
+  const setAllUnknown = (v: "create" | "skip") => setDraft((d) => ({ ...d, ...Object.fromEntries(unknown.map((i) => [i.key, v])) }));
+  const unknownChoice = unknown.length > 0 && unknown.every((i) => draft[i.key] === "create") ? "create" : unknown.length > 0 && unknown.every((i) => draft[i.key] === "skip") ? "skip" : "";
   const suggested = issues.filter((i) => i.ai?.id && i.ai.confidence !== "low");
   const ready = issues.every((i) => draft[i.key]);
   const toChoices = (d: Record<string, string>): Record<string, WorkerChoice> => ({
     ...applied,
-    ...Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v === "skip" ? ({ action: "skip" } as const) : ({ action: "use", employeeId: v } as const)])),
+    ...Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v === "skip" ? ({ action: "skip" } as const) : v === "create" ? ({ action: "create" } as const) : ({ action: "use", employeeId: v } as const)])),
   });
 
   return (
@@ -41,8 +45,33 @@ export function WorkerMatchPanel({ issues, applied, busy, onApply }: {
           </button>
         )}
       </div>
-      <ul className="divide-y divide-[var(--border)] rounded-lg border border-default">
-        {issues.map((i) => (
+      {unknown.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-default p-3">
+          <p className="text-sm text-primary"><span className="font-medium">{unknown.length} name{unknown.length === 1 ? " isn\u2019t" : "s aren\u2019t"} on record yet</span> <span className="text-muted">&mdash; no worker looks like {unknown.length === 1 ? "it" : "them"}.</span></p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="What to do with names not on record">
+            {([["create", "Add them as new workers", UserPlus], ["skip", "Skip them (place nobody)", UserX]] as const).map(([v, label, Icon]) => (
+              <button key={v} type="button" role="radio" aria-checked={unknownChoice === v} onClick={() => setAllUnknown(v)} className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition", unknownChoice === v ? "border-[var(--brand-primary)] bg-brand-soft font-medium text-primary" : "border-default text-secondary hover:bg-surface-hover")}>
+                <Icon className="h-4 w-4" aria-hidden /> {label}
+              </button>
+            ))}
+          </div>
+          <details className="text-xs text-muted">
+            <summary className="cursor-pointer select-none">See the {unknown.length} name{unknown.length === 1 ? "" : "s"} and what they would be added with</summary>
+            <div className="mt-2 max-h-56 overflow-auto rounded-lg border border-default">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-surface text-left uppercase tracking-wide text-muted"><tr><th className="px-3 py-1.5">Name</th><th className="px-3 py-1.5">Code</th><th className="px-3 py-1.5">Trade</th><th className="px-3 py-1.5">Mobile</th><th className="px-3 py-1.5">Camp / room</th></tr></thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {unknown.map((i) => (
+                    <tr key={i.key}><td className="px-3 py-1.5 text-primary">{i.fileName}</td><td className="px-3 py-1.5">{i.proposed?.codeFromFile ? i.proposed.code : <span className="text-subtle">new ID</span>}</td><td className="px-3 py-1.5">{i.proposed?.trade ?? "—"}</td><td className="px-3 py-1.5">{i.proposed?.mobile ?? "—"}</td><td className="px-3 py-1.5">{i.camp} / {i.room}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      )}
+      <ul className="divide-y divide-[var(--border)] rounded-lg border border-default empty:hidden">
+        {others.map((i) => (
           <li key={i.key} className="space-y-2 px-3 py-3">
             <p className="text-sm text-primary">
               <span className="font-medium">&ldquo;{i.fileName}&rdquo;</span>
@@ -70,6 +99,11 @@ export function WorkerMatchPanel({ issues, applied, busy, onApply }: {
                   </button>
                 );
               })}
+              {i.kind === "close" && (
+                <button type="button" role="radio" aria-checked={draft[i.key] === "create"} onClick={() => setDraft((d) => ({ ...d, [i.key]: "create" }))} className={cn("flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition", draft[i.key] === "create" ? "border-[var(--brand-primary)] bg-brand-soft" : "border-default hover:bg-surface-hover")}>
+                  <UserPlus className="h-4 w-4 shrink-0 text-muted" aria-hidden /> None of these &mdash; add &ldquo;{i.fileName}&rdquo; as a new worker
+                </button>
+              )}
               <button type="button" role="radio" aria-checked={draft[i.key] === "skip"} onClick={() => setDraft((d) => ({ ...d, [i.key]: "skip" }))} className={cn("flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition", draft[i.key] === "skip" ? "border-[var(--brand-primary)] bg-brand-soft" : "border-default hover:bg-surface-hover")}>
                 <UserX className="h-4 w-4 shrink-0 text-muted" aria-hidden /> Skip this worker (don&rsquo;t place anyone)
               </button>
@@ -90,6 +124,7 @@ export function WorkerMatchPanel({ issues, applied, busy, onApply }: {
 
 const STATUS: Record<PlacementRow["status"], { label: string; cls: string }> = {
   placed: { label: "Will be placed", cls: "bg-[var(--success-soft)] text-[var(--success)]" },
+  past: { label: "Past stay", cls: "bg-[var(--info-soft)] text-[var(--info)]" },
   decide: { label: "Needs your choice", cls: "bg-[var(--warning-soft)] text-[var(--warning)]" },
   skipped: { label: "Skipped", cls: "bg-surface-sunken text-secondary" },
   blocked: { label: "Can't be placed", cls: "bg-[var(--error-soft)] text-[var(--error)]" },

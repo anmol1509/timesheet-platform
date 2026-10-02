@@ -30,7 +30,7 @@ const fieldIsDatey = (f: FieldDef) => DATEY.test(`${f.label} ${f.key.replace(/([
 export function scoreHeader(header: string, field: FieldDef): number {
   const h = norm(header);
   if (!h) return 0;
-  if (DATEY.test(header) !== fieldIsDatey(field)) return 0;
+  if (!field.lenientDate && DATEY.test(header) !== fieldIsDatey(field)) return 0;
   const names = [field.label, field.key, ...(field.aliases ?? [])];
   let best = 0;
   for (const name of names) {

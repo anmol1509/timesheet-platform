@@ -21,6 +21,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   if (isImportKind(batch.kind) && batch.kind !== "TIMESHEETS") {
     const missing = TARGETS[batch.kind].fields.filter((f) => f.required && !mapping.columns[f.key]);
+    const campFileHasNoName = batch.kind === "CAMPS" && !mapping.columns.camp && !mapping.campOptions?.campName?.trim();
+    if (campFileHasNoName) return NextResponse.json({ error: "Choose a Camp name column, or type the camp name." }, { status: 400 });
     if (missing.length) {
       return NextResponse.json({ error: `Choose a column for: ${missing.map((f) => f.label).join(", ")}.` }, { status: 400 });
     }

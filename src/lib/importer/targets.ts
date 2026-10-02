@@ -50,7 +50,7 @@ const WORKERS: FieldDef[] = [
 ];
 
 const CAMPS: FieldDef[] = [
-  { key: "camp", label: "Camp name", required: true, aliases: ["camp", "camp name", "accommodation", "accommodation name", "building", "building name", "property"] },
+  { key: "camp", label: "Camp name", aliases: ["camp", "camp name", "accommodation", "accommodation name", "building", "building name", "property"] },
   { key: "campType", label: "Camp type", aliases: ["camp type", "type", "ownership", "owned by type", "own/supplier/client"], hint: "Own, Supplier or Client" },
   { key: "owner", label: "Supplier or client name", aliases: ["supplier", "client", "owner", "provided by", "camp owner", "supplier name", "client name", "landlord"] },
   { key: "room", label: "Room", aliases: ["room", "room no", "room number", "room name", "flat", "unit"] },
@@ -59,7 +59,12 @@ const CAMPS: FieldDef[] = [
   { key: "singles", label: "Single beds", aliases: ["single beds", "single bed", "singles", "single", "beds", "no of beds", "number of beds", "bed count", "bed space", "bed spaces", "capacity"] },
   { key: "nationality", label: "Nationality", aliases: ["nationality", "reserved for", "country"] },
   { key: "employee", label: "Employee name", aliases: ["employee name (optional)", "employee", "employee name", "emp name", "worker", "worker name", "name", "occupant", "staff name", "resident"], hint: "Places this worker in a bed" },
-  { key: "employeeCode", label: "Employee code", aliases: ["employee code (optional)", "employee code", "emp code", "emp id", "employee id", "id no", "worker id", "staff id", "code"], hint: "Only needed if two workers share a name" },
+  { key: "employeeCode", label: "Employee code", aliases: ["employee code (optional)", "company code", "employee code", "emp code", "emp id", "employee id", "id no", "worker id", "staff id", "code"], hint: "Only needed if two workers share a name" },
+  { key: "trade", label: "Trade", aliases: ["trade", "designation", "profession", "job title", "occupation"], hint: "Used when a new worker is created" },
+  { key: "mobile", label: "Mobile", aliases: ["mobile", "mobile number", "mo. number", "mob no", "phone", "contact number", "cell"], hint: "Used when a new worker is created" },
+  { key: "status", label: "Working status", aliases: ["working status", "status", "active", "employment status", "active status"], hint: "NOT ACTIVE rows are treated as having left" },
+  { key: "checkIn", label: "Check in", lenientDate: true, aliases: ["check in", "check-in", "checkin", "check in date", "date of check in", "arrival date", "moved in"] },
+  { key: "checkOut", label: "Check out", lenientDate: true, aliases: ["check out", "check-out", "checkout", "check out date", "date of check out", "left on", "vacated"] },
   { key: "bed", label: "Bed", aliases: ["bed (optional)", "bed", "bed no", "bed number", "bed label"], hint: "Blank = first free bed" },
 ];
 

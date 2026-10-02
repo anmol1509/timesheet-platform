@@ -11,6 +11,8 @@ export type SheetInfo = {
   /** First few data rows, aligned to `headers`, for the mapping screen. */
   sample: string[][];
   dataRows: number;
+  /** A single heading above the table (e.g. "CAMP NO. 01"), if there is one. */
+  title?: string;
 };
 
 function cellText(v: unknown): string {
@@ -89,7 +91,9 @@ export async function describeSheets(wb: ExcelJS.Workbook, fields: FieldDef[]): 
     const headerRow = detectHeaderRow(grid, fields);
     const headers = uniqueHeaders(grid[headerRow - 1] ?? []);
     const data = grid.slice(headerRow).filter((r) => r.some(Boolean));
-    out.push({ name: ws.name, rowCount: ws.rowCount, headerRow, headers, sample: data.slice(0, 5), dataRows: data.length });
+    // A merged heading repeats its text in every cell it spans, so count distinct values.
+    const above = grid.slice(0, headerRow - 1).map((r) => [...new Set(r.filter(Boolean))]).filter((r) => r.length === 1).map((r) => r[0]);
+    out.push({ name: ws.name, rowCount: ws.rowCount, headerRow, headers, sample: data.slice(0, 5), dataRows: data.length, title: above[above.length - 1] });
   }
   return out;
 }

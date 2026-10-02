@@ -14,6 +14,8 @@ export type StoredMapping = Mapping & {
   supplierDecisions?: Record<string, SupplierDecision>;
   /** Camp imports: what to do with each worker name that needed a decision, keyed by PlacementIssue.key. */
   workerDecisions?: Record<string, WorkerChoice>;
+  /** Camp imports: choices for files that name no camp or bed counts. */
+  campOptions?: { campName?: string; autoBeds?: "bunks" | "singles" | "none" };
 };
 
 export type Analysis =

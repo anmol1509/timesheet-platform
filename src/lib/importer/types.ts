@@ -13,6 +13,8 @@ export type FieldDef = {
   /** Other names this column goes by in the wild. */
   aliases?: string[];
   hint?: string;
+  /** A date field that takes headings with or without the word "date" (e.g. a bare "CHECK IN"). */
+  lenientDate?: boolean;
 };
 
 export type ImportNote = { tone: "warn" | "info"; title: string; detail?: string };
@@ -55,7 +57,7 @@ export type SupplierDecision = { action: "add"; name?: string } | { action: "exi
 export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" };
 
 /** What the person decided for a worker name in the file that couldn't be matched on its own. */
-export type WorkerChoice = { action: "use"; employeeId: string } | { action: "skip" };
+export type WorkerChoice = { action: "use"; employeeId: string } | { action: "skip" } | { action: "create" };
 
 export type WorkerCandidate = { id: string; name: string; code: string; trade: string | null; supplier: string | null; housed: string | null; score: number };
 /** A worker name in a camp file that needs a decision: unknown, several people share it, or only a close match exists. */
@@ -66,6 +68,8 @@ export type PlacementIssue = {
   camp: string;
   room: string;
   kind: "unknown" | "several" | "close";
+  /** For a name not on record: what a new worker would be created with. */
+  proposed?: { code: string; codeFromFile: boolean; trade: string | null; mobile: string | null };
   candidates: WorkerCandidate[];
   /** The assistant's pick among the candidates (never anyone else). */
   ai?: { id: string | null; confidence: "high" | "medium" | "low"; reason: string };
@@ -78,7 +82,7 @@ export type PlacementRow = {
   camp: string;
   room: string;
   bed: string | null;
-  status: "placed" | "decide" | "skipped" | "blocked";
+  status: "placed" | "decide" | "skipped" | "blocked" | "past";
   note?: string;
 };
 

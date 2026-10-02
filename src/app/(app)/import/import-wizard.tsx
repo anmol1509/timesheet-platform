@@ -51,6 +51,9 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Rooms added", value: c.roomsCreated ?? 0, tone: "success" },
       { label: "Beds added", value: c.bedsCreated ?? 0, tone: "success" },
       { label: "Workers placed", value: c.workersPlaced ?? 0, tone: "success" },
+      ...((c.workersCreated ?? 0) > 0 ? [{ label: "New workers added", value: c.workersCreated, tone: "info" as const }] : []),
+      ...((c.pastStays ?? 0) > 0 ? [{ label: "Past stays recorded", value: c.pastStays, tone: "neutral" as const }] : []),
+      ...((c.datesCorrected ?? 0) > 0 ? [{ label: "Dates corrected", value: c.datesCorrected, tone: "info" as const, hint: "day/month swapped" }] : []),
       { label: "Not placed", value: c.notPlaced ?? 0, tone: (c.notPlaced ?? 0) > 0 ? "error" : "neutral", hint: "see the notes for why" },
       { label: "Need your choice", value: c.needDecision ?? 0, tone: (c.needDecision ?? 0) > 0 ? "info" : "neutral" },
       { label: "Camps updated", value: c.updated ?? 0, tone: "info" },
@@ -91,6 +94,10 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   /** What to do with each supplier name that isn't on record: nothing is added until the person chooses. */
   const [supplierDecisions, setSupplierDecisions] = useState<Record<string, SupplierDecision>>({});
   const [workerDecisions, setWorkerDecisions] = useState<Record<string, WorkerChoice>>({});
+  /** Camp imports: a camp name for files that don't have a camp column, and how to lay out beds when no counts are given. */
+  const [campName, setCampName] = useState("");
+  const [campNameTouched, setCampNameTouched] = useState(false);
+  const [autoBeds, setAutoBeds] = useState<"bunks" | "singles" | "none">("bunks");
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   /** The column choices the current preview was made with; the review is only reachable while they still match. */
   const [previewedKey, setPreviewedKey] = useState<string | null>(null);
@@ -165,12 +172,14 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     });
   }
 
+  const campTitle = analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheets.find((x) => x.name === analysis.sheet)?.title : undefined;
+
   function preview(fixList: Fix[] = fixes, decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) {
     void wrap(async () => {
       const mapping =
         analysis?.kind === "TIMESHEETS"
           ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers }
-          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers };
+          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers, ...(kind === "CAMPS" ? { campOptions: { campName: columns.camp ? undefined : (campName.trim() || campTitle || undefined), autoBeds } } : {}) };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
       setPreviewedKey(keyFor(fixList, decisions, workers));
@@ -219,7 +228,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
-  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) => JSON.stringify({ w: workers, s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
+  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) => JSON.stringify({ cn: campName, ab: autoBeds, w: workers, s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
   const mappingKey = keyFor(fixes);
   const unresolvedSuppliers = (summary?.newSuppliers ?? []).filter((n) => !supplierDecisions[n.key]).length;
   const unresolvedWorkers = (summary?.placementIssues ?? []).length;
@@ -320,7 +329,19 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           </div>
 
           {analysis.kind !== "TIMESHEETS" ? (
-            <MapColumns kind={analysis.kind} analysis={analysis} columns={columns} setColumns={setColumns} />
+            <>
+              <MapColumns kind={analysis.kind} analysis={analysis} columns={columns} setColumns={setColumns} />
+              {kind === "CAMPS" && (
+                <CampOptions
+                  analysis={analysis}
+                  columns={columns}
+                  campName={campName}
+                  setCampName={(v) => { setCampName(v); setCampNameTouched(true); }}
+                  autoBeds={autoBeds}
+                  setAutoBeds={setAutoBeds}
+                />
+              )}
+            </>
           ) : (
             <TimesheetSheets analysis={analysis} overrides={overrides} onPick={(field, header) => {
               const next = { ...overrides, [field]: header };
@@ -349,7 +370,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted">Nothing is saved yet. Next you&rsquo;ll see exactly what would happen.</p>
-            <button type="button" onClick={() => preview()} disabled={busy || !canContinue(kind, analysis, columns)} className="btn btn-primary">
+            <button type="button" onClick={() => preview()} disabled={busy || !canContinue(kind, analysis, columns, campName || campTitle || "")} className="btn btn-primary">
               {busy ? "Checking…" : "Check and preview"}
             </button>
           </div>
@@ -480,8 +501,9 @@ function pct(s: BatchStatus | null) {
   return s && s.progressTotal > 0 ? Math.round((s.progressDone / s.progressTotal) * 100) : 0;
 }
 
-function canContinue(kind: ImportKind, analysis: Analysis, columns: Record<string, string>) {
+function canContinue(kind: ImportKind, analysis: Analysis, columns: Record<string, string>, campName = "") {
   if (analysis.kind === "TIMESHEETS") return analysis.sheets.some((s) => s.month && s.headerRow);
+  if (kind === "CAMPS" && !columns.camp && !campName.trim()) return false;
   return TARGETS[kind].fields.filter((f) => f.required).every((f) => !!columns[f.key]);
 }
 
@@ -893,6 +915,45 @@ function TimesheetSheets({ analysis, overrides, onPick }: { analysis: Extract<An
       )}
       {skipped.length > 0 && (
         <p className="text-xs text-muted">Skipped (not a month tab, or no EMPLOYEE NAME column): {skipped.map((s) => s.sheet).join(", ")}.</p>
+      )}
+    </div>
+  );
+}
+
+/** Camp files often have no camp column (the name is a heading above the table) and no bed counts. */
+function CampOptions({ analysis, columns, campName, setCampName, autoBeds, setAutoBeds }: {
+  analysis: Extract<Analysis, { kind: Exclude<ImportKind, "TIMESHEETS"> }>;
+  columns: Record<string, string>;
+  campName: string;
+  setCampName: (v: string) => void;
+  autoBeds: "bunks" | "singles" | "none";
+  setAutoBeds: (v: "bunks" | "singles" | "none") => void;
+}) {
+  const title = analysis.sheets.find((s) => s.name === analysis.sheet)?.title ?? "";
+  const hasBedCounts = !!(columns.bunks || columns.singles);
+  // Suggest the heading above the table until the person types their own.
+  const shown = campName || title;
+  return (
+    <div className="card space-y-4 p-4">
+      {!columns.camp && (
+        <label className="block max-w-md">
+          <span className="mb-1 block text-xs font-medium text-muted">Camp name *</span>
+          <input value={shown} onChange={(e) => setCampName(e.target.value)} className="input w-full" placeholder="e.g. Camp No. 01" />
+          <span className="mt-1 block text-xs text-muted">Your file has no Camp name column, so every row goes into this camp.{title ? ` We found “${title}” above the table.` : ""}</span>
+        </label>
+      )}
+      {!hasBedCounts && (
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-muted">Your file has no bed counts. How should the beds be created?</p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Bed layout">
+            {([["bunks", "Bunks (mostly) \u2014 recommended", "A room of 8 workers gets 4 bunks (8 beds); of 9 gets 4 bunks + 1 single."], ["singles", "Single beds", "One single bed for every worker."], ["none", "Don't create beds", "Only place workers in beds that already exist."]] as const).map(([v, label, hint]) => (
+              <button key={v} type="button" role="radio" aria-checked={autoBeds === v} onClick={() => setAutoBeds(v)} className={cn("rounded-lg border px-3 py-2 text-left transition", autoBeds === v ? "border-[var(--brand-primary)] bg-brand-soft" : "border-default hover:bg-surface-hover")}>
+                <span className="block text-sm font-medium text-primary">{label}</span>
+                <span className="block text-xs text-muted">{hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
