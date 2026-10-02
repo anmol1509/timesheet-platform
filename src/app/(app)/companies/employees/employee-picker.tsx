@@ -13,7 +13,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
   const [company, setCompany] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
-  const [perEmployee, setPerEmployee] = useState(false);
+  const [layout, setLayout] = useState<"company" | "person" | "all">("company");
   const [waiveGas, setWaiveGas] = useState(false);
   const [kind, setKind] = useState<"hours" | "invoice">("hours");
   const [show, setShow] = useState({ supplier: true, project: false, client: false });
@@ -86,17 +86,18 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
       const res = await fetch("/api/generate/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierIds, month, gasWaived, template, employeeIds: chosen.map((r) => r.employeeIdNo), perEmployee }),
+        body: JSON.stringify({ supplierIds, month, gasWaived, template, employeeIds: chosen.map((r) => r.employeeIdNo), perEmployee: layout === "person", combined: layout === "all" }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         setError(body?.error ?? "Couldn't generate the timesheets.");
         return;
       }
+      const isPdf = (res.headers.get("Content-Type") ?? "").includes("pdf");
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = `timesheets-${month}-selected.zip`;
+      a.download = isPdf ? `timesheet-selected-employees-${month}.pdf` : `timesheets-${month}-selected.zip`;
       a.click();
       URL.revokeObjectURL(url);
       if (Number(res.headers.get("X-Skipped") ?? 0) > 0) setError("Some companies were left out — see NOT-GENERATED.txt in the zip.");
@@ -185,8 +186,9 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
           <>
         <TemplatePicker value={template} onChange={setTemplate} compact />
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <label className="flex items-center gap-2"><input type="radio" checked={!perEmployee} onChange={() => setPerEmployee(false)} /> One sheet per company (selected people only)</label>
-          <label className="flex items-center gap-2"><input type="radio" checked={perEmployee} onChange={() => setPerEmployee(true)} /> A separate sheet for each person</label>
+          <label className="flex items-center gap-2"><input type="radio" checked={layout === "company"} onChange={() => setLayout("company")} /> One sheet per company (selected people only)</label>
+          <label className="flex items-center gap-2"><input type="radio" checked={layout === "all"} onChange={() => setLayout("all")} /> One sheet for all selected employees</label>
+          <label className="flex items-center gap-2"><input type="radio" checked={layout === "person"} onChange={() => setLayout("person")} /> A separate sheet for each person</label>
           <Checkbox checked={waiveGas} onCheckedChange={() => setWaiveGas((v) => !v)} label={<span className="text-sm">Waive gas charge</span>} />
         </div>
         <div className="flex items-center gap-3">

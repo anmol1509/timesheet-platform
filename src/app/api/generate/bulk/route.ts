@@ -23,6 +23,8 @@ const bodySchema = z.object({
   employeeIds: z.array(z.string().min(1)).max(500).optional(),
   /** With employeeIds: one sheet per person instead of one per company. */
   perEmployee: z.boolean().default(false),
+  /** With employeeIds: one sheet holding every selected person, across all their companies. */
+  combined: z.boolean().default(false),
 });
 
 /**
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { supplierIds, month, gasWaived, template, employeeIds, perEmployee } = parsed.data;
+  const { supplierIds, month, gasWaived, template, employeeIds, perEmployee, combined } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
       { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned — contact an admin." },
@@ -68,39 +70,13 @@ export async function POST(request: Request) {
   const issuedTo = branch?.issuedTo || branch?.name || "";
   const monthLabel = monthLabelFromKey(month);
 
-  const zip = new JSZip();
-  const skipped: string[] = [];
-  const usedNames = new Set<string>();
-
-  for (const supplier of mine) {
-    if (supplier.invoiceApprovalStatus !== "Approved") {
-      skipped.push(`${supplier.name} — not invoice-approved (currently ${supplier.invoiceApprovalStatus || "unset"})`);
-      continue;
-    }
-    const allEntries = await getSupplierMonthEntries(supplier.id, month);
-    const entries = employeeIds ? allEntries.filter((e) => employeeIds.includes(e.employeeIdNo)) : allEntries;
-    if (entries.length === 0) {
-      skipped.push(`${supplier.name} — ${employeeIds ? "none of the selected employees have hours this month" : "no employees this month"}`);
-      continue;
-    }
-
-    const issuedToName = issuedTo || supplier.name;
-    const roster = await prisma.employee.findMany({
-      where: { employeeIdNo: { in: entries.map((e) => e.employeeIdNo) } },
-      select: { employeeIdNo: true, siteArrivalDate: true, project: { select: { code: true } } },
-    });
-    const projectById = new Map(roster.filter((r) => r.project).map((r) => [r.employeeIdNo, r.project!.code] as const));
-    const checkInById = new Map(roster.map((r) => [r.employeeIdNo, r.siteArrivalDate] as const));
-    const waived = gasWaived[supplier.id] === true;
-    const render = async (list: typeof entries) => {
-      // Gas: the company's rate from each worker's check-in date, capped per worker per month; nothing when waived.
-      const gasTotal = waived
-        ? 0
-        : list.reduce((sum, e) => sum + calculateGasDeduction(e.dailyHours, gasRuleOf(supplier), { checkIn: checkInById.get(e.employeeIdNo) ?? null, month }), 0);
-      const pdf = template !== "standard" ? await generateTemplatedPdf({
+  type Entry = Awaited<ReturnType<typeof getSupplierMonthEntries>>[number];
+  const makePdf = async (a: { list: Entry[]; gasTotal: number; subContractor: string; subContractorCode: string | null; projectById: Map<string, string>; issuedToName: string }) => {
+    const { list, gasTotal, subContractor, subContractorCode, projectById, issuedToName } = a;
+    return template !== "standard" ? await generateTemplatedPdf({
       template,
       letterhead,
-      subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name,
+      subContractor,
       monthLabel,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),
@@ -120,8 +96,8 @@ export async function POST(request: Request) {
     }) : await generateTimesheetPdf({
       letterhead,
       // The main (parent) supplier, or the supplier itself when it has none.
-      subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name,
-      subContractorCode: (supplier.parent ?? supplier).mohrePermitNumber ?? null,
+      subContractor,
+      subContractorCode,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),
       entries: list.map((e) => ({
@@ -145,8 +121,48 @@ export async function POST(request: Request) {
       approvedByRole: null,
       notes: DEFAULT_TIMESHEET_NOTES,
     });
+  };
+
+  const zip = new JSZip();
+  const skipped: string[] = [];
+  const usedNames = new Set<string>();
+  const combinedParts: { supplier: (typeof mine)[number]; list: Entry[]; gasTotal: number }[] = [];
+  const combinedProjects = new Map<string, string>();
+
+  for (const supplier of mine) {
+    if (supplier.invoiceApprovalStatus !== "Approved") {
+      skipped.push(`${supplier.name} — not invoice-approved (currently ${supplier.invoiceApprovalStatus || "unset"})`);
+      continue;
+    }
+    const allEntries = await getSupplierMonthEntries(supplier.id, month);
+    const entries = employeeIds ? allEntries.filter((e) => employeeIds.includes(e.employeeIdNo)) : allEntries;
+    if (entries.length === 0) {
+      skipped.push(`${supplier.name} — ${employeeIds ? "none of the selected employees have hours this month" : "no employees this month"}`);
+      continue;
+    }
+
+    const issuedToName = issuedTo || supplier.name;
+    const roster = await prisma.employee.findMany({
+      where: { employeeIdNo: { in: entries.map((e) => e.employeeIdNo) } },
+      select: { employeeIdNo: true, siteArrivalDate: true, project: { select: { code: true } } },
+    });
+    const projectById = new Map(roster.filter((r) => r.project).map((r) => [r.employeeIdNo, r.project!.code] as const));
+    const checkInById = new Map(roster.map((r) => [r.employeeIdNo, r.siteArrivalDate] as const));
+    const waived = gasWaived[supplier.id] === true;
+    // Gas: the company's rate from each worker's check-in date, capped per worker per month; nothing when waived.
+    const gasFor = (list: typeof entries) =>
+      waived ? 0 : list.reduce((sum, e) => sum + calculateGasDeduction(e.dailyHours, gasRuleOf(supplier), { checkIn: checkInById.get(e.employeeIdNo) ?? null, month }), 0);
+    const render = async (list: typeof entries) => {
+      const gasTotal = gasFor(list);
+      const pdf = await makePdf({ list, gasTotal, subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name, subContractorCode: (supplier.parent ?? supplier).mohrePermitNumber ?? null, projectById, issuedToName });
       return { pdf, gasTotal };
     };
+
+    if (combined && employeeIds) {
+      for (const e of entries) { const code = projectById.get(e.employeeIdNo); if (code) combinedProjects.set(e.employeeIdNo, code); }
+      combinedParts.push({ supplier, list: entries, gasTotal: gasFor(entries) });
+      continue;
+    }
 
     const groups = employeeIds && perEmployee ? entries.map((e) => ({ list: [e], tag: e.employeeIdNo })) : [{ list: entries, tag: "" }];
     for (const g of groups) {
@@ -161,6 +177,25 @@ export async function POST(request: Request) {
     }
   }
 
+  if (combined && combinedParts.length > 0) {
+    const names = combinedParts.map((p) => (p.supplier.parent ?? p.supplier).fullName || (p.supplier.parent ?? p.supplier).name);
+    const distinct = [...new Set(names)];
+    const list = combinedParts.flatMap((p) => p.list).sort((x, y) => x.employeeName.localeCompare(y.employeeName));
+    const gasTotal = combinedParts.reduce((sum, p) => sum + p.gasTotal, 0);
+    const pdf = await makePdf({
+      list, gasTotal,
+      subContractor: distinct.length === 1 ? distinct[0] : `Selected employees (${distinct.length} suppliers)`,
+      subContractorCode: distinct.length === 1 ? (combinedParts[0].supplier.parent ?? combinedParts[0].supplier).mohrePermitNumber ?? null : null,
+      projectById: combinedProjects,
+      issuedToName: issuedTo || combinedParts[0].supplier.name,
+    });
+    usedNames.add("selected");
+    zip.file(`timesheet-selected-employees-${month}.pdf`, pdf);
+    await prisma.generatedSheet.create({
+      data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: combinedParts[0].supplier.id, generatedById: user.id, branchId },
+    });
+  }
+
   if (usedNames.size === 0) {
     return NextResponse.json(
       { error: `Nothing could be generated.\n${skipped.map((s) => `• ${s}`).join("\n")}` },
@@ -169,6 +204,16 @@ export async function POST(request: Request) {
   }
   if (skipped.length > 0) {
     zip.file("NOT-GENERATED.txt", `These companies were left out of ${monthLabel}:\n\n${skipped.map((s) => `- ${s}`).join("\n")}\n`);
+  }
+  if (combined && combinedParts.length > 0) {
+    const only = zip.file(/\.pdf$/)[0];
+    return new NextResponse((await only.async("uint8array")) as unknown as BodyInit, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="timesheet-selected-employees-${month}.pdf"`,
+        "X-Skipped": String(skipped.length),
+      },
+    });
   }
   const buffer = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
   return new NextResponse(buffer as unknown as BodyInit, {
