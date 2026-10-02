@@ -23,6 +23,10 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { plateNumber: "DXB A 12345", type: "Bus", capacity: "50", status: "Active", driverName: "Imran Khan", driverPhone: "+971 50 111 2233", registrationExpiry: "15/03/2027", insuranceExpiry: "30/04/2027", notes: "" },
     { plateNumber: "SHJ 2 67890", type: "Hiace Van", capacity: "14", status: "Maintenance", driverName: "", driverPhone: "", registrationExpiry: "", insuranceExpiry: "", notes: "In workshop" },
   ],
+  MOBILISATION: [
+    { employee: "Ravi Kumar", employeeCode: "AN-101", client: "Emaar Properties", project: "Downtown Residences Phase 2", stage: "Active", mobilisedOn: "01/03/2026", arrivedOn: "05/03/2026", trade: "Carpenter", mobile: "" },
+    { employee: "Ali Khan", employeeCode: "", client: "Emaar Properties", project: "Creek Harbour Tower", stage: "Under mobilisation", mobilisedOn: "20/09/2026", arrivedOn: "", trade: "Steel Fixer", mobile: "" },
+  ],
   CLIENTS: [
     { name: "Emaar Properties", code: "CEP", contactPerson: "Sara Ahmed", contactPhone: "+971 4 555 0100", contactEmail: "sara@client.example", trn: "100987654300003", tradeLicenseNumber: "TL-778899", billingAddress: "Downtown Dubai", paymentTerms: "30 days" },
   ],
@@ -87,6 +91,7 @@ export async function buildTemplate(kind: ImportKind, monthLabel = new Date()): 
     for (let r = 2; r <= 1000; r++) main.getCell(r, i + 1).dataValidation = { type: "list", allowBlank: true, formulae: [`"${values.join(",")}"`] };
   };
   if (kind === "CAMPS") listCol("campType", ["Own", "Supplier", "Client"]);
+  if (kind === "MOBILISATION") listCol("stage", ["Under mobilisation", "On site", "Active", "Bench"]);
   if (kind === "VEHICLES") listCol("status", ["Active", "Maintenance", "Inactive"]);
   const natIdx = fields.findIndex((f) => f.key === "nationality");
   if (natIdx >= 0) {

@@ -80,6 +80,18 @@ const VEHICLES: FieldDef[] = [
   { key: "notes", label: "Notes", aliases: ["notes", "remarks", "comments"] },
 ];
 
+const MOBILISATION: FieldDef[] = [
+  { key: "employee", label: "Worker name", aliases: ["worker", "worker name", "employee", "employee name", "name", "emp name", "labour name"] },
+  { key: "employeeCode", label: "Employee code", aliases: ["employee code", "emp code", "emp id", "employee id", "id no", "worker id", "staff id", "code", "company code"], hint: "Only needed if two workers share a name" },
+  { key: "client", label: "Client", aliases: ["client", "client name", "customer", "customer name"] },
+  { key: "project", label: "Project", aliases: ["project", "project name", "site", "project code", "job"] },
+  { key: "stage", label: "Stage", aliases: ["stage", "status", "deployment stage", "working status", "mobilisation status"], hint: "Under mobilisation, On site or Active" },
+  { key: "mobilisedOn", label: "Mobilised on", lenientDate: true, aliases: ["mobilised on", "mobilized on", "mobilisation date", "mobilization date", "date of mobilisation", "deployed on", "start date", "joined project"] },
+  { key: "arrivedOn", label: "Arrived on site", lenientDate: true, aliases: ["arrived on site", "site arrival", "site arrival date", "arrival date", "arrived on", "reached site", "on site since", "date of arrival"] },
+  { key: "trade", label: "Trade", aliases: ["trade", "designation", "profession", "job title"], hint: "Used when a new worker is created" },
+  { key: "mobile", label: "Mobile", aliases: ["mobile", "mobile number", "phone", "contact number"], hint: "Used when a new worker is created" },
+];
+
 const TIMESHEETS: FieldDef[] = [
   { key: "idNo", label: "Worker ID", required: true, aliases: ["id no", "i d no", "emp id", "employee id", "id"] },
   { key: "name", label: "Worker name", required: true, aliases: ["employee name", "worker name", "name"] },
@@ -99,6 +111,7 @@ export const TARGETS: Record<ImportKind, { label: string; noun: string; fields: 
   TIMESHEETS: { label: "Timesheets", noun: "timesheet row", fields: TIMESHEETS },
   CAMPS: { label: "Camps", noun: "camp", fields: CAMPS },
   VEHICLES: { label: "Vehicles", noun: "vehicle", fields: VEHICLES },
+  MOBILISATION: { label: "Mobilisation", noun: "worker", fields: MOBILISATION },
 };
 
 export function isImportKind(v: string): v is ImportKind {

@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
  * real import run inside a transaction that is rolled back). */
 export type Db = PrismaClient | Prisma.TransactionClient;
 
-export type ImportKind = "SUPPLIERS" | "CLIENTS" | "WORKERS" | "TIMESHEETS" | "CAMPS" | "VEHICLES";
+export type ImportKind = "SUPPLIERS" | "CLIENTS" | "WORKERS" | "TIMESHEETS" | "CAMPS" | "VEHICLES" | "MOBILISATION";
 
 export type FieldDef = {
   key: string;
@@ -54,7 +54,7 @@ export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: st
 /** What to do with a supplier name in the file that isn't on record yet. Nothing is added unless the person chose to. */
 export type SupplierDecision = { action: "add"; name?: string } | { action: "existing"; supplierId: string } | { action: "ignore" };
 /** A name in the file that isn't on record. `party` says whether it is a supplier or a client; the decision key for a client starts with "client:". For a client, `existing` means a client. */
-export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" };
+export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" | "project" };
 
 /** What the person decided for a worker name in the file that couldn't be matched on its own. */
 export type WorkerChoice = { action: "use"; employeeId: string } | { action: "skip" } | { action: "create" };
@@ -68,6 +68,8 @@ export type PlacementIssue = {
   camp: string;
   room: string;
   kind: "unknown" | "several" | "close";
+  /** Heading for the card when a camp / room doesn't apply (e.g. "Emaar Properties / Tower 1"). */
+  context?: string;
   /** For a name not on record: what a new worker would be created with. */
   proposed?: { code: string; codeFromFile: boolean; trade: string | null; mobile: string | null };
   candidates: WorkerCandidate[];
@@ -88,6 +90,20 @@ export type PlacementRow = {
   note?: string;
 };
 
+/** One line of the mobilisation review: a worker and the deployment they would be given. */
+export type DeploymentRow = {
+  row: number;
+  fileName: string;
+  worker: { name: string; code: string; trade: string | null } | null;
+  client: string | null;
+  project: string | null;
+  stage: string | null;
+  mobilisedOn: string | null;
+  arrivedOn: string | null;
+  status: "set" | "unchanged" | "decide" | "skipped";
+  note?: string;
+};
+
 export type ApplyResult = {
   rows: RowReport[];
   counts: Record<string, number>;
@@ -100,6 +116,8 @@ export type ApplyResult = {
   /** The suppliers already on record, to pick from. */
   existingSuppliers?: { id: string; name: string }[];
   existingClients?: { id: string; name: string }[];
+  existingProjects?: { id: string; name: string }[];
+  deployments?: DeploymentRow[];
   placementIssues?: PlacementIssue[];
   placements?: PlacementRow[];
 };

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Bus, CalendarClock, HardHat, Home, Truck, type LucideIcon } from "lucide-react";
+import { Briefcase, Building2, Bus, CalendarClock, HardHat, Home, Truck, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { prisma } from "@/lib/db";
@@ -19,6 +19,7 @@ const CARDS: { kind: ImportKind; icon: LucideIcon; blurb: string; hint: string }
   { kind: "CLIENTS", icon: Building2, blurb: "The companies you supply workers to, with contacts and billing details.", hint: "Excel or CSV" },
   { kind: "CAMPS", icon: Home, blurb: "Camps with their rooms and beds. Each camp is Own, Supplier or Client. Beds are optional.", hint: "Excel or CSV" },
   { kind: "VEHICLES", icon: Bus, blurb: "Your vehicles and drivers, with seats, Mulkiya and insurance expiry dates.", hint: "Excel or CSV" },
+  { kind: "MOBILISATION", icon: Briefcase, blurb: "Where each worker is deployed today: client, project, stage and dates. Clients and projects not on record can be added in one click.", hint: "For moving over your current deployments" },
   { kind: "WORKERS", icon: HardHat, blurb: "Your worker list: codes, trades, nationality, passport, Emirates ID, visa and labour card dates.", hint: "Excel or CSV" },
 ];
 

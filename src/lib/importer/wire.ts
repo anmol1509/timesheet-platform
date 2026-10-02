@@ -1,7 +1,7 @@
 // Shapes that travel between the import API and its screens. Types only, so a
 // client component can import them without pulling in server code.
 import type { TimesheetOverrides, TimesheetSheetInfo } from "@/lib/parseTimesheet";
-import type { Fix, Fixable, ImportKind, Mapping, NewSupplier, RowReport, ImportNote, SupplierDecision, WorkerChoice, PlacementIssue, PlacementRow } from "./types";
+import type { DeploymentRow, Fix, Fixable, ImportKind, Mapping, NewSupplier, RowReport, ImportNote, SupplierDecision, WorkerChoice, PlacementIssue, PlacementRow } from "./types";
 import type { SheetInfo } from "./sheet";
 
 export type StoredMapping = Mapping & {
@@ -16,6 +16,8 @@ export type StoredMapping = Mapping & {
   workerDecisions?: Record<string, WorkerChoice>;
   /** Camp imports: choices for files that name no camp or bed counts. */
   campOptions?: { campName?: string; autoBeds?: "bunks" | "singles" | "none" };
+  /** Mobilisation imports: the date to use for rows that have none. */
+  mobilisationOptions?: { defaultDate?: string };
 };
 
 export type Analysis =
@@ -39,6 +41,8 @@ export type BatchSummary = {
   newSuppliers?: NewSupplier[];
   existingSuppliers?: { id: string; name: string }[];
   existingClients?: { id: string; name: string }[];
+  existingProjects?: { id: string; name: string }[];
+  deployments?: DeploymentRow[];
   placementIssues?: PlacementIssue[];
   placements?: PlacementRow[];
   undo?: { restored: number; removed: number; kept: number };

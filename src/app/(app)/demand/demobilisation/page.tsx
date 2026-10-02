@@ -1,7 +1,10 @@
 import { PageHeader } from "@/components/PageHeader";
-import { UserMinus } from "lucide-react";
+import Link from "next/link";
+import { Download, Upload, UserMinus } from "lucide-react";
+import { isAdminRole } from "@/lib/roles";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { EmptyState } from "@/components/EmptyState";
 import { ON_WORK_STAGES } from "@/lib/employeeStage";
@@ -21,7 +24,9 @@ export default async function DemobilisationPage({
   searchParams: Promise<{ clientId?: string; projectId?: string }>;
 }) {
   const params = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canImport = isAdminRole(user.role);
+  const canExport = can(subjectOf(user), "demand", "export");
 
   const [deployed, clients, projects, recent] = await Promise.all([
     prisma.employee.findMany({
@@ -86,6 +91,12 @@ export default async function DemobilisationPage({
         title="Demobilisation"
         icon={UserMinus}
         description={<>Take workers off a job. Ends the placement everywhere at once — the stage, the project, the demand allocation and the assignment record.</>}
+        actions={
+          <>
+            {canImport && <Link href="/import/new/mobilisation" className="btn btn-secondary gap-1.5"><Upload className="h-4 w-4" aria-hidden />Import</Link>}
+            {canExport && <a href="/api/demand-requests/deployments/export" className="btn btn-secondary gap-1.5"><Download className="h-4 w-4" aria-hidden />Export</a>}
+          </>
+        }
       />
 
       {deployed.length === 0 && recent.length === 0 ? (

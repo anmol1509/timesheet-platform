@@ -32,6 +32,7 @@ const LISTS: Record<ImportKind, { href: string; label: string }> = {
   TIMESHEETS: { href: "/companies", label: "Go to timesheets" },
   CAMPS: { href: "/accommodation/camps", label: "Go to camps" },
   VEHICLES: { href: "/transport", label: "Go to vehicles" },
+  MOBILISATION: { href: "/demand/demobilisation", label: "Go to deployments" },
 };
 
 function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
@@ -42,6 +43,19 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Suppliers added", value: c.suppliersCreated ?? 0, tone: "neutral", hint: `${c.subsidiariesLinked ?? 0} placed under a main supplier` },
       { label: "Clients added", value: c.clientsCreated ?? 0, tone: "neutral" },
       { label: "Attendance days", value: c.attendanceCreated ?? 0, tone: "success", hint: "recorded from the daily hours" },
+      { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
+    ];
+  }
+  if (kind === "MOBILISATION") {
+    return [
+      { label: "Deployments set", value: c.updated ?? 0, tone: "success" },
+      { label: "Already set", value: c.unchanged ?? 0, tone: "neutral" },
+      ...((c.clientsCreated ?? 0) > 0 ? [{ label: "Clients added", value: c.clientsCreated, tone: "info" as const }] : []),
+      ...((c.projectsCreated ?? 0) > 0 ? [{ label: "Projects added", value: c.projectsCreated, tone: "info" as const }] : []),
+      ...((c.workersCreated ?? 0) > 0 ? [{ label: "New workers added", value: c.workersCreated, tone: "info" as const }] : []),
+      ...((c.datesCorrected ?? 0) > 0 ? [{ label: "Dates corrected", value: c.datesCorrected, tone: "info" as const, hint: "day/month swapped" }] : []),
+      { label: "Skipped", value: c.skipped ?? 0, tone: "neutral" },
+      { label: "Need your choice", value: c.needDecision ?? 0, tone: (c.needDecision ?? 0) > 0 ? "info" : "neutral" },
       { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
     ];
   }
@@ -97,6 +111,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   /** Camp imports: a camp name for files that don't have a camp column, and how to lay out beds when no counts are given. */
   const [campName, setCampName] = useState("");
   const [campNameTouched, setCampNameTouched] = useState(false);
+  const [defaultDate, setDefaultDate] = useState("");
   const [autoBeds, setAutoBeds] = useState<"bunks" | "singles" | "none">("bunks");
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   /** The column choices the current preview was made with; the review is only reachable while they still match. */
@@ -179,7 +194,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       const mapping =
         analysis?.kind === "TIMESHEETS"
           ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers }
-          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers, ...(kind === "CAMPS" ? { campOptions: { campName: columns.camp ? undefined : (campName.trim() || campTitle || undefined), autoBeds } } : {}) };
+          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers, ...(kind === "MOBILISATION" ? { mobilisationOptions: { defaultDate: defaultDate || undefined } } : {}), ...(kind === "CAMPS" ? { campOptions: { campName: columns.camp ? undefined : (campName.trim() || campTitle || undefined), autoBeds } } : {}) };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
       setPreviewedKey(keyFor(fixList, decisions, workers));
@@ -228,7 +243,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
-  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) => JSON.stringify({ cn: campName, ab: autoBeds, w: workers, s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
+  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) => JSON.stringify({ cn: campName, ab: autoBeds, w: workers, s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, dd: defaultDate, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
   const mappingKey = keyFor(fixes);
   const unresolvedSuppliers = (summary?.newSuppliers ?? []).filter((n) => !supplierDecisions[n.key]).length;
   const unresolvedWorkers = (summary?.placementIssues ?? []).length;
@@ -331,6 +346,16 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           {analysis.kind !== "TIMESHEETS" ? (
             <>
               <MapColumns kind={analysis.kind} analysis={analysis} columns={columns} setColumns={setColumns} />
+              {kind === "MOBILISATION" && (
+                <div className="card space-y-2 p-4">
+                  <p className="text-sm font-semibold text-primary">Mobilisation date</p>
+                  <label className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                    If a row has no date, use
+                    <input type="date" value={defaultDate} onChange={(e) => setDefaultDate(e.target.value)} className="input w-44 px-2 py-1.5 text-sm" aria-label="Date to use when a row has none" />
+                    <span>(leave empty to keep those rows undated)</span>
+                  </label>
+                </div>
+              )}
               {kind === "CAMPS" && (
                 <CampOptions
                   analysis={analysis}
@@ -389,6 +414,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               items={summary.newSuppliers!}
               existing={summary.existingSuppliers ?? []}
               existingClients={summary.existingClients ?? []}
+              existingProjects={summary.existingProjects ?? []}
               applied={supplierDecisions}
               busy={busy}
               onApply={(next) => {
@@ -424,6 +450,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
             />
           )}
           <ReportView tiles={tilesFor(kind, summary.counts)} rows={summary.rows} notes={summary.notes} truncated={summary.truncated} />
+          {(summary.deployments?.length ?? 0) > 0 && <DeploymentTable rows={summary.deployments!} />}
           {(summary.placements?.length ?? 0) > 0 && <PlacementTable rows={summary.placements!} />}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("map")} disabled={busy}>Back to columns</button>
@@ -563,11 +590,12 @@ function MapColumns({ kind, analysis, columns, setColumns }: { kind: ImportKind;
 }
 
 /** New supplier names in the file. Nothing is added on its own: each is added (optionally renamed), pointed at an existing supplier, or ignored. */
-function SupplierDecisions({ kind, items, existing, existingClients, applied, busy, onApply }: {
+function SupplierDecisions({ kind, items, existing, existingClients, existingProjects = [], applied, busy, onApply }: {
   kind: ImportKind;
   items: NewSupplier[];
   existing: { id: string; name: string }[];
   existingClients: { id: string; name: string }[];
+  existingProjects?: { id: string; name: string }[];
   applied: Record<string, SupplierDecision>;
   busy: boolean;
   onApply: (d: Record<string, SupplierDecision>) => void;
@@ -584,13 +612,13 @@ function SupplierDecisions({ kind, items, existing, existingClients, applied, bu
     const d = draft[n.key];
     return d && (d.action === "ignore" || (d.action === "add" && d.name.trim()) || (d.action === "existing" && d.supplierId));
   });
-  const hasClients = items.some((n) => n.party === "client");
-  const ignoreNote = (n: NewSupplier) => (n.party === "client" ? "These rows are imported without a client." : kind === "TIMESHEETS" ? "Rows for this supplier are left out." : "Workers are imported without this supplier.");
+  const hasClients = items.some((n) => n.party === "client" || n.party === "project");
+  const ignoreNote = (n: NewSupplier) => (n.party === "project" ? "Workers on this project are left as they are." : n.party === "client" ? "These rows are imported without a client." : kind === "TIMESHEETS" ? "Rows for this supplier are left out." : "Workers are imported without this supplier.");
   return (
     <div className="card space-y-3 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-primary">New {hasClients ? "suppliers and clients" : "suppliers"} in this file &middot; {items.length}</p>
+          <p className="text-sm font-semibold text-primary">New {kind === "MOBILISATION" ? "clients and projects" : hasClients ? "suppliers and clients" : "suppliers"} in this file &middot; {items.length}</p>
           <p className="mt-0.5 text-xs text-muted">These names aren&rsquo;t on record yet. Nothing is added unless you choose to &mdash; add it (you can fix the name), use one you already have, or ignore it.</p>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft((prev) => Object.fromEntries(items.map((n) => { const v = prev[n.key] ?? { action: "" as const, name: n.name, supplierId: "" }; return [n.key, v.action ? v : { ...v, action: "add" as const }]; })))}>
@@ -605,7 +633,7 @@ function SupplierDecisions({ kind, items, existing, existingClients, applied, bu
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm text-primary">
                   <span className="font-medium">{n.name}</span>
-                  {hasClients && <span className={cn("ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium", n.party === "client" ? "bg-[var(--info-soft)] text-[var(--info)]" : "bg-surface-sunken text-secondary")}>{n.party === "client" ? "Client" : "Supplier"}</span>}
+                  {hasClients && <span className={cn("ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium", n.party === "client" ? "bg-[var(--info-soft)] text-[var(--info)]" : "bg-surface-sunken text-secondary")}>{n.party === "project" ? "Project" : n.party === "client" ? "Client" : "Supplier"}</span>}
                   <span className="text-muted"> &mdash; {n.rows} row{n.rows === 1 ? "" : "s"}{n.role === "sponsor" ? ", as sponsor" : n.role === "both" ? ", as supplier and sponsor" : ""}</span>
                 </p>
                 <div className="inline-flex overflow-hidden rounded-lg border border-default text-xs font-medium" role="group" aria-label={`What to do with ${n.name}`}>
@@ -624,7 +652,7 @@ function SupplierDecisions({ kind, items, existing, existingClients, applied, bu
               )}
               {d.action === "existing" && (
                 <div className="w-80">
-                  <Select value={d.supplierId} onChange={(v) => set(n.key, { supplierId: v })} placeholder={n.party === "client" ? "Choose a client…" : "Choose a supplier…"} searchPlaceholder={n.party === "client" ? "Search clients…" : "Search suppliers…"} options={(n.party === "client" ? existingClients : existing).map((x) => ({ value: x.id, label: x.name }))} />
+                  <Select value={d.supplierId} onChange={(v) => set(n.key, { supplierId: v })} placeholder={n.party === "project" ? "Choose a project…" : n.party === "client" ? "Choose a client…" : "Choose a supplier…"} searchPlaceholder={n.party === "project" ? "Search projects…" : n.party === "client" ? "Search clients…" : "Search suppliers…"} options={(n.party === "project" ? existingProjects : n.party === "client" ? existingClients : existing).map((x) => ({ value: x.id, label: x.name }))} />
                 </div>
               )}
               {d.action === "ignore" && <p className="text-xs text-muted">{ignoreNote(n)}</p>}
@@ -955,6 +983,39 @@ function CampOptions({ analysis, columns, campName, setCampName, autoBeds, setAu
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const DEPLOY_TONE: Record<string, string> = { set: "text-[var(--success)]", unchanged: "text-muted", decide: "text-[var(--warning)]", skipped: "text-muted" };
+const DEPLOY_LABEL: Record<string, string> = { set: "Will be set", unchanged: "Already set", decide: "Needs a choice", skipped: "Skipped" };
+
+/** What each row of the file would do: worker, where they go, and at what stage. */
+function DeploymentTable({ rows }: { rows: NonNullable<BatchSummary["deployments"]> }) {
+  return (
+    <div className="card overflow-hidden">
+      <p className="border-b border-default px-4 py-3 text-sm font-semibold text-primary">Deployments in this file &middot; {rows.length}</p>
+      <div className="max-h-96 overflow-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="sticky top-0 bg-surface-sunken text-muted">
+            <tr><th className="px-3 py-2">Row</th><th className="px-3 py-2">Worker</th><th className="px-3 py-2">Client</th><th className="px-3 py-2">Project</th><th className="px-3 py-2">Stage</th><th className="px-3 py-2">Mobilised</th><th className="px-3 py-2">On site</th><th className="px-3 py-2">Result</th></tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((r) => (
+              <tr key={r.row}>
+                <td className="tabular px-3 py-2 text-muted">{r.row}</td>
+                <td className="px-3 py-2 text-primary">{r.worker ? `${r.worker.name} (${r.worker.code})` : r.fileName}</td>
+                <td className="px-3 py-2">{r.client ?? "—"}</td>
+                <td className="px-3 py-2">{r.project ?? "—"}</td>
+                <td className="px-3 py-2">{r.stage ?? "—"}</td>
+                <td className="tabular px-3 py-2">{r.mobilisedOn ?? "—"}</td>
+                <td className="tabular px-3 py-2">{r.arrivedOn ?? "—"}</td>
+                <td className={cn("px-3 py-2", DEPLOY_TONE[r.status])}>{DEPLOY_LABEL[r.status]}{r.note ? <span className="text-muted"> &middot; {r.note}</span> : null}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
