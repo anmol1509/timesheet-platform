@@ -8,7 +8,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 type RoomDraft = { name: string; bedCount: number; bunkCount: number };
 
 function defaultRooms(count: number, previous: RoomDraft[]): RoomDraft[] {
-  return Array.from({ length: count }, (_, i) => previous[i] ?? { name: `Room ${i + 1}`, bedCount: 4, bunkCount: 0 });
+  return Array.from({ length: count }, (_, i) => previous[i] ?? { name: `Room ${i + 1}`, bedCount: 0, bunkCount: 2 });
 }
 
 export function AddCampForm() {
@@ -28,6 +28,10 @@ export function AddCampForm() {
   function updateRoom(index: number, patch: Partial<RoomDraft>) {
     setRooms((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
+
+  const [sameBunks, setSameBunks] = useState(2);
+  const [sameSingles, setSameSingles] = useState(0);
+  const applyToAll = () => setRooms((prev) => prev.map((r) => ({ ...r, bunkCount: sameBunks, bedCount: sameSingles })));
 
   const totalBeds = rooms.reduce((sum, r) => sum + r.bedCount + r.bunkCount * 2, 0);
   const canSubmit = name.trim().length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.bedCount + r.bunkCount > 0);
@@ -72,6 +76,18 @@ export function AddCampForm() {
 
       <div className="space-y-2">
         <span className="block text-xs font-medium text-muted">Beds in each room</span>
+        <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface-sunken p-2.5">
+          <label className="block">
+            <span className="mb-0.5 block text-[11px] font-medium text-muted">Bunks (upper + lower)</span>
+            <NumberInput value={sameBunks} onChange={(v) => setSameBunks(Math.max(0, Math.min(20, Number(String(v)) || 0)))} min={0} max={20} ariaLabel="Bunks for every room" className="w-28" />
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
+            <NumberInput value={sameSingles} onChange={(v) => setSameSingles(Math.max(0, Math.min(20, Number(String(v)) || 0)))} min={0} max={20} ariaLabel="Single beds for every room" className="w-28" />
+          </label>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={applyToAll}>Apply to all rooms</button>
+          <span className="text-xs text-subtle">Then change any room that is different.</span>
+        </div>
         <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
           {rooms.map((room, i) => (
             <div key={i} className="space-y-2 rounded-lg border border-default p-2.5">
@@ -83,19 +99,19 @@ export function AddCampForm() {
               />
               <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2">
                 <label className="block">
-                  <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
-                  <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Single beds in this room" />
-                </label>
-                <label className="block">
                   <span className="mb-0.5 block text-[11px] font-medium text-muted">Bunks (upper + lower)</span>
                   <NumberInput value={room.bunkCount} onChange={(v) => updateRoom(i, { bunkCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Bunk beds in this room" />
+                </label>
+                <label className="block">
+                  <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
+                  <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Single beds in this room" />
                 </label>
               </div>
             </div>
           ))}
         </div>
         <p className="text-xs text-subtle">
-          {rooms.length} room{rooms.length === 1 ? "" : "s"}, {totalBeds} bed{totalBeds === 1 ? "" : "s"} total.
+          {rooms.length} room{rooms.length === 1 ? "" : "s"}, {totalBeds} bed{totalBeds === 1 ? "" : "s"} total ({rooms.reduce((n, r) => n + r.bunkCount, 0)} bunk{rooms.reduce((n, r) => n + r.bunkCount, 0) === 1 ? "" : "s"}, {rooms.reduce((n, r) => n + r.bedCount, 0)} single).
         </p>
       </div>
 

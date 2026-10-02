@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { can } from "@/lib/permissions";
+import { groupBeds } from "@/lib/bunk";
 import { byNameNatural } from "@/lib/naturalSort";
 import { TARGETS } from "@/lib/importer/targets";
 
@@ -44,10 +45,14 @@ export async function GET(request: Request) {
     if (c.rooms.length === 0) { add(base); continue; }
     for (const r of byNameNatural(c.rooms)) {
       const roomBase = { ...base, room: r.name, roomType: r.roomType ?? "", nationality: r.nationality ?? "" };
+      // The real make-up of the room, so a re-import keeps bunks as bunks.
+      const groups = groupBeds(r.beds);
+      const counts = { bunks: groups.filter((g) => g.kind === "bunk").length, singles: groups.filter((g) => g.kind === "single").length };
+      const layout = { bunks: counts.bunks || "", singles: counts.singles || "" };
       const occupied = withWorkers ? r.beds.filter((b) => b.employee) : [];
-      if (occupied.length === 0) { add({ ...roomBase, beds: r.beds.length || (r.bedSpace ?? "") }); continue; }
-      // The bed count goes on the room's first line only, so re-importing doesn't repeat it.
-      occupied.forEach((b, i) => add({ ...roomBase, beds: i === 0 ? r.beds.length : "", employee: b.employee!.name, employeeCode: b.employee!.employeeIdNo, bed: b.label }));
+      if (occupied.length === 0) { add({ ...roomBase, ...layout }); continue; }
+      // The room's make-up goes on its first line only, so re-importing doesn't repeat it.
+      occupied.forEach((b, i) => add({ ...roomBase, ...(i === 0 ? layout : {}), employee: b.employee!.name, employeeCode: b.employee!.employeeIdNo, bed: b.label }));
     }
   }
 

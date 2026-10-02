@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { nameKey } from "@/lib/partyCode";
-import { singleLabel } from "@/lib/bunk";
+import { bedPreference, bunkLabel, labelOfBed, parseBedInput, parseBerth, singleLabel } from "@/lib/bunk";
 import { exactKey, rankCandidates } from "../workerMatch";
 import type { ApplyCtx, ApplyResult, ImportNote, MappedRow, PlacementIssue, PlacementRow, RowReport, WorkerChoice } from "../types";
 import { auditor, clean } from "./shared";
 
-const MAX_BEDS = 500;
+const MAX_BEDS = 100; // per kind, per room
 
 function campTypeOf(raw: string): "OWN" | "SUPPLIER" | "CLIENT" | "" | null {
   const t = clean(raw).toLowerCase();
@@ -22,7 +22,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
   const { db, branchId } = ctx;
   const audit = auditor(ctx);
   const rows: RowReport[] = [];
-  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, workersPlaced: 0, notPlaced: 0, needDecision: 0, merged: 0, failed: 0 };
+  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, bunksAdded: 0, workersPlaced: 0, notPlaced: 0, needDecision: 0, merged: 0, failed: 0 };
 
   const [camps, suppliers, clients] = await Promise.all([
     db.camp.findMany({ where: { branchId }, include: { rooms: { include: { beds: { select: { label: true } } } } } }),
@@ -33,7 +33,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
   const supplierByKey = new Map(suppliers.map((s) => [nameKey(s.name), s.id]));
   const clientByKey = new Map(clients.map((c) => [nameKey(c.name), c.id]));
 
-  type Spec = { row: number; room: string; beds: number | null; roomType: string; nationality: string; employee: string; code: string; bed: string };
+  type Spec = { row: number; room: string; singles: number | null; bunks: number | null; roomType: string; nationality: string; employee: string; code: string; bed: string };
   type Group = { name: string; firstRow: number; type: string; owner: string; specs: Spec[] };
   const groups = new Map<string, Group>();
   for (const { row, values } of input) {
@@ -41,17 +41,23 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
     if (!name) { rows.push({ row, status: "error", message: "Camp name is required." }); counts.failed++; continue; }
     const type = campTypeOf(values.campType ?? "");
     if (type === null) { rows.push({ row, name, status: "error", message: `Camp type "${clean(values.campType)}" isn't Own, Supplier or Client.` }); counts.failed++; continue; }
-    const rawBeds = clean(values.beds);
-    const beds = rawBeds ? Number(rawBeds) : null;
-    if (beds !== null && (!Number.isInteger(beds) || beds < 0 || beds > MAX_BEDS)) {
-      rows.push({ row, name, status: "error", message: `Number of beds "${rawBeds}" must be a whole number from 0 to ${MAX_BEDS}.` }); counts.failed++; continue;
-    }
+    const countOf = (raw: string, what: string): number | null | "bad" => {
+      const t = clean(raw);
+      if (!t) return null;
+      const n = Number(t);
+      if (!Number.isInteger(n) || n < 0 || n > MAX_BEDS) { rows.push({ row, name, status: "error", message: `${what} "${t}" must be a whole number from 0 to ${MAX_BEDS}.` }); counts.failed++; return "bad"; }
+      return n;
+    };
+    const singles = countOf(values.singles ?? "", "Single beds");
+    if (singles === "bad") continue;
+    const bunks = countOf(values.bunks ?? "", "Bunks");
+    if (bunks === "bad") continue;
     const key = nameKey(name);
     const g = groups.get(key) ?? { name, firstRow: row, type: "", owner: "", specs: [] };
     if (type && !g.type) g.type = type;
     if (clean(values.owner) && !g.owner) g.owner = clean(values.owner);
     const room = clean(values.room);
-    if (room) g.specs.push({ row, room, beds, roomType: clean(values.roomType), nationality: clean(values.nationality), employee: clean(values.employee), code: clean(values.employeeCode), bed: clean(values.bed) });
+    if (room) g.specs.push({ row, room, singles, bunks, roomType: clean(values.roomType), nationality: clean(values.nationality), employee: clean(values.employee), code: clean(values.employeeCode), bed: clean(values.bed) });
     else if (clean(values.employee) || clean(values.employeeCode)) { rows.push({ row, name, status: "error", message: `${clean(values.employee) || clean(values.employeeCode)}: add the room to place a worker.` }); counts.failed++; continue; }
     else if (groups.has(key)) { rows.push({ row, name, status: "skipped", message: `Same camp as row ${g.firstRow}; merged.` }); counts.merged++; }
     groups.set(key, g);
@@ -121,14 +127,17 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
     let bed = null as (typeof beds)[number] | null;
     let problem: string | null = null;
     if (spec.bed) {
-      const want = spec.bed.toLowerCase().replace(/\s+/g, "");
-      const padded = /^\d+$/.test(want) ? singleLabel(Number(want)).toLowerCase().replace(/\s+/g, "") : want;
-      bed = beds.find((b) => { const l = b.label.toLowerCase().replace(/\s+/g, ""); return l === want || l === padded; }) ?? null;
-      if (!bed) problem = `Bed "${spec.bed}" doesn't exist in room ${spec.room}.`;
-      else if (bed.employeeId) problem = `Bed "${bed.label}" is already taken.`;
+      const parsed = parseBedInput(spec.bed);
+      const label = parsed ? labelOfBed(parsed) : null;
+      bed = label ? beds.find((b) => b.label === label) ?? null : null;
+      if (!parsed) problem = `Couldn't read the bed "${spec.bed}". Use Bed 03, or Bunk 02 Upper / Lower.`;
+      else if (!bed) problem = `${label} doesn't exist in room ${spec.room}.`;
+      else if (bed.employeeId) problem = `${bed.label} is already taken.`;
     } else {
-      bed = beds.find((b) => !b.employeeId) ?? null;
-      if (!bed) problem = beds.length === 0 ? `Room ${spec.room} has no beds. Add a Number of beds.` : `Room ${spec.room} is full.`;
+      // Singles first, then lower berths, then upper berths.
+      const order = [...beds].sort((x, y) => bedPreference(x.label) - bedPreference(y.label) || x.label.localeCompare(y.label, undefined, { numeric: true }));
+      bed = order.find((b) => !b.employeeId) ?? null;
+      if (!bed) problem = beds.length === 0 ? `Room ${spec.room} has no beds. Fill in Single beds or Bunks for it.` : `Room ${spec.room} is full.`;
     }
     if (problem || !bed) { placements.push({ ...row, worker: personShape(person), bed: null, status: "blocked", note: problem ?? "No bed." }); return problem; }
     await db.bed.update({ where: { id: bed.id }, data: { employeeId: person.id } });
@@ -141,6 +150,9 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
     placements.push({ ...row, worker: personShape(person), bed: bed.label, status: "placed" });
     return null;
   }
+
+  /** Beds a room should have per the file: singles plus two berths per bunk; null when the file says nothing. */
+  const capacity = (x: { singles: number | null; bunks: number | null }) => (x.singles === null && x.bunks === null ? null : (x.singles ?? 0) + 2 * (x.bunks ?? 0));
 
   let done = 0;
   const order = [...groups.entries()];
@@ -179,7 +191,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
         let room = camp.rooms.find((r) => nameKey(r.name) === roomKey);
         if (!room) {
           const createdRoom = await db.room.create({
-            data: { campId: camp.id, name: spec.room, bedSpace: spec.beds, usableBedSpace: spec.beds, roomType: spec.roomType || null, nationality: spec.nationality || null },
+            data: { campId: camp.id, name: spec.room, bedSpace: capacity(spec), usableBedSpace: capacity(spec), roomType: spec.roomType || null, nationality: spec.nationality || null },
           });
           room = { ...createdRoom, beds: [] };
           camp.rooms.push(room);
@@ -189,25 +201,27 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
           const data: Record<string, unknown> = {};
           if (spec.roomType) data.roomType = spec.roomType;
           if (spec.nationality) data.nationality = spec.nationality;
-          if (spec.beds !== null) { data.bedSpace = spec.beds; data.usableBedSpace = spec.beds; }
+          if (capacity(spec) !== null) { data.bedSpace = capacity(spec); data.usableBedSpace = capacity(spec); }
           if (Object.keys(data).length) { await db.room.update({ where: { id: room.id }, data }); touched = true; }
         }
-        if (spec.beds && spec.beds > 0) {
-          const have = new Set(room.beds.map((b) => b.label));
-          const toAdd: { id: string; roomId: string; label: string }[] = [];
-          // Fill to the requested count with Bed 01, Bed 02…, skipping labels already used.
-          for (let i = 1; room.beds.length + toAdd.length < spec.beds && i <= MAX_BEDS * 2; i++) {
-            const label = singleLabel(i);
-            if (!have.has(label)) { toAdd.push({ id: randomUUID(), roomId: room.id, label }); have.add(label); }
-          }
-          if (toAdd.length) {
-            await db.bed.createMany({ data: toAdd });
-            room.beds.push(...toAdd.map((b) => ({ label: b.label })));
-            counts.bedsCreated += toAdd.length;
-            touched = true;
-          }
-          if (room.beds.length > spec.beds) notes.push({ tone: "info", title: `${spec.room} already has ${room.beds.length} beds`, detail: `More than the ${spec.beds} in the file; none were removed.` });
+        // Top the room up to the counts in the file. Beds are only ever added, never removed.
+        const have = new Set(room.beds.map((x) => x.label));
+        const toAdd: { id: string; roomId: string; label: string }[] = [];
+        const add = (label: string) => { if (!have.has(label)) { toAdd.push({ id: randomUUID(), roomId: room!.id, label }); have.add(label); } };
+        if (spec.singles) {
+          const existing = room.beds.filter((x) => !parseBerth(x.label)).length;
+          for (let i = 1, need = spec.singles - existing; need > 0 && i <= MAX_BEDS * 2; i++) { const before = toAdd.length; add(singleLabel(i)); if (toAdd.length > before) need--; }
         }
+        if (spec.bunks) for (let n = 1; n <= spec.bunks; n++) { add(bunkLabel(n, "Upper")); add(bunkLabel(n, "Lower")); }
+        if (toAdd.length) {
+          await db.bed.createMany({ data: toAdd });
+          room.beds.push(...toAdd.map((x) => ({ label: x.label })));
+          counts.bedsCreated += toAdd.length;
+          counts.bunksAdded += toAdd.filter((x) => x.label.endsWith("Upper")).length;
+          touched = true;
+        }
+        const wantTotal = capacity(spec);
+        if (wantTotal !== null && room.beds.length > wantTotal) notes.push({ tone: "info", title: `${spec.room} already has ${room.beds.length} beds`, detail: `More than the ${wantTotal} in the file; none were removed.` });
       }
       // Placing workers comes after every room and bed in the file exists, so row order doesn't matter.
       for (const spec of g.specs) {
