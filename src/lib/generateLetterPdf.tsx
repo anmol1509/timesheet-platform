@@ -9,6 +9,7 @@ import {
 } from "@/lib/letterLayout";
 import { splitAtWorkerTable } from "@/lib/letterHtml";
 import { RichHtml } from "@/lib/richPdf";
+import { mergePdfs, overlayOnLetterheadPdf } from "@/lib/letterheadOverlay";
 
 /**
  * The NOC and Undertaking, in the format the client's own letters use.
@@ -29,6 +30,8 @@ export type LetterIssuer = {
    * and a usable image is on file. Null prints the plain layout.
    */
   letterheadImage: string | null;
+  /** The letterhead as a PDF, when that is what was uploaded; the letter is laid over its first page. */
+  letterheadPdf?: Uint8Array | null;
 };
 
 export type LetterSection = {
@@ -198,16 +201,17 @@ function LetterBody({
 }
 
 export async function generateLetterPdf(input: LetterPdfInput): Promise<Buffer> {
-  const doc = (
+  const render = (sections: LetterSection[]) => (
     <Document>
-      {input.sections.map((section, i) => {
-        const onLetterhead = !!section.issuer.letterheadImage;
+      {sections.map((section, i) => {
+        const onLetterhead = !!section.issuer.letterheadImage || !!section.issuer.letterheadPdf;
         return (
           <Page key={i} size="A4" style={onLetterhead ? s.pageOnLetterhead : s.page}>
             {/* Repeated on every page of this letter, so a table that runs on
-                doesn't leave later pages bare. */}
-            {onLetterhead && (
-              <Image src={section.issuer.letterheadImage!} style={s.background} fixed />
+                doesn't leave later pages bare. A PDF letterhead is laid under the
+                finished pages afterwards instead. */}
+            {section.issuer.letterheadImage && (
+              <Image src={section.issuer.letterheadImage} style={s.background} fixed />
             )}
             <LetterBody input={input} section={section} />
           </Page>
@@ -215,5 +219,18 @@ export async function generateLetterPdf(input: LetterPdfInput): Promise<Buffer> 
       })}
     </Document>
   );
-  return renderToBuffer(doc);
+
+  if (!input.sections.some((sec) => sec.issuer.letterheadPdf && !sec.issuer.letterheadImage)) {
+    return renderToBuffer(render(input.sections));
+  }
+
+  // At least one company has a PDF letterhead: render each letter alone, put it
+  // over its own letterhead, then join them in order.
+  const parts: Uint8Array[] = [];
+  for (const section of input.sections) {
+    const bytes = await renderToBuffer(render([section]));
+    const pdf = section.issuer.letterheadPdf;
+    parts.push(pdf && !section.issuer.letterheadImage ? await overlayOnLetterheadPdf(bytes, pdf) : bytes);
+  }
+  return Buffer.from(await mergePdfs(parts));
 }

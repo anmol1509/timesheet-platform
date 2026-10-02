@@ -20,15 +20,16 @@ import type { LetterIssuer, LetterSection } from "@/lib/generateLetterPdf";
 const USABLE_LETTERHEAD_TYPES = ["image/png", "image/jpeg", "image/jpg"];
 
 /**
- * Each supplier's blank letterhead, as data URIs, for the suppliers asked for.
+ * Each supplier's blank letterhead for the suppliers asked for: an image drawn
+ * behind the page, or a PDF the letter is laid over.
  *
- * A supplier with no letterhead on file, or one uploaded as a PDF, is simply
- * absent from the map and its letter prints plain — a missing file must not
- * stop the letter being issued.
+ * A supplier with no letterhead on file (or one in a format neither can use) is
+ * simply absent from the map and its letter prints plain — a missing file must
+ * not stop the letter being issued.
  */
 export async function loadLetterheads(
   supplierIds: string[]
-): Promise<Map<string, string>> {
+): Promise<Map<string, { image: string | null; pdf: Uint8Array | null }>> {
   const ids = supplierIds.filter(Boolean);
   if (ids.length === 0) return new Map();
 
@@ -38,13 +39,16 @@ export async function loadLetterheads(
     select: { entityId: true, fileData: true, mimeType: true },
   });
 
-  const out = new Map<string, string>();
+  const out = new Map<string, { image: string | null; pdf: Uint8Array | null }>();
   for (const row of rows) {
-    // Newest first, so the first one seen for a supplier is the current one.
+    // Newest first, so the first usable one seen for a supplier is the current one.
     if (out.has(row.entityId)) continue;
-    if (!USABLE_LETTERHEAD_TYPES.includes(row.mimeType.toLowerCase())) continue;
-    const base64 = Buffer.from(row.fileData).toString("base64");
-    out.set(row.entityId, `data:${row.mimeType};base64,${base64}`);
+    const type = row.mimeType.toLowerCase();
+    if (USABLE_LETTERHEAD_TYPES.includes(type)) {
+      out.set(row.entityId, { image: `data:${row.mimeType};base64,${Buffer.from(row.fileData).toString("base64")}`, pdf: null });
+    } else if (type === "application/pdf") {
+      out.set(row.entityId, { image: null, pdf: new Uint8Array(row.fileData) });
+    }
   }
   return out;
 }
@@ -115,7 +119,7 @@ export async function buildLetterSections(opts: {
           },
         })
       : Promise.resolve([]),
-    opts.onLetterhead ? loadLetterheads(supplierIds) : Promise.resolve(new Map<string, string>()),
+    opts.onLetterhead ? loadLetterheads(supplierIds) : Promise.resolve(new Map<string, { image: string | null; pdf: Uint8Array | null }>()),
   ]);
   const supplierById = new Map(suppliers.map((s) => [s.id, s]));
 
@@ -123,11 +127,10 @@ export async function buildLetterSections(opts: {
   const sections = groups.map((group) => {
     const supplier = group.supplierId ? supplierById.get(group.supplierId) : undefined;
     const issuerName = supplier?.fullName || supplier?.name || opts.fallbackIssuerName;
-    const letterheadImage = group.supplierId
-      ? (letterheads.get(group.supplierId) ?? null)
-      : null;
+    const letterhead = group.supplierId ? letterheads.get(group.supplierId) : undefined;
+    const letterheadImage = letterhead?.image ?? null;
 
-    if (opts.onLetterhead && !letterheadImage) missingLetterheads.push(issuerName);
+    if (opts.onLetterhead && !letterhead) missingLetterheads.push(issuerName);
 
     const issuer: LetterIssuer = {
       name: issuerName,
@@ -135,6 +138,7 @@ export async function buildLetterSections(opts: {
       signatoryPhone: supplier?.contactPhone ?? null,
       signatoryEmail: supplier?.contactEmail ?? null,
       letterheadImage,
+      letterheadPdf: letterhead?.pdf ?? null,
     };
 
     const bodyHtml = substituteInHtml(opts.templateHtml, SUBSTITUTIONS(opts, issuerName, group.workers.length));
