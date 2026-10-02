@@ -97,16 +97,6 @@ const NAV: Entry[] = [
   // People: the journey of a worker, from candidate to employee.
   {
     type: "group",
-    label: "Onboarding",
-    icon: UserCheck,
-    category: "People",
-    children: [
-      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
-      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
-    ],
-  },
-  {
-    type: "group",
     label: "Workforce",
     icon: Users,
     category: "People",
@@ -227,6 +217,17 @@ const NAV: Entry[] = [
     children: [
       { href: "/trades", label: "Trades", icon: Wrench },
       { href: "/banks", label: "Banks", icon: Wallet },
+    ],
+  },
+  // Onboarding is still being worked on, so it sits at the very bottom of the list, out of the way.
+  {
+    type: "group",
+    label: "Onboarding",
+    icon: UserCheck,
+    category: "Setup",
+    children: [
+      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
+      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
     ],
   },
 ];
