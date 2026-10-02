@@ -39,7 +39,7 @@ function toPreviewHtml(html: string, audience: Audience): string {
 export function LetterPreview({ title, html, audience }: { title: string; html: string; audience: Audience }) {
   const body = toPreviewHtml(html, audience);
   return (
-    <div className="letter-paper mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
+    <div style={{ aspectRatio: "210 / 297" }} className="letter-paper mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
       {audience === "SITE" ? (
         <>
           <p>Date: {SAMPLE_VALUES.DATE}</p>
@@ -79,7 +79,8 @@ export function EmployeeLetterPaper({ companyName, refNo, date, title, html, opt
   return (
     <div
       className="letter-paper relative mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5"
-      style={o.onLetterhead && o.letterheadUrl ? { backgroundImage: `url(${o.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : undefined}
+      // A4 portrait, like the printed page; a long letter grows the sheet rather than overflowing it.
+      style={{ aspectRatio: "210 / 297", ...(o.onLetterhead && o.letterheadUrl ? { backgroundImage: `url(${o.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : {}) }}
     >
       {o.onLetterhead ? (
         // Pre-printed paper (or artwork): keep the header area clear, exactly as the PDF does.
