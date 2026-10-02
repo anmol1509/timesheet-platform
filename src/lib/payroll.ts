@@ -176,8 +176,14 @@ export function payDataGap(
     if (e.payStructure !== "ITEMISED" && e.payStructure !== "FLAT") return "no monthly pay set up";
     return (e.payStructure === "FLAT" ? e.flatMonthlyRate : e.basicSalary) > 0 ? null : "no basic salary";
   }
-  return e.payStructure ? null : "no pay structure";
+  // No company-wide type: each employee is paid by their own pay structure.
+  if (!e.payStructure) return "no pay structure";
+  if (e.payStructure === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate";
+  return (e.payStructure === "FLAT" ? e.flatMonthlyRate : e.basicSalary) > 0 ? null : "no basic salary";
 }
+
+/** Whether this employee is paid from timesheet hours: the run's type if it has one, else their own pay structure. */
+export const paidHourly = (type: CompanyPayType | null, payStructure: string | null) => (type ? type === "HOURLY" : payStructure === "HOURLY");
 
 /** Splits an amount typed against what is available, so a deduction can never push net pay below zero. */
 export const capToAvailable = (wanted: number, available: number) => round2(Math.max(0, Math.min(wanted, available)));

@@ -9,7 +9,7 @@ import { Badge, type BadgeColor } from "@/components/Badge";
 import { CreateRunForm } from "./create-run-form";
 import { CostTrend } from "./cost-trend";
 import { isUsableBank } from "@/lib/bankStatus";
-import { isPayType, payDataGap } from "@/lib/payroll";
+import { payDataGap } from "@/lib/payroll";
 import { ApprovalRuleForm } from "./approval-rule";
 
 export const metadata = { title: "Payroll" };
@@ -44,11 +44,10 @@ export default async function PayrollPage() {
 
   // One line of setup per own company: can a run be created and, later, paid by WPS?
   const setup = companies.map((c) => {
-    const type = isPayType(c.payType) ? c.payType : null;
-    const emps = ownEmployees.filter((e) => e.supplierId === c.id);
-    const ready = emps.filter((e) => !payDataGap(type, { payStructure: e.payStructure, basicSalary: Number(e.basicSalary ?? 0), flatMonthlyRate: Number(e.flatMonthlyRate ?? 0), hourlyRate: Number(e.hourlyRate ?? 0) })).length;
+        const emps = ownEmployees.filter((e) => e.supplierId === c.id);
+    const ready = emps.filter((e) => !payDataGap(null, { payStructure: e.payStructure, basicSalary: Number(e.basicSalary ?? 0), flatMonthlyRate: Number(e.flatMonthlyRate ?? 0), hourlyRate: Number(e.hourlyRate ?? 0) })).length;
     const bank = usableBanks.find((b) => b.companyId === c.id) ?? (branch?.wpsPayerBank && isUsableBank(branch.wpsPayerBank) && branch.wpsPayerBank.routingCode ? branch.wpsPayerBank : null);
-    return { c, type, total: emps.length, ready, establishment: c.wpsEstablishmentId ?? branch?.wpsEstablishmentId ?? null, bank };
+    return { c, total: emps.length, ready, establishment: c.wpsEstablishmentId ?? branch?.wpsEstablishmentId ?? null, bank };
   });
 
   return (
@@ -56,20 +55,19 @@ export default async function PayrollPage() {
       <PageHeader
         title="Payroll"
         icon={Banknote}
-        description={<>Monthly payroll runs: one run per own company. Basic pay comes from attendance, hourly pay from approved timesheet hours. Review, submit for approval, then download the WPS file for your bank.</>}
+        description={<>Monthly payroll runs: one run per own company. Monthly-salary staff are paid from attendance, hourly staff from approved timesheet hours. Review, submit for approval, then download the WPS file for your bank.</>}
       />
 
       {branchId && setup.length > 0 && (
         <section className="card overflow-x-auto">
           <div className="border-b border-default px-5 py-3"><h2 className="text-sm font-semibold text-primary">Companies</h2></div>
           <table className="w-full text-sm">
-            <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted"><tr><th className="px-5 py-2">Company</th><th className="px-3 py-2">Pay type</th><th className="px-3 py-2 text-right">Ready to pay</th><th className="px-3 py-2">MOHRE ID</th><th className="px-3 py-2">Payer bank</th></tr></thead>
+            <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted"><tr><th className="px-5 py-2">Company</th><th className="px-3 py-2 text-right">Ready to pay</th><th className="px-3 py-2">MOHRE ID</th><th className="px-3 py-2">Payer bank</th></tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {setup.map(({ c, type, total, ready, establishment, bank }) => (
+              {setup.map(({ c, total, ready, establishment, bank }) => (
                 <tr key={c.id}>
                   <td className="px-5 py-2.5"><Link href={`/suppliers/${c.id}`} className="font-medium text-primary hover:underline">{c.name}</Link></td>
-                  <td className="px-3 py-2.5">{type ? <Badge color="blue">{type === "HOURLY" ? "Hourly" : "Basic"}</Badge> : <Link href={`/suppliers/${c.id}`} className="text-xs font-medium text-[var(--warning)] hover:underline">Set pay type →</Link>}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{type ? <span className={ready < total ? "text-[var(--warning)]" : "text-secondary"}>{ready} of {total}</span> : <span className="text-subtle">—</span>}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums"><span className={ready < total ? "text-[var(--warning)]" : "text-secondary"}>{ready} of {total}</span></td>
                   <td className="px-3 py-2.5">{establishment ? <span className="text-secondary">{establishment}</span> : <Link href={`/suppliers/${c.id}`} className="text-xs font-medium text-[var(--warning)] hover:underline">Add →</Link>}</td>
                   <td className="px-3 py-2.5">{bank ? <span className="text-secondary">{bank.accountName}</span> : <Link href="/banks" className="text-xs font-medium text-[var(--warning)] hover:underline">Add an active bank →</Link>}</td>
                 </tr>
@@ -79,7 +77,7 @@ export default async function PayrollPage() {
         </section>
       )}
 
-      {branchId ? (can(subject, "payroll", "create") && <CreateRunForm defaultMonth={defaultMonth} companies={companies.map((c) => ({ id: c.id, name: c.name, payType: c.payType }))} />) : (
+      {branchId ? (can(subject, "payroll", "create") && <CreateRunForm defaultMonth={defaultMonth} companies={companies.map((c) => ({ id: c.id, name: c.name }))} />) : (
         <p className="text-sm text-muted">Pick a branch from the switcher to create a payroll run.</p>
       )}
 

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { isPayType, monthBounds, round2, wpsGaps } from "@/lib/payroll";
+import { monthBounds, round2, wpsGaps } from "@/lib/payroll";
 import { isUsableBank } from "@/lib/bankStatus";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { rebuildRunLines, recordLoanRepayments, reverseLoanRepayments } from "@/lib/payrollRun";
@@ -38,7 +38,6 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
   const companyId = String(formData.get("companyId") || "");
   const company = companyId ? await prisma.supplier.findFirst({ where: { id: companyId, branchId, isOwnCompany: true }, select: { id: true, name: true, payType: true, wpsEstablishmentId: true } }) : null;
   if (!company) return { error: "Choose which of your companies this payroll is for." };
-  if (!isPayType(company.payType)) return { error: `Set how ${company.name} pays its people (Basic or Hourly) on its company page first.` };
   if (await prisma.payrollRun.count({ where: { branchId, companyId: company.id, month } }) > 0) return { error: `A payroll run for ${company.name} in ${month} already exists.` };
 
   // Pay from the company's own account if it has a usable one; otherwise the branch default.
@@ -49,14 +48,14 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
   let created;
   try {
     created = await prisma.payrollRun.create({
-      data: { month, branchId, companyId: company.id, payType: company.payType, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null },
+      data: { month, branchId, companyId: company.id, payType: null, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null },
     });
   } catch {
     return { error: `A payroll run for ${company.name} in ${month} already exists.` };
   }
   const { count, skipped } = await rebuildRunLines(created);
   await trail(created.id, "CREATED", user, skipped.length > 0 ? `${skipped.length} employee${skipped.length === 1 ? "" : "s"} skipped: missing pay details` : null);
-  await logAudit({ entityType: "PAYROLL_RUN", entityId: created.id, action: "CREATE", after: { month, company: company.name, payType: company.payType, employees: count, skipped: skipped.length }, userId: user.id, userName: user.name, branchId });
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: created.id, action: "CREATE", after: { month, company: company.name, employees: count, skipped: skipped.length }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/payroll");
   redirect(`/payroll/${created.id}`);
 }

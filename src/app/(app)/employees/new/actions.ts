@@ -240,7 +240,19 @@ export async function createEmployeeAction(
   const category = (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined;
   const isStaff = category === "STAFF";
 
+  // The salary typed in the wizard is the employee's own pay: payroll reads it
+  // as a flat monthly figure (basic) or an hourly rate, so no pay-type setup is needed later.
+  const salaryType = isStaff ? "BASIC" : stringOrNull(formData.get("salaryType"));
+  const salaryRate = numberOrNull(formData.get("salaryRate"));
+  const ownPay =
+    salaryRate && salaryRate > 0 && (salaryType === "BASIC" || salaryType === "HOURLY")
+      ? salaryType === "HOURLY"
+        ? { payStructure: "HOURLY", hourlyRate: salaryRate, payOverride: true }
+        : { payStructure: "FLAT", flatMonthlyRate: salaryRate, payOverride: true }
+      : {};
+
   const data = {
+    ...ownPay,
     employeeIdNo,
     name,
     branchId,
@@ -278,8 +290,8 @@ export async function createEmployeeAction(
     notes: stringOrNull(formData.get("notes")),
     projectId,
     // Office/corporate staff are always paid a fixed monthly salary — never hourly.
-    salaryType: isStaff ? "BASIC" : stringOrNull(formData.get("salaryType")),
-    salaryRate: numberOrNull(formData.get("salaryRate")),
+    salaryType,
+    salaryRate,
     photoData:
       photo instanceof File && photo.size > 0
         ? Buffer.from(await photo.arrayBuffer())

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
+import { paidHourly, appliesToMonth, capToAvailable, computePay, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -113,10 +113,11 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     where: { branchId: run.branchId, employeeId: { in: ids }, date: { gte: start, lt: nextMonth } },
     select: { employeeId: true, date: true, status: true, otHours: true, normalHours: true },
   });
-  const sheetRows = type === "HOURLY" && ids.length > 0
+  const hourlyPeople = payable.filter((e) => paidHourly(type, payOf(e).payStructure));
+  const sheetRows = hourlyPeople.length > 0
     ? await prisma.timesheetEntry.groupBy({
         by: ["employeeIdNo"],
-        where: { month: run.month, employeeIdNo: { in: payable.map((e) => e.employeeIdNo) }, status: { not: "REJECTED" } },
+        where: { month: run.month, employeeIdNo: { in: hourlyPeople.map((e) => e.employeeIdNo) }, status: { not: "REJECTED" } },
         _sum: { totalHours: true },
       })
     : [];
@@ -155,10 +156,10 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const prev = new Map(existing.map((x) => [x.employeeId, x]));
 
   const lines = payable.map((e) => {
-    const isHourly = type === "HOURLY";
+    const pf = payOf(e);
+    const isHourly = paidHourly(type, pf.payStructure);
     const hours = isHourly ? sheetHours.get(e.employeeIdNo) ?? 0 : 0;
     const facts = att.get(e.id) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
-    const pf = payOf(e);
     const r = computePay(
       {
         payStructure: (isHourly ? "HOURLY" : pf.payStructure) as PayStructure,
@@ -280,7 +281,6 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
   const bounds = monthBounds(run.month);
   if (!bounds) return [];
   const nextMonth = new Date(Date.UTC(bounds.start.getUTCFullYear(), bounds.start.getUTCMonth() + 1, 1));
-  const hourly = run.payType === "HOURLY";
   const [lines, skipped, prevRun] = await Promise.all([
     prisma.payrollLine.findMany({ where: { runId: run.id }, select: { employeeId: true, net: true, payStructure: true, timesheetHours: true, employee: { select: { name: true, employeeIdNo: true } } } }),
     runSkipped(run),
@@ -293,19 +293,22 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
     issues.push({ level: "warn", text: `${skipped.length} employee${skipped.length === 1 ? " is" : "s are"} not in this run because their pay details are missing: ${skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ")}${skipped.length > 3 ? "…" : ""}.`, href: "/employees" });
   }
 
-  if (hourly) {
+  const hourlyLines = lines.filter((l) => l.payStructure === "HOURLY");
+  const basicLines = lines.filter((l) => l.payStructure !== "HOURLY");
+  if (hourlyLines.length > 0) {
     // Hours come from the timesheet: flag sheets that haven't been approved, and people with no hours at all.
-    const ids = lines.map((l) => l.employee.employeeIdNo);
+    const ids = hourlyLines.map((l) => l.employee.employeeIdNo);
     const pending = ids.length ? await prisma.timesheetEntry.count({ where: { month: run.month, employeeIdNo: { in: ids }, status: { in: ["DRAFT", "SUBMITTED", "UNDER_REVIEW"] } } }) : 0;
     if (pending > 0) issues.push({ level: "warn", text: `${pending} timesheet row${pending === 1 ? " is" : "s are"} for ${run.month} still not approved, so the hours may change. Recalculate after they are final.`, href: "/invoices/client-timesheet" });
-    const noHours = lines.filter((l) => l.timesheetHours <= 0);
+    const noHours = hourlyLines.filter((l) => l.timesheetHours <= 0);
     if (noHours.length > 0) issues.push({ level: "warn", text: `${noHours.length} employee${noHours.length === 1 ? " has" : "s have"} no timesheet hours for ${run.month}, so ${noHours.length === 1 ? "they are" : "they are all"} paid nothing: ${names(noHours.map((l) => l.employee))}.`, href: "/invoices/client-timesheet" });
-  } else {
+  }
+  if (basicLines.length > 0) {
     const attendedRows = await prisma.attendance.findMany({ where: { branchId: run.branchId, date: { gte: bounds.start, lt: nextMonth } }, distinct: ["employeeId"], select: { employeeId: true } });
     const attended = new Set(attendedRows.map((a) => a.employeeId));
-    const noAttendance = lines.filter((l) => l.payStructure !== "HOURLY" && !attended.has(l.employeeId));
+    const noAttendance = basicLines.filter((l) => !attended.has(l.employeeId));
     if (noAttendance.length > 0 && attended.size > 0) issues.push({ level: "warn", text: `${noAttendance.length} employee${noAttendance.length === 1 ? " has" : "s have"} no attendance recorded for ${run.month}, so absences and overtime are counted as zero: ${names(noAttendance.map((l) => l.employee))}.`, href: "/attendance" });
-    if (attended.size === 0 && lines.length > 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance" });
+    if (attended.size === 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance" });
   }
 
   const zero = lines.filter((l) => num(l.net) <= 0);

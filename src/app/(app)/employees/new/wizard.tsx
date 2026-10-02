@@ -1242,7 +1242,7 @@ export function EmployeeWizard({
 
           <Group
             title="Salary"
-            description="Reference only — billing rates come from the timesheet and invoice flow."
+            description="Used for payroll. Allowances can be added later in the employee's pay settings."
           >
             {fields.category === "STAFF" ? (
               // Office/corporate roster is always paid a fixed monthly salary — no hourly option.

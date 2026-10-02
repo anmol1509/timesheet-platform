@@ -1,0 +1,116 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { FileArchive, Loader2 } from "lucide-react";
+import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
+import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
+import { Checkbox } from "@/components/ui/Checkbox";
+
+type Row = { employeeIdNo: string; name: string; trade: string | null; hours: number; companyId: string; company: string; approved: boolean };
+
+export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[] }) {
+  const [query, setQuery] = useState("");
+  const [company, setCompany] = useState("");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
+  const [perEmployee, setPerEmployee] = useState(false);
+  const [waiveGas, setWaiveGas] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const companies = useMemo(() => [...new Map(rows.map((r) => [r.companyId, r.company])).entries()].sort((a, b) => a[1].localeCompare(b[1])), [rows]);
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter((r) => (!company || r.companyId === company) && (!q || r.name.toLowerCase().includes(q) || r.employeeIdNo.toLowerCase().includes(q) || (r.trade ?? "").toLowerCase().includes(q)));
+  }, [rows, query, company]);
+  const allOn = visible.length > 0 && visible.every((r) => picked.has(r.employeeIdNo));
+
+  function toggle(id: string) {
+    setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function toggleAll() {
+    setPicked((p) => { const n = new Set(p); for (const r of visible) { if (allOn) n.delete(r.employeeIdNo); else n.add(r.employeeIdNo); } return n; });
+  }
+
+  async function generate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const chosen = rows.filter((r) => picked.has(r.employeeIdNo));
+      const supplierIds = [...new Set(chosen.map((r) => r.companyId))];
+      const gasWaived = Object.fromEntries(supplierIds.map((id) => [id, waiveGas]));
+      const res = await fetch("/api/generate/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierIds, month, gasWaived, template, employeeIds: chosen.map((r) => r.employeeIdNo), perEmployee }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? "Couldn't generate the timesheets.");
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `timesheets-${month}-selected.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      if (Number(res.headers.get("X-Skipped") ?? 0) > 0) setError("Some companies were left out — see NOT-GENERATED.txt in the zip.");
+    } catch {
+      setError("Couldn't generate the timesheets. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, ID or trade…" className="input w-full max-w-xs" />
+        <select value={company} onChange={(e) => setCompany(e.target.value)} className="input w-auto" aria-label="Company">
+          <option value="">All companies</option>
+          {companies.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
+        <Checkbox checked={allOn} onCheckedChange={toggleAll} label={<span className="text-xs font-medium text-muted">Select all shown ({visible.length})</span>} />
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="max-h-[420px] overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-surface text-left text-xs font-medium uppercase tracking-wide text-muted">
+              <tr><th className="w-10 px-4 py-2" /><th className="px-3 py-2">Employee</th><th className="px-3 py-2">Company</th><th className="px-3 py-2">Trade</th><th className="px-3 py-2 text-right">Hours</th></tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)]">
+              {visible.map((r) => (
+                <tr key={`${r.companyId}-${r.employeeIdNo}`} className="cursor-pointer hover:bg-[var(--surface-hover,transparent)]" onClick={() => toggle(r.employeeIdNo)}>
+                  <td className="px-4 py-2"><Checkbox checked={picked.has(r.employeeIdNo)} onCheckedChange={() => toggle(r.employeeIdNo)} label={<span className="sr-only">Select {r.name}</span>} /></td>
+                  <td className="px-3 py-2"><span className="font-medium text-primary">{r.name}</span> <span className="text-xs text-muted">{r.employeeIdNo}</span></td>
+                  <td className="px-3 py-2 text-secondary">{r.company}{!r.approved && <span className="ml-2 text-xs text-[var(--warning)]">not invoice-approved</span>}</td>
+                  <td className="px-3 py-2 text-secondary">{r.trade ?? "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-secondary">{r.hours}</td>
+                </tr>
+              ))}
+              {visible.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-muted">No one matches.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card space-y-4 p-4">
+        <TemplatePicker value={template} onChange={setTemplate} compact />
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <label className="flex items-center gap-2"><input type="radio" checked={!perEmployee} onChange={() => setPerEmployee(false)} /> One sheet per company (selected people only)</label>
+          <label className="flex items-center gap-2"><input type="radio" checked={perEmployee} onChange={() => setPerEmployee(true)} /> A separate sheet for each person</label>
+          <Checkbox checked={waiveGas} onCheckedChange={() => setWaiveGas((v) => !v)} label={<span className="text-sm">Waive gas charge</span>} />
+        </div>
+        <div className="flex items-center gap-3">
+          <button type="button" className="btn btn-primary flex gap-1.5" disabled={picked.size === 0 || busy} onClick={generate}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
+            {busy ? "Generating…" : `Generate for ${picked.size} selected`}
+          </button>
+          {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}

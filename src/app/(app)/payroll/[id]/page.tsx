@@ -48,7 +48,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   // Employees of this company who are not in the run because they lack the pay details its type needs.
   const skipped = await runSkipped(run);
   const unpaidSetup = skipped.length;
-  const isHourly = run.payType === "HOURLY";
+  const hasHourly = run.lines.some((l) => l.payStructure === "HOURLY");
+  const hasBasic = run.lines.length === 0 || run.lines.some((l) => l.payStructure !== "HOURLY");
 
   const issues = run.status === "DRAFT" ? await runReadiness(run) : [];
   const projectIds = [...new Set(run.lines.map((l) => l.projectId).filter((x): x is string => !!x))];
@@ -197,7 +198,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className="px-3 py-3">Employee</th>
                 <th className="px-3 py-3 text-right">Base</th>
                 <th className="px-3 py-3 text-right">Allow.</th>
-                {isHourly ? <th className="px-3 py-3 text-right">Timesheet hrs</th> : <><th className="px-3 py-3 text-right">Absent</th><th className="px-3 py-3 text-right">OT hrs</th><th className="px-3 py-3 text-right">OT pay</th><th className="px-3 py-3 text-right">Absence ded.</th></>}
+                {hasHourly && <th className="px-3 py-3 text-right">Timesheet hrs</th>}
+                {hasBasic && <><th className="px-3 py-3 text-right">Absent</th><th className="px-3 py-3 text-right">OT hrs</th><th className="px-3 py-3 text-right">OT pay</th><th className="px-3 py-3 text-right">Absence ded.</th></>}
                 <th className="px-3 py-3 text-right">Recurring</th>
                 <th className="px-3 py-3">Deduction · Advance · Adjustment</th>
                 <th className="px-3 py-3 text-right">Net</th>
@@ -221,8 +223,9 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.basic))}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.allowances))}</td>
-                    {isHourly ? (
-                      <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.timesheetHours}</td>
+                    {hasHourly && <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.payStructure === "HOURLY" ? l.timesheetHours : "—"}</td>}
+                    {hasBasic && (l.payStructure === "HOURLY" ? (
+                      <td colSpan={4} className="px-3 py-3 text-right text-xs text-subtle">paid from timesheet hours</td>
                     ) : (
                       <>
                         <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.absentDays}</td>
@@ -230,7 +233,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                         <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.overtimePay))}</td>
                         <td className="px-3 py-3 text-right tabular-nums text-secondary">{n(l.deductions) > 0 ? `−${aed(n(l.deductions))}` : "—"}</td>
                       </>
-                    )}
+                    ))}
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">
                       {n(l.otherEarnings) > 0 && <span className="block text-[var(--success)]">+{aed(n(l.otherEarnings))}</span>}
                       {n(l.otherDeductions) > 0 && <span className="block">−{aed(n(l.otherDeductions))}</span>}

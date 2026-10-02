@@ -45,7 +45,7 @@ export default async function CompaniesPage({
         <PageHeader
           title="Companies"
           icon={Building}
-          description={<>Pick a month, then generate a timesheet for any company.</>}
+          description={<>Pick a month, then generate a timesheet for any company, or <Link href="/companies/employees" className="font-medium text-primary underline">pick individual employees</Link>.</>}
         />
         {months.length > 0 && (
           <form className="flex items-center gap-2">
