@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { DEFAULT_LETTER_COLUMNS, LETTER_TABLE_COLUMNS } from "@/lib/letterLayout";
 import { EMPLOYEE_MERGE_FIELDS, fieldsFor, type Audience } from "@/lib/letterFields";
 import { ASK_PREFIX, splitAtWorkerTable } from "@/lib/letterHtml";
@@ -31,6 +34,61 @@ function toPreviewHtml(html: string, audience: Audience): string {
 }
 
 /**
+ * A4 portrait sheets, as many as the content needs. The content is laid out once
+ * at the sheet's width, measured, and each sheet shows its own slice of it, so
+ * nothing runs off the bottom: what doesn't fit continues on the next sheet,
+ * as it does in the printed PDF.
+ */
+function PagedPaper({ children, padX = 28, padTop: padTopPx = 28, padBottom: padBottomPx = 28, padTopRatio, padBottomRatio, background }: { children: React.ReactNode; padX?: number; padTop?: number; padBottom?: number; padTopRatio?: number; padBottomRatio?: number; background?: React.CSSProperties }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const measure = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(544);
+  const [contentH, setContentH] = useState(0);
+
+  useEffect(() => {
+    const o = outer.current;
+    if (!o) return;
+    const ro = new ResizeObserver(() => setWidth(o.clientWidth || 544));
+    ro.observe(o);
+    setWidth(o.clientWidth || 544);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    const m = measure.current;
+    if (!m) return;
+    const ro = new ResizeObserver(() => setContentH(m.scrollHeight));
+    ro.observe(m);
+    setContentH(m.scrollHeight);
+    return () => ro.disconnect();
+  }, [children, width]);
+
+  const pageH = (width * 297) / 210;
+  const padTop = padTopRatio !== undefined ? pageH * padTopRatio : padTopPx;
+  const padBottom = padBottomRatio !== undefined ? pageH * padBottomRatio : padBottomPx;
+  const bodyH = pageH - padTop - padBottom;
+  const pages = Math.max(1, Math.ceil(contentH / bodyH));
+  const inner = width - padX * 2;
+  const frame = "letter-paper relative overflow-hidden rounded-sm bg-white text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5";
+
+  return (
+    <div ref={outer} className="mx-auto w-full max-w-[34rem] space-y-4">
+      {/* Off-screen copy used only to measure how tall the content is at this width. */}
+      <div ref={measure} className="letter-paper pointer-events-none invisible absolute -z-10 text-[11px] leading-relaxed" style={{ width: inner }} aria-hidden>
+        {children}
+      </div>
+      {Array.from({ length: pages }, (_, i) => (
+        <div key={i} className={frame} style={{ height: pageH, ...background }}>
+          <div className="absolute overflow-hidden" style={{ left: padX, top: padTop, width: inner, height: bodyH }}>
+            <div style={{ transform: `translateY(${-i * bodyH}px)` }}>{children}</div>
+          </div>
+          {pages > 1 && <span className="absolute bottom-1.5 right-3 text-[8px] text-neutral-400">Page {i + 1} of {pages}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * A paper-style preview of the letter as it will print. Site letters show the
  * fixed parts (date, addressee, worker table, signature) around the body;
  * employee letters show a letterhead, reference and signature. Always black on
@@ -39,7 +97,8 @@ function toPreviewHtml(html: string, audience: Audience): string {
 export function LetterPreview({ title, html, audience }: { title: string; html: string; audience: Audience }) {
   const body = toPreviewHtml(html, audience);
   return (
-    <div style={{ aspectRatio: "210 / 297" }} className="letter-paper mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
+    <PagedPaper>
+      <div>
       {audience === "SITE" ? (
         <>
           <p>Date: {SAMPLE_VALUES.DATE}</p>
@@ -60,6 +119,7 @@ export function LetterPreview({ title, html, audience }: { title: string; html: 
         <p className="mt-4">Authorised Signatory</p>
       </div>
     </div>
+    </PagedPaper>
   );
 }
 
@@ -76,15 +136,17 @@ export type PaperOptions = {
 /** An employee letter with real (already filled in) content, on paper. */
 export function EmployeeLetterPaper({ companyName, refNo, date, title, html, options }: { companyName: string; refNo: string; date: string; title: string; html: string; options: PaperOptions }) {
   const o = options;
+  const bg = o.onLetterhead && o.letterheadUrl ? { backgroundImage: `url(${o.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : undefined;
+  // On letterhead the printed header and footer artwork must stay clear, as in the PDF (185pt / 100pt of 842pt).
+  const padTop = o.onLetterhead && o.letterheadUrl ? 0.22 : 28 / 770;
+  const padBottom = o.onLetterhead && o.letterheadUrl ? 0.12 : 28 / 770;
   return (
-    <div
-      className="letter-paper relative mx-auto w-full max-w-[34rem] rounded-sm bg-white p-7 text-[11px] leading-relaxed text-black shadow-[0_1px_6px_rgba(0,0,0,0.15)] ring-1 ring-black/5"
-      // A4 portrait, like the printed page; a long letter grows the sheet rather than overflowing it.
-      style={{ aspectRatio: "210 / 297", ...(o.onLetterhead && o.letterheadUrl ? { backgroundImage: `url(${o.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : {}) }}
-    >
+    <PagedPaper padTopRatio={padTop} padBottomRatio={padBottom} background={bg}>
+      <div>
       {o.onLetterhead ? (
         // Pre-printed paper (or artwork): keep the header area clear, exactly as the PDF does.
-        <div className={`-mt-1 mb-3 flex h-[9.5rem] items-center justify-center text-[10px] ${o.letterheadUrl ? "" : "rounded border border-dashed border-neutral-400 text-neutral-500"}`}>{o.letterheadUrl ? "" : "Letterhead prints here"}</div>
+        // (With artwork the clear space is the sheet's own top margin; without, a placeholder box stands in.)
+        !o.letterheadUrl && <div className="mb-3 flex h-20 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead prints here</div>
       ) : (
         <div className="mb-3 border-b border-black pb-2"><p className="text-sm font-bold">{companyName}</p></div>
       )}
@@ -108,6 +170,7 @@ export function EmployeeLetterPaper({ companyName, refNo, date, title, html, opt
         {o.stampUrl && <img src={o.stampUrl} alt="" className="h-[5.75rem] w-[5.75rem] object-contain" />}
       </div>
       {o.onLetterhead && !o.letterheadUrl && <div className="mt-3 flex h-10 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead footer prints here</div>}
-    </div>
+      </div>
+    </PagedPaper>
   );
 }
