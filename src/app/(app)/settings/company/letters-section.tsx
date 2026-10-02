@@ -44,10 +44,11 @@ export function LettersSection(p: Props) {
         currentUrl={p.letterheadUrl}
         fallback={<span className="text-xs text-subtle">Letterhead</span>}
         label="Letterhead artwork (optional)"
-        hint="A full A4 image of your letterhead (header and footer). Used as the page background when a letter is printed on letterhead. Skip this if you print on pre-printed paper."
+        hint="Upload your letterhead as a PDF or an image (the first page of a PDF is used). Used as the page background when a letter is printed on letterhead. Skip this if you print on pre-printed paper."
         shape="square"
         format="image/jpeg"
         maxPx={1600}
+        acceptPdf
         uploadAction={uploadLetterImageAction}
         removeAction={removeLetterImageAction}
         extraFields={extra("letterhead")}

@@ -105,6 +105,14 @@ const NAV: Entry[] = [
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
       { href: "/documents", label: "Documents", icon: FileText },
+    ],
+  },
+  {
+    type: "group",
+    label: "Letters",
+    icon: FileSignature,
+    category: "People",
+    children: [
       { href: "/letters", label: "Employee Letters", icon: FileSignature },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
     ],

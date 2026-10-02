@@ -1,4 +1,23 @@
 /**
+ * pdf.js uses Map.prototype.getOrInsertComputed, which only the newest browsers
+ * have. Without it a PDF fails to render on anything slightly older.
+ */
+function polyfillMapUpsert() {
+  for (const C of [Map, WeakMap] as unknown as { prototype: Record<string, unknown> }[]) {
+    const proto = C.prototype as unknown as {
+      has(k: unknown): boolean; get(k: unknown): unknown; set(k: unknown, v: unknown): unknown;
+      getOrInsert?: unknown; getOrInsertComputed?: unknown;
+    };
+    if (typeof proto.getOrInsert !== "function") {
+      Object.defineProperty(proto, "getOrInsert", { configurable: true, writable: true, value(this: typeof proto, k: unknown, v: unknown) { if (!this.has(k)) this.set(k, v); return this.get(k); } });
+    }
+    if (typeof proto.getOrInsertComputed !== "function") {
+      Object.defineProperty(proto, "getOrInsertComputed", { configurable: true, writable: true, value(this: typeof proto, k: unknown, f: (k: unknown) => unknown) { if (!this.has(k)) this.set(k, f(k)); return this.get(k); } });
+    }
+  }
+}
+
+/**
  * Renders one page of a PDF to a JPEG File, in the browser.
  *
  * Document packs usually carry the worker's passport photo as its own page, so
@@ -13,6 +32,7 @@ export async function pdfPageToImage(
 ): Promise<File | null> {
   if (file.type !== "application/pdf") return null;
 
+  polyfillMapUpsert();
   const pdfjs = await import("pdfjs-dist");
   // The worker ships with the package; point pdf.js at it rather than letting
   // it guess a CDN URL, which the app's CSP would block anyway.
