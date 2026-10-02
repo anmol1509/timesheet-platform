@@ -191,7 +191,11 @@ export default async function EmployeeDetailPage({
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
                 <span className="tabular font-medium text-secondary">{employee.employeeIdNo}</span>
                 <span aria-hidden>·</span>
-                <span>{employee.trade || "No trade set"}</span>
+                <span>
+                  {employee.category === "STAFF"
+                    ? [employee.position, employee.department].filter(Boolean).join(" · ") || "No position set"
+                    : employee.trade || "No trade set"}
+                </span>
                 <span aria-hidden>·</span>
                 <span>{employee.supplier?.name || "No company"}</span>
               </p>
@@ -205,7 +209,7 @@ export default async function EmployeeDetailPage({
                 <Badge color={STAGE_COLOR[employee.status] ?? "slate"}>
                   {STAGE_LABEL[employee.status] ?? employee.status}
                 </Badge>
-                {employee.project && (
+                {employee.category !== "STAFF" && employee.project && (
                   <Link href={`/projects/${employee.project.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">
                     <MapPin className="h-3.5 w-3.5 text-subtle" aria-hidden />
                     {employee.project.name}

@@ -766,7 +766,7 @@ export function EmployeeWizard({
                   ) : (
                     <span className="tabular text-[10px] opacity-70">{i + 1}</span>
                   )}
-                  {s.label}
+                  {s.key === "extras" && fields.category === "STAFF" ? "Notes" : s.key === "deployment" && fields.category === "STAFF" ? "Joining" : s.label}
                 </button>
               </li>
             );
@@ -1238,8 +1238,9 @@ export function EmployeeWizard({
       {/* ---------------- Deployment ---------------- */}
       {stepKey === "deployment" && (
         <div className="space-y-5">
-          <Group title="Deployment">
-            <Field label="Project">
+          <Group title={fields.category === "STAFF" ? "Joining" : "Deployment"}>
+            {/* Office staff aren't deployed to a project or site. */}
+            {fields.category !== "STAFF" && <Field label="Project">
               <Select
                 value={fields.projectId}
                 onChange={(v) => set("projectId", v)}
@@ -1249,7 +1250,7 @@ export function EmployeeWizard({
                   label: `${p.code} — ${p.name}`,
                 }))}
               />
-            </Field>
+            </Field>}
             <Field label="Join date">
               <DatePicker value={fields.joinDate} onChange={(v) => set("joinDate", v)} className="w-full" />
             </Field>

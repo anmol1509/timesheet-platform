@@ -200,10 +200,12 @@ export function EditForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState("overview");
+  const [tabState, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
     const [payStructure, setPayStructure] = useState(employee.payStructure || "");
   const [category, setCategory] = useState(employee.category);
+  const isStaff = category === "STAFF";
+  const tab = isStaff && tabState === "project" ? "overview" : tabState;
   const [nationality, setNationality] = useState(employee.nationality || "");
   const [projectId, setProjectId] = useState(employee.projectId || "");
   const [siteId, setSiteId] = useState(employee.siteId || "");
@@ -229,10 +231,14 @@ export function EditForm({
     if (fields.laborCardPersonalNo && laborCardPersonalNoRef.current) laborCardPersonalNoRef.current.value = fields.laborCardPersonalNo;
   }
 
+  // Office staff are white-collar: no trade, project or site. Their position (designation + department)
+  // sits on Overview, so those tabs go and "Trade & pay" becomes just "Pay".
+  const tabs = isStaff ? TABS.filter((t) => t.id !== "project").map((t) => (t.id === "trade" ? { ...t, label: "Pay" } : t)) : TABS;
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-1 border-b border-default">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -255,7 +261,7 @@ export function EditForm({
       </div>
 
       {/* Known trades come first on this tab; they own their own forms, so they sit above the main form, not in it. */}
-      <div className={tab === "trade" ? "mb-8 space-y-8" : "hidden"}>{tradesContent}</div>
+      <div className={tab === "trade" && !isStaff ? "mb-8 space-y-8" : "hidden"}>{tradesContent}</div>
 
       <form
         onInput={() => {
@@ -374,6 +380,7 @@ export function EditForm({
             </Field>
             {category === "STAFF" && (
               <>
+                <p className="-mb-2 text-xs font-semibold uppercase tracking-wide text-muted sm:col-span-2">Position</p>
                 <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
                 <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
               </>
@@ -666,7 +673,12 @@ export function EditForm({
                   <NumberInput name="flatMonthlyRate" defaultValue={pay.flatMonthlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
-              {payStructure === "HOURLY" && (
+              {payStructure === "HOURLY" && isStaff && (
+                <Field label="Hourly rate (AED)">
+                  <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
+                </Field>
+              )}
+              {payStructure === "HOURLY" && !isStaff && (
                 <p className="rounded-lg border border-default bg-surface-subtle px-4 py-2 text-xs text-secondary sm:col-span-2">
                   Paid per hour worked at the rate on this worker&apos;s trade — set it in Known Trade Details above.
                 </p>
