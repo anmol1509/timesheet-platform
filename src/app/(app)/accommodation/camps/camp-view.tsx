@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
 import { BedDouble, BedSingle, ExternalLink, Layers, MoreHorizontal, Plus, Search, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
-import { InlineEditRow } from "@/components/InlineEditRow";
+import { byNameNatural } from "@/lib/naturalSort";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Badge } from "@/components/Badge";
@@ -16,7 +16,6 @@ import { groupBeds } from "@/lib/bunk";
 import { cn } from "@/lib/cn";
 import {
   unassignBedAction,
-  updateRoomAction,
   deleteRoomAction,
   addBedsToRoomAction,
   deleteBedAction,
@@ -85,7 +84,7 @@ function AddBeds({ roomId }: { roomId: string }) {
 }
 
 export function CampView({
-  rooms,
+  rooms: roomsProp,
   employeeNames,
   unhoused = [],
 }: {
@@ -94,6 +93,8 @@ export function CampView({
   /** Workers with no bed, offered as a tray to drag onto a vacant bed. */
   unhoused?: Unhoused[];
 }) {
+  // Rooms read in number order (2 before 10), whatever order they were created in.
+  const rooms = useMemo(() => byNameNatural(roomsProp), [roomsProp]);
   const [vacantOnly, setVacantOnly] = useState(false);
   const router = useRouter();
   const [, start] = useTransition();
@@ -245,7 +246,7 @@ export function CampView({
                 <header className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <InlineEditRow value={room.name} action={updateRoomAction} hiddenFields={{ roomId: room.id }} />
+                      <h3 className="text-base font-semibold text-primary">{room.name}</h3>
                       {full ? <Badge color="red" dot>Full</Badge> : <Badge color="green" dot>{total - occupied} free</Badge>}
                     </div>
                     <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">

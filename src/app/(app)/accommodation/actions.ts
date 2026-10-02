@@ -199,32 +199,6 @@ export async function updateCampAction(formData: FormData) {
   revalidatePath("/accommodation/camps");
 }
 
-export async function updateRoomAction(formData: FormData) {
-  assertContactsValid(formData);
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const roomId = String(formData.get("roomId") || "");
-  const name = String(formData.get("name") || "").trim();
-  if (!roomId || !name) return;
-  const roomOwner = await roomBranch(roomId, { branchId, isSuperAdmin });
-  if (roomOwner === undefined) return;
-
-  const before = await prisma.room.findUnique({ where: { id: roomId } });
-  await prisma.room.update({ where: { id: roomId }, data: { name } });
-
-  await logAudit({
-    entityType: "ROOM",
-    entityId: roomId,
-    action: "UPDATE",
-    before: before as unknown as Record<string, unknown>,
-    after: { name },
-    userId: user.id,
-    userName: user.name,
-    branchId: roomOwner,
-  });
-
-  revalidatePath("/accommodation/camps");
-}
-
 export async function addBedsToRoomAction(formData: FormData) {
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

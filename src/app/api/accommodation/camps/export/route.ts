@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { can } from "@/lib/permissions";
+import { byNameNatural } from "@/lib/naturalSort";
 import { TARGETS } from "@/lib/importer/targets";
 
 /**
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
   for (const c of camps) {
     const base = { camp: c.name, campType: typeLabel(c.ownerType), owner: c.owningSupplier?.name ?? c.owningClient?.name ?? "" };
     if (c.rooms.length === 0) { add(base); continue; }
-    for (const r of c.rooms) {
+    for (const r of byNameNatural(c.rooms)) {
       const roomBase = { ...base, room: r.name, roomType: r.roomType ?? "", nationality: r.nationality ?? "" };
       const occupied = withWorkers ? r.beds.filter((b) => b.employee) : [];
       if (occupied.length === 0) { add({ ...roomBase, beds: r.beds.length || (r.bedSpace ?? "") }); continue; }

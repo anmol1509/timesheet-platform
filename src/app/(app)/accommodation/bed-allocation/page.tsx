@@ -1,3 +1,4 @@
+import { byNameNatural } from "@/lib/naturalSort";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -33,11 +34,14 @@ export default async function BedAllocationPage() {
   });
 
   // Every own camp with its rooms and beds, so a placement can be made in any of them.
-  const campChoices = await prisma.camp.findMany({
+  const campChoicesRaw = await prisma.camp.findMany({
     where: { ...branchWhere(branchId), ownerType: "OWN" },
     select: { id: true, name: true, rooms: { select: { id: true, name: true, beds: { select: { id: true, label: true, employeeId: true } } }, orderBy: { name: "asc" } } },
     orderBy: { name: "asc" },
   });
+
+  // Rooms in number order (2 before 10).
+  const campChoices = campChoicesRaw.map((c) => ({ ...c, rooms: byNameNatural(c.rooms) }));
 
   const [suppliers, clients] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
