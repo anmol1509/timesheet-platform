@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, X } from "lucide-react";
 import { BookDemoButton } from "@/components/BookDemoButton";
 import { Reveal } from "@/app/welcome/motion";
@@ -15,10 +15,15 @@ type Plan = {
   /** AED per month / per year; null = "Let's talk". */
   price: { monthly: number; yearly: number } | null;
   setupFee?: number;
+  /** Members included in the monthly price; the estimator charges EXTRA_MEMBER_FEE beyond it. */
+  memberLimit?: number;
   features: Feature[];
   cta: string;
   custom?: boolean;
+  popular?: boolean;
 };
+
+export const EXTRA_MEMBER_FEE = 2.5;
 
 const yes = (text: string): Feature => ({ text, included: true });
 const no = (text: string): Feature => ({ text, included: false });
@@ -30,16 +35,21 @@ export const PLANS: Plan[] = [
     blurb: "For suppliers getting their timesheets, payroll and paperwork out of spreadsheets.",
     price: { monthly: 500, yearly: 5500 },
     setupFee: 5000,
+    memberLimit: 200,
     features: [
-      yes("Up to 200 members"),
+      yes("Up to 200 members, 1 company or branch"),
       yes("Timesheets, attendance and client billing"),
       yes("Payroll with WPS file"),
-      yes("Camps, transport and documents"),
+      yes("Camps, beds and transport"),
+      yes("Document expiry alerts by email"),
+      yes("Excel import with 30-day undo"),
+      yes("Salary certificates and letters from templates"),
+      yes("Data health score"),
       yes("Employee portal"),
       yes("Role-based permissions and audit log"),
       yes("Hosting and database included"),
-      yes("Email support"),
-      yes("Limited AI credits"),
+      yes("Email support, reply within 2 business days"),
+      yes("AI credits: 1,000 to start, then 300 a month"),
       yes("Data migration help"),
       yes("AED 2.5 per additional member beyond 200"),
       no("Supplier portal"),
@@ -52,11 +62,16 @@ export const PLANS: Plan[] = [
     blurb: "For a growing roster that works with suppliers and wants a named contact.",
     price: { monthly: 1000, yearly: 11000 },
     setupFee: 5000,
+    memberLimit: 500,
+    popular: true,
     features: [
-      yes("Up to 500 members"),
+      yes("Up to 500 members, up to 3 companies or branches"),
       yes("Everything in Basic"),
       yes("Supplier portal"),
       yes("Dedicated account manager"),
+      yes("Email support, reply within 1 business day"),
+      yes("AI credits: 2,500 to start, then 1,000 a month"),
+      yes("Kickoff call and quarterly review call"),
       yes("AED 2.5 per additional member beyond 500"),
     ],
     cta: "Get started",
@@ -105,7 +120,8 @@ export function PricingPlans() {
         <div className={styles.grid}>
           {PLANS.map((p, i) => (
             <Reveal key={p.name} as="div" className={styles.cell} y={24} delay={0.08 * i} amount={0.15}>
-              <article className={`${styles.card} ${p.custom ? styles.cardCustom : ""}`}>
+              <article className={`${styles.card} ${p.custom ? styles.cardCustom : ""} ${p.popular ? styles.cardPopular : ""}`}>
+                {p.popular && <span className={styles.badge}>Most popular</span>}
                 <span className={`${styles.pill} ${p.custom ? styles.pillLight : ""}`}>{p.name}</span>
                 <p className={styles.blurb}>{p.blurb}</p>
 
@@ -149,10 +165,82 @@ export function PricingPlans() {
           ))}
         </div>
 
+        <Estimator />
+
         <p className={styles.note}>
           * The setup fee is one-time, charged once when you start. Prices are in UAE dirhams. Beyond the members a plan includes, each additional member is AED 2.5.
         </p>
       </div>
     </section>
+  );
+}
+
+const PAID = PLANS.filter((p): p is Plan & { price: { monthly: number; yearly: number }; memberLimit: number } => p.price !== null && p.memberLimit != null);
+
+function monthlyCost(plan: (typeof PAID)[number], members: number) {
+  const extra = Math.max(0, members - plan.memberLimit);
+  return { base: plan.price.monthly, extra, extraCost: extra * EXTRA_MEMBER_FEE, total: plan.price.monthly + extra * EXTRA_MEMBER_FEE };
+}
+
+function Estimator() {
+  const [members, setMembers] = useState(250);
+  const rows = useMemo(() => PAID.map((p) => ({ plan: p, ...monthlyCost(p, members) })), [members]);
+  const cheapest = Math.min(...rows.map((r) => r.total));
+  const cheaperCount = rows.filter((r) => r.total === cheapest).length;
+  const clamp = (n: number) => Math.max(1, Math.min(5000, Math.round(n) || 1));
+
+  return (
+    <div className={styles.est}>
+      <div className={styles.estHead}>
+        <h2 className={styles.estTitle}>Estimate your monthly cost</h2>
+        <p className={styles.estSub}>Move the slider or type how many members you have.</p>
+        <div className={styles.estInputs}>
+          <input
+            type="range"
+            min={10}
+            max={1000}
+            step={10}
+            value={Math.min(1000, Math.max(10, members))}
+            onChange={(e) => setMembers(clamp(Number(e.target.value)))}
+            className={styles.range}
+            aria-label="Number of members"
+          />
+          <label className={styles.estNumber}>
+            <input type="number" min={1} max={5000} value={members} onChange={(e) => setMembers(clamp(Number(e.target.value)))} aria-label="Members" />
+            <span>members</span>
+          </label>
+        </div>
+      </div>
+
+      <div className={styles.estGrid}>
+        {rows.map((r) => {
+          const best = r.total === cheapest && cheaperCount === 1;
+          return (
+            <div key={r.plan.name} className={`${styles.estCard} ${best ? styles.estBest : ""}`}>
+              <div className={styles.estTop}>
+                <span className={styles.estName}>{r.plan.name}</span>
+                {best && <span className={styles.estTag}>Lower monthly cost</span>}
+              </div>
+              <p className={styles.estTotal}>
+                <span>AED</span> {r.total.toLocaleString("en-AE")}
+                <small>/month</small>
+              </p>
+              <p className={styles.estMath}>
+                AED {r.base.toLocaleString("en-AE")} plan
+                {r.extra > 0 ? ` + ${r.extra.toLocaleString("en-AE")} extra members × AED ${EXTRA_MEMBER_FEE} = AED ${r.extraCost.toLocaleString("en-AE")}` : ` (covers up to ${r.plan.memberLimit} members)`}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <p className={styles.estFoot}>
+        {members > 1000
+          ? "With this many members, talk to us about a Custom plan. "
+          : cheaperCount > 1
+            ? "Both plans cost the same here; Pro adds the supplier portal and a dedicated account manager. "
+            : ""}
+        Plus a one-time AED 5,000 setup fee on either plan. Estimates only.
+      </p>
+    </div>
   );
 }

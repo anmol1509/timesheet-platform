@@ -54,11 +54,15 @@ const PRICING_FAQS = [
   },
   {
     q: "What support do I get?",
-    a: "Email support on both plans. Pro also comes with a dedicated account manager.",
+    a: "Email support on both plans: replies within 2 business days on Basic and within 1 business day on Pro. Pro also comes with a dedicated account manager, a kickoff call and a quarterly review call.",
   },
   {
     q: "What are AI credits?",
-    a: "Both plans include a limited allowance of AI credits, used when the platform reads a document for you or answers a question in the assistant. If you expect to use more, talk to us.",
+    a: "One credit is one document read (a passport, Emirates ID, labour card or trade licence) or one assistant question. Basic includes 1,000 credits to start and 300 a month; Pro includes 2,500 to start and 1,000 a month. Monthly credits don't roll over, and the starter credits last 90 days. Extra credits are AED 50 per 1,000.",
+  },
+  {
+    q: "How many companies or branches can I run?",
+    a: "Basic covers one company or branch and Pro covers up to three. For more, the Custom plan is quoted around your operation.",
   },
   {
     q: "What does getting started involve?",
