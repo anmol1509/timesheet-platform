@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { PageHeader } from "@/components/PageHeader";
-import { BedDouble, Home, Percent, Building2 } from "lucide-react";
+import { BedDouble, Download, Home, Percent, Building2, Upload } from "lucide-react";
 import { deleteCampAction } from "../actions";
 import { CampView } from "./camp-view";
 import { AddCampForm } from "./add-camp-form";
@@ -11,7 +11,9 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { cn } from "@/lib/cn";
@@ -24,7 +26,9 @@ export default async function CampsPage({
   searchParams: Promise<{ campId?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canExport = can(subjectOf(user), "facilities", "export");
+  const canImport = isAdminRole(user.role);
   const [camps, lookupValues, suppliers] = await Promise.all([
     prisma.camp.findMany({
       where: branchWhere(branchId),
@@ -95,6 +99,14 @@ export default async function CampsPage({
       <PageHeader
         title="Camps"
         description="Manage camps, rooms and beds. Move employees in with Create Check-In and Bed Allocation."
+        actions={
+          (canExport || canImport) ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {canImport && <Link href="/import/new/camps" className="btn btn-secondary btn-sm flex gap-1.5"><Upload className="h-3.5 w-3.5" aria-hidden /> Import</Link>}
+              {canExport && camps.length > 0 && <a href="/api/accommodation/camps/export" className="btn btn-secondary btn-sm flex gap-1.5"><Download className="h-3.5 w-3.5" aria-hidden /> Export</a>}
+            </div>
+          ) : undefined
+        }
         meta={
           <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
             {camps.length} camp{camps.length === 1 ? "" : "s"}
