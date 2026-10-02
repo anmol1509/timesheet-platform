@@ -7,6 +7,7 @@ import { BedDouble, BedSingle, ExternalLink, Layers, MoreHorizontal, Plus, Searc
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { CheckoutForm } from "@/components/CheckoutForm";
 import { byNameNatural } from "@/lib/naturalSort";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -15,7 +16,6 @@ import { EmployeeAvatar } from "@/components/Avatar";
 import { groupBeds } from "@/lib/bunk";
 import { cn } from "@/lib/cn";
 import {
-  unassignBedAction,
   deleteRoomAction,
   addBedsToRoomAction,
   deleteBedAction,
@@ -31,6 +31,7 @@ type Room = {
   nationality: string | null;
 };
 type Person = { id: string; name: string; employeeIdNo: string; hasPhoto: boolean };
+type Stay = { checkInDate: string; planned: { date: string; reason: string } | null };
 type Unhoused = { id: string; name: string; employeeIdNo: string; trade: string | null; hasPhoto: boolean };
 
 /** "Add beds" lives in a small popover so the room header stays readable: pick single beds or bunks, and how many. */
@@ -86,10 +87,13 @@ function AddBeds({ roomId }: { roomId: string }) {
 export function CampView({
   rooms: roomsProp,
   employeeNames,
+  stays = {},
   unhoused = [],
 }: {
   rooms: Room[];
   employeeNames: Record<string, Person>;
+  /** Current stay per occupant, for checkout dates and scheduled checkouts. */
+  stays?: Record<string, Stay>;
   /** Workers with no bed, offered as a tray to drag onto a vacant bed. */
   unhoused?: Unhoused[];
 }) {
@@ -196,6 +200,7 @@ export function CampView({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold text-primary" title={occupant.name}>{occupant.name}</span>
               <span className="tabular block truncate text-[10px] text-subtle">{occupant.employeeIdNo}</span>
+              {stays[occupant.id]?.planned && <span className="block truncate text-[10px] font-medium text-[var(--warning)]">Leaving {new Date(`${stays[occupant.id].planned!.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>}
             </span>
           </>
         ) : (
@@ -359,8 +364,9 @@ export function CampView({
                     </span>
                     <Link href={`/employees/${bed.employeeId}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Profile</Link>
                   </div>
+                  {stays[occ.id]?.planned && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">Leaving on <span className="font-medium text-primary">{new Date(`${stays[occ.id].planned!.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> &mdash; {stays[occ.id].planned!.reason}.</p>}
                   <p className="text-xs text-muted">To move them to another bed, drag them there, or check them out first.</p>
-                  <button type="button" className="btn btn-secondary w-full text-[var(--error)]" onClick={() => setMode("checkout")}>Check out of this bed</button>
+                  <button type="button" className="btn btn-secondary w-full text-[var(--error)]" onClick={() => setMode("checkout")}>{stays[occ.id]?.planned ? "Change or cancel the checkout" : "Check out of this bed"}</button>
                 </div>
               )}
 
@@ -416,22 +422,15 @@ export function CampView({
               )}
 
               {mode === "checkout" && occ && (
-                <form
-                  className="mt-4 space-y-4"
-                  action={async (fd) => {
-                    await unassignBedAction(fd);
-                    closeBed();
-                    router.refresh();
-                  }}
-                >
-                  <input type="hidden" name="bedId" value={bed.id} />
-                  <input type="hidden" name="employeeId" value={bed.employeeId ?? ""} />
-                  <p className="text-sm text-secondary">Check <span className="font-medium text-primary">{occ.name}</span> out of {bed.label}? They will show under &ldquo;Without a bed&rdquo;.</p>
-                  <div className="flex justify-end gap-2">
-                    <button type="button" className="btn btn-secondary" onClick={() => setMode("menu")}>Cancel</button>
-                    <button type="submit" className="btn btn-danger">Check out</button>
-                  </div>
-                </form>
+                <CheckoutForm
+                  employeeId={occ.id}
+                  name={occ.name}
+                  bedLabel={`${bed.label} · ${room.name}`}
+                  checkInDate={stays[occ.id]?.checkInDate ?? "1970-01-01"}
+                  planned={stays[occ.id]?.planned ?? null}
+                  onCancel={() => setMode("menu")}
+                  onDone={() => { closeBed(); router.refresh(); }}
+                />
               )}
             </DialogContent>
           );

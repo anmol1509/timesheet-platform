@@ -1,5 +1,7 @@
 "use server";
 
+import { checkOutNow, settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { checkoutKind, checkoutProblem, dayKey } from "@/lib/checkoutReasons";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -237,6 +239,7 @@ export async function addBedsToRoomAction(formData: FormData) {
 export async function assignBedAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!bedId || !employeeId) return;
@@ -294,68 +297,63 @@ export async function assignBedAction(formData: FormData) {
   revalidatePath(`/employees/${employeeId}`);
 }
 
-export async function unassignBedAction(formData: FormData) {
+export type CheckoutResult = { error?: string; scheduled?: boolean; date?: string };
+
+/**
+ * Checks a worker out of their bed with a reason and a date. A date today or earlier frees the bed at
+ * once and records the stay as ending then; a later date is a scheduled checkout: the worker keeps the
+ * bed until that day, when it is released the next time a camp screen loads.
+ */
+export async function checkOutWorkerAction(formData: FormData): Promise<CheckoutResult> {
   assertContactsValid(formData);
+  await requirePermission("facilities", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
-  if (!bedId) return;
-  // The bed itself must be the caller's. This runs regardless of employeeId: the
-  // employee check below is skipped when none is sent, which used to let anyone
-  // free any bed in the system by submitting a bare bedId.
-  if ((await bedBranch(bedId, { branchId, isSuperAdmin })) === undefined) return;
-  if (employeeId) {
-    const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
-    if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
+  const date = String(formData.get("date") || "");
+  const reason = String(formData.get("reason") || "");
+  const note = String(formData.get("note") || "").trim().slice(0, 300);
+  if (!employeeId) return { error: "Choose who is leaving." };
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, bed: { select: { id: true } } } });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't check that worker out." };
+  if (!employee.bed) return { error: "They aren't in a bed." };
+
+  const open = await prisma.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
+  const problem = checkoutProblem({ date, reason, note, checkInDate: open ? dayKey(open.checkInDate) : "1970-01-01" });
+  if (problem) return { error: problem };
+
+  if (checkoutKind(date) === "future") {
+    if (!open) return { error: "There's no open stay to schedule a checkout for." };
+    await prisma.accommodationHistory.update({ where: { id: open.id }, data: { plannedCheckOutDate: new Date(`${date}T12:00:00Z`), plannedCheckOutReason: reason, plannedCheckOutNote: note || null } });
+    await logAudit({ entityType: "ACCOMMODATION", entityId: employee.bed.id, action: "UPDATE", after: { employeeId, scheduledCheckOut: date, reason, note }, userId: user.id, userName: user.name, branchId: employee.branchId });
+    revalidateCampScreens(employeeId);
+    return { scheduled: true, date };
   }
 
-  const bed = await prisma.bed.update({
-    where: { id: bedId },
-    data: { employeeId: null },
-    include: { room: { include: { camp: true } } },
-  });
+  const bed = await prisma.$transaction((tx) => checkOutNow(tx, { employeeId, date, reason, note: note || null }));
+  await logAudit({ entityType: "ACCOMMODATION", entityId: employee.bed.id, action: "UPDATE", before: { employeeId, ...bed }, after: { employeeId: null, checkOutDate: date, reason, note }, userId: user.id, userName: user.name, branchId: employee.branchId });
+  revalidateCampScreens(employeeId);
+  return { date };
+}
 
-  if (employeeId) {
-    await prisma.$transaction(async (tx) => {
-      const openHistory = await tx.accommodationHistory.findFirst({
-        where: { employeeId, checkOutDate: null },
-        orderBy: { checkInDate: "desc" },
-      });
-      if (openHistory) {
-        await tx.accommodationHistory.update({
-          where: { id: openHistory.id },
-          data: { checkOutDate: new Date() },
-        });
-      }
+/** Cancels a scheduled checkout: the worker simply stays. */
+export async function cancelScheduledCheckoutAction(employeeId: string): Promise<CheckoutResult> {
+  await requirePermission("facilities", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't change that worker." };
+  const open = await prisma.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
+  if (!open?.plannedCheckOutDate) return { error: "No checkout is scheduled." };
+  await prisma.accommodationHistory.update({ where: { id: open.id }, data: { plannedCheckOutDate: null, plannedCheckOutReason: null, plannedCheckOutNote: null } });
+  await logAudit({ entityType: "ACCOMMODATION", entityId: open.id, action: "UPDATE", before: { scheduledCheckOut: dayKey(open.plannedCheckOutDate) }, after: { scheduledCheckOut: null }, userId: user.id, userName: user.name, branchId: employee.branchId });
+  revalidateCampScreens(employeeId);
+  return {};
+}
 
-      const openCheckIn = await tx.campCheckIn.findFirst({
-        where: { employeeId, status: { in: ["CHECKED_IN", "BED_ALLOCATED"] } },
-        orderBy: { createdAt: "desc" },
-      });
-      if (openCheckIn) {
-        await tx.campCheckIn.update({
-          where: { id: openCheckIn.id },
-          data: { status: "CHECKED_OUT", checkOutDate: new Date(), bedId: null },
-        });
-      }
-    });
-
-    await logAudit({
-      entityType: "ACCOMMODATION",
-      entityId: bedId,
-      action: "UPDATE",
-      before: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label },
-      after: { employeeId: null },
-      userId: user.id,
-      userName: user.name,
-      branchId,
-    });
-  }
-
+function revalidateCampScreens(employeeId: string) {
   revalidatePath("/accommodation/camps");
   revalidatePath("/accommodation/checkin");
   revalidatePath("/accommodation/bed-allocation");
-  if (employeeId) revalidatePath(`/employees/${employeeId}`);
+  revalidatePath(`/employees/${employeeId}`);
 }
 
 /**
@@ -497,6 +495,7 @@ export async function deleteCampAction(formData: FormData) {
  */
 export async function placeWorkerInBedAction(employeeId: string, bedId: string): Promise<{ error?: string }> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, name: true } });
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't move that worker." };
   const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { room: { include: { camp: true } } } });
@@ -515,7 +514,7 @@ export async function placeWorkerInBedAction(employeeId: string, bedId: string):
       if (current) {
         await tx.bed.update({ where: { id: current.id }, data: { employeeId: null } });
         const open = await tx.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
-        if (open) await tx.accommodationHistory.update({ where: { id: open.id }, data: { checkOutDate: new Date() } });
+        if (open) await tx.accommodationHistory.update({ where: { id: open.id }, data: { checkOutDate: new Date(), checkOutReason: "Moved to another bed" } });
       }
       await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
       await tx.accommodationHistory.create({ data: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label } });

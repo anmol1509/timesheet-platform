@@ -12,6 +12,8 @@ import { InlineEditRow } from "@/components/InlineEditRow";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { dayKey } from "@/lib/checkoutReasons";
 import { can } from "@/lib/permissions";
 import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
@@ -29,6 +31,8 @@ export default async function CampsPage({
   const { user, branchId } = await requireUserWithBranch();
   const canExport = can(subjectOf(user), "facilities", "export");
   const canImport = isAdminRole(user.role);
+  // Release beds whose scheduled checkout date has arrived before showing anything.
+  await settleDueCheckouts(branchId, user);
   const [camps, lookupValues, suppliers] = await Promise.all([
     prisma.camp.findMany({
       where: branchWhere(branchId),
@@ -83,6 +87,16 @@ export default async function CampsPage({
     orderBy: { name: "asc" },
     take: 500,
   });
+
+  // Each occupant's current stay: when it began, and a checkout already scheduled, if any.
+  const stayRows = occupants.length
+    ? await prisma.accommodationHistory.findMany({
+        where: { employeeId: { in: occupants.map((e) => e.id) }, checkOutDate: null },
+        orderBy: { checkInDate: "asc" },
+        select: { employeeId: true, checkInDate: true, plannedCheckOutDate: true, plannedCheckOutReason: true },
+      })
+    : [];
+  const stays = Object.fromEntries(stayRows.map((h) => [h.employeeId, { checkInDate: dayKey(h.checkInDate), planned: h.plannedCheckOutDate ? { date: dayKey(h.plannedCheckOutDate), reason: h.plannedCheckOutReason ?? "" } : null }]));
 
   const employeeNames = Object.fromEntries(
     occupants.map((e) => [e.id, { id: e.id, name: e.name, employeeIdNo: e.employeeIdNo, hasPhoto: !!e.photoMimeType }])
@@ -211,6 +225,7 @@ export default async function CampsPage({
               })),
             }))}
             employeeNames={employeeNames}
+            stays={stays}
             unhoused={unhoused.map(({ photoMimeType, ...u }) => ({ ...u, hasPhoto: !!photoMimeType }))}
           />
         </div>

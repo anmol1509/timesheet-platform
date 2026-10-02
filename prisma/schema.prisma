@@ -847,6 +847,12 @@ model AccommodationHistory {
   bedLabel     String?
   checkInDate  DateTime  @default(now())
   checkOutDate DateTime?
+  // Why the stay ended, and (when the checkout is set for a future date) the plan.
+  checkOutReason String?
+  checkOutNote   String?
+  plannedCheckOutDate   DateTime?
+  plannedCheckOutReason String?
+  plannedCheckOutNote   String?
 
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
@@ -1378,6 +1384,7 @@ model CampCheckIn {
   status       String    @default("CHECKED_IN") // "CHECKED_IN" | "BED_ALLOCATED" | "CHECKED_OUT"
   checkInDate  DateTime  @default(now())
   checkOutDate DateTime?
+  checkOutReason String?
 
   bed   Bed?    @relation(fields: [bedId], references: [id])
   bedId String? @unique

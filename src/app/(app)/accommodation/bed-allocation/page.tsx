@@ -1,3 +1,4 @@
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { byNameNatural } from "@/lib/naturalSort";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -8,7 +9,8 @@ import { ListChecks, BedDouble, Clock } from "lucide-react";
 import { BedAllocationTable } from "./bed-allocation-table";
 
 export default async function BedAllocationPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
 
   const checkIns = await prisma.campCheckIn.findMany({
     where: {

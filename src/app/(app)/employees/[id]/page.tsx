@@ -1,3 +1,5 @@
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { dayKey } from "@/lib/checkoutReasons";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BadgeCheck, CalendarDays, ChevronRight, Hash, Home, MapPin, Phone } from "lucide-react";
@@ -36,6 +38,8 @@ export default async function EmployeeDetailPage({
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const canViewPay = can(subjectOf(user), "payroll", "view");
   const canEditPay = can(subjectOf(user), "payroll", "edit");
+  // Free any bed whose scheduled checkout date has arrived before reading this worker.
+  await settleDueCheckouts(branchId, user);
   const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues, inventoryItems] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
@@ -115,6 +119,10 @@ export default async function EmployeeDetailPage({
     }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
+  const openStay = employee.bed
+    ? await prisma.accommodationHistory.findFirst({ where: { employeeId: employee.id, checkOutDate: null }, orderBy: { checkInDate: "desc" }, select: { checkInDate: true, plannedCheckOutDate: true, plannedCheckOutReason: true } })
+    : null;
+  const stay = openStay ? { checkInDate: dayKey(openStay.checkInDate), planned: openStay.plannedCheckOutDate ? { date: dayKey(openStay.plannedCheckOutDate), reason: openStay.plannedCheckOutReason ?? "" } : null } : null;
 
   const payRow = canViewPay
     ? await prisma.employee.findUnique({
@@ -295,6 +303,8 @@ export default async function EmployeeDetailPage({
                 than who this is, and this card is empty for most workers. */}
             <AccommodationSection
               employeeId={employee.id}
+              employeeName={employee.name}
+              stay={stay}
               currentBed={
                 employee.bed
                   ? {

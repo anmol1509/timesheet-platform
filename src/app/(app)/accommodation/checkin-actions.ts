@@ -1,5 +1,6 @@
 "use server";
 
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -158,7 +159,7 @@ export async function switchCampAction(formData: FormData) {
         orderBy: { checkInDate: "desc" },
       });
       if (openHistory) {
-        await tx.accommodationHistory.update({ where: { id: openHistory.id }, data: { checkOutDate: new Date() } });
+        await tx.accommodationHistory.update({ where: { id: openHistory.id }, data: { checkOutDate: new Date(), checkOutReason: "Moved to another bed or camp" } });
       }
     }
 
@@ -188,6 +189,7 @@ export async function switchCampAction(formData: FormData) {
 export async function allocateBedAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
   const checkInId = String(formData.get("checkInId") || "");
   const bedId = String(formData.get("bedId") || "");
   const checkInDate = dateOrNull(formData.get("checkInDate")) || new Date();
@@ -215,7 +217,7 @@ export async function allocateBedAction(formData: FormData) {
         orderBy: { checkInDate: "desc" },
       });
       if (openHistory) {
-        await tx.accommodationHistory.update({ where: { id: openHistory.id }, data: { checkOutDate: new Date() } });
+        await tx.accommodationHistory.update({ where: { id: openHistory.id }, data: { checkOutDate: new Date(), checkOutReason: "Moved to another bed or camp" } });
       }
     }
 

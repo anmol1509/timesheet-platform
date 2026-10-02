@@ -1,3 +1,4 @@
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -12,7 +13,8 @@ function stayDays(from: Date, to: Date | null) {
 }
 
 export default async function CheckInPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
 
   const [employees, camps, suppliers, clients] = await Promise.all([
     prisma.employee.findMany({

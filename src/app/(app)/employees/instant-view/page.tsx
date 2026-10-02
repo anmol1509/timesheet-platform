@@ -251,6 +251,7 @@ export default async function InstantViewPage({
                     <th className="py-2">Bed</th>
                     <th className="py-2">Check In Date</th>
                     <th className="py-2">Check Out Date</th>
+                    <th className="py-2">Reason</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -260,7 +261,8 @@ export default async function InstantViewPage({
                       <td className="py-2">{h.roomName || "—"}</td>
                       <td className="py-2">{h.bedLabel || "—"}</td>
                       <td className="py-2">{formatDate(h.checkInDate)}</td>
-                      <td className="py-2">{formatDate(h.checkOutDate)}</td>
+                      <td className="py-2">{h.checkOutDate ? formatDate(h.checkOutDate) : h.plannedCheckOutDate ? <span className="text-[var(--warning)]">Leaving {formatDate(h.plannedCheckOutDate)}</span> : formatDate(h.checkOutDate)}</td>
+                      <td className="py-2">{h.checkOutReason ? `${h.checkOutReason}${h.checkOutNote ? ` — ${h.checkOutNote}` : ""}` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
