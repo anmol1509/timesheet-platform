@@ -656,9 +656,8 @@ export function EditForm({
                   options={[
                     { value: "ITEMISED", label: "Itemised — basic + allowances" },
                     { value: "FLAT", label: "Flat — one monthly rate" },
-                    // Office/corporate staff are never paid hourly — only the site roster is.
                     // The hourly rate is not typed here: it is the rate on the worker's trade (Known Trade Details).
-                    ...(category === "STAFF" ? [] : [{ value: "HOURLY", label: "Hourly — paid per hour worked" }]),
+                    { value: "HOURLY", label: "Hourly — paid per hour worked" },
                   ]}
                 />
               </Field>

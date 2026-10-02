@@ -92,7 +92,6 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
   if (formData.get("_pay") === "1" && can(subjectOf(user), "payroll", "edit")) {
     const structure = stringOrNull(formData.get("payStructure"));
     if (structure && !(PAY_STRUCTURES as readonly string[]).includes(structure)) return { error: "Unknown pay structure." };
-    if (structure === "HOURLY" && category === "STAFF") return { error: "Office/corporate staff can't be paid hourly — choose flat or itemised." };
     const money = (k: string) => {
       const v = numberOrNull(formData.get(k));
       return v !== null && v < 0 ? "bad" : v;
