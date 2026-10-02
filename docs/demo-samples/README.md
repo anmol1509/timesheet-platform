@@ -9,3 +9,5 @@
 Suggested order: import suppliers and clients CSVs first (shows contact and TRN detail), then upload the workbook (shows it matches existing names instead of creating duplicates).
 
 Names, phones, emails and TRNs are made up. Run against the demo branch, not production. Delete via `/upload` (Delete) afterwards.
+
+`sample-passport-SPECIMEN.png`: fictional passport bio page for the document-scan demo (`/documents`, or scan on the employee form). Country "Utopia" (ICAO sample code UTO), name Mohammed Specimen Rafiq, passport Z1234567, DOB 1992-03-14, expiry 2032-02-01. Watermarked SPECIMEN. Nationality will not map to a real country, so pick one manually if the form asks.
