@@ -1,5 +1,6 @@
 "use client";
 
+import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { m } from "motion/react";
@@ -114,7 +115,7 @@ type Project = { id: string; name: string; code: string };
 type Site = { id: string; name: string; projectId: string };
 type Vehicle = { id: string; plateNumber: string; type: string | null };
 
-type Supplier = { id: string; name: string };
+type Supplier = { id: string; name: string; parentSupplierId?: string | null };
 type LookupsByCategory = Record<string, { value: string }[]>;
 
 const TABS = [
@@ -188,6 +189,8 @@ export function EditForm({
   siteContent: React.ReactNode;
   documentsContent: React.ReactNode;
 }) {
+  const [supplierSel, setSupplierSel] = useState(employee.supplierId || "");
+  const [sponsorSel, setSponsorSel] = useState(employee.sponsorSupplierId || "");
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   // ~100 fields sit in this form; leaving the page used to bin every edit
@@ -362,9 +365,10 @@ export function EditForm({
             <Field label="Supplier">
               <Select
                 name="supplierId"
-                defaultValue={employee.supplierId || ""}
+                value={supplierSel}
+                onChange={(v) => { setSupplierSel(v); if (!sponsorFits(sponsors, v, sponsorSel)) setSponsorSel(""); }}
                 placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                options={primaryOptions(suppliers, employee.supplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             <Field label="Nationality">
@@ -373,9 +377,10 @@ export function EditForm({
             <Field label="Visa sponsor">
               <Select
                 name="sponsorSupplierId"
-                defaultValue={employee.sponsorSupplierId || ""}
+                value={sponsorSel}
+                onChange={setSponsorSel}
                 placeholder="Not set"
-                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsorOptions(sponsors, supplierSel, employee.sponsorSupplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             {category === "STAFF" && (

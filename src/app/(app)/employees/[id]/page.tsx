@@ -88,8 +88,8 @@ export default async function EmployeeDetailPage({
       include: { room: { include: { camp: true } } },
       orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
     }),
-    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
-    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" }, select: { id: true, name: true, parentSupplierId: true } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true, parentSupplierId: true }, orderBy: { name: "asc" } }),
     prisma.lookupValue.findMany({
       where: { ...branchWhere(branchId), isActive: true },
       orderBy: [{ sortOrder: "asc" }, { value: "asc" }],

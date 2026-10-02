@@ -13,9 +13,9 @@ export default async function AddEmployeePage() {
     prisma.supplier.findMany({
       where: branchWhere(branchId),
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, parentSupplierId: true },
     }),
-    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" }, select: { id: true, name: true, parentSupplierId: true } }),
     prisma.lookupValue.findMany({
       where: { ...branchWhere(branchId), isActive: true },
       orderBy: [{ sortOrder: "asc" }, { value: "asc" }],

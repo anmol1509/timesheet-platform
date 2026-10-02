@@ -33,11 +33,12 @@ import {
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { CountrySelect } from "@/components/ui/CountrySelect";
+import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Project = { id: string; name: string; code: string };
 
-type Supplier = { id: string; name: string };
+type Supplier = { id: string; name: string; parentSupplierId?: string | null };
 
 const STEPS = [
   { key: "documents", label: "Documents" },
@@ -792,9 +793,9 @@ export function EmployeeWizard({
             <Field label="Supplier">
               <Select
                 value={fields.supplierId}
-                onChange={(v) => set("supplierId", v)}
+                onChange={(v) => { set("supplierId", v); if (!sponsorFits(sponsors, v, fields.sponsorshipCompanyId)) set("sponsorshipCompanyId", ""); }}
                 placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                options={primaryOptions(suppliers, fields.supplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             <Field label="Sponsorship company">
@@ -802,7 +803,7 @@ export function EmployeeWizard({
                 value={fields.sponsorshipCompanyId}
                 onChange={(v) => set("sponsorshipCompanyId", v)}
                 placeholder="Not set"
-                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsorOptions(sponsors, fields.supplierId, fields.sponsorshipCompanyId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
           </div>
@@ -1519,9 +1520,9 @@ export function EmployeeWizard({
             <ReviewRow label="Supplier">
               <Select
                 value={fields.supplierId}
-                onChange={(v) => set("supplierId", v)}
+                onChange={(v) => { set("supplierId", v); if (!sponsorFits(sponsors, v, fields.sponsorshipCompanyId)) set("sponsorshipCompanyId", ""); }}
                 placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                options={primaryOptions(suppliers, fields.supplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </ReviewRow>
 
@@ -1530,7 +1531,7 @@ export function EmployeeWizard({
                 value={fields.sponsorshipCompanyId}
                 onChange={(v) => set("sponsorshipCompanyId", v)}
                 placeholder="Not set"
-                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsorOptions(sponsors, fields.supplierId, fields.sponsorshipCompanyId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </ReviewRow>
 
