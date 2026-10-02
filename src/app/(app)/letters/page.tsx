@@ -17,23 +17,29 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const [templates, employees, issued, branch, totalIssued, issuedThisMonth, byTitle] = await Promise.all([
+  const [templates, employees, issued, nocs, branch, totalIssued, issuedThisMonth, byTitle] = await Promise.all([
     prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: { name: "asc" } }),
     prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
-    branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true } }) : null,
+    prisma.noc.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { template: { select: { title: true, name: true } }, demandRequest: { select: { requestNo: true, client: { select: { name: true } }, project: { select: { name: true } } } }, requestedBy: { select: { name: true } }, _count: { select: { employees: true } } } }),
+    branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true } }) : null,
     prisma.issuedLetter.count({ where: branchWhere(branchId) }),
     prisma.issuedLetter.count({ where: { ...branchWhere(branchId), createdAt: { gte: monthStart } } }),
     prisma.issuedLetter.groupBy({ by: ["title"], where: branchWhere(branchId), _count: { _all: true }, orderBy: { _count: { title: "desc" } }, take: 1 }),
   ]);
+  // Employee letters and NOCs in one list, newest first.
+  const history = [
+    ...issued.map((l) => ({ key: `l-${l.id}`, kind: "Letter" as const, ref: refLabel(l.refNo), who: l.employee.name, whoSub: l.employee.employeeIdNo, title: l.title, at: l.createdAt, by: l.issuedBy.name, href: `/api/letters/${l.id}/pdf` })),
+    ...nocs.map((n) => ({ key: `n-${n.id}`, kind: "NOC" as const, ref: `NOC-${n.docNo}`, who: n.demandRequest.client.name, whoSub: `${n.demandRequest.project.name} · ${n._count.employees} worker${n._count.employees === 1 ? "" : "s"}`, title: n.template.title || n.template.name, at: n.createdAt, by: n.requestedBy?.name ?? "—", href: `/api/nocs/${n.id}?letterhead=1` })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 60);
   const mostRequested = byTitle[0]?.title ?? "—";
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Employee letters"
+        title="Letters"
         icon={FileSignature}
-        description={<>Salary certificates, experience letters, warnings and more, made from your templates with the employee&apos;s details filled in, for the employees of your own company. Edit the wording under Administration → Letter Templates.</>}
+        description={<>Employee letters (salary certificates, experience letters, warnings and more) made from your templates, for the employees of your own company. NOCs for clients are made from a demand's documents and listed here too. Edit the wording under Administration → Letter Templates.</>}
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,6 +64,8 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
             signatureUrl: branch?.signatureId ? `/api/images/${branch.signatureId}` : null,
             stampUrl: branch?.stampId ? `/api/images/${branch.stampId}` : null,
             letterheadUrl: branch?.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null,
+            topMm: branch?.letterheadTopMm ?? 65,
+            bottomMm: branch?.letterheadBottomMm ?? 35,
           }}
           employees={employees.map((e) => ({ id: e.id, name: e.name, idNo: e.employeeIdNo, trade: e.trade }))}
           templates={templates.map((t) => {
@@ -69,22 +77,22 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-primary">Recently issued</h2>
-        {issued.length === 0 ? (
+        {history.length === 0 ? (
           <div className="card p-8 text-center text-sm text-muted">Nothing issued yet.</div>
         ) : (
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
-                <tr><th className="px-4 py-3">Ref</th><th className="px-4 py-3">Employee</th><th className="px-4 py-3">Letter</th><th className="px-4 py-3">Issued</th><th className="px-4 py-3" /></tr>
+                <tr><th className="px-4 py-3">Ref</th><th className="px-4 py-3">For</th><th className="px-4 py-3">Letter</th><th className="px-4 py-3">Issued</th><th className="px-4 py-3" /></tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {issued.map((l) => (
-                  <tr key={l.id}>
-                    <td className="px-4 py-3 font-medium whitespace-nowrap text-primary">{refLabel(l.refNo)}</td>
-                    <td className="px-4 py-3"><p className="text-primary">{l.employee.name}</p><p className="text-xs text-muted">{l.employee.employeeIdNo}</p></td>
-                    <td className="px-4 py-3 text-secondary">{l.title}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-secondary">{formatLetterDate(l.createdAt)}<p className="text-xs text-muted">by {l.issuedBy.name}</p></td>
-                    <td className="px-4 py-3 text-right"><a href={`/api/letters/${l.id}/pdf`} target="_blank" rel="noreferrer" className="btn btn-secondary">PDF</a></td>
+                {history.map((h) => (
+                  <tr key={h.key}>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap text-primary">{h.ref}</td>
+                    <td className="px-4 py-3"><p className="text-primary">{h.who}</p><p className="text-xs text-muted">{h.whoSub}</p></td>
+                    <td className="px-4 py-3 text-secondary"><span className={`mr-2 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${h.kind === "NOC" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-surface-sunken text-secondary"}`}>{h.kind}</span>{h.title}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-secondary">{formatLetterDate(h.at)}<p className="text-xs text-muted">by {h.by}</p></td>
+                    <td className="px-4 py-3 text-right"><a href={h.href} target="_blank" rel="noreferrer" className="btn btn-secondary">PDF</a></td>
                   </tr>
                 ))}
               </tbody>

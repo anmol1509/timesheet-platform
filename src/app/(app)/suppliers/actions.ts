@@ -704,3 +704,20 @@ export async function setSupplierPortalAction(formData: FormData): Promise<{ err
   revalidatePath(`/suppliers/${id}`);
   return { error: null };
 }
+
+
+/** How much clear space letters leave at the top and bottom on this supplier's letterhead (used for NOCs it sponsors). */
+export async function saveSupplierLetterheadMarginsAction(formData: FormData) {
+  await requirePermission("partners", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, letterheadTopMm: true, letterheadBottomMm: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
+  const clamp = (v: FormDataEntryValue | null, min: number, max: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null; };
+  const top = clamp(formData.get("topMm"), 15, 140);
+  const bottom = clamp(formData.get("bottomMm"), 10, 100);
+  if (top === null || bottom === null) return { error: "Enter the margins in millimetres." };
+  await prisma.supplier.update({ where: { id: supplier.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom } });
+  await logAudit({ entityType: "SUPPLIER", entityId: supplier.id, action: "UPDATE", before: { letterheadTopMm: supplier.letterheadTopMm, letterheadBottomMm: supplier.letterheadBottomMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom }, userId: user.id, userName: user.name, branchId: supplier.branchId });
+  revalidatePath(`/suppliers/${supplier.id}`);
+  return { error: null };
+}

@@ -21,6 +21,14 @@ export async function GET(
   const url = new URL(request.url);
   const templateId = url.searchParams.get("templateId") || "";
   const onLetterhead = url.searchParams.get("letterhead") === "1";
+  // Optional: a subset of the mobilised workers, and how the signature block is printed.
+  const only = new Set(url.searchParams.getAll("employee"));
+  const signing = {
+    signatoryName: url.searchParams.get("signatoryName"),
+    signatoryTitle: url.searchParams.get("signatoryTitle"),
+    showSignature: url.searchParams.get("signature") === "1",
+    showStamp: url.searchParams.get("stamp") === "1",
+  };
 
   const demand = await prisma.demandRequest.findUnique({
     where: { id },
@@ -48,7 +56,7 @@ export async function GET(
     return NextResponse.json({ error: "Template not found." }, { status: 404 });
   }
 
-  const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee));
+  const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee)).filter((e) => only.size === 0 || only.has(e.id));
   if (workers.length === 0) {
     return NextResponse.json(
       { error: "Nobody is mobilised on this demand yet." },
@@ -63,6 +71,7 @@ export async function GET(
     fallbackIssuerName: demand.branch.name,
     issuedBy: "COMPANY",
     branchId: demand.branchId,
+    signing,
     context: {
       clientName: demand.client.name,
       clientAddress: demand.client.billingAddress,

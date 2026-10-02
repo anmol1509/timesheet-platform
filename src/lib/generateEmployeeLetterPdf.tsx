@@ -28,13 +28,17 @@ export type LetterLayout = {
   /** Signature and stamp images as data URIs (null = not printed). */
   signatureImage: string | null;
   stampImage: string | null;
+  /** Clear space kept at the top and bottom on a letterhead, in mm (defaults 65 / 35). */
+  topMm?: number | null;
+  bottomMm?: number | null;
 };
 
 export const PLAIN_LAYOUT: LetterLayout = { onLetterhead: false, letterheadImage: null, signatoryName: null, signatoryTitle: null, signatureImage: null, stampImage: null };
 
 // Same clearances as the client letters: 150pt clears a normal A4 letterhead header, 90pt its footer.
-const LETTERHEAD_TOP = 185;
-const LETTERHEAD_BOTTOM = 100;
+const MM = 72 / 25.4; // millimetres to points
+const LETTERHEAD_TOP = 65 * MM;
+const LETTERHEAD_BOTTOM = 35 * MM;
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
 
@@ -58,7 +62,7 @@ export async function generateEmployeeLetterPdf(input: EmployeeLetterInput): Pro
   const { layout } = input;
   const doc = (
     <Document>
-      <Page size="A4" style={layout.onLetterhead ? s.pageOnLetterhead : s.page}>
+      <Page size="A4" style={layout.onLetterhead ? [s.pageOnLetterhead, { paddingTop: (layout.topMm ?? 65) * MM, paddingBottom: (layout.bottomMm ?? 35) * MM }] : s.page}>
         {layout.onLetterhead && layout.letterheadImage && <Image src={layout.letterheadImage} style={s.background} fixed />}
         {!layout.onLetterhead && (
           <View style={s.header}>

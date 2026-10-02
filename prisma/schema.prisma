@@ -55,6 +55,9 @@ model Branch {
   // Full-page letterhead artwork (A4) used when printing letters "on letterhead".
   letterheadImage   StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
   letterheadImageId String?
+  // Clear space (mm) kept free at the top and bottom of the page when a letter is printed on this letterhead.
+  letterheadTopMm    Int @default(65)
+  letterheadBottomMm Int @default(35)
 
   // WPS establishment details (Company profile -> Payroll / WPS).
   wpsEstablishmentId       String? // MOHRE establishment / employer ID
@@ -323,6 +326,9 @@ model Supplier {
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
   isOwnCompany Boolean @default(false)
+  // Same, for this supplier's own letterhead (used when it sponsors workers). Unset = the standard 65 / 35.
+  letterheadTopMm    Int?
+  letterheadBottomMm Int?
   // Pay rules for this company's own workers. Absences up to absentFreeDays a
   // month cost nothing; every day after that deducts absentDeductionPerDay.
   // Gas is charged per day from the worker's check-in date, up to a monthly cap.

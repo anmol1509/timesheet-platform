@@ -184,3 +184,23 @@ export async function removeLetterImageAction(formData: FormData) {
   revalidatePath("/letters");
   return { error: null };
 }
+
+
+// ---- Letterhead margins ------------------------------------------------------------
+const clampMm = (v: FormDataEntryValue | null, min: number, max: number) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
+};
+
+export async function saveLetterheadMarginsAction(formData: FormData) {
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+  const top = clampMm(formData.get("topMm"), 15, 140);
+  const bottom = clampMm(formData.get("bottomMm"), 10, 100);
+  if (top === null || bottom === null) return { error: "Enter the margins in millimetres." };
+  await prisma.branch.update({ where: { id: branch.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { letterheadTopMm: branch.letterheadTopMm, letterheadBottomMm: branch.letterheadBottomMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  revalidatePath("/letters");
+  return { error: null };
+}

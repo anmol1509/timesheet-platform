@@ -24,6 +24,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     signatoryTitle: saved.signatoryTitle ?? null,
     signatureImage: saved.showSignature ? await imageDataUri(letter.branch.signatureId) : null,
     stampImage: saved.showStamp ? await imageDataUri(letter.branch.stampId) : null,
+    topMm: letter.branch.letterheadTopMm,
+    bottomMm: letter.branch.letterheadBottomMm,
   };
   const buffer = await generateEmployeeLetterPdf({
     letterhead: await buildLetterhead(letter.branch),

@@ -113,8 +113,8 @@ const NAV: Entry[] = [
     icon: FileSignature,
     category: "People",
     children: [
-      { href: "/letters", label: "Employee Letters", icon: FileSignature },
-      { href: "/operations/nocs", label: "NOCs", icon: FileText },
+      { href: "/letters", label: "All Letters", icon: FileSignature },
+      { href: "/operations/nocs", label: "NOC", icon: FileText },
       { href: "/letter-templates", label: "Templates", icon: FileStack },
     ],
   },

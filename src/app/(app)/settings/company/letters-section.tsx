@@ -1,7 +1,8 @@
 "use client";
 
 import { ImageUpload } from "@/components/ImageUpload";
-import { removeLetterImageAction, uploadLetterImageAction } from "./actions";
+import { LetterheadMargins } from "@/components/LetterheadMargins";
+import { removeLetterImageAction, saveLetterheadMarginsAction, uploadLetterImageAction } from "./actions";
 
 type Props = {
   branchId: string;
@@ -10,6 +11,8 @@ type Props = {
   signatureUrl: string | null;
   stampUrl: string | null;
   letterheadUrl: string | null;
+  topMm: number;
+  bottomMm: number;
 };
 
 export function LettersSection(p: Props) {
@@ -53,6 +56,10 @@ export function LettersSection(p: Props) {
         removeAction={removeLetterImageAction}
         extraFields={extra("letterhead")}
       />
+      <div>
+        <p className="mb-2 text-sm font-medium text-primary">Letterhead margins</p>
+        <LetterheadMargins letterheadUrl={p.letterheadUrl} topMm={p.topMm} bottomMm={p.bottomMm} action={saveLetterheadMarginsAction} extraFields={{ branchId: p.branchId }} />
+      </div>
     </div>
   );
 }

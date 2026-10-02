@@ -94,6 +94,8 @@ export default async function CompanyProfilePage({
           signatureUrl={branch.signatureId ? `/api/images/${branch.signatureId}` : null}
           stampUrl={branch.stampId ? `/api/images/${branch.stampId}` : null}
           letterheadUrl={branch.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null}
+          topMm={branch.letterheadTopMm}
+          bottomMm={branch.letterheadBottomMm}
         />
       </section>
 

@@ -1,3 +1,5 @@
+import { LetterheadMargins } from "@/components/LetterheadMargins";
+import { saveSupplierLetterheadMarginsAction } from "../actions";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
@@ -184,6 +186,19 @@ export default async function SupplierDetailPage({
                     }))}
                   />
                 </section>
+                {attachments.some((a) => a.docType === "LETTERHEAD") && (
+                  <section>
+                    <h2 className="mb-1 text-sm font-semibold text-primary">Letterhead margins</h2>
+                    <p className="mb-3 text-sm text-muted">NOCs for workers this supplier sponsors are printed on its letterhead. Set how much space to keep clear for the header and footer.</p>
+                    <LetterheadMargins
+                      letterheadUrl={`/api/suppliers/${supplier.id}/letterhead`}
+                      topMm={supplier.letterheadTopMm ?? 65}
+                      bottomMm={supplier.letterheadBottomMm ?? 35}
+                      action={saveSupplierLetterheadMarginsAction}
+                      extraFields={{ supplierId: supplier.id }}
+                    />
+                  </section>
+                )}
               </div>
             ),
           },

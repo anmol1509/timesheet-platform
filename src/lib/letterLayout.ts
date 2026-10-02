@@ -150,3 +150,20 @@ export function formatLetterDate(date: Date): string {
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${d}-${m}-${date.getUTCFullYear()}`;
 }
+
+
+/** The text a worker-table cell shows for a column. Shared by the PDF and the on-screen preview. */
+export function letterCellValue(key: string, worker: LetterWorker, index: number, companyName: string): string {
+  switch (key) {
+    case "SNO": return String(index + 1);
+    case "NAME": return worker.name.toUpperCase();
+    case "COMPANY": return companyName;
+    case "DESIGNATION": return worker.trade ?? "";
+    case "NATIONALITY": return (worker.nationality ?? "").toUpperCase();
+    case "PASSPORT": return worker.passportNumber ?? "";
+    case "ID_NUMBER": return worker.emiratesId ?? "";
+    case "EMPLOYEE_ID": return worker.employeeIdNo;
+    case "VISA_STATUS": return worker.visaStatus ?? "";
+    default: return "";
+  }
+}

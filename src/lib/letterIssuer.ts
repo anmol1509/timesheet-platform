@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { imageDataUri } from "@/lib/storedImage";
 import { substituteInHtml } from "@/lib/letterHtml";
 import {
   formatLetterDate,
@@ -98,6 +99,8 @@ export async function buildLetterSections(opts: {
    */
   issuedBy: "SPONSOR" | "COMPANY";
   branchId: string;
+  /** Company-issued letters only: what to print in the signature block. */
+  signing?: { signatoryName?: string | null; signatoryTitle?: string | null; showSignature?: boolean; showStamp?: boolean };
 }): Promise<{ sections: LetterSection[]; missingLetterheads: string[] }> {
   if (opts.issuedBy === "COMPANY") return buildCompanySection(opts);
   const groups = groupWorkersBySponsor(opts.workers);
@@ -116,6 +119,8 @@ export async function buildLetterSections(opts: {
             contactPerson: true,
             contactPhone: true,
             contactEmail: true,
+            letterheadTopMm: true,
+            letterheadBottomMm: true,
           },
         })
       : Promise.resolve([]),
@@ -139,6 +144,8 @@ export async function buildLetterSections(opts: {
       signatoryEmail: supplier?.contactEmail ?? null,
       letterheadImage,
       letterheadPdf: letterhead?.pdf ?? null,
+      topMm: supplier?.letterheadTopMm ?? null,
+      bottomMm: supplier?.letterheadBottomMm ?? null,
     };
 
     const bodyHtml = substituteInHtml(opts.templateHtml, SUBSTITUTIONS(opts, issuerName, group.workers.length));
@@ -188,10 +195,11 @@ async function buildCompanySection(opts: {
   context: LetterContext;
   onLetterhead: boolean;
   branchId: string;
+  signing?: { signatoryName?: string | null; signatoryTitle?: string | null; showSignature?: boolean; showStamp?: boolean };
 }): Promise<{ sections: LetterSection[]; missingLetterheads: string[] }> {
   const branch = await prisma.branch.findUnique({
     where: { id: opts.branchId },
-    select: { name: true, signatoryName: true, phone: true, email: true, letterheadImage: { select: { data: true, mimeType: true } } },
+    select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, phone: true, email: true, letterheadTopMm: true, letterheadBottomMm: true, letterheadImage: { select: { data: true, mimeType: true } } },
   });
   const name = branch?.name ?? opts.context.branchName;
   const img = branch?.letterheadImage;
@@ -201,10 +209,15 @@ async function buildCompanySection(opts: {
       : null;
   const issuer: LetterIssuer = {
     name,
-    signatoryName: branch?.signatoryName ?? null,
+    signatoryName: opts.signing?.signatoryName?.trim() || branch?.signatoryName || null,
+    signatoryTitle: opts.signing?.signatoryTitle?.trim() || branch?.signatoryTitle || null,
     signatoryPhone: branch?.phone ?? null,
     signatoryEmail: branch?.email ?? null,
     letterheadImage,
+    topMm: branch?.letterheadTopMm ?? null,
+    bottomMm: branch?.letterheadBottomMm ?? null,
+    signatureImage: opts.signing?.showSignature ? await imageDataUri(branch?.signatureId) : null,
+    stampImage: opts.signing?.showStamp ? await imageDataUri(branch?.stampId) : null,
   };
   const group: LetterGroup = { supplierId: null, supplierName: null, workers: opts.workers };
   const bodyHtml = substituteInHtml(opts.templateHtml, SUBSTITUTIONS(opts, name, opts.workers.length));

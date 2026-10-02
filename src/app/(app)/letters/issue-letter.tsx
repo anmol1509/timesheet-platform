@@ -9,7 +9,7 @@ import { issueLetterAction, previewLetterAction } from "./actions";
 export type TemplateOption = { id: string; name: string; asks: string[]; usesSalary: boolean };
 export type EmployeeOption = { id: string; name: string; idNo: string; trade: string | null };
 
-export type BranchDefaults = { signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; letterheadUrl: string | null };
+export type BranchDefaults = { signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; letterheadUrl: string | null; topMm: number; bottomMm: number };
 
 export function IssueLetter({ employees, templates, companyName, today, canIssue, defaults, initialEmployeeId, preferTemplate }: { initialEmployeeId?: string; preferTemplate?: string; employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
   // Printing choices. All optional; signature and stamp start off so nothing is signed or stamped by accident.
@@ -120,7 +120,7 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
         <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}</div>
         <div className="rounded-lg bg-surface-sunken p-4">
           {shown?.html ? (
-            <EmployeeLetterPaper companyName={companyName} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: defaults.letterheadUrl, signatoryName, signatoryTitle, signatureUrl: showSignature ? defaults.signatureUrl : null, stampUrl: showStamp ? defaults.stampUrl : null }} />
+            <EmployeeLetterPaper companyName={companyName} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: defaults.letterheadUrl, topMm: defaults.topMm, bottomMm: defaults.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? defaults.signatureUrl : null, stampUrl: showStamp ? defaults.stampUrl : null }} />
           ) : (
             <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
           )}
