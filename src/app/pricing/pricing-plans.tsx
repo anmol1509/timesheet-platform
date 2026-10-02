@@ -40,7 +40,7 @@ export const PLANS: Plan[] = [
       yes("Payroll with WPS file"),
       yes("Camps, beds and transport"),
       yes("Document expiry alerts by email"),
-      yes("Excel import with 30-day undo"),
+      yes("Excel import"),
       yes("Salary certificates and letters from templates"),
       yes("Data health score"),
       yes("Employee portal"),
