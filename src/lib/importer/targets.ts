@@ -57,9 +57,9 @@ const CAMPS: FieldDef[] = [
   { key: "roomType", label: "Room type", aliases: ["room type", "category", "bed type"] },
   { key: "beds", label: "Number of beds", aliases: ["beds", "no of beds", "number of beds", "bed count", "bed space", "capacity", "bed spaces"] },
   { key: "nationality", label: "Nationality", aliases: ["nationality", "reserved for", "country"] },
-  { key: "employee", label: "Employee name (optional)", aliases: ["employee", "employee name", "emp name", "worker", "worker name", "name", "occupant", "staff name", "resident"], hint: "Places this worker in a bed" },
-  { key: "employeeCode", label: "Employee code (optional)", aliases: ["employee code", "emp code", "emp id", "employee id", "id no", "worker id", "staff id", "code"], hint: "Only needed if two workers share a name" },
-  { key: "bed", label: "Bed (optional)", aliases: ["bed", "bed no", "bed number", "bed label"], hint: "Blank = first free bed" },
+  { key: "employee", label: "Employee name", aliases: ["employee name (optional)", "employee", "employee name", "emp name", "worker", "worker name", "name", "occupant", "staff name", "resident"], hint: "Places this worker in a bed" },
+  { key: "employeeCode", label: "Employee code", aliases: ["employee code (optional)", "employee code", "emp code", "emp id", "employee id", "id no", "worker id", "staff id", "code"], hint: "Only needed if two workers share a name" },
+  { key: "bed", label: "Bed", aliases: ["bed (optional)", "bed", "bed no", "bed number", "bed label"], hint: "Blank = first free bed" },
 ];
 
 const VEHICLES: FieldDef[] = [
