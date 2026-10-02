@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { ContentShell } from "@/app/welcome/content-shell";
-import { ChipRow, CtaBand, FaqList, PageHero, PointGrid, Section } from "@/app/welcome/content-blocks";
+import { ChipRow, CtaBand, FaqList, PointGrid, Section } from "@/app/welcome/content-blocks";
+import { PricingPlans } from "./pricing-plans";
 import { SITE } from "@/app/welcome/content";
 
 const TITLE = "Pricing";
-const DESCRIPTION = `${SITE.name} is priced around your workforce size and the modules you need — talk to us for a quote built around your operation.`;
+const DESCRIPTION = `${SITE.name} plans start at AED 500 a month for up to 200 members, with a one-time AED 5,000 setup fee. Pro covers up to 500 members with hosting and database included, and Custom plans are built around your operation.`;
 const URL = "https://manpowersync.com/pricing";
 
 export const metadata: Metadata = {
@@ -29,11 +30,15 @@ const INCLUDED = [
 const PRICING_FAQS = [
   {
     q: "How is pricing structured?",
-    a: "Around the size of your workforce and which portals you need active — talk to us and we'll put together a quote for your operation specifically.",
+    a: "A one-time setup fee plus a monthly plan sized by the number of members. Basic is AED 500 a month for up to 200 members, Pro is AED 1,000 a month for up to 500 members, and beyond that each additional member is AED 2.5. For anything bigger, the Custom plan is quoted around your operation.",
   },
   {
     q: "Is there a setup fee?",
-    a: "Onboarding — importing your employees and current timesheet workbook — is part of the conversation when we quote, not a hidden line item afterward.",
+    a: "Yes. Basic and Pro each carry a one-time setup fee of AED 5,000.",
+  },
+  {
+    q: "What are hosting and database charges?",
+    a: "The cost of running your workspace and keeping its data. On Basic they are billed separately; on Pro they are included in the monthly price.",
   },
   {
     q: "Can we start small and add portals later?",
@@ -62,35 +67,25 @@ export default function PricingPage() {
           }),
         }}
       />
-      <PageHero
-        eyebrow="Pricing"
-        title="Priced around your workforce, not a tier list."
-        lead={DESCRIPTION}
-        note="Every plan includes the full platform — no cut-down tier"
-      />
+      <PricingPlans />
 
-      <Section
-        surface
-        eyebrow="Straight answer"
-        title="Why we don't list numbers here."
-        lead="A supplier running 40 workers and one running 2,000 aren't the same deployment, and a flat price would either overcharge one or undercharge the other. We'd rather ask what you actually need and quote for that."
-      >
+      <Section surface eyebrow="How it adds up" title="Three things make up your price.">
         <PointGrid
           points={[
             {
+              icon: "check",
+              title: "A one-time setup fee",
+              body: "AED 5,000 on Basic and Pro, charged once when you start.",
+            },
+            {
               icon: "users",
-              title: "Scales with your workforce",
-              body: "Pricing follows how many workers you're actually running, so a growing roster doesn't mean renegotiating from scratch.",
+              title: "A monthly plan by members",
+              body: "Basic covers up to 200 members and Pro up to 500. Beyond that, each additional member is AED 2.5.",
             },
             {
               icon: "dashboard",
-              title: "Not with which features you're allowed",
-              body: "There's no cut-down tier missing the module you actually need — every plan includes the full platform.",
-            },
-            {
-              icon: "check",
-              title: "Onboarding included in the quote",
-              body: "Importing your employees and your current timesheet workbook is part of what we quote, not a surprise line item afterwards.",
+              title: "Hosting and database",
+              body: "Billed separately on Basic and included in Pro.",
             },
           ]}
         />
@@ -105,8 +100,8 @@ export default function PricingPage() {
       </Section>
 
       <CtaBand
-        title="Get a quote for your workforce."
-        lead="Tell us how many workers, how many sites and which portals you need — we'll come back with a number."
+        title="Not sure which plan fits?"
+        lead="Tell us how many members, how many sites and which portals you need, and we'll point you to the right one."
       />
     </ContentShell>
   );

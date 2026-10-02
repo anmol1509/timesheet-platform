@@ -1,0 +1,228 @@
+/* Pricing cards — soft lavender backdrop, rounded white cards, a purple plan
+   pill, a big price and a tick list, the last card tinted for "let's talk". */
+
+.wrap {
+  position: relative;
+  overflow: hidden;
+  padding: 148px 0 96px;
+  background:
+    radial-gradient(900px 420px at 50% -80px, #e4dcf7 0%, rgba(228, 220, 247, 0) 70%),
+    linear-gradient(180deg, #f3f0fb 0%, #faf9fd 60%, var(--canvas) 100%);
+}
+
+.head {
+  max-width: 720px;
+  margin: 0 auto 56px;
+  text-align: center;
+}
+.title {
+  margin: 0 0 16px;
+  font-size: clamp(36px, 5.2vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -1.6px;
+  font-weight: 600;
+  color: #25203f;
+}
+.sub {
+  margin: 0 auto;
+  max-width: 560px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: #6b6784;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.cell {
+  display: flex;
+}
+
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(86, 69, 212, 0.1);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(37, 32, 63, 0.04), 0 18px 40px -24px rgba(86, 69, 212, 0.25);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 4px rgba(37, 32, 63, 0.05), 0 28px 56px -26px rgba(86, 69, 212, 0.38);
+}
+.cardCustom {
+  background: linear-gradient(160deg, #ddd2f9 0%, #ece6fb 45%, #f6f2fd 100%);
+  border-color: rgba(86, 69, 212, 0.18);
+}
+
+.pill {
+  align-self: flex-start;
+  padding: 11px 24px;
+  border-radius: 16px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(135deg, #7a4fe3 0%, #6a45e8 100%);
+}
+.pillLight {
+  color: #25203f;
+  background: #fff;
+}
+
+.blurb {
+  margin: 20px 0 0;
+  min-height: 78px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #6b6784;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 28px;
+  color: #25203f;
+}
+.currency {
+  font-size: 22px;
+  font-weight: 500;
+  color: #6b6784;
+}
+.price {
+  font-size: clamp(44px, 5vw, 58px);
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+.per {
+  font-size: 17px;
+  color: #8a86a0;
+}
+.talk {
+  margin: 28px 0 0;
+  font-size: clamp(40px, 4.6vw, 54px);
+  font-weight: 600;
+  letter-spacing: -1.4px;
+  line-height: 1.05;
+  color: #25203f;
+}
+
+.fees {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: #6b6784;
+}
+.fees strong {
+  color: #25203f;
+  font-weight: 600;
+}
+
+.rule {
+  height: 1px;
+  margin: 26px 0;
+  border: 0;
+  background: rgba(37, 32, 63, 0.1);
+}
+
+.list {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #25203f;
+}
+.list svg {
+  flex: none;
+  margin-top: 2px;
+  color: #25203f;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #25203f;
+  background: #fff;
+  border: 1px solid rgba(37, 32, 63, 0.14);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.cta:hover {
+  background: #f6f3fd;
+  border-color: rgba(86, 69, 212, 0.4);
+}
+.ctaDark {
+  color: #fff;
+  background: #2a2540;
+  border-color: #2a2540;
+}
+.ctaDark:hover {
+  background: #1b1730;
+  border-color: #1b1730;
+}
+
+.note {
+  max-width: 760px;
+  margin: 40px auto 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #6b6784;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .blurb {
+    min-height: 0;
+  }
+}
+@media (max-width: 560px) {
+  .wrap {
+    padding-top: 120px;
+  }
+  .card {
+    padding: 26px 22px;
+    border-radius: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .cta {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
+}
