@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { nameKey } from "@/lib/partyCode";
 import { singleLabel } from "@/lib/bunk";
-import type { ApplyCtx, ApplyResult, ImportNote, MappedRow, RowReport } from "../types";
+import { exactKey, rankCandidates } from "../workerMatch";
+import type { ApplyCtx, ApplyResult, ImportNote, MappedRow, PlacementIssue, PlacementRow, RowReport, WorkerChoice } from "../types";
 import { auditor, clean } from "./shared";
 
 const MAX_BEDS = 500;
@@ -17,11 +18,11 @@ function campTypeOf(raw: string): "OWN" | "SUPPLIER" | "CLIENT" | "" | null {
 
 /** Import camps, their rooms and (optionally) beds. Rows with only a camp name create an empty camp;
  * a room row adds the room, and a bed count adds numbered beds. Re-uploading never removes a bed or room. */
-export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<ApplyResult> {
+export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: Record<string, WorkerChoice> = {}): Promise<ApplyResult> {
   const { db, branchId } = ctx;
   const audit = auditor(ctx);
   const rows: RowReport[] = [];
-  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, workersPlaced: 0, notPlaced: 0, merged: 0, failed: 0 };
+  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, workersPlaced: 0, notPlaced: 0, needDecision: 0, merged: 0, failed: 0 };
 
   const [camps, suppliers, clients] = await Promise.all([
     db.camp.findMany({ where: { branchId }, include: { rooms: { include: { beds: { select: { label: true } } } } } }),
@@ -58,42 +59,78 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
 
   // Workers named in the file: found by employee code when given, otherwise by name.
   const wantsPeople = input.some((r) => clean(r.values.employee) || clean(r.values.employeeCode));
-  const roster = wantsPeople ? await db.employee.findMany({ where: { branchId }, select: { id: true, name: true, employeeIdNo: true, bed: { select: { id: true, label: true, room: { select: { name: true, camp: { select: { name: true } } } } } } } }) : [];
+  const roster = wantsPeople
+    ? await db.employee.findMany({
+        where: { branchId },
+        select: { id: true, name: true, employeeIdNo: true, trade: true, supplier: { select: { name: true } }, bed: { select: { id: true, label: true, room: { select: { name: true, camp: { select: { name: true } } } } } } },
+      })
+    : [];
+  const byId = new Map(roster.map((p) => [p.id, p]));
   const byCode = new Map(roster.map((p) => [p.employeeIdNo.toLowerCase(), p]));
   const byName = new Map<string, typeof roster>();
-  for (const p of roster) byName.set(nameKey(p.name), [...(byName.get(nameKey(p.name)) ?? []), p]);
+  for (const p of roster) byName.set(exactKey(p.name), [...(byName.get(exactKey(p.name)) ?? []), p]);
   const placedNow = new Set<string>();
+  const placements: PlacementRow[] = [];
+  const issues = new Map<string, PlacementIssue>();
+  const housedAt = (p: (typeof roster)[number]) => (p.bed ? `${p.bed.room.camp.name} / ${p.bed.room.name} / ${p.bed.label}` : null);
+  const asCandidate = (p: (typeof roster)[number], score: number) => ({ id: p.id, name: p.name, code: p.employeeIdNo, trade: p.trade ?? null, supplier: p.supplier?.name ?? null, housed: housedAt(p), score: Math.round(score * 100) / 100 });
+  const personShape = (p: (typeof roster)[number]) => ({ name: p.name, code: p.employeeIdNo, trade: p.trade ?? null });
 
-  /** Puts a worker in a bed of the camp's room: the bed named in the file, else the first free one.
-   * Returns why they weren't placed, or null once they are. */
-  async function placeWorker(spec: { room: string; employee: string; code: string; bed: string }, camp: { id: string; name: string; ownerType: string; rooms: { id: string; name: string }[] }): Promise<string | null> {
-    if (camp.ownerType !== "OWN") return "Only your own camps have beds; supplier and client camps are recorded at check-in.";
-    let person: (typeof roster)[number] | undefined;
+  type Resolved = { person: (typeof roster)[number] } | { skip: string } | { issue: PlacementIssue["kind"]; candidates: PlacementIssue["candidates"] };
+  /** Who the file means: a code, an exact name, a decision the person already made, or a question for them. */
+  function resolve(spec: { employee: string; code: string }): Resolved {
     if (spec.code) {
-      person = byCode.get(spec.code.toLowerCase());
-      if (!person) return `No worker with the employee code ${spec.code} is on record.`;
-    } else {
-      const matches = byName.get(nameKey(spec.employee)) ?? [];
-      if (matches.length === 0) return "No worker with that name is on record. Check the spelling, or use the employee code.";
-      if (matches.length > 1) return `${matches.length} workers are named ${spec.employee}. Add the employee code to say which one.`;
-      person = matches[0];
+      const p = byCode.get(spec.code.toLowerCase());
+      return p ? { person: p } : { skip: `No worker with the employee code ${spec.code} is on record.` };
     }
-    if (placedNow.has(person.id)) return "Already placed earlier in this file.";
-    if (person.bed) return `Already in ${person.bed.room.camp.name} / ${person.bed.room.name} / ${person.bed.label}. Move them from the Camps page.`;
-    const room = camp.rooms.find((r) => nameKey(r.name) === nameKey(spec.room));
-    if (!room) return "The room wasn't found.";
+    const decision = decisions[exactKey(spec.employee)];
+    if (decision?.action === "skip") return { skip: "You chose to skip this worker." };
+    if (decision?.action === "use") {
+      const p = byId.get(decision.employeeId);
+      return p ? { person: p } : { skip: "The worker you chose is no longer on record." };
+    }
+    const exact = byName.get(exactKey(spec.employee)) ?? [];
+    if (exact.length === 1) return { person: exact[0] };
+    if (exact.length > 1) return { issue: "several", candidates: exact.map((p) => asCandidate(p, 1)) };
+    const close = rankCandidates(spec.employee, roster.map((p) => ({ id: p.id, name: p.name, employeeIdNo: p.employeeIdNo })));
+    return { issue: close.length ? "close" : "unknown", candidates: close.map((p) => asCandidate(byId.get(p.id)!, p.score)) };
+  }
+
+  /** Puts a worker in a bed of the camp's room: the bed named in the file, else the first free one. */
+  async function placeWorker(spec: { row: number; room: string; employee: string; code: string; bed: string }, camp: { id: string; name: string; ownerType: string; rooms: { id: string; name: string }[] }): Promise<string | null> {
+    const label = spec.employee || spec.code;
+    const row = { row: spec.row, fileName: label, camp: camp.name, room: spec.room };
+    if (camp.ownerType !== "OWN") { placements.push({ ...row, worker: null, bed: null, status: "blocked", note: "Only your own camps have beds." }); return "Only your own camps have beds; supplier and client camps are recorded at check-in."; }
+    const r = resolve(spec);
+    if ("skip" in r) { placements.push({ ...row, worker: null, bed: null, status: "skipped", note: r.skip }); return r.skip; }
+    if ("issue" in r) {
+      const key = exactKey(spec.employee);
+      const have = issues.get(key);
+      if (have) have.rows.push(spec.row);
+      else issues.set(key, { key, fileName: spec.employee, rows: [spec.row], camp: camp.name, room: spec.room, kind: r.issue, candidates: r.candidates });
+      counts.needDecision++;
+      placements.push({ ...row, worker: null, bed: null, status: "decide", note: r.issue === "several" ? "Several workers share this name." : r.issue === "close" ? "No exact match; close ones found." : "Not on record." });
+      return null;
+    }
+    const person = r.person;
+    if (placedNow.has(person.id)) { placements.push({ ...row, worker: personShape(person), bed: null, status: "skipped", note: "Already placed earlier in this file." }); return "Already placed earlier in this file."; }
+    if (person.bed) { const at = housedAt(person); placements.push({ ...row, worker: personShape(person), bed: null, status: "skipped", note: `Already in ${at}.` }); return `Already in ${at}. Move them from the Camps page.`; }
+    const room = camp.rooms.find((x) => nameKey(x.name) === nameKey(spec.room));
+    if (!room) { placements.push({ ...row, worker: personShape(person), bed: null, status: "skipped", note: "Room not found." }); return "The room wasn't found."; }
     const beds = await db.bed.findMany({ where: { roomId: room.id }, orderBy: { label: "asc" } });
     let bed = null as (typeof beds)[number] | null;
+    let problem: string | null = null;
     if (spec.bed) {
       const want = spec.bed.toLowerCase().replace(/\s+/g, "");
       const padded = /^\d+$/.test(want) ? singleLabel(Number(want)).toLowerCase().replace(/\s+/g, "") : want;
       bed = beds.find((b) => { const l = b.label.toLowerCase().replace(/\s+/g, ""); return l === want || l === padded; }) ?? null;
-      if (!bed) return `Bed "${spec.bed}" doesn't exist in room ${spec.room}.`;
-      if (bed.employeeId) return `Bed "${bed.label}" is already taken.`;
+      if (!bed) problem = `Bed "${spec.bed}" doesn't exist in room ${spec.room}.`;
+      else if (bed.employeeId) problem = `Bed "${bed.label}" is already taken.`;
     } else {
       bed = beds.find((b) => !b.employeeId) ?? null;
-      if (!bed) return beds.length === 0 ? `Room ${spec.room} has no beds. Add a Number of beds.` : `Room ${spec.room} is full.`;
+      if (!bed) problem = beds.length === 0 ? `Room ${spec.room} has no beds. Add a Number of beds.` : `Room ${spec.room} is full.`;
     }
+    if (problem || !bed) { placements.push({ ...row, worker: personShape(person), bed: null, status: "blocked", note: problem ?? "No bed." }); return problem; }
     await db.bed.update({ where: { id: bed.id }, data: { employeeId: person.id } });
     await db.accommodationHistory.create({ data: { employeeId: person.id, campName: camp.name, roomName: room.name, bedLabel: bed.label } });
     const open = await db.campCheckIn.findFirst({ where: { employeeId: person.id, status: { in: ["CHECKED_IN", "BED_ALLOCATED"] } }, orderBy: { createdAt: "desc" } });
@@ -101,6 +138,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
     else await db.campCheckIn.create({ data: { employeeId: person.id, campId: camp.id, bedId: bed.id, status: "BED_ALLOCATED", branchId } });
     await audit({ entityType: "ACCOMMODATION", entityId: bed.id, action: "UPDATE", after: { employeeId: person.id, campName: camp.name, roomName: room.name, bedLabel: bed.label }, userId: ctx.user.id, userName: ctx.user.name, branchId });
     placedNow.add(person.id);
+    placements.push({ ...row, worker: personShape(person), bed: bed.label, status: "placed" });
     return null;
   }
 
@@ -174,9 +212,10 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
       // Placing workers comes after every room and bed in the file exists, so row order doesn't matter.
       for (const spec of g.specs) {
         if (!spec.employee && !spec.code) continue;
+        const before = counts.needDecision;
         const problem = await placeWorker(spec, camp);
         if (problem) { notes.push({ tone: "warn", title: `${spec.employee || spec.code} (row ${spec.row}) not placed`, detail: problem }); counts.notPlaced++; }
-        else { counts.workersPlaced++; touched = true; }
+        else if (counts.needDecision === before) { counts.workersPlaced++; touched = true; }
       }
       if (!isNew && touched) { counts.updated++; }
       rows.push({ row: g.firstRow, name: g.name, status: isNew ? "created" : touched ? "updated" : "skipped", message: !isNew && !touched ? "Nothing new." : undefined, notes });
@@ -187,5 +226,6 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
     await ctx.progress?.(++done, order.length);
   }
   rows.sort((a, b) => a.row - b.row);
-  return { rows, counts, notes: [] };
+  placements.sort((x, y) => x.row - y.row);
+  return { rows, counts, notes: [], placements, placementIssues: [...issues.values()] };
 }

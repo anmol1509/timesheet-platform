@@ -54,6 +54,34 @@ export type SupplierDecision = { action: "add"; name?: string } | { action: "exi
 /** A name in the file that isn't on record. `party` says whether it is a supplier or a client; the decision key for a client starts with "client:". For a client, `existing` means a client. */
 export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" };
 
+/** What the person decided for a worker name in the file that couldn't be matched on its own. */
+export type WorkerChoice = { action: "use"; employeeId: string } | { action: "skip" };
+
+export type WorkerCandidate = { id: string; name: string; code: string; trade: string | null; supplier: string | null; housed: string | null; score: number };
+/** A worker name in a camp file that needs a decision: unknown, several people share it, or only a close match exists. */
+export type PlacementIssue = {
+  key: string;
+  fileName: string;
+  rows: number[];
+  camp: string;
+  room: string;
+  kind: "unknown" | "several" | "close";
+  candidates: WorkerCandidate[];
+  /** The assistant's pick among the candidates (never anyone else). */
+  ai?: { id: string | null; confidence: "high" | "medium" | "low"; reason: string };
+};
+/** One line of the camp review: who goes where. */
+export type PlacementRow = {
+  row: number;
+  fileName: string;
+  worker: { name: string; code: string; trade: string | null } | null;
+  camp: string;
+  room: string;
+  bed: string | null;
+  status: "placed" | "decide" | "skipped" | "blocked";
+  note?: string;
+};
+
 export type ApplyResult = {
   rows: RowReport[];
   counts: Record<string, number>;
@@ -66,6 +94,8 @@ export type ApplyResult = {
   /** The suppliers already on record, to pick from. */
   existingSuppliers?: { id: string; name: string }[];
   existingClients?: { id: string; name: string }[];
+  placementIssues?: PlacementIssue[];
+  placements?: PlacementRow[];
 };
 
 export type ApplyCtx = {

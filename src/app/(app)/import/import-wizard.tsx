@@ -13,7 +13,8 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { Select } from "@/components/ui/Select";
 import { COUNTRIES } from "@/lib/countries";
 import { TARGETS } from "@/lib/importer/targets";
-import type { Fix, Fixable, ImportKind, NewSupplier, SupplierDecision } from "@/lib/importer/types";
+import type { Fix, Fixable, ImportKind, NewSupplier, SupplierDecision, WorkerChoice } from "@/lib/importer/types";
+import { PlacementTable, WorkerMatchPanel } from "./worker-match-panel";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
@@ -51,6 +52,7 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Beds added", value: c.bedsCreated ?? 0, tone: "success" },
       { label: "Workers placed", value: c.workersPlaced ?? 0, tone: "success" },
       { label: "Not placed", value: c.notPlaced ?? 0, tone: (c.notPlaced ?? 0) > 0 ? "error" : "neutral", hint: "see the notes for why" },
+      { label: "Need your choice", value: c.needDecision ?? 0, tone: (c.needDecision ?? 0) > 0 ? "info" : "neutral" },
       { label: "Camps updated", value: c.updated ?? 0, tone: "info" },
       { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
     ];
@@ -88,6 +90,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   const [fixes, setFixes] = useState<Fix[]>([]);
   /** What to do with each supplier name that isn't on record: nothing is added until the person chooses. */
   const [supplierDecisions, setSupplierDecisions] = useState<Record<string, SupplierDecision>>({});
+  const [workerDecisions, setWorkerDecisions] = useState<Record<string, WorkerChoice>>({});
   const [summary, setSummary] = useState<BatchSummary | null>(null);
   /** The column choices the current preview was made with; the review is only reachable while they still match. */
   const [previewedKey, setPreviewedKey] = useState<string | null>(null);
@@ -162,15 +165,15 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     });
   }
 
-  function preview(fixList: Fix[] = fixes, decisions: Record<string, SupplierDecision> = supplierDecisions) {
+  function preview(fixList: Fix[] = fixes, decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) {
     void wrap(async () => {
       const mapping =
         analysis?.kind === "TIMESHEETS"
-          ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList, supplierDecisions: decisions }
-          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions };
+          ? { columns: {}, timesheetOverrides: overrides, aliases, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers }
+          : { sheet: analysis?.sheet, headerRow: analysis?.headerRow, columns, fixes: fixList, supplierDecisions: decisions, workerDecisions: workers };
       const res = await call<{ summary: BatchSummary }>(`/api/import/${batchId}/preview`, { method: "POST", body: JSON.stringify(mapping), headers: { "content-type": "application/json" } });
       setSummary(res.summary);
-      setPreviewedKey(keyFor(fixList, decisions));
+      setPreviewedKey(keyFor(fixList, decisions, workers));
       setStep("review");
     });
   }
@@ -216,9 +219,10 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   }
 
   const idx = step === "done" ? STEPS.length : STEPS.findIndex((s) => s.key === step);
-  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions) => JSON.stringify({ s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
+  const keyFor = (fixList: Fix[], decisions: Record<string, SupplierDecision> = supplierDecisions, workers: Record<string, WorkerChoice> = workerDecisions) => JSON.stringify({ w: workers, s: analysis && analysis.kind !== "TIMESHEETS" ? analysis.sheet : null, c: columns, o: overrides, a: aliases, f: fixList, d: decisions });
   const mappingKey = keyFor(fixes);
   const unresolvedSuppliers = (summary?.newSuppliers ?? []).filter((n) => !supplierDecisions[n.key]).length;
+  const unresolvedWorkers = (summary?.placementIssues ?? []).length;
   // Steps can be revisited freely until the import starts; Review only while its preview still matches the choices.
   const locked = step === "running" || step === "done";
   const reachable = (key: Step) =>
@@ -386,11 +390,25 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
               }}
             />
           )}
+          {(summary.placementIssues?.length ?? 0) > 0 && (
+            <WorkerMatchPanel
+              key={summary.placementIssues!.map((i) => i.key).join("|")}
+              issues={summary.placementIssues!}
+              applied={workerDecisions}
+              busy={busy}
+              onApply={(next) => {
+                setWorkerDecisions(next);
+                preview(fixes, supplierDecisions, next);
+              }}
+            />
+          )}
           <ReportView tiles={tilesFor(kind, summary.counts)} rows={summary.rows} notes={summary.notes} truncated={summary.truncated} />
+          {(summary.placements?.length ?? 0) > 0 && <PlacementTable rows={summary.placements!} />}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
             <button type="button" className="btn btn-secondary" onClick={() => setStep("map")} disabled={busy}>Back to columns</button>
             {unresolvedSuppliers > 0 && <p className="text-xs text-[var(--warning)]">Decide on the {unresolvedSuppliers} new name{unresolvedSuppliers === 1 ? "" : "s"} above to continue.</p>}
-            <button type="button" className="btn btn-primary" onClick={start} disabled={busy || unresolvedSuppliers > 0 || ((summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 0)}>
+            {unresolvedWorkers > 0 && <p className="text-xs text-[var(--warning)]">Confirm the {unresolvedWorkers} worker name{unresolvedWorkers === 1 ? "" : "s"} above to continue.</p>}
+            <button type="button" className="btn btn-primary" onClick={start} disabled={busy || unresolvedSuppliers > 0 || unresolvedWorkers > 0 || ((summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 0)}>
               Import {(summary.counts.created ?? 0) + (summary.counts.updated ?? 0)} {target.noun}{(summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 1 ? "" : "s"}
             </button>
           </div>

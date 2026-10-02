@@ -7,6 +7,7 @@ import { TARGETS } from "./targets";
 import { trackedClient, undoChanges } from "./tracker";
 import type { ApplyCtx, ApplyResult, Db, ImportKind } from "./types";
 import { applySuppliers } from "./apply/suppliers";
+import { suggestWorkerMatches } from "./workerAi";
 import { applyCamps } from "./apply/camps";
 import { applyVehicles } from "./apply/vehicles";
 import { applyClients } from "./apply/clients";
@@ -52,7 +53,7 @@ async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Ar
   const rows = extractRows(wb, mapping, fields);
   if (kind === "SUPPLIERS") return applySuppliers(ctx, rows);
   if (kind === "CLIENTS") return applyClients(ctx, rows);
-  if (kind === "CAMPS") return applyCamps(ctx, rows);
+  if (kind === "CAMPS") return applyCamps(ctx, rows, mapping.workerDecisions ?? {});
   if (kind === "VEHICLES") return applyVehicles(ctx, rows);
   return applyWorkers(ctx, rows, mapping.fixes ?? [], mapping.supplierDecisions ?? {});
 }
@@ -61,7 +62,7 @@ function summarise(res: ApplyResult): BatchSummary {
   // Plain successes are in the counts; the report lists what needs attention.
   const interesting = res.rows.filter((r) => r.status === "error" || (r.notes && r.notes.length > 0));
   const kept = [...interesting].slice(0, MAX_REPORT_ROWS);
-  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers, existingClients: res.existingClients };
+  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers, existingClients: res.existingClients, placementIssues: res.placementIssues, placements: res.placements?.slice(0, 400) };
 }
 
 class DryRun extends Error {
@@ -88,6 +89,8 @@ export async function previewBatch(batchId: string, user: BatchUser, mapping: St
     if (!(e instanceof DryRun)) throw e;
     result = e.result;
   }
+  // Names that couldn't be matched exactly get the assistant's opinion (outside the dry-run transaction).
+  if (kind === "CAMPS" && result.placementIssues?.length) result.placementIssues = await suggestWorkerMatches(result.placementIssues);
   const summary = summarise(result);
   await prisma.importBatch.update({
     where: { id: batchId },
