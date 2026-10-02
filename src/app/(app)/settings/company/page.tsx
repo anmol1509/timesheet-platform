@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isUsableBank } from "@/lib/bankStatus";
@@ -42,26 +41,6 @@ export default async function CompanyProfilePage({
           Your company&apos;s name and logo. They appear in the sidebar and on generated timesheets and invoices.
         </p>
       </div>
-
-      {isSuperAdmin && branches.length > 1 && (
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Company">
-          {branches.map((b) => (
-            <Link
-              key={b.id}
-              href={`/settings/company?branch=${b.id}`}
-              role="tab"
-              aria-selected={b.id === branch.id}
-              className={
-                b.id === branch.id
-                  ? "rounded-md bg-brand-soft px-3 py-1.5 text-sm font-medium text-[var(--brand-primary)]"
-                  : "rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-surface-hover"
-              }
-            >
-              {b.code} · {b.name}
-            </Link>
-          ))}
-        </div>
-      )}
 
       <div className="card max-w-2xl space-y-6 p-5">
         <ImageUpload
