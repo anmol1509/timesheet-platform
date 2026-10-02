@@ -33,8 +33,8 @@ export type LetterLayout = {
 export const PLAIN_LAYOUT: LetterLayout = { onLetterhead: false, letterheadImage: null, signatoryName: null, signatoryTitle: null, signatureImage: null, stampImage: null };
 
 // Same clearances as the client letters: 150pt clears a normal A4 letterhead header, 90pt its footer.
-const LETTERHEAD_TOP = 150;
-const LETTERHEAD_BOTTOM = 90;
+const LETTERHEAD_TOP = 185;
+const LETTERHEAD_BOTTOM = 100;
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
 

@@ -84,7 +84,7 @@ export function EmployeeLetterPaper({ companyName, refNo, date, title, html, opt
     >
       {o.onLetterhead ? (
         // Pre-printed paper (or artwork): keep the header area clear, exactly as the PDF does.
-        <div className={`mb-3 flex h-20 items-center justify-center text-[10px] ${o.letterheadUrl ? "" : "rounded border border-dashed border-neutral-400 text-neutral-500"}`}>{o.letterheadUrl ? "" : "Letterhead prints here"}</div>
+        <div className={`-mt-1 mb-3 flex h-[9.5rem] items-center justify-center text-[10px] ${o.letterheadUrl ? "" : "rounded border border-dashed border-neutral-400 text-neutral-500"}`}>{o.letterheadUrl ? "" : "Letterhead prints here"}</div>
       ) : (
         <div className="mb-3 border-b border-black pb-2"><p className="text-sm font-bold">{companyName}</p></div>
       )}

@@ -53,10 +53,10 @@ export type LetterPdfInput = {
 };
 
 // Printed content is inset from the top when a letterhead image is behind it,
-// so the pre-printed header is never written over. 150pt clears the header
+// so the pre-printed header is never written over. 185pt clears the header
 // block on a normal A4 letterhead; the footer margin does the same at the foot.
-const LETTERHEAD_TOP_INSET = 150;
-const LETTERHEAD_BOTTOM_INSET = 90;
+const LETTERHEAD_TOP_INSET = 185;
+const LETTERHEAD_BOTTOM_INSET = 100;
 
 // A4 in points. The background needs real page dimensions because a percentage
 // height resolves against the page's *content* box, not the page: with the
