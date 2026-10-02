@@ -1074,26 +1074,10 @@ export function EmployeeWizard({
             {fields.category === "STAFF" ? (
               <>
                 <Field label="Designation">
-                  <Select
-                    value={fields.position}
-                    onChange={(v) => set("position", v)}
-                    placeholder="Select designation"
-                    options={(lookups.POSITION ?? []).map((o) => ({
-                      value: o.value,
-                      label: o.value,
-                    }))}
-                  />
+                  <input value={fields.position} onChange={(e) => set("position", e.target.value)} maxLength={80} placeholder="e.g. Accountant" className="input w-full" />
                 </Field>
                 <Field label="Department">
-                  <Select
-                    value={fields.department}
-                    onChange={(v) => set("department", v)}
-                    placeholder="Select department"
-                    options={(lookups.DEPARTMENT ?? []).map((o) => ({
-                      value: o.value,
-                      label: o.value,
-                    }))}
-                  />
+                  <input value={fields.department} onChange={(e) => set("department", e.target.value)} maxLength={80} placeholder="e.g. Finance" className="input w-full" />
                 </Field>
               </>
             ) : (

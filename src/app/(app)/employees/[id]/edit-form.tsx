@@ -381,8 +381,12 @@ export function EditForm({
             {category === "STAFF" && (
               <>
                 <p className="-mb-2 text-xs font-semibold uppercase tracking-wide text-muted sm:col-span-2">Position</p>
-                <LookupField label="Designation" name="position" defaultValue={employee.position} options={lookups.POSITION} />
-                <LookupField label="Department" name="department" defaultValue={employee.department} options={lookups.DEPARTMENT} />
+                <Field label="Designation">
+                  <input name="position" defaultValue={employee.position || ""} maxLength={80} placeholder="e.g. Accountant" className="input w-full" />
+                </Field>
+                <Field label="Department">
+                  <input name="department" defaultValue={employee.department || ""} maxLength={80} placeholder="e.g. Finance" className="input w-full" />
+                </Field>
               </>
             )}
             <Field label="Date of birth">
@@ -400,7 +404,12 @@ export function EditForm({
                 ]}
               />
             </Field>
-            <LookupField label="Blood group" name="bloodGroup" defaultValue={employee.bloodGroup} options={lookups.BLOOD_GROUP} />
+            <LookupField
+              label="Blood group"
+              name="bloodGroup"
+              defaultValue={employee.bloodGroup}
+              options={[...new Set([...["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], ...(employee.bloodGroup ? [employee.bloodGroup] : [])])].map((value) => ({ value }))}
+            />
             <Field label="Mobile number">
               <PhoneField name="mobileNumber" defaultValue={employee.mobileNumber} />
             </Field>
