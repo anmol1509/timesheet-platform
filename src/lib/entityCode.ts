@@ -27,7 +27,7 @@ export async function uniqueClientCode(name: string, branchId: string, excludeId
 }
 
 /** A supplier of this branch with the same name, ignoring case, dots and spacing
- * ("Top Peak Cont." and "TOP PEAK CONT" are one company). */
+ * ("Gulf Skills Cont." and "GULF SKILLS CONT" are one company). */
 export async function findSupplierByName(name: string, branchId: string, db: Db = prisma) {
   const key = nameKey(name);
   const rows = await db.supplier.findMany({ where: { branchId } });

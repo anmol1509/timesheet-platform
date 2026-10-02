@@ -23,7 +23,7 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
 
 const HELP: Record<string, string> = {
   name: "As it should appear everywhere. Capitals and extra spaces don't matter; the same name won't be added twice.",
-  code: "Optional. Leave blank and we'll make one from the name (e.g. Burj Al Aweer → SBAA).",
+  code: "Optional. Leave blank and we'll make one from the name (e.g. Gulf Skills Contracting → SGSC).",
   parent: "Sub-suppliers only: the name of the main supplier. Leave blank for a main supplier.",
   employeeIdNo: "Your worker ID or code, e.g. TP103. Unique. Used to match the worker next time.",
   supplier: "The company that supplies the worker. Added automatically if it's new.",

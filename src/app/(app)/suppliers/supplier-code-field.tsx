@@ -55,7 +55,7 @@ export function SupplierCodeField({
         </button>
       </div>
       <p className="mt-1 text-xs text-muted">
-        {hint ?? "S + initials of the name (Burj Al Aweer → SBAA). Leave blank to generate on save, or edit it."}
+        {hint ?? "S + initials of the name (Gulf Skills Contracting → SGSC). Leave blank to generate on save, or edit it."}
       </p>
     </div>
   );

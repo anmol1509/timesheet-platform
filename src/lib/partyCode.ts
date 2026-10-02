@@ -1,5 +1,5 @@
-// Supplier codes are "S" (clients "C") plus the initials of the name — "Burj Al Aweer" is
-// SBAA — so a code reads at a glance without looking like a running count of
+// Supplier codes are "S" (clients "C") plus the initials of the name — "Gulf Skills Contracting" is
+// SGSC — so a code reads at a glance without looking like a running count of
 // companies. Pure, so the form's button and the server agree on the rule.
 const SKIP = new Set(["and", "the", "of", "&"]);
 const MAX_INITIALS = 4;
@@ -11,8 +11,8 @@ function words(name: string): string[] {
 }
 
 /** Candidate codes for a name, best first. Later ones take more letters of the
- * first word, so "Bahar Al Aweer" (SBAAA) stays apart from "Burj Al Aweer"
- * (SBAA) without a number. */
+ * first word, so a second "G… Skills Contracting" stays apart from
+ * "Gulf Skills Contracting" (SGSC) without a number. */
 export function codeCandidates(name: string, prefix: string = SUPPLIER_PREFIX): string[] {
   const w = words(name);
   if (w.length === 0) return [prefix + (prefix === CLIENT_PREFIX ? "CLI" : "SUP")];

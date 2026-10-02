@@ -201,7 +201,7 @@ export function SupplierWizard() {
       {step === 1 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Supplier name *"><input className="input w-full" value={v.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. ABCD" /></Field>
-          <Field label="Full name (for letterhead)"><input className="input w-full" value={v.fullName} onChange={(e) => set("fullName")(e.target.value)} placeholder="e.g. TOP PEAK GENERAL CONTRACTING" /></Field>
+          <Field label="Full name (for letterhead)"><input className="input w-full" value={v.fullName} onChange={(e) => set("fullName")(e.target.value)} placeholder="e.g. GULF SKILLS GENERAL CONTRACTING" /></Field>
           <Field label="Supplier code">
             <div className="flex gap-2">
               <input className="input w-full" value={v.code} onChange={(e) => set("code")(e.target.value.toUpperCase())} placeholder="Leave blank to generate" />

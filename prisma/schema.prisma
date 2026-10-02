@@ -277,7 +277,7 @@ model Supplier {
   tradePays TradePay[]
   name      String
   code      String?
-  fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
+  fullName  String? // formal letterhead name, e.g. "GULF SKILLS GENERAL CONTRACTING"
   createdAt DateTime @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
