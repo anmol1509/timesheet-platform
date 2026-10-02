@@ -186,58 +186,12 @@ function NavLinks({ pathname }: { pathname: string }) {
   );
 }
 
+/** Sign in goes straight to the staff workspace for now; the employee and supplier portals are reachable from the footer. */
 function SignInMenu() {
-  const [open, setOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancel = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = null;
-  };
-  useEffect(() => () => cancel(), []);
-
   return (
-    <div
-      className={s.signInRoot}
-      onPointerEnter={() => {
-        cancel();
-        setOpen(true);
-      }}
-      onPointerLeave={() => {
-        cancel();
-        closeTimer.current = setTimeout(() => setOpen(false), 140);
-      }}
-    >
-      <button
-        type="button"
-        className={`${s.btn} ${s.btnGhost}`}
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpen((v) => !v)}
-      >
-        Sign in
-        <ChevronDown size={14} strokeWidth={2.2} className={open ? s.navChevronOpen : s.navChevron} aria-hidden />
-      </button>
-      <AnimatePresence>
-        {open && (
-          <m.div
-            className={s.signInPanel}
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98, transition: { duration: 0.14, ease: "easeIn" } }}
-            transition={{ duration: 0.2, ease: EASE_PREMIUM }}
-          >
-            {SIGN_INS.map((entry) => (
-              <a key={entry.href} href={entry.href} className={s.megaLink} onClick={() => setOpen(false)}>
-                <span className={s.megaCopy}>
-                  <span className={s.megaLabel}>{entry.label}</span>
-                  <span className={s.megaDesc}>{entry.description}</span>
-                </span>
-              </a>
-            ))}
-          </m.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <a href={SIGN_INS[0].href} className={`${s.btn} ${s.btnGhost}`}>
+      Sign in
+    </a>
   );
 }
 

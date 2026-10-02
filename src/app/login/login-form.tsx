@@ -74,7 +74,9 @@ export function LoginForm() {
 
       <div className="flex items-center justify-between pt-1">
         <Checkbox name="remember" value="on" label="Remember me" />
-        <span className="text-xs text-subtle">Forgot password?</span>
+        <a href="/login/forgot" className="text-xs text-[var(--brand-primary)] hover:underline">
+          Forgot password?
+        </a>
       </div>
 
       {state.error && (

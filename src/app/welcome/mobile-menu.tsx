@@ -178,7 +178,7 @@ export function MobileMenu({ pathname }: { pathname: string }) {
                     )}
 
                     <p className={s.sheetSectionLabel}>Sign in</p>
-                    {SIGN_INS.map((entry) => (
+                    {SIGN_INS.slice(0, 1).map((entry) => (
                       <a
                         key={entry.href}
                         href={entry.href}
