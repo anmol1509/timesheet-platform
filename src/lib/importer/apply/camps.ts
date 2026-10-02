@@ -21,7 +21,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
   const { db, branchId } = ctx;
   const audit = auditor(ctx);
   const rows: RowReport[] = [];
-  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, merged: 0, failed: 0 };
+  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, workersPlaced: 0, notPlaced: 0, merged: 0, failed: 0 };
 
   const [camps, suppliers, clients] = await Promise.all([
     db.camp.findMany({ where: { branchId }, include: { rooms: { include: { beds: { select: { label: true } } } } } }),
@@ -32,7 +32,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
   const supplierByKey = new Map(suppliers.map((s) => [nameKey(s.name), s.id]));
   const clientByKey = new Map(clients.map((c) => [nameKey(c.name), c.id]));
 
-  type Spec = { row: number; room: string; beds: number | null; roomType: string; nationality: string };
+  type Spec = { row: number; room: string; beds: number | null; roomType: string; nationality: string; employee: string; bed: string };
   type Group = { name: string; firstRow: number; type: string; owner: string; specs: Spec[] };
   const groups = new Map<string, Group>();
   for (const { row, values } of input) {
@@ -50,9 +50,48 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
     if (type && !g.type) g.type = type;
     if (clean(values.owner) && !g.owner) g.owner = clean(values.owner);
     const room = clean(values.room);
-    if (room) g.specs.push({ row, room, beds, roomType: clean(values.roomType), nationality: clean(values.nationality) });
+    if (room) g.specs.push({ row, room, beds, roomType: clean(values.roomType), nationality: clean(values.nationality), employee: clean(values.employee), bed: clean(values.bed) });
+    else if (clean(values.employee)) { rows.push({ row, name, status: "error", message: `${clean(values.employee)}: add the room to place a worker.` }); counts.failed++; continue; }
     else if (groups.has(key)) { rows.push({ row, name, status: "skipped", message: `Same camp as row ${g.firstRow}; merged.` }); counts.merged++; }
     groups.set(key, g);
+  }
+
+  // Workers named in the file, found once by employee code.
+  const codes = [...new Set(input.map((r) => clean(r.values.employee)).filter(Boolean))];
+  const people = codes.length ? await db.employee.findMany({ where: { branchId, employeeIdNo: { in: codes } }, select: { id: true, name: true, employeeIdNo: true, bed: { select: { id: true, label: true, room: { select: { name: true, camp: { select: { name: true } } } } } } } }) : [];
+  const personByCode = new Map(people.map((p) => [p.employeeIdNo.toLowerCase(), p]));
+  const placedNow = new Set<string>();
+
+  /** Puts a worker in a bed of the camp's room: the bed named in the file, else the first free one.
+   * Returns why they weren't placed, or null once they are. */
+  async function placeWorker(spec: { room: string; employee: string; bed: string }, camp: { id: string; name: string; ownerType: string; rooms: { id: string; name: string }[] }): Promise<string | null> {
+    if (camp.ownerType !== "OWN") return "Only your own camps have beds; supplier and client camps are recorded at check-in.";
+    const person = personByCode.get(spec.employee.toLowerCase());
+    if (!person) return "No worker with that employee code is on record.";
+    if (placedNow.has(person.id)) return "Already placed earlier in this file.";
+    if (person.bed) return `Already in ${person.bed.room.camp.name} / ${person.bed.room.name} / ${person.bed.label}. Move them from the Camps page.`;
+    const room = camp.rooms.find((r) => nameKey(r.name) === nameKey(spec.room));
+    if (!room) return "The room wasn't found.";
+    const beds = await db.bed.findMany({ where: { roomId: room.id }, orderBy: { label: "asc" } });
+    let bed = null as (typeof beds)[number] | null;
+    if (spec.bed) {
+      const want = spec.bed.toLowerCase().replace(/\s+/g, "");
+      const padded = /^\d+$/.test(want) ? singleLabel(Number(want)).toLowerCase().replace(/\s+/g, "") : want;
+      bed = beds.find((b) => { const l = b.label.toLowerCase().replace(/\s+/g, ""); return l === want || l === padded; }) ?? null;
+      if (!bed) return `Bed "${spec.bed}" doesn't exist in room ${spec.room}.`;
+      if (bed.employeeId) return `Bed "${bed.label}" is already taken.`;
+    } else {
+      bed = beds.find((b) => !b.employeeId) ?? null;
+      if (!bed) return beds.length === 0 ? `Room ${spec.room} has no beds. Add a Number of beds.` : `Room ${spec.room} is full.`;
+    }
+    await db.bed.update({ where: { id: bed.id }, data: { employeeId: person.id } });
+    await db.accommodationHistory.create({ data: { employeeId: person.id, campName: camp.name, roomName: room.name, bedLabel: bed.label } });
+    const open = await db.campCheckIn.findFirst({ where: { employeeId: person.id, status: { in: ["CHECKED_IN", "BED_ALLOCATED"] } }, orderBy: { createdAt: "desc" } });
+    if (open) await db.campCheckIn.update({ where: { id: open.id }, data: { campId: camp.id, bedId: bed.id, status: "BED_ALLOCATED" } });
+    else await db.campCheckIn.create({ data: { employeeId: person.id, campId: camp.id, bedId: bed.id, status: "BED_ALLOCATED", branchId } });
+    await audit({ entityType: "ACCOMMODATION", entityId: bed.id, action: "UPDATE", after: { employeeId: person.id, campName: camp.name, roomName: room.name, bedLabel: bed.label }, userId: ctx.user.id, userName: ctx.user.name, branchId });
+    placedNow.add(person.id);
+    return null;
   }
 
   let done = 0;
@@ -121,6 +160,13 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[]): Promise<App
           }
           if (room.beds.length > spec.beds) notes.push({ tone: "info", title: `${spec.room} already has ${room.beds.length} beds`, detail: `More than the ${spec.beds} in the file; none were removed.` });
         }
+      }
+      // Placing workers comes after every room and bed in the file exists, so row order doesn't matter.
+      for (const spec of g.specs) {
+        if (!spec.employee) continue;
+        const problem = await placeWorker(spec, camp);
+        if (problem) { notes.push({ tone: "warn", title: `${spec.employee} (row ${spec.row}) not placed`, detail: problem }); counts.notPlaced++; }
+        else { counts.workersPlaced++; touched = true; }
       }
       if (!isNew && touched) { counts.updated++; }
       rows.push({ row: g.firstRow, name: g.name, status: isNew ? "created" : touched ? "updated" : "skipped", message: !isNew && !touched ? "Nothing new." : undefined, notes });

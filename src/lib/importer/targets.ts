@@ -57,6 +57,8 @@ const CAMPS: FieldDef[] = [
   { key: "roomType", label: "Room type", aliases: ["room type", "category", "bed type"] },
   { key: "beds", label: "Number of beds", aliases: ["beds", "no of beds", "number of beds", "bed count", "bed space", "capacity", "bed spaces"] },
   { key: "nationality", label: "Nationality", aliases: ["nationality", "reserved for", "country"] },
+  { key: "employee", label: "Employee code (optional)", aliases: ["employee", "employee code", "emp code", "emp id", "employee id", "id no", "worker", "worker id", "occupant", "staff id"], hint: "Places this worker in a bed" },
+  { key: "bed", label: "Bed (optional)", aliases: ["bed", "bed no", "bed number", "bed label"], hint: "Blank = first free bed" },
 ];
 
 const VEHICLES: FieldDef[] = [

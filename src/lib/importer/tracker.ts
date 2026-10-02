@@ -6,7 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 // import code itself doesn't have to remember to record anything.
 
 /** Models the importers write to. A write to one of these is recorded. */
-export const TRACKED_MODELS = new Set(["Supplier", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance", "Camp", "Room", "Bed", "Vehicle"]);
+export const TRACKED_MODELS = new Set(["Supplier", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance", "Camp", "Room", "Bed", "Vehicle", "CampCheckIn", "AccommodationHistory"]);
 
 const delegate = (model: string) => (prisma as unknown as Record<string, any>)[model[0].toLowerCase() + model.slice(1)]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -101,7 +101,7 @@ export type UndoOutcome = { restored: number; removed: number; kept: { model: st
 
 // Children first, so a parent is never deleted while something in the same
 // import still points at it.
-const DELETE_ORDER = ["Attendance", "TimesheetEntry", "UploadMonth", "Upload", "Employee", "Bed", "Room", "Camp", "Vehicle", "Client", "Supplier"];
+const DELETE_ORDER = ["Attendance", "TimesheetEntry", "UploadMonth", "Upload", "Employee", "CampCheckIn", "AccommodationHistory", "Bed", "Room", "Camp", "Vehicle", "Client", "Supplier"];
 const CHUNK = 500;
 
 /** Reverse a batch. Changed records get their old values back and created ones

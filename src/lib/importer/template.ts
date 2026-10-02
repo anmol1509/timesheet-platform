@@ -13,7 +13,8 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { name: "Al Noor Site Services", code: "", parent: "Al Noor Manpower Supply", fullName: "", contactPerson: "", contactPhone: "", contactEmail: "", tradeLicenseNumber: "", category: "", trn: "" },
   ],
   CAMPS: [
-    { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "101", roomType: "4 Bed Room", beds: "4", nationality: "India" },
+    { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "101", roomType: "4 Bed Room", beds: "4", nationality: "India", employee: "AN-101", bed: "" },
+    { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "101", roomType: "", beds: "", nationality: "", employee: "AN-102", bed: "Bed 03" },
     { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "102", roomType: "6 Bed Room", beds: "6", nationality: "" },
     { camp: "Sonapur Camp", campType: "Supplier", owner: "Al Noor Manpower Supply", room: "A-01", roomType: "", beds: "8", nationality: "" },
     { camp: "Site Camp - Tower 1", campType: "Client", owner: "Emaar Properties", room: "", roomType: "", beds: "", nationality: "" },
@@ -45,6 +46,8 @@ const HELP: Record<string, string> = {
   campType: "Own, Supplier or Client: who provides the camp. Blank = Own.",
   owner: "For Supplier or Client camps: their name as on record. If it isn't on record the camp is still created, without an owner.",
   room: "Room name or number. Blank = just the camp.",
+  employee: "Optional. A worker's employee code (as in Workers). They are placed in this room: the bed named in the next column, or the first free one. Only for your own camps.",
+  bed: "Optional. Which bed, e.g. 3 or Bed 03. Blank = first free bed in the room.",
   beds: "Optional. How many beds the room has; they are numbered Bed 01, Bed 02… Re-uploading adds missing beds and never removes any.",
   plateNumber: "The vehicle's plate, as you write it. Spaces and dashes don't matter when matching next time.",
   status: "Active, Maintenance or Inactive. Blank = Active.",

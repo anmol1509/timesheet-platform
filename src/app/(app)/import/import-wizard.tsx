@@ -49,6 +49,8 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Camps created", value: c.created ?? 0, tone: "success" },
       { label: "Rooms added", value: c.roomsCreated ?? 0, tone: "success" },
       { label: "Beds added", value: c.bedsCreated ?? 0, tone: "success" },
+      { label: "Workers placed", value: c.workersPlaced ?? 0, tone: "success" },
+      { label: "Not placed", value: c.notPlaced ?? 0, tone: (c.notPlaced ?? 0) > 0 ? "error" : "neutral", hint: "see the notes for why" },
       { label: "Camps updated", value: c.updated ?? 0, tone: "info" },
       { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
     ];
