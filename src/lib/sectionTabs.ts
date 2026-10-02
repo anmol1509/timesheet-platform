@@ -18,6 +18,7 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     { href: "/settings/team", label: "Team", match: under("/settings/team") },
     { href: "/settings/roles", label: "Roles & permissions", match: under("/settings/roles") },
+    { href: "/settings/developers", label: "Developers", match: under("/settings/developers") },
   ],
   // What suppliers send us through their portal
   [

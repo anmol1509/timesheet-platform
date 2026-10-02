@@ -18,6 +18,9 @@ enum Role {
 model Branch {
   id        String   @id @default(cuid())
   tradePays TradePay[]
+  apiKeys   ApiKey[]
+  // Public API access is part of the Pro and Custom plans; a super admin switches it on per branch.
+  apiAccess Boolean  @default(false)
   code      String   @unique
   name      String
   emirate   String?
@@ -136,6 +139,7 @@ model Bank {
 
 model User {
   id           String   @id @default(cuid())
+  apiKeysCreated ApiKey[]
   email        String   @unique
   name         String
   passwordHash String
@@ -2498,5 +2502,25 @@ model TradePay {
   updatedAt        DateTime @updatedAt
 
   @@unique([supplierId, trade])
+  @@index([branchId])
+}
+
+// A secret a customer's software uses to call /api/v1 for one branch. Only the
+// hash is stored; the full key is shown once when it is created.
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  prefix      String // first characters of the key, so it can be recognised in the list
+  keyHash     String    @unique
+  scopes      String[]
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId    String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+
   @@index([branchId])
 }

@@ -48,8 +48,7 @@ import {
   HeartPulse,
   FileOutput,
   Pin,
-  PinOff,
-} from "lucide-react";
+  PinOff, KeyRound } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
@@ -285,6 +284,7 @@ function adminGroup(): Entry {
       { href: "/import", label: "Import Data", icon: UploadIcon },
       { href: "/data-health", label: "Data health", icon: HeartPulse },
       { href: "/settings/team", label: "Team & Access", icon: UserCog },
+      { href: "/settings/developers", label: "Developers", icon: KeyRound },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/letter-templates", label: "Letter Templates", icon: FileText },
       { href: "/audit-log", label: "Audit Log", icon: History },

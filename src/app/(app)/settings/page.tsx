@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { updateIssuedToAction } from "./actions";
+import { setBranchApiAccessAction, updateIssuedToAction } from "./actions";
 import { CreateBranchForm } from "./create-branch-form";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
@@ -84,6 +84,7 @@ export default async function SettingsPage() {
                     <th className="px-4 py-3">Code</th>
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Emirate</th>
+                    <th className="px-4 py-3">API access</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -92,6 +93,16 @@ export default async function SettingsPage() {
                       <td className="px-4 py-3 font-medium text-primary">{b.code}</td>
                       <td className="px-4 py-3 text-secondary">{b.name}</td>
                       <td className="px-4 py-3 text-secondary">{b.emirate ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <form action={setBranchApiAccessAction} className="flex items-center gap-2">
+                          <input type="hidden" name="branchId" value={b.id} />
+                          <input type="hidden" name="enabled" value={b.apiAccess ? "0" : "1"} />
+                          <span className={b.apiAccess ? "text-xs font-medium text-[var(--success)]" : "text-xs text-muted"}>{b.apiAccess ? "On" : "Off"}</span>
+                          <button type="submit" className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
+                            {b.apiAccess ? "Turn off" : "Turn on"}
+                          </button>
+                        </form>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -112,6 +123,7 @@ export default async function SettingsPage() {
             { href: "/settings/company", title: "Company profile", body: "Logo, name, address and TRN — shown in the sidebar and on generated documents." },
             { href: "/settings/team", title: "Team & access", body: "Add sub-users, assign what they can open and do, suspend or reset them." },
             { href: "/settings/roles", title: "Roles & permissions", body: "Build permission sets per module and action (view, create, edit, delete, approve, export)." },
+            { href: "/settings/developers", title: "Developers", body: "API keys for connecting Zoho Books, Tally, attendance devices and your own software (Pro and Custom plans)." },
           ].map((c) => (
             <Link key={c.href} href={c.href} className="card block p-4 transition hover:border-[var(--brand-primary)]">
               <h3 className="text-sm font-semibold text-primary">{c.title}</h3>

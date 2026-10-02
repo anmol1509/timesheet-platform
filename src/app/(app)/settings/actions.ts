@@ -100,3 +100,26 @@ export async function createBranchAction(
   revalidatePath("/", "layout");
   return { error: null, ok: true };
 }
+
+/** Super admins switch public API access on or off for a branch (a Pro or Custom plan feature). Keys keep working only while it is on. */
+export async function setBranchApiAccessAction(formData: FormData) {
+  const admin = await requireAdmin();
+  if (admin.role !== "SUPER_ADMIN") return;
+  const branchId = String(formData.get("branchId") || "");
+  const enabled = formData.get("enabled") === "1";
+  const before = await prisma.branch.findUnique({ where: { id: branchId }, select: { apiAccess: true } });
+  if (!before || before.apiAccess === enabled) return;
+  await prisma.branch.update({ where: { id: branchId }, data: { apiAccess: enabled } });
+  await logAudit({
+    entityType: "BRANCH",
+    entityId: branchId,
+    action: "UPDATE",
+    before: { apiAccess: before.apiAccess },
+    after: { apiAccess: enabled },
+    userId: admin.id,
+    userName: admin.name,
+    branchId,
+  });
+  revalidatePath("/settings");
+  revalidatePath("/settings/developers");
+}
