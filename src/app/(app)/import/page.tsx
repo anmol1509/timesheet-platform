@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Briefcase, Building2, Bus, CalendarClock, HardHat, Home, Truck, type LucideIcon } from "lucide-react";
+import { FileStack, Briefcase, Building2, Bus, CalendarClock, HardHat, Home, Truck, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { prisma } from "@/lib/db";
@@ -76,6 +76,15 @@ export default async function ImportHubPage() {
         ))}
       </div>
 
+      <Link href="/import/new/documents" className="card group flex items-center gap-4 p-5 transition hover:border-[var(--brand-primary-border)] hover:shadow-md">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-[var(--brand-primary)]"><FileStack className="h-5 w-5" aria-hidden /></span>
+        <div>
+          <p className="text-base font-semibold text-primary">Documents</p>
+          <p className="text-sm text-secondary">Passports, Emirates IDs, visas, licences and more in bulk. Drop many files or a ZIP and each is filed against the right worker or supplier.</p>
+          <p className="mt-1 text-xs text-muted">PDF or images &middot; <span className="font-medium text-[var(--brand-primary)] group-hover:underline">Start</span></p>
+        </div>
+      </Link>
+
       {branchId && <SampleCard loaded={sample.loaded} />}
 
       <section>
@@ -102,7 +111,7 @@ export default async function ImportHubPage() {
                   const canUndo = (b.status === "DONE" || b.status === "FAILED") && b.undoUntil && b.undoUntil > new Date();
                   return (
                     <tr key={b.id}>
-                      <td className="px-4 py-3 font-medium text-primary">{TARGETS[b.kind as ImportKind]?.label ?? b.kind}</td>
+                      <td className="px-4 py-3 font-medium text-primary">{b.kind === "DOCUMENTS" ? "Documents" : (TARGETS[b.kind as ImportKind]?.label ?? b.kind)}</td>
                       <td className="max-w-[220px] truncate px-4 py-3 text-secondary" title={b.filename}>{b.filename}</td>
                       <td className="px-4 py-3 text-muted">
                         <div className="tabular">{b.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>

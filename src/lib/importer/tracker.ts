@@ -6,7 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 // import code itself doesn't have to remember to record anything.
 
 /** Models the importers write to. A write to one of these is recorded. */
-export const TRACKED_MODELS = new Set(["Supplier", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance", "Camp", "Room", "Bed", "Vehicle", "CampCheckIn", "AccommodationHistory", "EmployeeAssignmentHistory", "Project"]);
+export const TRACKED_MODELS = new Set(["Supplier", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance", "Camp", "Room", "Bed", "Vehicle", "CampCheckIn", "AccommodationHistory", "EmployeeAssignmentHistory", "Project", "Document", "Attachment"]);
 
 const delegate = (model: string) => (prisma as unknown as Record<string, any>)[model[0].toLowerCase() + model.slice(1)]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -33,8 +33,8 @@ function previousValues(before: Record<string, unknown>, data: Record<string, un
   return out;
 }
 
-export function trackedClient(batchId: string) {
-  let seq = 0;
+export function trackedClient(batchId: string, startSeq = 0) {
+  let seq = startSeq;
   const log = (model: string, recordId: string, action: "CREATE" | "UPDATE", before: Record<string, unknown> | null) =>
     prisma.importChange.create({
       data: { batchId, seq: seq++, model, recordId, action, before: before ? encodeValues(before) : null },
@@ -101,7 +101,7 @@ export type UndoOutcome = { restored: number; removed: number; kept: { model: st
 
 // Children first, so a parent is never deleted while something in the same
 // import still points at it.
-const DELETE_ORDER = ["Attendance", "TimesheetEntry", "UploadMonth", "Upload", "EmployeeAssignmentHistory", "Employee", "CampCheckIn", "AccommodationHistory", "Bed", "Room", "Camp", "Vehicle", "Project", "Client", "Supplier"];
+const DELETE_ORDER = ["Document", "Attachment", "Attendance", "TimesheetEntry", "UploadMonth", "Upload", "EmployeeAssignmentHistory", "Employee", "CampCheckIn", "AccommodationHistory", "Bed", "Room", "Camp", "Vehicle", "Project", "Client", "Supplier"];
 const CHUNK = 500;
 
 /** Reverse a batch. Changed records get their old values back and created ones
