@@ -15,6 +15,9 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
   const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
   const [perEmployee, setPerEmployee] = useState(false);
   const [waiveGas, setWaiveGas] = useState(false);
+  const [kind, setKind] = useState<"hours" | "invoice">("hours");
+  const [show, setShow] = useState({ supplier: true, project: false, client: false });
+  const [groupBySupplier, setGroupBySupplier] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +47,33 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
   function toggleGroup(rowsInGroup: Row[]) {
     const on = rowsInGroup.every((r) => picked.has(r.employeeIdNo));
     setPicked((p) => { const n = new Set(p); for (const r of rowsInGroup) { if (on) n.delete(r.employeeIdNo); else n.add(r.employeeIdNo); } return n; });
+  }
+
+  async function generateHours(format: "pdf" | "xlsx") {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/generate/hours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeIds: [...picked], month, show, groupBySupplier, format }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.error ?? "Couldn't generate the sheet.");
+        return;
+      }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `working-hours-${month}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Couldn't generate the sheet. Try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function generate() {
@@ -121,6 +151,38 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
       </div>
 
       <div className="card space-y-4 p-4">
+        <div role="radiogroup" aria-label="Sheet type" className="grid gap-3 sm:grid-cols-2">
+          {([
+            ["hours", "Working-hours sheet", "One sheet with the selected people's hours, day by day. Choose whether to show supplier, project and client."],
+            ["invoice", "Invoice-format timesheet", "The formal timesheet layout used for billing, one per company or per person."],
+          ] as const).map(([k, title, text]) => (
+            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={`rounded-card border p-3 text-left transition ${kind === k ? "border-[var(--brand-primary)] bg-[var(--brand-soft,rgba(43,49,135,0.06))]" : "border-default"}`}>
+              <span className="block text-sm font-semibold text-primary">{title}</span>
+              <span className="mt-0.5 block text-xs text-muted">{text}</span>
+            </button>
+          ))}
+        </div>
+
+        {kind === "hours" ? (
+          <>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted">Also show</span>
+              <Checkbox checked={show.supplier} onCheckedChange={(v) => setShow((x) => ({ ...x, supplier: v }))} label={<span className="text-sm">Supplier</span>} />
+              <Checkbox checked={show.project} onCheckedChange={(v) => setShow((x) => ({ ...x, project: v }))} label={<span className="text-sm">Project</span>} />
+              <Checkbox checked={show.client} onCheckedChange={(v) => setShow((x) => ({ ...x, client: v }))} label={<span className="text-sm">Client</span>} />
+              <Checkbox checked={groupBySupplier} onCheckedChange={setGroupBySupplier} label={<span className="text-sm">Group by supplier, with subtotals</span>} />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="button" className="btn btn-primary flex gap-1.5" disabled={picked.size === 0 || busy} onClick={() => generateHours("pdf")}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
+                {busy ? "Generating…" : `PDF for ${picked.size} selected`}
+              </button>
+              <button type="button" className="btn btn-secondary" disabled={picked.size === 0 || busy} onClick={() => generateHours("xlsx")}>Excel</button>
+              {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
+            </div>
+          </>
+        ) : (
+          <>
         <TemplatePicker value={template} onChange={setTemplate} compact />
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <label className="flex items-center gap-2"><input type="radio" checked={!perEmployee} onChange={() => setPerEmployee(false)} /> One sheet per company (selected people only)</label>
@@ -134,6 +196,8 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
           </button>
           {error && <p role="alert" className="whitespace-pre-line text-sm text-[var(--error)]">{error}</p>}
         </div>
+          </>
+        )}
       </div>
     </div>
   );
