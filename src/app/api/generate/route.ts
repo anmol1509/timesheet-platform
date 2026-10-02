@@ -10,11 +10,14 @@ import {
   DEFAULT_TIMESHEET_NOTES,
 } from "@/lib/generateTimesheetPdf";
 import { buildLetterhead } from "@/lib/letterhead";
+import { TEMPLATE_KEYS } from "@/lib/timesheetTemplates";
+import { generateTemplatedPdf, generateTemplatedXlsx } from "@/lib/generateTemplatedTimesheet";
 
 const bodySchema = z.object({
   supplierId: z.string().min(1),
   month: z.string().regex(/^\d{4}-\d{2}$/),
   format: z.enum(["xlsx", "pdf"]),
+  template: z.enum(TEMPLATE_KEYS).default("standard"),
   gasDeductions: z.record(z.string(), z.number()),
   deductions: z.record(z.string(), z.number()),
 });
@@ -26,7 +29,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { supplierId, month, format, gasDeductions, deductions } = parsed.data;
+  const { supplierId, month, format, template, gasDeductions, deductions } = parsed.data;
   const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
   const supplier = await prisma.supplier.findUnique({
@@ -122,7 +125,42 @@ export async function POST(request: Request) {
 
   let buffer: Buffer;
   let contentType: string;
-  if (format === "xlsx") {
+  if (template !== "standard") {
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    const [year, monthNo] = month.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
+    const dmy = (day: number) => `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
+    const input = {
+      template,
+      letterhead: await buildLetterhead({
+        name: branch?.name ?? fullName,
+        address: branch?.address ?? null,
+        emirate: branch?.emirate ?? null,
+        country: branch?.country ?? null,
+        phone: branch?.phone ?? null,
+        fax: branch?.fax ?? null,
+        email: branch?.email ?? null,
+        poBox: branch?.poBox ?? null,
+        trn: branch?.trn ?? null,
+      }),
+      subContractor,
+      monthLabel,
+      periodFrom: dmy(1),
+      periodTo: dmy(lastDay),
+      issuedTo,
+      entries: genInput.entries.map((e, i) => ({ ...e, projectCode: entries[i]?.project?.code ?? projectByEmployeeId.get(e.employeeIdNo) ?? null })),
+      gasDeduction,
+      vatPercent: 5,
+      preparedBy: user.name,
+    };
+    if (format === "xlsx") {
+      buffer = await generateTemplatedXlsx(input);
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    } else {
+      buffer = await generateTemplatedPdf(input);
+      contentType = "application/pdf";
+    }
+  } else if (format === "xlsx") {
     buffer = await generateSupplierXlsx(genInput);
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -189,7 +227,7 @@ export async function POST(request: Request) {
   });
 
   const safeName = supplier.name.replace(/[^a-z0-9]+/gi, "-");
-  const filename = `${safeName}-${month}.${format}`;
+  const filename = `${safeName}-${month}${template === "standard" ? "" : `-${template}`}.${format}`;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

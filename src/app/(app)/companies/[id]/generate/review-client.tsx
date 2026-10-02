@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction, calculateGasDeduction, type AbsenceRule, type GasRule } from "@/lib/deductions";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
+import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 
 type Entry = {
   id: string;
@@ -58,6 +60,7 @@ export function ReviewClient({
     () => ({ ...defaultGasDeductions })
   );
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
+  const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
   const [error, setError] = useState<string | null>(null);
 
   function resetRow(id: string) {
@@ -130,6 +133,7 @@ export function ReviewClient({
           supplierId: supplier.id,
           month,
           format,
+          template,
           gasDeductions,
           deductions,
         }),
@@ -188,6 +192,11 @@ export function ReviewClient({
               {generating === "pdf" ? "Generating…" : "Download PDF"}
             </button>
           </div>
+        </div>
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium text-muted">Layout</p>
+          <TemplatePicker value={template} onChange={setTemplate} />
+          <Link href="/timesheet-templates" className="mt-1.5 inline-block text-xs text-[var(--brand-primary)] hover:underline">See all templates</Link>
         </div>
         {error && (
           <div className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">

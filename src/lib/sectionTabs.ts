@@ -57,6 +57,7 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     { href: "/companies", label: "Generate sheets", match: (p) => under("/companies")(p) || under("/upload")(p) },
     { href: "/history", label: "History", match: under("/history") },
+    { href: "/timesheet-templates", label: "Templates", match: under("/timesheet-templates") },
   ],
   // Client timesheet. The attendance-sync review is reached from a banner on
   // the Timesheet tab (only when something differs), so it isn't a tab itself,

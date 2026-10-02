@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateTimesheetPdf, DEFAULT_TIMESHEET_NOTES } from "@/lib/generateTimesheetPdf";
 import { buildLetterhead } from "@/lib/letterhead";
+import { TEMPLATE_KEYS } from "@/lib/timesheetTemplates";
+import { generateTemplatedPdf } from "@/lib/generateTemplatedTimesheet";
 import { calculateGasDeduction, gasRuleOf } from "@/lib/deductions";
 
 export const maxDuration = 60;
@@ -16,6 +18,7 @@ const bodySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/),
   /** supplierId → true when that company's gas charge is waived. A company not listed is charged. */
   gasWaived: z.record(z.string(), z.boolean()).default({}),
+  template: z.enum(TEMPLATE_KEYS).default("standard"),
 });
 
 /**
@@ -29,7 +32,7 @@ export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { supplierIds, month, gasWaived } = parsed.data;
+  const { supplierIds, month, gasWaived, template } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
       { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned — contact an admin." },
@@ -88,7 +91,28 @@ export async function POST(request: Request) {
       ? 0
       : entries.reduce((sum, e) => sum + calculateGasDeduction(e.dailyHours, gasRuleOf(supplier), { checkIn: checkInById.get(e.employeeIdNo) ?? null, month }), 0);
 
-    const pdf = await generateTimesheetPdf({
+    const issuedToName = issuedTo || supplier.name;
+    const pdf = template !== "standard" ? await generateTemplatedPdf({
+      template,
+      letterhead,
+      subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name,
+      monthLabel,
+      periodFrom: dmy(1),
+      periodTo: dmy(lastDay),
+      issuedTo: issuedToName,
+      entries: entries.map((e) => ({
+        employeeIdNo: e.employeeIdNo,
+        employeeName: e.employeeName,
+        trade: e.trade,
+        rate: e.rate,
+        dailyHours: e.dailyHours,
+        absentDeduction: e.absentDeduction,
+        projectCode: e.project?.code ?? projectById.get(e.employeeIdNo) ?? null,
+      })),
+      gasDeduction: gasTotal,
+      vatPercent: 5,
+      preparedBy: user.name,
+    }) : await generateTimesheetPdf({
       letterhead,
       // The main (parent) supplier, or the supplier itself when it has none.
       subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name,

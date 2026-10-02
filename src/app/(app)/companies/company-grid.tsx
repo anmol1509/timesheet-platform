@@ -1,5 +1,7 @@
 "use client";
 
+import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
+import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Download, FileArchive, Loader2 } from "lucide-react";
@@ -29,6 +31,7 @@ export function CompanyGrid({
   const [zipping, setZipping] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
   const [askGas, setAskGas] = useState(false);
+  const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
   const [waived, setWaived] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
@@ -65,7 +68,7 @@ export function CompanyGrid({
       const res = await fetch("/api/generate/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierIds: [...selected], month, gasWaived }),
+        body: JSON.stringify({ supplierIds: [...selected], month, gasWaived, template }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -125,8 +128,9 @@ export function CompanyGrid({
       </div>
 
       <Dialog open={askGas} onOpenChange={setAskGas}>
-        <DialogContent title="Waive gas charge?" description="Gas is charged on each timesheet unless you waive it. Tick the companies that do not pay gas.">
+        <DialogContent title="Layout and gas" description="Choose the layout for these timesheets. Gas is charged on each one unless you waive it; tick the companies that do not pay gas.">
           <div className="mt-4 space-y-3">
+            <TemplatePicker value={template} onChange={setTemplate} compact />
             <ul className="max-h-72 divide-y divide-[var(--border)] overflow-y-auto rounded-control border border-default">
               {companies.filter((c) => selected.has(c.id)).map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
