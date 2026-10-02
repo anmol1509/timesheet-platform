@@ -139,7 +139,7 @@ export function PlacementTable({ rows }: { rows: PlacementRow[] }) {
       <div className="max-h-96 overflow-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface text-left text-xs font-medium uppercase tracking-wide text-muted">
-            <tr><th className="px-4 py-2">Row</th><th className="px-3 py-2">In the file</th><th className="px-3 py-2">Matched worker</th><th className="px-3 py-2">Camp / room / bed</th><th className="px-3 py-2">Result</th></tr>
+            <tr><th className="px-4 py-2">Row</th><th className="px-3 py-2">In the file</th><th className="px-3 py-2">Matched worker</th><th className="px-3 py-2">Camp / room / bed</th><th className="px-3 py-2">Check in</th><th className="px-3 py-2">Result</th></tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
             {rows.map((r, i) => (
@@ -148,6 +148,7 @@ export function PlacementTable({ rows }: { rows: PlacementRow[] }) {
                 <td className="px-3 py-2 text-secondary">{r.fileName}</td>
                 <td className="px-3 py-2">{r.worker ? <><span className="font-medium text-primary">{r.worker.name}</span> <span className="text-xs text-muted">{r.worker.code}{r.worker.trade ? ` · ${r.worker.trade}` : ""}</span></> : <span className="text-subtle">—</span>}</td>
                 <td className="px-3 py-2 text-secondary">{r.camp} / {r.room}{r.bed ? ` / ${r.bed}` : ""}</td>
+                <td className="px-3 py-2 tabular text-secondary">{r.checkIn ? new Date(`${r.checkIn}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                 <td className="px-3 py-2"><span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", STATUS[r.status].cls)}>{STATUS[r.status].label}</span>{r.note && <span className="ml-2 text-xs text-muted">{r.note}</span>}</td>
               </tr>
             ))}

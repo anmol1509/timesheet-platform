@@ -49,10 +49,13 @@ export async function GET(request: Request) {
       const groups = groupBeds(r.beds);
       const counts = { bunks: groups.filter((g) => g.kind === "bunk").length, singles: groups.filter((g) => g.kind === "single").length };
       const layout = { bunks: counts.bunks || "", singles: counts.singles || "" };
+      const stays = withWorkers ? await prisma.accommodationHistory.findMany({ where: { employeeId: { in: r.beds.flatMap((b) => (b.employee ? [b.employeeId!] : [])) }, checkOutDate: null }, select: { employeeId: true, checkInDate: true, plannedCheckOutDate: true } }) : [];
+      const stayOf = new Map(stays.map((h) => [h.employeeId, h]));
+      const dmy = (d: Date | null | undefined) => (d ? `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}` : "");
       const occupied = withWorkers ? r.beds.filter((b) => b.employee) : [];
       if (occupied.length === 0) { add({ ...roomBase, ...layout }); continue; }
       // The room's make-up goes on its first line only, so re-importing doesn't repeat it.
-      occupied.forEach((b, i) => add({ ...roomBase, ...(i === 0 ? layout : {}), employee: b.employee!.name, employeeCode: b.employee!.employeeIdNo, bed: b.label }));
+      occupied.forEach((b, i) => add({ ...roomBase, ...(i === 0 ? layout : {}), employee: b.employee!.name, employeeCode: b.employee!.employeeIdNo, bed: b.label, checkIn: dmy(stayOf.get(b.employeeId!)?.checkInDate), checkOut: dmy(stayOf.get(b.employeeId!)?.plannedCheckOutDate) }));
     }
   }
 

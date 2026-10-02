@@ -24,7 +24,7 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
   const { db, branchId } = ctx;
   const audit = auditor(ctx);
   const rows: RowReport[] = [];
-  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, bunksAdded: 0, workersPlaced: 0, workersCreated: 0, pastStays: 0, datesCorrected: 0, notPlaced: 0, needDecision: 0, merged: 0, failed: 0 };
+  const counts = { created: 0, updated: 0, roomsCreated: 0, bedsCreated: 0, bunksAdded: 0, workersPlaced: 0, workersCreated: 0, noCheckIn: 0, pastStays: 0, datesCorrected: 0, notPlaced: 0, needDecision: 0, merged: 0, failed: 0 };
 
   const [camps, suppliers, clients] = await Promise.all([
     db.camp.findMany({ where: { branchId }, include: { rooms: { include: { beds: { select: { label: true } } } } } }),
@@ -204,7 +204,8 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
     else await db.campCheckIn.create({ data: { employeeId: person.id, campId: camp.id, bedId: bed.id, status: "BED_ALLOCATED", branchId, ...(checkIn ? { checkInDate: checkIn } : {}) } });
     await audit({ entityType: "ACCOMMODATION", entityId: bed.id, action: "UPDATE", after: { employeeId: person.id, campName: camp.name, roomName: room.name, bedLabel: bed.label }, userId: ctx.user.id, userName: ctx.user.name, branchId });
     placedNow.add(person.id);
-    placements.push({ ...row, worker: personShape(person), bed: bed.label, status: "placed", note: "create" in r ? "New worker added" : spec.checkOut && spec.checkOut > todayKey() ? `Leaving ${spec.checkOut}` : undefined });
+    if (!spec.checkIn) counts.noCheckIn++;
+    placements.push({ ...row, worker: personShape(person), bed: bed.label, checkIn: spec.checkIn ?? todayKey(), status: "placed", note: "create" in r ? "New worker added" : spec.checkOut && spec.checkOut > todayKey() ? `Leaving ${spec.checkOut}` : undefined });
     return null;
   }
 
@@ -348,5 +349,6 @@ export async function applyCamps(ctx: ApplyCtx, input: MappedRow[], decisions: R
   }
   rows.sort((a, b) => a.row - b.row);
   placements.sort((x, y) => x.row - y.row);
+  if (counts.noCheckIn > 0) notes0.push({ tone: "info", title: `${counts.noCheckIn} worker${counts.noCheckIn === 1 ? " has" : "s have"} no check-in date`, detail: "They are checked in on the day of the import. Add a Check in column or date to your file if you want the real dates." });
   return { rows, counts, notes: notes0, placements, placementIssues: [...issues.values()] };
 }

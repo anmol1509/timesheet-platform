@@ -82,6 +82,8 @@ export type PlacementRow = {
   camp: string;
   room: string;
   bed: string | null;
+  /** The check-in date used (YYYY-MM-DD); today when the file gave none. */
+  checkIn?: string | null;
   status: "placed" | "decide" | "skipped" | "blocked" | "past";
   note?: string;
 };
