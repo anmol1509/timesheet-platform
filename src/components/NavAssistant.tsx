@@ -7,6 +7,8 @@ import {
   ArrowRight,
   ArrowUp,
   BarChart3,
+  Download,
+  Globe,
   ListChecks,
   RotateCcw,
   Search,
@@ -18,16 +20,13 @@ import {
 import { getNavPages } from "@/app/(app)/nav-links";
 import { cn } from "@/lib/cn";
 import { SPRING } from "@/lib/motion";
+import { LANGUAGE_OPTIONS, isAssistantLang, stringsFor, type AssistantLang } from "@/lib/assistantI18n";
 
 type Link = { href: string; label: string; group: string };
-type Msg = { role: "user" | "assistant"; content: string; links?: Link[]; error?: boolean };
+type Table = { title: string; columns: string[]; rows: string[][]; total: number };
+type Msg = { role: "user" | "assistant"; content: string; links?: Link[]; table?: Table; error?: boolean };
 
-const SUGGESTIONS: { text: string; icon: LucideIcon }[] = [
-  { text: "Where do I renew a visa?", icon: Search },
-  { text: "How do I get workers onto a project?", icon: ListChecks },
-  { text: "Open the profile for a worker", icon: UserSearch },
-  { text: "How many workers are on the bench?", icon: BarChart3 },
-];
+const SUGGESTION_ICONS: LucideIcon[] = [Search, ListChecks, UserSearch, BarChart3];
 
 const GRADIENT = "linear-gradient(135deg, var(--brand-primary), #7c3aed)";
 
@@ -63,6 +62,44 @@ function TypingDots() {
   );
 }
 
+/** A table the assistant looked up, with the rows exactly as the database returned them. */
+function ResultTable({ table, downloadLabel, showing }: { table: Table; downloadLabel: string; showing: string | null }) {
+  function download() {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const csv = [table.columns, ...table.rows].map((r) => r.map(esc).join(",")).join("\r\n");
+    // The byte-order mark makes Excel read Hindi, Urdu and Nepali names correctly.
+    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${table.title.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 40) || "table"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  return (
+    <div className="w-full max-w-full overflow-hidden rounded-card border border-default bg-surface" dir="ltr">
+      <p className="border-b border-default px-3 py-2 text-xs font-semibold text-primary" dir="auto">{table.title}</p>
+      <div className="max-h-56 overflow-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-surface-subtle text-left text-muted">
+            <tr>{table.columns.map((c) => <th key={c} className="px-2.5 py-1.5 font-medium whitespace-nowrap">{c}</th>)}</tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {table.rows.map((r, i) => (
+              <tr key={i}>{r.map((v, j) => <td key={j} className="px-2.5 py-1.5 whitespace-nowrap text-secondary" dir="auto">{v}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-default px-3 py-1.5">
+        <span className="text-[11px] text-muted" dir="auto">{showing ?? ""}</span>
+        <button type="button" onClick={download} className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--brand-primary)] hover:underline">
+          <Download className="h-3 w-3" aria-hidden /> {downloadLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * "My Assistant" — floating chat for finding pages, records and quick answers.
  * Sends the conversation plus the user's own sidebar pages (getNavPages, already
@@ -82,6 +119,7 @@ export function NavAssistant({
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lang, setLang] = useState<AssistantLang>("auto");
   const router = useRouter();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +127,26 @@ export function NavAssistant({
     () => getNavPages(isAdmin, isSuperAdmin, allowedModules).map(({ href, label, group }) => ({ href, label, group })),
     [isAdmin, isSuperAdmin, allowedModules]
   );
+
+  // The chosen language is remembered on this device.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("assistant-lang");
+      if (isAssistantLang(saved)) setLang(saved);
+    } catch {
+      /* private mode: stays on Auto */
+    }
+  }, []);
+  const t = stringsFor(lang);
+
+  function chooseLang(v: AssistantLang) {
+    setLang(v);
+    try {
+      localStorage.setItem("assistant-lang", v);
+    } catch {
+      /* not saved; still applies to this session */
+    }
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -131,11 +189,12 @@ export function NavAssistant({
         body: JSON.stringify({
           messages: next.filter((m) => !m.error).map(({ role, content }) => ({ role, content })),
           pages,
+          language: lang,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
-      setMessages([...next, { role: "assistant", content: data.answer || "I couldn't find a match.", links: data.links }]);
+      setMessages([...next, { role: "assistant", content: data.answer || "I couldn't find a match.", links: data.links, table: data.table }]);
     } catch (e) {
       setMessages([...next, { role: "assistant", content: e instanceof Error ? e.message : "Something went wrong.", error: true }]);
     } finally {
@@ -205,15 +264,28 @@ export function NavAssistant({
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-tight font-semibold">My Assistant</p>
                 <p className="flex items-center gap-1.5 text-xs text-white/80">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden /> Ready to help
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" aria-hidden /> {t.ready}
                 </p>
               </div>
+              <label className="flex items-center gap-1 rounded-control bg-white/15 px-1.5 py-1 text-xs text-white" title={t.language}>
+                <Globe className="h-3.5 w-3.5" aria-hidden />
+                <span className="sr-only">{t.language}</span>
+                <select
+                  value={lang}
+                  onChange={(e) => isAssistantLang(e.target.value) && chooseLang(e.target.value)}
+                  className="cursor-pointer bg-transparent text-xs outline-none [&>option]:text-black"
+                >
+                  {LANGUAGE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </label>
               {!empty && (
                 <button
                   type="button"
                   onClick={() => setMessages([])}
                   aria-label="Start a new chat"
-                  title="New chat"
+                  title={t.newChat}
                   className="rounded-control p-1.5 text-white/80 transition-colors hover:bg-white/15 hover:text-white"
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -229,17 +301,17 @@ export function NavAssistant({
               </button>
             </header>
 
-            <div className="flex-1 space-y-4 overflow-y-auto bg-canvas px-4 py-4" aria-live="polite">
+            <div className="flex-1 space-y-4 overflow-y-auto bg-canvas px-4 py-4" aria-live="polite" dir={lang === "ur" ? "rtl" : undefined}>
               {empty && (
                 <m.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-2">
                   <div className="space-y-1">
-                    <p className="text-lg font-semibold text-primary">Hi, how can I help?</p>
-                    <p className="text-sm text-secondary">
-                      Ask where something is, how a task works, or look up a worker, project or client.
-                    </p>
+                    <p className="text-lg font-semibold text-primary">{t.hello}</p>
+                    <p className="text-sm text-secondary">{t.sub}</p>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
-                    {SUGGESTIONS.map(({ text, icon: Icon }, i) => (
+                    {t.suggestions.map((text, i) => {
+                      const Icon = SUGGESTION_ICONS[i];
+                      return (
                       <m.button
                         key={text}
                         type="button"
@@ -255,7 +327,8 @@ export function NavAssistant({
                         <span className="min-w-0 flex-1">{text}</span>
                         <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted opacity-0 transition-opacity group-hover/s:opacity-100" />
                       </m.button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </m.div>
               )}
@@ -280,10 +353,20 @@ export function NavAssistant({
                             : "rounded-bl-sm border border-default bg-surface text-primary"
                       )}
                       style={msg.role === "user" ? { background: GRADIENT } : undefined}
+                      dir="auto"
                     >
                       {msg.content}
                     </p>
                   </div>
+                  {msg.table && (
+                    <div className="w-full max-w-[96%] pl-8">
+                      <ResultTable
+                        table={msg.table}
+                        downloadLabel={t.downloadCsv}
+                        showing={msg.table.total > msg.table.rows.length ? t.showing(msg.table.rows.length, msg.table.total) : null}
+                      />
+                    </div>
+                  )}
                   {msg.links && msg.links.length > 0 && (
                     <div className="flex w-full max-w-[88%] flex-col gap-1.5 pl-8">
                       {msg.links.map((l) => (
@@ -324,7 +407,8 @@ export function NavAssistant({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   maxLength={500}
-                  placeholder="Ask My Assistant…"
+                  placeholder={t.placeholder}
+                  dir="auto"
                   aria-label="Ask My Assistant"
                   className="min-w-0 flex-1 bg-transparent py-1.5 text-sm text-primary outline-none placeholder:text-muted"
                 />

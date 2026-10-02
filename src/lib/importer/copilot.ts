@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
-import { ASSISTANT_MODEL } from "@/lib/constants";
+import { COPILOT_MODEL } from "@/lib/constants";
 import { nameKey } from "@/lib/partyCode";
 import { looseNameKey } from "@/lib/looseName";
 import { describeTimesheetWorkbook, parseConsolidatedWorkbook, type TimesheetOverrides } from "@/lib/parseTimesheet";
@@ -214,7 +214,7 @@ export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: stri
   try {
     const client = new Anthropic();
     const response = await client.messages.create({
-      model: ASSISTANT_MODEL,
+      model: COPILOT_MODEL,
       max_tokens: 1600,
       system: SYSTEM,
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
