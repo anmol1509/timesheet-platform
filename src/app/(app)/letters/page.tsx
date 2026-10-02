@@ -19,7 +19,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
   const [templates, employees, issued, branch, totalIssued, issuedThisMonth, byTitle] = await Promise.all([
     prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: { name: "asc" } }),
-    prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
+    prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
     branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true } }) : null,
     prisma.issuedLetter.count({ where: branchWhere(branchId) }),
@@ -33,7 +33,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
       <PageHeader
         title="Employee letters"
         icon={FileSignature}
-        description={<>Salary certificates, experience letters, warnings and more, made from your templates with the employee&apos;s details filled in. Edit the wording under Administration → Letter Templates.</>}
+        description={<>Salary certificates, experience letters, warnings and more, made from your templates with the employee&apos;s details filled in, for the employees of your own company. Edit the wording under Administration → Letter Templates.</>}
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

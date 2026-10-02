@@ -233,7 +233,7 @@ export default async function EmployeeDetailPage({
         </div>
       </section>
 
-      {canViewPay && (
+      {canViewPay && employee.supplier?.isOwnCompany && (
         <div className="flex justify-end">
           <Link href={`/letters?employee=${employee.id}&template=salary`} className="btn btn-secondary text-sm">Salary certificate</Link>
         </div>
