@@ -23,6 +23,15 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
     const q = query.trim().toLowerCase();
     return rows.filter((r) => (!company || r.companyId === company) && (!q || r.name.toLowerCase().includes(q) || r.employeeIdNo.toLowerCase().includes(q) || (r.trade ?? "").toLowerCase().includes(q)));
   }, [rows, query, company]);
+  const groups = useMemo(() => {
+    const m = new Map<string, { id: string; name: string; rows: Row[] }>();
+    for (const r of visible) {
+      const g = m.get(r.companyId) ?? { id: r.companyId, name: r.company, rows: [] };
+      g.rows.push(r);
+      m.set(r.companyId, g);
+    }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [visible]);
   const allOn = visible.length > 0 && visible.every((r) => picked.has(r.employeeIdNo));
 
   function toggle(id: string) {
@@ -30,6 +39,11 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
   }
   function toggleAll() {
     setPicked((p) => { const n = new Set(p); for (const r of visible) { if (allOn) n.delete(r.employeeIdNo); else n.add(r.employeeIdNo); } return n; });
+  }
+
+  function toggleGroup(rowsInGroup: Row[]) {
+    const on = rowsInGroup.every((r) => picked.has(r.employeeIdNo));
+    setPicked((p) => { const n = new Set(p); for (const r of rowsInGroup) { if (on) n.delete(r.employeeIdNo); else n.add(r.employeeIdNo); } return n; });
   }
 
   async function generate() {
@@ -71,7 +85,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
           <option value="">All companies</option>
           {companies.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
-        <Checkbox checked={allOn} onCheckedChange={toggleAll} label={<span className="text-xs font-medium text-muted">Select all shown ({visible.length})</span>} />
+        <Checkbox checked={allOn} onCheckedChange={toggleAll} label={<span className="text-xs font-medium text-muted">Select all employees shown ({visible.length})</span>} />
       </div>
 
       <div className="card overflow-hidden">
@@ -81,15 +95,25 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
               <tr><th className="w-10 px-4 py-2" /><th className="px-3 py-2">Employee</th><th className="px-3 py-2">Company</th><th className="px-3 py-2">Trade</th><th className="px-3 py-2 text-right">Hours</th></tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {visible.map((r) => (
-                <tr key={`${r.companyId}-${r.employeeIdNo}`} className="cursor-pointer hover:bg-[var(--surface-hover,transparent)]" onClick={() => toggle(r.employeeIdNo)}>
-                  <td className="px-4 py-2"><Checkbox checked={picked.has(r.employeeIdNo)} onCheckedChange={() => toggle(r.employeeIdNo)} label={<span className="sr-only">Select {r.name}</span>} /></td>
-                  <td className="px-3 py-2"><span className="font-medium text-primary">{r.name}</span> <span className="text-xs text-muted">{r.employeeIdNo}</span></td>
-                  <td className="px-3 py-2 text-secondary">{r.company}{!r.approved && <span className="ml-2 text-xs text-[var(--warning)]">not invoice-approved</span>}</td>
-                  <td className="px-3 py-2 text-secondary">{r.trade ?? "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-secondary">{r.hours}</td>
-                </tr>
-              ))}
+              {groups.map((g) => {
+                const groupOn = g.rows.every((r) => picked.has(r.employeeIdNo));
+                const count = g.rows.filter((r) => picked.has(r.employeeIdNo)).length;
+                return [
+                  <tr key={`g-${g.id}`} className="bg-[var(--surface-muted,rgba(0,0,0,0.03))]">
+                    <td className="px-4 py-2"><Checkbox checked={groupOn} onCheckedChange={() => toggleGroup(g.rows)} ariaLabel={`Select all of ${g.name}`} /></td>
+                    <td colSpan={4} className="px-3 py-2 text-sm font-semibold text-primary">{g.name} <span className="ml-2 text-xs font-normal text-muted">{count} of {g.rows.length} selected{!g.rows[0].approved && " · not invoice-approved"}</span></td>
+                  </tr>,
+                  ...g.rows.map((r) => (
+                    <tr key={`${r.companyId}-${r.employeeIdNo}`} className="cursor-pointer hover:bg-[var(--surface-hover,transparent)]" onClick={() => toggle(r.employeeIdNo)}>
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}><Checkbox checked={picked.has(r.employeeIdNo)} onCheckedChange={() => toggle(r.employeeIdNo)} ariaLabel={`Select ${r.name}`} /></td>
+                      <td className="px-3 py-2"><span className="font-medium text-primary">{r.name}</span> <span className="text-xs text-muted">{r.employeeIdNo}</span></td>
+                      <td className="px-3 py-2 text-secondary">{r.company}</td>
+                      <td className="px-3 py-2 text-secondary">{r.trade ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-secondary">{r.hours}</td>
+                    </tr>
+                  )),
+                ];
+              })}
               {visible.length === 0 && <tr><td colSpan={5} className="px-4 py-6 text-center text-sm text-muted">No one matches.</td></tr>}
             </tbody>
           </table>
