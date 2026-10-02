@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, FileText, Loader2, Upload, X } from "lucide-react";
+import { Check, FileText, Loader2, Sparkles, X } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { ComboSelect } from "@/components/ui/ComboSelect";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -13,6 +13,8 @@ import { SUPPLIER_CATEGORIES } from "@/lib/formLists";
 import { cn } from "@/lib/cn";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import type { ExtractedCompanyFields } from "@/app/api/documents/extract-company/route";
+import { MultiUploadSlot, UploadSlot, type UploadStatus } from "@/app/(app)/employees/new/upload-slot";
+import { DocumentChecklist, type ChecklistItem } from "@/app/(app)/employees/new/document-checklist";
 import { createSupplierWizardAction } from "./actions";
 import { suggestSupplierCodeAction } from "../actions";
 
@@ -37,7 +39,15 @@ const EMPTY: Values = {
   name: "", code: "", fullName: "", category: "", trn: "", activeFrom: "", mohrePermitNumber: "", tradeLicenseNumber: "", tradeLicenseExpiry: "",
   country: "United Arab Emirates", emirate: "", contactPerson: "", contactPhone: "", contactEmail: "",
 };
-type Doc = { id: number; file: File; docType: string; expiry: string; status: "reading" | "read" | "failed"; error?: string };
+type Doc = { id: number; file: File; docType: string; expiry: string; status: "reading" | "read" | "failed"; error?: string; /** Picked in its own slot, so reading must not change the type. */ fixedType?: boolean };
+
+/** What a complete supplier file is expected to contain; each row ticks when a document of that type has been read or added. */
+const EXPECTED = [
+  { type: "TRADE_LICENSE", label: "Trade licence" },
+  { type: "MOHRE_PERMIT", label: "MOHRE manpower supply permit" },
+  { type: "TRN_CERTIFICATE", label: "TRN / VAT certificate" },
+  { type: "ESTABLISHMENT_CARD", label: "MOHRE establishment card" },
+] as const;
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
@@ -92,7 +102,7 @@ export function SupplierWizard() {
       if (!res.ok) throw new Error((payload && typeof payload.error === "string" && payload.error) || `Couldn't read this document (${res.status}).`);
       const d = payload as ExtractedCompanyFields;
       const known = DOC_TYPES.some((t) => t.value === d.docType) ? d.docType! : "OTHER";
-      setDocs((p) => p.map((x) => (x.id === doc.id ? { ...x, status: "read", docType: known, expiry: d.documentExpiry || (known === "TRADE_LICENSE" ? d.tradeLicenseExpiry || "" : "") } : x)));
+      setDocs((p) => p.map((x) => (x.id === doc.id ? { ...x, status: "read", docType: x.fixedType ? x.docType : known, expiry: d.documentExpiry || (known === "TRADE_LICENSE" ? d.tradeLicenseExpiry || "" : "") } : x)));
       const filled = fill(d);
       if (filled.length) setRead((p) => [...new Set([...p, ...filled])]);
     } catch (e) {
@@ -100,18 +110,32 @@ export function SupplierWizard() {
     }
   }
 
-  async function addFiles(list: FileList | null) {
+  async function addFiles(list: File[] | FileList | null, fixedType?: string) {
     if (!list) return;
     const added: Doc[] = [];
     for (const file of Array.from(list)) {
       if (file.size > MAX_UPLOAD_BYTES) { setError(`${file.name} is over ${MAX_UPLOAD_LABEL}.`); continue; }
-      added.push({ id: nextId.current++, file, docType: "OTHER", expiry: "", status: "reading" });
+      added.push({ id: nextId.current++, file, docType: fixedType ?? "OTHER", expiry: "", status: "reading", fixedType: !!fixedType });
     }
     if (!added.length) return;
     setError(null);
-    setDocs((p) => [...p, ...added]);
+    // A slot holds one file: picking again replaces what was there.
+    setDocs((p) => [...(fixedType ? p.filter((x) => x.docType !== fixedType) : p), ...added]);
     for (const d of added) await readDoc(d);
   }
+
+  const slotDoc = (type: string) => docs.find((d) => d.docType === type) ?? null;
+  const slotStatus = (type: string): UploadStatus => {
+    const d = slotDoc(type);
+    if (!d) return { kind: "idle" };
+    return d.status === "reading" ? { kind: "reading" } : d.status === "failed" ? { kind: "error", message: d.error ?? "Couldn't read this document." } : { kind: "filled", message: "Read" };
+  };
+  const checklist: ChecklistItem[] = EXPECTED.map((e) => ({
+    key: e.type,
+    label: e.label,
+    done: docs.some((d) => d.docType === e.type && d.status !== "failed"),
+    detail: e.type === "TRADE_LICENSE" ? v.tradeLicenseNumber || null : e.type === "MOHRE_PERMIT" ? v.mohrePermitNumber || null : e.type === "TRN_CERTIFICATE" ? v.trn || null : null,
+  }));
 
   function next() {
     setError(null);
@@ -138,31 +162,66 @@ export function SupplierWizard() {
 
   return (
     <div className="space-y-6">
-      <ol className="flex flex-wrap gap-2 text-sm">
-        {STEPS.map((s, i) => (
-          <li key={s}>
-            <button
-              type="button"
-              onClick={() => i <= step && setStep(i)}
-              className={cn("rounded-full px-3 py-1 font-medium", i === step ? "bg-[var(--brand-primary)] text-white" : i < step ? "bg-surface-sunken text-primary" : "text-muted")}
-            >
-              {i + 1} {s}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <nav aria-label="Progress" className="border-b border-default pb-3">
+        <ol className="flex flex-wrap gap-1.5">
+          {STEPS.map((label, i) => {
+            const active = i === step;
+            const done = i < step;
+            return (
+              <li key={label}>
+                <button
+                  type="button"
+                  onClick={() => i <= step && setStep(i)}
+                  aria-current={active ? "step" : undefined}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-medium transition",
+                    active ? "bg-[var(--brand-primary)] text-white" : done ? "bg-[var(--success-soft)] text-[var(--success)] hover:brightness-95" : "text-muted hover:bg-surface-hover hover:text-primary"
+                  )}
+                >
+                  {done ? <Check className="h-3 w-3" aria-hidden /> : <span className="tabular text-[10px] opacity-70">{i + 1}</span>}
+                  {label}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
 
       {step === 0 && (
         <div className="space-y-4">
-          <div className="rounded-card border border-[var(--brand-primary)]/20 bg-[var(--brand-primary-soft,#f1efff)] p-5">
-            <p className="text-sm font-semibold text-primary">Upload the supplier&apos;s documents</p>
-            <p className="mb-3 text-sm text-secondary">Trade licence first, then the MOHRE permit, TRN certificate and anything else you have. Everything readable is filled in for you.</p>
-            <label className="btn btn-secondary inline-flex cursor-pointer items-center gap-2">
-              <Upload className="h-4 w-4" aria-hidden /> Choose files
-              <input type="file" multiple accept="application/pdf,image/*" className="sr-only" onChange={(e) => { void addFiles(e.target.files); e.target.value = ""; }} />
-            </label>
-            <p className="mt-2 text-xs text-muted">PDF or images, up to {MAX_UPLOAD_LABEL} each. You can select several at once.</p>
+          <div className="rounded-card border border-[var(--brand-primary-border)] bg-brand-soft p-4">
+            <div className="flex items-start gap-2.5">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-primary">Upload the document pack</p>
+                <p className="mt-0.5 text-xs text-secondary">
+                  Trade licence, MOHRE permit, TRN certificate and anything else you have — as one PDF or as several files. Everything readable is filled in for you.
+                </p>
+                <div className="mt-3">
+                  <MultiUploadSlot
+                    id="supplier-doc-pack"
+                    label="Document pack"
+                    files={[]}
+                    status={reading ? { kind: "reading" } : { kind: "idle" }}
+                    hint={`PDF or images, up to ${MAX_UPLOAD_LABEL} each. You can select several files at once.`}
+                    onAdd={(picked) => void addFiles(picked)}
+                    onRemove={() => undefined}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
+
+          <DocumentChecklist
+            title="Documents found"
+            items={checklist}
+            fixLabel="Upload"
+            onFix={() => {
+              const details = document.getElementById("supplier-separate-uploads");
+              if (details instanceof HTMLDetailsElement) details.open = true;
+              details?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+          />
 
           {docs.length > 0 && (
             <ul className="divide-y divide-[var(--border)] rounded-card border border-default">
@@ -189,9 +248,27 @@ export function SupplierWizard() {
               ))}
             </ul>
           )}
+
+          <details id="supplier-separate-uploads" className="rounded-card border border-default">
+            <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-secondary">Upload documents individually</summary>
+            <div className="grid grid-cols-1 gap-4 border-t border-default p-4 sm:grid-cols-2">
+              {DOC_TYPES.filter((t) => t.value !== "OTHER").map((t) => (
+                <UploadSlot
+                  key={t.value}
+                  id={`supplier-doc-${t.value}`}
+                  label={t.label}
+                  file={slotDoc(t.value)?.file ?? null}
+                  status={slotStatus(t.value)}
+                  onSelect={(f) => { if (f) void addFiles([f], t.value); }}
+                  onClear={() => setDocs((p) => p.filter((x) => x.docType !== t.value))}
+                />
+              ))}
+            </div>
+          </details>
+
           {read.length > 0 && (
-            <p className="flex items-start gap-2 text-sm text-secondary">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden /> Filled in from the documents: {read.join(", ")}. You can check and change everything on the next step.
+            <p className="text-xs text-muted">
+              <span className="font-medium text-[var(--success)]">Auto-filled:</span> {read.join(", ")}. You can check and change everything on the next step.
             </p>
           )}
           <p className="text-xs text-muted">No documents to hand? You can skip this step and type the details in.</p>
