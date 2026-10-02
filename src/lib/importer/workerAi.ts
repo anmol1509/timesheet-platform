@@ -49,7 +49,7 @@ export async function suggestWorkerMatches(issues: PlacementIssue[]): Promise<Pl
   const out = issues.map((i) => ({ ...i, ai: heuristic(i) }));
   if (withCandidates.length === 0 || !process.env.ANTHROPIC_API_KEY) return out;
   try {
-    const client = new Anthropic();
+    const client = new Anthropic({ maxRetries: 0, timeout: 25_000 });
     const response = await client.messages.create({
       model: COPILOT_MODEL,
       max_tokens: 2000,

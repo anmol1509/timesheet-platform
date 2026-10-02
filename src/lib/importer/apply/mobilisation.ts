@@ -52,6 +52,9 @@ export async function applyMobilisation(
     db.project.findMany({ where: { branchId }, select: { id: true, name: true, code: true, clientId: true } }),
     db.employee.findMany({ where: { branchId }, select: { id: true, name: true, employeeIdNo: true, trade: true, status: true, projectId: true, mobilisationDate: true, siteArrivalDate: true } }),
   ]);
+  // What was on record before this run, so a name added during the run is never offered as "existing".
+  const clientsBefore = clients.map((c) => ({ id: c.id, name: c.name }));
+  const projectsBefore = projects.map((p) => ({ id: p.id, name: p.name }));
   const clientByKey = new Map(clients.map((c) => [nameKey(c.name), c]));
   const projectByCode = new Map(projects.map((p) => [p.code.toLowerCase(), p]));
   const takenCodes = new Set(projects.map((p) => p.code.toLowerCase()));
@@ -235,6 +238,6 @@ export async function applyMobilisation(
   return {
     rows, counts, notes, deployments, placementIssues: [...issues.values()],
     newSuppliers: [...newParties.values()],
-    existingSuppliers: [], existingClients: clients.slice(0, 300), existingProjects: projects.slice(0, 300).map((p) => ({ id: p.id, name: p.name })),
+    existingSuppliers: [], existingClients: clientsBefore.slice(0, 300), existingProjects: projectsBefore.slice(0, 300),
   };
 }

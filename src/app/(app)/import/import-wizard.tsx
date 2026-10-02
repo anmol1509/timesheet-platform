@@ -82,11 +82,24 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
   ];
 }
 
+/** Safe to repeat: a dropped connection or a gateway timeout says nothing about the data, and previews are dry runs. */
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? "Something went wrong.");
-  return body as T;
+  let lastError = "Something went wrong.";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      const body = await res.json().catch(() => null);
+      if (res.ok && body) return body as T;
+      if (body?.error && ![502, 503, 504].includes(res.status)) throw new Error(body.error);
+      lastError = body?.error ?? (res.status === 504 || res.status === 408 ? "That took too long. Nothing was saved." : "The server didn't answer properly. Nothing was saved.");
+    } catch (e) {
+      if (e instanceof Error && e.message !== "Failed to fetch" && !/network|load failed/i.test(e.message)) throw e;
+      lastError = "Your connection dropped. Nothing was saved.";
+    }
+    if (init?.method && init.method !== "GET" && !/\/(preview|analyze|copilot)$/.test(url)) break; // only repeat the read-only steps
+    await new Promise((r) => setTimeout(r, 600 * attempt));
+  }
+  throw new Error(lastError);
 }
 
 export function ImportWizard({ kind }: { kind: ImportKind }) {
@@ -410,6 +423,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           </div>
           {(summary.newSuppliers?.length ?? 0) > 0 && (
             <SupplierDecisions
+              key={summary.newSuppliers!.map((n) => n.key).join("|")}
               kind={kind}
               items={summary.newSuppliers!}
               existing={summary.existingSuppliers ?? []}
@@ -607,7 +621,11 @@ function SupplierDecisions({ kind, items, existing, existingClients, existingPro
       return [n.key, a ? { action: a.action, name: a.action === "add" ? (a.name ?? n.name) : n.name, supplierId: a.action === "existing" ? a.supplierId : "" } : { action: "", name: n.name, supplierId: "" }];
     })),
   );
-  const set = (key: string, patch: Partial<Draft>) => setDraft((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  // Names can appear part-way through (a project only shows once its client is decided), so a row may not have a draft yet.
+  const set = (key: string, patch: Partial<Draft>) => setDraft((prev) => {
+    const base = prev[key] ?? { action: "" as const, name: items.find((n) => n.key === key)?.name ?? "", supplierId: "" };
+    return { ...prev, [key]: { ...base, ...patch } };
+  });
   const ready = items.every((n) => {
     const d = draft[n.key];
     return d && (d.action === "ignore" || (d.action === "add" && d.name.trim()) || (d.action === "existing" && d.supplierId));
@@ -621,6 +639,11 @@ function SupplierDecisions({ kind, items, existing, existingClients, existingPro
           <p className="text-sm font-semibold text-primary">New {kind === "MOBILISATION" ? "clients and projects" : hasClients ? "suppliers and clients" : "suppliers"} in this file &middot; {items.length}</p>
           <p className="mt-0.5 text-xs text-muted">These names aren&rsquo;t on record yet. Nothing is added unless you choose to &mdash; add it (you can fix the name), use one you already have, or ignore it.</p>
         </div>
+        {items.some((n) => n.ai?.id && n.ai.confidence !== "low") && (
+          <button type="button" className="btn btn-secondary btn-sm flex gap-1.5" onClick={() => setDraft((prev) => Object.fromEntries(items.map((n) => { const v = prev[n.key] ?? { action: "" as const, name: n.name, supplierId: "" }; return [n.key, !v.action && n.ai?.id && n.ai.confidence !== "low" ? { ...v, action: "existing" as const, supplierId: n.ai.id } : v]; })))}>
+            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Use AI suggestions
+          </button>
+        )}
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDraft((prev) => Object.fromEntries(items.map((n) => { const v = prev[n.key] ?? { action: "" as const, name: n.name, supplierId: "" }; return [n.key, v.action ? v : { ...v, action: "add" as const }]; })))}>
           Add all as new
         </button>
@@ -644,6 +667,13 @@ function SupplierDecisions({ kind, items, existing, existingClients, existingPro
                   ))}
                 </div>
               </div>
+              {n.ai && (
+                <p className="flex flex-wrap items-center gap-2 text-xs text-secondary">
+                  <Sparkles className="h-3 w-3 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+                  {n.ai.id ? <span>Looks like <span className="font-medium text-primary">{n.ai.name}</span> ({n.ai.confidence} confidence){n.ai.reason ? `: ${n.ai.reason}` : ""}</span> : <span>Probably a new one{n.ai.reason ? `: ${n.ai.reason}` : ""}</span>}
+                  {n.ai.id && d.supplierId !== n.ai.id && <button type="button" className="btn btn-secondary btn-sm" onClick={() => set(n.key, { action: "existing", supplierId: n.ai!.id! })}>Use it</button>}
+                </p>
+              )}
               {d.action === "add" && (
                 <label className="flex flex-wrap items-center gap-2 text-xs text-muted">
                   Name to add

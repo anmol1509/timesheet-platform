@@ -54,7 +54,7 @@ export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: st
 /** What to do with a supplier name in the file that isn't on record yet. Nothing is added unless the person chose to. */
 export type SupplierDecision = { action: "add"; name?: string } | { action: "existing"; supplierId: string } | { action: "ignore" };
 /** A name in the file that isn't on record. `party` says whether it is a supplier or a client; the decision key for a client starts with "client:". For a client, `existing` means a client. */
-export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" | "project" };
+export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" | "project"; ai?: { id: string | null; name?: string; confidence: "high" | "medium" | "low"; reason: string } };
 
 /** What the person decided for a worker name in the file that couldn't be matched on its own. */
 export type WorkerChoice = { action: "use"; employeeId: string } | { action: "skip" } | { action: "create" };

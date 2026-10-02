@@ -8,6 +8,7 @@ import { trackedClient, undoChanges } from "./tracker";
 import type { ApplyCtx, ApplyResult, Db, ImportKind } from "./types";
 import { applySuppliers } from "./apply/suppliers";
 import { suggestWorkerMatches } from "./workerAi";
+import { suggestPartyMatches } from "./partyAi";
 import { applyMobilisation } from "./apply/mobilisation";
 import { applyCamps } from "./apply/camps";
 import { applyVehicles } from "./apply/vehicles";
@@ -67,6 +68,13 @@ function summarise(res: ApplyResult): BatchSummary {
   return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers, existingClients: res.existingClients, existingProjects: res.existingProjects, deployments: res.deployments?.slice(0, 600), placementIssues: res.placementIssues, placements: res.placements?.slice(0, 400) };
 }
 
+function isTransient(e: unknown): boolean {
+  const code = (e as { code?: string } | null)?.code;
+  if (code && ["P2034", "P2028", "P2024", "P1001", "P1008", "P1017"].includes(code)) return true;
+  const msg = e instanceof Error ? e.message : "";
+  return /write conflict|deadlock|retry your transaction|Transaction already closed|Transaction not found|connection (terminated|reset|closed)|ECONNRESET/i.test(msg);
+}
+
 class DryRun extends Error {
   constructor(public result: ApplyResult) { super("dry run"); }
 }
@@ -77,22 +85,35 @@ export async function previewBatch(batchId: string, user: BatchUser, mapping: St
   const batch = await prisma.importBatch.findUniqueOrThrow({ where: { id: batchId } });
   if (batch.status === "RUNNING" || batch.status === "DONE" || batch.status === "UNDONE") throw new Error("This import has already been run.");
   const kind = batch.kind as ImportKind;
-  let result: ApplyResult;
-  try {
-    await prisma.$transaction(
-      async (tx) => {
-        const ctx: ApplyCtx = { db: tx as Db, branchId: batch.branchId, user, audit: false };
-        throw new DryRun(await apply(kind, ctx, batch, mapping));
-      },
-      { timeout: 120_000, maxWait: 10_000 },
-    );
-    throw new Error("unreachable");
-  } catch (e) {
-    if (!(e instanceof DryRun)) throw e;
-    result = e.result;
+  let result: ApplyResult | undefined;
+  // The dry run is rolled back, so it is always safe to repeat when the database asks for a retry
+  // (a write conflict, a dropped pooled connection, a transaction that timed out waiting for a slot).
+  for (let attempt = 1; !result; attempt++) {
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          const ctx: ApplyCtx = { db: tx as Db, branchId: batch.branchId, user, audit: false };
+          throw new DryRun(await apply(kind, ctx, batch, mapping));
+        },
+        { timeout: 55_000, maxWait: 10_000 },
+      );
+    } catch (e) {
+      if (e instanceof DryRun) { result = e.result; break; }
+      if (attempt >= 3 || !isTransient(e)) throw e;
+      await new Promise((r) => setTimeout(r, 400 * attempt));
+    }
   }
   // Names that couldn't be matched exactly get the assistant's opinion (outside the dry-run transaction).
-  if ((kind === "CAMPS" || kind === "MOBILISATION") && result.placementIssues?.length) result.placementIssues = await suggestWorkerMatches(result.placementIssues);
+  if (!result) throw new Error("The preview failed.");
+  const done = result;
+  // Both opinions are asked for together so the review stays well inside the time limit.
+  const [issues, parties] = await Promise.all([
+    (kind === "CAMPS" || kind === "MOBILISATION") && done.placementIssues?.length ? suggestWorkerMatches(done.placementIssues) : done.placementIssues,
+    done.newSuppliers?.length ? suggestPartyMatches(done.newSuppliers, { supplier: done.existingSuppliers ?? [], client: done.existingClients ?? [], project: done.existingProjects ?? [] }) : done.newSuppliers,
+  ]);
+  done.placementIssues = issues;
+  done.newSuppliers = parties;
+  result = done;
   const summary = summarise(result);
   await prisma.importBatch.update({
     where: { id: batchId },
