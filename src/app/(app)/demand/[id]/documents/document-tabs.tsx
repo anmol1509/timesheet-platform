@@ -34,6 +34,7 @@ export function DocumentTabs({
   undertakingTemplates,
   workers,
   issuers,
+  undertakingIssuer,
 }: {
   demandId: string;
   requestNo: number;
@@ -41,8 +42,10 @@ export function DocumentTabs({
   nocTemplates: Letter[];
   undertakingTemplates: Letter[];
   workers: Worker[];
-  /** The companies these letters get issued by, and whether each has a letterhead. */
+  /** The sponsors the NOCs get issued by, and whether each has a letterhead. */
   issuers: { name: string; hasLetterhead: boolean }[];
+  /** Our own company, which issues the undertaking on the company profile letterhead. */
+  undertakingIssuer: { name: string; hasLetterhead: boolean };
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("noc");
   // Whether the letters print onto each company's uploaded blank letterhead or
@@ -108,7 +111,8 @@ export function DocumentTabs({
         <LetterheadChoice
           value={onLetterhead}
           onChange={setOnLetterhead}
-          issuers={issuers}
+          issuers={tab === "noc" ? issuers : [undertakingIssuer]}
+          kind={tab === "noc" ? "sponsor" : "company"}
         />
       )}
 
@@ -284,10 +288,13 @@ function LetterheadChoice({
   value,
   onChange,
   issuers,
+  kind,
 }: {
   value: boolean;
   onChange: (next: boolean) => void;
   issuers: { name: string; hasLetterhead: boolean }[];
+  /** NOC: each sponsor's own letterhead. Undertaking: the company profile letterhead. */
+  kind: "sponsor" | "company";
 }) {
   const missing = issuers.filter((i) => !i.hasLetterhead);
   return (
@@ -296,7 +303,7 @@ function LetterheadChoice({
       <div className="flex gap-1.5">
         {(
           [
-            [true, "Company letterhead"],
+            [true, kind === "sponsor" ? "Sponsor letterhead" : "Company letterhead"],
             [false, "Plain paper"],
           ] as const
         ).map(([option, label]) => (
@@ -317,15 +324,17 @@ function LetterheadChoice({
       </div>
       <p className="text-xs text-subtle">
         {value
-          ? `One letter per company (${issuers.length}), each on its own letterhead.`
+          ? kind === "sponsor"
+            ? `One letter per sponsor (${issuers.length}), each on that sponsor's letterhead.`
+            : `One letter from ${issuers[0]?.name ?? "your company"}, on the company profile letterhead.`
           : "No letterhead drawn — for feeding pre-printed paper through the printer."}
       </p>
 
       {/* Said before the download, not discovered after it. */}
       {value && missing.length > 0 && (
         <p className="w-full rounded-card border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning)]">
-          No letterhead on file for {missing.map((m) => m.name).join(", ")} — those
-          letters print plain. Upload one on the supplier&apos;s Documents tab.
+          No letterhead on file for {missing.map((m) => m.name).join(", ")} — {kind === "sponsor" ? "those letters" : "this letter"} print
+          plain. {kind === "sponsor" ? "Upload one on the sponsor supplier\u2019s Documents tab." : "Upload one in Settings \u2192 Company profile \u2192 Letters."}
         </p>
       )}
     </div>

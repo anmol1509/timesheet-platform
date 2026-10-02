@@ -10,7 +10,7 @@ import { columnsFromNocFields } from "@/lib/letterLayout";
 /**
  * The NOC as a PDF, in the format the client's own letters use.
  *
- * `?letterhead=1` prints each company's letter on its own uploaded letterhead;
+ * `?letterhead=1` prints each sponsor's letter on the sponsor's own uploaded letterhead;
  * without it the layout is plain, for printing onto pre-printed paper.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -41,6 +41,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     templateHtml: templateHtml(noc.template),
     onLetterhead,
     fallbackIssuerName: noc.branch.name,
+    issuedBy: "SPONSOR",
+    branchId: noc.branchId,
     context: {
       clientName: noc.demandRequest.client.name,
       clientAddress: noc.demandRequest.client.billingAddress,

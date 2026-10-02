@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { substituteInHtml } from "@/lib/letterHtml";
 import {
   formatLetterDate,
-  groupWorkersBySupplier,
+  groupWorkersBySponsor,
   type LetterGroup,
   type LetterWorker,
 } from "@/lib/letterLayout";
@@ -49,6 +49,19 @@ export async function loadLetterheads(
   return out;
 }
 
+const SUBSTITUTIONS = (opts: { context: LetterContext }, issuerName: string, count: number) => ({
+  CLIENTNAME: opts.context.clientName,
+  CLIENTADDRESS: opts.context.clientAddress ?? "",
+  PROJECTNAME: opts.context.projectName,
+  COMPANYNAME: issuerName,
+  SPONSORSHIPCOMPANYNAME: issuerName,
+  BRANCHNAME: opts.context.branchName,
+  DOCNO: String(opts.context.docNo),
+  MOBILIZEDATE: opts.context.mobilizeDate ? formatLetterDate(opts.context.mobilizeDate) : "",
+  DATE: formatLetterDate(opts.context.date),
+  WORKERCOUNT: String(count),
+});
+
 export type LetterContext = {
   clientName: string;
   clientAddress: string | null;
@@ -74,8 +87,16 @@ export async function buildLetterSections(opts: {
   onLetterhead: boolean;
   /** Used when a group's workers have no supplier of their own. */
   fallbackIssuerName: string;
+  /**
+   * Who issues the letter. SPONSOR: one letter per visa sponsor, on that
+   * sponsor's letterhead (the NOC). COMPANY: one letter from our own company,
+   * on the letterhead in Settings → Company profile (the undertaking).
+   */
+  issuedBy: "SPONSOR" | "COMPANY";
+  branchId: string;
 }): Promise<{ sections: LetterSection[]; missingLetterheads: string[] }> {
-  const groups = groupWorkersBySupplier(opts.workers);
+  if (opts.issuedBy === "COMPANY") return buildCompanySection(opts);
+  const groups = groupWorkersBySponsor(opts.workers);
   const supplierIds = groups
     .map((g) => g.supplierId)
     .filter((id): id is string => !!id);
@@ -116,20 +137,7 @@ export async function buildLetterSections(opts: {
       letterheadImage,
     };
 
-    const bodyHtml = substituteInHtml(opts.templateHtml, {
-      CLIENTNAME: opts.context.clientName,
-      CLIENTADDRESS: opts.context.clientAddress ?? "",
-      PROJECTNAME: opts.context.projectName,
-      COMPANYNAME: issuerName,
-      SPONSORSHIPCOMPANYNAME: issuerName,
-      BRANCHNAME: opts.context.branchName,
-      DOCNO: String(opts.context.docNo),
-      MOBILIZEDATE: opts.context.mobilizeDate
-        ? formatLetterDate(opts.context.mobilizeDate)
-        : "",
-      DATE: formatLetterDate(opts.context.date),
-      WORKERCOUNT: String(group.workers.length),
-    });
+    const bodyHtml = substituteInHtml(opts.templateHtml, SUBSTITUTIONS(opts, issuerName, group.workers.length));
 
     return { group, issuer, bodyHtml } satisfies LetterSection;
   });
@@ -148,6 +156,7 @@ export function toLetterWorker(e: {
   emiratesId: string | null;
   visaStatus?: string | null;
   supplierId: string | null;
+  sponsorSupplierId?: string | null;
   supplier?: { name: string; fullName: string | null } | null;
 }): LetterWorker {
   return {
@@ -160,8 +169,43 @@ export function toLetterWorker(e: {
     emiratesId: e.emiratesId,
     visaStatus: e.visaStatus ?? null,
     supplierId: e.supplierId,
+    sponsorSupplierId: e.sponsorSupplierId ?? null,
     supplierName: e.supplier?.fullName || e.supplier?.name || null,
   };
 }
 
 export type { LetterGroup };
+
+
+/** One letter from our own company, on the letterhead saved in the company profile. */
+async function buildCompanySection(opts: {
+  workers: LetterWorker[];
+  templateHtml: string;
+  context: LetterContext;
+  onLetterhead: boolean;
+  branchId: string;
+}): Promise<{ sections: LetterSection[]; missingLetterheads: string[] }> {
+  const branch = await prisma.branch.findUnique({
+    where: { id: opts.branchId },
+    select: { name: true, signatoryName: true, phone: true, email: true, letterheadImage: { select: { data: true, mimeType: true } } },
+  });
+  const name = branch?.name ?? opts.context.branchName;
+  const img = branch?.letterheadImage;
+  const letterheadImage =
+    opts.onLetterhead && img && USABLE_LETTERHEAD_TYPES.includes(img.mimeType.toLowerCase())
+      ? `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`
+      : null;
+  const issuer: LetterIssuer = {
+    name,
+    signatoryName: branch?.signatoryName ?? null,
+    signatoryPhone: branch?.phone ?? null,
+    signatoryEmail: branch?.email ?? null,
+    letterheadImage,
+  };
+  const group: LetterGroup = { supplierId: null, supplierName: null, workers: opts.workers };
+  const bodyHtml = substituteInHtml(opts.templateHtml, SUBSTITUTIONS(opts, name, opts.workers.length));
+  return {
+    sections: [{ group, issuer, bodyHtml } satisfies LetterSection],
+    missingLetterheads: opts.onLetterhead && !letterheadImage ? [name] : [],
+  };
+}

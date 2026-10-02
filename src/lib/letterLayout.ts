@@ -93,6 +93,8 @@ export type LetterWorker = {
   /** The company the worker belongs to — printed in the Company Name column. */
   supplierId: string | null;
   supplierName: string | null;
+  /** The visa sponsor, when different from the supplier the worker belongs to. */
+  sponsorSupplierId?: string | null;
 };
 
 export type LetterGroup = {
@@ -122,6 +124,23 @@ export function groupWorkersBySupplier(workers: LetterWorker[]): LetterGroup[] {
         supplierName: w.supplierName,
         workers: [w],
       });
+  }
+  return [...groups.values()];
+}
+
+/**
+ * Splits workers by who sponsors their visa (falling back to their own company
+ * when no sponsor is set): a NOC is issued by the sponsor, on its letterhead.
+ * `supplierId` on each group is the sponsor's id.
+ */
+export function groupWorkersBySponsor(workers: LetterWorker[]): LetterGroup[] {
+  const groups = new Map<string, LetterGroup>();
+  for (const w of workers) {
+    const id = w.sponsorSupplierId ?? w.supplierId;
+    const key = id ?? "";
+    const existing = groups.get(key);
+    if (existing) existing.workers.push(w);
+    else groups.set(key, { supplierId: id, supplierName: null, workers: [w] });
   }
   return [...groups.values()];
 }

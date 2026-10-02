@@ -27,7 +27,9 @@ export default async function DemandDocumentsPage({
                 select: {
                   id: true, name: true, employeeIdNo: true, trade: true,
                   supplierId: true,
+                  sponsorSupplierId: true,
                   supplier: { select: { name: true, fullName: true } },
+                  sponsorSupplier: { select: { name: true, fullName: true } },
                 },
               },
             },
@@ -46,10 +48,11 @@ export default async function DemandDocumentsPage({
 
   const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee));
 
-  // Which companies these letters will be issued by, and which of them have no
-  // blank letterhead on file. Worked out here rather than left to the download,
-  // so nobody prints a stack of letters before noticing one came out plain.
-  const issuerIds = [...new Set(workers.map((w) => w.supplierId).filter((x): x is string => !!x))];
+  // NOCs are issued by each worker's visa sponsor (their own company when none is
+  // set), on that sponsor's letterhead. Worked out here rather than left to the
+  // download, so nobody prints a stack of letters before noticing one came out plain.
+  const issuerOf = (w: (typeof workers)[number]) => w.sponsorSupplierId ?? w.supplierId;
+  const issuerIds = [...new Set(workers.map(issuerOf).filter((x): x is string => !!x))];
   const withLetterhead = new Set(
     issuerIds.length
       ? (
@@ -62,15 +65,17 @@ export default async function DemandDocumentsPage({
       : []
   );
   const issuers = issuerIds.map((sid) => {
-    const w = workers.find((x) => x.supplierId === sid)!;
-    return {
-      name: w.supplier?.fullName || w.supplier?.name || "Unnamed company",
-      hasLetterhead: withLetterhead.has(sid),
-    };
+    const w = workers.find((x) => issuerOf(x) === sid)!;
+    const named = w.sponsorSupplierId === sid ? w.sponsorSupplier : w.supplier;
+    return { name: named?.fullName || named?.name || "Unnamed company", hasLetterhead: withLetterhead.has(sid) };
   });
-  if (workers.some((w) => !w.supplierId)) {
-    issuers.push({ name: "Workers with no company set", hasLetterhead: false });
+  if (workers.some((w) => !issuerOf(w))) {
+    issuers.push({ name: "Workers with no sponsor or company set", hasLetterhead: false });
   }
+
+  // The undertaking is issued by our own company, on the company profile letterhead.
+  const branch = await prisma.branch.findUnique({ where: { id: demand.branchId }, select: { name: true, letterheadImageId: true } });
+  const undertakingIssuer = { name: branch?.name ?? "Your company", hasLetterhead: !!branch?.letterheadImageId };
 
   return (
     <div className="space-y-5">
@@ -96,6 +101,7 @@ export default async function DemandDocumentsPage({
         )}
         workers={workers}
         issuers={issuers}
+        undertakingIssuer={undertakingIssuer}
       />
     </div>
   );

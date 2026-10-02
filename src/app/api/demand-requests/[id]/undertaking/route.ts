@@ -9,10 +9,8 @@ import { buildLetterSections, toLetterWorker } from "@/lib/letterIssuer";
 /**
  * Undertaking letter for a demand's mobilised workers.
  *
- * Same shape and the same splitting as the NOC — an undertaking is one
- * company accepting responsibility for its own people, so a mobilisation
- * drawn from three suppliers produces three letters. `?letterhead=1` prints
- * each on that company's own letterhead.
+ * Issued by our own company, so it is one letter for everyone mobilised, and
+ * `?letterhead=1` prints it on the letterhead saved in Settings → Company profile.
  */
 export async function GET(
   request: Request,
@@ -63,6 +61,8 @@ export async function GET(
     templateHtml: templateHtml(template),
     onLetterhead,
     fallbackIssuerName: demand.branch.name,
+    issuedBy: "COMPANY",
+    branchId: demand.branchId,
     context: {
       clientName: demand.client.name,
       clientAddress: demand.client.billingAddress,
