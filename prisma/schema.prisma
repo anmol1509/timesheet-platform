@@ -444,6 +444,7 @@ model Client {
   // Unique within a branch: several manpower suppliers share the same big clients.
   @@unique([branchId, name])
   @@unique([branchId, code])
+  ownedCamps Camp[] @relation("CampClientOwner")
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -1341,10 +1342,14 @@ model Camp {
 
   // Whether this camp is run by the company itself or by a manpower
   // supplier — printed as "Camp Type" on the check-in slip.
-  ownerType String @default("OWN") // "OWN" | "SUPPLIER"
+  ownerType String @default("OWN") // "OWN" | "SUPPLIER" | "CLIENT"
 
   owningSupplier   Supplier? @relation("CampOwner", fields: [owningSupplierId], references: [id])
   owningSupplierId String?
+
+  // Set when ownerType is "CLIENT": the client who provides the camp.
+  owningClient   Client? @relation("CampClientOwner", fields: [owningClientId], references: [id])
+  owningClientId String?
 
   checkIns CampCheckIn[]
 

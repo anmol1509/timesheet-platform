@@ -30,6 +30,7 @@ export default async function CampsPage({
       where: branchWhere(branchId),
       include: {
         owningSupplier: { select: { name: true } },
+        owningClient: { select: { name: true } },
         rooms: {
           include: { beds: { orderBy: { label: "asc" } } },
           orderBy: { name: "asc" },
@@ -140,7 +141,7 @@ export default async function CampsPage({
                   <span
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",
-                      c.ownerType === "SUPPLIER" ? "bg-[var(--warning)]" : "bg-[var(--brand-primary)]"
+                      c.ownerType !== "OWN" ? "bg-[var(--warning)]" : "bg-[var(--brand-primary)]"
                     )}
                     aria-hidden
                   />
@@ -164,7 +165,9 @@ export default async function CampsPage({
                 hiddenFields={{ campId: selectedCamp.id }}
               />
               <div className="ml-auto flex flex-wrap items-center gap-3">
-
+                <span className="rounded-full bg-[var(--info-soft)] px-2.5 py-1 text-xs font-medium text-[var(--brand-primary)]">
+                  {selectedCamp.ownerType === "SUPPLIER" ? `Supplier camp${selectedCamp.owningSupplier ? ` — ${selectedCamp.owningSupplier.name}` : ""}` : selectedCamp.ownerType === "CLIENT" ? `Client camp${selectedCamp.owningClient ? ` — ${selectedCamp.owningClient.name}` : ""}` : "Own camp"}
+                </span>
                 <DeleteButton
                   action={deleteCampAction}
                   hiddenFields={{ campId: selectedCamp.id }}

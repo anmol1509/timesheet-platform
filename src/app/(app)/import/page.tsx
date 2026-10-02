@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, CalendarClock, HardHat, Truck, type LucideIcon } from "lucide-react";
+import { Building2, Bus, CalendarClock, HardHat, Home, Truck, type LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { prisma } from "@/lib/db";
@@ -17,6 +17,8 @@ const CARDS: { kind: ImportKind; icon: LucideIcon; blurb: string; hint: string }
   { kind: "TIMESHEETS", icon: CalendarClock, blurb: "Your monthly timesheet workbook. Suppliers, sponsors, clients, workers, hours and attendance are all read from it.", hint: "Best place to start if a spreadsheet is what you use today" },
   { kind: "SUPPLIERS", icon: Truck, blurb: "Manpower suppliers and sub-suppliers, with codes, contacts and trade licence details.", hint: "Excel or CSV" },
   { kind: "CLIENTS", icon: Building2, blurb: "The companies you supply workers to, with contacts and billing details.", hint: "Excel or CSV" },
+  { kind: "CAMPS", icon: Home, blurb: "Camps with their rooms and beds. Each camp is Own, Supplier or Client. Beds are optional.", hint: "Excel or CSV" },
+  { kind: "VEHICLES", icon: Bus, blurb: "Your vehicles and drivers, with seats, Mulkiya and insurance expiry dates.", hint: "Excel or CSV" },
   { kind: "WORKERS", icon: HardHat, blurb: "Your worker list: codes, trades, nationality, passport, Emirates ID, visa and labour card dates.", hint: "Excel or CSV" },
 ];
 

@@ -7,6 +7,8 @@ import { TARGETS } from "./targets";
 import { trackedClient, undoChanges } from "./tracker";
 import type { ApplyCtx, ApplyResult, Db, ImportKind } from "./types";
 import { applySuppliers } from "./apply/suppliers";
+import { applyCamps } from "./apply/camps";
+import { applyVehicles } from "./apply/vehicles";
 import { applyClients } from "./apply/clients";
 import { applyWorkers } from "./apply/workers";
 import { applyTimesheets } from "./apply/timesheets";
@@ -50,6 +52,8 @@ async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Ar
   const rows = extractRows(wb, mapping, fields);
   if (kind === "SUPPLIERS") return applySuppliers(ctx, rows);
   if (kind === "CLIENTS") return applyClients(ctx, rows);
+  if (kind === "CAMPS") return applyCamps(ctx, rows);
+  if (kind === "VEHICLES") return applyVehicles(ctx, rows);
   return applyWorkers(ctx, rows, mapping.fixes ?? [], mapping.supplierDecisions ?? {});
 }
 

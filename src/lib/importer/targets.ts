@@ -49,6 +49,28 @@ const WORKERS: FieldDef[] = [
   { key: "laborCardExpiry", label: "Labour card expiry", aliases: ["labour card expiry", "labor card expiry", "work permit expiry", "wp expiry"] },
 ];
 
+const CAMPS: FieldDef[] = [
+  { key: "camp", label: "Camp name", required: true, aliases: ["camp", "camp name", "accommodation", "accommodation name", "building", "building name", "property"] },
+  { key: "campType", label: "Camp type", aliases: ["camp type", "type", "ownership", "owned by type", "own/supplier/client"], hint: "Own, Supplier or Client" },
+  { key: "owner", label: "Supplier or client name", aliases: ["supplier", "client", "owner", "provided by", "camp owner", "supplier name", "client name", "landlord"] },
+  { key: "room", label: "Room", aliases: ["room", "room no", "room number", "room name", "flat", "unit"] },
+  { key: "roomType", label: "Room type", aliases: ["room type", "category", "bed type"] },
+  { key: "beds", label: "Number of beds", aliases: ["beds", "no of beds", "number of beds", "bed count", "bed space", "capacity", "bed spaces"] },
+  { key: "nationality", label: "Nationality", aliases: ["nationality", "reserved for", "country"] },
+];
+
+const VEHICLES: FieldDef[] = [
+  { key: "plateNumber", label: "Plate number", required: true, aliases: ["plate", "plate no", "plate number", "vehicle no", "vehicle number", "registration no", "reg no", "number plate", "vehicle"] },
+  { key: "type", label: "Vehicle type", aliases: ["type", "vehicle type", "model", "make", "category"] },
+  { key: "capacity", label: "Seats", aliases: ["capacity", "seats", "seating", "seating capacity", "passengers", "no of seats"] },
+  { key: "status", label: "Status", aliases: ["status", "condition", "state"] },
+  { key: "driverName", label: "Driver name", aliases: ["driver", "driver name", "driver's name"] },
+  { key: "driverPhone", label: "Driver phone", aliases: ["driver phone", "driver mobile", "driver contact", "driver number", "phone", "mobile"] },
+  { key: "registrationExpiry", label: "Registration (Mulkiya) expiry", aliases: ["mulkiya", "mulkiya expiry", "registration expiry", "reg expiry", "registration exp", "istimara expiry"] },
+  { key: "insuranceExpiry", label: "Insurance expiry", aliases: ["insurance", "insurance expiry", "insurance exp", "policy expiry"] },
+  { key: "notes", label: "Notes", aliases: ["notes", "remarks", "comments"] },
+];
+
 const TIMESHEETS: FieldDef[] = [
   { key: "idNo", label: "Worker ID", required: true, aliases: ["id no", "i d no", "emp id", "employee id", "id"] },
   { key: "name", label: "Worker name", required: true, aliases: ["employee name", "worker name", "name"] },
@@ -66,6 +88,8 @@ export const TARGETS: Record<ImportKind, { label: string; noun: string; fields: 
   CLIENTS: { label: "Clients", noun: "client", fields: CLIENTS },
   WORKERS: { label: "Workers", noun: "worker", fields: WORKERS },
   TIMESHEETS: { label: "Timesheets", noun: "timesheet row", fields: TIMESHEETS },
+  CAMPS: { label: "Camps", noun: "camp", fields: CAMPS },
+  VEHICLES: { label: "Vehicles", noun: "vehicle", fields: VEHICLES },
 };
 
 export function isImportKind(v: string): v is ImportKind {

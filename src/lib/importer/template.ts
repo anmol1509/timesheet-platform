@@ -12,6 +12,16 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { name: "Al Noor Manpower Supply", code: "SANMS", parent: "", fullName: "AL NOOR MANPOWER SUPPLY L.L.C", contactPerson: "Rashid Al Mansoori", contactPhone: "+971 50 123 4501", contactEmail: "rashid@alnoor.example", tradeLicenseNumber: "TL-123456", category: "Manpower supply", trn: "100123456700003" },
     { name: "Al Noor Site Services", code: "", parent: "Al Noor Manpower Supply", fullName: "", contactPerson: "", contactPhone: "", contactEmail: "", tradeLicenseNumber: "", category: "", trn: "" },
   ],
+  CAMPS: [
+    { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "101", roomType: "4 Bed Room", beds: "4", nationality: "India" },
+    { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "102", roomType: "6 Bed Room", beds: "6", nationality: "" },
+    { camp: "Sonapur Camp", campType: "Supplier", owner: "Al Noor Manpower Supply", room: "A-01", roomType: "", beds: "8", nationality: "" },
+    { camp: "Site Camp - Tower 1", campType: "Client", owner: "Emaar Properties", room: "", roomType: "", beds: "", nationality: "" },
+  ],
+  VEHICLES: [
+    { plateNumber: "DXB A 12345", type: "Bus", capacity: "50", status: "Active", driverName: "Imran Khan", driverPhone: "+971 50 111 2233", registrationExpiry: "15/03/2027", insuranceExpiry: "30/04/2027", notes: "" },
+    { plateNumber: "SHJ 2 67890", type: "Hiace Van", capacity: "14", status: "Maintenance", driverName: "", driverPhone: "", registrationExpiry: "", insuranceExpiry: "", notes: "In workshop" },
+  ],
   CLIENTS: [
     { name: "Emaar Properties", code: "CEP", contactPerson: "Sara Ahmed", contactPhone: "+971 4 555 0100", contactEmail: "sara@client.example", trn: "100987654300003", tradeLicenseNumber: "TL-778899", billingAddress: "Downtown Dubai", paymentTerms: "30 days" },
   ],
@@ -31,6 +41,14 @@ const HELP: Record<string, string> = {
   nationality: "The country (India, Nepal…). \"Indian\" or \"INDIA\" are understood too; regions like \"Asian\" are not.",
   gender: "Male or Female.",
   trade: "e.g. Carpenter, Steel Fixer. Matched to the trades you already have.",
+  camp: "The camp's name. Repeat it on every room row; the camp is created once. A row with only a camp name makes an empty camp.",
+  campType: "Own, Supplier or Client: who provides the camp. Blank = Own.",
+  owner: "For Supplier or Client camps: their name as on record. If it isn't on record the camp is still created, without an owner.",
+  room: "Room name or number. Blank = just the camp.",
+  beds: "Optional. How many beds the room has; they are numbered Bed 01, Bed 02… Re-uploading adds missing beds and never removes any.",
+  plateNumber: "The vehicle's plate, as you write it. Spaces and dashes don't matter when matching next time.",
+  status: "Active, Maintenance or Inactive. Blank = Active.",
+  capacity: "Number of passenger seats.",
 };
 
 function styleHeader(row: ExcelJS.Row, fields: FieldDef[]) {
@@ -58,6 +76,13 @@ export async function buildTemplate(kind: ImportKind, monthLabel = new Date()): 
   if (genderIdx >= 0) {
     for (let r = 2; r <= 1000; r++) main.getCell(r, genderIdx + 1).dataValidation = { type: "list", allowBlank: true, formulae: ['"Male,Female"'] };
   }
+  const listCol = (key: string, values: string[]) => {
+    const i = fields.findIndex((f) => f.key === key);
+    if (i < 0) return;
+    for (let r = 2; r <= 1000; r++) main.getCell(r, i + 1).dataValidation = { type: "list", allowBlank: true, formulae: [`"${values.join(",")}"`] };
+  };
+  if (kind === "CAMPS") listCol("campType", ["Own", "Supplier", "Client"]);
+  if (kind === "VEHICLES") listCol("status", ["Active", "Maintenance", "Inactive"]);
   const natIdx = fields.findIndex((f) => f.key === "nationality");
   if (natIdx >= 0) {
     const lists = wb.addWorksheet("Lists", { state: "hidden" });

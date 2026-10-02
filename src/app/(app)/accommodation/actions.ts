@@ -89,8 +89,10 @@ export async function updateCampOwnershipAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
-  const ownerType = String(formData.get("ownerType") || "OWN") === "SUPPLIER" ? "SUPPLIER" : "OWN";
+  const rawType = String(formData.get("ownerType") || "OWN");
+  const ownerType = rawType === "SUPPLIER" || rawType === "CLIENT" ? rawType : "OWN";
   const owningSupplierId = ownerType === "SUPPLIER" ? stringOrNull(formData.get("supplierId")) : null;
+  const owningClientId = ownerType === "CLIENT" ? stringOrNull(formData.get("clientId")) : null;
   if (!campId) return;
 
   const campOwner = await campBranch(campId, { branchId, isSuperAdmin });
@@ -99,15 +101,17 @@ export async function updateCampOwnershipAction(formData: FormData) {
   // own branch's suppliers, or a camp could be pointed at another tenant's.
   if (owningSupplierId && !(await prisma.supplier.findFirst({ where: { id: owningSupplierId, ...branchWhere(campOwner) }, select: { id: true } }))) return;
 
+  if (owningClientId && !(await prisma.client.findFirst({ where: { id: owningClientId, ...branchWhere(campOwner) }, select: { id: true } }))) return;
+
   const before = await prisma.camp.findUnique({ where: { id: campId } });
-  await prisma.camp.update({ where: { id: campId }, data: { ownerType, owningSupplierId } });
+  await prisma.camp.update({ where: { id: campId }, data: { ownerType, owningSupplierId, owningClientId } });
 
   await logAudit({
     entityType: "CAMP",
     entityId: campId,
     action: "UPDATE",
     before: before as unknown as Record<string, unknown>,
-    after: { ownerType, owningSupplierId },
+    after: { ownerType, owningSupplierId, owningClientId },
     userId: user.id,
     userName: user.name,
     branchId: campOwner,

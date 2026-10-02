@@ -29,6 +29,8 @@ const LISTS: Record<ImportKind, { href: string; label: string }> = {
   CLIENTS: { href: "/clients", label: "Go to clients" },
   WORKERS: { href: "/employees", label: "Go to employees" },
   TIMESHEETS: { href: "/companies", label: "Go to timesheets" },
+  CAMPS: { href: "/accommodation/camps", label: "Go to camps" },
+  VEHICLES: { href: "/transport", label: "Go to vehicles" },
 };
 
 function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
@@ -39,6 +41,15 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Suppliers added", value: c.suppliersCreated ?? 0, tone: "neutral", hint: `${c.subsidiariesLinked ?? 0} placed under a main supplier` },
       { label: "Clients added", value: c.clientsCreated ?? 0, tone: "neutral" },
       { label: "Attendance days", value: c.attendanceCreated ?? 0, tone: "success", hint: "recorded from the daily hours" },
+      { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
+    ];
+  }
+  if (kind === "CAMPS") {
+    return [
+      { label: "Camps created", value: c.created ?? 0, tone: "success" },
+      { label: "Rooms added", value: c.roomsCreated ?? 0, tone: "success" },
+      { label: "Beds added", value: c.bedsCreated ?? 0, tone: "success" },
+      { label: "Camps updated", value: c.updated ?? 0, tone: "info" },
       { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
     ];
   }
