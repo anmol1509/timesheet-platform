@@ -115,6 +115,7 @@ const NAV: Entry[] = [
     children: [
       { href: "/letters", label: "Employee Letters", icon: FileSignature },
       { href: "/operations/nocs", label: "NOCs", icon: FileText },
+      { href: "/letter-templates", label: "Templates", icon: FileStack },
     ],
   },
   // Operations: demand, the projects it serves, and the camps and transport behind it.
@@ -295,7 +296,6 @@ function adminGroup(): Entry {
       { href: "/settings/team", label: "Team & Access", icon: UserCog },
       { href: "/settings/developers", label: "Developers", icon: KeyRound },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
-      { href: "/letter-templates", label: "Letter Templates", icon: FileText },
       { href: "/audit-log", label: "Audit Log", icon: History },
       // Deletes real data. The whole group is admin-only; the page and its
       // actions additionally confine a branch admin to their own branch.

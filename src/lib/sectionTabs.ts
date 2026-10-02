@@ -20,6 +20,12 @@ export const SECTION_TABS: SectionTab[][] = [
     { href: "/settings/roles", label: "Roles & permissions", match: under("/settings/roles") },
     { href: "/settings/developers", label: "Developers", match: under("/settings/developers") },
   ],
+  // Letters: made for employees, NOCs for clients, and the wording behind both
+  [
+    { href: "/letters", label: "Employee letters", match: under("/letters") },
+    { href: "/operations/nocs", label: "NOCs", match: under("/operations/nocs") },
+    { href: "/letter-templates", label: "Templates", match: under("/letter-templates") },
+  ],
   // What suppliers send us through their portal
   [
     { href: "/suppliers/tickets", label: "Messages", match: under("/suppliers/tickets") },
