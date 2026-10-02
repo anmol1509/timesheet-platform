@@ -34,11 +34,7 @@ const INCLUDED = [
 const PRICING_FAQS = [
   {
     q: "How is pricing structured?",
-    a: "A one-time setup fee plus a monthly or annual plan sized by the number of members. Basic is AED 500 a month (AED 5,500 a year) for up to 200 members. Pro is AED 1,000 a month (AED 11,000 a year) for up to 500 members. Beyond that, each additional member is AED 2.5. For anything bigger, the Custom plan is quoted around your operation.",
-  },
-  {
-    q: "Is there a setup fee?",
-    a: "Yes. Basic and Pro each carry a one-time setup fee of AED 5,000, charged once when you start.",
+    a: "A monthly or annual plan sized by the number of members. Basic is AED 500 a month (AED 5,500 a year) for up to 200 members. Pro is AED 1,000 a month (AED 11,000 a year) for up to 500 members. Beyond that, each additional member is AED 2.5. For anything bigger, the Custom plan is quoted around your operation.",
   },
   {
     q: "Are hosting and database included?",
@@ -59,10 +55,6 @@ const PRICING_FAQS = [
   {
     q: "What are AI credits?",
     a: "One credit is one document read (a passport, Emirates ID, labour card or trade licence) or one assistant question. Basic includes 1,000 credits to start and 300 a month; Pro includes 2,500 to start and 1,000 a month. Monthly credits don't roll over, and the starter credits last 90 days. Extra credits are AED 50 per 1,000.",
-  },
-  {
-    q: "How many companies or branches can I run?",
-    a: "Basic covers one company or branch and Pro covers up to three. For more, the Custom plan is quoted around your operation.",
   },
   {
     q: "What does getting started involve?",
@@ -89,14 +81,9 @@ export default function PricingPage() {
       />
       <PricingPlans />
 
-      <Section surface eyebrow="How it adds up" title="Three things make up your price.">
+      <Section surface eyebrow="How it adds up" title="Two things make up your price.">
         <PointGrid
           points={[
-            {
-              icon: "check",
-              title: "A one-time setup fee",
-              body: "AED 5,000 on Basic and Pro, charged once when you start.",
-            },
             {
               icon: "users",
               title: "A plan sized by members",

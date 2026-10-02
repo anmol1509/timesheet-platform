@@ -14,7 +14,6 @@ type Plan = {
   blurb: string;
   /** AED per month / per year; null = "Let's talk". */
   price: { monthly: number; yearly: number } | null;
-  setupFee?: number;
   /** Members included in the monthly price; the estimator charges EXTRA_MEMBER_FEE beyond it. */
   memberLimit?: number;
   features: Feature[];
@@ -34,10 +33,9 @@ export const PLANS: Plan[] = [
     name: "Basic",
     blurb: "For suppliers getting their timesheets, payroll and paperwork out of spreadsheets.",
     price: { monthly: 500, yearly: 5500 },
-    setupFee: 5000,
     memberLimit: 200,
     features: [
-      yes("Up to 200 members, 1 company or branch"),
+      yes("Up to 200 members"),
       yes("Timesheets, attendance and client billing"),
       yes("Payroll with WPS file"),
       yes("Camps, beds and transport"),
@@ -61,11 +59,10 @@ export const PLANS: Plan[] = [
     name: "Pro",
     blurb: "For a growing roster that works with suppliers and wants a named contact.",
     price: { monthly: 1000, yearly: 11000 },
-    setupFee: 5000,
     memberLimit: 500,
     popular: true,
     features: [
-      yes("Up to 500 members, up to 3 companies or branches"),
+      yes("Up to 500 members"),
       yes("Everything in Basic"),
       yes("Supplier portal"),
       yes("Dedicated account manager"),
@@ -82,7 +79,6 @@ export const PLANS: Plan[] = [
     price: null,
     features: [
       yes("Rosters beyond 500 members"),
-      yes("Several companies or branches"),
       yes("Onboarding and data import planned with you"),
       yes("A quote built around your operation"),
     ],
@@ -132,14 +128,9 @@ export function PricingPlans() {
                     <div className={styles.priceRow}>
                       <span className={styles.currency}>AED</span>
                       <span className={styles.price}>{aed(yearly ? p.price.yearly : p.price.monthly)}</span>
-                      <span className={styles.per}>{yearly ? "/year" : "/month"}</span>
+                      <span className={styles.per}>{yearly ? "/year" : "/month"}*</span>
                     </div>
                     <ul className={styles.fees}>
-                      {p.setupFee != null && (
-                        <li>
-                          + <strong>AED {aed(p.setupFee)}</strong> setup fee*
-                        </li>
-                      )}
                       {yearly && <li>Billed once a year, 12 months for the price of 11</li>}
                     </ul>
                   </>
@@ -168,7 +159,7 @@ export function PricingPlans() {
         <Estimator />
 
         <p className={styles.note}>
-          * The setup fee is one-time, charged once when you start. Prices are in UAE dirhams. Beyond the members a plan includes, each additional member is AED 2.5.
+          * Setup fee excluded. Prices are in UAE dirhams. Beyond the members a plan includes, each additional member is AED 2.5.
         </p>
       </div>
     </section>
@@ -239,7 +230,7 @@ function Estimator() {
           : cheaperCount > 1
             ? "Both plans cost the same here; Pro adds the supplier portal and a dedicated account manager. "
             : ""}
-        Plus a one-time AED 5,000 setup fee on either plan. Estimates only.
+        * Setup fee excluded. Estimates only.
       </p>
     </div>
   );
