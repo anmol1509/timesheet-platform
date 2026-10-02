@@ -53,7 +53,7 @@ export const PLANS: Plan[] = [
       no("Supplier portal"),
       no("Dedicated account manager"),
     ],
-    cta: "Get started",
+    cta: "Book a call",
   },
   {
     name: "Pro",
@@ -71,7 +71,7 @@ export const PLANS: Plan[] = [
       yes("Kickoff call and quarterly review call"),
       yes("AED 2.5 per additional member beyond 500"),
     ],
-    cta: "Get started",
+    cta: "Book a call",
   },
   {
     name: "Custom",
