@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 
@@ -54,7 +54,8 @@ async function blockingReason(employee: {
 export async function deleteEmployeesAction(
   employeeIds: string[]
 ): Promise<DeleteEmployeesResult> {
-  await requirePermission("workforce", "delete");
+  await requireWrite("workforce.employees");
+  await requirePermission("workforce.employees", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (employeeIds.length === 0) return { deleted: 0, blocked: [] };
 
@@ -118,6 +119,7 @@ export async function deactivateEmployeesAction(
   employeeIds: string[],
   reason?: string
 ): Promise<{ deactivated: number }> {
+  await requireWrite("workforce.employees");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (employeeIds.length === 0) return { deactivated: 0 };
 

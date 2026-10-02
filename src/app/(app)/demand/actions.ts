@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { getOrCreateSkill } from "@/lib/skillScope";
@@ -35,6 +35,7 @@ type TradeInput = {
 };
 
 export async function createDemandRequestAction(formData: FormData) {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -105,6 +106,7 @@ export async function createDemandRequestAction(formData: FormData) {
 }
 
 export async function updateDemandRequestAction(formData: FormData) {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("requestId") || "");
@@ -136,6 +138,7 @@ export async function updateDemandRequestAction(formData: FormData) {
 }
 
 export async function deleteDemandRequestAction(formData: FormData) {
+  await requireWrite("demand");
   assertContactsValid(formData);
   await requirePermission("demand", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -182,6 +185,7 @@ export async function deleteDemandRequestAction(formData: FormData) {
 export async function allocateEmployeesAction(
   formData: FormData
 ): Promise<{ allocated: number; requested: number }> {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const tradeId = String(formData.get("tradeId") || "");
@@ -303,6 +307,7 @@ export async function allocateEmployeesAction(
 }
 
 export async function unallocateEmployeeAction(formData: FormData) {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const allocationId = String(formData.get("allocationId") || "");
@@ -374,6 +379,7 @@ export async function unallocateEmployeeAction(formData: FormData) {
 export async function changeEmployeeTradeAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
@@ -431,6 +437,7 @@ export async function changeEmployeeTradeAction(
 export async function setTradeApprovalAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requireWrite("demand");
   assertContactsValid(formData);
   await requirePermission("demand", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -496,6 +503,7 @@ export async function setTradeApprovalAction(
  * look at.
  */
 export async function confirmSiteArrivalAction(formData: FormData) {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
@@ -566,6 +574,7 @@ export async function confirmSiteArrivalAction(formData: FormData) {
 
 /** Reverses a site-arrival confirmation entered against the wrong worker. */
 export async function revertSiteArrivalAction(formData: FormData) {
+  await requireWrite("demand");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
@@ -610,6 +619,7 @@ export async function revertSiteArrivalAction(formData: FormData) {
 export async function disapproveSiteArrivalAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requireWrite("demand");
   assertContactsValid(formData);
   await requirePermission("demand", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();

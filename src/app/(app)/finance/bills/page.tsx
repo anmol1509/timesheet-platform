@@ -87,7 +87,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h1 className="text-xl font-semibold tracking-tight text-primary">Supplier bills</h1><p className="mt-1 text-sm text-muted">Bills are approved before they can be paid. Suppliers with portal access can see their own bills.</p></div>
-        {can(subject, "finance", "export") && <a href="/api/finance/export?type=bills" className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
+        {can(subject, "finance.bills", "export") && <a href="/api/finance/export?type=bills" className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
       </div>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
         {strip.map((t) => (
@@ -127,9 +127,9 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
       <BillsBoard
         rows={shown}
         suppliers={suppliers}
-        canCreate={can(subject, "finance", "create")}
-        canPay={can(subject, "finance", "edit")}
-        canDelete={can(subject, "finance", "delete")}
+        canCreate={can(subject, "finance.bills", "create")}
+        canPay={can(subject, "finance.bills", "edit")}
+        canDelete={can(subject, "finance.bills", "delete")}
       />
     </div>
   );

@@ -122,10 +122,10 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         id={run.id}
         status={run.status}
         submitted={!!run.submittedAt}
-        canEdit={can(subject, "payroll", "edit")}
-        canApprove={can(subject, "payroll", "approve")}
-        canExport={can(subject, "payroll", "export")}
-        canDelete={can(subject, "payroll", "delete")}
+        canEdit={can(subject, "payroll.payroll", "edit")}
+        canApprove={can(subject, "payroll.payroll", "approve")}
+        canExport={can(subject, "payroll.payroll", "export")}
+        canDelete={can(subject, "payroll.payroll", "delete")}
       />
 
       {draft && gapRows.length > 0 && (
@@ -168,7 +168,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             {rejected > 0 && <><span className="font-medium text-primary">{rejected} rejected by the bank.</span> Fix their details, then use “Use updated bank details”. </>}
             {resubmit > 0 && <><span className="font-medium text-primary">{resubmit} ready to resend.</span></>}
           </p>
-          {resubmit > 0 && can(subject, "payroll", "export") && (
+          {resubmit > 0 && can(subject, "payroll.payroll", "export") && (
             <a className="btn btn-secondary" href={`/api/payroll/${run.id}/sif?only=resubmit`}>Download resend file (.SIF)</a>
           )}
         </div>
@@ -243,7 +243,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     <td className="px-3 py-3">
                       <LineEditor
                         lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
-                        adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!draft || !!run.submittedAt || !can(subject, "payroll", "edit")}
+                        adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!draft || !!run.submittedAt || !can(subject, "payroll.payroll", "edit")}
                       />
                     </td>
                     <td className="px-3 py-3 text-right font-medium tabular-nums text-primary">{aed(n(l.net))}</td>
@@ -252,7 +252,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     {!draft && (
                       <td className="px-3 py-3">
-                        <PaymentCell lineId={l.id} status={l.paymentStatus} note={l.paymentNote ?? ""} editable={can(subject, "payroll", "approve")} />
+                        <PaymentCell lineId={l.id} status={l.paymentStatus} note={l.paymentNote ?? ""} editable={can(subject, "payroll.payroll", "approve")} />
                       </td>
                     )}
                   </tr>

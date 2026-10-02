@@ -5,7 +5,7 @@ import { normalizeCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -49,6 +49,7 @@ export async function createClientAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -101,6 +102,7 @@ export async function createClientAction(
 }
 
 export async function updateClientAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
@@ -172,6 +174,7 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
 }
 
 export async function addClientContactAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -193,6 +196,7 @@ export async function addClientContactAction(formData: FormData) {
 }
 
 export async function updateClientContactAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -215,6 +219,7 @@ export async function updateClientContactAction(formData: FormData) {
 }
 
 export async function removeClientContactAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -226,6 +231,7 @@ export async function removeClientContactAction(formData: FormData) {
 }
 
 export async function addClientTradeRateAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -247,6 +253,7 @@ export async function addClientTradeRateAction(formData: FormData) {
 }
 
 export async function removeClientTradeRateAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -258,6 +265,7 @@ export async function removeClientTradeRateAction(formData: FormData) {
 }
 
 export async function addClientDocumentAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -295,8 +303,9 @@ export async function addClientDocumentAction(formData: FormData) {
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.clients", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const clientId = String(formData.get("clientId") || "");
@@ -322,6 +331,7 @@ export async function deleteClientDocumentAction(formData: FormData) {
 }
 
 export async function bulkImportClientsAction(rows: Record<string, string>[]) {
+  await requireWrite("partners.clients");
   const { user, branchId } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
@@ -393,8 +403,9 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
 }
 
 export async function deleteClientAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.clients", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
@@ -444,7 +455,8 @@ export async function deleteClientAction(formData: FormData) {
 export async function deleteClientsAction(
   ids: string[]
 ): Promise<{ deleted: number; blocked: { name: string; reason: string }[] }> {
-  await requirePermission("partners", "delete");
+  await requireWrite("partners.clients");
+  await requirePermission("partners.clients", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const blocked: { name: string; reason: string }[] = [];
   let deleted = 0;
@@ -485,6 +497,7 @@ export async function deleteClientsAction(
 
 /** The code the "Auto" button fills in: the name's initials, made unique in the branch. */
 export async function suggestClientCodeAction(name: string, clientId?: string): Promise<string> {
+  await requireView("partners.clients");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return "";
   return uniqueClientCode(name.trim(), branchId, clientId);

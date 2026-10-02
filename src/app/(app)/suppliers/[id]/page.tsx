@@ -143,7 +143,7 @@ export default async function SupplierDetailPage({
       <PortalAccessCard
         supplierId={supplier.id}
         enabled={supplier.portalEnabled}
-        canEdit={can(subjectOf(user), "partners", "edit")}
+        canEdit={can(subjectOf(user), "partners.suppliers", "edit")}
         phones={[supplier.contactPhone, supplier.phone, supplier.coordinatorPhone].filter((p): p is string => !!p)}
       />
 

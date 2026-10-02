@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requirePermission, requireUserWithBranch } from "@/lib/auth";
+import { requirePermission, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { vehicleBranch } from "@/lib/facilityScope";
 import { logAudit } from "@/lib/audit";
@@ -27,6 +27,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createVehicleAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   const plateNumber = String(formData.get("plateNumber") || "").trim();
@@ -65,6 +66,7 @@ export async function createVehicleAction(formData: FormData) {
 }
 
 export async function updateVehicleAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("vehicleId") || "");
@@ -103,8 +105,9 @@ export async function updateVehicleAction(formData: FormData) {
 }
 
 export async function deleteVehicleAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
-  await requirePermission("facilities", "delete");
+  await requirePermission("facilities.transport", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("vehicleId") || "");
   if (!id) return;
@@ -139,6 +142,7 @@ export async function deleteVehicleAction(formData: FormData) {
 }
 
 export async function assignEmployeesToVehicleAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const vehicleId = String(formData.get("vehicleId") || "");
@@ -156,6 +160,7 @@ export async function assignEmployeesToVehicleAction(formData: FormData) {
 }
 
 export async function unassignEmployeeFromVehicleAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const vehicleId = String(formData.get("vehicleId") || "");
@@ -171,6 +176,7 @@ export async function unassignEmployeeFromVehicleAction(formData: FormData) {
 }
 
 export async function addVehicleProjectAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const vehicleId = String(formData.get("vehicleId") || "");
@@ -188,6 +194,7 @@ export async function addVehicleProjectAction(formData: FormData) {
 }
 
 export async function removeVehicleProjectAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const vehicleId = String(formData.get("vehicleId") || "");

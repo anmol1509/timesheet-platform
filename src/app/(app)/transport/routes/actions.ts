@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { routeBranch, vehicleBranch } from "@/lib/facilityScope";
 import { logAudit } from "@/lib/audit";
@@ -33,6 +33,7 @@ function parseStops(stopsJson: FormDataEntryValue | null): StopInput[] {
 }
 
 export async function createRouteAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -75,6 +76,7 @@ export async function createRouteAction(formData: FormData) {
 }
 
 export async function updateRouteAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("routeId") || "");
@@ -132,8 +134,9 @@ export async function updateRouteAction(formData: FormData) {
 }
 
 export async function deleteRouteAction(formData: FormData) {
+  await requireWrite("facilities.transport");
   assertContactsValid(formData);
-  await requirePermission("facilities", "delete");
+  await requirePermission("facilities.transport", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("routeId") || "");
   if (!id) return;

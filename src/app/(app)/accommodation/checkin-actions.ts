@@ -3,7 +3,7 @@
 import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -65,6 +65,7 @@ async function resolveExternalCamp(
 export async function createCheckInAction(
   formData: FormData
 ): Promise<{ ids: string[] } | { error: string }> {
+  await requireWrite("facilities.checkin");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campType = ["SUPPLIER", "CLIENT"].includes(String(formData.get("campType"))) ? String(formData.get("campType")) : "OWN";
@@ -131,6 +132,7 @@ export async function createCheckInAction(
 // bed was already allocated in the old camp, it's freed first — a bed
 // belongs to a specific camp's room, so it can't follow the switch.
 export async function switchCampAction(formData: FormData) {
+  await requireWrite("facilities");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const checkInId = String(formData.get("checkInId") || "");
@@ -187,6 +189,7 @@ export async function switchCampAction(formData: FormData) {
 // bed-allocated to a different bed ("Switch Room") — the old bed is freed
 // and its accommodation history closed before the new one opens.
 export async function allocateBedAction(formData: FormData) {
+  await requireWrite("facilities.bed-allocation");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   await settleDueCheckouts(branchId, user);
@@ -258,6 +261,7 @@ export async function allocateBedAction(formData: FormData) {
  * recorded against that camp by name, with no room or bed. Reuses switchCampAction for the move itself.
  */
 export async function switchToExternalCampAction(formData: FormData): Promise<{ error?: string }> {
+  await requireWrite("facilities");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const campType = String(formData.get("campType"));

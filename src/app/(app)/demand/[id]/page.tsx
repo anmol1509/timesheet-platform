@@ -89,7 +89,7 @@ export default async function DemandRequestDetailPage({
 
       <SupplierOffers
         demandId={request.id}
-        canEdit={can(subjectOf(user), "demand", "edit")}
+        canEdit={can(subjectOf(user), "demand.list", "edit")}
         available={portalSuppliers.filter((s) => !offered.has(s.id))}
         offers={request.supplierOffers.map((o) => ({
           id: o.id, supplier: o.supplier.name, status: o.status, note: o.note, sentAt: day(o.sentAt), respondedAt: o.respondedAt ? day(o.respondedAt) : null,

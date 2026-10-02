@@ -13,7 +13,7 @@ const fail = (error: string, status = 400) => NextResponse.json({ error }, { sta
 // aren't paid through the bank), everything else must have complete details.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  if (!can(subjectOf(user), "payroll", "export")) return fail("You don't have permission to export payroll.", 403);
+  if (!can(subjectOf(user), "payroll.payroll", "export")) return fail("You don't have permission to export payroll.", 403);
 
   const { id } = await params;
   const run = await prisma.payrollRun.findUnique({

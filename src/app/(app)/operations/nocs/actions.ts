@@ -65,7 +65,7 @@ export async function createNocAction(formData: FormData) {
 
 export async function deleteNocAction(formData: FormData) {
   assertContactsValid(formData);
-  await requirePermission("projects", "delete");
+  await requirePermission("projects.nocs", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("nocId") || "");
   if (!id) return;

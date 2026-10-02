@@ -29,7 +29,7 @@ export default async function CampsPage({
 }) {
   const params = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
-  const canExport = can(subjectOf(user), "facilities", "export");
+  const canExport = can(subjectOf(user), "facilities.camps", "export");
   const canImport = isAdminRole(user.role);
   // Release beds whose scheduled checkout date has arrived before showing anything.
   await settleDueCheckouts(branchId, user);

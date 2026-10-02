@@ -48,8 +48,8 @@ export default async function LoansPage() {
       <LoansBoard
         rows={rows}
         employees={employees.map((e) => ({ id: e.id, label: `${e.name} (${e.employeeIdNo})` }))}
-        canCreate={!!branchId && can(subject, "payroll", "create")}
-        canEdit={can(subject, "payroll", "edit")}
+        canCreate={!!branchId && can(subject, "payroll.payroll", "create")}
+        canEdit={can(subject, "payroll.payroll", "edit")}
       />
     </div>
   );

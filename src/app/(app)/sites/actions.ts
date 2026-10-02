@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -23,6 +23,7 @@ function stringOrNull(value: FormDataEntryValue | null) {
  * changes hands.
  */
 export async function createSiteAction(formData: FormData) {
+  await requireWrite("projects.sites");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -53,6 +54,7 @@ export async function createSiteAction(formData: FormData) {
 }
 
 export async function updateSiteAction(formData: FormData) {
+  await requireWrite("projects.sites");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("siteId") || "");
@@ -85,8 +87,9 @@ export async function updateSiteAction(formData: FormData) {
 }
 
 export async function deleteSiteAction(formData: FormData) {
+  await requireWrite("projects.sites");
   assertContactsValid(formData);
-  await requirePermission("projects", "delete");
+  await requirePermission("projects.sites", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("siteId") || "");
   if (!id) return;
@@ -123,6 +126,7 @@ export async function deleteSiteAction(formData: FormData) {
 
 /** Sites for a project, for the pickers that narrow by project first. */
 export async function getSitesForProjectAction(projectId: string) {
+  await requireView("projects.sites");
   const { branchId } = await requireUserWithBranch();
   if (!projectId) return [];
   return prisma.site.findMany({
@@ -138,7 +142,8 @@ export async function getSitesForProjectAction(projectId: string) {
  * leaves the saved one alone.
  */
 export async function bulkImportSitesAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
-  await requirePermission("projects", "create");
+  await requireWrite("projects.sites");
+  await requirePermission("projects.sites", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projects = await prisma.project.findMany({
     where: branchWhere(branchId),

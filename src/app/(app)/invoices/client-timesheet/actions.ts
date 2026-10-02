@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { isAdminRole } from "@/lib/roles";
@@ -34,6 +34,7 @@ export async function submitManualEntryAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
@@ -193,6 +194,7 @@ type DailyRow = { employeeId: string; rate: string; value: string };
 export async function submitDailyTimesheetAction(
   formData: FormData
 ): Promise<{ saved: number; requested: number; error?: string }> {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
@@ -382,6 +384,7 @@ async function transitionTimesheetEntries(
 }
 
 export async function submitTimesheetForReviewAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
@@ -398,8 +401,9 @@ export async function submitTimesheetForReviewAction(formData: FormData) {
 }
 
 export async function approveTimesheetAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
-  await requirePermission("timesheets", "approve");
+  await requirePermission("timesheets.client-timesheet", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   const updated = await transitionTimesheetEntries(
@@ -415,9 +419,10 @@ export async function approveTimesheetAction(formData: FormData) {
 }
 
 export async function rejectTimesheetAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   // Rejecting is a review decision, like approving; it used to have no permission check.
-  await requirePermission("timesheets", "approve");
+  await requirePermission("timesheets.client-timesheet", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
   const updated = await transitionTimesheetEntries(
@@ -433,6 +438,7 @@ export async function rejectTimesheetAction(formData: FormData) {
 }
 
 export async function lockTimesheetAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
@@ -449,6 +455,7 @@ export async function lockTimesheetAction(formData: FormData) {
 }
 
 export async function updateDailyHoursAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryId = String(formData.get("entryId") || "");
@@ -495,6 +502,7 @@ type DateRange = { fromDate: string; toDate: string; value: string };
 // minus the Official/Raw/Missing radio (deferred, see Phase 9 plan). Ranges
 // are applied in array order, so a later range wins on overlapping dates.
 export async function batchUpdateHoursAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryIds = formData.getAll("entryId").map(String).filter(Boolean);
@@ -563,8 +571,9 @@ export async function batchUpdateHoursAction(formData: FormData) {
 export async function deleteTimesheetEntryAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
-  await requirePermission("timesheets", "delete");
+  await requirePermission("timesheets.client-timesheet", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const entryId = String(formData.get("entryId") || "");
   if (!entryId) return { deleted: 0 };

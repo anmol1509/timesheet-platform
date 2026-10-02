@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { findVisibleSkill, mayEditSkill } from "@/lib/skillScope";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -13,6 +13,7 @@ import type { ImportRowResult } from "@/components/import/report";
 const MIN_SKILL_NAME = 3;
 
 export async function createSkillAction(formData: FormData) {
+  await requireWrite("workforce.trades");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim().replace(/\s+/g, " ");
@@ -56,6 +57,7 @@ export async function createSkillAction(formData: FormData) {
 }
 
 export async function updateSkillAction(formData: FormData) {
+  await requireWrite("workforce.trades");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("skillId") || "");
@@ -85,6 +87,7 @@ export async function updateSkillAction(formData: FormData) {
 }
 
 export async function toggleTrendingAction(formData: FormData) {
+  await requireWrite("workforce.trades");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("skillId") || "");
@@ -110,8 +113,9 @@ export async function toggleTrendingAction(formData: FormData) {
 }
 
 export async function deleteSkillAction(formData: FormData) {
+  await requireWrite("workforce.trades");
   assertContactsValid(formData);
-  await requirePermission("workforce", "delete");
+  await requirePermission("workforce.trades", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("skillId") || "");
   if (!id) return;
@@ -141,7 +145,8 @@ export async function deleteSkillAction(formData: FormData) {
 
 /** Bulk add/update trades from a spreadsheet. Trades already in the shared catalogue are left alone unless the caller may edit them. */
 export async function bulkImportTradesAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
-  await requirePermission("workforce", "create");
+  await requireWrite("workforce.trades");
+  await requirePermission("workforce.trades", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: ImportRowResult[] = [];
   const seen = new Set<string>();

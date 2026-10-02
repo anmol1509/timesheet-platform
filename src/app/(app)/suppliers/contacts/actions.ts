@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requirePermission, requireUserWithBranch } from "@/lib/auth";
+import { requirePermission, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -11,8 +11,9 @@ type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
 
 export async function addContactAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("partners.messages");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.messages", "edit");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
   const department = str(formData.get("department"));
@@ -28,8 +29,9 @@ export async function addContactAction(_prev: State, formData: FormData): Promis
 }
 
 export async function toggleContactAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.messages");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.messages", "edit");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const c = await prisma.portalContact.findUnique({ where: { id: str(formData.get("id")) } });
   if (!c || isOutsideBranch(c.branchId, branchId, isSuperAdmin)) return { error: "Not found." };
@@ -39,8 +41,9 @@ export async function toggleContactAction(formData: FormData): Promise<State> {
 }
 
 export async function deleteContactAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.messages");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.messages", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const c = await prisma.portalContact.findUnique({ where: { id: str(formData.get("id")) } });
   if (!c || isOutsideBranch(c.branchId, branchId, isSuperAdmin)) return { error: "Not found." };

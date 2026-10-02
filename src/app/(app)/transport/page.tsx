@@ -34,7 +34,7 @@ function DocChip({ label, date }: { label: string; date: Date | null }) {
 export default async function TransportPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const { error, status: statusFilter } = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
-  const canExport = can(subjectOf(user), "facilities", "export");
+  const canExport = can(subjectOf(user), "facilities.transport", "export");
   const canImport = isAdminRole(user.role);
   const vehicles = await prisma.vehicle.findMany({
     where: branchWhere(branchId),

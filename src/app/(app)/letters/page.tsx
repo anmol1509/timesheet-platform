@@ -55,7 +55,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
         <IssueLetter
           initialEmployeeId={sp.employee}
           preferTemplate={sp.template}
-          canIssue={can(subject, "workforce", "create")}
+          canIssue={can(subject, "workforce.letters", "create")}
           companyName={(branch?.name ?? "").toUpperCase()}
           today={formatLetterDate(new Date())}
           defaults={{

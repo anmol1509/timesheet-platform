@@ -4,7 +4,7 @@ import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -71,6 +71,7 @@ async function findDuplicate(branchId: string, passportNumber: string | null, em
 }
 
 export async function createCandidateAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("onboarding.tracker");
   try {
     assertContactsValid(formData);
   } catch (e) {
@@ -102,6 +103,7 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
 }
 
 export async function updateCandidateAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("onboarding.tracker");
   try {
     assertContactsValid(formData);
   } catch (e) {
@@ -142,6 +144,7 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
  * denormalized *Status column on the master row, then recomputes
  * readyToJoin from the fresh set of statuses — never entered by hand. */
 export async function updateStageAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");
   const stageKey = String(formData.get("stage") || "") as StageKey;
@@ -195,6 +198,7 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
  * this is the one moment a candidate becomes an employee, since everything
  * before this point deliberately isn't one yet. */
 export async function markJoinedAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");
   if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return { error: "You can't edit that candidate." };
@@ -283,6 +287,7 @@ export type CreateAgencyResult = { error: string | null; agency?: { id: string; 
  * real Supplier row (same shape as the Suppliers page's own create action),
  * just with an inline result instead of a redirect. */
 export async function createAgencyAction(_prev: CreateAgencyResult, formData: FormData): Promise<CreateAgencyResult> {
+  await requireWrite("onboarding.tracker");
   try {
     assertContactsValid(formData);
   } catch (e) {
@@ -323,6 +328,7 @@ export type CreateContactResult = { error: string | null; contact?: { id: string
  * handles many candidates from one agency, so this is a reusable row, not a
  * free-text field re-typed every time. */
 export async function createAgencyContactAction(_prev: CreateContactResult, formData: FormData): Promise<CreateContactResult> {
+  await requireWrite("onboarding.tracker");
   try {
     assertContactsValid(formData);
   } catch (e) {
@@ -355,6 +361,7 @@ export async function createAgencyContactAction(_prev: CreateContactResult, form
  * (which records a status change) since assigning an owner doesn't itself
  * change the stage's status or need a history row. */
 export async function assignStageTaskAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("onboarding.tracker");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");
   const stageKey = String(formData.get("stage") || "") as StageKey;
@@ -383,6 +390,7 @@ type ImportRowResult = { row: number; status: "created" | "error"; message?: str
  * an existing passport/Emirates ID is reported as a row error rather than
  * silently merged, so a resubmitted sheet doesn't duplicate work quietly. */
 export async function bulkImportCandidatesAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
+  await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: ImportRowResult[] = [];
   if (!branchId) return rows.map((_, i) => ({ row: i + 2, status: "error", message: "No branch selected to import into." }));
@@ -452,6 +460,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
 }
 
 export async function deleteCandidateAction(formData: FormData) {
+  await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("id") || "");
   if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return;

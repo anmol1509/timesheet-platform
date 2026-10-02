@@ -61,7 +61,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           icon={Wallet}
           description={<>Costs submitted for approval. Approved expenses feed the finance overview.</>}
         />
-        {can(subject, "finance", "export") && <a href={`/api/finance/export?type=expenses${status ? `&status=${status}` : ""}`} className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
+        {can(subject, "finance.expenses", "export") && <a href={`/api/finance/export?type=expenses${status ? `&status=${status}` : ""}`} className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
       </div>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
         {[
@@ -81,8 +81,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         budgets={budgetRows}
         limit={branch?.expenseApprovalLimit ? Number(branch.expenseApprovalLimit) : null}
         petty={{ balance: pettyCashBalance(topUps.map((t) => Number(t.amount)), cashSpentList(cashSpent)), toppedUp, spent: cash }}
-        canManage={!!branchId && can(subject, "finance", "approve")}
-        canTopUp={!!branchId && can(subject, "finance", "create")}
+        canManage={!!branchId && can(subject, "finance.expenses", "approve")}
+        canTopUp={!!branchId && can(subject, "finance.expenses", "create")}
       />
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
         {FILTERS.map((f) => (
@@ -91,9 +91,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         ))}
       </div>
       <ExpensesBoard
-        canCreate={can(subject, "finance", "create")}
-        canApprove={can(subject, "finance", "approve")}
-        canDelete={can(subject, "finance", "delete")}
+        canCreate={can(subject, "finance.expenses", "create")}
+        canApprove={can(subject, "finance.expenses", "approve")}
+        canDelete={can(subject, "finance.expenses", "delete")}
         projects={projects}
         rows={rows.map((r) => ({
           id: r.id, date: r.date.toISOString().slice(0, 10), category: r.category, description: r.description,

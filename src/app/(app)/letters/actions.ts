@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission, subjectOf } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, subjectOf, requireView, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
@@ -15,6 +15,7 @@ const clean = (inputs: Inputs) => Object.fromEntries(Object.entries(inputs ?? {}
 
 /** Live preview: the letter with the employee's real details filled in. Stores nothing. */
 export async function previewLetterAction(employeeId: string, templateId: string, inputs: Inputs): Promise<{ html?: string; title?: string; missing?: string[]; empty?: string[]; error?: string }> {
+  await requireView("workforce.letters");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } } } });
   if (!emp || isOutsideBranch(emp.branchId, branchId, isSuperAdmin)) return { error: "Employee not found." };
@@ -25,7 +26,8 @@ export async function previewLetterAction(employeeId: string, templateId: string
 
 /** Issues the letter: numbers it, stores the exact wording, and records who issued it. */
 export async function issueLetterAction(employeeId: string, templateId: string, inputs: Inputs, layoutIn: LayoutInput, allowEmpty = false): Promise<{ id?: string; error?: string }> {
-  await requirePermission("workforce", "create");
+  await requireWrite("workforce.letters");
+  await requirePermission("workforce.letters", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } }, branch: { select: { signatureId: true, stampId: true } } } });
   if (!emp || isOutsideBranch(emp.branchId, branchId, isSuperAdmin)) return { error: "Employee not found." };

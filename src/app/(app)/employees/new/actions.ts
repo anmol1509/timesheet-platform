@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getOrCreateSkill } from "@/lib/skillScope";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import {
@@ -105,6 +105,7 @@ export async function generateEmployeeIdAction(
   supplierId: string | null,
   sponsorSupplierId: string | null
 ): Promise<{ id: string | null; error: string | null; source: string | null }> {
+  await requireView("workforce.employees");
   const { branchId } = await requireUserWithBranch();
 
   // Scoped to the branch, so the generated prefix can't disclose the name of
@@ -162,6 +163,7 @@ export async function generateEmployeeIdAction(
 export async function checkEmployeeIdAction(
   employeeIdNo: string
 ): Promise<{ taken: boolean; name: string | null }> {
+  await requireView("workforce.employees");
   const trimmed = employeeIdNo.trim();
   if (!trimmed) return { taken: false, name: null };
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -181,6 +183,7 @@ export async function createEmployeeAction(
   _prevState: { error: string | null; createdId?: string },
   formData: FormData
 ): Promise<{ error: string | null; createdId?: string }> {
+  await requireWrite("workforce.employees");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 

@@ -13,7 +13,7 @@ const dmy = (d: Date | null) => (d ? `${String(d.getUTCDate()).padStart(2, "0")}
 /** Every vehicle in the layout the vehicle import reads, so the file can be edited and uploaded again. */
 export async function GET() {
   const { user, branchId } = await requireUserWithBranch();
-  if (!can(subjectOf(user), "facilities", "export")) return NextResponse.json({ error: "You don't have permission to export facilities data." }, { status: 403 });
+  if (!can(subjectOf(user), "facilities.transport", "export")) return NextResponse.json({ error: "You don't have permission to export facilities data." }, { status: 403 });
   const vehicles = (await prisma.vehicle.findMany({ where: branchWhere(branchId) })).sort((a, b) => compareNatural(a.plateNumber, b.plateNumber));
 
   const fields = TARGETS.VEHICLES.fields;

@@ -6,7 +6,7 @@ import { applySuppliers } from "@/lib/importer/apply/suppliers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
@@ -30,6 +30,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createSupplierAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -92,6 +93,7 @@ export async function createSupplierAction(formData: FormData) {
 export async function createSubsidiaryAction(
   formData: FormData
 ): Promise<{ error: string } | { id: string }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parentSupplierId = String(formData.get("parentSupplierId") || "").trim();
@@ -134,6 +136,7 @@ export async function createSubsidiaryAction(
 // Company & Compliance tab — every field this action writes lives in that
 // tab's form, so a save here never touches Contact/Payment fields.
 export async function updateSupplierCompanyAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
@@ -220,6 +223,7 @@ export async function setSupplierParentAction(
   supplierId: string,
   parentId: string | null,
 ): Promise<{ error: string | null }> {
+  await requireWrite("partners.suppliers");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const s = await prisma.supplier.findUnique({
     where: { id: supplierId },
@@ -268,6 +272,7 @@ export async function setSupplierParentAction(
 
 /** The code the "Auto" button fills in: the name's acronym, made unique in the branch. */
 export async function suggestSupplierCodeAction(name: string, supplierId?: string): Promise<string> {
+  await requireView("partners.suppliers");
   const { branchId } = await requireUserWithBranch();
   if (!branchId) return "";
   return uniqueSupplierCode(name.trim(), branchId, supplierId);
@@ -276,6 +281,7 @@ export async function suggestSupplierCodeAction(name: string, supplierId?: strin
 // Contact & Payment tab — every field this action writes lives in that
 // tab's form, so a save here never touches Company/Compliance fields.
 export async function updateSupplierContactPaymentAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
@@ -328,8 +334,9 @@ const APPROVAL_FIELDS = ["approvalStatus", "labourApprovalStatus", "invoiceAppro
 type ApprovalField = (typeof APPROVAL_FIELDS)[number];
 
 export async function updateSupplierApprovalAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "approve");
+  await requirePermission("partners.suppliers", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   const field = String(formData.get("field") || "") as ApprovalField;
@@ -372,6 +379,7 @@ const SUPPLIER_LABELS: Record<string, string> = {
 
 /** The list-page "Import" dialog. The work is done by the import engine (the same code the import wizard runs). */
 export async function bulkImportSuppliersAction(rows: Record<string, string>[]): Promise<ImportResult[]> {
+  await requireWrite("partners.suppliers");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) {
     return rows.map((_, i) => ({ row: i + 2, status: "error" as const, message: "No branch selected to import into." }));
@@ -387,8 +395,9 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
 }
 
 export async function deleteSupplierAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.suppliers", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
@@ -450,6 +459,7 @@ export async function createEmployeesFromInsuranceAction(
   supplierId: string,
   rows: InsuranceEmployeeRow[]
 ): Promise<{ created: number; requested: number; errors: { row: number; message: string }[] }> {
+  await requireWrite("partners.suppliers");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const errors: { row: number; message: string }[] = [];
   if (!branchId) {
@@ -560,6 +570,7 @@ export async function matchInsuredNamesAction(
   supplierId: string,
   names: string[]
 ): Promise<InsuredNameMatch[]> {
+  await requireView("partners.suppliers");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const supplier = await prisma.supplier.findUnique({
@@ -636,6 +647,7 @@ export type SupplierPanel = {
  * with the document rather than being remembered separately.
  */
 export async function getSupplierPanelAction(supplierId: string): Promise<SupplierPanel> {
+  await requireView("partners.suppliers");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const supplier = await prisma.supplier.findUnique({
@@ -683,8 +695,9 @@ export async function getSupplierPanelAction(supplierId: string): Promise<Suppli
 
 /** Opt a supplier in/out of the supplier portal (phone + one-time-code sign-in). */
 export async function setSupplierPortalAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.suppliers", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   const enabled = formData.get("enabled") === "1";
@@ -708,7 +721,8 @@ export async function setSupplierPortalAction(formData: FormData): Promise<{ err
 
 /** How much clear space letters leave at the top and bottom on this supplier's letterhead (used for NOCs it sponsors). */
 export async function saveSupplierLetterheadMarginsAction(formData: FormData) {
-  await requirePermission("partners", "edit");
+  await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, letterheadTopMm: true, letterheadBottomMm: true } });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };

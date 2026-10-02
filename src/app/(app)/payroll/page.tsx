@@ -77,11 +77,11 @@ export default async function PayrollPage() {
         </section>
       )}
 
-      {branchId ? (can(subject, "payroll", "create") && <CreateRunForm defaultMonth={defaultMonth} companies={companies.map((c) => ({ id: c.id, name: c.name }))} />) : (
+      {branchId ? (can(subject, "payroll.payroll", "create") && <CreateRunForm defaultMonth={defaultMonth} companies={companies.map((c) => ({ id: c.id, name: c.name }))} />) : (
         <p className="text-sm text-muted">Pick a branch from the switcher to create a payroll run.</p>
       )}
 
-      {branchId && can(subject, "payroll", "approve") && (
+      {branchId && can(subject, "payroll.payroll", "approve") && (
         <ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} />
       )}
 

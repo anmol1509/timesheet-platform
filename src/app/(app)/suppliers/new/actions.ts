@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
@@ -21,6 +21,7 @@ const DOC_TYPES = new Set(["TRADE_LICENSE", "MOHRE_PERMIT", "ESTABLISHMENT_CARD"
 
 /** Registers a supplier from the wizard: the reviewed details plus the documents it was read from. */
 export async function createSupplierWizardAction(formData: FormData): Promise<{ error: string | null; id?: string }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a specific branch from the switcher before adding a supplier." };

@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  if (!can(subjectOf(user), "payroll", "export")) return NextResponse.json({ error: "You don't have permission to export payroll." }, { status: 403 });
+  if (!can(subjectOf(user), "payroll.payroll", "export")) return NextResponse.json({ error: "You don't have permission to export payroll." }, { status: 403 });
 
   const { id } = await params;
   const run = await prisma.payrollRun.findUnique({

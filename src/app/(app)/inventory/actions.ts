@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -24,6 +24,7 @@ export async function createInventoryItemAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -68,6 +69,7 @@ export async function createInventoryItemAction(
 }
 
 export async function updateInventoryItemAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
@@ -99,8 +101,9 @@ export async function updateInventoryItemAction(formData: FormData) {
 }
 
 export async function deleteInventoryItemAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
-  await requirePermission("facilities", "delete");
+  await requirePermission("facilities.inventory", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
   if (!id) return;
@@ -139,6 +142,7 @@ export async function deleteInventoryItemAction(formData: FormData) {
 export async function createVariantAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const itemId = String(formData.get("itemId") || "");
@@ -169,6 +173,7 @@ export async function createVariantAction(
 }
 
 export async function updateVariantStockAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");
@@ -195,8 +200,9 @@ export async function updateVariantStockAction(formData: FormData) {
 }
 
 export async function deleteVariantAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
-  await requirePermission("facilities", "delete");
+  await requirePermission("facilities.inventory", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");
   if (!variantId) return;
@@ -237,7 +243,8 @@ export async function deleteVariantAction(formData: FormData) {
  * matched by name, ignoring case, and stock is only changed when the cell is filled.
  */
 export async function bulkImportInventoryAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
-  await requirePermission("facilities", "create");
+  await requireWrite("facilities.inventory");
+  await requirePermission("facilities.inventory", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
     const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin.";

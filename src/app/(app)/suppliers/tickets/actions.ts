@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requirePermission, requireUserWithBranch } from "@/lib/auth";
+import { requirePermission, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { notifySupplier } from "@/lib/vendor/notify";
@@ -20,8 +20,9 @@ async function load(id: string) {
 
 /** Answer a supplier. It appears in their portal and they are notified. */
 export async function replyToTicketAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("partners.messages");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.messages", "edit");
   const { user, t } = await load(str(formData.get("ticketId")));
   if (!t) return { error: "Message not found." };
   const body = str(formData.get("body"));
@@ -39,8 +40,9 @@ export async function replyToTicketAction(_prev: State, formData: FormData): Pro
 }
 
 export async function setTicketStatusAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.messages");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.messages", "edit");
   const { user, t } = await load(str(formData.get("id")));
   if (!t) return { error: "Message not found." };
   const status = str(formData.get("status"));

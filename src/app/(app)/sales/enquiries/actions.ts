@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -19,6 +19,7 @@ async function assertEnquiryInBranch(id: string, branchId: string | null, isSupe
 }
 
 export async function createEnquiryAction(formData: FormData) {
+  await requireWrite("sales.enquiries");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -54,6 +55,7 @@ export async function createEnquiryAction(formData: FormData) {
 }
 
 export async function updateEnquiryAction(formData: FormData) {
+  await requireWrite("sales.enquiries");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("enquiryId") || "");
@@ -87,8 +89,9 @@ export async function updateEnquiryAction(formData: FormData) {
 }
 
 export async function deleteEnquiryAction(formData: FormData) {
+  await requireWrite("sales.enquiries");
   assertContactsValid(formData);
-  await requirePermission("sales", "delete");
+  await requirePermission("sales.enquiries", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("enquiryId") || "");
   if (!id) return;
@@ -125,6 +128,7 @@ export async function deleteEnquiryAction(formData: FormData) {
 
 /** Board drag-and-drop: change only the status, leaving the rest of the enquiry untouched. */
 export async function moveEnquiryAction(id: string, status: string): Promise<{ error?: string }> {
+  await requireWrite("sales.enquiries");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!["Open", "Quoted", "Converted", "Lost"].includes(status)) return { error: "Unknown status." };
   if (!(await assertEnquiryInBranch(id, branchId, isSuperAdmin))) return { error: "You can't change that enquiry." };

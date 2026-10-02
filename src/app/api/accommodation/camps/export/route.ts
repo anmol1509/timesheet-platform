@@ -14,7 +14,7 @@ import { TARGETS } from "@/lib/importer/targets";
  */
 export async function GET(request: Request) {
   const { user, branchId } = await requireUserWithBranch();
-  if (!can(subjectOf(user), "facilities", "export")) return NextResponse.json({ error: "You don't have permission to export facilities data." }, { status: 403 });
+  if (!can(subjectOf(user), "facilities.camps", "export")) return NextResponse.json({ error: "You don't have permission to export facilities data." }, { status: 403 });
   const q = new URL(request.url).searchParams;
   const withWorkers = q.get("workers") !== "0";
   const campId = q.get("camp");

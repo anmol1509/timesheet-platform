@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requirePermission, requireUserWithBranch } from "@/lib/auth";
+import { requirePermission, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { approveWorkerSubmission, applyChangeRequest } from "@/lib/supplierRequestsApply";
@@ -21,8 +21,9 @@ async function loadSubmission(id: string) {
 
 /** Approve a supplier's new worker: creates the real Employee, with an ID continuing the supplier's series. */
 export async function approveWorkerAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.suppliers", "edit");
   const { user, sub } = await loadSubmission(str(formData.get("id")));
   if (!sub) return { error: "Submission not found." };
   const r = await approveWorkerSubmission(sub.id, user.id);
@@ -34,8 +35,9 @@ export async function approveWorkerAction(formData: FormData): Promise<State> {
 }
 
 export async function rejectWorkerAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.suppliers", "edit");
   const { user, sub } = await loadSubmission(str(formData.get("id")));
   if (!sub) return { error: "Submission not found." };
   if (sub.status !== "PENDING") return { error: `Already ${sub.status.toLowerCase()}.` };
@@ -57,8 +59,9 @@ async function loadChange(id: string) {
 
 /** Apply an approved change to the supplier's record, writing only whitelisted fields. */
 export async function approveChangeAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.suppliers", "edit");
   const { user, req } = await loadChange(str(formData.get("id")));
   if (!req) return { error: "Request not found." };
   const r = await applyChangeRequest(req.id, user.id);
@@ -71,8 +74,9 @@ export async function approveChangeAction(formData: FormData): Promise<State> {
 }
 
 export async function rejectChangeAction(formData: FormData): Promise<State> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.suppliers", "edit");
   const { user, req } = await loadChange(str(formData.get("id")));
   if (!req) return { error: "Request not found." };
   if (req.status !== "PENDING") return { error: `Already ${req.status.toLowerCase()}.` };

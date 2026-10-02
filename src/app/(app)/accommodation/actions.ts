@@ -5,7 +5,7 @@ import { checkoutKind, checkoutProblem, dayKey } from "@/lib/checkoutReasons";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUser, requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { bedBranch, campBranch, roomBranch } from "@/lib/facilityScope";
 import { logAudit } from "@/lib/audit";
@@ -36,6 +36,7 @@ function parseRoomSpecs(raw: FormDataEntryValue | null): RoomSpec[] {
 export async function createCampWithRoomsAction(
   formData: FormData
 ): Promise<{ campId: string } | { error: string }> {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   // A camp with no branch is invisible to every branch-scoped user, including
@@ -88,6 +89,7 @@ export async function createCampWithRoomsAction(
 }
 
 export async function updateCampOwnershipAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
@@ -135,6 +137,7 @@ function intOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createRoomAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
@@ -176,6 +179,7 @@ export async function createRoomAction(formData: FormData) {
 }
 
 export async function updateCampAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
@@ -202,6 +206,7 @@ export async function updateCampAction(formData: FormData) {
 }
 
 export async function addBedsToRoomAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const roomId = String(formData.get("roomId") || "");
@@ -237,6 +242,7 @@ export async function addBedsToRoomAction(formData: FormData) {
 // CampCheckIn row behind it, or the employee would show a bed but never
 // appear "checked in" anywhere — so one is opened (or reused/moved) here too.
 export async function assignBedAction(formData: FormData) {
+  await requireWrite("facilities");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   await settleDueCheckouts(branchId, user);
@@ -305,6 +311,7 @@ export type CheckoutResult = { error?: string; scheduled?: boolean; date?: strin
  * bed until that day, when it is released the next time a camp screen loads.
  */
 export async function checkOutWorkerAction(formData: FormData): Promise<CheckoutResult> {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -337,6 +344,7 @@ export async function checkOutWorkerAction(formData: FormData): Promise<Checkout
 
 /** Cancels a scheduled checkout: the worker simply stays. */
 export async function cancelScheduledCheckoutAction(employeeId: string): Promise<CheckoutResult> {
+  await requireWrite("facilities.camps");
   await requirePermission("facilities", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
@@ -365,6 +373,7 @@ function revalidateCampScreens(employeeId: string) {
  * worker out first, then the bed can go.
  */
 export async function deleteBedAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -402,6 +411,7 @@ export async function deleteBedAction(formData: FormData) {
 }
 
 export async function deleteRoomAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -447,6 +457,7 @@ export async function deleteRoomAction(formData: FormData) {
 }
 
 export async function deleteCampAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -494,6 +505,7 @@ export async function deleteCampAction(formData: FormData) {
  * check-in slip relies on goes missing.
  */
 export async function placeWorkerInBedAction(employeeId: string, bedId: string): Promise<{ error?: string }> {
+  await requireWrite("facilities.camps");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   await settleDueCheckouts(branchId, user);
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, name: true } });

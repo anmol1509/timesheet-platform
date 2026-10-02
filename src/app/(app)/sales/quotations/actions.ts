@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
 import { logAudit } from "@/lib/audit";
@@ -40,6 +40,7 @@ type LineInput = {
 };
 
 export async function createQuotationAction(formData: FormData) {
+  await requireWrite("sales.quotations");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -100,6 +101,7 @@ export async function createQuotationAction(formData: FormData) {
 }
 
 export async function updateQuotationStatusAction(formData: FormData) {
+  await requireWrite("sales.quotations");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
@@ -128,6 +130,7 @@ export async function updateQuotationStatusAction(formData: FormData) {
 }
 
 export async function updateQuotationDetailsAction(formData: FormData) {
+  await requireWrite("sales.quotations");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
@@ -166,6 +169,7 @@ export async function updateQuotationDetailsAction(formData: FormData) {
 // Creating an Lpo per line is optional — checked explicitly on the form,
 // since not every accepted quotation arrives with firm LPO terms yet.
 export async function convertQuotationToProjectAction(formData: FormData) {
+  await requireWrite("sales.quotations");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
@@ -246,8 +250,9 @@ export async function convertQuotationToProjectAction(formData: FormData) {
 }
 
 export async function deleteQuotationAction(formData: FormData) {
+  await requireWrite("sales.quotations");
   assertContactsValid(formData);
-  await requirePermission("sales", "delete");
+  await requirePermission("sales.quotations", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("quotationId") || "");
   if (!id) return;
@@ -284,6 +289,7 @@ export async function deleteQuotationAction(formData: FormData) {
 
 /** Board drag-and-drop: same rules as updateQuotationStatusAction, but reports why a move was refused. */
 export async function moveQuotationAction(id: string, toStatus: string): Promise<{ error?: string }> {
+  await requireWrite("sales.quotations");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!(await assertQuotationInBranch(id, branchId, isSuperAdmin))) return { error: "You can't change that quotation." };
   const before = await prisma.quotation.findUnique({ where: { id } });

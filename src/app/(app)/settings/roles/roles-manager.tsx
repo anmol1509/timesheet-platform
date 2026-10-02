@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { DeleteButton } from "@/components/DeleteButton";
-import { MODULES, permissionKey } from "@/lib/permissions";
+import { describeAccess } from "@/lib/permissions";
 import { RoleEditor } from "./role-editor";
 import { deleteRoleAction } from "./actions";
 
@@ -40,7 +40,7 @@ export function RolesManager({ roles, branches, isSuperAdmin }: { roles: Role[];
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {roles.map((r) => {
-            const viewable = MODULES.filter((m) => r.permissions.includes(permissionKey(m.key, "view")));
+            const viewable = describeAccess(r.permissions);
             return (
               <article key={r.id} className="card p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -78,11 +78,17 @@ export function RolesManager({ roles, branches, isSuperAdmin }: { roles: Role[];
                 )}
                 <ul className="mt-3 space-y-1 text-xs">
                   {viewable.map((m) => (
-                    <li key={m.key} className="flex flex-wrap gap-x-2">
-                      <span className="font-medium text-primary">{m.label}</span>
-                      <span className="text-muted">
-                        {m.actions.filter((a) => r.permissions.includes(permissionKey(m.key, a))).join(" · ")}
-                      </span>
+                    <li key={m.key} className="space-y-0.5">
+                      <div className="flex flex-wrap gap-x-2">
+                        <span className="font-medium text-primary">{m.label}</span>
+                        {m.wholeModule ? <span className="text-muted">{m.actions.join(" · ")}</span> : <span className="text-muted">{m.pages.length} page{m.pages.length === 1 ? "" : "s"}</span>}
+                      </div>
+                      {!m.wholeModule && m.pages.map((p) => (
+                        <div key={p.label} className="flex flex-wrap gap-x-2 pl-3">
+                          <span className="text-secondary">{p.label}</span>
+                          <span className="text-muted">{p.actions.join(" · ")}</span>
+                        </div>
+                      ))}
                     </li>
                   ))}
                 </ul>

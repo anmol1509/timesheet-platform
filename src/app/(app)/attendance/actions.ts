@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { refsBelongToBranch } from "@/lib/refScope";
 import { isAdminRole } from "@/lib/roles";
@@ -17,6 +17,7 @@ export async function loadDayAttendanceAction(formData: FormData): Promise<{
     { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean }
   >;
 }> {
+  await requireView("timesheets.attendance");
   assertContactsValid(formData);
   const { branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
@@ -74,6 +75,7 @@ export async function markAttendanceAction(
   sync?: SyncResult;
   skipped?: { name: string; reason: string }[];
 }> {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
@@ -214,8 +216,9 @@ export async function markAttendanceAction(
 // expressed as a boolean here since Attendance only has two states
 // (open/locked) rather than a multi-stage pipeline.
 export async function approveAttendanceDayAction(formData: FormData) {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
-  await requirePermission("timesheets", "approve");
+  await requirePermission("timesheets.attendance", "approve");
   const { user, branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
   const projectId = String(formData.get("projectId") || "").trim() || null;
@@ -255,6 +258,7 @@ export async function approveAttendanceDayAction(formData: FormData) {
 }
 
 export async function requestAttendanceCorrectionAction(formData: FormData) {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const attendanceId = String(formData.get("attendanceId") || "");
@@ -293,9 +297,10 @@ export async function requestAttendanceCorrectionAction(formData: FormData) {
 }
 
 export async function reviewCorrectionRequestAction(formData: FormData) {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
   // Deciding a correction is an approval; it used to be open to any signed-in user.
-  await requirePermission("timesheets", "approve");
+  await requirePermission("timesheets.attendance", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const correctionId = String(formData.get("correctionId") || "");
   const decision = String(formData.get("decision") || "");
@@ -348,8 +353,9 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
 export async function deleteAttendanceAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
-  await requirePermission("timesheets", "delete");
+  await requirePermission("timesheets.attendance", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("attendanceId") || "").trim();
   if (!id) return { deleted: 0 };
