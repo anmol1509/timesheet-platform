@@ -17,6 +17,9 @@ export const DOCUMENT_MODEL =
  */
 export const ASSISTANT_MODEL = process.env.ASSISTANT_MODEL || "claude-sonnet-5-5";
 
+/** Used when the main assistant model rejects a request, so a question is still answered. */
+export const ASSISTANT_FALLBACK_MODEL = "claude-haiku-4-5-20251001";
+
 /** Model for the import copilot's one-shot review. Short structured output; Haiku is plenty. */
 export const COPILOT_MODEL = process.env.COPILOT_MODEL || "claude-haiku-4-5-20251001";
 

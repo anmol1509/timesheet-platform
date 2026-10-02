@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions, resolveSuperAdminBranchId, subjectOf } from "@/lib/auth";
 import { moduleForPath, viewableModules } from "@/lib/permissions";
 import { ASSISTANT_LIMIT, rateLimit } from "@/lib/rateLimit";
-import { ASSISTANT_MODEL, assistantModelExtras } from "@/lib/constants";
+import { ASSISTANT_FALLBACK_MODEL, ASSISTANT_MODEL, assistantModelExtras } from "@/lib/constants";
 import { TOOLS, runTool, type AssistantTable, type RecordLink } from "@/lib/assistantTools";
 import {
   EXTRA_PAGES,
@@ -81,6 +81,7 @@ export async function POST(request: Request) {
     const language = isAssistantLanguage(body.language) ? body.language : "auto";
     const system = buildSystemPrompt(pages, language);
     const extras = assistantModelExtras(ASSISTANT_MODEL);
+    let activeModel = ASSISTANT_MODEL;
     const branchId = user.role === "SUPER_ADMIN" ? await resolveSuperAdminBranchId() : user.branchId;
     const ctx = { subject: subjectOf(user), branchId };
     const convo: Anthropic.Messages.MessageParam[] = [...messages];
@@ -90,19 +91,31 @@ export async function POST(request: Request) {
     let text: Anthropic.Messages.TextBlock | undefined;
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
       // The last round offers no tools, so the loop always ends on an answer.
-      const response = await client.messages.create({
-        model: ASSISTANT_MODEL,
-        // Room for a reply in Hindi, Urdu or Nepali, which take more tokens than English.
-        max_tokens: 1500,
-        // Sonnet 5.5 only: keep thinking to the gaps between lookups and effort low (see assistantModelExtras).
-        ...(extras.thinking ? ({ thinking: extras.thinking } as object) : {}),
-        // Tools + this prompt are identical from one question to the next for a
-        // given user, so mark the end of it as a cache breakpoint.
-        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-        output_config: { ...(extras.effort ? { effort: extras.effort } : {}), format: { type: "json_schema", schema: REPLY_SCHEMA } },
-        messages: convo,
-        ...(round < MAX_TOOL_ROUNDS ? { tools: TOOLS } : {}),
-      });
+      const request = (model: string, withExtras: boolean) =>
+        client.messages.create({
+          model,
+          // Room for a reply in Hindi, Urdu or Nepali, which take more tokens than English.
+          max_tokens: 1500,
+          // Sonnet 5.5 only: keep thinking to the gaps between lookups and effort low (see assistantModelExtras).
+          ...(withExtras && extras.thinking ? ({ thinking: extras.thinking } as object) : {}),
+          // Tools + this prompt are identical from one question to the next for a
+          // given user, so mark the end of it as a cache breakpoint.
+          system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+          output_config: { ...(withExtras && extras.effort ? { effort: extras.effort } : {}), format: { type: "json_schema", schema: REPLY_SCHEMA } },
+          messages: convo,
+          ...(round < MAX_TOOL_ROUNDS ? { tools: TOOLS } : {}),
+        });
+      let response;
+      try {
+        response = await request(activeModel, true);
+      } catch (err) {
+        // If the stronger model rejects the request (a setting it doesn't accept), answer on the
+        // fallback model instead of failing the person's question, and stay on it for this chat turn.
+        if (!(err instanceof Anthropic.BadRequestError) || activeModel === ASSISTANT_FALLBACK_MODEL) throw err;
+        console.error("assistant: falling back from", activeModel, "-", err.message);
+        activeModel = ASSISTANT_FALLBACK_MODEL;
+        response = await request(activeModel, false);
+      }
       if (response.stop_reason === "refusal") break;
       if (response.stop_reason !== "tool_use") {
         const block = response.content.find((b) => b.type === "text");
