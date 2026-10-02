@@ -1,9 +1,11 @@
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Bus, CalendarClock, Phone, Route as RouteIcon, ShieldAlert, Users } from "lucide-react";
+import { Bus, CalendarClock, Download, Phone, Route as RouteIcon, ShieldAlert, Upload, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
@@ -31,7 +33,9 @@ function DocChip({ label, date }: { label: string; date: Date | null }) {
 
 export default async function TransportPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const { error, status: statusFilter } = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canExport = can(subjectOf(user), "facilities", "export");
+  const canImport = isAdminRole(user.role);
   const vehicles = await prisma.vehicle.findMany({
     where: branchWhere(branchId),
     include: {
@@ -79,6 +83,8 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
         />
         <div className="flex items-center gap-2">
           <Link href="/transport/routes" className="btn btn-secondary gap-1.5"><RouteIcon className="h-4 w-4" aria-hidden />Routes</Link>
+          {canImport && <Link href="/import/new/vehicles" className="btn btn-secondary gap-1.5"><Upload className="h-4 w-4" aria-hidden />Import</Link>}
+          {canExport && vehicles.length > 0 && <a href="/api/transport/vehicles/export" className="btn btn-secondary gap-1.5"><Download className="h-4 w-4" aria-hidden />Export</a>}
           <AddVehicleDialog />
         </div>
       </div>
