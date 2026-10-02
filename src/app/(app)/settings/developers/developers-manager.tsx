@@ -128,7 +128,7 @@ function CreateForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function DevelopersManager({ keys, enabled, branchName, baseUrl, salesEmail }: { keys: KeyRow[]; enabled: boolean; branchName: string; baseUrl: string; salesEmail: string }) {
+export function DevelopersManager({ keys, enabled, branchName, baseUrl, salesEmail, children }: { keys: KeyRow[]; enabled: boolean; branchName: string; baseUrl: string; salesEmail: string; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [revoking, startRevoke] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -268,6 +268,8 @@ export function DevelopersManager({ keys, enabled, branchName, baseUrl, salesEma
           </table>
         </div>
       </section>
+
+      {children}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Create API key" description="Give it only the permissions the connection needs.">

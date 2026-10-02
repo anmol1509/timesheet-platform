@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { emitFromAudit } from "@/lib/webhooks/fromAudit";
 
 type AuditAction = "CREATE" | "UPDATE" | "DELETE";
 
@@ -49,5 +50,12 @@ export async function logAudit(params: {
     });
   } catch (e) {
     console.error("[audit] failed to log:", e instanceof Error ? e.message : e);
+  }
+
+  // Customers listening for webhooks hear about the changes that matter. A failure here must not touch the action.
+  try {
+    await emitFromAudit({ entityType, entityId, action, after, changes, branchId });
+  } catch (e) {
+    console.error("[webhooks] audit hook failed:", e instanceof Error ? e.message : e);
   }
 }

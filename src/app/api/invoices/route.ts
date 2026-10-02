@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { emitWebhookEvent } from "@/lib/webhooks/deliver";
 import { z } from "zod";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -111,6 +112,14 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+    const issued = await prisma.clientInvoice.findUnique({ where: { invoiceNumber }, select: { id: true } });
+    await emitWebhookEvent(branchId!, "invoice.issued", {
+      invoice_id: issued?.id ?? null,
+      invoice_number: invoiceNumber,
+      client_id: clientId,
+      month,
+      total_amount: Math.round(totalAmount * 100) / 100,
+    });
   }
 
   const genInput = {

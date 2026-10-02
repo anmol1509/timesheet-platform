@@ -5,6 +5,10 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { generateApiKey, isScope } from "@/lib/api/keys";
+import { encryptSecret, newSigningSecret } from "@/lib/webhooks/crypto";
+import { isEventType } from "@/lib/webhooks/events";
+import { resolveSafeTarget } from "@/lib/webhooks/safeUrl";
+import { resendDelivery, sendTestEvent } from "@/lib/webhooks/deliver";
 
 type State = { error: string | null; secret?: string; name?: string };
 const MAX_ACTIVE_KEYS = 10;
@@ -75,4 +79,117 @@ export async function revokeApiKeyAction(formData: FormData): Promise<{ error: s
   });
   revalidatePath("/settings/developers");
   return { error: null };
+}
+
+// ---------------------------------------------------------------- webhooks
+const MAX_ENDPOINTS = 5;
+export type HookState = { error: string | null; secret?: string; url?: string };
+export type HookResult = { error: string | null; message?: string };
+
+async function ownEndpoint(admin: Awaited<ReturnType<typeof requireAdmin>>, id: string) {
+  const branchId = await branchFor(admin);
+  const ep = await prisma.webhookEndpoint.findUnique({ where: { id } });
+  return ep && ep.branchId === branchId ? ep : null;
+}
+
+function readEvents(formData: FormData): string[] | string {
+  const events = [...new Set(formData.getAll("events").map(String))];
+  if (events.length === 0) return "Choose at least one event to send.";
+  if (!events.every(isEventType)) return "One of the events is not valid.";
+  return events;
+}
+
+export async function createWebhookEndpointAction(_prev: HookState, formData: FormData): Promise<HookState> {
+  const admin = await requireAdmin();
+  const branchId = await branchFor(admin);
+  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { apiAccess: true, isActive: true } });
+  if (!branch?.isActive) return { error: "That branch is not active." };
+  if (!branch.apiAccess) return { error: "Webhooks are part of the Pro and Custom plans. Contact us to switch them on." };
+
+  const events = readEvents(formData);
+  if (typeof events === "string") return { error: events };
+  const description = String(formData.get("description") || "").trim().slice(0, 100) || null;
+  let url: string;
+  try {
+    url = (await resolveSafeTarget(String(formData.get("url") || ""))).url.toString();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "That web address isn't valid." };
+  }
+  if ((await prisma.webhookEndpoint.count({ where: { branchId } })) >= MAX_ENDPOINTS) return { error: `You can have up to ${MAX_ENDPOINTS} webhook endpoints. Delete one you no longer use first.` };
+
+  const secret = newSigningSecret();
+  const created = await prisma.webhookEndpoint.create({
+    data: { url, description, events, secretEnc: encryptSecret(secret), secretHint: secret.slice(-4), branchId, createdById: admin.id },
+  });
+  await logAudit({ entityType: "WEBHOOK_ENDPOINT", entityId: created.id, action: "CREATE", after: { url, events, description }, userId: admin.id, userName: admin.name, branchId });
+  revalidatePath("/settings/developers");
+  return { error: null, secret, url };
+}
+
+export async function updateWebhookEndpointAction(_prev: HookResult, formData: FormData): Promise<HookResult> {
+  const admin = await requireAdmin();
+  const ep = await ownEndpoint(admin, String(formData.get("id") || ""));
+  if (!ep) return { error: "Endpoint not found." };
+  const events = readEvents(formData);
+  if (typeof events === "string") return { error: events };
+  const description = String(formData.get("description") || "").trim().slice(0, 100) || null;
+  await prisma.webhookEndpoint.update({ where: { id: ep.id }, data: { events, description } });
+  await logAudit({ entityType: "WEBHOOK_ENDPOINT", entityId: ep.id, action: "UPDATE", before: { events: ep.events, description: ep.description }, after: { events, description }, userId: admin.id, userName: admin.name, branchId: ep.branchId });
+  revalidatePath("/settings/developers");
+  return { error: null };
+}
+
+export async function toggleWebhookEndpointAction(formData: FormData): Promise<HookResult> {
+  const admin = await requireAdmin();
+  const ep = await ownEndpoint(admin, String(formData.get("id") || ""));
+  if (!ep) return { error: "Endpoint not found." };
+  const on = formData.get("active") === "1";
+  await prisma.webhookEndpoint.update({ where: { id: ep.id }, data: { isActive: on, ...(on ? { consecutiveFailures: 0, disabledReason: null } : { disabledReason: "Switched off by an admin." }) } });
+  await logAudit({ entityType: "WEBHOOK_ENDPOINT", entityId: ep.id, action: "UPDATE", before: { isActive: ep.isActive }, after: { isActive: on }, userId: admin.id, userName: admin.name, branchId: ep.branchId });
+  revalidatePath("/settings/developers");
+  return { error: null };
+}
+
+export async function deleteWebhookEndpointAction(formData: FormData): Promise<HookResult> {
+  const admin = await requireAdmin();
+  const ep = await ownEndpoint(admin, String(formData.get("id") || ""));
+  if (!ep) return { error: "Endpoint not found." };
+  await prisma.webhookEndpoint.delete({ where: { id: ep.id } });
+  await logAudit({ entityType: "WEBHOOK_ENDPOINT", entityId: ep.id, action: "DELETE", before: { url: ep.url, events: ep.events }, userId: admin.id, userName: admin.name, branchId: ep.branchId });
+  revalidatePath("/settings/developers");
+  return { error: null };
+}
+
+/** A new signing secret; the old one stops working immediately. Shown once. */
+export async function rotateWebhookSecretAction(formData: FormData): Promise<HookState> {
+  const admin = await requireAdmin();
+  const ep = await ownEndpoint(admin, String(formData.get("id") || ""));
+  if (!ep) return { error: "Endpoint not found." };
+  const secret = newSigningSecret();
+  await prisma.webhookEndpoint.update({ where: { id: ep.id }, data: { secretEnc: encryptSecret(secret), secretHint: secret.slice(-4) } });
+  await logAudit({ entityType: "WEBHOOK_ENDPOINT", entityId: ep.id, action: "UPDATE", before: { secret: "(previous)" }, after: { secret: "(rotated)" }, userId: admin.id, userName: admin.name, branchId: ep.branchId });
+  revalidatePath("/settings/developers");
+  return { error: null, secret, url: ep.url };
+}
+
+export async function testWebhookAction(formData: FormData): Promise<HookResult> {
+  const admin = await requireAdmin();
+  const ep = await ownEndpoint(admin, String(formData.get("id") || ""));
+  if (!ep) return { error: "Endpoint not found." };
+  const r = await sendTestEvent(ep.id, ep.branchId);
+  revalidatePath("/settings/developers");
+  return r.status === "SUCCESS"
+    ? { error: null, message: `Your server replied ${r.code}. The test event arrived.` }
+    : { error: r.error ?? "The test event could not be delivered." };
+}
+
+export async function resendWebhookDeliveryAction(formData: FormData): Promise<HookResult> {
+  const admin = await requireAdmin();
+  const branchId = await branchFor(admin);
+  if (!branchId) return { error: "Pick a branch first." };
+  const r = await resendDelivery(String(formData.get("id") || ""), branchId);
+  revalidatePath("/settings/developers");
+  if (!r) return { error: "Delivery not found." };
+  return r.status === "SUCCESS" ? { error: null, message: `Delivered (${r.code}).` } : { error: r.error ?? "Could not deliver." };
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { emitWebhookEvent } from "@/lib/webhooks/deliver";
 import { describeTimesheetWorkbook } from "@/lib/parseTimesheet";
 import { suggestMapping } from "./mapping";
 import { describeSheets, extractRows, loadWorkbook } from "./sheet";
@@ -127,12 +128,14 @@ export async function runBatch(batchId: string, user: BatchUser, opts: { claimed
         fileData: null, // the file is kept on the Upload for timesheets; nothing else needs it now
       },
     });
+    await emitWebhookEvent(batch.branchId, "import.completed", { batch_id: batchId, kind: batch.kind, status: "DONE", counts: res.counts });
   } catch (e) {
     // Whatever was written before the failure is recorded, so it can be undone.
     await prisma.importBatch.update({
       where: { id: batchId },
       data: { status: "FAILED", error: e instanceof Error ? e.message.slice(0, 500) : "Import failed", finishedAt: new Date(), undoUntil: new Date(Date.now() + UNDO_DAYS * 86_400_000) },
     });
+    await emitWebhookEvent(batch.branchId, "import.completed", { batch_id: batchId, kind: batch.kind, status: "FAILED" });
   }
 }
 

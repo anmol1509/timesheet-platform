@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { emitWebhookEvent, hasSubscribers, processDue, purgeOldDeliveries } from "@/lib/webhooks/deliver";
 import { prisma } from "@/lib/db";
 import { getRenewals, summarise } from "@/lib/renewals";
 import { notifyUsers } from "@/lib/notifications/notify";
@@ -15,6 +16,8 @@ import { notifyUsers } from "@/lib/notifications/notify";
  */
 
 export const dynamic = "force-dynamic";
+
+const EXPIRY_EVENT_DAYS = new Set([60, 30, 14, 7, 1, 0]);
 
 export async function GET(request: Request) {
   // Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Without the secret
@@ -46,6 +49,15 @@ export async function GET(request: Request) {
 
     digest.push({ branch: branch.code, counts, top });
 
+    // Webhook subscribers hear about each document as it crosses a threshold, once per threshold.
+    if (await hasSubscribers(branch.id, "document.expiring")) {
+      for (const i of items.filter((x) => EXPIRY_EVENT_DAYS.has(x.days)).slice(0, 300)) {
+        await emitWebhookEvent(branch.id, "document.expiring", {
+          subject_type: i.kind, subject_id: i.subjectId, subject_ref: i.subjectRef, document: i.document, expiry_date: i.expiry.slice(0, 10), days_remaining: i.days,
+        });
+      }
+    }
+
     // Left in the server log so a run is traceable even before delivery is configured.
     console.info(
       `[expiry-sweep] ${branch.code}: ${counts.expired} expired, ${counts.urgent} within 7d, ${counts.soon} within 30d, ${counts.planned} within 60d, ${counts.horizon} within 90d`
@@ -76,5 +88,9 @@ export async function GET(request: Request) {
     });
   }
 
-  return NextResponse.json({ ranAt: new Date().toISOString(), digest });
+  // Webhook housekeeping: retry anything still waiting, drop records past the retention period.
+  const retried = await processDue({ limit: 200 });
+  const purged = await purgeOldDeliveries();
+
+  return NextResponse.json({ ranAt: new Date().toISOString(), digest, webhooks: { retried, purged } });
 }

@@ -19,6 +19,7 @@ model Branch {
   id        String   @id @default(cuid())
   tradePays TradePay[]
   apiKeys   ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
   // Public API access is part of the Pro and Custom plans; a super admin switches it on per branch.
   apiAccess Boolean  @default(false)
   code      String   @unique
@@ -140,6 +141,7 @@ model Bank {
 model User {
   id           String   @id @default(cuid())
   apiKeysCreated ApiKey[]
+  webhooksCreated WebhookEndpoint[]
   email        String   @unique
   name         String
   passwordHash String
@@ -2523,4 +2525,52 @@ model ApiKey {
   revokedAt   DateTime?
 
   @@index([branchId])
+}
+
+// Where a customer wants to be told when something happens. The signing secret
+// is kept encrypted (it must be readable to sign) and shown once at creation.
+model WebhookEndpoint {
+  id                  String            @id @default(cuid())
+  url                 String
+  description         String?
+  events              String[] // event names, or "*" for all
+  secretEnc           String
+  secretHint          String // last characters of the secret, to tell endpoints apart
+  isActive            Boolean           @default(true)
+  disabledReason      String?
+  consecutiveFailures Int               @default(0)
+  lastDeliveryAt      DateTime?
+  lastStatusCode      Int?
+  branch              Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId            String
+  createdBy           User              @relation(fields: [createdById], references: [id])
+  createdById         String
+  createdAt           DateTime          @default(now())
+  deliveries          WebhookDelivery[]
+
+  @@index([branchId, isActive])
+}
+
+// One event sent (or waiting to be sent) to one endpoint. Kept 30 days.
+model WebhookDelivery {
+  id            String          @id @default(cuid())
+  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  endpointId    String
+  branchId      String
+  eventId       String
+  type          String
+  payload       String // the exact JSON body that is signed and sent
+  status        String          @default("PENDING") // PENDING | SUCCESS | FAILED
+  attempts      Int             @default(0)
+  nextAttemptAt DateTime?
+  lastStatusCode Int?
+  lastError     String?
+  responseSnippet String?
+  durationMs    Int?
+  createdAt     DateTime        @default(now())
+  deliveredAt   DateTime?
+
+  @@index([endpointId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
 }
