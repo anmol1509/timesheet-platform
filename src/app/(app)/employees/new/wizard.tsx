@@ -16,6 +16,7 @@ import {
 } from "./actions";
 import { MultiUploadSlot, PhotoSlot, UploadSlot, type UploadStatus } from "./upload-slot";
 import { DocumentChecklist, type ChecklistItem } from "./document-checklist";
+import { MAX_REQUEST_BYTES, shrinkImage } from "@/lib/compressImage";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { Select } from "@/components/ui/Select";
 import { PhoneInput } from "@/components/ui/PhoneInput";
@@ -676,7 +677,7 @@ export function EmployeeWizard({
     return done;
   }, [fields, packFiles, docFiles, skills, idTaken]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const identityIndex = STEPS.findIndex((s) => s.key === "identity");
     const error = validate(identityIndex);
@@ -696,18 +697,30 @@ export function EmployeeWizard({
     const hasResidency =
       found.includes("RESIDENCY_ISSUANCE") || !!docFiles.RESIDENCY_ISSUANCE;
     if (hasResidency && !fields.emiratesId) body.set("eidStatus", "APPLIED");
-    if (photo) body.set("photo", photo);
-    packFiles.forEach((file) => body.append("docFile_PACK", file));
+    // Everything goes in one request that the host caps at about 4.5 MB, so photos are scaled down first
+    // and the total is checked here, rather than failing with a generic error page after the wait.
+    let total = 0;
+    const add = (key: string, file: File, append = false) => {
+      total += file.size;
+      if (append) body.append(key, file); else body.set(key, file);
+    };
+    if (photo) add("photo", await shrinkImage(photo));
+    for (const file of packFiles) add("docFile_PACK", await shrinkImage(file), true);
     for (const [slot, file] of Object.entries(docFiles)) {
-      if (file) body.set(`docFile_${slot}`, file);
+      if (file) add(`docFile_${slot}`, await shrinkImage(file));
     }
     // Each note's remarks are indexed, and its files ride along under the same
     // index so the server can put them back together.
     body.set("noteCount", String(notes.length));
     notes.forEach((note, i) => {
       body.set(`noteRemarks_${i}`, note.remarks);
-      note.files.forEach((file) => body.append(`noteFile_${i}`, file));
     });
+    for (const [i, note] of notes.entries()) for (const file of note.files) add(`noteFile_${i}`, await shrinkImage(file), true);
+    if (total > MAX_REQUEST_BYTES) {
+      setStepError(`The files add up to ${(total / 1048576).toFixed(1)} MB, but one save can carry at most ${MAX_REQUEST_BYTES / 1048576} MB. Remove or shrink a PDF, or register the employee now and add the larger documents afterwards from their profile.`);
+      return;
+    }
+    setStepError(null);
     if (onRegistered) body.set("inline", "1");
     startTransition(() => formAction(body));
   }
