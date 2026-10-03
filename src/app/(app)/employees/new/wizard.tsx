@@ -231,6 +231,7 @@ export function EmployeeWizard({
   // accumulates these over time, so one overwritable field wouldn't do.
   const [notes, setNotes] = useState<NoteDraft[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [sizeNotice, setSizeNotice] = useState<string | null>(null);
 
   const [found, setFound] = useState<string[]>([]);
   const [autofilled, setAutofilled] = useState<string[]>([]);
@@ -360,6 +361,61 @@ export function EmployeeWizard({
     }
   }
 
+  /** Bytes already held for upload, optionally not counting a file that is about to be replaced. */
+  function heldBytes(except?: File | null) {
+    const all = [photo, ...packFiles, ...Object.values(docFiles), ...notes.flatMap((n) => n.files)];
+    return all.reduce((sum, f) => (f && f !== except ? sum + f.size : sum), 0);
+  }
+
+  /**
+   * One save carries every file in a single request the host caps at about 4.5 MB. So a file is shrunk (photos)
+   * and checked the moment it's chosen, and refused here with a message on this screen, instead of the save
+   * failing later on an error page.
+   */
+  async function admit(raw: File, except?: File | null, alreadyAccepted = 0): Promise<File | null> {
+    const file = await shrinkImage(raw);
+    const room = MAX_REQUEST_BYTES - heldBytes(except) - alreadyAccepted;
+    if (file.size > room) {
+      const mb = (n: number) => (n / 1048576).toFixed(1);
+      setSizeNotice(
+        `"${raw.name}" wasn't added: it's ${mb(file.size)} MB${raw.type.startsWith("image/") ? " even after shrinking" : ""} and only ${mb(Math.max(room, 0))} MB is left, since one save carries at most ${MAX_REQUEST_BYTES / 1048576} MB in all. Use a smaller or compressed copy, or register the employee now and add this document later from their profile.`,
+      );
+      return null;
+    }
+    setSizeNotice(null);
+    return file;
+  }
+
+  async function pickDoc(slot: DocSlot, raw: File | null) {
+    if (!raw) return;
+    const f = await admit(raw, docFiles[slot]);
+    if (!f) return;
+    setDocFiles((d) => ({ ...d, [slot]: f }));
+    void readSingle(slot, f);
+  }
+
+  async function pickPhoto(raw: File | null) {
+    if (!raw) { setPhoto(null); setPhotoPreview(null); return; }
+    const f = await admit(raw, photo);
+    if (!f) return;
+    setPhoto(f);
+    setPhotoPreview(URL.createObjectURL(f));
+  }
+
+  async function addPackFiles(picked: File[]) {
+    const accepted: File[] = [];
+    let used = 0;
+    for (const raw of picked) {
+      const f = await admit(raw, null, used);
+      if (!f) continue;
+      accepted.push(f);
+      used += f.size;
+    }
+    if (accepted.length === 0) return;
+    setPackFiles((prev) => [...prev, ...accepted]);
+    void readPack(accepted);
+  }
+
   async function readPack(files: File[]) {
     const readable = files.filter(
       (f) => f.type.startsWith("image/") || f.type === "application/pdf"
@@ -487,10 +543,19 @@ export function EmployeeWizard({
     setNotes((n) => n.map((note) => (note.id === id ? { ...note, remarks } : note)));
   }
 
-  function addNoteFiles(id: string, picked: File[]) {
+  async function addNoteFiles(id: string, picked: File[]) {
+    const accepted: File[] = [];
+    let used = 0;
+    for (const raw of picked) {
+      const f = await admit(raw, null, used);
+      if (!f) continue;
+      accepted.push(f);
+      used += f.size;
+    }
+    if (accepted.length === 0) return;
     setNotes((n) =>
       n.map((note) =>
-        note.id === id ? { ...note, files: [...note.files, ...picked] } : note
+        note.id === id ? { ...note, files: [...note.files, ...accepted] } : note
       )
     );
   }
@@ -788,6 +853,12 @@ export function EmployeeWizard({
         </ol>
       </nav>
 
+      {sizeNotice && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
+          <p>{sizeNotice}</p>
+          <button type="button" onClick={() => setSizeNotice(null)} className="shrink-0 text-xs font-medium underline">Dismiss</button>
+        </div>
+      )}
       {(state.error || stepError) && (
         <p className="rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
           {state.error ?? stepError}
@@ -861,10 +932,7 @@ export function EmployeeWizard({
                     label="Document pack"
                     files={packFiles}
                     status={packStatus}
-                    onAdd={(picked) => {
-                      setPackFiles((prev) => [...prev, ...picked]);
-                      void readPack(picked);
-                    }}
+                    onAdd={(picked) => void addPackFiles(picked)}
                     onRemove={(i) =>
                       setPackFiles((prev) => prev.filter((_, idx) => idx !== i))
                     }
@@ -895,11 +963,7 @@ export function EmployeeWizard({
                 label="Passport"
                 file={docFiles.PASSPORT ?? null}
                 status={docStatus.PASSPORT ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, PASSPORT: f }));
-                  void readSingle("PASSPORT", f);
-                }}
+                onSelect={(f) => void pickDoc("PASSPORT", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -913,11 +977,7 @@ export function EmployeeWizard({
                 label="Emirates ID"
                 file={docFiles.EMIRATES_ID ?? null}
                 status={docStatus.EMIRATES_ID ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, EMIRATES_ID: f }));
-                  void readSingle("EMIRATES_ID", f);
-                }}
+                onSelect={(f) => void pickDoc("EMIRATES_ID", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -931,11 +991,7 @@ export function EmployeeWizard({
                 label="Labour card"
                 file={docFiles.LABOR_CARD ?? null}
                 status={docStatus.LABOR_CARD ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, LABOR_CARD: f }));
-                  void readSingle("LABOR_CARD", f);
-                }}
+                onSelect={(f) => void pickDoc("LABOR_CARD", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -950,11 +1006,7 @@ export function EmployeeWizard({
                 hint="Use this when the Emirates ID card hasn't been printed yet."
                 file={docFiles.RESIDENCY_ISSUANCE ?? null}
                 status={docStatus.RESIDENCY_ISSUANCE ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, RESIDENCY_ISSUANCE: f }));
-                  void readSingle("RESIDENCY_ISSUANCE", f);
-                }}
+                onSelect={(f) => void pickDoc("RESIDENCY_ISSUANCE", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -967,10 +1019,7 @@ export function EmployeeWizard({
                 id="doc-photo"
                 file={photo}
                 preview={photoPreview}
-                onSelect={(f) => {
-                  setPhoto(f);
-                  setPhotoPreview(f ? URL.createObjectURL(f) : null);
-                }}
+                onSelect={(f) => void pickPhoto(f)}
                 onClear={() => {
                   setPhoto(null);
                   setPhotoPreview(null);
@@ -985,11 +1034,7 @@ export function EmployeeWizard({
                 hint="Visa, medical, CICPA, insurance…"
                 file={docFiles.ADDITIONAL ?? null}
                 status={docStatus.ADDITIONAL ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, ADDITIONAL: f }));
-                  void readSingle("ADDITIONAL", f);
-                }}
+                onSelect={(f) => void pickDoc("ADDITIONAL", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
