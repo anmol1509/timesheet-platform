@@ -185,11 +185,12 @@ const DAY_PICKER_CLASSES = {
   caption_label: "sr-only",
   dropdowns: "flex items-center gap-1.5",
   dropdown: "input h-8 py-0 text-xs",
-  nav: "absolute inset-x-0 top-0 flex items-center justify-between",
+  // The nav row spans the whole caption, on top of the month and year dropdowns, so only its two arrows take clicks.
+  nav: "pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between",
   button_previous:
-    "flex h-7 w-7 items-center justify-center rounded-control text-muted transition hover:bg-surface-hover hover:text-primary",
+    "pointer-events-auto flex h-7 w-7 items-center justify-center rounded-control text-muted transition hover:bg-surface-hover hover:text-primary",
   button_next:
-    "flex h-7 w-7 items-center justify-center rounded-control text-muted transition hover:bg-surface-hover hover:text-primary",
+    "pointer-events-auto flex h-7 w-7 items-center justify-center rounded-control text-muted transition hover:bg-surface-hover hover:text-primary",
   month_grid: "w-full border-collapse",
   weekdays: "flex",
   weekday: "w-8 pb-1 text-[11px] font-medium text-subtle",
