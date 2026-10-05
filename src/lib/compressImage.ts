@@ -28,4 +28,5 @@ export async function shrinkImage(file: File, maxBytes = 900 * 1024): Promise<Fi
 }
 
 /** One request carries everything, so the total matters, not each file. */
-export const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
+// A little under the 4 MB the server accepts, because the other form fields travel in the same request.
+export const MAX_REQUEST_BYTES = 3.5 * 1024 * 1024;

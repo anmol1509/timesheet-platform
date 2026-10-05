@@ -1,5 +1,6 @@
-export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8MB
-export const MAX_UPLOAD_LABEL = "8MB";
+// What one request can carry: the host refuses bodies over about 4.5 MB, and the server-action limit is 4 MB.
+export const MAX_UPLOAD_BYTES = Math.floor(3.5 * 1024 * 1024);
+export const MAX_UPLOAD_LABEL = "3.5 MB";
 
 /**
  * Model used to read uploaded documents. Haiku is roughly an order of

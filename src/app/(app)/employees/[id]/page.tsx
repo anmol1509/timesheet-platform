@@ -1,3 +1,4 @@
+import { toPlain } from "@/lib/plain";
 import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { dayKey } from "@/lib/checkoutReasons";
 import { notFound } from "next/navigation";
@@ -247,7 +248,7 @@ export default async function EmployeeDetailPage({
         </div>
       )}
       <ProfileSummary
-        employee={employee}
+        employee={toPlain(employee)}
         project={
           employee.project
             ? { id: employee.project.id, name: employee.project.name, manager: employee.project.manager, managerPhone: employee.project.managerPhone, client: { name: employee.project.client.name } }
@@ -261,13 +262,13 @@ export default async function EmployeeDetailPage({
       />
 
       <EditForm
-        employee={employee}
+        employee={toPlain(employee)}
         pay={pay}
         projects={projects}
         sites={sites}
         vehicles={vehicles}
-        sponsors={sponsors}
-        suppliers={suppliers}
+        sponsors={toPlain(sponsors)}
+        suppliers={toPlain(suppliers)}
         documents={employee.documents}
         lookups={lookups}
         tradesContent={

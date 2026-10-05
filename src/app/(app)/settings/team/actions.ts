@@ -6,7 +6,7 @@ import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { sanitizePermissions } from "@/lib/permissions";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const ROLES = ["SUPER_ADMIN", "BRANCH_ADMIN", "STAFF"] as const;
@@ -42,7 +42,7 @@ function parseRole(raw: string, admin: { role: string }): RoleValue | null {
 
 export async function createUserAction(_prev: State, formData: FormData): Promise<State> {
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
@@ -141,7 +141,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
 
 export async function updateUserAction(_prev: State, formData: FormData): Promise<State> {
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
@@ -198,7 +198,7 @@ export async function updateUserAction(_prev: State, formData: FormData): Promis
 
 export async function setUserActiveAction(formData: FormData): Promise<State> {
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
@@ -226,7 +226,7 @@ export async function setUserActiveAction(formData: FormData): Promise<State> {
 
 export async function resetUserPasswordAction(_prev: State, formData: FormData): Promise<State> {
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }

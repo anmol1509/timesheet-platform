@@ -10,7 +10,7 @@ import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { bedBranch, campBranch, roomBranch } from "@/lib/facilityScope";
 import { logAudit } from "@/lib/audit";
 import { bunkLabel, nextBunkNo, singleLabel } from "@/lib/bunk";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type RoomSpec = { name: string; bedCount: number; bunkCount: number };
 
@@ -312,7 +312,7 @@ export type CheckoutResult = { error?: string; scheduled?: boolean; date?: strin
  */
 export async function checkOutWorkerAction(formData: FormData): Promise<CheckoutResult> {
   await requireWrite("facilities.camps");
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("facilities", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");

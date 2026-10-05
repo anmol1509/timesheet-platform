@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 import { initialsOf, nextEmployeeId } from "@/lib/supplierRequests";
 import { STAGE_BY_KEY, computeReadyToJoin, type StageKey } from "@/lib/onboarding";
 
@@ -73,7 +73,7 @@ async function findDuplicate(branchId: string, passportNumber: string | null, em
 export async function createCandidateAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("onboarding.tracker");
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
@@ -105,7 +105,7 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
 export async function updateCandidateAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("onboarding.tracker");
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
@@ -289,7 +289,7 @@ export type CreateAgencyResult = { error: string | null; agency?: { id: string; 
 export async function createAgencyAction(_prev: CreateAgencyResult, formData: FormData): Promise<CreateAgencyResult> {
   await requireWrite("onboarding.tracker");
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
@@ -330,7 +330,7 @@ export type CreateContactResult = { error: string | null; contact?: { id: string
 export async function createAgencyContactAction(_prev: CreateContactResult, formData: FormData): Promise<CreateContactResult> {
   await requireWrite("onboarding.tracker");
   try {
-    assertContactsValid(formData);
+    { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }

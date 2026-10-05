@@ -5,14 +5,14 @@ import { prisma } from "@/lib/db";
 import { requirePermission, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
 
 export async function addContactAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("partners.messages");
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.messages", "edit");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
@@ -30,7 +30,7 @@ export async function addContactAction(_prev: State, formData: FormData): Promis
 
 export async function toggleContactAction(formData: FormData): Promise<State> {
   await requireWrite("partners.messages");
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.messages", "edit");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const c = await prisma.portalContact.findUnique({ where: { id: str(formData.get("id")) } });
@@ -42,7 +42,7 @@ export async function toggleContactAction(formData: FormData): Promise<State> {
 
 export async function deleteContactAction(formData: FormData): Promise<State> {
   await requireWrite("partners.messages");
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.messages", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const c = await prisma.portalContact.findUnique({ where: { id: str(formData.get("id")) } });

@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { uploadPhotoAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { shrinkImage } from "@/lib/compressImage";
 
 export function PhotoUpload({
   employeeId,
@@ -23,7 +24,8 @@ export function PhotoUpload({
     .join("")
     .toUpperCase();
 
-  function handleFile(file: File) {
+  async function handleFile(picked: File) {
+    const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(`Photo is too large — max ${MAX_UPLOAD_LABEL}.`);
       return;

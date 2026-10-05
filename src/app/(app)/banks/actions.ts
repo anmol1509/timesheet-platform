@@ -6,7 +6,7 @@ import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/au
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { validateBankFields } from "@/lib/bankStatus";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean; id?: string };
 const s = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -54,7 +54,7 @@ async function inBranch(bankId: string, branchId: string | null, isSuperAdmin: b
 
 export async function createBankAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("partners.banks");
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.banks", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a bank." : "Your account has no branch assigned — contact an admin." };
@@ -68,7 +68,7 @@ export async function createBankAction(_prev: State, formData: FormData): Promis
 
 export async function updateBankAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("partners.banks");
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.banks", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = s(formData.get("bankId"));

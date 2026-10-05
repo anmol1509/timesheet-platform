@@ -36,6 +36,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Longest any page or save may run. Large payroll runs, bulk documents and imports can take a while on a big company.
+export const maxDuration = 60;
+
 export default async function RootLayout({
   children,
 }: Readonly<{

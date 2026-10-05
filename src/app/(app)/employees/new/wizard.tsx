@@ -378,7 +378,7 @@ export function EmployeeWizard({
     if (file.size > room) {
       const mb = (n: number) => (n / 1048576).toFixed(1);
       setSizeNotice(
-        `"${raw.name}" wasn't added: it's ${mb(file.size)} MB${raw.type.startsWith("image/") ? " even after shrinking" : ""} and only ${mb(Math.max(room, 0))} MB is left, since one save carries at most ${MAX_REQUEST_BYTES / 1048576} MB in all. Use a smaller or compressed copy, or register the employee now and add this document later from their profile.`,
+        `"${raw.name}" wasn't added: it's ${mb(file.size)} MB${raw.type.startsWith("image/") ? " even after shrinking" : ""} and only ${mb(Math.max(room, 0))} MB is left, since one save carries at most ${(MAX_REQUEST_BYTES / 1048576).toFixed(1)} MB in all. Use a smaller or compressed copy, or register the employee now and add this document later from their profile.`,
       );
       return null;
     }
@@ -782,7 +782,7 @@ export function EmployeeWizard({
     });
     for (const [i, note] of notes.entries()) for (const file of note.files) add(`noteFile_${i}`, await shrinkImage(file), true);
     if (total > MAX_REQUEST_BYTES) {
-      setStepError(`The files add up to ${(total / 1048576).toFixed(1)} MB, but one save can carry at most ${MAX_REQUEST_BYTES / 1048576} MB. Remove or shrink a PDF, or register the employee now and add the larger documents afterwards from their profile.`);
+      setStepError(`The files add up to ${(total / 1048576).toFixed(1)} MB, but one save can carry at most ${(MAX_REQUEST_BYTES / 1048576).toFixed(1)} MB. Remove or shrink a PDF, or register the employee now and add the larger documents afterwards from their profile.`);
       return;
     }
     setStepError(null);
@@ -805,7 +805,7 @@ export function EmployeeWizard({
     );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} data-managed-checks className="space-y-5">
       <DraftBar
         type="EMPLOYEE_REGISTRATION"
         draftKey={onRegistered ? `dialog-${prefill?.supplierId ?? ""}` : "new"}

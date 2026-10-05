@@ -6,12 +6,12 @@ import { requireUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
 export async function updateProfileAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const user = await requireUser();
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim() || null;
@@ -53,7 +53,7 @@ export async function removeAvatarAction() {
 }
 
 export async function changePasswordAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const user = await requireUser();
   const current = String(formData.get("current") || "");
   const next = String(formData.get("next") || "");

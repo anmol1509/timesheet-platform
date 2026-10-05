@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { complianceStatus } from "@/lib/compliance";
 import { uploadDocumentAction, deleteDocumentAction, applyExtractedFieldsAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { shrinkImage } from "@/lib/compressImage";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 
 type Doc = {
@@ -71,8 +72,10 @@ export function InlineDocumentUpload({
   }
 
   async function handleUpload() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) return;
+    const picked = fileRef.current?.files?.[0];
+    if (!picked) return;
+    // A phone photo is scaled down first; a PDF is left as it is.
+    const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
       if (fileRef.current) fileRef.current.value = "";
