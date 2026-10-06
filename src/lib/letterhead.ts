@@ -72,7 +72,8 @@ export async function buildLetterhead(branch: {
   let logo: string | null = null;
   if (branch.logoId) {
     const img = await prisma.storedImage.findUnique({ where: { id: branch.logoId } });
-    if (img) logo = `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`;
+    // The PDF renderer reads only PNG and JPEG; anything else would break the whole document, so it is left out.
+    if (img && /^image\/(png|jpe?g)$/i.test(img.mimeType)) logo = `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`;
   }
   return {
     name: branch.name,

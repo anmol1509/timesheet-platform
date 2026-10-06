@@ -163,7 +163,15 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     : null;
   const own = parentRow?.isOwnCompany ? true : formData.get("isOwnCompany") === "on";
 
+  // The name can be corrected here; two suppliers in one company can't share a name.
+  const name = String(formData.get("name") ?? "").trim() || existing.name;
+  if (name !== existing.name) {
+    const taken = await prisma.supplier.findFirst({ where: { branchId: existing.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another supplier is already called "${name}".` };
+  }
+
   const data = {
+    name,
     code,
     fullName: stringOrNull(formData.get("fullName")),
     status: String(formData.get("status") || "ACTIVE"),

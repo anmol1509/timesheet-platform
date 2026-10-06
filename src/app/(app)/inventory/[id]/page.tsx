@@ -73,7 +73,7 @@ export default async function InventoryItemPage({
         )}
       </div>
 
-      <EditItemForm item={{ id: item.id, category: item.category, notes: item.notes }} />
+      <EditItemForm item={{ id: item.id, name: item.name, category: item.category, notes: item.notes }} />
 
       <VariantsSection itemId={item.id} variants={variants} />
 

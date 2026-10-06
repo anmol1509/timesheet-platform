@@ -11,6 +11,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 
 type Vehicle = {
   id: string;
+  plateNumber: string;
   type: string | null;
   capacity: number | null;
   driverName: string | null;
@@ -24,20 +25,25 @@ type Vehicle = {
 export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <form
       action={(formData) => {
         setSaved(false);
         startTransition(async () => {
-          await updateVehicleAction(formData);
-          setSaved(true);
+          const res = await updateVehicleAction(formData);
+          setError(res.error);
+          setSaved(!res.error);
         });
       }}
       className="card space-y-4 p-6"
     >
       <input type="hidden" name="vehicleId" value={vehicle.id} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Plate number">
+          <input name="plateNumber" required maxLength={40} defaultValue={vehicle.plateNumber} className="input w-full uppercase" />
+        </Field>
         <Field label="Type">
           <ComboSelect name="type" options={VEHICLE_TYPES} defaultValue={vehicle.type} />
         </Field>
@@ -84,7 +90,8 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <button
+        {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+      <button
           type="submit"
           disabled={pending}
           className="btn btn-primary"

@@ -78,6 +78,9 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
       <input type="hidden" name="clientId" value={client.id} />
 
       <Section title="Company">
+        <Field label="Company name">
+          <input name="name" required maxLength={200} defaultValue={client.name} className="input w-full" />
+        </Field>
         <div>
           <span className="mb-1 block text-xs font-medium text-muted">Client code</span>
           <ClientCodeField defaultValue={client.code || ""} fixedName={client.name} clientId={client.id} />

@@ -81,6 +81,9 @@ export function SupplierCompanyForm({
       <input type="hidden" name="supplierId" value={supplier.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Supplier name">
+          <input name="name" required maxLength={200} defaultValue={supplier.name} className="input w-full" />
+        </Field>
         <FieldBlock label="Supplier code">
           <SupplierCodeField defaultValue={supplier.code || ""} fixedName={supplier.name} supplierId={supplier.id} />
         </FieldBlock>

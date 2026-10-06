@@ -68,17 +68,25 @@ export async function createInventoryItemAction(
   redirect(`/inventory/${item.id}`);
 }
 
-export async function updateInventoryItemAction(formData: FormData) {
+export async function updateInventoryItemAction(formData: FormData): Promise<{ error: string | null }> {
   await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
-  if (!id) return;
-  if (!(await assertItemInBranch(id, branchId, isSuperAdmin))) return;
+  if (!id) return { error: null };
+  if (!(await assertItemInBranch(id, branchId, isSuperAdmin))) return { error: null };
 
   const before = await prisma.inventoryItem.findUnique({ where: { id } });
 
+  // The name can be corrected here; two items in one company can't share a name.
+  const name = String(formData.get("name") ?? "").trim() || before?.name || "";
+  if (before && name !== before.name) {
+    const taken = await prisma.inventoryItem.findFirst({ where: { branchId: before.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another item is already called "${name}".` };
+  }
+
   const data = {
+    name,
     category: stringOrNull(formData.get("category")),
     notes: stringOrNull(formData.get("notes")),
   };
@@ -98,6 +106,7 @@ export async function updateInventoryItemAction(formData: FormData) {
 
   revalidatePath(`/inventory/${id}`);
   revalidatePath("/inventory");
+  return { error: null };
 }
 
 export async function deleteInventoryItemAction(formData: FormData) {

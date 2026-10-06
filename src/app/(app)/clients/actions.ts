@@ -123,7 +123,16 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
     if (clash) return { error: `The code ${code} is already used by another client.` };
   }
 
+  // The name can be corrected here; two clients in one company can't share a name.
+  const typedName = String(formData.get("name") ?? "").trim();
+  const name = typedName || before.name;
+  if (name !== before.name) {
+    const taken = await prisma.client.findFirst({ where: { branchId: before.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another client is already called "${name}".` };
+  }
+
   const data = {
+    name,
     code,
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactEmail: stringOrNull(formData.get("contactEmail")),

@@ -65,18 +65,26 @@ export async function createVehicleAction(formData: FormData) {
   redirect(`/transport/${vehicle.id}`);
 }
 
-export async function updateVehicleAction(formData: FormData) {
+export async function updateVehicleAction(formData: FormData): Promise<{ error: string | null }> {
   await requireWrite("facilities.transport");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("vehicleId") || "");
-  if (!id) return;
+  if (!id) return { error: null };
   const vehicleOwner = await vehicleBranch(id, { branchId, isSuperAdmin });
-  if (vehicleOwner === undefined) return;
+  if (vehicleOwner === undefined) return { error: null };
 
   const before = await prisma.vehicle.findUnique({ where: { id } });
 
+  // The plate can be corrected here; two vehicles in one company can't share one.
+  const plate = String(formData.get("plateNumber") ?? "").trim().toUpperCase() || before?.plateNumber || "";
+  if (before && plate !== before.plateNumber) {
+    const taken = await prisma.vehicle.findFirst({ where: { branchId: before.branchId, plateNumber: { equals: plate, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another vehicle already has the plate ${plate}.` };
+  }
+
   const data = {
+    plateNumber: plate,
     type: stringOrNull(formData.get("type")),
     capacity: numberOrNull(formData.get("capacity")),
     driverName: stringOrNull(formData.get("driverName")),
@@ -102,6 +110,7 @@ export async function updateVehicleAction(formData: FormData) {
 
   revalidatePath(`/transport/${id}`);
   revalidatePath("/transport");
+  return { error: null };
 }
 
 export async function deleteVehicleAction(formData: FormData) {

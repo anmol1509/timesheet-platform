@@ -96,6 +96,7 @@ export default async function VehicleDetailPage({
       <EditVehicleForm
         vehicle={{
           id: vehicle.id,
+          plateNumber: vehicle.plateNumber,
           type: vehicle.type,
           capacity: vehicle.capacity,
           driverName: vehicle.driverName,
