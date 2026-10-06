@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   }));
   const letterhead = await buildLetterhead({
     name: branch?.name ?? "Your Company", address: branch?.address ?? null, emirate: branch?.emirate ?? null, country: branch?.country ?? null,
-    phone: branch?.phone ?? null, fax: branch?.fax ?? null, email: branch?.email ?? null, poBox: branch?.poBox ?? null, trn: branch?.trn ?? null,
+    phone: branch?.phone ?? null, fax: branch?.fax ?? null, email: branch?.email ?? null, poBox: branch?.poBox ?? null, trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
   });
   const common = { letterhead, subContractor: "Sample Manpower Supply LLC", periodFrom: dmy(1), periodTo: dmy(days), entries };
   let buffer: Buffer;

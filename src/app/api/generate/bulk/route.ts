@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     fax: branch?.fax ?? null,
     email: branch?.email ?? null,
     poBox: branch?.poBox ?? null,
-    trn: branch?.trn ?? null,
+    trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
   });
   const issuedTo = branch?.issuedTo || branch?.name || "";
   const monthLabel = monthLabelFromKey(month);

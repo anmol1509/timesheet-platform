@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   const branch = await prisma.branch.findUnique({ where: { id: branchId } });
   const letterhead = await buildLetterhead({
     name: branch?.name ?? "", address: branch?.address ?? null, emirate: branch?.emirate ?? null, country: branch?.country ?? null,
-    phone: branch?.phone ?? null, fax: branch?.fax ?? null, email: branch?.email ?? null, poBox: branch?.poBox ?? null, trn: branch?.trn ?? null,
+    phone: branch?.phone ?? null, fax: branch?.fax ?? null, email: branch?.email ?? null, poBox: branch?.poBox ?? null, trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
   });
   const input = { letterhead, monthLabel: monthLabelFromKey(month), dayCount, rows: [...merged.values()], show, groupBySupplier, preparedBy: user.name };
   const buffer = format === "xlsx" ? await generateHoursReportXlsx(input) : await generateHoursReportPdf(input);
