@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       }
       docsOut.push({ docKey: u.docKey, index: f.index, fileName, type, expiry: u.expiry, confidence: u.confidence, pages: u.pages, ownerKey, via, conflict, status: "ok", readByAi });
       // What a "new worker" would be created with, built from what the AI read.
-      if (ownerKey?.startsWith("N:") && audience === "EMPLOYEE") {
+      if (ownerKey?.startsWith("N:") && audience === "EMPLOYEE" && readByAi && u.holder) {
         const o = owners.get(ownerKey)!;
         o.newWorker ??= { name: u.holder || o.label, passportNumber: "", emiratesId: "", trade: "" };
         if (!o.newWorker.name && u.holder) o.newWorker.name = u.holder;
