@@ -5,11 +5,12 @@ import { trackedClient } from "@/lib/importer/tracker";
 import { EMPLOYEE_DOC_TYPES, SUPPLIER_DOC_TYPE_OPTIONS, extOf, MIME_BY_EXT } from "@/lib/importer/documentMatch";
 import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
 import { safeFilename } from "@/lib/uploads";
+import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
 
 export const maxDuration = 60;
 
-type Meta = { name: string; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry?: string | null };
-export type UploadResult = { name: string; status: "created" | "duplicate" | "failed"; message?: string };
+type Meta = { name: string; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry?: string | null; updateExpiry?: boolean };
+export type UploadResult = { name: string; status: "created" | "duplicate" | "failed"; message?: string; recordUpdated?: boolean };
 
 const EMP_TYPES = new Set(EMPLOYEE_DOC_TYPES.map((t) => t.value));
 const SUP_TYPES = new Set(SUPPLIER_DOC_TYPE_OPTIONS.map((t) => t.value));
@@ -36,12 +37,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const startSeq = await prisma.importChange.count({ where: { batchId: batch.id } });
   const db = trackedClient(batch.id, startSeq);
 
+  // The date on a document also feeds the record's own expiry field, when that field is empty or older.
+  const feedExpiry = async (kind: "EMPLOYEE" | "SUPPLIER", id: string, type: string, date: Date): Promise<boolean> => {
+    const field = EXPIRY_FIELD[kind][type];
+    if (!field) return false;
+    if (kind === "EMPLOYEE") {
+      const cur = (await prisma.employee.findUnique({ where: { id }, select: { [field]: true } as never })) as Record<string, Date | null> | null;
+      if (cur && (!cur[field] || cur[field]! < date)) { await db.employee.update({ where: { id }, data: { [field]: date } }); return true; }
+    } else {
+      const cur = (await prisma.supplier.findUnique({ where: { id }, select: { [field]: true } as never })) as Record<string, Date | null> | null;
+      if (cur && (!cur[field] || cur[field]! < date)) { await db.supplier.update({ where: { id }, data: { [field]: date } }); return true; }
+    }
+    return false;
+  };
+
   let total = 0;
   const results: UploadResult[] = [];
   for (let i = 0; i < metas.length; i++) {
     const m = metas[i];
     const file = form.get(`file${i}`);
     const name = String(m?.name ?? (file instanceof File ? file.name : "file"));
+    let updated = false;
     try {
       if (!(file instanceof File) || file.size === 0) throw new Error("The file didn't arrive.");
       total += file.size;
@@ -57,13 +73,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // The same file filed twice would only clutter the profile.
         if (await prisma.document.findFirst({ where: { employeeId: m.ownerId, type, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
         await db.document.create({ data: { employeeId: m.ownerId, type, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, uploadedById: who.user.id } });
+        if (m.updateExpiry && expiry) updated = await feedExpiry("EMPLOYEE", m.ownerId, type, expiry);
       } else if (m.ownerKind === "SUPPLIER") {
         if (!okSup.has(m.ownerId)) throw new Error("That supplier isn't in this company.");
         const docType = SUP_TYPES.has(m.type) ? m.type : "OTHER";
         if (await prisma.attachment.findFirst({ where: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
         await db.attachment.create({ data: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, branchId: who.branchId, uploadedById: who.user.id } });
+        if (m.updateExpiry && expiry) updated = await feedExpiry("SUPPLIER", m.ownerId, docType, expiry);
       } else throw new Error("No owner chosen.");
-      results.push({ name, status: "created" });
+      results.push({ name, status: "created", recordUpdated: updated });
     } catch (e) {
       results.push({ name, status: "failed", message: e instanceof Error ? e.message : "Could not be saved." });
     }

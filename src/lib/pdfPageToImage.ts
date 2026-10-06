@@ -2,7 +2,7 @@
  * pdf.js uses Map.prototype.getOrInsertComputed, which only the newest browsers
  * have. Without it a PDF fails to render on anything slightly older.
  */
-function polyfillMapUpsert() {
+export function polyfillMapUpsert() {
   for (const C of [Map, WeakMap] as unknown as { prototype: Record<string, unknown> }[]) {
     const proto = C.prototype as unknown as {
       has(k: unknown): boolean; get(k: unknown): unknown; set(k: unknown, v: unknown): unknown;
