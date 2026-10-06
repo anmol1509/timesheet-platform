@@ -16,17 +16,17 @@ enum Role {
 }
 
 model Branch {
-  id        String   @id @default(cuid())
-  tradePays TradePay[]
-  apiKeys   ApiKey[]
+  id               String            @id @default(cuid())
+  tradePays        TradePay[]
+  apiKeys          ApiKey[]
   webhookEndpoints WebhookEndpoint[]
   // Public API access is part of the Pro and Custom plans; a super admin switches it on per branch.
-  apiAccess Boolean  @default(false)
-  code      String   @unique
-  name      String
-  emirate   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  apiAccess        Boolean           @default(false)
+  code             String            @unique
+  name             String
+  emirate          String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
 
   // Company master-data fields (address/contact details of this operating entity).
   address  String?
@@ -46,18 +46,18 @@ model Branch {
   logoId String?
 
   // Letter defaults (Company profile -> Letters). All optional; using them is chosen per letter.
-  signatoryName     String?
-  signatoryTitle    String?
-  signature         StoredImage? @relation("BranchSignature", fields: [signatureId], references: [id], onDelete: SetNull)
-  signatureId       String?
-  stamp             StoredImage? @relation("BranchStamp", fields: [stampId], references: [id], onDelete: SetNull)
-  stampId           String?
+  signatoryName      String?
+  signatoryTitle     String?
+  signature          StoredImage? @relation("BranchSignature", fields: [signatureId], references: [id], onDelete: SetNull)
+  signatureId        String?
+  stamp              StoredImage? @relation("BranchStamp", fields: [stampId], references: [id], onDelete: SetNull)
+  stampId            String?
   // Full-page letterhead artwork (A4) used when printing letters "on letterhead".
-  letterheadImage   StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
-  letterheadImageId String?
+  letterheadImage    StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
+  letterheadImageId  String?
   // Clear space (mm) kept free at the top and bottom of the page when a letter is printed on this letterhead.
-  letterheadTopMm    Int @default(65)
-  letterheadBottomMm Int @default(35)
+  letterheadTopMm    Int          @default(65)
+  letterheadBottomMm Int          @default(35)
 
   // WPS establishment details (Company profile -> Payroll / WPS).
   wpsEstablishmentId       String? // MOHRE establishment / employer ID
@@ -102,6 +102,7 @@ model Branch {
   enquiries            Enquiry[]
   quotations           Quotation[]
   candidateOnboardings CandidateOnboarding[]
+  timesheetTemplates   TimesheetTemplate[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -142,14 +143,14 @@ model Bank {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  apiKeysCreated ApiKey[]
+  id              String            @id @default(cuid())
+  apiKeysCreated  ApiKey[]
   webhooksCreated WebhookEndpoint[]
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         Role     @default(STAFF)
-  createdAt    DateTime @default(now())
+  email           String            @unique
+  name            String
+  passwordHash    String
+  role            Role              @default(STAFF)
+  createdAt       DateTime          @default(now())
 
   // Profile. `isActive` lets an admin suspend a sub-user without deleting
   // them (deleting fails anyway once they own uploads/documents).
@@ -276,12 +277,12 @@ model UploadMonth {
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   tradePays TradePay[]
   name      String
   code      String?
   fullName  String? // formal letterhead name, e.g. "GULF SKILLS GENERAL CONTRACTING"
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -325,10 +326,10 @@ model Supplier {
   // Our own entities vs third-party subcontractors. Same shape, but the
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
-  isOwnCompany Boolean @default(false)
+  isOwnCompany          Boolean @default(false)
   // Same, for this supplier's own letterhead (used when it sponsors workers). Unset = the standard 65 / 35.
-  letterheadTopMm    Int?
-  letterheadBottomMm Int?
+  letterheadTopMm       Int?
+  letterheadBottomMm    Int?
   // Pay rules for this company's own workers. Absences up to absentFreeDays a
   // month cost nothing; every day after that deducts absentDeductionPerDay.
   // Gas is charged per day from the worker's check-in date, up to a monthly cap.
@@ -440,11 +441,11 @@ model Client {
   lpos           Lpo[]
   enquiries      Enquiry[]
   quotations     Quotation[]
+  ownedCamps     Camp[]            @relation("CampClientOwner")
 
   // Unique within a branch: several manpower suppliers share the same big clients.
   @@unique([branchId, name])
   @@unique([branchId, code])
-  ownedCamps Camp[] @relation("CampClientOwner")
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -740,10 +741,10 @@ model Employee {
   // they are still only mobilised on paper; the gap between the two dates is
   // how late a mobilisation ran.
   siteArrivalDate     DateTime?
-  gasWaived           Boolean             @default(false) // no gas charge for this worker
+  gasWaived           Boolean   @default(false) // no gas charge for this worker
   // false = pay comes from the TradePay row for this worker's company + trade
   // (when there is one); true = the figures on this record are used instead.
-  payOverride         Boolean             @default(false)
+  payOverride         Boolean   @default(false)
   religion            String?
   state               String? // state/province within nationality country
   accommodationType   String?
@@ -841,15 +842,15 @@ model EmployeeAssignmentHistory {
 // pointer; this is the audit trail, using string snapshots (not FKs) so
 // history stays readable even after a bed/room/camp is later deleted.
 model AccommodationHistory {
-  id           String    @id @default(cuid())
-  campName     String?
-  roomName     String?
-  bedLabel     String?
-  checkInDate  DateTime  @default(now())
-  checkOutDate DateTime?
+  id                    String    @id @default(cuid())
+  campName              String?
+  roomName              String?
+  bedLabel              String?
+  checkInDate           DateTime  @default(now())
+  checkOutDate          DateTime?
   // Why the stay ended, and (when the checkout is set for a future date) the plan.
-  checkOutReason String?
-  checkOutNote   String?
+  checkOutReason        String?
+  checkOutNote          String?
   plannedCheckOutDate   DateTime?
   plannedCheckOutReason String?
   plannedCheckOutNote   String?
@@ -1381,9 +1382,9 @@ model CampCheckIn {
   camp   Camp   @relation(fields: [campId], references: [id])
   campId String
 
-  status       String    @default("CHECKED_IN") // "CHECKED_IN" | "BED_ALLOCATED" | "CHECKED_OUT"
-  checkInDate  DateTime  @default(now())
-  checkOutDate DateTime?
+  status         String    @default("CHECKED_IN") // "CHECKED_IN" | "BED_ALLOCATED" | "CHECKED_OUT"
+  checkInDate    DateTime  @default(now())
+  checkOutDate   DateTime?
   checkOutReason String?
 
   bed   Bed?    @relation(fields: [bedId], references: [id])
@@ -2499,27 +2500,27 @@ model ImportChange {
 // What a company pays for a trade. Workers of that company in that trade are
 // paid from this unless their own record overrides it.
 model TradePay {
-  id        String   @id @default(cuid())
-  trade     String
-  supplier  Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  trade      String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   supplierId String
-  branch    Branch   @relation(fields: [branchId], references: [id])
-  branchId  String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
 
-  payStructure     String // "ITEMISED" | "FLAT" | "HOURLY"
-  basicSalary      Decimal? @db.Decimal(12, 2)
-  housingAllowance Decimal? @db.Decimal(12, 2)
-  foodAllowance    Decimal? @db.Decimal(12, 2)
+  payStructure       String // "ITEMISED" | "FLAT" | "HOURLY"
+  basicSalary        Decimal? @db.Decimal(12, 2)
+  housingAllowance   Decimal? @db.Decimal(12, 2)
+  foodAllowance      Decimal? @db.Decimal(12, 2)
   transportAllowance Decimal? @db.Decimal(12, 2)
-  otherAllowance   Decimal? @db.Decimal(12, 2)
-  flatMonthlyRate  Decimal? @db.Decimal(12, 2)
-  hourlyRate       Decimal? @db.Decimal(12, 2)
-  dailyHours       Decimal  @default(8) @db.Decimal(4, 2)
-  paysOvertime     Boolean  @default(true)
-  otMultiplier     Decimal  @default(1.25) @db.Decimal(4, 2)
-  restOtMultiplier Decimal  @default(1.5) @db.Decimal(4, 2)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  otherAllowance     Decimal? @db.Decimal(12, 2)
+  flatMonthlyRate    Decimal? @db.Decimal(12, 2)
+  hourlyRate         Decimal? @db.Decimal(12, 2)
+  dailyHours         Decimal  @default(8) @db.Decimal(4, 2)
+  paysOvertime       Boolean  @default(true)
+  otMultiplier       Decimal  @default(1.25) @db.Decimal(4, 2)
+  restOtMultiplier   Decimal  @default(1.5) @db.Decimal(4, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([supplierId, trade])
   @@index([branchId])
@@ -2571,24 +2572,42 @@ model WebhookEndpoint {
 
 // One event sent (or waiting to be sent) to one endpoint. Kept 30 days.
 model WebhookDelivery {
-  id            String          @id @default(cuid())
-  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
-  endpointId    String
-  branchId      String
-  eventId       String
-  type          String
-  payload       String // the exact JSON body that is signed and sent
-  status        String          @default("PENDING") // PENDING | SUCCESS | FAILED
-  attempts      Int             @default(0)
-  nextAttemptAt DateTime?
-  lastStatusCode Int?
-  lastError     String?
+  id              String          @id @default(cuid())
+  endpoint        WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  endpointId      String
+  branchId        String
+  eventId         String
+  type            String
+  payload         String // the exact JSON body that is signed and sent
+  status          String          @default("PENDING") // PENDING | SUCCESS | FAILED
+  attempts        Int             @default(0)
+  nextAttemptAt   DateTime?
+  lastStatusCode  Int?
+  lastError       String?
   responseSnippet String?
-  durationMs    Int?
-  createdAt     DateTime        @default(now())
-  deliveredAt   DateTime?
+  durationMs      Int?
+  createdAt       DateTime        @default(now())
+  deliveredAt     DateTime?
 
   @@index([endpointId, createdAt])
   @@index([status, nextAttemptAt])
   @@index([createdAt])
+}
+
+// A company's own version of a timesheet layout: one of the four built-in layouts plus the wording,
+// columns, header details, blocks, notes and signature boxes the company chose. The built-ins stay
+// as they are; a template only ever changes how a sheet is printed, never the figures on it.
+model TimesheetTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  baseKey   String // "standard" | "summary" | "trade" | "signoff"
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, name])
+  @@index([branchId])
 }

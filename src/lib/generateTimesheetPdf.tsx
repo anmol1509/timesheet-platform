@@ -57,6 +57,10 @@ export type TimesheetPdfInput = {
   approvedBy: string | null;
   approvedByRole: string | null;
   notes: string[];
+  /** A company's own wording for the heading, the signature boxes and the page footer. */
+  titleText?: string;
+  signatureLabels?: string[];
+  footerText?: string;
 };
 
 /** The competitor's standard payment conditions, kept as the default. */
@@ -304,7 +308,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
         {input.subContractor.toUpperCase()}
       </Text>
       <Text style={s.period}>
-        Time Sheet Period From {input.periodFrom} to {input.periodTo}
+        {input.titleText ? `${input.titleText}  ·  ` : "Time Sheet "}{input.titleText ? "" : "Period From "}{input.periodFrom} to {input.periodTo}
       </Text>
     </View>
   );
@@ -581,12 +585,15 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
                 and below the summary there is none once a sheet runs long. In
                 one piece so a signature box is never split across pages. */}
           <View style={s.signatureRow} wrap={false}>
-            {[
-              ["PREPARED BY", input.preparedBy, input.preparedByRole],
-              ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
-              ["APPROVED BY", input.approvedBy, input.approvedByRole],
-            ].map(([label, name, role]) => (
-              <View key={label as string} style={s.signatureBox}>
+            {(input.signatureLabels
+              ? input.signatureLabels.map((label, i) => [label, [input.preparedBy, input.verifiedBy, input.approvedBy][i] ?? null, [input.preparedByRole, input.verifiedByRole, input.approvedByRole][i] ?? null])
+              : [
+                  ["PREPARED BY", input.preparedBy, input.preparedByRole],
+                  ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
+                  ["APPROVED BY", input.approvedBy, input.approvedByRole],
+                ]
+            ).map(([label, name, role], i) => (
+              <View key={`${label}-${i}`} style={s.signatureBox}>
                 <Text style={s.signatureLabel}>{label}</Text>
                 <View style={{ height: 30 }} />
                 <View style={s.signatureLine} />
@@ -600,7 +607,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
 
         <Text
           style={s.footer}
-          render={({ pageNumber }) => `Page ${pageNumber}`}
+          render={({ pageNumber }) => `${input.footerText ? `${input.footerText}  ·  ` : ""}Page ${pageNumber}`}
           fixed
         />
       </Page>

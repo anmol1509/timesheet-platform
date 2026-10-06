@@ -1,7 +1,6 @@
 "use client";
 
 import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
-import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Download, FileArchive, Loader2 } from "lucide-react";
@@ -31,7 +30,7 @@ export function CompanyGrid({
   const [zipping, setZipping] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
   const [askGas, setAskGas] = useState(false);
-  const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
+  const [template, setTemplate] = useState<string>("standard");
   const [waived, setWaived] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {

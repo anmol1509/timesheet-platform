@@ -5,9 +5,9 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
-import { generateTimesheetPdf, DEFAULT_TIMESHEET_NOTES } from "@/lib/generateTimesheetPdf";
+import { generateTimesheetPdf } from "@/lib/generateTimesheetPdf";
 import { buildLetterhead } from "@/lib/letterhead";
-import { TEMPLATE_KEYS } from "@/lib/timesheetTemplates";
+import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf } from "@/lib/generateTemplatedTimesheet";
 import { calculateGasDeduction, gasRuleOf } from "@/lib/deductions";
 
@@ -18,7 +18,7 @@ const bodySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/),
   /** supplierId → true when that company's gas charge is waived. A company not listed is charged. */
   gasWaived: z.record(z.string(), z.boolean()).default({}),
-  template: z.enum(TEMPLATE_KEYS).default("standard"),
+  template: z.string().max(80).default("standard"),
   /** When set, only these employees (by employee ID number) appear on the sheets. */
   employeeIds: z.array(z.string().min(1)).max(500).optional(),
   /** With employeeIds: one sheet per person instead of one per company. */
@@ -38,13 +38,18 @@ export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { supplierIds, month, gasWaived, template, employeeIds, perEmployee, combined } = parsed.data;
+  const { supplierIds, month, gasWaived, template: templateValue, employeeIds, perEmployee, combined } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
       { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned — contact an admin." },
       { status: 400 },
     );
   }
+
+  const chosen = await resolveTemplate(templateValue, branchId, isSuperAdmin);
+  if (!chosen) return NextResponse.json({ error: "That template isn't available any more. Pick another one." }, { status: 400 });
+  const template = chosen.base;
+  const cfg = chosen.config;
 
   const [suppliers, branch] = await Promise.all([
     prisma.supplier.findMany({ where: { id: { in: supplierIds } }, include: { parent: { select: { name: true, fullName: true, mohrePermitNumber: true } } }, orderBy: { name: "asc" } }),
@@ -75,6 +80,7 @@ export async function POST(request: Request) {
     const { list, gasTotal, subContractor, subContractorCode, projectById, issuedToName } = a;
     return template !== "standard" ? await generateTemplatedPdf({
       template,
+      config: cfg,
       letterhead,
       subContractor,
       monthLabel,
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
       vatPercent: 5,
       preparedBy: user.name,
     }) : await generateTimesheetPdf({
-      letterhead,
+      letterhead: maskLetterhead(letterhead, cfg),
       // The main (parent) supplier, or the supplier itself when it has none.
       subContractor,
       subContractorCode,
@@ -112,14 +118,13 @@ export async function POST(request: Request) {
       additions: 0,
       safetyDeduction: gasTotal,
       otherDeduction: 0,
-      vatPercent: 5,
+      ...standardExtras(cfg, 5),
       preparedBy: user.name,
       preparedByRole: null,
       verifiedBy: null,
       verifiedByRole: null,
       approvedBy: null,
       approvedByRole: null,
-      notes: DEFAULT_TIMESHEET_NOTES,
     });
   };
 

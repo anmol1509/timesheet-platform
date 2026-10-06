@@ -2,6 +2,8 @@ import ExcelJS from "exceljs";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
 
 export type GenerateInput = {
+  /** A company's own heading for the sheet. */
+  titleText?: string;
   fullName: string;
   monthLabel: string;
   issuedTo: string;
@@ -70,7 +72,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
 
   sheet.mergeCells(r, 1, r, LAST_COL);
   const subtitleCell = sheet.getCell(r, 1);
-  subtitleCell.value = `Time Sheet For The Month Of ${input.monthLabel}`;
+  subtitleCell.value = input.titleText ? `${input.titleText} · ${input.monthLabel}` : `Time Sheet For The Month Of ${input.monthLabel}`;
   subtitleCell.font = { name: FONT, bold: true, size: 12 };
   subtitleCell.alignment = { horizontal: "center" };
   r += 2;

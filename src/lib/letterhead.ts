@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { inflateSync } from "node:zlib";
 import { prisma } from "@/lib/db";
 
 /**
@@ -21,6 +22,38 @@ export type Letterhead = {
   /** PNG/JPEG data URI, or null when no logo file is present. */
   logo: string | null;
 };
+
+/**
+ * The PDF renderer decodes a logo while drawing the page, and a damaged file makes it throw from
+ * inside a callback that can't be caught, which takes the request down. So an image is proved
+ * readable first: a PNG's pixel data must inflate, and a JPEG must start and end as one.
+ */
+export function imageIsReadable(data: Uint8Array, mime: string): boolean {
+  const b = Buffer.from(data);
+  try {
+    if (/png/i.test(mime)) {
+      if (b.length < 33 || b.readUInt32BE(0) !== 0x89504e47) return false;
+      let off = 8;
+      const idat: Buffer[] = [];
+      let ended = false;
+      while (off + 12 <= b.length) {
+        const len = b.readUInt32BE(off);
+        const type = b.toString("ascii", off + 4, off + 8);
+        if (len > b.length || off + 12 + len > b.length) return false;
+        if (type === "IDAT") idat.push(b.subarray(off + 8, off + 8 + len));
+        if (type === "IEND") { ended = true; break; }
+        off += 12 + len;
+      }
+      if (!ended || idat.length === 0) return false;
+      inflateSync(Buffer.concat(idat));
+      return true;
+    }
+    if (/jpe?g/i.test(mime)) return b.length > 4 && b[0] === 0xff && b[1] === 0xd8 && b[b.length - 2] === 0xff && b[b.length - 1] === 0xd9;
+  } catch {
+    return false;
+  }
+  return false;
+}
 
 let cachedLogo: string | null | undefined;
 
@@ -73,7 +106,7 @@ export async function buildLetterhead(branch: {
   if (branch.logoId) {
     const img = await prisma.storedImage.findUnique({ where: { id: branch.logoId } });
     // The PDF renderer reads only PNG and JPEG; anything else would break the whole document, so it is left out.
-    if (img && /^image\/(png|jpe?g)$/i.test(img.mimeType)) logo = `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`;
+    if (img && /^image\/(png|jpe?g)$/i.test(img.mimeType) && imageIsReadable(img.data, img.mimeType)) logo = `data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`;
   }
   return {
     name: branch.name,

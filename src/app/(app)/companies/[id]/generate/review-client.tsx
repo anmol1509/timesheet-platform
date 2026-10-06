@@ -6,7 +6,6 @@ import type { DailyHourCell } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction, calculateGasDeduction, type AbsenceRule, type GasRule } from "@/lib/deductions";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
-import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 
 type Entry = {
   id: string;
@@ -60,7 +59,7 @@ export function ReviewClient({
     () => ({ ...defaultGasDeductions })
   );
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
-  const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
+  const [template, setTemplate] = useState<string>("standard");
   const [error, setError] = useState<string | null>(null);
 
   function resetRow(id: string) {

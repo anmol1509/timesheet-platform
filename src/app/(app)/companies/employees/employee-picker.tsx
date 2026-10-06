@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { FileArchive, Loader2 } from "lucide-react";
 import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
-import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 type Row = { employeeIdNo: string; name: string; trade: string | null; hours: number; companyId: string; company: string; approved: boolean };
@@ -12,7 +11,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
   const [query, setQuery] = useState("");
   const [company, setCompany] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [template, setTemplate] = useState<TimesheetTemplateKey>("standard");
+  const [template, setTemplate] = useState<string>("standard");
   const [layout, setLayout] = useState<"company" | "person" | "all">("company");
   const [waiveGas, setWaiveGas] = useState(false);
   const [kind, setKind] = useState<"hours" | "invoice">("hours");

@@ -7,17 +7,16 @@ import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSumma
 import { generateSupplierXlsx } from "@/lib/generateXlsx";
 import {
   generateTimesheetPdf,
-  DEFAULT_TIMESHEET_NOTES,
 } from "@/lib/generateTimesheetPdf";
 import { buildLetterhead } from "@/lib/letterhead";
-import { TEMPLATE_KEYS } from "@/lib/timesheetTemplates";
+import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf, generateTemplatedXlsx } from "@/lib/generateTemplatedTimesheet";
 
 const bodySchema = z.object({
   supplierId: z.string().min(1),
   month: z.string().regex(/^\d{4}-\d{2}$/),
   format: z.enum(["xlsx", "pdf"]),
-  template: z.enum(TEMPLATE_KEYS).default("standard"),
+  template: z.string().max(80).default("standard"),
   gasDeductions: z.record(z.string(), z.number()),
   deductions: z.record(z.string(), z.number()),
 });
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { supplierId, month, format, template, gasDeductions, deductions } = parsed.data;
+  const { supplierId, month, format, template: templateValue, gasDeductions, deductions } = parsed.data;
   const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
   const supplier = await prisma.supplier.findUnique({
@@ -63,6 +62,11 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  const chosen = await resolveTemplate(templateValue, branchId, isSuperAdmin);
+  if (!chosen) return NextResponse.json({ error: "That template isn't available any more. Pick another one." }, { status: 400 });
+  const template = chosen.base;
+  const cfg = chosen.config;
 
   const entryIds = Object.keys(deductions);
   const owned = await prisma.timesheetEntry.count({
@@ -132,6 +136,7 @@ export async function POST(request: Request) {
     const dmy = (day: number) => `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
     const input = {
       template,
+      config: cfg,
       letterhead: await buildLetterhead({
         name: branch?.name ?? fullName,
         address: branch?.address ?? null,
@@ -161,7 +166,7 @@ export async function POST(request: Request) {
       contentType = "application/pdf";
     }
   } else if (format === "xlsx") {
-    buffer = await generateSupplierXlsx(genInput);
+    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined });
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   } else {
@@ -174,7 +179,7 @@ export async function POST(request: Request) {
       `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
 
     buffer = await generateTimesheetPdf({
-      letterhead: await buildLetterhead({
+      letterhead: maskLetterhead(await buildLetterhead({
         name: branch?.name ?? fullName,
         address: branch?.address ?? null,
         emirate: branch?.emirate ?? null,
@@ -184,7 +189,7 @@ export async function POST(request: Request) {
         email: branch?.email ?? null,
         poBox: branch?.poBox ?? null,
         trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
-      }),
+      }), cfg),
       subContractor,
       subContractorCode: mainSupplier.mohrePermitNumber ?? null,
       periodFrom: dmy(1),
@@ -199,7 +204,7 @@ export async function POST(request: Request) {
       additions: 0,
       safetyDeduction: gasDeduction,
       otherDeduction: 0,
-      vatPercent: 5,
+      ...standardExtras(cfg, 5),
       preparedBy: user.name,
       preparedByRole: null,
       // Left blank so the verifier signs by hand; preparing and verifying are
@@ -208,7 +213,6 @@ export async function POST(request: Request) {
       verifiedByRole: null,
       approvedBy: null,
       approvedByRole: null,
-      notes: DEFAULT_TIMESHEET_NOTES,
     });
     contentType = "application/pdf";
   }
@@ -227,7 +231,7 @@ export async function POST(request: Request) {
   });
 
   const safeName = supplier.name.replace(/[^a-z0-9]+/gi, "-");
-  const filename = `${safeName}-${month}${template === "standard" ? "" : `-${template}`}.${format}`;
+  const filename = `${safeName}-${month}${templateValue === "standard" ? "" : `-${chosen.name.replace(/[^a-z0-9]+/gi, "-")}`}.${format}`;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

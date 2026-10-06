@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { TIMESHEET_TEMPLATES, type TimesheetTemplateKey } from "@/lib/timesheetTemplates";
 
@@ -46,22 +47,46 @@ export function TemplatePreview({ k, className = "" }: { k: TimesheetTemplateKey
   );
 }
 
-export function TemplatePicker({ value, onChange, compact = false }: { value: TimesheetTemplateKey; onChange: (k: TimesheetTemplateKey) => void; compact?: boolean }) {
+type Custom = { value: string; name: string; baseKey: TimesheetTemplateKey };
+let customCache: Custom[] | null = null;
+
+/** The company's own templates, fetched once per page load. A failure just means only the built-in layouts show. */
+function useCustomTemplates(): Custom[] {
+  const [list, setList] = useState<Custom[]>(customCache ?? []);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/timesheet-templates", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (live && d?.templates) { customCache = d.templates; setList(d.templates); } })
+      .catch(() => {});
+    return () => { live = false; };
+  }, []);
+  return list;
+}
+
+export function TemplatePicker({ value, onChange, compact = false }: { value: string; onChange: (k: string) => void; compact?: boolean }) {
+  const custom = useCustomTemplates();
+  const options: { value: string; name: string; tagline: string; k: TimesheetTemplateKey }[] = [
+    ...TIMESHEET_TEMPLATES.map((t) => ({ value: t.key as string, name: t.name, tagline: t.tagline, k: t.key })),
+    ...custom.map((c) => ({ value: c.value, name: c.name, tagline: "Your template", k: c.baseKey })),
+  ];
+  // A template that was deleted since the page loaded falls back to the standard layout.
+  useEffect(() => { if (custom.length >= 0 && value.startsWith("custom:") && customCache && !customCache.some((c) => c.value === value)) onChange("standard"); }, [value, custom, onChange]);
   return (
     <div role="radiogroup" aria-label="Timesheet layout" className={`grid gap-3 ${compact ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"}`}>
-      {TIMESHEET_TEMPLATES.map((t) => {
-        const on = t.key === value;
+      {options.map((t) => {
+        const on = t.value === value;
         return (
           <button
-            key={t.key}
+            key={t.value}
             type="button"
             role="radio"
             aria-checked={on}
-            onClick={() => onChange(t.key)}
+            onClick={() => onChange(t.value)}
             className={`relative rounded-card border p-3 text-left transition ${on ? "border-[var(--brand-primary)] bg-[var(--brand-primary-soft,#eef2ff)] ring-1 ring-[var(--brand-primary)]" : "border-default bg-surface hover:bg-surface-hover"}`}
           >
             {on && <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--brand-primary)] text-white"><Check className="h-3 w-3" aria-hidden /></span>}
-            <TemplatePreview k={t.key} className={compact ? "max-h-24" : ""} />
+            <TemplatePreview k={t.k} className={compact ? "max-h-24" : ""} />
             <p className="mt-2 text-sm font-semibold text-primary">{t.name}</p>
             <p className="text-xs text-muted">{t.tagline}</p>
           </button>
