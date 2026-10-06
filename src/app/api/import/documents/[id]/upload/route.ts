@@ -5,11 +5,12 @@ import { trackedClient } from "@/lib/importer/tracker";
 import { EMPLOYEE_DOC_TYPES, SUPPLIER_DOC_TYPE_OPTIONS, extOf, MIME_BY_EXT } from "@/lib/importer/documentMatch";
 import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
 import { safeFilename } from "@/lib/uploads";
-import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
+import { EXPIRY_FIELD, READ_FIELDS } from "@/lib/importer/documentRead";
+import { normalizePhone } from "@/lib/phone";
 
 export const maxDuration = 60;
 
-type Meta = { name: string; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry?: string | null; updateExpiry?: boolean };
+type Meta = { name: string; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry?: string | null; updateExpiry?: boolean; fields?: Record<string, string> };
 export type UploadResult = { name: string; status: "created" | "duplicate" | "failed"; message?: string; recordUpdated?: boolean };
 
 const EMP_TYPES = new Set(EMPLOYEE_DOC_TYPES.map((t) => t.value));
@@ -37,18 +38,41 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const startSeq = await prisma.importChange.count({ where: { batchId: batch.id } });
   const db = trackedClient(batch.id, startSeq);
 
-  // The date on a document also feeds the record's own expiry field, when that field is empty or older.
-  const feedExpiry = async (kind: "EMPLOYEE" | "SUPPLIER", id: string, type: string, date: Date): Promise<boolean> => {
-    const field = EXPIRY_FIELD[kind][type];
-    if (!field) return false;
-    if (kind === "EMPLOYEE") {
-      const cur = (await prisma.employee.findUnique({ where: { id }, select: { [field]: true } as never })) as Record<string, Date | null> | null;
-      if (cur && (!cur[field] || cur[field]! < date)) { await db.employee.update({ where: { id }, data: { [field]: date } }); return true; }
-    } else {
-      const cur = (await prisma.supplier.findUnique({ where: { id }, select: { [field]: true } as never })) as Record<string, Date | null> | null;
-      if (cur && (!cur[field] || cur[field]! < date)) { await db.supplier.update({ where: { id }, data: { [field]: date } }); return true; }
+  // What the document says also feeds the record: a field is filled only when it is empty, and an expiry
+  // only when it is empty or older. Nothing already on the record is ever overwritten with something else.
+  const syncRecord = async (kind: "EMPLOYEE" | "SUPPLIER", id: string, type: string, expiry: Date | null, read: Record<string, string> | undefined): Promise<boolean> => {
+    const allowed = READ_FIELDS[kind];
+    const incoming: Record<string, string> = {};
+    for (const k of allowed.text) { const v = read?.[k]; if (typeof v === "string" && v.trim()) incoming[k] = v.trim().slice(0, 120); }
+    for (const k of allowed.dates) { const v = read?.[k]; if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) incoming[k] = v; }
+    const own = EXPIRY_FIELD[kind][type];
+    if (own && expiry) incoming[own] = expiry.toISOString().slice(0, 10); // the date shown on the review screen wins for its own field
+    const keys = Object.keys(incoming);
+    if (keys.length === 0) return false;
+    const select = Object.fromEntries(keys.map((k) => [k, true]));
+    const cur = (kind === "EMPLOYEE"
+      ? await prisma.employee.findUnique({ where: { id }, select: select as never })
+      : await prisma.supplier.findUnique({ where: { id }, select: select as never })) as Record<string, unknown> | null;
+    if (!cur) return false;
+    const data: Record<string, unknown> = {};
+    for (const k of keys) {
+      const have = cur[k], val = incoming[k];
+      if (allowed.dates.includes(k) && k !== "dateOfBirth") {
+        const d = new Date(`${val}T00:00:00.000Z`);
+        if (!Number.isNaN(d.getTime()) && (!have || (have as Date) < d)) data[k] = d;
+      } else if (k === "dateOfBirth") {
+        const d = new Date(`${val}T00:00:00.000Z`);
+        if (!have && !Number.isNaN(d.getTime())) data[k] = d;
+      } else if (!have) {
+        if (k === "gender") { const g = val.toUpperCase(); if (g === "MALE" || g === "FEMALE") data[k] = g; }
+        else if (k === "mobileNumber") { const p = normalizePhone(val); if (p) data[k] = p; }
+        else data[k] = val;
+      }
     }
-    return false;
+    if (Object.keys(data).length === 0) return false;
+    if (kind === "EMPLOYEE") await db.employee.update({ where: { id }, data });
+    else await db.supplier.update({ where: { id }, data });
+    return true;
   };
 
   let total = 0;
@@ -73,13 +97,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // The same file filed twice would only clutter the profile.
         if (await prisma.document.findFirst({ where: { employeeId: m.ownerId, type, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
         await db.document.create({ data: { employeeId: m.ownerId, type, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, uploadedById: who.user.id } });
-        if (m.updateExpiry && expiry) updated = await feedExpiry("EMPLOYEE", m.ownerId, type, expiry);
+        if (m.updateExpiry) updated = await syncRecord("EMPLOYEE", m.ownerId, type, expiry, m.fields);
       } else if (m.ownerKind === "SUPPLIER") {
         if (!okSup.has(m.ownerId)) throw new Error("That supplier isn't in this company.");
         const docType = SUP_TYPES.has(m.type) ? m.type : "OTHER";
         if (await prisma.attachment.findFirst({ where: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
         await db.attachment.create({ data: { entityType: "SUPPLIER", entityId: m.ownerId, docType, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, branchId: who.branchId, uploadedById: who.user.id } });
-        if (m.updateExpiry && expiry) updated = await feedExpiry("SUPPLIER", m.ownerId, docType, expiry);
+        if (m.updateExpiry) updated = await syncRecord("SUPPLIER", m.ownerId, docType, expiry, m.fields);
       } else throw new Error("No owner chosen.");
       results.push({ name, status: "created", recordUpdated: updated });
     } catch (e) {

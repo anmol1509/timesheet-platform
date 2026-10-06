@@ -33,10 +33,11 @@ export async function POST(request: Request) {
   let people: Person[] = [];
   let companies: Company[] = [];
   const recs = new Map<string, Rec>();
+  const photos = new Set<string>();
   if (audience === "EMPLOYEE") {
-    const rows = await prisma.employee.findMany({ where: { branchId: who.branchId }, select: { id: true, name: true, employeeIdNo: true, trade: true, passportNumber: true, emiratesId: true, laborCardNumber: true, laborCardPersonalNo: true, visaNumber: true, unifiedNo: true, supplier: { select: { name: true } } } });
+    const rows = await prisma.employee.findMany({ where: { branchId: who.branchId }, select: { id: true, name: true, employeeIdNo: true, trade: true, photoMimeType: true, passportNumber: true, emiratesId: true, laborCardNumber: true, laborCardPersonalNo: true, visaNumber: true, unifiedNo: true, supplier: { select: { name: true } } } });
     people = rows.map((e) => ({ id: e.id, name: e.name, code: e.employeeIdNo, trade: e.trade, supplier: e.supplier?.name ?? null }));
-    for (const e of rows) recs.set(e.id, e as unknown as Rec);
+    for (const e of rows) { recs.set(e.id, e as unknown as Rec); if (e.photoMimeType) photos.add(e.id); }
   } else {
     const rows = await prisma.supplier.findMany({ where: { branchId: who.branchId }, select: { id: true, name: true, code: true, fullName: true, tradeLicenseNumber: true, mohrePermitNumber: true, trn: true } });
     companies = rows.map((s) => ({ id: s.id, name: s.name, code: s.code, fullName: s.fullName }));
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
     docs: docsOut,
     types: typeOptions,
     pickList: audience === "EMPLOYEE"
-      ? { employees: people.slice(0, 5000).map((p) => ({ id: p.id, label: `${p.name} (${p.code})` })), suppliers: [] }
+      ? { employees: people.slice(0, 5000).map((p) => ({ id: p.id, label: `${p.name} (${p.code})`, name: p.name, photo: photos.has(p.id) })), suppliers: [] }
       : { employees: [], suppliers: companies.map((s) => ({ id: s.id, label: s.name })) },
     maxFileBytes: MAX_BULK_FILE_BYTES,
   });

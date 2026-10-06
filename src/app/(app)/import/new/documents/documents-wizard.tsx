@@ -5,6 +5,8 @@ import Link from "next/link";
 import JSZip from "jszip";
 import { AlertTriangle, CheckCircle2, FileText, FolderUp, HardHat, Loader2, Sparkles, Truck, UploadCloud } from "lucide-react";
 import { Select } from "@/components/ui/Select";
+import { EmployeeAvatar } from "@/components/Avatar";
+import type { SelectOption } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
 import { MIME_BY_EXT, extOf } from "@/lib/importer/documentMatch";
@@ -13,13 +15,13 @@ import { cutPdf, imageToPage, pdfToPages, type PageImage } from "@/lib/pdfPages"
 import { shrinkImage } from "@/lib/compressImage";
 import { UndoImportButton } from "../../undo-button";
 
-type Opt = { value: string; label: string };
+type Opt = { value: string; label: string; icon?: React.ReactNode };
 type Cand = { kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string; sub: string; score: number };
 type Match = { status: "matched"; kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string; how: string } | { status: "several" | "close" | "unknown"; candidates: Cand[] };
 type Owner = { key: string; label: string; match: Match; ai?: { id: string | null; confidence: string; reason: string }; newWorker?: { name: string; passportNumber: string; emiratesId: string; trade: string } };
 type PlanDoc = { docKey: string; index: number; fileName: string; type: string; expiry: string; confidence: Confidence; pages: number[]; ownerKey: string | null; via: string | null; conflict: boolean; status: "ok" | "skip"; reason?: string; readByAi: boolean };
-type Plan = { audience: Audience; owners: Owner[]; docs: PlanDoc[]; types: Opt[]; pickList: { employees: { id: string; label: string }[]; suppliers: { id: string; label: string }[] } };
-type ReadDoc = { docKey: string; type: string; holder: string; idNumber: string; expiry: string; confidence: Confidence; pages: number[] };
+type Plan = { audience: Audience; owners: Owner[]; docs: PlanDoc[]; types: Opt[]; pickList: { employees: { id: string; label: string; name: string; photo: boolean }[]; suppliers: { id: string; label: string }[] } };
+type ReadDoc = { docKey: string; type: string; holder: string; idNumber: string; expiry: string; confidence: Confidence; pages: number[]; fields?: Record<string, string> };
 type Source = { index: number; path: string; blob: Blob; size: number; isPdf: boolean; isImage: boolean; totalPages: number; thumbs: Map<number, string>; docs?: ReadDoc[]; note?: string };
 type Pick = { kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string } | "skip" | "new";
 type DocEdit = { type?: string; expiry?: string; skip?: boolean; owner?: Pick };
@@ -134,7 +136,7 @@ export function DocumentsWizard() {
           }
         }
         pages.forEach((p) => { p.base64 = ""; });
-        if (ok && reads.length) s.docs = groupPages(s.index, reads).map((d, n) => ({ docKey: `${s.index}-${n}`, type: d.type, holder: d.holder, idNumber: d.idNumber, expiry: d.expiry, confidence: d.confidence, pages: d.pages }));
+        if (ok && reads.length) s.docs = groupPages(s.index, reads).map((d, n) => ({ docKey: `${s.index}-${n}`, type: d.type, holder: d.holder, idNumber: d.idNumber, expiry: d.expiry, confidence: d.confidence, pages: d.pages, fields: d.fields }));
         if (ok && reads.length && !s.docs?.length) s.note = "No documents were found in this file (all pages looked blank).";
       }
       if (aiNote) setNotice(aiNote);
@@ -175,7 +177,7 @@ export function DocumentsWizard() {
           created.set(key, r);
         } catch (e) { results.push({ name: w?.name ?? key, status: "failed", message: `Couldn't add the worker: ${e instanceof Error ? e.message : "failed"}` }); }
       }
-      type Item = { file: File; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry: string };
+      type Item = { file: File; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry: string; fields?: Record<string, string> };
       const items: Item[] = [];
       for (const { d, o } of queue) {
         const src = sources[d.index];
@@ -194,7 +196,7 @@ export function DocumentsWizard() {
         }
         if (!file) { results.push({ name: display, status: "failed", message: "This document couldn't be cut out of its PDF." }); continue; }
         if (file.size > MAX_BULK_FILE_BYTES) { results.push({ name: file.name, status: "failed", message: `Over ${(MAX_BULK_FILE_BYTES / 1048576).toFixed(1)} MB. Compress it, or add it from the profile.` }); continue; }
-        items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: edits[d.docKey]?.expiry ?? d.expiry });
+        items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: edits[d.docKey]?.expiry ?? d.expiry, fields: src.docs?.find((x) => x.docKey === d.docKey)?.fields });
       }
       setProgress({ done: 0, total: items.length, label: "Uploading…" });
       let i = 0;
@@ -203,7 +205,7 @@ export function DocumentsWizard() {
         let bytes = 0;
         while (i < items.length && group.length < MAX_BATCH_FILES && (group.length === 0 || bytes + items[i].file.size <= MAX_BATCH_BYTES)) { bytes += items[i].file.size; group.push(items[i]); i++; }
         const form = new FormData();
-        form.set("meta", JSON.stringify(group.map((g) => ({ name: g.file.name, ownerKind: g.ownerKind, ownerId: g.ownerId, type: g.type, expiry: g.expiry || null, updateExpiry }))));
+        form.set("meta", JSON.stringify(group.map((g) => ({ name: g.file.name, ownerKind: g.ownerKind, ownerId: g.ownerId, type: g.type, expiry: g.expiry || null, updateExpiry, fields: g.fields }))));
         group.forEach((g, k) => form.set(`file${k}`, g.file));
         try {
           const r = await post<{ results: Result[] }>(`/api/import/documents/${batchId}/upload`, { method: "POST", body: form });
@@ -222,8 +224,8 @@ export function DocumentsWizard() {
     }
   }
 
-  const pickOptions = () => [
-    ...(plan?.pickList.employees ?? []).map((e) => ({ value: `E:${e.id}`, label: e.label })),
+  const pickOptions = (): SelectOption[] => [
+    ...(plan?.pickList.employees ?? []).map((e) => ({ value: `E:${e.id}`, label: e.label, icon: <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.photo} size="xs" /> })),
     ...(plan?.pickList.suppliers ?? []).map((s) => ({ value: `S:${s.id}`, label: s.label })),
   ];
   const fromValue = (v: string): Pick => {
@@ -310,7 +312,7 @@ export function DocumentsWizard() {
         <p className="flex items-center gap-2 text-sm font-semibold text-primary"><CheckCircle2 className="h-5 w-5 text-[var(--success)]" aria-hidden />Upload finished</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Tile label="Documents filed" value={made.length} tone="success" />
-          <Tile label="Dates updated on records" value={made.filter((r) => r.recordUpdated).length} />
+          <Tile label="Records updated" value={made.filter((r) => r.recordUpdated).length} />
           <Tile label="Already on file" value={outcome.results.filter((r) => r.status === "duplicate").length} />
           <Tile label="Failed" value={outcome.results.filter((r) => r.status === "failed").length} tone={outcome.results.some((r) => r.status === "failed") ? "error" : undefined} />
         </div>
@@ -352,7 +354,7 @@ export function DocumentsWizard() {
       {notice && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">{notice}</p>}
       <label className="flex items-start gap-2 rounded-lg border border-default px-4 py-3 text-sm text-secondary">
         <input type="checkbox" checked={updateExpiry} onChange={(e) => setUpdateExpiry(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--brand-primary)]" />
-        <span><span className="font-medium text-primary">Update expiry dates on the {noun} records</span> from the documents. A date is only set when the field is empty or the new date is later.</span>
+        <span><span className="font-medium text-primary">Fill the {noun} record from the documents</span>: numbers, date of birth, nationality, expiry dates and so on. Empty fields are filled; nothing already there is overwritten, and an expiry is only changed when the new date is later.</span>
       </label>
 
       {plan.owners.map((o) => {
@@ -450,7 +452,7 @@ function DocRows({ docs, types, edits, setEdits, sources, dim, withOwner, pickOp
   sources: Source[];
   dim?: boolean;
   withOwner?: boolean;
-  pickOptions?: Opt[];
+  pickOptions?: SelectOption[];
   fromValue?: (v: string) => Pick;
   pickValue?: (p?: Pick) => string;
 }) {
