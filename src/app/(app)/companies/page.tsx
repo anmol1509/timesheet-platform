@@ -1,4 +1,5 @@
-import { Building } from "lucide-react";
+import { Building, Upload } from "lucide-react";
+import { isAdminRole } from "@/lib/roles";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -15,7 +16,8 @@ export default async function CompaniesPage({
 }) {
   const params = await searchParams;
 
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canImport = isAdminRole(user.role);
   const monthRows = await prisma.timesheetEntry.findMany({
     where: branchWhere(branchId),
     distinct: ["month"],
@@ -47,6 +49,8 @@ export default async function CompaniesPage({
           icon={Building}
           description={<>Pick a month, then generate a timesheet for any company, or <Link href="/companies/employees" className="font-medium text-primary underline">pick individual employees</Link>.</>}
         />
+        <div className="flex flex-wrap items-center gap-3">
+        {canImport && <Link href="/import/new/timesheets" className="btn btn-secondary gap-1.5"><Upload className="h-4 w-4" aria-hidden />Import</Link>}
         {months.length > 0 && (
           <form className="flex items-center gap-2">
             <label htmlFor="month" className="text-sm text-muted">
@@ -56,6 +60,7 @@ export default async function CompaniesPage({
             <NativeSubmit />
           </form>
         )}
+        </div>
       </div>
 
       {suppliers.length === 0 && (
