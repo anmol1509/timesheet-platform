@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         projectCode: e.project?.code ?? projectById.get(e.employeeIdNo) ?? null,
       })),
       additions: 0,
-      safetyDeduction: gasTotal,
+      gasDeduction: gasTotal,
       otherDeduction: 0,
       ...standardExtras(cfg, 5),
       preparedBy: user.name,

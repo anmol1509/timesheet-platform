@@ -46,7 +46,7 @@ export type TimesheetPdfInput = {
   periodTo: string;
   entries: TimesheetEntry[];
   additions: number;
-  safetyDeduction: number;
+  gasDeduction: number;
   otherDeduction: number;
   vatPercent: number;
   /** Two separate blocks: preparing and verifying are different signatures. */
@@ -259,7 +259,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
 
   const grossBeforeDeductions = summaryRows.reduce((sum, r) => sum + r.amount, 0);
   const totalDeduction =
-    totals.deduction + (input.safetyDeduction || 0) + (input.otherDeduction || 0);
+    totals.deduction + (input.gasDeduction || 0) + (input.otherDeduction || 0);
   const grossTotal = grossBeforeDeductions + (input.additions || 0) - totalDeduction;
   const vat = grossTotal * (input.vatPercent / 100);
   const netPayable = grossTotal + vat;
@@ -542,12 +542,12 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
                 <Text style={s.moneyValue}>{money(input.additions || 0)}</Text>
               </View>
               <View style={s.moneyRow}>
-                <Text style={s.moneyLabel}>Absent Penalty</Text>
+                <Text style={s.moneyLabel}>Absent Deduction</Text>
                 <Text style={s.moneyValue}>{money(totals.deduction)}</Text>
               </View>
               <View style={s.moneyRow}>
-                <Text style={s.moneyLabel}>Safety Items</Text>
-                <Text style={s.moneyValue}>{money(input.safetyDeduction || 0)}</Text>
+                <Text style={s.moneyLabel}>Gas Deduction</Text>
+                <Text style={s.moneyValue}>{money(input.gasDeduction || 0)}</Text>
               </View>
               <View style={s.moneyRow}>
                 <Text style={s.moneyLabel}>Other Deduction</Text>

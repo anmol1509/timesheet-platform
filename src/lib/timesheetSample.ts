@@ -45,7 +45,7 @@ export async function renderSample(template: TimesheetTemplateKey, config: Templ
   if (template === "standard") {
     buffer = format === "xlsx"
       ? await generateSupplierXlsx({ fullName: common.subContractor, monthLabel, issuedTo: letterhead.name, gasDeduction: 30, entries, titleText: config?.title || undefined })
-      : await generateTimesheetPdf({ ...common, letterhead: maskLetterhead(letterhead, config), subContractorCode: null, additions: 0, safetyDeduction: 30, otherDeduction: 0, preparedBy: "Sample", preparedByRole: null, verifiedBy: null, verifiedByRole: null, approvedBy: null, approvedByRole: null, ...standardExtras(config, 5) });
+      : await generateTimesheetPdf({ ...common, letterhead: maskLetterhead(letterhead, config), subContractorCode: null, additions: 0, gasDeduction: 30, otherDeduction: 0, preparedBy: "Sample", preparedByRole: null, verifiedBy: null, verifiedByRole: null, approvedBy: null, approvedByRole: null, ...standardExtras(config, 5) });
   } else {
     const input = { ...common, template, config, monthLabel, issuedTo: letterhead.name, gasDeduction: 30, vatPercent: 5, preparedBy: "Sample" };
     buffer = format === "xlsx" ? await generateTemplatedXlsx(input) : await generateTemplatedPdf(input);
