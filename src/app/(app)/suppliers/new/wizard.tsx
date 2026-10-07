@@ -12,6 +12,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { SUPPLIER_CATEGORIES } from "@/lib/formLists";
 import { cn } from "@/lib/cn";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { MAX_REQUEST_BYTES, shrinkImage } from "@/lib/compressImage";
 import type { ExtractedCompanyFields } from "@/app/api/documents/extract-company/route";
 import { MultiUploadSlot, UploadSlot, type UploadStatus } from "@/app/(app)/employees/new/upload-slot";
 import { DocumentChecklist, type ChecklistItem } from "@/app/(app)/employees/new/document-checklist";
@@ -146,15 +147,25 @@ export function SupplierWizard() {
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
-  function create() {
+  async function create() {
     setError(null);
+    // The documents travel together in one request, so their total has to fit, not just each file.
+    const sized = await Promise.all(docs.map(async (d) => (d.file.type.startsWith("image/") ? { ...d, file: await shrinkImage(d.file) } : d)));
+    const total = sized.reduce((n, d) => n + d.file.size, 0);
+    if (total > MAX_REQUEST_BYTES) {
+      return setError(`The documents add up to ${(total / 1024 / 1024).toFixed(1)}MB; ${(MAX_REQUEST_BYTES / 1024 / 1024).toFixed(1)}MB is the most that can be saved at once. Remove or compress a document, then add the rest from the supplier's page after saving.`);
+    }
     const fd = new FormData();
     (Object.keys(v) as (keyof Values)[]).forEach((k) => fd.append(k, v[k]));
-    docs.forEach((d) => { fd.append("files", d.file); fd.append("docTypes", d.docType); fd.append("docExpiries", d.expiry); });
+    sized.forEach((d) => { fd.append("files", d.file); fd.append("docTypes", d.docType); fd.append("docExpiries", d.expiry); });
     start(async () => {
-      const res = await createSupplierWizardAction(fd);
-      if (res.error) setError(res.error);
-      else router.push(`/suppliers/${res.id}`);
+      try {
+        const res = await createSupplierWizardAction(fd);
+        if (res.error) setError(res.error);
+        else router.push(`/suppliers/${res.id}`);
+      } catch {
+        setError("The supplier couldn't be saved. Check your connection and try again.");
+      }
     });
   }
 

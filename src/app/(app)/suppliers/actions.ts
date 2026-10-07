@@ -10,7 +10,7 @@ import { requireUserWithBranch, requirePermission, requireView, requireWrite } f
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { matchTrade } from "@/lib/trades";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -31,7 +31,8 @@ function numberOrNull(value: FormDataEntryValue | null) {
 
 export async function createSupplierAction(formData: FormData) {
   await requireWrite("partners.suppliers");
-  assertContactsValid(formData);
+  const badContact = contactsError(formData);
+  if (badContact) redirect(`/suppliers?error=${encodeURIComponent(badContact)}`);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;

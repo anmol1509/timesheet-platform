@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
-import { assertContactsValid } from "@/lib/validators";
+import { contactsError } from "@/lib/validators";
 
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim() || null;
 const date = (v: FormDataEntryValue | null) => {
@@ -21,8 +21,23 @@ const DOC_TYPES = new Set(["TRADE_LICENSE", "MOHRE_PERMIT", "ESTABLISHMENT_CARD"
 
 /** Registers a supplier from the wizard: the reviewed details plus the documents it was read from. */
 export async function createSupplierWizardAction(formData: FormData): Promise<{ error: string | null; id?: string }> {
+  try {
+    return await createSupplier(formData);
+  } catch (e) {
+    // A thrown error reaches the browser as a bare "Something went wrong"; say what actually happened instead.
+    if (e && typeof e === "object" && "digest" in e && String((e as { digest: unknown }).digest).startsWith("NEXT_")) throw e; // redirects and not-found pass through
+    const msg = e instanceof Error ? e.message : "";
+    console.error("[create-supplier] failed:", msg);
+    if (/permission|not allowed|forbidden/i.test(msg)) return { error: "You don't have permission to add suppliers." };
+    if (/Unique constraint/i.test(msg)) return { error: "A supplier with that name or code already exists." };
+    return { error: "The supplier couldn't be saved. Check the details and try again." };
+  }
+}
+
+async function createSupplier(formData: FormData): Promise<{ error: string | null; id?: string }> {
   await requireWrite("partners.suppliers");
-  assertContactsValid(formData);
+  const bad = contactsError(formData);
+  if (bad) return { error: bad };
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a specific branch from the switcher before adding a supplier." };
 
