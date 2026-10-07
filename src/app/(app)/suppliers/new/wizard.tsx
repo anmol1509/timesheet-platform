@@ -13,6 +13,7 @@ import { SUPPLIER_CATEGORIES } from "@/lib/formLists";
 import { cn } from "@/lib/cn";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { MAX_REQUEST_BYTES, shrinkImage } from "@/lib/compressImage";
+import { firstInvalidContact } from "@/lib/validators";
 import type { ExtractedCompanyFields } from "@/app/api/documents/extract-company/route";
 import { MultiUploadSlot, UploadSlot, type UploadStatus } from "@/app/(app)/employees/new/upload-slot";
 import { DocumentChecklist, type ChecklistItem } from "@/app/(app)/employees/new/document-checklist";
@@ -57,6 +58,17 @@ function Field({ label, children, className }: { label: string; children: React.
       {children}
     </label>
   );
+}
+
+const FIELD_LABEL: Record<string, string> = { contactPhone: "Contact phone", contactEmail: "Contact email", trn: "TRN" };
+const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)}MB`;
+
+/** Everything the server would refuse, checked here first so nobody finds out after pressing Create. */
+function detailsProblem(v: Values): string | null {
+  if (!v.name.trim()) return "Enter the supplier name.";
+  if (v.trn && !/^\d{15}$/.test(v.trn.replace(/\s|-/g, ""))) return "A TRN is 15 digits.";
+  const bad = firstInvalidContact(Object.entries(v));
+  return bad ? `${FIELD_LABEL[bad.field] ?? bad.field}: ${bad.message}` : null;
 }
 
 export function SupplierWizard() {
@@ -114,13 +126,21 @@ export function SupplierWizard() {
   async function addFiles(list: File[] | FileList | null, fixedType?: string) {
     if (!list) return;
     const added: Doc[] = [];
-    for (const file of Array.from(list)) {
-      if (file.size > MAX_UPLOAD_BYTES) { setError(`${file.name} is over ${MAX_UPLOAD_LABEL}.`); continue; }
+    // Slots replace what they held, so that file's size doesn't count against the total.
+    const kept = fixedType ? docs.filter((x) => x.docType !== fixedType) : docs;
+    let total = kept.reduce((n, d) => n + d.file.size, 0);
+    for (const picked of Array.from(list)) {
+      if (picked.size > MAX_UPLOAD_BYTES) { setError(`${picked.name} is ${mb(picked.size)}, over the ${MAX_UPLOAD_LABEL} limit for one file.`); continue; }
+      const file = picked.type.startsWith("image/") ? await shrinkImage(picked) : picked;
+      if (total + file.size > MAX_REQUEST_BYTES) {
+        setError(`${picked.name} wasn't added: the documents would come to ${mb(total + file.size)}, and ${mb(MAX_REQUEST_BYTES)} is the most that can be saved together. Add the rest from the supplier's page after saving.`);
+        continue;
+      }
+      total += file.size;
       added.push({ id: nextId.current++, file, docType: fixedType ?? "OTHER", expiry: "", status: "reading", fixedType: !!fixedType });
     }
     if (!added.length) return;
     setError(null);
-    // A slot holds one file: picking again replaces what was there.
     setDocs((p) => [...(fixedType ? p.filter((x) => x.docType !== fixedType) : p), ...added]);
     for (const d of added) await readDoc(d);
   }
@@ -141,14 +161,16 @@ export function SupplierWizard() {
   function next() {
     setError(null);
     if (step === 1) {
-      if (!v.name.trim()) return setError("Enter the supplier name.");
-      if (v.trn && !/^\d{15}$/.test(v.trn.replace(/\s|-/g, ""))) return setError("A TRN is 15 digits.");
+      const problem = detailsProblem(v);
+      if (problem) return setError(problem);
     }
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
   async function create() {
     setError(null);
+    const problem = detailsProblem(v);
+    if (problem) { setStep(1); return setError(problem); }
     // The documents travel together in one request, so their total has to fit, not just each file.
     const sized = await Promise.all(docs.map(async (d) => (d.file.type.startsWith("image/") ? { ...d, file: await shrinkImage(d.file) } : d)));
     const total = sized.reduce((n, d) => n + d.file.size, 0);
@@ -218,6 +240,9 @@ export function SupplierWizard() {
                     onAdd={(picked) => void addFiles(picked)}
                     onRemove={() => undefined}
                   />
+                  {docs.length > 0 && (
+                    <p className="mt-2 text-xs text-muted">Documents so far: {mb(docs.reduce((n, d) => n + d.file.size, 0))} of {mb(MAX_REQUEST_BYTES)} that can be saved together.</p>
+                  )}
                 </div>
               </div>
             </div>
