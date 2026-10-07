@@ -207,11 +207,13 @@ model StoredImage {
   mimeType  String
   updatedAt DateTime @default(now()) @updatedAt
 
-  userAvatars       User[]   @relation("UserAvatar")
-  branchLogos       Branch[] @relation("BranchLogo")
-  branchSignatures  Branch[] @relation("BranchSignature")
-  branchStamps      Branch[] @relation("BranchStamp")
-  branchLetterheads Branch[] @relation("BranchLetterhead")
+  userAvatars        User[]     @relation("UserAvatar")
+  branchLogos        Branch[]   @relation("BranchLogo")
+  branchSignatures   Branch[]   @relation("BranchSignature")
+  branchStamps       Branch[]   @relation("BranchStamp")
+  branchLetterheads  Branch[]   @relation("BranchLetterhead")
+  supplierSignatures Supplier[] @relation("SupplierSignature")
+  supplierStamps     Supplier[] @relation("SupplierStamp")
 }
 
 // A named bundle of "module:action" permission keys (see src/lib/permissions.ts)
@@ -326,17 +328,24 @@ model Supplier {
   // Our own entities vs third-party subcontractors. Same shape, but the
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
-  isOwnCompany          Boolean @default(false)
+  isOwnCompany          Boolean      @default(false)
   // Same, for this supplier's own letterhead (used when it sponsors workers). Unset = the standard 65 / 35.
   letterheadTopMm       Int?
   letterheadBottomMm    Int?
+  // Who signs letters issued on this company's letterhead, and the images printed when that is ticked.
+  signatoryName         String?
+  signatoryTitle        String?
+  signature             StoredImage? @relation("SupplierSignature", fields: [signatureId], references: [id], onDelete: SetNull)
+  signatureId           String?
+  stamp                 StoredImage? @relation("SupplierStamp", fields: [stampId], references: [id], onDelete: SetNull)
+  stampId               String?
   // Pay rules for this company's own workers. Absences up to absentFreeDays a
   // month cost nothing; every day after that deducts absentDeductionPerDay.
   // Gas is charged per day from the worker's check-in date, up to a monthly cap.
-  absentFreeDays        Int     @default(2)
-  absentDeductionPerDay Decimal @default(30) @db.Decimal(10, 2)
-  gasPerDay             Decimal @default(1) @db.Decimal(6, 2)
-  gasMonthlyCap         Decimal @default(30) @db.Decimal(8, 2)
+  absentFreeDays        Int          @default(2)
+  absentDeductionPerDay Decimal      @default(30) @db.Decimal(10, 2)
+  gasPerDay             Decimal      @default(1) @db.Decimal(6, 2)
+  gasMonthlyCap         Decimal      @default(30) @db.Decimal(8, 2)
 
   // The point of contact this supplier's workers' camp check-in slips are
   // printed with — distinct from contactPerson (the general business

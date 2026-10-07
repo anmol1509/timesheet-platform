@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { EmployeeLetterPaper } from "@/components/LetterPreview";
-import { issueLetterAction, previewLetterAction } from "./actions";
+import { issueLetterAction, letterIssuersAction, previewLetterAction } from "./actions";
+import type { IssuerKey, IssuerOption } from "@/lib/employeeLetterIssuer";
 
 export type TemplateOption = { id: string; name: string; asks: string[]; usesSalary: boolean };
 export type EmployeeOption = { id: string; name: string; idNo: string; trade: string | null };
@@ -22,6 +23,11 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
   const [employeeId, setEmployeeId] = useState(employees.some((e) => e.id === initialEmployeeId) ? initialEmployeeId! : "");
   const [templateId, setTemplateId] = useState(templates.find((t) => preferTemplate && t.name.toLowerCase().includes(preferTemplate.toLowerCase()))?.id ?? templates[0]?.id ?? "");
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  // Whose letterhead, signature and stamp: the visa company, the supplier company or the company profile.
+  const [issuers, setIssuers] = useState<IssuerOption[]>([]);
+  const [issuerKey, setIssuerKey] = useState<IssuerKey | "">("");
+  const profileFallback: IssuerOption = { key: "PROFILE", label: companyName, name: companyName, supplierId: null, letterheadUrl: defaults.letterheadUrl, letterheadKind: defaults.letterheadUrl ? "image" : null, topMm: defaults.topMm, bottomMm: defaults.bottomMm, signatoryName: defaults.signatoryName, signatoryTitle: defaults.signatoryTitle, signatureUrl: defaults.signatureUrl, stampUrl: defaults.stampUrl, where: "Settings → Company profile → Letters" };
+  const issuer = issuers.find((o) => o.key === issuerKey) ?? profileFallback;
   const [preview, setPreview] = useState<{ html?: string; title?: string; missing?: string[]; empty?: string[]; error?: string } | null>(null);
   const [loading, startPreview] = useTransition();
   const [issuing, startIssue] = useTransition();
@@ -30,13 +36,40 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
   const template = templates.find((t) => t.id === templateId);
   const key = useMemo(() => JSON.stringify(inputs), [inputs]);
 
+  function chooseIssuer(next: IssuerOption) {
+    setIssuerKey(next.key);
+    // The signatory and the images belong to the company chosen; nothing is signed or stamped unless ticked again.
+    setSignatoryName(next.signatoryName);
+    setSignatoryTitle(next.signatoryTitle);
+    setShowSignature(false);
+    setShowStamp(false);
+    setPreview(null);
+  }
+
+  // Each employee has their own choices of letterhead; the best one is picked to start with.
+  useEffect(() => {
+    setIssuers([]);
+    setIssuerKey("");
+    if (!employeeId) return;
+    let live = true;
+    void letterIssuersAction(employeeId).then((r) => {
+      if (!live) return;
+      const list = r.options ?? [];
+      setIssuers(list);
+      if (list[0]) chooseIssuer(list[0]);
+      else setIssuerKey("PROFILE");
+    }).catch(() => { if (live) setIssuerKey("PROFILE"); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId]);
+
   // Debounced live preview with the person's real details.
   useEffect(() => {
-    if (!employeeId || !templateId) return;
-    const t = setTimeout(() => startPreview(async () => setPreview(await previewLetterAction(employeeId, templateId, inputs))), 350);
+    if (!employeeId || !templateId || !issuerKey) return;
+    const t = setTimeout(() => startPreview(async () => setPreview(await previewLetterAction(employeeId, templateId, inputs, issuerKey))), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeId, templateId, key]);
+  }, [employeeId, templateId, key, issuerKey]);
 
   const emptyFields = preview?.empty ?? [];
   const ready = !!employeeId && !!template && preview?.html && !(preview.missing?.length) && (emptyFields.length === 0 || allowEmpty);
@@ -45,7 +78,7 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
   function issue() {
     setError(null);
     startIssue(async () => {
-      const res = await issueLetterAction(employeeId, templateId, inputs, { onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp }, allowEmpty);
+      const res = await issueLetterAction(employeeId, templateId, inputs, { issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp }, allowEmpty);
       if (res.error) setError(res.error);
       else if (res.id) window.open(`/api/letters/${res.id}/pdf`, "_blank");
     });
@@ -62,6 +95,12 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
           <span className="mb-1 block text-xs font-medium text-muted">Employee</span>
           <Select value={employeeId} onChange={(v) => { setEmployeeId(v); setPreview(null); setAllowEmpty(false); }} placeholder="Choose an employee…" searchPlaceholder="Search name or ID…" options={employees.map((e) => ({ value: e.id, label: `${e.name} · ${e.idNo}` }))} />
         </label>
+        {issuers.length > 1 && (
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Letterhead of</span>
+            <Select value={issuerKey} onChange={(v) => { const o = issuers.find((x) => x.key === v); if (o) chooseIssuer(o); }} searchable={false} options={issuers.map((o) => ({ value: o.key, label: o.label }))} triggerClassName="w-full" />
+          </label>
+        )}
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Letter</span>
           <Select value={templateId} onChange={(v) => { setTemplateId(v); setInputs({}); setPreview(null); }} options={[...templates.map((t) => ({ value: t.id, label: t.name }))]} triggerClassName="w-full" />
@@ -84,17 +123,17 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
             <span className="mb-1 block text-xs font-medium text-muted">Title</span>
             <input value={signatoryTitle} onChange={(e) => setSignatoryTitle(e.target.value)} placeholder="e.g. General Manager" className="input w-full" />
           </label>
-          <label className={`flex items-start gap-2 text-sm ${defaults.signatureUrl ? "text-secondary" : "text-subtle"}`}>
-            <input type="checkbox" checked={showSignature} disabled={!defaults.signatureUrl} onChange={(e) => setShowSignature(e.target.checked)} className="mt-0.5" />
-            <span>Add signature image{!defaults.signatureUrl && <span className="block text-xs text-muted">Upload one under Settings → Company profile → Letters.</span>}</span>
+          <label className={`flex items-start gap-2 text-sm ${issuer.signatureUrl ? "text-secondary" : "text-subtle"}`}>
+            <input type="checkbox" checked={showSignature} disabled={!issuer.signatureUrl} onChange={(e) => setShowSignature(e.target.checked)} className="mt-0.5" />
+            <span>Add signature image{!issuer.signatureUrl && <span className="block text-xs text-muted">No signature uploaded for {issuer.name}. Add one under {issuer.where}.</span>}</span>
           </label>
-          <label className={`flex items-start gap-2 text-sm ${defaults.stampUrl ? "text-secondary" : "text-subtle"}`}>
-            <input type="checkbox" checked={showStamp} disabled={!defaults.stampUrl} onChange={(e) => setShowStamp(e.target.checked)} className="mt-0.5" />
-            <span>Add company stamp{!defaults.stampUrl && <span className="block text-xs text-muted">Upload one under Settings → Company profile → Letters.</span>}</span>
+          <label className={`flex items-start gap-2 text-sm ${issuer.stampUrl ? "text-secondary" : "text-subtle"}`}>
+            <input type="checkbox" checked={showStamp} disabled={!issuer.stampUrl} onChange={(e) => setShowStamp(e.target.checked)} className="mt-0.5" />
+            <span>Add company stamp{!issuer.stampUrl && <span className="block text-xs text-muted">No stamp uploaded for {issuer.name}. Add one under {issuer.where}.</span>}</span>
           </label>
           <div className="space-y-1.5 text-sm text-secondary">
-            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints our header (logo, name, address).</span></span></label>
-            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={onLetterhead} onChange={() => setOnLetterhead(true)} className="mt-0.5" /><span>On letterhead<span className="block text-xs text-muted">{defaults.letterheadUrl ? "Uses your uploaded letterhead as the page background." : "Leaves the header and footer space clear for pre-printed paper."}</span></span></label>
+            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints the header (name, address, contact) of {issuer.name}.</span></span></label>
+            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={onLetterhead} onChange={() => setOnLetterhead(true)} className="mt-0.5" /><span>On letterhead<span className="block text-xs text-muted">{issuer.letterheadKind === "image" ? `Uses the uploaded letterhead of ${issuer.name} as the page background.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the issued PDF, not in this preview.` : `No letterhead is uploaded for ${issuer.name} (add one under ${issuer.where}). Leaves the header and footer space clear for pre-printed paper.`}</span></span></label>
           </div>
         </fieldset>
         {emptyFields.length > 0 && (
@@ -120,7 +159,7 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
         <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}</div>
         <div className="rounded-lg bg-surface-sunken p-4">
           {shown?.html ? (
-            <EmployeeLetterPaper companyName={companyName} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: defaults.letterheadUrl, topMm: defaults.topMm, bottomMm: defaults.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? defaults.signatureUrl : null, stampUrl: showStamp ? defaults.stampUrl : null }} />
+            <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
           ) : (
             <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
           )}

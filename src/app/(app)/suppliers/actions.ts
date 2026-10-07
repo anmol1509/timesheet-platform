@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { deleteImage, storeImage } from "@/lib/storedImage";
 import { matchTrade } from "@/lib/trades";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 
@@ -742,5 +743,59 @@ export async function saveSupplierLetterheadMarginsAction(formData: FormData) {
   await prisma.supplier.update({ where: { id: supplier.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom } });
   await logAudit({ entityType: "SUPPLIER", entityId: supplier.id, action: "UPDATE", before: { letterheadTopMm: supplier.letterheadTopMm, letterheadBottomMm: supplier.letterheadBottomMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom }, userId: user.id, userName: user.name, branchId: supplier.branchId });
   revalidatePath(`/suppliers/${supplier.id}`);
+  return { error: null };
+}
+
+
+// ---- Letters issued on this company's letterhead: signatory, signature, stamp -----------------
+const SUPPLIER_LETTER_IMAGES = { signature: { column: "signatureId", label: "signature" }, stamp: { column: "stampId", label: "stamp" } } as const;
+type SupplierLetterImage = keyof typeof SUPPLIER_LETTER_IMAGES;
+
+async function loadLetterSupplier(formData: FormData) {
+  await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, signatureId: true, stampId: true, signatoryName: true, signatoryTitle: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return null;
+  return { user, supplier };
+}
+const imageKind = (v: FormDataEntryValue | null): SupplierLetterImage | null => (v === "signature" || v === "stamp" ? v : null);
+
+export async function uploadSupplierLetterImageAction(formData: FormData) {
+  const ctx = await loadLetterSupplier(formData);
+  const kind = imageKind(formData.get("kind"));
+  if (!ctx || !kind) return { error: "Supplier not found." };
+  const saved = await storeImage(formData.get("image"));
+  if ("error" in saved) return { error: saved.error };
+  const { column, label } = SUPPLIER_LETTER_IMAGES[kind];
+  const previous = ctx.supplier[column];
+  await prisma.supplier.update({ where: { id: ctx.supplier.id }, data: { [column]: saved.id } });
+  await deleteImage(previous);
+  await logAudit({ entityType: "SUPPLIER", entityId: ctx.supplier.id, action: "UPDATE", before: { [label]: previous ? "(set)" : null }, after: { [label]: "(replaced)" }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.supplier.branchId });
+  revalidatePath(`/suppliers/${ctx.supplier.id}`);
+  return { error: null };
+}
+
+export async function removeSupplierLetterImageAction(formData: FormData) {
+  const ctx = await loadLetterSupplier(formData);
+  const kind = imageKind(formData.get("kind"));
+  if (!ctx || !kind) return { error: "Supplier not found." };
+  const { column, label } = SUPPLIER_LETTER_IMAGES[kind];
+  const previous = ctx.supplier[column];
+  await prisma.supplier.update({ where: { id: ctx.supplier.id }, data: { [column]: null } });
+  await deleteImage(previous);
+  await logAudit({ entityType: "SUPPLIER", entityId: ctx.supplier.id, action: "UPDATE", before: { [label]: "(set)" }, after: { [label]: null }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.supplier.branchId });
+  revalidatePath(`/suppliers/${ctx.supplier.id}`);
+  return { error: null };
+}
+
+export async function saveSupplierSignatoryAction(formData: FormData) {
+  const ctx = await loadLetterSupplier(formData);
+  if (!ctx) return { error: "Supplier not found." };
+  const signatoryName = String(formData.get("signatoryName") || "").trim().slice(0, 80) || null;
+  const signatoryTitle = String(formData.get("signatoryTitle") || "").trim().slice(0, 80) || null;
+  await prisma.supplier.update({ where: { id: ctx.supplier.id }, data: { signatoryName, signatoryTitle } });
+  await logAudit({ entityType: "SUPPLIER", entityId: ctx.supplier.id, action: "UPDATE", before: { signatoryName: ctx.supplier.signatoryName, signatoryTitle: ctx.supplier.signatoryTitle }, after: { signatoryName, signatoryTitle }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.supplier.branchId });
+  revalidatePath(`/suppliers/${ctx.supplier.id}`);
   return { error: null };
 }

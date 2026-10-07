@@ -1,5 +1,6 @@
 import { LetterheadMargins } from "@/components/LetterheadMargins";
 import { saveSupplierLetterheadMarginsAction } from "../actions";
+import { SupplierLettersSection } from "./supplier-letters-section";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
@@ -184,6 +185,17 @@ export default async function SupplierDetailPage({
                       expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
                       uploadedAt: a.uploadedAt.toISOString(),
                     }))}
+                  />
+                </section>
+                <section>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">Signatory, signature &amp; stamp</h2>
+                  <p className="mb-3 text-sm text-muted">Used on employee letters issued for this company (as the visa or supplier company), when you tick them on the letter. Upload the letterhead itself under Documents, as type Letterhead.</p>
+                  <SupplierLettersSection
+                    supplierId={supplier.id}
+                    signatoryName={supplier.signatoryName ?? ""}
+                    signatoryTitle={supplier.signatoryTitle ?? ""}
+                    signatureUrl={supplier.signatureId ? `/api/images/${supplier.signatureId}` : null}
+                    stampUrl={supplier.stampId ? `/api/images/${supplier.stampId}` : null}
                   />
                 </section>
                 {attachments.some((a) => a.docType === "LETTERHEAD") && (
