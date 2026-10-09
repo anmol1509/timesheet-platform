@@ -37,6 +37,27 @@ export const POSTS = [
       "Three different documents, each tracked separately, each with its own expiry and its own consequence if it lapses — a plain-language guide for anyone managing a UAE workforce.",
     date: "2026-09-24",
   },
+  {
+    slug: "how-to-price-manpower-supply-uae-hourly-rate",
+    title: "How to Price Manpower Supply in the UAE: Building an Hourly Rate That Covers Your Costs",
+    description:
+      "Build an hourly rate for UAE manpower supply from salary, visa, camp, transport, gratuity, overhead and margin, with a worked example.",
+    date: "2026-10-09",
+  },
+  {
+    slug: "construction-timesheet-format-labour-supply-uae",
+    title: "Construction Timesheet Format for Labour Supply: What to Include, With a Layout You Can Copy",
+    description:
+      "The columns, attendance codes and sign-offs a client-ready labour supply timesheet needs in the UAE, and the mistakes that cause invoice disputes.",
+    date: "2026-10-09",
+  },
+  {
+    slug: "manpower-supply-software-uae-buyers-checklist",
+    title: "Manpower Supply Software in the UAE: 12 Questions to Ask Before You Buy",
+    description:
+      "A buyer's checklist for manpower and labour supply software in the UAE: WPS, timesheets, expiries, camps, client billing, portals, pricing and support.",
+    date: "2026-10-09",
+  },
 ] as const;
 
 export type Post = (typeof POSTS)[number];

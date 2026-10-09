@@ -41,6 +41,10 @@ export function ArticleLayout({
               "[&_li]:text-[var(--slate)]",
               "[&>p]:text-[var(--slate)]",
               "[&_strong]:font-semibold [&_strong]:text-[var(--ink)]",
+              "[&_a]:font-medium [&_a]:text-[var(--primary)] [&_a]:underline [&_a]:underline-offset-2",
+              "[&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_table]:text-[15px]",
+              "[&_th]:border-b [&_th]:border-[var(--line,#e5e7eb)] [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[var(--ink)]",
+              "[&_td]:border-b [&_td]:border-[var(--line,#e5e7eb)] [&_td]:px-3 [&_td]:py-2 [&_td]:align-top [&_td]:text-[var(--slate)]",
             ].join(" ")}
           >
             {children}
