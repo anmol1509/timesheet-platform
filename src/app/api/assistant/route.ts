@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions, resolveSuperAdminBranchId, subjectOf } from "@/lib/auth";
 import { moduleForPath, viewableModules } from "@/lib/permissions";
@@ -8,14 +9,17 @@ import { TOOLS, runTool, type AssistantTable, type RecordLink } from "@/lib/assi
 import {
   EXTRA_PAGES,
   MAX_MESSAGES,
+  MAX_ANSWER_CHARS,
   MAX_MESSAGE_CHARS,
+  HINTS,
   REPLY_SCHEMA,
   buildSystemPrompt,
+  type ScreenContext,
   isAssistantLanguage,
   type GuidePage,
 } from "@/lib/assistantGuide";
 
-const MAX_TOOL_ROUNDS = 3;
+const MAX_TOOL_ROUNDS = 4;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { messages?: unknown; pages?: unknown; language?: unknown };
+  let body: { messages?: unknown; pages?: unknown; language?: unknown; page?: unknown; pageError?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -79,7 +83,18 @@ export async function POST(request: Request) {
   try {
     const client = new Anthropic();
     const language = isAssistantLanguage(body.language) ? body.language : "auto";
-    const system = buildSystemPrompt(pages, language);
+    // The screen the person is on, and any error text showing on it. Both come from the browser, so they are only
+    // ever used to give context; the page must be an internal path and the error is capped.
+    const path = isInternalPath(body.page) ? body.page.split("?")[0].slice(0, 120) : null;
+    const known = path ? [...pages].find((p) => p.href.split("?")[0] === path) : undefined;
+    const screen: ScreenContext | null = path
+      ? {
+          path,
+          label: known ? `${known.group} › ${known.label}${HINTS[known.href] ? ` — ${HINTS[known.href]}` : ""}` : null,
+          error: typeof body.pageError === "string" && body.pageError.trim() ? body.pageError.trim().replace(/\s+/g, " ").slice(0, 300) : null,
+        }
+      : null;
+    const system = buildSystemPrompt(pages, language, screen);
     const extras = assistantModelExtras(ASSISTANT_MODEL);
     let activeModel = ASSISTANT_MODEL;
     const branchId = user.role === "SUPER_ADMIN" ? await resolveSuperAdminBranchId() : user.branchId;
@@ -95,7 +110,7 @@ export async function POST(request: Request) {
         client.messages.create({
           model,
           // Room for a reply in Hindi, Urdu or Nepali, which take more tokens than English.
-          max_tokens: 1500,
+          max_tokens: 2200,
           // Sonnet 5.5 only: keep thinking to the gaps between lookups and effort low (see assistantModelExtras).
           ...(withExtras && extras.thinking ? ({ thinking: extras.thinking } as object) : {}),
           // Tools + this prompt are identical from one question to the next for a
@@ -133,9 +148,9 @@ export async function POST(request: Request) {
       }
       convo.push({ role: "user", content: results });
     }
-    if (!text) return NextResponse.json({ answer: "I can't help with that one.", links: [] });
+    if (!text) return NextResponse.json({ answer: "I can't help with that one.", links: [], needsSupport: true });
 
-    const parsed = JSON.parse(text.text) as { answer?: string; links?: { href?: string }[] };
+    const parsed = JSON.parse(text.text) as { answer?: string; needsHuman?: boolean; links?: { href?: string }[] };
     // Pages the user may open, plus records this same request's lookups returned.
     const byHref = new Map<string, GuidePage>([...pages, ...recordLinks].map((p) => [p.href, p]));
     const links = (parsed.links ?? [])
@@ -143,7 +158,16 @@ export async function POST(request: Request) {
       .filter((p): p is GuidePage => !!p)
       .slice(0, 3)
       .map((p) => ({ href: p.href, label: p.label, group: p.group }));
-    return NextResponse.json({ answer: String(parsed.answer ?? "").slice(0, 1200), links, ...(table ? { table } : {}) });
+    const answer = String(parsed.answer ?? "").slice(0, MAX_ANSWER_CHARS);
+    const needsSupport = parsed.needsHuman === true;
+    // A question the assistant could not resolve is kept, so the help it gives can be improved from what people really ask.
+    if (needsSupport) {
+      const question = messages[messages.length - 1].content;
+      await prisma.assistantFeedback
+        .create({ data: { userId: user.id, userName: user.name, branchId: user.role === "SUPER_ADMIN" ? branchId : user.branchId, page: path, question, answer, unanswered: true } })
+        .catch((e) => console.error("assistant: could not save an unanswered question", e));
+    }
+    return NextResponse.json({ answer, links, needsSupport, ...(table ? { table } : {}) });
   } catch (err) {
     console.error("assistant failed", err);
     return NextResponse.json({ error: "The assistant is unavailable right now." }, { status: 502 });

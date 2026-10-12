@@ -2702,3 +2702,22 @@ model FinalSettlement {
   @@index([branchId, status])
   @@index([employeeId])
 }
+
+// What people thought of My Assistant's answers, and the questions it could not resolve, so the help it gives can be improved.
+model AssistantFeedback {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  userId     String
+  userName   String
+  branchId   String?
+  page       String? // the screen the person was on
+  question   String
+  answer     String
+  rating     String? // "UP" | "DOWN"
+  unanswered Boolean  @default(false) // the assistant said it could not resolve this
+  comment    String?
+  reviewed   Boolean  @default(false)
+
+  @@index([branchId, createdAt])
+  @@index([reviewed, createdAt])
+}

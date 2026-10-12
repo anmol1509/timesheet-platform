@@ -27,6 +27,7 @@ import {
   Wallet,
   ListChecks,
   History,
+  MessageSquareWarning,
   Building,
   UserCog,
   ShieldCheck,
@@ -297,6 +298,7 @@ function adminGroup(): Entry {
       { href: "/settings/developers", label: "Developers", icon: KeyRound },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
       { href: "/audit-log", label: "Audit Log", icon: History },
+      { href: "/settings/assistant", label: "Assistant feedback", icon: MessageSquareWarning },
       // Deletes real data. The whole group is admin-only; the page and its
       // actions additionally confine a branch admin to their own branch.
       { href: "/settings/data-reset", label: "Data Reset", icon: Trash2 },
