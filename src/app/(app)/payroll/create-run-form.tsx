@@ -14,18 +14,19 @@ export function CreateRunForm({ defaultMonth, companies }: { defaultMonth: strin
     return <p className="card p-4 text-sm text-muted">Payroll is for your own companies only. Mark a company as &ldquo;Own company&rdquo; on its Suppliers page to create a run.</p>;
   }
   return (
-    <form action={action} className="card flex flex-wrap items-end gap-3 p-4">
+    <form action={action} className="card flex flex-wrap items-end gap-3 p-4" aria-label="Start a payroll run">
+      <h2 className="w-full text-sm font-semibold text-primary">Start a payroll run</h2>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">Company *</span>
 <Select name="companyId" required defaultValue={companies.length === 1 ? companies[0].id : ""} placeholder="Choose a company…" options={companies.map((c) => ({ value: c.id, label: c.name }))} />
       </label>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-muted">Payroll month *</span>
+        <span className="mb-1 block text-xs font-medium text-muted">Month to pay *</span>
         <MonthInput name="month" defaultValue={defaultMonth} required />
       </label>
-      <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Calculating…" : "Create payroll run"}</button>
+      <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Working it out…" : "Start payroll run"}</button>
       {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
-      <p className="w-full text-xs text-muted">Each employee is paid the way their own pay setup says: monthly salary from attendance, or hourly from timesheet hours. Only that company&apos;s own employees are included.</p>
+      <p className="w-full text-xs text-muted">We work out everyone's pay from attendance or timesheets. You can check and change it before anything is final.</p>
     </form>
   );
 }

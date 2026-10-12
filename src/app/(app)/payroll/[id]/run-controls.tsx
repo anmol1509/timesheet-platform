@@ -41,11 +41,6 @@ export function RunControls({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         {status === "DRAFT" && !submitted && canEdit && (
-          <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => run(recomputeRunAction)}>
-            <RotateCcw className="h-4 w-4" aria-hidden /> Recalculate
-          </button>
-        )}
-        {status === "DRAFT" && !submitted && canEdit && (
           <button type="button" className="btn btn-primary" disabled={pending} onClick={() => run(submitRunAction)}>
             <CheckCheck className="h-4 w-4" aria-hidden /> Submit for approval
           </button>
@@ -65,21 +60,33 @@ export function RunControls({
         )}
         {status !== "DRAFT" && canExport && (
           <a className="btn btn-secondary" href={`/api/payroll/${id}/sif`}>
-            <Download className="h-4 w-4" aria-hidden /> WPS file (.SIF)
-          </a>
-        )}
-        {canExport && (
-          <a className="btn btn-secondary" href={`/api/payroll/${id}/csv`}>
-            <Download className="h-4 w-4" aria-hidden /> CSV
+            <Download className="h-4 w-4" aria-hidden /> Bank file (WPS)
           </a>
         )}
         <a className="btn btn-secondary" href={`/payroll/${id}/payslips`} target="_blank" rel="noreferrer">
           <FileText className="h-4 w-4" aria-hidden /> Payslips
         </a>
-        {status === "DRAFT" && canDelete && (
-          <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => run(deleteRunAction as unknown as (fd: FormData) => Promise<void>)}>
-            <Trash2 className="h-4 w-4" aria-hidden /> Delete draft
-          </button>
+        {((status === "DRAFT" && !submitted && canEdit) || canExport || (status === "DRAFT" && canDelete)) && (
+          <details className="relative">
+            <summary className="btn btn-secondary cursor-pointer list-none">More ▾</summary>
+            <div className="absolute z-10 mt-1 flex min-w-48 flex-col gap-0.5 rounded-lg border border-default bg-surface p-1 shadow-lg">
+              {status === "DRAFT" && !submitted && canEdit && (
+                <button type="button" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-surface-hover" disabled={pending} onClick={() => run(recomputeRunAction)}>
+                  <RotateCcw className="h-4 w-4" aria-hidden /> Recalculate from attendance
+                </button>
+              )}
+              {canExport && (
+                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/csv`}>
+                  <Download className="h-4 w-4" aria-hidden /> Download as spreadsheet (CSV)
+                </a>
+              )}
+              {status === "DRAFT" && canDelete && (
+                <button type="button" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--error)] hover:bg-surface-hover" disabled={pending} onClick={() => run(deleteRunAction as unknown as (fd: FormData) => Promise<void>)}>
+                  <Trash2 className="h-4 w-4" aria-hidden /> Delete this draft
+                </button>
+              )}
+            </div>
+          </details>
         )}
       </div>
       {error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error}</p>}

@@ -11,7 +11,9 @@ import { Badge, type BadgeColor } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { LineEditor, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
-import { RunStepper, RunVariance, type VarianceRow } from "./run-insights";
+import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
+import { DetailView } from "./detail-view";
+import { buildPayslip } from "@/lib/payslip";
 
 function previousMonth(month: string) {
   const [y, m] = month.split("-").map(Number);
@@ -62,6 +64,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const cashCount = run.lines.filter((l) => isCashMode(l.paymentMode)).length;
   const gapRows = run.lines.map((l) => ({ l, gaps: wpsGaps(l) })).filter((x) => x.gaps.length > 0);
   const draft = run.status === "DRAFT";
+  const D = "hidden px-3 py-3 text-right group-data-[detail=on]:table-cell";
+  const DETAIL_INLINE = "hidden group-data-[detail=on]:inline";
   const costByProject = [
     ...run.lines
       .reduce((m, l) => {
@@ -97,7 +101,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <Link href="/payroll" className="text-xs text-muted hover:text-secondary">← Payroll</Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold tracking-tight text-primary">Payroll — {run.company?.name ?? "Own companies"} · {run.month}</h1>
-          {run.payType && <Badge color="blue">{run.payType === "HOURLY" ? "Hourly · from timesheet" : "Basic · from attendance"}</Badge>}
+          {run.payType && <Badge color="blue">{run.payType === "HOURLY" ? "Paid by the hour · from timesheets" : "Monthly salary · from attendance"}</Badge>}
           <Badge color={STATUS[run.status]?.color ?? "slate"} dot>{STATUS[run.status]?.label ?? run.status}</Badge>
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -109,8 +113,10 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Total net pay</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">AED {aed(total)}</p></div>
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Employees</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{run.lines.length}</p>{cashCount > 0 && <p className="text-xs text-muted">{cashCount} paid in cash (not in WPS file)</p>}</div>
-        <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Skipped: missing pay details</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">{skipped.length > 0 ? skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ") + (skipped.length > 3 ? "…" : "") : "Everyone is in this run"}</p></div>
+        <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Not in this run</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">{skipped.length > 0 ? skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ") + (skipped.length > 3 ? "…" : "") : "Everyone is included"}</p></div>
       </div>
+
+      <NextStep status={run.status} submitted={!!run.submittedAt} blocking={draft ? gapRows.length : 0} warnings={issues.filter((i) => i.level === "warn").length} people={run.lines.length} canApprove={can(subject, "payroll.payroll", "approve")} />
 
       <RunStepper status={run.status} submitted={!!run.submittedAt} issues={issues.length + gapRows.length} />
 
@@ -132,7 +138,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card flex gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
           <div>
-            <p className="font-medium text-primary">{gapRows.length} employee{gapRows.length === 1 ? "" : "s"} can&apos;t be approved until bank details are complete</p>
+            <p className="font-medium text-primary">Needs fixing: {gapRows.length} employee{gapRows.length === 1 ? "" : "s"} need their bank details completed</p>
             <ul className="mt-1 space-y-0.5 text-secondary">
               {gapRows.slice(0, 8).map(({ l, gaps }) => (
                 <li key={l.id}>
@@ -140,7 +146,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-xs text-muted">Fix them on the employee&apos;s Payroll &amp; WPS tab, then Recalculate. (Set the payment mode to Cash for anyone not paid through the bank.)</p>
+            <p className="mt-1 text-xs text-muted">Click a name, add the missing bank details on their Payroll &amp; WPS tab, then come back and press Recalculate. If someone is paid in cash, set their payment mode to Cash instead.</p>
           </div>
         </div>
       )}
@@ -176,7 +182,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
 
       {issues.filter((i) => i.level === "warn").length > 0 && (
         <div className="card p-4 text-sm">
-          <p className="font-medium text-primary">Check before approving</p>
+          <p className="font-medium text-primary">Worth checking</p>
           <ul className="mt-2 space-y-1.5">
             {issues.filter((i) => i.level === "warn").map((i) => (
               <li key={i.text} className="flex items-start gap-2 text-secondary">
@@ -191,18 +197,21 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       {run.lines.length === 0 ? (
         <div className="card p-10 text-center text-sm text-muted">No employees have a pay structure yet. Set one on each employee&apos;s Payroll &amp; WPS tab, then Recalculate.</div>
       ) : (
+        <DetailView>
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-3 py-3">Employee</th>
-                <th className="px-3 py-3 text-right">Base</th>
-                <th className="px-3 py-3 text-right">Allow.</th>
-                {hasHourly && <th className="px-3 py-3 text-right">Timesheet hrs</th>}
-                {hasBasic && <><th className="px-3 py-3 text-right">Absent</th><th className="px-3 py-3 text-right">OT hrs</th><th className="px-3 py-3 text-right">OT pay</th><th className="px-3 py-3 text-right">Absence ded.</th></>}
-                <th className="px-3 py-3 text-right">Recurring</th>
-                <th className="px-3 py-3">Deduction · Advance · Adjustment</th>
-                <th className="px-3 py-3 text-right">Net</th>
+                <th className={D}>Base</th>
+                <th className={D}>Allow.</th>
+                {hasHourly && <th className={D}>Timesheet hrs</th>}
+                {hasBasic && <><th className={D}>Absent</th><th className={D}>OT hrs</th><th className={D}>OT pay</th><th className={D}>Absence ded.</th></>}
+                <th className={D}>Recurring</th>
+                <th className="px-3 py-3 text-right">Earns</th>
+                <th className="px-3 py-3 text-right">Deductions</th>
+                <th className="px-3 py-3">Fines, advances, bonus</th>
+                <th className="px-3 py-3 text-right">Net pay</th>
                 <th className="px-3 py-3">Bank</th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
               </tr>
@@ -210,45 +219,59 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             <tbody className="divide-y divide-[var(--border)]">
               {run.lines.map((l) => {
                 const gaps = wpsGaps(l);
+                const slip = buildPayslip({
+                  payStructure: l.payStructure, basic: n(l.basic), allowances: n(l.allowances), overtimePay: n(l.overtimePay), deductions: n(l.deductions), adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote,
+                  otherEarnings: n(l.otherEarnings), otherDeductions: n(l.otherDeductions), manualDeduction: n(l.manualDeduction), deductionNote: l.deductionNote, loanDeduction: n(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: n(l.gasCharge),
+                  absentDays: n(l.absentDays), unpaidLeaveDays: 0, otHours: n(l.otHours), restHours: 0, normalHours: 0, employedDays: l.employedDays, daysInMonth: l.daysInMonth ?? 30, net: n(l.net),
+                });
+                const typed = n(l.manualDeduction) !== 0 || n(l.loanDeduction) !== 0 || n(l.adjustment) !== 0;
+                const editable = draft && !run.submittedAt && can(subject, "payroll.payroll", "edit");
                 return (
                   <tr key={l.id} className="align-top">
-                    <td className="px-3 py-3">
+                    <td className="min-w-[13rem] px-3 py-3">
                       <div className="flex items-center gap-3">
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
                           <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                          <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></p>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>}<span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.basic))}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.allowances))}</td>
-                    {hasHourly && <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.payStructure === "HOURLY" ? l.timesheetHours : "—"}</td>}
+                    <td className={`${D} tabular-nums text-secondary`}>{aed(n(l.basic))}</td>
+                    <td className={`${D} tabular-nums text-secondary`}>{aed(n(l.allowances))}</td>
+                    {hasHourly && <td className={`${D} tabular-nums text-secondary`}>{l.payStructure === "HOURLY" ? l.timesheetHours : "—"}</td>}
                     {hasBasic && (l.payStructure === "HOURLY" ? (
-                      <td colSpan={4} className="px-3 py-3 text-right text-xs text-subtle">paid from timesheet hours</td>
+                      <td colSpan={4} className={`${D} text-xs text-subtle`}>paid from timesheet hours</td>
                     ) : (
                       <>
-                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.absentDays}</td>
-                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{l.otHours}</td>
-                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(n(l.overtimePay))}</td>
-                        <td className="px-3 py-3 text-right tabular-nums text-secondary">{n(l.deductions) > 0 ? `−${aed(n(l.deductions))}` : "—"}</td>
+                        <td className={`${D} tabular-nums text-secondary`}>{l.absentDays}</td>
+                        <td className={`${D} tabular-nums text-secondary`}>{l.otHours}</td>
+                        <td className={`${D} tabular-nums text-secondary`}>{aed(n(l.overtimePay))}</td>
+                        <td className={`${D} tabular-nums text-secondary`}>{n(l.deductions) > 0 ? `−${aed(n(l.deductions))}` : "—"}</td>
                       </>
                     ))}
-                    <td className="px-3 py-3 text-right tabular-nums text-secondary">
+                    <td className={`${D} tabular-nums text-secondary`}>
                       {n(l.otherEarnings) > 0 && <span className="block text-[var(--success)]">+{aed(n(l.otherEarnings))}</span>}
                       {n(l.otherDeductions) > 0 && <span className="block">−{aed(n(l.otherDeductions))}</span>}
                       {n(l.gasCharge) > 0 && <span className="block" title="Gas charge">−{aed(n(l.gasCharge))} gas</span>}
                       {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && n(l.gasCharge) === 0 && "—"}
                     </td>
+                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(slip.gross)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-secondary">{slip.totalDeductions > 0 ? `−${aed(slip.totalDeductions)}` : "—"}</td>
                     <td className="px-3 py-3">
-                      <LineEditor
-                        lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
-                        adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!draft || !!run.submittedAt || !can(subject, "payroll.payroll", "edit")}
-                      />
+                      <details>
+                        <summary className="cursor-pointer text-xs font-medium text-[var(--brand-primary)] hover:underline">{typed ? "Edit" : editable ? "Add" : "View"}</summary>
+                        <div className="mt-2">
+                          <LineEditor
+                            lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
+                            adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!editable}
+                          />
+                        </div>
+                      </details>
                     </td>
-                    <td className="px-3 py-3 text-right font-medium tabular-nums text-primary">{aed(n(l.net))}</td>
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-primary">{aed(n(l.net))}</td>
                     <td className="px-3 py-3">
-                      {isCashMode(l.paymentMode) ? <Badge color="slate">Cash</Badge> : gaps.length === 0 ? <Badge color="green">Ready</Badge> : <Badge color="amber">Incomplete</Badge>}
+                      {isCashMode(l.paymentMode) ? <Badge color="slate">Cash</Badge> : gaps.length === 0 ? <Badge color="green">Ready</Badge> : <Badge color="amber">Needs fixing</Badge>}
                     </td>
                     {!draft && (
                       <td className="px-3 py-3">
@@ -261,6 +284,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             </tbody>
           </table>
         </div>
+        </DetailView>
       )}
       {costByProject.length > 0 && total > 0 && (
         <section className="card p-5">
@@ -296,9 +320,12 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           </ol>
         </section>
       )}
-      <p className="text-xs text-muted">
+      <details className="text-xs text-muted">
+        <summary className="cursor-pointer font-medium text-secondary">How is this calculated?</summary>
+        <p className="mt-2">
         Rules: only employees of the selected company are paid. <strong>Basic</strong> companies pay the monthly figure, deducting (base + allowances) ÷ 30 per day marked Absent in attendance, and paying overtime at (base ÷ 240) × the employee&apos;s multiplier. <strong>Hourly</strong> companies pay the hours on that month&apos;s timesheet × the employee&apos;s hourly rate; the timesheet carries one figure per day, so every hour is paid at the hourly rate. Deduction and advance are typed here with a note each and both reduce net pay; the advance starts from any active loan or advance instalment and can be overwritten. Recurring items apply automatically, and nothing typed can take net pay below zero.
-      </p>
+        </p>
+      </details>
     </div>
   );
 }

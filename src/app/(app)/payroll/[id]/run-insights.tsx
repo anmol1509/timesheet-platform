@@ -76,3 +76,27 @@ export function RunVariance({ prevMonth, total, prevTotal, count, prevCount, row
     </section>
   );
 }
+
+/**
+ * The one sentence a person needs: what state the run is in and what to do now.
+ * The detail (who, which bank field) lives in the checks below it.
+ */
+export function NextStep({ status, submitted, blocking, warnings, people, canApprove }: { status: string; submitted: boolean; blocking: number; warnings: number; people: number; canApprove: boolean }) {
+  let tone: "go" | "stop" | "wait" | "done" = "go";
+  let title = "";
+  let body = "";
+  if (status === "PAID") { tone = "done"; title = "This payroll is paid"; body = "Payslips are ready to share. Nothing else to do for this month."; }
+  else if (status === "APPROVED") { tone = "go"; title = "Approved: pay your people"; body = canApprove ? "Download the bank (WPS) file, upload it to your bank, then press “Mark as paid”." : "Waiting for an approver to download the bank file and mark it as paid."; }
+  else if (submitted) { tone = "wait"; title = "Waiting for approval"; body = "It has been sent to the approvals inbox. You will see it here once someone signs it off."; }
+  else if (people === 0) { tone = "stop"; title = "No one is in this run yet"; body = "Add pay details to your employees (their Payroll & WPS tab), then press Recalculate."; }
+  else if (blocking > 0) { tone = "stop"; title = `Fix ${blocking} ${blocking === 1 ? "person" : "people"} before you can submit`; body = "Their bank details are incomplete. Open each name under “Needs fixing” below, then press Recalculate."; }
+  else { tone = "go"; title = "Review the numbers, then submit"; body = warnings > 0 ? `Everything needed is there. ${warnings} thing${warnings === 1 ? "" : "s"} worth a quick look under “Worth checking”.` : "Everything needed is there. Look over the totals, then press Submit for approval."; }
+  const ring = tone === "stop" ? "border-[var(--warning-border)] bg-[var(--warning-soft)]" : tone === "done" ? "border-[var(--success-border)] bg-[var(--success-soft)]" : "border-[var(--info-border)] bg-[var(--info-soft)]";
+  return (
+    <div className={cn("card border p-4", ring)} role="status">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">What to do now</p>
+      <p className="mt-0.5 text-base font-semibold text-primary">{title}</p>
+      <p className="mt-0.5 text-sm text-secondary">{body}</p>
+    </div>
+  );
+}

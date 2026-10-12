@@ -48,7 +48,7 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     {
       href: "/payroll",
-      label: "Runs",
+      label: "Pay runs",
       match: (p) =>
         under("/payroll")(p) &&
         !under("/payroll/loans")(p) &&
@@ -58,8 +58,8 @@ export const SECTION_TABS: SectionTab[][] = [
     },
     { href: "/payroll/loans", label: "Loans & advances", match: under("/payroll/loans") },
     { href: "/payroll/recurring", label: "Recurring items", match: under("/payroll/recurring") },
-    { href: "/payroll/end-of-service", label: "End of service", match: under("/payroll/end-of-service") },
-    { href: "/payroll/settlements", label: "Final settlements", match: under("/payroll/settlements") },
+    { href: "/payroll/end-of-service", label: "Gratuity", match: under("/payroll/end-of-service") },
+    { href: "/payroll/settlements", label: "Leavers", match: under("/payroll/settlements") },
   ],
   // Timesheet import pipeline
   [

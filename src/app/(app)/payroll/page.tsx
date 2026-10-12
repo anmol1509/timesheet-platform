@@ -50,19 +50,39 @@ export default async function PayrollPage() {
     return { c, total: emps.length, ready, establishment: c.wpsEstablishmentId ?? branch?.wpsEstablishmentId ?? null, bank };
   });
 
+  const monthLabel = new Date(`${defaultMonth}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+  const notStarted = companies.filter((c) => !runs.some((r) => r.month === defaultMonth && r.companyId === c.id));
+  const unpaid = runs.filter((r) => r.status !== "PAID");
+  const setupGaps = setup.some((x) => x.ready < x.total || !x.establishment || !x.bank);
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Payroll"
         icon={Banknote}
-        description={<>Monthly payroll runs: one run per own company. Monthly-salary staff are paid from attendance, hourly staff from approved timesheet hours. Review, submit for approval, then download the WPS file for your bank.</>}
+        description="Pay your people each month: start the run, check the numbers, get it approved, then download the bank file."
       />
 
+      {branchId && (unpaid.length > 0 || notStarted.length > 0) && (
+        <section className="card border border-[var(--info-border)] bg-[var(--info-soft)] p-4" aria-label="What to do now">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">What to do now</p>
+          {unpaid.slice(0, 3).map((r) => (
+            <p key={r.id} className="mt-1 text-sm text-secondary">
+              <span className="font-medium text-primary">{r.company?.name ?? "Payroll"} · {r.month}</span> is {r.status === "DRAFT" ? (r.submittedAt ? "waiting for approval" : "still a draft") : "approved and waiting to be paid"}.{" "}
+              <Link href={`/payroll/${r.id}`} className="font-medium text-[var(--brand-primary)] hover:underline">Open →</Link>
+            </p>
+          ))}
+          {notStarted.length > 0 && can(subject, "payroll.payroll", "create") && (
+            <p className="mt-1 text-sm text-secondary"><span className="font-medium text-primary">{monthLabel} payroll hasn&apos;t been started</span> for {notStarted.slice(0, 3).map((c) => c.name).join(", ")}{notStarted.length > 3 ? ` and ${notStarted.length - 3} more` : ""}. Use “Start a payroll run” below.</p>
+          )}
+        </section>
+      )}
+
       {branchId && setup.length > 0 && (
-        <section className="card overflow-x-auto">
-          <div className="border-b border-default px-5 py-3"><h2 className="text-sm font-semibold text-primary">Companies</h2></div>
+        <details className="card overflow-x-auto">
+          <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-primary">Company setup {setupGaps ? <span className="ml-2 text-xs font-normal text-[var(--warning)]">needs attention</span> : <span className="ml-2 text-xs font-normal text-[var(--success)]">all set</span>}</summary>
           <table className="w-full text-sm">
-            <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted"><tr><th className="px-5 py-2">Company</th><th className="px-3 py-2 text-right">Ready to pay</th><th className="px-3 py-2">MOHRE ID</th><th className="px-3 py-2">Payer bank</th></tr></thead>
+            <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted"><tr><th className="px-5 py-2">Company</th><th className="px-3 py-2 text-right">Pay details complete</th><th className="px-3 py-2">Labour ministry ID (MOHRE)</th><th className="px-3 py-2">Bank that pays salaries</th></tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
               {setup.map(({ c, total, ready, establishment, bank }) => (
                 <tr key={c.id}>
@@ -74,7 +94,7 @@ export default async function PayrollPage() {
               ))}
             </tbody>
           </table>
-        </section>
+        </details>
       )}
 
       {branchId ? (can(subject, "payroll.payroll", "create") && <CreateRunForm defaultMonth={defaultMonth} companies={companies.map((c) => ({ id: c.id, name: c.name }))} />) : (
@@ -82,13 +102,13 @@ export default async function PayrollPage() {
       )}
 
       {branchId && can(subject, "payroll.payroll", "approve") && (
-        <ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} />
+        <details className="card"><summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-primary">Approval settings</summary><div className="border-t border-default"><ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} /></div></details>
       )}
 
       {runs.length >= 2 && <CostTrend runs={runs.map((r) => ({ month: r.month, total: r.lines.reduce((s, l) => s + Number(l.net), 0), headcount: r.lines.length }))} />}
 
       {runs.length === 0 ? (
-        <div className="card p-10 text-center text-sm text-muted">No payroll runs yet.</div>
+        <div className="card p-10 text-center text-sm text-muted">No payroll runs yet. Choose a company and month above and press “Start payroll run”.</div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
