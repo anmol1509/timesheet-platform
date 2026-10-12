@@ -17,6 +17,8 @@ export type PayDaysView = {
   /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
   /** The typed amounts can be changed here (draft run, payroll edit permission). */
   canAdjust: boolean;
+  /** Days where attendance and the client timesheet say different things, for the list at the top. */
+  mismatches: { date: string; weekday: string; attendance: string; sheet: string }[];
   parts: { label: string; amount: number; note?: string | null }[];
   /** Part of "other items" that no stored component explains: the line is out of date and needs a recalculation. */
   unexplained: number;
@@ -84,6 +86,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     view: {
       lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry && !hourly,
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
+      mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),
       other, lineNet: num(line.net), parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
       adjust: { lineId: line.id, deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "" },
     },

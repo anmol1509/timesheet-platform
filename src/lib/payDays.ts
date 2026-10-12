@@ -57,7 +57,7 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
       const salary = round2(hours * plan.hourlyRate);
       const marker = (d.ts ?? "").trim().toUpperCase();
       const kind: DayKind = hours > 0 ? "work" : marker === "A" ? "absent" : marker === "OFF" ? "off" : marker === "H" ? "holiday" : "unrecorded";
-      rows.push({ ...base, kind, label: hours > 0 ? "Worked" : kind === "absent" ? "Absent" : kind === "off" ? "Off" : kind === "holiday" ? "Holiday" : "No hours", hours, ot: 0, rest: 0, salary, otPay: 0, deduction: 0, net: salary, sync: "no-timesheet" });
+      rows.push({ ...base, kind, label: hours > 0 ? "Worked" : kind === "absent" ? "Absent" : kind === "off" ? "Off" : kind === "holiday" ? "Holiday" : "No hours", hours, ot: 0, rest: 0, salary, otPay: 0, deduction: 0, net: salary, sync: d.status ? sync : "no-timesheet" });
       continue;
     }
 

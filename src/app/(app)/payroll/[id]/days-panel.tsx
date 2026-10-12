@@ -100,6 +100,20 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               </span>
               {view.hasTimesheet && view.timesheetStatus && <Badge color="slate">Timesheet: {view.timesheetStatus.toLowerCase().replace("_", " ")}</Badge>}
             </div>
+            {view.mismatches.length > 0 && (
+              <div className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm">
+                <p className="font-medium text-[var(--warning)]">Attendance and the client timesheet disagree on {view.mismatches.length} day{view.mismatches.length === 1 ? "" : "s"}:</p>
+                <ul className="mt-1.5 flex flex-wrap gap-2">
+                  {view.mismatches.map((m) => (
+                    <li key={m.date}>
+                      <button type="button" className="rounded border border-[var(--warning-border)] bg-surface px-2 py-1 text-xs text-primary hover:bg-surface-hover" onClick={() => document.getElementById(`day-${m.date}`)?.scrollIntoView({ block: "center", behavior: "smooth" })} title="Go to this day">
+                        <span className="font-medium">{m.date.slice(8)} {m.weekday}</span> · attendance: {m.attendance} · sheet: {m.sheet}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {view.why && <p className="text-xs text-muted">{view.why}</p>}
 
             <div className="max-h-[50vh] overflow-auto rounded-md border border-default">
@@ -115,7 +129,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                   {view.rows.map((r) => {
                     const off = r.kind === "off" || r.kind === "holiday" || r.kind === "outside";
                     return (
-                      <tr key={r.date} className={cn(r.kind === "absent" && "bg-[var(--error-soft)]/40", r.sync === "differs" && r.kind !== "outside" && "bg-[var(--warning-soft)]/50", off && "text-muted")}>
+                      <tr key={r.date} id={`day-${r.date}`} className={cn(r.kind === "absent" && "bg-[var(--error-soft)]/40", r.sync === "differs" && r.kind !== "outside" && "bg-[var(--warning-soft)]/50", off && "text-muted")}>
                         <td className="whitespace-nowrap px-3 py-1.5 font-medium">{r.date.slice(8)} {r.weekday}</td>
                         <td className="px-3 py-1.5">
                           {editing === r.date ? (
