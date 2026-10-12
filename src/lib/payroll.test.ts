@@ -134,3 +134,11 @@ test("month bounds reject nonsense and count days", () => {
   assert.equal(monthBounds("2028-02")!.days, 29);
   assert.equal(monthBounds("2026-02")!.days, 28);
 });
+
+import { needsSeparateApprover } from "./payrollControls";
+test("approver separation: a limit decides when set; otherwise whenever someone else can approve", () => {
+  assert.equal(needsSeparateApprover(10000, 5000, true), false);
+  assert.equal(needsSeparateApprover(10000, 15000, false), true);
+  assert.equal(needsSeparateApprover(null, 500, true), true);
+  assert.equal(needsSeparateApprover(null, 500, false), false);
+});

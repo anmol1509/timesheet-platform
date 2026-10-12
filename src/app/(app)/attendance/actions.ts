@@ -1,5 +1,6 @@
 "use server";
 
+import { payrollLockedEmployees } from "@/lib/payrollControls";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
@@ -118,6 +119,7 @@ export async function markAttendanceAction(
   const markedEmployeeIds: string[] = [];
   const skipped: { name: string; reason: string }[] = [];
 
+  const frozen = await payrollLockedEmployees(rows.map((r) => r.employeeId), date.slice(0, 7));
   for (const row of rows) {
     const status = VALID_STATUSES.has(row.status) ? row.status : "PRESENT";
     const employee = await prisma.employee.findUnique({ where: { id: row.employeeId } });
@@ -139,6 +141,10 @@ export async function markAttendanceAction(
       continue;
     }
 
+    if (frozen.has(employee.id)) {
+      skipped.push({ name: employee.name, reason: `payroll for ${date.slice(0, 7)} is already approved. Add a correction to next month's payroll instead` });
+      continue;
+    }
     const existing = await prisma.attendance.findUnique({
       where: { employeeId_date: { employeeId: employee.id, date: dateValue } },
     });
@@ -313,6 +319,8 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
   if (!correction || correction.status !== "PENDING") return;
   if (isOutsideBranch(correction.attendance.branchId, branchId, isSuperAdmin)) return;
 
+  if (decision === "APPROVED" && (await payrollLockedEmployees([correction.attendance.employeeId], correction.attendance.date.toISOString().slice(0, 7))).size > 0) return; // pay for that month is already approved
+
   await prisma.attendanceCorrectionRequest.update({
     where: { id: correctionId },
     data: { status: decision, reviewedById: user.id, reviewedAt: new Date() },
@@ -369,6 +377,10 @@ export async function deleteAttendanceAction(
   }
   if (existing.locked && !isAdminRole(user.role)) {
     return { deleted: 0, error: "That day is approved and locked — ask an admin." };
+  }
+
+  if ((await payrollLockedEmployees([existing.employeeId], existing.date.toISOString().slice(0, 7))).size > 0) {
+    return { deleted: 0, error: `Payroll for ${existing.date.toISOString().slice(0, 7)} is already approved, so its attendance is frozen. Add a correction to next month's payroll instead.` };
   }
 
   // Correction requests against this mark cascade from the schema.

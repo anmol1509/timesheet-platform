@@ -1,5 +1,6 @@
 "use server";
 
+import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -183,8 +184,10 @@ export async function approveRunAction(formData: FormData): Promise<State> {
   const rule = await prisma.branch.findUnique({ where: { id: run.branchId }, select: { payrollApprovalThreshold: true } });
   const threshold = rule?.payrollApprovalThreshold ? Number(rule.payrollApprovalThreshold) : null;
   const runTotal = round2(run.lines.reduce((s, l) => s + Number(l.net), 0));
-  if (threshold !== null && runTotal > threshold && run.createdById === user.id) {
-    return { error: `This run is AED ${runTotal.toLocaleString("en-AE", { minimumFractionDigits: 2 })}, over the AED ${threshold.toLocaleString("en-AE")} limit, so someone other than its creator has to approve it.` };
+  if (run.createdById === user.id && needsSeparateApprover(threshold, runTotal, await anotherApproverExists(run.branchId, user.id))) {
+    return { error: threshold !== null
+      ? `This run is AED ${runTotal.toLocaleString("en-AE", { minimumFractionDigits: 2 })}, over the AED ${threshold.toLocaleString("en-AE")} limit, so someone other than its creator has to approve it.`
+      : "Someone other than the person who prepared this run has to approve it. Ask another approver to sign it off." };
   }
 
   const blocked = run.lines
@@ -311,5 +314,30 @@ export async function setApprovalThresholdAction(formData: FormData): Promise<St
   await prisma.branch.update({ where: { id: branchId }, data: { payrollApprovalThreshold: value } });
   await logAudit({ entityType: "BRANCH", entityId: branchId, action: "UPDATE", before: { payrollApprovalThreshold: before?.payrollApprovalThreshold ? Number(before.payrollApprovalThreshold) : null }, after: { payrollApprovalThreshold: value }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/payroll");
+  return { error: null, ok: true };
+}
+
+/** After a run is approved or paid: put a one-off earning or deduction into next month's run, instead of reopening this one. */
+export async function addCorrectionAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const line = await prisma.payrollLine.findUnique({ where: { id: String(formData.get("lineId") || "") }, include: { run: true, employee: { select: { name: true } } } });
+  if (!line || isOutsideBranch(line.run.branchId, branchId, isSuperAdmin)) return { error: "Payslip line not found." };
+  if (line.run.status === "DRAFT") return { error: "This run is still a draft: change the amounts in it directly." };
+  const kind = String(formData.get("kind")) === "DEDUCTION" ? "DEDUCTION" : "EARNING";
+  const amount = round2(Number(formData.get("amount")));
+  const label = String(formData.get("label") || "").trim().slice(0, 120);
+  if (!(amount > 0) || amount > 1_000_000) return { error: "Enter the amount to add or take off." };
+  if (!label) return { error: "Say what the correction is for." };
+  const [y, m] = line.run.month.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m, 1));
+  const month = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+  const adj = await prisma.payrollAdjustment.create({
+    data: { kind, category: "CORRECTION", label: `${label} (correction for ${line.run.month})`, amount, startMonth: month, endMonth: month, employeeId: line.employeeId, branchId: line.run.branchId, createdById: user.id },
+  });
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: line.runId, action: "UPDATE", after: { correction: adj.id, employee: line.employee.name, kind, amount, appliesTo: month }, userId: user.id, userName: user.name, branchId: line.run.branchId });
+  revalidatePath(`/payroll/${line.runId}`);
   return { error: null, ok: true };
 }

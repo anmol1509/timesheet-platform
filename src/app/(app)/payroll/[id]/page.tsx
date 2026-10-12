@@ -13,6 +13,8 @@ import { LineEditor, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
 import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
+import { CorrectionCell } from "./correction-cell";
+import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { buildPayslip } from "@/lib/payslip";
 
 function previousMonth(month: string) {
@@ -93,7 +95,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const rejected = run.lines.filter((l) => l.paymentStatus === "REJECTED").length;
   const resubmit = run.lines.filter((l) => l.paymentStatus === "RESUBMIT").length;
   const threshold = run.branch.payrollApprovalThreshold ? n(run.branch.payrollApprovalThreshold) : null;
-  const needsSecondApprover = draft && threshold !== null && total > threshold;
+  const needsSecondApprover = draft && needsSeparateApprover(threshold, total, await anotherApproverExists(run.branchId, user.id));
+  const nextMonth = (() => { const [y, m] = run.month.split("-").map(Number); const d = new Date(Date.UTC(y, m, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; })();
 
   return (
     <div className="space-y-5">
@@ -162,7 +165,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card flex gap-3 border-[var(--info-border)] bg-[var(--info-soft)] p-4 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--info)]" aria-hidden />
           <p className="text-secondary">
-            This run is over the <span className="font-medium text-primary">AED {aed(threshold!)}</span> limit, so it needs approving by someone other than {run.createdBy.name}, who created it.
+            {threshold !== null ? <>This run is over the <span className="font-medium text-primary">AED {aed(threshold)}</span> limit, so it</> : <>This run</>} needs approving by someone other than {run.createdBy.name}, who prepared it.
           </p>
         </div>
       )}
@@ -276,6 +279,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     {!draft && (
                       <td className="px-3 py-3">
                         <PaymentCell lineId={l.id} status={l.paymentStatus} note={l.paymentNote ?? ""} editable={can(subject, "payroll.payroll", "approve")} />
+                        {can(subject, "payroll.payroll", "edit") && <div className="mt-2"><CorrectionCell lineId={l.id} nextMonth={nextMonth} /></div>}
                       </td>
                     )}
                   </tr>
