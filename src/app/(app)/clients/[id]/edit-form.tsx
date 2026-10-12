@@ -1,9 +1,10 @@
 "use client";
 
+import { SaveWarnings } from "@/components/SaveWarnings";
 import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { CitySelect } from "@/components/ui/CitySelect";
 import { PhoneField } from "@/components/ui/PhoneField";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateClientAction } from "../actions";
 import { ClientCodeField } from "../client-code-field";
@@ -57,6 +58,8 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
   const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState(client.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
+  const [warnings, setWarnings] = useState<string[] | null>(null);
+  const lastForm = useRef<FormData | null>(null);
   const [billingType, setBillingType] = useState(
     client.hourlyRate != null ? "HOURLY" : client.basicRate != null ? "BASIC" : ""
   );
@@ -65,12 +68,15 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
     <form
       onInput={guard.onInput}
       action={(formData) => {
+        lastForm.current = formData;
         setSaved(false);
+        setWarnings(null);
         guard.markSaved();
         startTransition(async () => {
           const res = await updateClientAction(formData);
           setError(res.error);
-          setSaved(!res.error);
+          setWarnings(res.warnings?.length ? res.warnings : null);
+          setSaved(!res.error && !res.warnings?.length);
         });
       }}
       className="card space-y-6 p-6"
@@ -261,6 +267,25 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
         </Field>
       </Section>
 
+      {warnings && !pending && (
+        <SaveWarnings
+          warnings={warnings}
+          onDismiss={() => setWarnings(null)}
+          onSaveAnyway={() => {
+            const fd = lastForm.current;
+            if (!fd) return;
+            const again = new FormData();
+            for (const [k, v] of fd.entries()) again.append(k, v);
+            again.set("confirmWarnings", "1");
+            setWarnings(null);
+            startTransition(async () => {
+              const res = await updateClientAction(again);
+              setError(res.error);
+              setSaved(!res.error);
+            });
+          }}
+        />
+      )}
       {error && (
         <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}

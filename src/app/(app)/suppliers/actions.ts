@@ -11,6 +11,8 @@ import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
 import { matchTrade } from "@/lib/trades";
+import { checkPartner } from "@/lib/dataChecks";
+import { partnerDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
@@ -137,7 +139,7 @@ export async function createSubsidiaryAction(
 
 // Company & Compliance tab — every field this action writes lives in that
 // tab's form, so a save here never touches Contact/Payment fields.
-export async function updateSupplierCompanyAction(formData: FormData): Promise<{ error: string | null }> {
+export async function updateSupplierCompanyAction(formData: FormData): Promise<{ error: string | null; warnings?: string[] }> {
   await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -170,6 +172,17 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
   if (name !== existing.name) {
     const taken = await prisma.supplier.findFirst({ where: { branchId: existing.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
     if (taken) return { error: `Another supplier is already called "${name}".` };
+  }
+
+  // Likely mistakes (a TRN that isn't a TRN, the same TRN or licence on another supplier, an expired licence) are shown for a
+  // second look; the person can save anyway.
+  if (formData.get("confirmWarnings") !== "1") {
+    const next = { trn: stringOrNull(formData.get("trn")), tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")), tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")) };
+    const warnings = [
+      ...checkPartner(next, { trn: existing.trn, tradeLicenseNumber: existing.tradeLicenseNumber, tradeLicenseExpiry: existing.tradeLicenseExpiry }),
+      ...(await partnerDuplicates("supplier", { trn: next.trn !== existing.trn ? next.trn : null, tradeLicenseNumber: next.tradeLicenseNumber !== existing.tradeLicenseNumber ? next.tradeLicenseNumber : null, excludeId: id, branchId: existing.branchId })),
+    ];
+    if (warnings.length > 0) return { error: null, warnings };
   }
 
   const data = {

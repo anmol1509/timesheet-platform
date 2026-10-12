@@ -21,6 +21,8 @@ import {
   safeFilename,
 } from "@/lib/uploads";
 import { assertContactsValid } from "@/lib/validators";
+import { checkEmployee } from "@/lib/dataChecks";
+import { employeeDuplicates } from "@/lib/duplicateCheck";
 
 // Every nested mutation (documents, skills, photo) takes an employeeId
 // rather than looking the employee up itself, so this is the one place
@@ -47,7 +49,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
   return Number.isFinite(n) ? n : null;
 }
 
-export async function updateEmployeeAction(formData: FormData): Promise<{ error?: string } | void> {
+export async function updateEmployeeAction(formData: FormData): Promise<{ error?: string; warnings?: string[] } | void> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
@@ -188,10 +190,9 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       active,
       inactiveReason,
       lastDemobilizedDate: dateOrNull(formData.get("lastDemobilizedDate")),
-      // These fields are no longer on the form (status fields the expiry dates already cover, permit and visa extras nothing reads,
-      // passport custody dates). Left out here so saving never blanks what is already stored.
-      // Religion, state, accommodation type, previous ID and name in ID card are no longer on the form. Left out here so
-      // saving never blanks what is already stored.
+      // Some fields are no longer on the form (status fields the expiry dates already cover, permit and visa extras nothing
+      // reads, passport custody dates, religion, state, accommodation type, previous ID, name in ID card). They are left out
+      // here so saving never blanks what is already stored.
 
       medicalStatus: stringOrNull(formData.get("medicalStatus")),
 
@@ -255,6 +256,25 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       select: { projectId: true },
     });
     if (!site || site.projectId !== data.projectId) data.siteId = null;
+  }
+
+  // Likely mistakes (a wrong ID number, a duplicate, an impossible date or amount) are shown for a second look, never blocked:
+  // the person can save anyway. Only fields that changed in this save are looked at.
+  if (formData.get("confirmWarnings") !== "1") {
+    const num = (v: unknown) => (v == null ? null : Number(String(v)));
+    const now = {
+      emiratesId: data.emiratesId, passportNumber: data.passportNumber, mobileNumber: data.mobileNumber, dateOfBirth: data.dateOfBirth, joinDate: data.joinDate,
+      passportExpiry: data.passportExpiry, emiratesIdExpiry: data.emiratesIdExpiry, laborCardExpiry: data.laborCardExpiry, visaExpiry: data.visaExpiry, medicalExpiry: data.medicalExpiry,
+      basicSalary: num((data as Record<string, unknown>).basicSalary ?? before?.basicSalary), flatMonthlyRate: num((data as Record<string, unknown>).flatMonthlyRate ?? before?.flatMonthlyRate), hourlyRate: num((data as Record<string, unknown>).hourlyRate ?? before?.hourlyRate),
+    };
+    const was = before ? { ...before, basicSalary: num(before.basicSalary), flatMonthlyRate: num(before.flatMonthlyRate), hourlyRate: num(before.hourlyRate) } : null;
+    const touched = (k: "emiratesId" | "passportNumber" | "mobileNumber") => !was || (was[k] ?? null) !== (now[k] ?? null);
+    const dups = await employeeDuplicates({
+      emiratesId: touched("emiratesId") ? now.emiratesId : null, passportNumber: touched("passportNumber") ? now.passportNumber : null, mobileNumber: touched("mobileNumber") ? now.mobileNumber : null,
+      iban: (was?.wpsIban ?? null) !== (data.wpsIban ?? null) ? data.wpsIban : null, excludeId: id,
+    });
+    const warnings = [...checkEmployee(now, was), ...dups];
+    if (warnings.length > 0) return { warnings };
   }
 
   await prisma.employee.update({ where: { id }, data });

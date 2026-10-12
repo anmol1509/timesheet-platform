@@ -162,6 +162,21 @@ export const HELP_GUIDES: HelpGuide[] = [
     pages: ["/employees", "/payroll"],
   },
   {
+    id: "save-warnings",
+    title: "Please check before saving message",
+    keywords: ["please check before saving", "save anyway", "already belongs to", "check digit", "duplicate emirates id", "duplicate passport", "duplicate mobile", "duplicate iban", "warning when saving employee", "emirates id check"],
+    steps: [
+      "Read each line in the yellow box. It names the field and, for a duplicate, the worker or company already holding that number.",
+      "If it is a typo, press Go back and fix, correct the value and save again.",
+      "If it is correct (for example a document that really is unusual, or a family sharing one mobile), press Save anyway.",
+    ],
+    notes: [
+      "These are warnings, not errors, so you are never blocked. They appear for the Emirates ID check digit, passport and UAE mobile format, impossible dates (age under 18, an expired document, a join date far in the future), unusually high pay, and for the same Emirates ID, passport, mobile or IBAN on another worker, or the same TRN or trade licence on another supplier or client.",
+      "Only the fields you changed are checked, so an old record isn't flagged every time it is saved.",
+    ],
+    pages: ["/employees", "/suppliers", "/clients"],
+  },
+  {
     id: "payroll-adjustments",
     title: "Add a deduction, bonus or recurring item to payroll",
     keywords: ["fine", "bonus", "deduction", "adjustment", "add deduction", "recurring deduction", "standing allowance", "add bonus"],

@@ -9,6 +9,8 @@ import { requireUserWithBranch, requirePermission, requireView, requireWrite } f
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
+import { checkPartner } from "@/lib/dataChecks";
+import { partnerDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid } from "@/lib/validators";
 
 // Every nested mutation (contacts, trade rates, documents) takes a clientId
@@ -101,7 +103,7 @@ export async function createClientAction(
   redirect(`/clients/${client.id}`);
 }
 
-export async function updateClientAction(formData: FormData): Promise<{ error: string | null }> {
+export async function updateClientAction(formData: FormData): Promise<{ error: string | null; warnings?: string[] }> {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -129,6 +131,17 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
   if (name !== before.name) {
     const taken = await prisma.client.findFirst({ where: { branchId: before.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
     if (taken) return { error: `Another client is already called "${name}".` };
+  }
+
+  // Likely mistakes (a TRN that isn't a TRN, the same TRN or licence on another client, an expired licence) are shown for a
+  // second look; the person can save anyway.
+  if (formData.get("confirmWarnings") !== "1") {
+    const next = { trn: stringOrNull(formData.get("trn")), tradeLicenseNumber: stringOrNull(formData.get("tradeLicenseNumber")), tradeLicenseExpiry: dateOrNull(formData.get("tradeLicenseExpiry")) };
+    const warnings = [
+      ...checkPartner(next, { trn: before.trn, tradeLicenseNumber: before.tradeLicenseNumber, tradeLicenseExpiry: before.tradeLicenseExpiry }),
+      ...(await partnerDuplicates("client", { trn: next.trn !== before.trn ? next.trn : null, tradeLicenseNumber: next.tradeLicenseNumber !== before.tradeLicenseNumber ? next.tradeLicenseNumber : null, excludeId: id, branchId: before.branchId })),
+    ];
+    if (warnings.length > 0) return { error: null, warnings };
   }
 
   const data = {

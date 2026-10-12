@@ -1,10 +1,12 @@
 "use client";
 
+import { SaveWarnings } from "@/components/SaveWarnings";
 import {
   startTransition,
   useActionState,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { DraftBar } from "@/components/DraftBar";
@@ -206,7 +208,11 @@ export function EmployeeWizard({
 }) {
   const [state, formAction, pending] = useActionState(createEmployeeAction, {
     error: null as string | null,
+    warnings: undefined as string[] | undefined,
   });
+  // The last request is kept so "Save anyway" can send exactly the same thing again after the server flagged likely mistakes.
+  const lastBody = useRef<FormData | null>(null);
+  const [dismissedWarnings, setDismissedWarnings] = useState<unknown>(null);
 
   const [step, setStep] = useState(0);
   const [fields, setFields] = useState<Fields>(() => ({
@@ -787,6 +793,8 @@ export function EmployeeWizard({
     }
     setStepError(null);
     if (onRegistered) body.set("inline", "1");
+    lastBody.current = body;
+    setDismissedWarnings(null);
     startTransition(() => formAction(body));
   }
 
@@ -858,6 +866,22 @@ export function EmployeeWizard({
           <p>{sizeNotice}</p>
           <button type="button" onClick={() => setSizeNotice(null)} className="shrink-0 text-xs font-medium underline">Dismiss</button>
         </div>
+      )}
+      {state.warnings && state.warnings.length > 0 && dismissedWarnings !== state && (
+        <SaveWarnings
+          warnings={state.warnings}
+          busy={pending}
+          onDismiss={() => setDismissedWarnings(state)}
+          onSaveAnyway={() => {
+            const prev = lastBody.current;
+            if (!prev) return;
+            const again = new FormData();
+            for (const [k, v] of prev.entries()) again.append(k, v);
+            again.set("confirmWarnings", "1");
+            lastBody.current = again;
+            startTransition(() => formAction(again));
+          }}
+        />
       )}
       {(state.error || stepError) && (
         <p className="rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
