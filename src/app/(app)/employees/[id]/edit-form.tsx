@@ -16,6 +16,8 @@ import { UAE_BANKS } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { MaskedInput } from "@/components/ui/MaskedInput";
+import { Hint } from "@/components/Hint";
+import type { GlossaryKey } from "@/lib/payrollGlossary";
 
 type Doc = { id: string; type: string; filename: string; expiryDate: Date | null; uploadedAt: Date };
 
@@ -579,7 +581,7 @@ export function EditForm({
             <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
             <TextField label="Visa designation" name="visaDesignation" defaultValue={employee.visaDesignation} />
             <DateField label="First visa stamping date" name="visaStampingDate" defaultValue={employee.visaStampingDate} />
-            <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} />
+            <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} hint="MOL_PERSON_CODE" />
             <DateField label="Visa expiry date" name="visaExpiry" defaultValue={employee.visaExpiry} />
             <div />
             <InlineDocumentUpload
@@ -665,7 +667,7 @@ export function EditForm({
       <div className={tab === "trade" ? "space-y-8" : "hidden"}>
         {pay && (
           <section>
-            <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
+            <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure<Hint term="PAY_STRUCTURE" /></h2>
             <p className="mb-3 text-xs text-muted">
               Choose how this worker is paid. Overtime is worked out from attendance hours beyond the standard day (rate = basic ÷ 30 ÷ standard hours).
               {!pay.canEdit && " You can view these figures but not change them."}
@@ -761,7 +763,7 @@ export function EditForm({
             <Field label="WPS bank / exchange house name">
               <ComboSelect name="wpsBankName" options={UAE_BANKS} defaultValue={employee.wpsBankName} />
             </Field>
-            <Field label="WPS IBAN">
+            <Field label="WPS IBAN" hint="IBAN">
               <MaskedInput kind="iban"
                 name="wpsIban"
                 defaultValue={employee.wpsIban || ""}
@@ -769,7 +771,7 @@ export function EditForm({
               />
             </Field>
             <TextField label="Payment mode" name="wpsPaymentMode" defaultValue={employee.wpsPaymentMode} />
-            <TextField label="Bank routing code" name="wpsRoutingCode" defaultValue={employee.wpsRoutingCode} />
+            <TextField label="Bank routing code" name="wpsRoutingCode" defaultValue={employee.wpsRoutingCode} hint="ROUTING_CODE" />
             <TextField label="Account holder name" name="wpsAccountHolderName" defaultValue={employee.wpsAccountHolderName} />
             <TextField label="Account number" name="wpsAccountNumber" defaultValue={employee.wpsAccountNumber} />
           </div>
@@ -861,13 +863,15 @@ function TextField({
   label,
   name,
   defaultValue,
+  hint,
 }: {
   label: string;
   name: string;
   defaultValue: string | null;
+  hint?: GlossaryKey;
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} hint={hint}>
       <input name={name} defaultValue={defaultValue || ""} className={INPUT_CLASS} />
     </Field>
   );
@@ -915,12 +919,13 @@ function DateField({
   );
 }
 
-function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+function Field({ label, children, required, hint }: { label: string; children: React.ReactNode; required?: boolean; hint?: GlossaryKey }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-muted">
         {label}
         {required && <span className="text-[var(--error)]"> *</span>}
+        {hint && <Hint term={hint} />}
       </span>
       {children}
     </label>

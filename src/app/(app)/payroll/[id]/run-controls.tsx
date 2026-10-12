@@ -59,7 +59,7 @@ export function RunControls({
           </>
         )}
         {status !== "DRAFT" && canExport && (
-          <a className="btn btn-secondary" href={`/api/payroll/${id}/sif`}>
+          <a className="btn btn-secondary" href={`/api/payroll/${id}/sif`} title="The salary file your bank needs (WPS / SIF). Upload it in your bank's online portal to pay everyone at once.">
             <Download className="h-4 w-4" aria-hidden /> Bank file (WPS)
           </a>
         )}

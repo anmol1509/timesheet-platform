@@ -358,3 +358,42 @@ export async function addCorrectionAction(formData: FormData): Promise<State> {
   revalidatePath(`/payroll/${line.runId}`);
   return { error: null, ok: true };
 }
+
+/**
+ * Completes a worker's bank details from the run itself: set them to be paid in cash, or give the three things WPS needs.
+ * Saves on the employee (so every later run has them) and recalculates this draft run.
+ */
+export async function fixBankDetailsAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
+  const { user, run } = await loadRun(String(formData.get("runId") || ""));
+  if (!run) return { error: "Run not found." };
+  if (run.status !== "DRAFT" || run.submittedAt) return { error: "Only a draft run that has not been submitted can be changed." };
+  const employeeId = String(formData.get("employeeId") || "");
+  if (!run.lines.some((l) => l.employeeId === employeeId)) return { error: "That person is not in this run." };
+
+  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true, name: true, branchId: true, wpsPaymentMode: true, wpsBankName: true, wpsRoutingCode: true, wpsIban: true, molPersonCode: true } });
+  if (!emp || emp.branchId !== run.branchId) return { error: "Employee not found." };
+
+  const mode = String(formData.get("mode") || "BANK");
+  let data: { wpsPaymentMode: string; wpsBankName?: string | null; wpsRoutingCode?: string | null; wpsIban?: string | null; molPersonCode?: string | null };
+  if (mode === "CASH") {
+    data = { wpsPaymentMode: "Cash" };
+  } else {
+    const personCode = String(formData.get("personCode") || "").replace(/\s+/g, "");
+    const routing = String(formData.get("routingCode") || "").replace(/\s+/g, "");
+    const iban = String(formData.get("wpsIban") || "").replace(/\s+/g, "").toUpperCase();
+    if (!personCode) return { error: "Enter the worker's MOL person code (from their labour card)." };
+    if (!/^\d{9}$/.test(routing)) return { error: "The bank routing code has 9 digits." };
+    if (!iban) return { error: "Enter the worker's IBAN." };
+    data = { wpsPaymentMode: /cash/i.test(emp.wpsPaymentMode ?? "") || !emp.wpsPaymentMode ? "Bank transfer" : emp.wpsPaymentMode, molPersonCode: personCode, wpsRoutingCode: routing, wpsIban: iban, wpsBankName: String(formData.get("bankName") || "").trim() || emp.wpsBankName };
+  }
+  await prisma.employee.update({ where: { id: emp.id }, data });
+  await logAudit({ entityType: "EMPLOYEE", entityId: emp.id, action: "UPDATE", before: { wpsPaymentMode: emp.wpsPaymentMode, hadRouting: !!emp.wpsRoutingCode, hadIban: !!emp.wpsIban, hadPersonCode: !!emp.molPersonCode }, after: { wpsPaymentMode: data.wpsPaymentMode, via: "payroll run", ibanLast4: data.wpsIban ? data.wpsIban.slice(-4) : null }, userId: user.id, userName: user.name, branchId: run.branchId });
+  const { count } = await rebuildRunLines(run);
+  await trail(run.id, "RECALCULATED", user, `${emp.name}: bank details completed`);
+  revalidatePath(`/payroll/${run.id}`);
+  void count;
+  return { error: null, ok: true };
+}

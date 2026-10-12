@@ -11,6 +11,8 @@ import { CostTrend } from "./cost-trend";
 import { isUsableBank } from "@/lib/bankStatus";
 import { payDataGap } from "@/lib/payroll";
 import { ApprovalRuleForm } from "./approval-rule";
+import { Hint } from "@/components/Hint";
+import { PayrollSetup, type SetupStep } from "./payroll-setup";
 import { DueDaysForm } from "./due-days-form";
 import { dueDateFor, dueState } from "@/lib/payrollSchedule";
 
@@ -55,6 +57,17 @@ export default async function PayrollPage() {
   const monthLabel = new Date(`${defaultMonth}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
   const notStarted = companies.filter((c) => !runs.some((r) => r.month === defaultMonth && r.companyId === c.id));
   const unpaid = runs.filter((r) => r.status !== "PAID");
+  const missingId = setup.filter((x) => !x.establishment);
+  const missingBank = setup.filter((x) => !x.bank);
+  const peopleTotal = setup.reduce((n, x) => n + x.total, 0);
+  const peopleReady = setup.reduce((n, x) => n + x.ready, 0);
+  const steps: SetupStep[] = [
+    { key: "company", title: "Mark your company as an own company", why: "Payroll is only for your own companies' employees. Open a company under Suppliers and tick “Own company”.", done: companies.length > 0, href: "/suppliers", action: "Open suppliers" },
+    { key: "mohre", title: "Add the labour ministry ID (MOHRE)", hint: "MOHRE", why: "The bank file needs your company's MOHRE establishment ID. It is on your labour ministry documents.", done: companies.length > 0 && missingId.length === 0, detail: missingId.length > 0 ? `Missing for ${missingId.slice(0, 2).map((x) => x.c.name).join(", ")}${missingId.length > 2 ? ` and ${missingId.length - 2} more` : ""}.` : undefined, href: missingId[0] ? `/suppliers/${missingId[0].c.id}` : "/suppliers", action: "Add ID" },
+    { key: "bank", title: "Add the bank that pays salaries", hint: "PAYER_BANK", why: "Add the company bank account that salaries are paid from, with its routing code and IBAN, and mark it active.", done: companies.length > 0 && missingBank.length === 0, detail: missingBank.length > 0 ? `Missing for ${missingBank.slice(0, 2).map((x) => x.c.name).join(", ")}${missingBank.length > 2 ? ` and ${missingBank.length - 2} more` : ""}.` : undefined, href: "/banks", action: "Add bank" },
+    { key: "pay", title: "Set how each worker is paid", hint: "PAY_STRUCTURE", why: "Each worker needs a pay structure and amount, on their Trade & pay tab. Workers without one are left out of the run.", done: peopleTotal > 0 && peopleReady === peopleTotal, detail: peopleTotal > 0 && peopleReady < peopleTotal ? `${peopleTotal - peopleReady} of ${peopleTotal} workers still need pay set.` : peopleTotal === 0 ? "No workers belong to your own companies yet." : undefined, href: "/employees", action: "Open workers" },
+    { key: "run", title: "Start your first payroll run", why: "Choose the company and month below and press “Start payroll run”. You can check everything before it is final.", done: runs.length > 0 },
+  ];
   const setupGaps = setup.some((x) => x.ready < x.total || !x.establishment || !x.bank);
 
   return (
@@ -64,6 +77,8 @@ export default async function PayrollPage() {
         icon={Banknote}
         description="Pay your people each month: start the run, check the numbers, get it approved, then download the bank file."
       />
+
+      {branchId && <PayrollSetup steps={steps} />}
 
       {branchId && (unpaid.length > 0 || notStarted.length > 0) && (
         <section className="card border border-[var(--info-border)] bg-[var(--info-soft)] p-4" aria-label="What to do now">
@@ -85,7 +100,7 @@ export default async function PayrollPage() {
         <details className="card overflow-x-auto">
           <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-primary">Company setup {setupGaps ? <span className="ml-2 text-xs font-normal text-[var(--warning)]">needs attention</span> : <span className="ml-2 text-xs font-normal text-[var(--success)]">all set</span>}</summary>
           <table className="w-full text-sm">
-            <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted"><tr><th className="px-5 py-2">Company</th><th className="px-3 py-2 text-right">Pay details complete</th><th className="px-3 py-2">Labour ministry ID (MOHRE)</th><th className="px-3 py-2">Bank that pays salaries</th></tr></thead>
+            <thead className="text-left text-xs font-medium uppercase tracking-wide text-muted"><tr><th className="px-5 py-2">Company</th><th className="px-3 py-2 text-right">Pay details complete</th><th className="px-3 py-2">Labour ministry ID (MOHRE)<Hint term="MOHRE" /></th><th className="px-3 py-2">Bank that pays salaries<Hint term="PAYER_BANK" /></th></tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
               {setup.map(({ c, total, ready, establishment, bank }) => (
                 <tr key={c.id}>
