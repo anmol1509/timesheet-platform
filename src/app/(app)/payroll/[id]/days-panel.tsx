@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { Hint } from "@/components/Hint";
 import { alignDayAction, loadPayDaysAction, saveDayAction, setShortfallDayAction } from "../day-actions";
 import { recomputeRunAction, saveLineAction } from "../actions";
+import { ReceiptButton } from "../loans/receipt-button";
 import type { PayDaysView } from "@/lib/payDaysData";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -236,6 +237,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                     <div className="flex items-center gap-3 pt-1">
                       <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending || !adjDirty} onClick={saveAdjustments}>{pending ? "Saving…" : "Save changes"}</button>
                       {saved && !adjDirty && <span className="text-xs text-[var(--success)]">Saved. Net pay is now AED {aed(view.lineNet)}.</span>}
+                      {view.adjust.deduction > 0 && !adjDirty && <span className="ml-auto text-xs"><ReceiptButton id={view.adjust.lineId} base={`/api/payroll/docs/deduction-notice/${view.adjust.lineId}`} label="Deduction notice" hint="A notice to the employee for the deduction saved on this pay line, with an acknowledgement. The wording comes from your Salary Deduction Notice template (Letters › Templates)." /></span>}
                     </div>
                   </div>
                 ) : <p className="text-xs text-muted">{view.why ?? "This run can't be changed any more."}</p>}
