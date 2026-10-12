@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { addVisaApplicationAction, removeVisaApplicationAction } from "./actions";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { shrinkImage } from "@/lib/compressImage";
+import { Paperclip, X } from "lucide-react";
 
 type HistoryRow = {
   id: string;
@@ -37,6 +39,9 @@ export function VisaHistorySection({
   const notesRef = useRef<HTMLTextAreaElement>(null);
   const documentRef = useRef<string>("");
   const [resetKey, setResetKey] = useState(0);
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function handleAdd() {
     const stage = stageRef.current;
@@ -46,9 +51,12 @@ export function VisaHistorySection({
     formData.append("stage", stage);
     if (dateRef.current?.value) formData.append("date", dateRef.current.value);
     if (notesRef.current?.value) formData.append("notes", notesRef.current.value);
-    if (documentRef.current) formData.append("documentId", documentRef.current);
-    startTransition(() => {
-      addVisaApplicationAction(formData);
+    if (file) formData.append("file", file);
+    else if (documentRef.current) formData.append("documentId", documentRef.current);
+    setError(null);
+    startTransition(async () => {
+      const r = await addVisaApplicationAction(formData);
+      if (r?.error) setError(r.error);
     });
     stageRef.current = "";
     documentRef.current = "";
@@ -56,6 +64,13 @@ export function VisaHistorySection({
     if (dateRef.current) dateRef.current.value = "";
     if (notesRef.current) notesRef.current.value = "";
     setFormKey((k) => k + 1);
+    setFile(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function onPick(picked: File | null) {
+    setError(null);
+    setFile(picked ? await shrinkImage(picked) : null);
   }
 
   function handleRemove(entryId: string) {
@@ -116,6 +131,21 @@ export function VisaHistorySection({
               className="input w-full"
             />
           </div>
+          <div className="sm:col-span-4">
+            <span className="mb-1 block text-xs font-medium text-muted">Attach a file <span className="font-normal">(optional, PDF or image; saved under Documents and linked to this entry)</span></span>
+            <div className="flex flex-wrap items-center gap-2">
+              <input ref={fileRef} type="file" accept="image/*,application/pdf" className="sr-only" id={`attach-${employeeId}-${stages.length}-${entries.length}`} onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
+              <label htmlFor={`attach-${employeeId}-${stages.length}-${entries.length}`} className="btn btn-secondary inline-flex cursor-pointer items-center gap-1.5"><Paperclip className="h-4 w-4" aria-hidden />{file ? "Change file" : "Attach file"}</label>
+              {file && (
+                <span className="inline-flex items-center gap-1.5 text-sm text-secondary">
+                  {file.name}
+                  <button type="button" aria-label="Remove attached file" className="text-muted hover:text-primary" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }}><X className="h-3.5 w-3.5" aria-hidden /></button>
+                </span>
+              )}
+              {file && <span className="text-xs text-muted">This replaces &ldquo;Link document&rdquo;.</span>}
+            </div>
+          </div>
+          {error && <p role="alert" className="sm:col-span-4 text-sm text-[var(--error)]">{error}</p>}
         </div>
 
         {entries.length === 0 ? (
