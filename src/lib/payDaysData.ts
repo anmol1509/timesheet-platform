@@ -14,10 +14,18 @@ export type PayDaysView = {
   rows: DayRow[];
   totals: { salary: number; otPay: number; deduction: number; net: number; absent: number; ot: number; rest: number; hours: number; mismatches: number; recorded: number };
   other: number; lineNet: number;
+  /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
+  /** The typed amounts can be changed here (draft run, payroll edit permission). */
+  canAdjust: boolean;
+  parts: { label: string; amount: number; note?: string | null }[];
+  /** Part of "other items" that no stored component explains: the line is out of date and needs a recalculation. */
+  unexplained: number;
+  /** The typed-in amounts for this line, for editing from here. */
+  adjust: { lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string };
 };
 
 /** Every day of one employee's pay in a run, with the client timesheet beside it. Scoping to the branch is the caller's job. */
-export async function loadPayDays(runId: string, employeeId: string, opts: { canEditAttendance: boolean }): Promise<{ view: PayDaysView; branchId: string } | { error: string }> {
+export async function loadPayDays(runId: string, employeeId: string, opts: { canEditAttendance: boolean; canEditPayroll?: boolean }): Promise<{ view: PayDaysView; branchId: string } | { error: string }> {
   const line = await prisma.payrollLine.findFirst({ where: { runId, employeeId }, include: { run: true } });
   if (!line) return { error: "Payslip line not found." };
   const bounds = monthBounds(line.run.month);
@@ -56,13 +64,28 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   });
 
   const draft = line.run.status === "DRAFT" && !line.run.submittedAt;
-  const why = hourly ? "Hourly pay comes from the timesheet. Change the hours in Timesheets." : !draft ? "This run is no longer a draft, so its days are frozen. Add a correction to next month's payroll instead." : !opts.canEditAttendance ? "You don't have permission to edit attendance." : null;
+  const sheetLocked = hourly && entry?.status === "LOCKED";
+  const why = hourly && !entry ? "There is no timesheet for this month, so there are no hours to edit. Add the hours in Timesheets." : sheetLocked ? "This timesheet is locked. Unlock it in Timesheets to change the hours." : !draft ? "This run is no longer a draft, so its days are frozen. Add a correction to next month's payroll instead." : !opts.canEditAttendance ? "You don't have permission to edit attendance." : null;
+  const other = round2(num(line.net) - totals.net);
+  const items = Array.isArray(line.items) ? (line.items as { kind: string; label: string; amount: number }[]) : [];
+  const parts: PayDaysView["parts"] = [];
+  if (items.length > 0) for (const i of items) parts.push({ label: i.label, amount: i.kind === "EARNING" ? round2(i.amount) : -round2(i.amount), note: i.kind === "EARNING" ? "Recurring pay" : "Recurring deduction" });
+  else {
+    if (num(line.otherEarnings) !== 0) parts.push({ label: "Recurring earnings", amount: round2(num(line.otherEarnings)) });
+    if (num(line.otherDeductions) !== 0) parts.push({ label: "Recurring deductions", amount: -round2(num(line.otherDeductions)) });
+  }
+  if (num(line.gasCharge) !== 0) parts.push({ label: "Gas charge", amount: -round2(num(line.gasCharge)), note: e.gasWaived ? "Waived" : null });
+  if (num(line.loanDeduction) !== 0) parts.push({ label: "Advance / loan instalment", amount: -round2(num(line.loanDeduction)), note: line.advanceNote });
+  if (num(line.manualDeduction) !== 0) parts.push({ label: "Deduction", amount: -round2(num(line.manualDeduction)), note: line.deductionNote });
+  if (num(line.adjustment) !== 0) parts.push({ label: "Adjustment", amount: round2(num(line.adjustment)), note: line.adjustmentNote });
+  const unexplained = round2(other - parts.reduce((t, x) => t + x.amount, 0));
   return {
     branchId: line.run.branchId,
     view: {
-      lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry,
+      lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry && !hourly,
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
-      other: round2(num(line.net) - totals.net), lineNet: num(line.net),
+      other, lineNet: num(line.net), parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
+      adjust: { lineId: line.id, deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "" },
     },
   };
 }
