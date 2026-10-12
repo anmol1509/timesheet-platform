@@ -14,6 +14,7 @@ import { PaymentCell } from "./payment-cell";
 import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
 import { CorrectionCell } from "./correction-cell";
+import { DaysButton } from "./days-panel";
 import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { buildPayslip } from "@/lib/payslip";
 import { dueDateFor, dueState } from "@/lib/payrollSchedule";
@@ -234,13 +235,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 const typed = n(l.manualDeduction) !== 0 || n(l.loanDeduction) !== 0 || n(l.adjustment) !== 0;
                 const editable = draft && !run.submittedAt && can(subject, "payroll.payroll", "edit");
                 return (
-                  <tr key={l.id} className="align-top">
+                  <tr key={l.employeeId} className="align-top">
                     <td className="min-w-[13rem] px-3 py-3">
                       <div className="flex items-center gap-3">
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
                           <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>}<span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <DaysButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} /><span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
                         </div>
                       </div>
                     </td>

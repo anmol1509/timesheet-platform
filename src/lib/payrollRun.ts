@@ -40,6 +40,13 @@ export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
     );
 }
 
+/** What is read about an employee to work out their pay; shared with the day-by-day view. */
+export const PAY_EMPLOYEE_SELECT = {
+    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+    otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
+    wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
+  } as const;
+
 export type SkippedEmployee = { id: string; name: string; reason: string };
 
 /**
@@ -75,11 +82,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
         status: { not: "TERMINATED" },
         supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) },
       },
-      select: {
-        id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
-        otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
-        wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
-      },
+      select: PAY_EMPLOYEE_SELECT,
     }),
     prisma.payrollLine.findMany({
       where: { runId: run.id },
