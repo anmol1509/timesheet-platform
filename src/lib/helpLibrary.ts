@@ -140,8 +140,8 @@ export const HELP_GUIDES: HelpGuide[] = [
   },
   {
     id: "audit-trail",
-    title: "See who changed what",
-    keywords: ["audit log", "audit trail", "who changed", "who edited", "change history", "history of changes", "who deleted", "what changed"],
+    title: "See who changed a record",
+    keywords: ["audit log", "audit trail", "who changed", "who edited", "change history", "history of changes", "who deleted"],
     steps: [
       "Open Audit Log from the menu. Each line reads as a sentence, for example: Anmol changed Rahul Khan's basic salary from 3,000 to 3,200.",
       "Search a person, employee or field, or filter by module, person, action and date. Press a line to see each field before and after.",
