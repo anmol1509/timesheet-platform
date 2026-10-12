@@ -189,11 +189,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       active,
       inactiveReason,
       lastDemobilizedDate: dateOrNull(formData.get("lastDemobilizedDate")),
-      religion: stringOrNull(formData.get("religion")),
-      state: stringOrNull(formData.get("state")),
-      accommodationType: stringOrNull(formData.get("accommodationType")),
-      previousId: stringOrNull(formData.get("previousId")),
-      nameInIdCard: stringOrNull(formData.get("nameInIdCard")),
+      // Religion, state, accommodation type, previous ID and name in ID card are no longer on the form. Left out here so
+      // saving never blanks what is already stored.
 
       medicalStatus: stringOrNull(formData.get("medicalStatus")),
       eidStatus: stringOrNull(formData.get("eidStatus")),

@@ -448,28 +448,6 @@ export function EditForm({
             <Field label="Emergency contact phone">
               <PhoneField name="emergencyContactPhone" defaultValue={employee.emergencyContactPhone} />
             </Field>
-            <LookupField label="Religion" name="religion" defaultValue={employee.religion} options={lookups.RELIGION} />
-            <LookupField label="State" name="state" defaultValue={employee.state} options={lookups.STATE} />
-            <LookupField
-              label="Accommodation type"
-              name="accommodationType"
-              defaultValue={employee.accommodationType}
-              options={lookups.ACCOMMODATION_TYPE}
-            />
-            <Field label="Previous ID">
-              <input
-                name="previousId"
-                defaultValue={employee.previousId || ""}
-                className="input w-full"
-              />
-            </Field>
-            <Field label="Name in ID card">
-              <input
-                name="nameInIdCard"
-                defaultValue={employee.nameInIdCard || ""}
-                className="input w-full"
-              />
-            </Field>
             <div className="sm:col-span-2">
               <Field label="Additional notes">
                 <textarea
