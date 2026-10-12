@@ -1,5 +1,6 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/DatePicker";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import JSZip from "jszip";
@@ -477,7 +478,7 @@ function DocRows({ docs, types, edits, setEdits, sources, dim, withOwner, pickOp
               </span>
             </span>
             <div className="w-52"><Select value={types.some((t) => t.value === (e.type ?? d.type)) ? (e.type ?? d.type) : "OTHER"} onChange={(v) => patch(d.docKey, { type: v })} searchable={false} options={types} /></div>
-            <input type="date" value={e.expiry ?? d.expiry} onChange={(ev) => patch(d.docKey, { expiry: ev.target.value })} className="input w-40 px-2 py-1.5 text-sm" aria-label={`Expiry date for ${d.fileName}`} title="Expiry date (optional)" />
+            <DatePicker value={e.expiry ?? d.expiry} onChange={(iso) => patch(d.docKey, { expiry: iso })} ariaLabel={`Expiry date for ${d.fileName}`} placeholder="expiry (optional)" className="w-44" />
             {withOwner && pickOptions && fromValue && pickValue && <div className="w-60"><Select value={pickValue(e.owner)} onChange={(v) => patch(d.docKey, { owner: fromValue(v) })} placeholder="Choose…" options={pickOptions} /></div>}
             <button type="button" className="text-xs text-muted hover:underline" onClick={() => patch(d.docKey, { skip: !e.skip })}>{e.skip ? "Include" : "Leave out"}</button>
           </li>
