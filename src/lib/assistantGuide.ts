@@ -52,6 +52,7 @@ export const HINTS: Record<string, string> = {
   "/invoices": "Generate client invoices from approved timesheets",
   "/invoices/history": "Previously generated invoices",
   "/payroll": "Payroll runs: salaries, deductions, WPS export",
+  "/payroll/loans": "Advances and loans: request, approval, the day it was given, how it is deducted month by month, receipts and each employee's statement",
   "/finance": "Finance overview",
   "/finance/expenses": "Record and review expenses",
   "/finance/bills": "Supplier bills and payments",
@@ -99,7 +100,7 @@ export const PAYROLL_RULES = `
 - Short hours: a company can choose to deduct for a present working day with fewer hours than the standard day. Hourly rule: the missing hours × (basic ÷ 30 ÷ standard hours). Half-day rule: half a day's pay (fixed pay ÷ 30 ÷ 2) when the day is under a set number of hours. It is off unless the company turns it on, and a single day can be unticked in View days.
 - HOURLY workers are paid every hour on the month's timesheet at their hourly rate, with no overtime premium and no short-hours deduction.
 - Gas charge: a small AED amount per day from the worker's site arrival date, capped each month, and can be waived for a worker.
-- Loan or advance recovery is the instalment, never more than keeps net pay above zero.
+- Advances and loans are requested, approved, handed over on a recorded day, and only then recovered from payroll: in one month, equal instalments, or a month-by-month plan. Recovery is never more than keeps net pay above zero, and what could not be taken carries on in later months.
 `.trim();
 
 /** Languages the assistant can answer in. "auto" answers in the language the person wrote in. */

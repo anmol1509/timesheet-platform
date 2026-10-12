@@ -16,6 +16,9 @@ test("common questions find the right guide", () => {
   assert.equal(top("salary calculation for a 31 day month"), "payroll-pay-explained");
   assert.equal(top("why was gas charge deducted"), "payroll-gas");
   assert.equal(top("how do I create the WPS file for the bank"), "wps-file");
+  assert.equal(top("an employee took an advance, how do I deduct it from salary"), "advance-request");
+  assert.equal(top("how do I print an advance receipt"), "advance-request");
+  assert.equal(top("how do I add a fine or a bonus"), "payroll-adjustments");
 });
 
 test("a question with nothing to match finds nothing, rather than a wrong guide", () => {

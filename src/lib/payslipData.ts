@@ -33,7 +33,7 @@ export type PayslipDoc = {
 };
 
 /** The issuing company's identity: the run's own company when it has one, else the branch (older runs). */
-async function headerFor(run: { companyId: string | null; branch: Parameters<typeof buildLetterhead>[0] }): Promise<Letterhead> {
+export async function headerFor(run: { companyId: string | null; branch: Parameters<typeof buildLetterhead>[0] }): Promise<Letterhead> {
   if (run.companyId) {
     const c = await prisma.supplier.findUnique({
       where: { id: run.companyId },

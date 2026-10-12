@@ -65,24 +65,29 @@ export async function loadPayslipIssuer(runId: string): Promise<{ branchId: stri
   };
 }
 
-/** The images the PDF needs for what was chosen. */
-export async function loadPayslipLayout(runId: string, choice: PayslipPrintChoice): Promise<PayslipLayout | null> {
-  const run = await prisma.payrollRun.findUnique({
-    where: { id: runId },
-    select: { branchId: true, companyId: true, branch: { select: { signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true } } },
+/** The images a printed document needs for what was chosen, for one company (null = the branch's own profile). */
+export async function loadCompanyLayout(branchId: string, companyId: string | null, choice: PayslipPrintChoice): Promise<PayslipLayout | null> {
+  const branch = await prisma.branch.findUnique({
+    where: { id: branchId },
+    select: { signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true },
   });
-  if (!run) return null;
+  if (!branch) return null;
   const base = { signatoryName: choice.signatoryName.trim() || null, signatoryTitle: choice.signatoryTitle.trim() || null };
-  const supplier = run.companyId ? await loadSupplierPrint(run.companyId, run.branchId, { signature: choice.showSignature, stamp: choice.showStamp, letterhead: choice.onLetterhead }) : null;
+  const supplier = companyId ? await loadSupplierPrint(companyId, branchId, { signature: choice.showSignature, stamp: choice.showStamp, letterhead: choice.onLetterhead }) : null;
   if (supplier) {
     return { ...base, onLetterhead: choice.onLetterhead, letterheadImage: supplier.letterheadImage, letterheadPdf: supplier.letterheadPdf, topMm: supplier.topMm ?? 65, bottomMm: supplier.bottomMm ?? 35, signatureImage: supplier.signatureImage, stampImage: supplier.stampImage };
   }
-  const b = run.branch;
   return {
     ...base, onLetterhead: choice.onLetterhead,
-    letterheadImage: choice.onLetterhead ? await imageDataUri(b.letterheadImageId) : null, letterheadPdf: null,
-    topMm: b.letterheadTopMm ?? 65, bottomMm: b.letterheadBottomMm ?? 35,
-    signatureImage: choice.showSignature ? await imageDataUri(b.signatureId) : null,
-    stampImage: choice.showStamp ? await imageDataUri(b.stampId) : null,
+    letterheadImage: choice.onLetterhead ? await imageDataUri(branch.letterheadImageId) : null, letterheadPdf: null,
+    topMm: branch.letterheadTopMm ?? 65, bottomMm: branch.letterheadBottomMm ?? 35,
+    signatureImage: choice.showSignature ? await imageDataUri(branch.signatureId) : null,
+    stampImage: choice.showStamp ? await imageDataUri(branch.stampId) : null,
   };
+}
+
+/** The images the payslip PDF needs for what was chosen. */
+export async function loadPayslipLayout(runId: string, choice: PayslipPrintChoice): Promise<PayslipLayout | null> {
+  const run = await prisma.payrollRun.findUnique({ where: { id: runId }, select: { branchId: true, companyId: true } });
+  return run ? loadCompanyLayout(run.branchId, run.companyId, choice) : null;
 }
