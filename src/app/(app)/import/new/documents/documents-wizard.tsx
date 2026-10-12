@@ -14,6 +14,7 @@ import { MIME_BY_EXT, extOf } from "@/lib/importer/documentMatch";
 import { groupPages, type Audience, type Confidence, type PageRead } from "@/lib/importer/documentRead";
 import { cutPdf, imageToPage, pdfToPages, type PageImage } from "@/lib/pdfPages";
 import { shrinkImage } from "@/lib/compressImage";
+import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { UndoImportButton } from "../../undo-button";
 
 type Opt = { value: string; label: string; icon?: React.ReactNode };
@@ -196,6 +197,13 @@ export function DocumentsWizard() {
           file = src.isImage ? await shrinkImage(orig) : orig;
         }
         if (!file) { results.push({ name: display, status: "failed", message: "This document couldn't be cut out of its PDF." }); continue; }
+        // A profile picture has to be an image, so a PDF page is turned into one here.
+        if (type === "PHOTO" && file.type === "application/pdf") {
+          const page = whole ? (d.pages[0] ?? 1) : 1;
+          const image = await pdfPageToImage(file, page).catch(() => null);
+          if (!image) { results.push({ name: display, status: "failed", message: "That PDF page couldn't be turned into a picture. Upload the photo as a JPG or PNG instead." }); continue; }
+          file = new File([image], `${display}.jpg`, { type: image.type || "image/jpeg" });
+        }
         if (file.size > MAX_BULK_FILE_BYTES) { results.push({ name: file.name, status: "failed", message: `Over ${(MAX_BULK_FILE_BYTES / 1048576).toFixed(1)} MB. Compress it, or add it from the profile.` }); continue; }
         items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: edits[d.docKey]?.expiry ?? d.expiry, fields: src.docs?.find((x) => x.docKey === d.docKey)?.fields });
       }
@@ -306,7 +314,6 @@ export function DocumentsWizard() {
   }
 
   if (step === "done" && outcome) {
-    const bad = outcome.results.filter((r) => r.status !== "created");
     const made = outcome.results.filter((r) => r.status === "created");
     return (
       <div className="space-y-4">
@@ -314,14 +321,27 @@ export function DocumentsWizard() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Tile label="Documents filed" value={made.length} tone="success" />
           <Tile label="Records updated" value={made.filter((r) => r.recordUpdated).length} />
-          <Tile label="Already on file" value={outcome.results.filter((r) => r.status === "duplicate").length} />
-          <Tile label="Failed" value={outcome.results.filter((r) => r.status === "failed").length} tone={outcome.results.some((r) => r.status === "failed") ? "error" : undefined} />
+          <Tile label="Already on file" value={outcome.results.filter((r) => r.status === "duplicate").length} target="result-duplicate" />
+          <Tile label="Failed" value={outcome.results.filter((r) => r.status === "failed").length} tone={outcome.results.some((r) => r.status === "failed") ? "error" : undefined} target="result-failed" />
         </div>
-        {bad.length > 0 && (
-          <ul className="card divide-y divide-[var(--border)] text-sm">
-            {bad.slice(0, 50).map((r, k) => <li key={k} className="flex justify-between gap-3 px-4 py-2"><span className="truncate text-primary">{r.name}</span><span className="shrink-0 text-xs text-muted">{r.message}</span></li>)}
-          </ul>
-        )}
+        {([["failed", "Failed", "These were not saved."], ["duplicate", "Already on file", "These were skipped because they are already there."]] as const).map(([status, title, note]) => {
+          const rows = outcome.results.filter((r) => r.status === status);
+          if (rows.length === 0) return null;
+          return (
+            <section key={status} id={`result-${status}`} aria-label={title} className="scroll-mt-24 space-y-1.5">
+              <h2 className={cn("text-sm font-semibold", status === "failed" ? "text-[var(--error)]" : "text-primary")}>{title} ({rows.length}) <span className="font-normal text-muted">{note}</span></h2>
+              <ul className={cn("card divide-y divide-[var(--border)] text-sm", status === "failed" && "border-[var(--error-border)]")}>
+                {rows.slice(0, 100).map((r, k) => (
+                  <li key={k} className="px-4 py-2">
+                    <p className="break-words font-medium text-primary">{r.name}</p>
+                    <p className={cn("text-xs", status === "failed" ? "text-[var(--error)]" : "text-muted")}>{r.message}</p>
+                  </li>
+                ))}
+              </ul>
+              {rows.length > 100 && <p className="text-xs text-muted">Showing the first 100 of {rows.length}.</p>}
+            </section>
+          );
+        })}
         <div className="flex flex-wrap items-center gap-4 border-t border-default pt-4">
           <Link href="/import" className="btn btn-secondary">Back to Import data</Link>
           <button type="button" className="btn btn-secondary" onClick={() => { setStep("pick"); setPlan(null); setOutcome(null); setSources([]); }}>Upload more</button>
@@ -436,13 +456,15 @@ export function DocumentsWizard() {
   );
 }
 
-function Tile({ label, value, tone }: { label: string; value: number; tone?: "success" | "error" }) {
-  return (
-    <div className="card p-3">
+function Tile({ label, value, tone, target }: { label: string; value: number; tone?: "success" | "error"; target?: string }) {
+  const inner = (
+    <>
       <p className={cn("tabular text-2xl font-semibold", tone === "success" ? "text-[var(--success)]" : tone === "error" ? "text-[var(--error)]" : "text-primary")}>{value}</p>
-      <p className="text-xs text-muted">{label}</p>
-    </div>
+      <p className="text-xs text-muted">{label}{target && value > 0 ? " · see list" : ""}</p>
+    </>
   );
+  if (target && value > 0) return <button type="button" className="card p-3 text-left transition hover:bg-surface-hover" onClick={() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{inner}</button>;
+  return <div className="card p-3">{inner}</div>;
 }
 
 function DocRows({ docs, types, edits, setEdits, sources, dim, withOwner, pickOptions, fromValue, pickValue }: {
