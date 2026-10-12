@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch } from "@/lib/auth";
-import { isOutsideBranch } from "@/lib/branch";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { LETTER_PRESETS, categoriesFor, presetByKey, presetHtml } from "@/lib/letterPresets";
 import { htmlToText, templateHtml } from "@/lib/letterHtml";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
 import { unknownFieldsIn, type Audience } from "@/lib/letterFields";
+import { can } from "@/lib/permissions";
+import { subjectOf } from "@/lib/auth";
+import { employeeLetterValues } from "@/lib/employeeLetter";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
@@ -131,4 +134,28 @@ export async function deleteTemplateAction(formData: FormData): Promise<State> {
   await logAudit({ entityType: "LETTER_TEMPLATE", entityId: template.id, action: "DELETE", before: { name: template.name, category: template.category, body: template.remarksText }, userId: user.id, userName: user.name, branchId: template.branchId });
   revalidatePath("/letter-templates");
   redirect("/letter-templates");
+}
+
+/** Finds a few of this branch's own-company employees by name or ID, for previewing a template with a real person. */
+export async function findPreviewEmployeesAction(query: string): Promise<{ id: string; label: string }[]> {
+  await requireAdmin();
+  const q = query.trim().slice(0, 60);
+  if (q.length < 2) return [];
+  const { branchId } = await requireUserWithBranch();
+  const rows = await prisma.employee.findMany({
+    where: { ...branchWhere(branchId), supplier: { isOwnCompany: true }, OR: [{ name: { contains: q, mode: "insensitive" } }, { employeeIdNo: { contains: q, mode: "insensitive" } }] },
+    select: { id: true, name: true, employeeIdNo: true, trade: true },
+    orderBy: { name: "asc" },
+    take: 8,
+  });
+  return rows.map((r) => ({ id: r.id, label: `${r.name} · ${r.employeeIdNo}${r.trade ? ` · ${r.trade}` : ""}` }));
+}
+
+/** The merge values for one employee, to fill a template preview. Pay fields only come back for people allowed to see pay. */
+export async function previewValuesAction(employeeId: string): Promise<{ values?: Record<string, string>; name?: string; error?: string }> {
+  await requireAdmin();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const r = await employeeLetterValues(employeeId, { canSeePay: can(subjectOf(user), "payroll", "view") });
+  if (!r || isOutsideBranch(r.employee.branchId, branchId, isSuperAdmin)) return { error: "Employee not found." };
+  return { values: Object.fromEntries(Object.entries(r.values).filter(([, v]) => v !== "")), name: r.employee.name };
 }

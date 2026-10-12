@@ -1,7 +1,9 @@
 import { History } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { auditNames } from "@/lib/auditNames";
 import { branchWhere } from "@/lib/branch";
 import { AuditLogList } from "./audit-log-list";
 import { ExportDialog } from "./export-dialog";
@@ -15,14 +17,17 @@ function startOfDay() {
   return d;
 }
 
-export default async function AuditLogPage() {
-  const { branchId } = await requireUserWithBranch();
+export default async function AuditLogPage({ searchParams }: { searchParams: Promise<{ entityType?: string; entityId?: string }> }) {
+  const { user, branchId } = await requireUserWithBranch();
+  const { entityType, entityId } = await searchParams;
+  const canSeePay = can(subjectOf(user), "payroll", "view");
   const entries = await prisma.auditLog.findMany({
-    where: branchWhere(branchId),
+    where: { ...branchWhere(branchId), ...(entityType && entityId ? { entityType, entityId } : {}) },
     orderBy: { createdAt: "desc" },
     take: MAX_ROWS,
   });
 
+  const names = await auditNames(entries);
   const startOfToday = startOfDay();
   const today = entries.filter((e) => e.createdAt >= startOfToday);
   const mode = <T,>(xs: T[]) => {
@@ -39,7 +44,7 @@ export default async function AuditLogPage() {
         <PageHeader
           title="Audit Log"
           icon={History}
-          description={<>Who changed what, across every module. Showing the most recent {MAX_ROWS} entries.</>}
+          description={<>Who changed what, in plain words, across every module. {entityType && entityId ? "Showing the history of one record." : `Showing the most recent ${MAX_ROWS} entries.`}</>}
         />
         <ExportDialog />
       </div>
@@ -65,6 +70,7 @@ export default async function AuditLogPage() {
       ) : (
         <AuditLogList
           now={new Date().toISOString()}
+          canSeePay={canSeePay}
           entries={entries.map((e) => ({
             id: e.id,
             entityType: e.entityType,
@@ -72,6 +78,7 @@ export default async function AuditLogPage() {
             action: e.action,
             changes: e.changes as Record<string, unknown> | null,
             userName: e.userName,
+            name: names[e.id] ?? null,
             createdAt: e.createdAt.toISOString(),
           }))}
         />

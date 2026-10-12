@@ -15,6 +15,8 @@ import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
+import { HistorySection } from "./history-section";
+import { ReadinessCard } from "./readiness-card";
 import { VisaHistorySection } from "./visa-history-section";
 import { SalaryHistorySection, type RevisionRow } from "./salary-history-section";
 import { arrearsFor } from "@/lib/payrollSchedule";
@@ -274,6 +276,8 @@ export default async function EmployeeDetailPage({
         documentCount={employee.documents.length}
       />
 
+      {canViewPay && <ReadinessCard employeeId={employee.id} />}
+
       <EditForm
         employee={toPlain(employee)}
         pay={pay}
@@ -310,6 +314,7 @@ export default async function EmployeeDetailPage({
                 documents: note.documents,
               }))}
             />
+            <HistorySection employeeId={employee.id} employeeName={employee.name} canSeePay={canViewPay} />
           </>
         }
         siteContent={

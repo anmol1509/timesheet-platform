@@ -14,6 +14,7 @@ import {
   Minus, MessageSquareQuote, Plus, Redo2, Strikethrough, Table2, Type, Underline as UnderlineIcon, Undo2, IndentIncrease, IndentDecrease, HelpCircle,
 } from "lucide-react";
 import type { MergeField } from "@/lib/letterLayout";
+import { groupedFields } from "@/lib/letterFields";
 import { ASK_PREFIX } from "@/lib/letterHtml";
 
 const FONT_FAMILIES = [
@@ -125,21 +126,30 @@ function LinkButton({ editor }: { editor: Editor }) {
   );
 }
 
-function FieldMenu({ editor, fields, label, icon }: { editor: Editor; fields: MergeField[]; label: string; icon?: React.ReactNode }) {
+function FieldMenu({ editor, fields, label, icon, audience }: { editor: Editor; fields: MergeField[]; label: string; icon?: React.ReactNode; audience: "SITE" | "EMPLOYEE" }) {
+  const [query, setQuery] = useState("");
+  const groups = groupedFields(fields, query, audience);
   return (
-    <Popover.Root>
+    <Popover.Root onOpenChange={(o) => { if (!o) setQuery(""); }}>
       <Popover.Trigger asChild>
         <button type="button" onMouseDown={(e) => e.preventDefault()} className="inline-flex h-8 items-center gap-1 rounded-md border border-[var(--brand-primary)] px-2 text-xs font-medium text-[var(--brand-primary)] transition hover:bg-brand-soft">{icon ?? <Plus className="h-3.5 w-3.5" />}{label}</button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content sideOffset={6} align="start" onOpenAutoFocus={(e) => e.preventDefault()} className="rx-popover z-50 max-h-80 w-72 overflow-y-auto rounded-card border border-default bg-surface p-1 shadow-popover">
-          {fields.map((f) => (
-            <Popover.Close asChild key={f.key}>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().insertContent(`%%${f.key}%%`).run()} className="block w-full rounded-sm px-2.5 py-1.5 text-left transition hover:bg-surface-hover">
-                <span className="block text-sm text-primary">{f.label}</span>
-                <span className="block truncate text-xs text-muted">e.g. {f.example}</span>
-              </button>
-            </Popover.Close>
+        <Popover.Content sideOffset={6} align="start" className="rx-popover z-50 max-h-96 w-80 overflow-y-auto rounded-card border border-default bg-surface p-1 shadow-popover">
+          <div className="sticky top-0 z-10 bg-surface p-1"><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search fields, e.g. salary or bank" aria-label="Search fields" className="input h-8 w-full text-sm" /></div>
+          {groups.length === 0 && <p className="px-2.5 py-3 text-sm text-muted">No field matches &ldquo;{query}&rdquo;.</p>}
+          {groups.map((g) => (
+            <div key={g.group}>
+              {audience === "EMPLOYEE" && <p className="px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-muted uppercase">{g.group}</p>}
+              {g.fields.map((f) => (
+                <Popover.Close asChild key={f.key}>
+                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().insertContent(`%%${f.key}%%`).run()} className="block w-full rounded-sm px-2.5 py-1.5 text-left transition hover:bg-surface-hover">
+                    <span className="block text-sm text-primary">{f.label}</span>
+                    <span className="block truncate text-xs text-muted">e.g. {f.example}</span>
+                  </button>
+                </Popover.Close>
+              ))}
+            </div>
           ))}
         </Popover.Content>
       </Popover.Portal>
@@ -210,7 +220,7 @@ function Toolbar({ editor, fields, audience }: { editor: Editor; fields: MergeFi
       <Tool title="Horizontal line" onClick={() => c().setHorizontalRule().run()}><Minus className="h-4 w-4" /></Tool>
       <Tool title="Clear formatting" onClick={() => c().unsetAllMarks().clearNodes().run()}><Eraser className="h-4 w-4" /></Tool>
       <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden />
-      <FieldMenu editor={editor} fields={fields} label="Insert field" />
+      <FieldMenu editor={editor} fields={fields} label="Insert field" audience={audience} />
       {audience === "SITE" && (
         <button type="button" disabled={editor.getHTML().includes("data-worker-table")} onMouseDown={(e) => e.preventDefault()} onClick={() => c().insertContent({ type: "workerTable" }).run()} className="inline-flex h-8 items-center gap-1 rounded-md border border-default px-2 text-xs font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-40" title="Choose where the worker table goes (one per letter). Text below it prints under the table.">
           <Table2 className="h-3.5 w-3.5" /> Worker table
