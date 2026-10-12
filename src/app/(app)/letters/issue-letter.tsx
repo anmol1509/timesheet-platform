@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { isDateAsk, isoToLetterDate, letterDateToIso } from "@/lib/letterHtml";
 import { EmployeeLetterPaper } from "@/components/LetterPreview";
 import { issueLetterAction, letterIssuersAction, previewLetterAction } from "./actions";
 import type { IssuerKey, IssuerOption } from "@/lib/employeeLetterIssuer";
@@ -108,7 +110,9 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
         {template?.asks.map((label) => (
           <label key={label} className="block">
             <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
-            <input value={inputs[label] ?? ""} onChange={(e) => setInputs((prev) => ({ ...prev, [label]: e.target.value }))} className="input w-full" />
+            {isDateAsk(label)
+              ? <DatePicker value={letterDateToIso(inputs[label] ?? "")} onChange={(iso) => setInputs((prev) => ({ ...prev, [label]: isoToLetterDate(iso) }))} ariaLabel={label} className="w-full" />
+              : <input value={inputs[label] ?? ""} onChange={(e) => setInputs((prev) => ({ ...prev, [label]: e.target.value }))} className="input w-full" />}
           </label>
         ))}
         {template?.usesSalary && <p className="text-xs text-muted">This letter states the employee&apos;s salary from their Payroll &amp; WPS tab.</p>}

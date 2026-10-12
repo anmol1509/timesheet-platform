@@ -68,3 +68,10 @@ export function splitAtWorkerTable(html: string): { before: string; after: strin
   if (!m) return { before: html, after: "", hasTable: false };
   return { before: html.slice(0, m.index), after: html.slice(m.index + m[0].length), hasTable: true };
 }
+
+/** A blank whose question asks for a date ("From date", "Date of incident"), so it can offer a calendar instead of a text box. */
+export const isDateAsk = (label: string) => /\bdate\b/i.test(label) && !/\b(update|dated?\s+by)\b/i.test(label);
+
+/** A calendar's YYYY-MM-DD as the DD-MM-YYYY every letter prints, and back. Anything else comes back unchanged or empty. */
+export const isoToLetterDate = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join("-") : "");
+export const letterDateToIso = (d: string) => (/^\d{2}-\d{2}-\d{4}$/.test(d) ? d.split("-").reverse().join("-") : "");

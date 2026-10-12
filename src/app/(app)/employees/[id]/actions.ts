@@ -144,7 +144,6 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       supplierId: stringOrNull(formData.get("supplierId")),
       sponsorSupplierId: stringOrNull(formData.get("sponsorSupplierId")),
       nationality: stringOrNull(formData.get("nationality")),
-      sponsorName: stringOrNull(formData.get("sponsorName")),
       unifiedNo: stringOrNull(formData.get("unifiedNo")),
       // Site staff's trade comes from Known Trade Details (kept in sync there), so the form
       // does not carry it; only a form that sends `position` (office staff) changes it.
@@ -189,47 +188,27 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       active,
       inactiveReason,
       lastDemobilizedDate: dateOrNull(formData.get("lastDemobilizedDate")),
-      religion: stringOrNull(formData.get("religion")),
-      state: stringOrNull(formData.get("state")),
-      accommodationType: stringOrNull(formData.get("accommodationType")),
-      previousId: stringOrNull(formData.get("previousId")),
-      nameInIdCard: stringOrNull(formData.get("nameInIdCard")),
+      // These fields are no longer on the form (status fields the expiry dates already cover, permit and visa extras nothing reads,
+      // passport custody dates). Left out here so saving never blanks what is already stored.
+      // Religion, state, accommodation type, previous ID and name in ID card are no longer on the form. Left out here so
+      // saving never blanks what is already stored.
 
       medicalStatus: stringOrNull(formData.get("medicalStatus")),
-      eidStatus: stringOrNull(formData.get("eidStatus")),
 
       visaNumber: stringOrNull(formData.get("visaNumber")),
-      visaType: stringOrNull(formData.get("visaType")),
       visaStatus: stringOrNull(formData.get("visaStatus")),
-      visaDesignation: stringOrNull(formData.get("visaDesignation")),
-      visaStampingDate: dateOrNull(formData.get("visaStampingDate")),
       molPersonCode: stringOrNull(formData.get("molPersonCode")),
 
-      passportStatus: stringOrNull(formData.get("passportStatus")),
-      passportReleaseDate: dateOrNull(formData.get("passportReleaseDate")),
-      passportReturnDate: dateOrNull(formData.get("passportReturnDate")),
 
       laborCardPersonalNo: stringOrNull(formData.get("laborCardPersonalNo")),
-      laborCardStatus: stringOrNull(formData.get("laborCardStatus")),
 
-      cicpaNumber: stringOrNull(formData.get("cicpaNumber")),
-      cicpaIssueDate: dateOrNull(formData.get("cicpaIssueDate")),
       cicpaExpiry: dateOrNull(formData.get("cicpaExpiry")),
-      cicpaStatus: stringOrNull(formData.get("cicpaStatus")),
-      cicpaLocation: stringOrNull(formData.get("cicpaLocation")),
 
-      insuranceCardType: stringOrNull(formData.get("insuranceCardType")),
-      insuranceCardNumber: stringOrNull(formData.get("insuranceCardNumber")),
-      insuranceIssueDate: dateOrNull(formData.get("insuranceIssueDate")),
       insuranceExpiry: dateOrNull(formData.get("insuranceExpiry")),
-      insuranceStatus: stringOrNull(formData.get("insuranceStatus")),
-      insuranceServiceProvider: stringOrNull(formData.get("insuranceServiceProvider")),
 
       drivingLicenceNumber: stringOrNull(formData.get("drivingLicenceNumber")),
-      drivingLicenceIssueDate: dateOrNull(formData.get("drivingLicenceIssueDate")),
       drivingLicenceExpiry: dateOrNull(formData.get("drivingLicenceExpiry")),
       drivingLicenceType: stringOrNull(formData.get("drivingLicenceType")),
-      drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
   };
 
   // supplierId / sponsorSupplierId / projectId / vehicleId arrive from the form.

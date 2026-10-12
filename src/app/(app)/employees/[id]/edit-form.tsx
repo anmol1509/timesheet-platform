@@ -448,28 +448,6 @@ export function EditForm({
             <Field label="Emergency contact phone">
               <PhoneField name="emergencyContactPhone" defaultValue={employee.emergencyContactPhone} />
             </Field>
-            <LookupField label="Religion" name="religion" defaultValue={employee.religion} options={lookups.RELIGION} />
-            <LookupField label="State" name="state" defaultValue={employee.state} options={lookups.STATE} />
-            <LookupField
-              label="Accommodation type"
-              name="accommodationType"
-              defaultValue={employee.accommodationType}
-              options={lookups.ACCOMMODATION_TYPE}
-            />
-            <Field label="Previous ID">
-              <input
-                name="previousId"
-                defaultValue={employee.previousId || ""}
-                className="input w-full"
-              />
-            </Field>
-            <Field label="Name in ID card">
-              <input
-                name="nameInIdCard"
-                defaultValue={employee.nameInIdCard || ""}
-                className="input w-full"
-              />
-            </Field>
             <div className="sm:col-span-2">
               <Field label="Additional notes">
                 <textarea
@@ -496,12 +474,9 @@ export function EditForm({
                 className="input w-full"
               />
             </Field>
-            <LookupField label="Passport status" name="passportStatus" defaultValue={employee.passportStatus} options={lookups.PASSPORT_STATUS} />
             <Field label="Passport expiry date">
               <DatePicker key={`passportExpiry-${auto.passportExpiry ?? ""}`} name="passportExpiry" defaultValue={auto.passportExpiry ?? toDateInput(employee.passportExpiry)} />
             </Field>
-            <DateField label="Release date" name="passportReleaseDate" defaultValue={employee.passportReleaseDate} />
-            <DateField label="Return date" name="passportReturnDate" defaultValue={employee.passportReturnDate} />
             <InlineDocumentUpload
               employeeId={employee.id}
               type="PASSPORT"
@@ -526,7 +501,6 @@ export function EditForm({
             <Field label="Emirates ID expiry date">
               <DatePicker key={`emiratesIdExpiry-${auto.emiratesIdExpiry ?? ""}`} name="emiratesIdExpiry" defaultValue={auto.emiratesIdExpiry ?? toDateInput(employee.emiratesIdExpiry)} />
             </Field>
-            <LookupField label="Emirates ID status" name="eidStatus" defaultValue={employee.eidStatus} options={lookups.EID_STATUS} />
             <div />
             <InlineDocumentUpload
               employeeId={employee.id}
@@ -557,7 +531,6 @@ export function EditForm({
                 className="input w-full"
               />
             </Field>
-            <LookupField label="Labour card status" name="laborCardStatus" defaultValue={employee.laborCardStatus} options={lookups.LABOR_CARD_STATUS} />
             <Field label="Labor card expiry">
               <DatePicker key={`laborCardExpiry-${auto.laborCardExpiry ?? ""}`} name="laborCardExpiry" defaultValue={auto.laborCardExpiry ?? toDateInput(employee.laborCardExpiry)} />
             </Field>
@@ -576,11 +549,7 @@ export function EditForm({
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="Visa number" name="visaNumber" defaultValue={employee.visaNumber} />
             <TextField label="Unified No" name="unifiedNo" defaultValue={employee.unifiedNo} />
-            <TextField label="Sponsor name" name="sponsorName" defaultValue={employee.sponsorName} />
-            <LookupField label="Visa type" name="visaType" defaultValue={employee.visaType} options={lookups.VISA_TYPE} />
             <LookupField label="Visa status" name="visaStatus" defaultValue={employee.visaStatus} options={lookups.VISA_STATUS} />
-            <TextField label="Visa designation" name="visaDesignation" defaultValue={employee.visaDesignation} />
-            <DateField label="First visa stamping date" name="visaStampingDate" defaultValue={employee.visaStampingDate} />
             <TextField label="MOL person code" name="molPersonCode" defaultValue={employee.molPersonCode} hint="MOL_PERSON_CODE" />
             <DateField label="Visa expiry date" name="visaExpiry" defaultValue={employee.visaExpiry} />
             <div />
@@ -614,11 +583,7 @@ export function EditForm({
             CICPA <span className="font-normal text-subtle">(Abu Dhabi critical-infrastructure clearance)</span>
           </h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
-            <TextField label="CICPA number" name="cicpaNumber" defaultValue={employee.cicpaNumber} />
-            <LookupField label="CICPA status" name="cicpaStatus" defaultValue={employee.cicpaStatus} options={lookups.CICPA_STATUS} />
-            <DateField label="Issue date" name="cicpaIssueDate" defaultValue={employee.cicpaIssueDate} />
             <DateField label="Expiry date" name="cicpaExpiry" defaultValue={employee.cicpaExpiry} />
-            <TextField label="Location" name="cicpaLocation" defaultValue={employee.cicpaLocation} />
             <InlineDocumentUpload
               employeeId={employee.id}
               type="CICPA"
@@ -631,12 +596,7 @@ export function EditForm({
         <section>
           <h2 className="mb-3 text-sm font-semibold text-primary">Insurance</h2>
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
-            <LookupField label="Card type" name="insuranceCardType" defaultValue={employee.insuranceCardType} options={lookups.INSURANCE_CARD_TYPE} />
-            <TextField label="Card number" name="insuranceCardNumber" defaultValue={employee.insuranceCardNumber} />
-            <DateField label="Issue date" name="insuranceIssueDate" defaultValue={employee.insuranceIssueDate} />
             <DateField label="Expiry date" name="insuranceExpiry" defaultValue={employee.insuranceExpiry} />
-            <LookupField label="Status" name="insuranceStatus" defaultValue={employee.insuranceStatus} options={lookups.INSURANCE_STATUS} />
-            <TextField label="Service provider" name="insuranceServiceProvider" defaultValue={employee.insuranceServiceProvider} />
             <InlineDocumentUpload
               employeeId={employee.id}
               type="INSURANCE"
@@ -651,9 +611,7 @@ export function EditForm({
           <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <TextField label="Licence number" name="drivingLicenceNumber" defaultValue={employee.drivingLicenceNumber} />
             <LookupField label="Licence type" name="drivingLicenceType" defaultValue={employee.drivingLicenceType} options={lookups.DRIVING_LICENCE_TYPE} />
-            <DateField label="Issue date" name="drivingLicenceIssueDate" defaultValue={employee.drivingLicenceIssueDate} />
             <DateField label="Expiry date" name="drivingLicenceExpiry" defaultValue={employee.drivingLicenceExpiry} />
-            <LookupField label="Status" name="drivingLicenceStatus" defaultValue={employee.drivingLicenceStatus} options={lookups.DRIVING_LICENCE_STATUS} />
             <InlineDocumentUpload
               employeeId={employee.id}
               type="DRIVING_LICENCE"

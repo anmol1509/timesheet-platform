@@ -364,7 +364,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
                   <p className="text-sm font-semibold text-primary">Mobilisation date</p>
                   <label className="flex flex-wrap items-center gap-2 text-xs text-muted">
                     If a row has no date, use
-                    <input type="date" value={defaultDate} onChange={(e) => setDefaultDate(e.target.value)} className="input w-44 px-2 py-1.5 text-sm" aria-label="Date to use when a row has none" />
+                    <DatePicker value={defaultDate} onChange={setDefaultDate} ariaLabel="Date to use when a row has none" className="w-44" />
                     <span>(leave empty to keep those rows undated)</span>
                   </label>
                 </div>
