@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import cities from "@/data/cities.json";
 import { COUNTRIES } from "@/lib/countries";
+import { searchEmirates } from "@/lib/emirates";
 
 /**
  * City search for the emirate/city field: GET /api/geo/cities?country=India&q=mum
@@ -17,6 +18,8 @@ export async function GET(request: Request) {
   const country = url.searchParams.get("country") ?? "";
   const q = fold((url.searchParams.get("q") ?? "").trim());
   const code = COUNTRIES.find((c) => c.name === country)?.code.toUpperCase();
+  // The UAE has seven emirates, not hundreds of towns, so that is all its list offers.
+  if (code === "AE") return NextResponse.json({ cities: searchEmirates(url.searchParams.get("q") ?? ""), total: 7, known: true, restricted: true }, { headers: { "Cache-Control": "public, max-age=3600" } });
   const list = (code && DATA[code]) || [];
   let out: string[];
   if (!q) out = list.slice(0, LIMIT);
