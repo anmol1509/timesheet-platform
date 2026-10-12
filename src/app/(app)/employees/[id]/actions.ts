@@ -451,21 +451,24 @@ export async function applyExtractedFieldsAction(formData: FormData) {
   revalidatePath(`/employees/${employeeId}`);
 }
 
-export async function uploadDocumentAction(formData: FormData) {
+export async function uploadDocumentAction(formData: FormData): Promise<{ error: string | null }> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
   const displayInEss = formData.get("displayInEss") === "on";
+  // A name typed by the person keeps the file's own extension, so it still opens correctly.
+  const typedName = String(formData.get("name") || "").trim().slice(0, 100);
   const file = formData.get("file");
-  if (!employeeId || !(file instanceof File) || file.size === 0) return;
-  if (file.size > MAX_UPLOAD_BYTES) return;
+  if (!employeeId || !(file instanceof File) || file.size === 0) return { error: "Choose a file first." };
+  const ext = /\.[A-Za-z0-9]{1,5}$/.exec(file instanceof File ? file.name : "")?.[0] ?? "";
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `"${file.name}" is too large (limit ${(MAX_UPLOAD_BYTES / 1048576).toFixed(0)} MB).` };
   // The browser's type is client-controlled, and these files are served back
   // from our own origin — an HTML or SVG upload would run as first-party
   // script. See src/lib/uploads.ts.
-  if (!isAcceptedUploadType(file.type)) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  if (!isAcceptedUploadType(file.type)) return { error: `"${file.name}" is not a supported file type. Use a PDF or an image.` };
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return { error: "That employee isn't in this branch." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const created = await prisma.document.create({
@@ -473,7 +476,7 @@ export async function uploadDocumentAction(formData: FormData) {
       employeeId,
       type,
       displayInEss,
-      filename: safeFilename(file.name),
+      filename: safeFilename(typedName ? (ext && !typedName.toLowerCase().endsWith(ext.toLowerCase()) ? typedName + ext : typedName) : (file as File).name),
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
       expiryDate,
@@ -493,6 +496,7 @@ export async function uploadDocumentAction(formData: FormData) {
 
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/documents");
+  return { error: null };
 }
 
 export async function deleteDocumentAction(formData: FormData) {

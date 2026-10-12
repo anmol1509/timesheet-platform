@@ -29,6 +29,8 @@ export function CitySelect({ name, country, value: controlled, defaultValue, onC
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  // True when the country has a fixed list (the UAE's seven emirates), so typing a different name isn't offered.
+  const [fixedList, setFixedList] = useState(false);
   const rootRef = useRef<HTMLButtonElement>(null);
   useFormReset(rootRef, () => setInner(effectiveCountry === initialCountry ? (defaultValue ?? "") : ""));
 
@@ -39,8 +41,9 @@ export function CitySelect({ name, country, value: controlled, defaultValue, onC
       setLoading(true);
       try {
         const r = await fetch(`/api/geo/cities?country=${encodeURIComponent(effectiveCountry)}&q=${encodeURIComponent(query)}`, { signal: ctl.signal });
-        const j = (await r.json()) as { cities: string[] };
+        const j = (await r.json()) as { cities: string[]; restricted?: boolean };
         setResults(j.cities);
+        setFixedList(!!j.restricted);
       } catch {
         /* aborted or offline: keep what is shown, the typed value can still be used */
       }
@@ -59,7 +62,7 @@ export function CitySelect({ name, country, value: controlled, defaultValue, onC
     setQuery("");
   }
   const typed = query.trim();
-  const canUseTyped = typed !== "" && !results.some((c) => c.toLowerCase() === typed.toLowerCase());
+  const canUseTyped = !fixedList && typed !== "" && !results.some((c) => c.toLowerCase() === typed.toLowerCase());
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -74,7 +77,7 @@ export function CitySelect({ name, country, value: controlled, defaultValue, onC
         <Popover.Content align="start" sideOffset={4} className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-control border border-default bg-surface shadow-popover">
           {/* Filtering is done by the server, so cmdk's own filter is switched off. */}
           <Command shouldFilter={false} loop>
-            <CommandInput autoFocus value={query} onValueChange={setQuery} placeholder={`Search cities in ${effectiveCountry}…`} className="w-full border-b border-default px-3 py-2 text-sm text-primary outline-none placeholder:text-subtle" />
+            <CommandInput autoFocus value={query} onValueChange={setQuery} placeholder={effectiveCountry === "United Arab Emirates" ? "Search emirates…" : `Search cities in ${effectiveCountry}…`} className="w-full border-b border-default px-3 py-2 text-sm text-primary outline-none placeholder:text-subtle" />
             <CommandList className="max-h-64 overflow-y-auto p-1">
               {loading && results.length === 0 && (
                 <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Loading…</div>
