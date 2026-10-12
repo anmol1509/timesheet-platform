@@ -1,5 +1,6 @@
 "use server";
 
+import { dueDateFor } from "@/lib/payrollSchedule";
 import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -45,12 +46,12 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
   // Pay from the company's own account if it has a usable one; otherwise the branch default.
   const banks = await prisma.bank.findMany({ where: { branchId, companyId: company.id, status: "ACTIVE" }, orderBy: { accountName: "asc" } });
   const bank = banks.find((b) => isUsableBank(b) && b.routingCode) ?? null;
-  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { wpsPayerBankId: true } });
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { wpsPayerBankId: true, payrollDueDays: true } });
 
   let created;
   try {
     created = await prisma.payrollRun.create({
-      data: { month, branchId, companyId: company.id, payType: null, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null },
+      data: { month, branchId, companyId: company.id, payType: null, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null, dueDate: dueDateFor(month, branch?.payrollDueDays) },
     });
   } catch {
     return { error: `A payroll run for ${company.name} in ${month} already exists.` };
@@ -301,6 +302,22 @@ export async function refreshLineBankAction(formData: FormData): Promise<State> 
 }
 
 /** Set (or clear) the run total above which the creator may not approve their own run. */
+export async function setDueDaysAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  const raw = String(formData.get("dueDays") ?? "").trim();
+  const value = raw === "" ? null : Number(raw);
+  if (value !== null && (!Number.isInteger(value) || value < 0 || value > 60)) return { error: "Enter a whole number of days between 0 and 60, or leave blank for no due date." };
+  const before = await prisma.branch.findUnique({ where: { id: branchId }, select: { payrollDueDays: true } });
+  await prisma.branch.update({ where: { id: branchId }, data: { payrollDueDays: value } });
+  await logAudit({ entityType: "BRANCH", entityId: branchId, action: "UPDATE", before: { payrollDueDays: before?.payrollDueDays ?? null }, after: { payrollDueDays: value }, userId: user.id, userName: user.name, branchId });
+  revalidatePath("/payroll");
+  return { error: null, ok: true };
+}
+
 export async function setApprovalThresholdAction(formData: FormData): Promise<State> {
   await requireWrite("payroll.payroll");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }

@@ -26,6 +26,7 @@ export default async function RecurringPage() {
     employee: a.employee.name,
     employeeIdNo: a.employee.employeeIdNo,
     kind: a.kind,
+    category: a.category,
     label: a.label,
     amount: Number(a.amount.toString()),
     startMonth: a.startMonth,

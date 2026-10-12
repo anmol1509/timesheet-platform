@@ -87,7 +87,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     }),
     prisma.payrollAdjustment.findMany({
       where: { branchId: run.branchId, active: true, startMonth: { lte: run.month } },
-      select: { employeeId: true, kind: true, amount: true, startMonth: true, endMonth: true },
+      select: { employeeId: true, kind: true, amount: true, startMonth: true, endMonth: true, label: true, category: true },
     }),
     prisma.employeeLoan.findMany({
       where: { branchId: run.branchId, status: "ACTIVE", startMonth: { lte: run.month } },
@@ -148,10 +148,11 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     att.set(a.employeeId, row);
   }
 
-  const extras = new Map<string, { earn: number; deduct: number }>();
+  const extras = new Map<string, { earn: number; deduct: number; items: { kind: string; label: string; amount: number; category: string | null }[] }>();
   for (const a of standing) {
     if (!appliesToMonth(a, run.month)) continue;
-    const row = extras.get(a.employeeId) ?? { earn: 0, deduct: 0 };
+    const row = extras.get(a.employeeId) ?? { earn: 0, deduct: 0, items: [] };
+    row.items.push({ kind: a.kind === "EARNING" ? "EARNING" : "DEDUCTION", label: a.label, amount: round2(num(a.amount)), category: a.category });
     if (a.kind === "EARNING") row.earn = round2(row.earn + num(a.amount));
     else row.deduct = round2(row.deduct + num(a.amount));
     extras.set(a.employeeId, row);
@@ -185,7 +186,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     );
     const old = prev.get(e.id);
     const adjustment = num(old?.adjustment);
-    const ex = extras.get(e.id) ?? { earn: 0, deduct: 0 };
+    const ex = extras.get(e.id) ?? { earn: 0, deduct: 0, items: [] };
     // Gas never takes pay below zero: it can only take what is left after deductions.
     const gasCharge = Math.min(
       gasChargeFor({ checkIn: e.siteArrivalDate, monthStart: start, daysInMonth: days, perDay: e.supplier ? num(e.supplier.gasPerDay) : 1, cap: e.supplier ? num(e.supplier.gasMonthlyCap) : 30, waived: e.gasWaived }),
@@ -211,7 +212,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
       manualDeduction, deductionNote: old?.deductionNote ?? null,
       advanceNote: old?.advanceNote ?? null, advanceManual,
-      otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction,
+      otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction, items: ex.items.length > 0 ? ex.items : undefined,
       net: netPayWithExtras(r, adjustment, { ...recurring, loanDeduction, manualDeduction }),
       paymentMode: e.wpsPaymentMode, personCode: e.molPersonCode, bankName: e.wpsBankName, routingCode: e.wpsRoutingCode, account: e.wpsIban || e.wpsAccountNumber,
     };

@@ -16,6 +16,8 @@ import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { VisaHistorySection } from "./visa-history-section";
+import { SalaryHistorySection, type RevisionRow } from "./salary-history-section";
+import { arrearsFor } from "@/lib/payrollSchedule";
 import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
 import { NotesSection } from "./notes-section";
@@ -157,6 +159,17 @@ export default async function EmployeeDetailPage({
       }
     : null;
 
+  const revisions = canViewPay ? await prisma.salaryRevision.findMany({ where: { employeeId: id }, orderBy: { effectiveFrom: "desc" }, take: 20 }) : [];
+  const closedRuns = revisions.length > 0 ? await prisma.payrollRun.findMany({ where: { branchId: employee.branchId, status: { in: ["APPROVED", "PAID"] }, lines: { some: { employeeId: id } } }, select: { month: true } }) : [];
+  const closedMonths = [...new Set(closedRuns.map((r) => r.month))];
+  const arrearsAdded = revisions.length > 0 ? await prisma.payrollAdjustment.findMany({ where: { employeeId: id, category: "ARREARS" }, select: { label: true } }) : [];
+  const revisionRows: RevisionRow[] = revisions.map((r) => {
+    const increase = Number(r.fixedAfter.toString()) - Number(r.fixedBefore.toString());
+    const a = increase > 0 ? arrearsFor(increase, r.effectiveFrom, closedMonths) : null;
+    const label = a && a.months.length > 0 ? `Salary arrears ${a.months[0]} to ${a.months[a.months.length - 1]}` : null;
+    return { id: r.id, effectiveFrom: r.effectiveFrom.toISOString().slice(0, 10), reason: r.reason, fixedBefore: Number(r.fixedBefore.toString()), fixedAfter: Number(r.fixedAfter.toString()), by: r.createdByName, arrears: a && a.months.length > 0 && !arrearsAdded.some((x) => x.label === label) ? { months: a.months.length, amount: a.amount } : null };
+  });
+
   const lookups = groupLookups(lookupValues);
   const documentOptions = employee.documents.map((d) => ({ id: d.id, filename: d.filename }));
 
@@ -273,6 +286,7 @@ export default async function EmployeeDetailPage({
         lookups={lookups}
         tradesContent={
           <>
+            {canViewPay && <SalaryHistorySection rows={revisionRows} canAddArrears={canEditPay} />}
             <SkillsSection
               employeeId={employee.id}
               skills={employee.skills.map((s) => ({

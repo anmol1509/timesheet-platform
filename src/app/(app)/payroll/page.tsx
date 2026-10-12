@@ -11,6 +11,8 @@ import { CostTrend } from "./cost-trend";
 import { isUsableBank } from "@/lib/bankStatus";
 import { payDataGap } from "@/lib/payroll";
 import { ApprovalRuleForm } from "./approval-rule";
+import { DueDaysForm } from "./due-days-form";
+import { dueDateFor, dueState } from "@/lib/payrollSchedule";
 
 export const metadata = { title: "Payroll" };
 
@@ -69,6 +71,7 @@ export default async function PayrollPage() {
           {unpaid.slice(0, 3).map((r) => (
             <p key={r.id} className="mt-1 text-sm text-secondary">
               <span className="font-medium text-primary">{r.company?.name ?? "Payroll"} · {r.month}</span> is {r.status === "DRAFT" ? (r.submittedAt ? "waiting for approval" : "still a draft") : "approved and waiting to be paid"}.{" "}
+              {(() => { const due = r.dueDate ?? dueDateFor(r.month, branch?.payrollDueDays); const st = due ? dueState(due) : null; return st?.overdue ? <span className="font-medium text-[var(--error)]">{st.daysLate} day{st.daysLate === 1 ? "" : "s"} past the due date. </span> : null; })()}
               <Link href={`/payroll/${r.id}`} className="font-medium text-[var(--brand-primary)] hover:underline">Open →</Link>
             </p>
           ))}
@@ -102,7 +105,7 @@ export default async function PayrollPage() {
       )}
 
       {branchId && can(subject, "payroll.payroll", "approve") && (
-        <details className="card"><summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-primary">Approval settings</summary><div className="border-t border-default"><ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} /></div></details>
+        <details className="card"><summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-primary">Payroll settings</summary><div className="divide-y divide-[var(--border)] border-t border-default"><ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} /><DueDaysForm current={branch?.payrollDueDays ?? null} /></div></details>
       )}
 
       {runs.length >= 2 && <CostTrend runs={runs.map((r) => ({ month: r.month, total: r.lines.reduce((s, l) => s + Number(l.net), 0), headcount: r.lines.length }))} />}
@@ -118,6 +121,7 @@ export default async function PayrollPage() {
                 <th className="px-4 py-3">Company</th>
                 {!branchId && <th className="px-4 py-3">Branch</th>}
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Due</th>
                 <th className="px-4 py-3 text-right">Employees</th>
                 <th className="px-4 py-3 text-right">Total net (AED)</th>
               </tr>
@@ -129,6 +133,7 @@ export default async function PayrollPage() {
                   <td className="px-4 py-3 text-secondary">{r.company?.name ?? <span className="text-subtle">All own companies</span>}{r.payType && <span className="ml-2 text-xs text-muted">{r.payType === "HOURLY" ? "hourly" : "basic"}</span>}</td>
                   {!branchId && <td className="px-4 py-3 text-secondary">{r.branch.code}</td>}
                   <td className="px-4 py-3"><Badge color={STATUS[r.status]?.color ?? "slate"} dot>{STATUS[r.status]?.label ?? r.status}</Badge></td>
+                  <td className="px-4 py-3 text-xs text-secondary">{(() => { const due = r.dueDate ?? dueDateFor(r.month, branch?.payrollDueDays); if (!due) return <span className="text-subtle">—</span>; const st = dueState(due); return <>{due.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}{r.status !== "PAID" && st.overdue && <Badge color="red" className="ml-2">{st.daysLate}d late</Badge>}</>; })()}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-secondary">{r.lines.length}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-primary">{aed(r.lines.reduce((s, l) => s + Number(l.net), 0))}</td>
                 </tr>

@@ -280,6 +280,27 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
   await prisma.employee.update({ where: { id }, data });
 
+  // A change to what the worker is paid each month is kept as a dated revision, so pay history can be shown and arrears worked out.
+  if (before && Object.keys(payData).length > 0) {
+    const fixedOf = (e: { payStructure: string | null; basicSalary: unknown; housingAllowance: unknown; foodAllowance: unknown; transportAllowance: unknown; otherAllowance: unknown; flatMonthlyRate: unknown }) => {
+      const x = (v: unknown) => (v == null ? 0 : Number(String(v)));
+      return e.payStructure === "ITEMISED" ? x(e.basicSalary) + x(e.housingAllowance) + x(e.foodAllowance) + x(e.transportAllowance) + x(e.otherAllowance) : e.payStructure === "FLAT" ? x(e.flatMonthlyRate) : 0;
+    };
+    const snap = (e: Parameters<typeof fixedOf>[0]) => ({ payStructure: e.payStructure, basicSalary: e.basicSalary == null ? null : Number(String(e.basicSalary)), housingAllowance: e.housingAllowance == null ? null : Number(String(e.housingAllowance)), foodAllowance: e.foodAllowance == null ? null : Number(String(e.foodAllowance)), transportAllowance: e.transportAllowance == null ? null : Number(String(e.transportAllowance)), otherAllowance: e.otherAllowance == null ? null : Number(String(e.otherAllowance)), flatMonthlyRate: e.flatMonthlyRate == null ? null : Number(String(e.flatMonthlyRate)) });
+    const fixedBefore = fixedOf(before);
+    const fixedAfter = fixedOf(payData as unknown as Parameters<typeof fixedOf>[0]);
+    const structureChanged = (before.payStructure ?? null) !== ((payData as { payStructure?: string | null }).payStructure ?? null);
+    if (fixedBefore !== fixedAfter || structureChanged) {
+      await prisma.salaryRevision.create({
+        data: {
+          employeeId: id, branchId: before.branchId, effectiveFrom: dateOrNull(formData.get("payEffectiveFrom")) ?? new Date(),
+          reason: stringOrNull(formData.get("payChangeReason")), before: snap(before), after: snap(payData as unknown as Parameters<typeof fixedOf>[0]),
+          fixedBefore, fixedAfter, createdById: user.id, createdByName: user.name,
+        },
+      });
+    }
+  }
+
   // Taking the project away ends the placement, so the mobilisation stage and
   // its dates end with it — same rule the demand screen applies when a worker
   // is unallocated, so the two routes can't leave the roster disagreeing.

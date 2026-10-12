@@ -721,6 +721,16 @@ export function EditForm({
                   </Field>
                 </>
               )}
+              {payStructure && pay.canEdit && (
+                <>
+                  <Field label="Pay change takes effect from (optional)">
+                    <DatePicker name="payEffectiveFrom" defaultValue="" className="w-full" />
+                  </Field>
+                  <Field label="Reason for a pay change (optional)">
+                    <input name="payChangeReason" className="input w-full" placeholder="e.g. Annual increment" />
+                  </Field>
+                </>
+              )}
               {payStructure && (
                 <>
                   <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">

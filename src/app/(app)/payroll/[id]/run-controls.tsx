@@ -80,6 +80,16 @@ export function RunControls({
                   <Download className="h-4 w-4" aria-hidden /> Download as spreadsheet (CSV)
                 </a>
               )}
+              {canExport && (
+                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/register`}>
+                  <Download className="h-4 w-4" aria-hidden /> Payroll register (Excel)
+                </a>
+              )}
+              {canExport && (
+                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/journal`}>
+                  <Download className="h-4 w-4" aria-hidden /> Accounting journal (CSV)
+                </a>
+              )}
               {status === "DRAFT" && canDelete && (
                 <button type="button" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--error)] hover:bg-surface-hover" disabled={pending} onClick={() => run(deleteRunAction as unknown as (fd: FormData) => Promise<void>)}>
                   <Trash2 className="h-4 w-4" aria-hidden /> Delete this draft

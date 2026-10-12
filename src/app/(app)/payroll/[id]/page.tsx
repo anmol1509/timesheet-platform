@@ -16,6 +16,7 @@ import { DetailView } from "./detail-view";
 import { CorrectionCell } from "./correction-cell";
 import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { buildPayslip } from "@/lib/payslip";
+import { dueDateFor, dueState } from "@/lib/payrollSchedule";
 
 function previousMonth(month: string) {
   const [y, m] = month.split("-").map(Number);
@@ -39,7 +40,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const run = await prisma.payrollRun.findUnique({
     where: { id },
     include: {
-      branch: { select: { code: true, name: true, payrollApprovalThreshold: true } },
+      branch: { select: { code: true, name: true, payrollApprovalThreshold: true, payrollDueDays: true } },
       company: { select: { name: true } },
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
@@ -66,6 +67,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const cashCount = run.lines.filter((l) => isCashMode(l.paymentMode)).length;
   const gapRows = run.lines.map((l) => ({ l, gaps: wpsGaps(l) })).filter((x) => x.gaps.length > 0);
   const draft = run.status === "DRAFT";
+  const dueAt = run.dueDate ?? dueDateFor(run.month, run.branch.payrollDueDays);
+  const due = dueAt ? dueState(dueAt) : null;
   const D = "hidden px-3 py-3 text-right group-data-[detail=on]:table-cell";
   const DETAIL_INLINE = "hidden group-data-[detail=on]:inline";
   const costByProject = [
@@ -110,6 +113,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <p className="mt-1 text-sm text-muted">
           {run.branch.name} · created by {run.createdBy.name}
           {run.approvedBy && ` · approved by ${run.approvedBy.name}`}
+          {dueAt && <> · salaries due {dueAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}{run.status !== "PAID" && due?.overdue && <span className="ml-1 font-medium text-[var(--error)]">({due.daysLate} day{due.daysLate === 1 ? "" : "s"} late)</span>}</>}
         </p>
       </div>
 
