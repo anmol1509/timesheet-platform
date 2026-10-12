@@ -106,23 +106,33 @@ export function RunControls({
 
 type ChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => void;
 
-/** One labelled amount + note pair. Defined at module level so it isn't remounted on every keystroke. */
-function LineRow({ label, amount, note, onAmount, onNote, placeholder }: { label: string; amount: string; note: string; onAmount: ChangeHandler; onNote: ChangeHandler; placeholder: string }) {
+const TD = "px-2 py-3 align-top";
+
+/** An amount box with, once there is an amount, the note that goes with it. Module level so it isn't remounted on every keystroke. */
+function AmountCell({ label, amount, note, onAmount, onNote, placeholder, required, disabled, sign }: { label: string; amount: string; note: string; onAmount: (v: string) => void; onNote: ChangeHandler; placeholder: string; required: boolean; disabled: boolean; sign: "−" | "±" }) {
+  const has = Number(amount || 0) !== 0;
+  if (disabled) {
+    return (
+      <td className={`${TD} text-right tabular-nums text-secondary`}>
+        {has ? <>{Number(amount) < 0 || sign === "−" ? "−" : "+"}{Math.abs(Number(amount)).toFixed(2)}</> : "—"}
+        {has && note && <span className="block max-w-32 truncate text-xs text-subtle" title={note}>{note}</span>}
+      </td>
+    );
+  }
   return (
-    <div className="grid grid-cols-[4.5rem_5.5rem_1fr] items-center gap-1.5">
-      <span className="text-xs text-muted">{label}</span>
-      <NumberInput step={0.01} value={amount} onChange={(v) => onAmount({ target: { value: String(v) } } as React.ChangeEvent<HTMLInputElement>)} ariaLabel={`${label} (AED)`} inputClassName="h-8 text-right tabular-nums" />
-      <input value={note} onChange={onNote} placeholder={placeholder} aria-label={`${label} note`} className="input h-8 text-xs" />
-    </div>
+    <td className={TD}>
+      <NumberInput step={0.01} value={amount} onChange={(v) => onAmount(String(v))} ariaLabel={`${label} (AED)`} inputClassName="h-8 w-24 text-right tabular-nums" />
+      {has && <input value={note} onChange={onNote} placeholder={placeholder} aria-label={`${label} note`} aria-required={required} className={`input mt-1 h-7 w-36 text-xs ${required && !note.trim() ? "border-[var(--warning)]" : ""}`} />}
+    </td>
   );
 }
 
 /**
- * Editor for the three things typed against a line: a deduction (a fine,
- * damage...), the advance recovered this month, and an adjustment (+ or −).
- * Each has its own note. One Save writes all three and recomputes net pay.
+ * The three things typed against a line, as three table cells: a deduction (a fine,
+ * damage...), the advance recovered this month, and an adjustment (+ or −). Each amount
+ * asks for a note once it is filled in. One Save writes all three and recomputes net pay.
  */
-export function LineEditor({
+export function LineAdjustCells({
   lineId, deduction, deductionNote, advance, advanceNote, adjustment, adjustmentNote, disabled,
 }: {
   lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; disabled: boolean;
@@ -134,7 +144,8 @@ export function LineEditor({
   const dirty =
     Number(v.deduction || 0) !== deduction || v.deductionNote !== deductionNote || Number(v.advance || 0) !== advance || v.advanceNote !== advanceNote ||
     Number(v.adjustment || 0) !== adjustment || v.adjustmentNote !== adjustmentNote;
-  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) => { setSaved(false); setV((p) => ({ ...p, [k]: e.target.value })); };
+  const amount = (k: "deduction" | "advance" | "adjustment") => (val: string) => { setSaved(false); setV((p) => ({ ...p, [k]: val })); };
+  const note = (k: "deductionNote" | "advanceNote" | "adjustmentNote"): ChangeHandler => (e) => { setSaved(false); setV((p) => ({ ...p, [k]: e.target.value })); };
 
   function save() {
     setError(null);
@@ -147,31 +158,18 @@ export function LineEditor({
     });
   }
 
-  if (disabled) {
-    const rows = [
-      ["Deduction", deduction, deductionNote, "−"],
-      ["Advance", advance, advanceNote, "−"],
-      ["Adjustment", adjustment, adjustmentNote, adjustment < 0 ? "−" : "+"],
-    ] as const;
-    return (
-      <ul className="min-w-44 space-y-1 text-xs">
-        {rows.filter(([, a]) => a !== 0).map(([label, a, note, sign]) => (
-          <li key={label}><span className="text-muted">{label}:</span> <span className="tabular text-secondary">{sign}{Math.abs(a).toFixed(2)}</span>{note && <span className="block max-w-56 truncate text-subtle" title={note}>{note}</span>}</li>
-        ))}
-        {deduction === 0 && advance === 0 && adjustment === 0 && <li className="text-subtle">—</li>}
-      </ul>
-    );
-  }
   return (
-    <div className="flex min-w-[24rem] flex-col gap-1.5">
-      <LineRow label="Deduction" amount={v.deduction} note={v.deductionNote} onAmount={set("deduction")} onNote={set("deductionNote")} placeholder="What for? (fine, damage…)" />
-      <LineRow label="Advance" amount={v.advance} note={v.advanceNote} onAmount={set("advance")} onNote={set("advanceNote")} placeholder="Note (advance taken on…)" />
-      <LineRow label="Adjustment" amount={v.adjustment} note={v.adjustmentNote} onAmount={set("adjustment")} onNote={set("adjustmentNote")} placeholder="Bonus / correction (− to deduct)" />
-      <div className="flex items-center gap-2">
-        {dirty && <button type="button" className="btn btn-primary h-7 px-3 text-xs" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>}
-        {saved && !dirty && <span className="text-xs text-[var(--success)]">Saved</span>}
-        {error && <p role="alert" className="text-xs text-[var(--error)]">{error}</p>}
-      </div>
-    </div>
+    <>
+      <AmountCell label="Deduction" amount={v.deduction} note={v.deductionNote} onAmount={amount("deduction")} onNote={note("deductionNote")} placeholder="What for? (fine, damage…)" required disabled={disabled} sign="−" />
+      <AmountCell label="Advance" amount={v.advance} note={v.advanceNote} onAmount={amount("advance")} onNote={note("advanceNote")} placeholder="Note (advance taken on…)" required disabled={disabled} sign="−" />
+      <AmountCell label="Adjustment" amount={v.adjustment} note={v.adjustmentNote} onAmount={amount("adjustment")} onNote={note("adjustmentNote")} placeholder="Bonus / correction (− to deduct)" required={false} disabled={disabled} sign="±" />
+      {!disabled && (
+        <td className={TD}>
+          {dirty && <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>}
+          {saved && !dirty && <span className="text-xs text-[var(--success)]">Saved</span>}
+          {error && <p role="alert" className="mt-1 max-w-40 text-xs text-[var(--error)]">{error}</p>}
+        </td>
+      )}
+    </>
   );
 }
