@@ -75,3 +75,24 @@ export function unknownFieldsIn(html: string, audience: Audience): string[] {
   if (audience === "SITE") known.add("SPONSORSHIPCOMPANYNAME");
   return [...new Set(tokensIn(html).filter((t) => !known.has(t) && !(audience === "EMPLOYEE" && t.startsWith(ASK_PREFIX) && t.length > ASK_PREFIX.length)))];
 }
+
+/** The heading a field sits under in the Insert field list, so a long list reads in sections. */
+export function fieldGroup(key: string): string {
+  if (/^ADVANCE/.test(key)) return "Advance or loan";
+  if (/^SETTLE/.test(key)) return "Final settlement";
+  if (/^DEDUCTION/.test(key)) return "Salary deduction";
+  if (/^SALARY(EFFECTIVE|BEFORE|AFTER|CHANGE|REASON)/.test(key)) return "Salary revision";
+  if (key === "BANKNAME" || key === "IBAN" || key === "BASICSALARY" || key === "TOTALSALARY") return "Pay and bank";
+  if (["COMPANYNAME", "BRANCHNAME", "DATE", "REFNO"].includes(key)) return "Letter";
+  return "Employee";
+}
+
+/** Fields filtered by what the person typed, then in sections (in the order the sections first appear). */
+export function groupedFields<T extends { key: string; label: string }>(fields: T[], query: string, audience: Audience): { group: string; fields: T[] }[] {
+  const q = query.trim().toLowerCase();
+  const hit = q ? fields.filter((f) => `${f.label} ${f.key}`.toLowerCase().includes(q)) : fields;
+  if (audience !== "EMPLOYEE") return hit.length ? [{ group: "Fields", fields: hit }] : [];
+  const groups = new Map<string, T[]>();
+  for (const f of hit) groups.set(fieldGroup(f.key), [...(groups.get(fieldGroup(f.key)) ?? []), f]);
+  return [...groups.entries()].map(([group, fields]) => ({ group, fields }));
+}

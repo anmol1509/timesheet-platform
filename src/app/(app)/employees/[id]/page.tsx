@@ -16,6 +16,7 @@ import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { HistorySection } from "./history-section";
+import { ReadinessCard } from "./readiness-card";
 import { VisaHistorySection } from "./visa-history-section";
 import { SalaryHistorySection, type RevisionRow } from "./salary-history-section";
 import { arrearsFor } from "@/lib/payrollSchedule";
@@ -274,6 +275,8 @@ export default async function EmployeeDetailPage({
         ppeOut={employee.inventoryAssignments.filter((a) => !a.returnDate).length}
         documentCount={employee.documents.length}
       />
+
+      {canViewPay && <ReadinessCard employeeId={employee.id} />}
 
       <EditForm
         employee={toPlain(employee)}

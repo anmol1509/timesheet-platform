@@ -6,7 +6,7 @@ import { LetterEditor } from "@/components/LetterEditor";
 import { LetterPreview } from "@/components/LetterPreview";
 import { fieldsFor, unknownFieldsIn, type Audience } from "@/lib/letterFields";
 import { categoriesFor } from "@/lib/letterPresets";
-import { deleteTemplateAction, duplicateTemplateAction, resetToPresetAction, saveTemplateAction } from "../actions";
+import { deleteTemplateAction, duplicateTemplateAction, findPreviewEmployeesAction, previewValuesAction, resetToPresetAction, saveTemplateAction } from "../actions";
 import { Select } from "@/components/ui/Select";
 
 type State = { error: string | null; ok?: boolean };
@@ -33,6 +33,24 @@ export function TemplateEditor(p: Props) {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
+
+  // Preview with a real employee: the blue fields show their details instead of the samples.
+  const [who, setWho] = useState<{ name: string; values: Record<string, string> } | null>(null);
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState<{ id: string; label: string }[]>([]);
+  const [whoNote, setWhoNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (q.trim().length < 2) return;
+    let live = true;
+    const t = setTimeout(() => { findPreviewEmployeesAction(q).then((r) => { if (live) setFound(r); }).catch(() => { if (live) setFound([]); }); }, 250);
+    return () => { live = false; clearTimeout(t); };
+  }, [q]);
+  async function pick(id: string) {
+    setFound([]);
+    setQ("");
+    const r = await previewValuesAction(id);
+    if (r.values && r.name) { setWho({ name: r.name, values: r.values }); setWhoNote(null); } else setWhoNote(r.error ?? "Couldn't load that employee.");
+  }
 
   const fields = useMemo(() => fieldsFor(p.audience), [p.audience]);
   const unknown = useMemo(() => unknownFieldsIn(html, p.audience), [html, p.audience]);
@@ -115,8 +133,25 @@ export function TemplateEditor(p: Props) {
       </form>
 
       <div className="min-w-0 xl:sticky xl:top-20 xl:self-start">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted"><Eye className="h-3.5 w-3.5" aria-hidden /> Live preview <span className="font-normal">· sample data · blue = filled in automatically</span></div>
-        <div className="rounded-lg bg-surface-sunken p-4"><LetterPreview title={title || category} html={html} audience={p.audience} /></div>
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted"><Eye className="h-3.5 w-3.5" aria-hidden /> Live preview <span className="font-normal">· {who ? `showing ${who.name}` : "sample data"} · blue = filled in automatically</span></div>
+        {p.audience === "EMPLOYEE" && (
+          <div className="relative mb-2">
+            {who ? (
+              <button type="button" className="text-xs text-[var(--brand-primary)] hover:underline" onClick={() => setWho(null)}>Back to sample data</button>
+            ) : (
+              <>
+                <input value={q} onChange={(e) => { setQ(e.target.value); if (e.target.value.trim().length < 2) setFound([]); }} placeholder="Preview with a real employee: type a name or ID" aria-label="Preview with an employee" className="input h-8 w-full text-sm" />
+                {found.length > 0 && (
+                  <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-default bg-surface text-sm shadow-popover">
+                    {found.map((f) => <li key={f.id}><button type="button" className="block w-full px-3 py-1.5 text-left hover:bg-surface-hover" onClick={() => pick(f.id)}>{f.label}</button></li>)}
+                  </ul>
+                )}
+              </>
+            )}
+            {whoNote && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{whoNote}</p>}
+          </div>
+        )}
+        <div className="rounded-lg bg-surface-sunken p-4"><LetterPreview title={title || category} html={html} audience={p.audience} values={who?.values} /></div>
       </div>
     </div>
   );

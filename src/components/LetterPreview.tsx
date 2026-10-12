@@ -18,7 +18,7 @@ function sampleTable(): string {
 }
 
 /** Turns the editor's HTML into preview HTML: fields become coloured sample values, the worker marker becomes a sample table. */
-function toPreviewHtml(html: string, audience: Audience): string {
+function toPreviewHtml(html: string, audience: Audience, values?: Record<string, string>): string {
   const fields = new Map(fieldsFor(audience).map((f) => [f.key, f]));
   const chip = (cls: string, text: string, title: string) => `<span class="${cls}" title="${esc(title)}" style="border-radius:4px;padding:0 3px;${cls === "ok" ? "background:#dbeafe;color:#1e40af" : cls === "ask" ? "background:#fef3c7;color:#92400e" : "background:#fee2e2;color:#b91c1c"}">${esc(text)}</span>`;
   const fill = (h: string) =>
@@ -26,7 +26,8 @@ function toPreviewHtml(html: string, audience: Audience): string {
       const key = raw.trim();
       if (key.startsWith(ASK_PREFIX)) return chip("ask", `[${key.slice(ASK_PREFIX.length)}]`, "Filled in when the letter is issued");
       const f = fields.get(key) ?? (key === "SPONSORSHIPCOMPANYNAME" ? fields.get("COMPANYNAME") : undefined);
-      return f ? chip("ok", f.example, `${f.label} — filled in automatically`) : chip("bad", `⚠ %%${key}%%`, "Not a real field — it would print blank");
+      const real = values?.[key];
+      return f ? chip("ok", real ?? f.example, real ? `${f.label} — from the chosen employee` : `${f.label} — filled in automatically (sample)`) : chip("bad", `⚠ %%${key}%%`, "Not a real field — it would print blank");
     });
   if (audience !== "SITE") return fill(html);
   const { before, after } = splitAtWorkerTable(html);
@@ -123,8 +124,8 @@ export function PagedPaper({ children, padX: padXPx, padTop: padTopPx = 28, padB
  * employee letters show a letterhead, reference and signature. Always black on
  * white, like the printed page, whatever the app theme.
  */
-export function LetterPreview({ title, html, audience }: { title: string; html: string; audience: Audience }) {
-  const body = toPreviewHtml(html, audience);
+export function LetterPreview({ title, html, audience, values }: { title: string; html: string; audience: Audience; values?: Record<string, string> }) {
+  const body = toPreviewHtml(html, audience, values);
   return (
     <PagedPaper>
       <div>

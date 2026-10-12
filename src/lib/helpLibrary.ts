@@ -139,6 +139,29 @@ export const HELP_GUIDES: HelpGuide[] = [
     pages: ["/payroll/settlements", "/letters", "/payroll"],
   },
   {
+    id: "audit-trail",
+    title: "See who changed what",
+    keywords: ["audit log", "audit trail", "who changed", "who edited", "change history", "history of changes", "who deleted", "what changed"],
+    steps: [
+      "Open Audit Log from the menu. Each line reads as a sentence, for example: Anmol changed Rahul Khan's basic salary from 3,000 to 3,200.",
+      "Search a person, employee or field, or filter by module, person, action and date. Press a line to see each field before and after.",
+      "For one worker, open their page, then the Records tab › Change history. Press Open in audit log for the full list.",
+    ],
+    notes: ["Pay figures in the history are only shown to people who can see payroll."],
+    pages: ["/audit-log", "/employees"],
+  },
+  {
+    id: "payroll-ready",
+    title: "Check a worker is ready for payroll",
+    keywords: ["ready for payroll", "payroll checklist", "why not in payroll", "worker missing from payroll", "payroll readiness", "cannot be paid", "missing bank details"],
+    steps: [
+      "Open the worker. At the top, the Payroll readiness card lists pay set up, bank and WPS details, and labour card, Emirates ID and visa validity.",
+      "Red items stop the run being approved. Amber items are warnings only. Each one says which tab to fix it on.",
+    ],
+    notes: ["The card only appears for workers under one of your own companies, and only for people who can see pay."],
+    pages: ["/employees", "/payroll"],
+  },
+  {
     id: "payroll-adjustments",
     title: "Add a deduction, bonus or recurring item to payroll",
     keywords: ["fine", "bonus", "deduction", "adjustment", "add deduction", "recurring deduction", "standing allowance", "add bonus"],
