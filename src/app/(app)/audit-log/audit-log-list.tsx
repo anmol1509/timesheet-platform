@@ -6,7 +6,8 @@ import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Pagination } from "@/components/Pagination";
 import { cn } from "@/lib/cn";
-import { AUDIT_MODULES, auditVerb, entityMeta, fieldLabel } from "@/lib/auditPresentation";
+import { AUDIT_MODULES, auditVerb, entityMeta } from "@/lib/auditPresentation";
+import { auditFields, auditSentence } from "@/lib/auditSentence";
 import { Select } from "@/components/ui/Select";
 
 const PAGE_SIZE = 30;
@@ -18,6 +19,7 @@ type Entry = {
   action: string;
   changes: Record<string, unknown> | null;
   userName: string;
+  name: string | null;
   createdAt: string;
 };
 
@@ -27,7 +29,6 @@ const ACTION_TONE: Record<string, string> = {
   DELETE: "bg-[var(--error-soft)] text-[var(--error)]",
 };
 
-const fmtValue = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : typeof v === "boolean" ? (v ? "Yes" : "No") : typeof v === "object" ? JSON.stringify(v) : String(v));
 const RANGES = [
   { key: "today", label: "Today", days: 0 },
   { key: "7", label: "7 days", days: 7 },
@@ -42,36 +43,35 @@ function dayLabel(d: Date, todayKey: string, yesterdayKey: string) {
   return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
-function Diff({ action, changes }: { action: string; changes: Record<string, unknown> | null }) {
-  const rows = Object.entries(changes ?? {});
-  if (rows.length === 0) return <p className="text-xs text-muted">No field details were recorded for this change.</p>;
+function Diff({ entry, canSeePay }: { entry: Entry; canSeePay: boolean }) {
+  const { shown, hiddenPay } = auditFields(entry, { canSeePay });
+  if (shown.length === 0) return <p className="text-xs text-muted">{hiddenPay > 0 ? "The details of this change are pay figures, which you need payroll access to see." : "No field details were recorded for this change."}</p>;
   return (
-    <dl className="grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-[minmax(8rem,12rem)_1fr]">
-      {rows.map(([field, raw]) => {
-        const isDiff = action === "UPDATE" && raw && typeof raw === "object" && "from" in (raw as object);
-        const d = raw as { from: unknown; to: unknown };
-        return (
-          <div key={field} className="contents">
-            <dt className="text-muted">{fieldLabel(field)}</dt>
+    <div className="space-y-1.5">
+      <dl className="grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-[minmax(8rem,12rem)_1fr]">
+        {shown.map((f) => (
+          <div key={f.key} className="contents">
+            <dt className="text-muted">{f.label.charAt(0).toUpperCase() + f.label.slice(1)}</dt>
             <dd className="min-w-0 break-words">
-              {isDiff ? (
+              {f.from !== null ? (
                 <span className="inline-flex flex-wrap items-center gap-1.5">
-                  <span className="rounded bg-[var(--error-soft)] px-1.5 py-0.5 text-[var(--error)] line-through decoration-[var(--error)]/40">{fmtValue(d.from)}</span>
+                  <span className="rounded bg-[var(--error-soft)] px-1.5 py-0.5 text-[var(--error)] line-through decoration-[var(--error)]/40">{f.from}</span>
                   <ArrowRight className="h-3 w-3 text-subtle" aria-hidden />
-                  <span className="rounded bg-[var(--success-soft)] px-1.5 py-0.5 font-medium text-[var(--success)]">{fmtValue(d.to)}</span>
+                  <span className="rounded bg-[var(--success-soft)] px-1.5 py-0.5 font-medium text-[var(--success)]">{f.to}</span>
                 </span>
               ) : (
-                <span className="text-primary">{fmtValue(raw)}</span>
+                <span className="text-primary">{f.to}</span>
               )}
             </dd>
           </div>
-        );
-      })}
-    </dl>
+        ))}
+      </dl>
+      {hiddenPay > 0 && <p className="text-xs text-subtle">{hiddenPay} pay figure{hiddenPay === 1 ? "" : "s"} not shown (needs payroll access).</p>}
+    </div>
   );
 }
 
-export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }) {
+export function AuditLogList({ entries, now, canSeePay }: { entries: Entry[]; now: string; canSeePay: boolean }) {
   const [query, setQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [user, setUser] = useState("all");
@@ -95,10 +95,10 @@ export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }
       if (user !== "all" && e.userName !== user) return false;
       if (action !== "all" && e.action !== action) return false;
       if (r.days >= 0 && new Date(e.createdAt) < start) return false;
-      if (q && !`${e.userName} ${meta.label} ${e.entityId} ${Object.keys(e.changes ?? {}).join(" ")}`.toLowerCase().includes(q)) return false;
+      if (q && !`${e.userName} ${auditSentence(e, e.name, { canSeePay })} ${meta.label} ${e.entityId}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [entries, moduleFilter, user, action, range, query, nowDate]);
+  }, [entries, moduleFilter, user, action, range, query, nowDate, canSeePay]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -119,7 +119,7 @@ export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input value={query} onChange={(e) => { setQuery(e.target.value); reset(); }} placeholder="Search person, record type or field…" aria-label="Search" className="input w-full max-w-xs" />
+        <input value={query} onChange={(e) => { setQuery(e.target.value); reset(); }} placeholder="Search a person, employee, client or field…" aria-label="Search" className="input w-full max-w-xs" />
         <Select value={user} onChange={(v) => { setUser(v); reset(); }} options={[{ value: "all", label: "Everyone" }, ...users.map((u) => ({ value: u, label: u }))]} />
         <Select value={action} onChange={(v) => { setAction(v); reset(); }} searchable={false} options={[{ value: "all", label: "Any action" }, { value: "CREATE", label: "Created" }, { value: "UPDATE", label: "Updated" }, { value: "DELETE", label: "Deleted" }]} />
         <div className="ml-auto inline-flex rounded-lg bg-surface-sunken p-0.5" role="group" aria-label="Time range">
@@ -151,19 +151,15 @@ export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }
                   const meta = entityMeta(e.entityType);
                   const isOpen = open === e.id;
                   const href = meta.href?.(e.entityId);
-                  const nFields = Object.keys(e.changes ?? {}).length;
-                  return (
+                                  return (
                     <li key={e.id}>
                       <button type="button" onClick={() => setOpen(isOpen ? null : e.id)} aria-expanded={isOpen} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-hover">
                         <Avatar name={e.userName} url={null} className="h-8 w-8 shrink-0 text-xs" />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-primary">
-                            <span className="font-medium">{e.userName}</span> {auditVerb(e.action)} <span className="font-medium">{meta.label.toLowerCase()}</span>
-                            <span className="tabular text-subtle"> · {e.entityId.slice(0, 8)}</span>
+                          <span className="block text-sm text-primary">
+                            <span className="font-medium">{e.userName}</span> {auditSentence(e, e.name, { canSeePay })}
                           </span>
-                          <span className="block truncate text-xs text-muted">
-                            {meta.module}{e.action === "UPDATE" && nFields > 0 ? ` · ${nFields} field${nFields === 1 ? "" : "s"} changed: ${Object.keys(e.changes!).slice(0, 3).map(fieldLabel).join(", ")}${nFields > 3 ? "…" : ""}` : ""}
-                          </span>
+                          <span className="block truncate text-xs text-muted">{meta.module} · {meta.label}</span>
                         </span>
                         <span className={cn("hidden rounded-full px-2 py-0.5 text-xs font-medium sm:inline", ACTION_TONE[e.action] ?? ACTION_TONE.UPDATE)}>{auditVerb(e.action)}</span>
                         <time className="tabular w-14 shrink-0 text-right text-xs text-muted" dateTime={e.createdAt}>{new Date(e.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</time>
@@ -171,7 +167,7 @@ export function AuditLogList({ entries, now }: { entries: Entry[]; now: string }
                       </button>
                       {isOpen && (
                         <div className="space-y-3 border-t border-default bg-surface-subtle px-4 py-3 pl-[3.75rem]">
-                          <Diff action={e.action} changes={e.changes} />
+                          <Diff entry={e} canSeePay={canSeePay} />
                           <div className="flex items-center gap-4 text-xs text-muted">
                             <span>{new Date(e.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "medium" })}</span>
                             {href && e.action !== "DELETE" && <Link href={href} className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Open record</Link>}
