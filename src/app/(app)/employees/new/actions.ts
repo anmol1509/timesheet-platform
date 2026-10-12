@@ -14,6 +14,8 @@ import {
 } from "@/lib/uploads";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
+import { checkEmployee } from "@/lib/dataChecks";
+import { employeeDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid } from "@/lib/validators";
 import { clearDraft } from "@/lib/drafts";
 
@@ -180,9 +182,9 @@ export async function checkEmployeeIdAction(
 }
 
 export async function createEmployeeAction(
-  _prevState: { error: string | null; createdId?: string },
+  _prevState: { error: string | null; createdId?: string; warnings?: string[] },
   formData: FormData
-): Promise<{ error: string | null; createdId?: string }> {
+): Promise<{ error: string | null; createdId?: string; warnings?: string[] }> {
   await requireWrite("workforce.employees");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -302,6 +304,20 @@ export async function createEmployeeAction(
     photoMimeType:
       photo instanceof File && photo.size > 0 ? photo.type : undefined,
   };
+
+  // Likely mistakes (a wrong ID number, someone already on file with the same Emirates ID, passport, mobile, an
+  // impossible date or amount) are shown for a second look and never block: the person can register anyway.
+  if (formData.get("confirmWarnings") !== "1") {
+    const warnings = [
+      ...checkEmployee({
+        emiratesId: data.emiratesId, passportNumber: data.passportNumber, mobileNumber: data.mobileNumber, dateOfBirth: data.dateOfBirth, joinDate: data.joinDate,
+        passportExpiry: data.passportExpiry, emiratesIdExpiry: data.emiratesIdExpiry, laborCardExpiry: data.laborCardExpiry, visaExpiry: data.visaExpiry, medicalExpiry: data.medicalExpiry,
+        basicSalary: null, flatMonthlyRate: salaryType === "BASIC" ? salaryRate : null, hourlyRate: salaryType === "HOURLY" ? salaryRate : null,
+      }, null),
+      ...(await employeeDuplicates({ emiratesId: data.emiratesId, passportNumber: data.passportNumber, mobileNumber: data.mobileNumber })),
+    ];
+    if (warnings.length > 0) return { error: null, warnings };
+  }
 
   const employee = await prisma.employee.create({ data });
 

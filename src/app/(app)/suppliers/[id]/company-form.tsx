@@ -1,7 +1,8 @@
 "use client";
 
+import { SaveWarnings } from "@/components/SaveWarnings";
 import { CitySelect } from "@/components/ui/CitySelect";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateSupplierCompanyAction } from "../actions";
 import { SupplierCodeField } from "../supplier-code-field";
@@ -58,6 +59,8 @@ export function SupplierCompanyForm({
   const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState(supplier.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
+  const [warnings, setWarnings] = useState<string[] | null>(null);
+  const lastForm = useRef<FormData | null>(null);
   const [ownChoice, setOwnChoice] = useState(supplier.isOwnCompany);
   const own = parentIsOwnCompany || ownChoice;
 
@@ -70,12 +73,15 @@ export function SupplierCompanyForm({
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
+        lastForm.current = formData;
         setSaved(false);
+        setWarnings(null);
         guard.markSaved();
         startTransition(async () => {
           const res = await updateSupplierCompanyAction(formData);
           setError(res.error);
-          setSaved(!res.error);
+          setWarnings(res.warnings?.length ? res.warnings : null);
+          setSaved(!res.error && !res.warnings?.length);
         });
       }}
       className="card space-y-4 p-6"
@@ -224,6 +230,25 @@ export function SupplierCompanyForm({
         <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} onChange={guard.onInput} />
       </div>
 
+      {warnings && !pending && (
+        <SaveWarnings
+          warnings={warnings}
+          onDismiss={() => setWarnings(null)}
+          onSaveAnyway={() => {
+            const fd = lastForm.current;
+            if (!fd) return;
+            const again = new FormData();
+            for (const [k, v] of fd.entries()) again.append(k, v);
+            again.set("confirmWarnings", "1");
+            setWarnings(null);
+            startTransition(async () => {
+              const res = await updateSupplierCompanyAction(again);
+              setError(res.error);
+              setSaved(!res.error);
+            });
+          }}
+        />
+      )}
       {error && (
         <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}

@@ -3,6 +3,7 @@
 import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { SaveWarnings } from "@/components/SaveWarnings";
 import { m } from "motion/react";
 import { SPRING } from "@/lib/motion";
 import { updateEmployeeAction } from "./actions";
@@ -206,6 +207,9 @@ export function EditForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
   const [error, setError] = useState<string | null>(null);
+  // Likely mistakes the server found on the last save; the form is kept so "Save anyway" can send it again unchanged.
+  const [warnings, setWarnings] = useState<string[] | null>(null);
+  const lastForm = useRef<FormData | null>(null);
   const [tabState, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
     const [payStructure, setPayStructure] = useState(employee.payStructure || "");
@@ -277,12 +281,18 @@ export function EditForm({
         action={(formData) => {
           setSaved(false);
           setError(null);
-          setDirty(false);
+          setWarnings(null);
+          lastForm.current = formData;
           startTransition(async () => {
             const result = await updateEmployeeAction(formData);
             if (result?.error) {
               setError(result.error);
+              setDirty(true);
+            } else if (result?.warnings?.length) {
+              setWarnings(result.warnings);
+              setDirty(true);
             } else {
+              setDirty(false);
               setSaved(true);
             }
           });
@@ -784,7 +794,28 @@ export function EditForm({
       {tab !== "records" && (
         // Sticky: this form is ~100 fields deep, so a correction made at the
         // top used to mean scrolling the whole page to find Save.
-        <div className="sticky bottom-0 z-10 mt-8 -mx-4 flex items-center gap-3 border-t border-default bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="sticky bottom-0 z-10 mt-8 -mx-4 flex flex-wrap items-center gap-3 border-t border-default bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          {warnings && !pending && (
+            <div className="basis-full">
+              <SaveWarnings
+                warnings={warnings}
+                onDismiss={() => setWarnings(null)}
+                onSaveAnyway={() => {
+                  const fd = lastForm.current;
+                  if (!fd) return;
+                  const again = new FormData();
+                  for (const [k, v] of fd.entries()) again.append(k, v);
+                  again.set("confirmWarnings", "1");
+                  setWarnings(null);
+                  setError(null);
+                  startTransition(async () => {
+                    const result = await updateEmployeeAction(again);
+                    if (result?.error) { setError(result.error); setDirty(true); } else { setDirty(false); setSaved(true); }
+                  });
+                }}
+              />
+            </div>
+          )}
           <button type="submit" disabled={pending} className="btn btn-primary">
             {pending ? "Saving…" : "Save changes"}
           </button>
