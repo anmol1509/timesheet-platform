@@ -10,6 +10,7 @@ import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
+import { stagesFor } from "@/lib/lookupCategories";
 import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
@@ -372,13 +373,13 @@ export default async function EmployeeDetailPage({
             <VisaHistorySection
               employeeId={employee.id}
               entries={employee.visaApplications}
-              stages={lookups.VISA_APPLICATION_STAGE}
+              stages={stagesFor("VISA_APPLICATION_STAGE", lookups.VISA_APPLICATION_STAGE)}
               documents={documentOptions}
             />
             <LabourCardHistorySection
               employeeId={employee.id}
               entries={employee.labourCardApplications}
-              stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
+              stages={stagesFor("LABOUR_CARD_APPLICATION_STAGE", lookups.LABOUR_CARD_APPLICATION_STAGE)}
               documents={documentOptions}
             />
             <DocumentsSection employeeId={employee.id} documents={employee.documents} />

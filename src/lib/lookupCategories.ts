@@ -31,3 +31,16 @@ export type LookupCategoryKey = (typeof LOOKUP_CATEGORIES)[number]["key"];
 export function lookupCategoryLabel(key: string) {
   return LOOKUP_CATEGORIES.find((c) => c.key === key)?.label ?? key;
 }
+
+/**
+ * What the visa and labour card history "Stage" dropdowns offer until an admin adds their own under Settings › Lookups.
+ * Once any value is configured for a category, those replace these.
+ */
+export const DEFAULT_APPLICATION_STAGES = {
+  VISA_APPLICATION_STAGE: ["Applied", "Entry permit issued", "Entered UAE", "Medical test done", "Emirates ID applied", "Visa stamped", "Renewed", "Cancelled"],
+  LABOUR_CARD_APPLICATION_STAGE: ["Quota approved", "Applied", "Fee paid", "Issued", "Renewed", "Cancelled"],
+} as const;
+
+export function stagesFor<K extends keyof typeof DEFAULT_APPLICATION_STAGES>(key: K, configured: { value: string }[] | undefined): { value: string }[] {
+  return configured && configured.length > 0 ? configured : DEFAULT_APPLICATION_STAGES[key].map((value) => ({ value }));
+}
