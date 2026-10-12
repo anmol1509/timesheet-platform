@@ -22,7 +22,7 @@ export function ReceiptButton({ id, label, icon }: { id: string; label: string; 
     <>
       <button type="button" className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline" onClick={() => setOpen(true)}>{icon} {label}</button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title={label} description="Opens as a PDF to print and sign. The employee signs the declaration at the bottom.">
+        <DialogContent title={label} description="Opens as a PDF to print and sign. The employee signs the acknowledgement at the bottom of the same page. The wording comes from your Advance letter templates (Letters › Templates).">
           <div className="mt-4 space-y-3 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" checked={letterhead} onChange={(e) => setLetterhead(e.target.checked)} /> On the company letterhead</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={signature} onChange={(e) => setSignature(e.target.checked)} /> Add the company signature (if on file)</label>

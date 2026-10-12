@@ -19,6 +19,21 @@ export const EMPLOYEE_MERGE_FIELDS: (MergeField & { sensitive?: boolean })[] = [
   { key: "BRANCHNAME", label: "Branch", example: "Dubai" },
   { key: "DATE", label: "Today's date", example: "27-07-2026" },
   { key: "REFNO", label: "Letter reference no.", example: "LTR-000123" },
+  // Filled only on advance and loan letters (Payroll › Loans & advances); on any other letter they print blank.
+  { key: "ADVANCEAMOUNT", label: "Advance: amount (AED)", example: "1,500.00" },
+  { key: "ADVANCEWORDS", label: "Advance: amount in words", example: "One thousand five hundred dirhams only" },
+  { key: "ADVANCEREF", label: "Advance: reference", example: "ADV-0007" },
+  { key: "ADVANCETYPE", label: "Advance: advance or loan", example: "advance" },
+  { key: "ADVANCEREASON", label: "Advance: reason", example: "Family emergency" },
+  { key: "ADVANCEREQUESTEDON", label: "Advance: date requested", example: "01-10-2026" },
+  { key: "ADVANCEREQUESTEDBY", label: "Advance: requested by", example: "HR Department" },
+  { key: "ADVANCEAPPROVAL", label: "Advance: approval (who and when)", example: "Approved by Admin on 02-10-2026" },
+  { key: "ADVANCEAPPROVEDBY", label: "Advance: approved by", example: "Admin" },
+  { key: "ADVANCEAPPROVEDON", label: "Advance: date approved", example: "02-10-2026" },
+  { key: "ADVANCEGIVEN", label: "Advance: date handed over", example: "03-10-2026" },
+  { key: "ADVANCEPAYMENT", label: "Advance: how it was paid", example: "cash, ref VCH-221" },
+  { key: "ADVANCEPLAN", label: "Advance: how it is deducted, month by month", example: "November 2026: AED 500.00; December 2026: AED 500.00" },
+  { key: "ADVANCEBALANCE", label: "Advance: balance still to deduct (AED)", example: "1,000.00" },
 ];
 
 export const fieldsFor = (audience: Audience): MergeField[] => (audience === "EMPLOYEE" ? EMPLOYEE_MERGE_FIELDS : LETTER_MERGE_FIELDS);

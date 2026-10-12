@@ -22,7 +22,7 @@ export type LetterPreset = {
 };
 
 export const SITE_CATEGORIES = ["No Objection Letter", "Mobilization Letter", "Undertaking Letter", "Supplier Undertaking"] as const;
-export const EMPLOYEE_CATEGORIES = ["Salary Certificate", "Employment Certificate", "Experience Certificate", "Warning Letter", "Leave Approval Letter", "General Letter"] as const;
+export const EMPLOYEE_CATEGORIES = ["Salary Certificate", "Employment Certificate", "Experience Certificate", "Warning Letter", "Leave Approval Letter", "Advance Letter", "General Letter"] as const;
 /** Kept for older imports. */
 export const LETTER_CATEGORIES = SITE_CATEGORIES;
 export const categoriesFor = (a: Audience): readonly string[] => (a === "EMPLOYEE" ? EMPLOYEE_CATEGORIES : SITE_CATEGORIES);
@@ -79,6 +79,29 @@ export const LETTER_PRESETS: LetterPreset[] = [
   },
 
   // ---- Letters about one employee ------------------------------------------
+  {
+    key: "advance-request", audience: "EMPLOYEE", name: "Advance Request", category: "Advance Letter", title: "Advance Request",
+    blurb: "Records an employee's request for a salary advance, for approval, with their acknowledgement. Used for Request letter on Loans & advances.",
+    body: J([
+      "This is to record that **%%EMPLOYEENAME%%** (Employee ID %%EMPLOYEEID%%, %%DESIGNATION%%) of **%%COMPANYNAME%%** has requested a salary %%ADVANCETYPE%% of **AED %%ADVANCEAMOUNT%%** (%%ADVANCEWORDS%%) on %%ADVANCEREQUESTEDON%%.",
+      "Reason: %%ADVANCEREASON%%",
+      "Request entered by: %%ADVANCEREQUESTEDBY%%. Approval: %%ADVANCEAPPROVAL%%.",
+      "If approved, the amount will be deducted from the employee's salary as follows: %%ADVANCEPLAN%%.",
+      "**Employee acknowledgement**",
+      "I confirm that I have requested this %%ADVANCETYPE%% and I authorise the company to deduct it from my salary as shown above.",
+    ]),
+  },
+  {
+    key: "advance-receipt", audience: "EMPLOYEE", name: "Advance Receipt", category: "Advance Letter", title: "Advance Receipt",
+    blurb: "Confirms the advance was handed over, how it is deducted, and has the employee acknowledge receiving it. Used for Receipt on Loans & advances.",
+    body: J([
+      "This is to confirm that **%%COMPANYNAME%%** advanced **AED %%ADVANCEAMOUNT%%** (%%ADVANCEWORDS%%) to **%%EMPLOYEENAME%%** (Employee ID %%EMPLOYEEID%%, %%DESIGNATION%%) on **%%ADVANCEGIVEN%%**, paid by %%ADVANCEPAYMENT%%.",
+      "Approval: %%ADVANCEAPPROVAL%%. Our reference: %%ADVANCEREF%%.",
+      "It will be deducted from the employee's monthly salary as follows: %%ADVANCEPLAN%%.",
+      "**Employee acknowledgement**",
+      "I, %%EMPLOYEENAME%%, acknowledge that I received the amount above on %%ADVANCEGIVEN%% as a salary %%ADVANCETYPE%%, and I authorise the company to deduct it from my salary as shown.",
+    ]),
+  },
   {
     key: "salary-certificate", audience: "EMPLOYEE", name: "Salary Certificate", category: "Salary Certificate", title: "Salary Certificate",
     blurb: "Confirms an employee's position and monthly salary, e.g. for a bank or embassy.",
