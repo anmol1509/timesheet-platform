@@ -217,7 +217,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
                           <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                          <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></p>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo} · {l.payStructure === "FLAT" ? "Flat" : l.payStructure === "HOURLY" ? "Hourly" : "Itemised"}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></p>
                         </div>
                       </div>
                     </td>

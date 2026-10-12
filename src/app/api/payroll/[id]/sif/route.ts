@@ -50,9 +50,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       personCode: l.personCode!,
       routingCode: l.routingCode!.trim(),
       account: l.account!,
-      periodStart: day(bounds.start),
-      periodEnd: day(bounds.end),
-      days: bounds.days,
+      // A joiner or leaver is paid for the days they were on the payroll, and the file says so.
+      periodStart: day(l.periodStart ?? bounds.start),
+      periodEnd: day(l.periodEnd ?? bounds.end),
+      days: l.employedDays ?? bounds.days,
       net: Number(l.net),
       overtimePay: Number(l.overtimePay),
       adjustment: Number(l.adjustment),

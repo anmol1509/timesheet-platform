@@ -64,6 +64,13 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
   const before = await prisma.employee.findUnique({ where: { id } });
 
+  // Someone who has left is paid up to their last working day; someone brought back is not stopped by an old one.
+  let exitDate = dateOrNull(formData.get("exitDate"));
+  if (!active && !exitDate) return { error: "Enter the last working day for someone who is no longer active." };
+  if (active && exitDate && exitDate.getTime() < Date.now() - 86400000) exitDate = null;
+  const joinForCheck = dateOrNull(formData.get("joinDate"));
+  if (exitDate && joinForCheck && exitDate < joinForCheck) return { error: "The last working day can't be before the join date." };
+
   // Name and employee ID were captured at registration and then frozen — a
   // typo in either was permanent without database access.
   const name = String(formData.get("name") || "").trim();
@@ -168,6 +175,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       whatsappNumber: stringOrNull(formData.get("whatsappNumber")),
       essEnabled: formData.get("essEnabled") === "on",
       joinDate: dateOrNull(formData.get("joinDate")),
+      exitDate,
+      exitReason: active ? null : inactiveReason,
       emergencyContactName: stringOrNull(formData.get("emergencyContactName")),
       emergencyContactPhone: stringOrNull(formData.get("emergencyContactPhone")),
       laborCardNumber: stringOrNull(formData.get("laborCardNumber")),

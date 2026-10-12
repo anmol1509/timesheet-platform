@@ -66,6 +66,7 @@ type Employee = {
   wpsAccountHolderName: string | null;
   wpsAccountNumber: string | null;
   active: boolean;
+  exitDate: Date | null;
   inactiveReason: string | null;
   lastDemobilizedDate: Date | null;
   religion: string | null;
@@ -331,6 +332,10 @@ export function EditForm({
                     />
                   </Field>
                 )}
+                <Field required label="Last working day">
+                  <DatePicker name="exitDate" defaultValue={toDateInput(employee.exitDate)} className="w-full" />
+                  <span className="mt-1 block text-xs text-muted">Payroll pays up to this day, then final settlement picks up the rest.</span>
+                </Field>
                 <Field label="Last demobilized date">
                   <DatePicker name="lastDemobilizedDate" defaultValue={toDateInput(employee.lastDemobilizedDate)} className="w-full" />
                 </Field>

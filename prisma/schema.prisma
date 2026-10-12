@@ -65,6 +65,8 @@ model Branch {
   wpsPayerBankId           String?
   // A payroll run above this total (AED) can't be approved by the person who created it.
   payrollApprovalThreshold Decimal?            @db.Decimal(14, 2)
+  // Salaries are due this many days after the month ends (0 = its last day). Blank = no due date is tracked.
+  payrollDueDays           Int?
   // Above this, an expense needs an admin to approve it (STAFF approvers are capped).
   expenseApprovalLimit     Decimal?            @db.Decimal(14, 2)
   expenseBudgets           ExpenseBudget[]
@@ -73,6 +75,8 @@ model Branch {
   payrollRuns              PayrollRun[]
   employeeLoans            EmployeeLoan[]
   payrollAdjustments       PayrollAdjustment[]
+  salaryRevisions          SalaryRevision[]
+  settlements              FinalSettlement[]
 
   expenses             Expense[]
   issuedLetters        IssuedLetter[]
@@ -648,6 +652,8 @@ model Employee {
   restOtMultiplier   Decimal             @default(1.5) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
   loans              EmployeeLoan[]
+  salaryRevisions    SalaryRevision[]
+  settlements        FinalSettlement[]
   payAdjustments     PayrollAdjustment[]
   issuedLetters      IssuedLetter[]
   // Self-service portal sign-in (phone + one-time code). On by default; an admin
@@ -684,6 +690,9 @@ model Employee {
   mobileNumber          String?
   whatsappNumber        String?
   joinDate              DateTime?
+  // Last day on the payroll. A leaver is paid up to it, then settled; blank while they are still working.
+  exitDate              DateTime?
+  exitReason            String?
   laborCardNumber       String?
   sponsorName           String? // visa-holding entity, if different from supplier
   emergencyContactName  String?
@@ -1746,6 +1755,7 @@ model PayrollRun {
   submittedById String?
   returnNote    String? // why an approver sent it back to draft
   paidAt        DateTime?
+  dueDate       DateTime? // when salaries are due, from the branch's rule when the run was made
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -1783,33 +1793,39 @@ model PayrollLine {
   otHours         Float  @default(0)
   restHours       Float  @default(0) // hours worked on a weekly off day / holiday
 
-  basic           Decimal @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
-  allowances      Decimal @default(0) @db.Decimal(12, 2)
-  overtimePay     Decimal @default(0) @db.Decimal(12, 2)
-  deductions      Decimal @default(0) @db.Decimal(12, 2) // absence + unpaid leave
-  adjustment      Decimal @default(0) @db.Decimal(12, 2) // manual +/-
+  basic           Decimal   @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
+  allowances      Decimal   @default(0) @db.Decimal(12, 2)
+  overtimePay     Decimal   @default(0) @db.Decimal(12, 2)
+  deductions      Decimal   @default(0) @db.Decimal(12, 2) // absence + unpaid leave
+  adjustment      Decimal   @default(0) @db.Decimal(12, 2) // manual +/-
   adjustmentNote  String?
-  otherEarnings   Decimal @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
-  otherDeductions Decimal @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
+  otherEarnings   Decimal   @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
+  otherDeductions Decimal   @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
   // Typed in on the run. A deduction is a one-off amount taken off pay (a fine,
   // damage...); the advance is money already given that is recovered this
   // month. Each carries its own note. Both reduce net pay.
-  manualDeduction Decimal @default(0) @db.Decimal(12, 2)
+  manualDeduction Decimal   @default(0) @db.Decimal(12, 2)
   deductionNote   String?
   advanceNote     String?
-  advanceManual   Boolean @default(false) // true once someone has typed the advance, so a recalculation keeps it
-  idleDays        Int     @default(0)
-  sickDays        Int     @default(0)
-  gasCharge       Decimal @default(0) @db.Decimal(12, 2)
-  timesheetHours  Float   @default(0) // hours taken from the timesheet (hourly companies)
-  loanDeduction   Decimal @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
+  advanceManual   Boolean   @default(false) // true once someone has typed the advance, so a recalculation keeps it
+  idleDays        Int       @default(0)
+  sickDays        Int       @default(0)
+  gasCharge       Decimal   @default(0) @db.Decimal(12, 2)
+  timesheetHours  Float     @default(0) // hours taken from the timesheet (hourly companies)
+  // A joiner or leaver is on the payroll for part of the month. null = the whole month.
+  employedDays    Int?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  // Each standing earning and deduction on this line, as it was when the run was calculated.
+  items           Json?
+  loanDeduction   Decimal   @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
   // Where the worker was assigned when the run was calculated, so cost-by-project
   // stays true after they move. Plain id, not a relation: history outlives the project row.
   projectId       String?
   // Bank reconciliation once the WPS file has been sent.
-  paymentStatus   String  @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
+  paymentStatus   String    @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
   paymentNote     String?
-  net             Decimal @default(0) @db.Decimal(12, 2)
+  net             Decimal   @default(0) @db.Decimal(12, 2)
 
   // Bank snapshot for the WPS file.
   paymentMode String?
@@ -1891,6 +1907,7 @@ model LoanRepayment {
 model PayrollAdjustment {
   id          String   @id @default(cuid())
   kind        String // "EARNING" | "DEDUCTION"
+  category    String? // see lib/payItems.ts
   label       String
   amount      Decimal  @db.Decimal(12, 2)
   startMonth  String // "YYYY-MM"
@@ -2619,4 +2636,61 @@ model TimesheetTemplate {
 
   @@unique([branchId, name])
   @@index([branchId])
+}
+
+// Every change to what an employee is paid, with the date it takes effect, so
+// back pay can be worked out and the history is never lost to the next edit.
+model SalaryRevision {
+  id            String   @id @default(cuid())
+  effectiveFrom DateTime
+  reason        String?
+  before        Json
+  after         Json
+  fixedBefore   Decimal  @db.Decimal(12, 2)
+  fixedAfter    Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+  createdById   String
+  createdByName String
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  @@index([employeeId, effectiveFrom])
+  @@index([branchId])
+}
+
+// What a leaver is owed or owes when they go: pay up to the last day that no
+// run covers, gratuity, leave and notice pay, less what they still owe.
+model FinalSettlement {
+  id               String    @id @default(cuid())
+  status           String    @default("DRAFT") // "DRAFT" | "APPROVED" | "PAID"
+  exitDate         DateTime
+  reason           String?
+  serviceYears     Float     @default(0)
+  basic            Decimal   @default(0) @db.Decimal(12, 2)
+  gratuity         Decimal   @default(0) @db.Decimal(12, 2)
+  unpaidSalaryDays Int       @default(0)
+  unpaidSalary     Decimal   @default(0) @db.Decimal(12, 2)
+  leavePay         Decimal   @default(0) @db.Decimal(12, 2)
+  noticePay        Decimal   @default(0) @db.Decimal(12, 2)
+  otherEarnings    Decimal   @default(0) @db.Decimal(12, 2)
+  loanBalance      Decimal   @default(0) @db.Decimal(12, 2)
+  otherDeductions  Decimal   @default(0) @db.Decimal(12, 2)
+  net              Decimal   @default(0) @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  createdById      String
+  approvedAt       DateTime?
+  approvedById     String?
+  paidAt           DateTime?
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  @@index([branchId, status])
+  @@index([employeeId])
 }

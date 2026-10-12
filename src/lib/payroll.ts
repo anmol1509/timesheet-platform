@@ -52,6 +52,10 @@ export type PayPeriodFacts = {
   unpaidLeaveDays: number;
   otHours: number; // overtime hours on working days
   restHours?: number; // hours worked on weekly off days / holidays
+  // A joiner or leaver is on the payroll for only part of the month: fixed pay is
+  // scaled to the days employed. Hourly workers are paid for hours, so it does not apply to them.
+  employedDays?: number;
+  daysInMonth?: number;
 };
 
 export type PayResult = {
@@ -103,6 +107,33 @@ export function splitDayHours(
   return { normal: Math.min(total, limit), ot: Math.max(0, total - limit), rest: 0 };
 }
 
+/**
+ * Fixed monthly pay for a month the worker was only on the payroll part of:
+ * one thirtieth per day employed, never more than the full month, and the whole
+ * amount when they were there for every day of it.
+ */
+export function proratedFixed(monthly: number, employedDays: number | undefined, daysInMonth: number | undefined): number {
+  if (employedDays == null || daysInMonth == null || employedDays >= daysInMonth) return round2(monthly);
+  return round2(Math.min(monthly, (monthly / 30) * Math.max(0, employedDays)));
+}
+
+export type EmploymentWindow = { from: Date; to: Date; days: number; partial: boolean };
+
+const dayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+/**
+ * The days of a month a person is employed: from their join date (or the 1st) to
+ * their exit date (or the last day), inclusive. null when they were not employed
+ * at all that month, so they are not in its payroll.
+ */
+export function employmentWindow(month: { start: Date; end: Date; days: number }, joinDate: Date | null, exitDate: Date | null): EmploymentWindow | null {
+  const first = Math.max(dayStart(month.start), joinDate ? dayStart(joinDate) : -Infinity);
+  const last = Math.min(dayStart(month.end), exitDate ? dayStart(exitDate) : Infinity);
+  if (first > last) return null;
+  const days = Math.round((last - first) / 86400000) + 1;
+  return { from: new Date(first), to: new Date(last), days, partial: days < month.days };
+}
+
 export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   if (p.payStructure === "HOURLY") {
     const earned = round2(Math.max(0, f.normalHours) * p.hourly);
@@ -113,15 +144,21 @@ export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   }
   const basic = p.payStructure === "FLAT" ? p.flat : p.basic;
   const allowances = p.payStructure === "ITEMISED" ? p.housing + p.food + p.transport + p.other : 0;
-  const fixed = round2(basic + allowances);
+  const monthlyFixed = round2(basic + allowances);
+  // What is earned for the days actually on the payroll this month (the whole month unless a joiner or leaver).
+  const fixed = proratedFixed(monthlyFixed, f.employedDays, f.daysInMonth);
+  const share = monthlyFixed > 0 ? fixed / monthlyFixed : 1;
+  const basicPaid = round2(basic * share);
+  const allowancesPaid = round2(fixed - basicPaid);
 
-  const unpaidLeave = round2((fixed / 30) * Math.max(0, f.unpaidLeaveDays));
-  const deductions = Math.min(fixed, round2(absencePenalty(p, f, fixed) + unpaidLeave));
+  // Daily rates stay those of the full month: a partial month is not a cheaper day.
+  const unpaidLeave = round2((monthlyFixed / 30) * Math.max(0, f.unpaidLeaveDays));
+  const deductions = Math.min(fixed, round2(absencePenalty(p, f, monthlyFixed) + unpaidLeave));
 
   const hourly = basic / 30 / dailyHoursOf(p);
   const overtimePay = p.paysOvertime ? overtimeAmount(hourly, p, f) : 0;
 
-  return { basic: round2(basic), allowances: round2(allowances), fixed, deductions, overtimePay };
+  return { basic: basicPaid, allowances: allowancesPaid, fixed, deductions, overtimePay };
 }
 
 export type PayFigures = {
