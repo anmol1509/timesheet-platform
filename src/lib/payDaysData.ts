@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { PAY_EMPLOYEE_SELECT, loadPayOf } from "@/lib/payrollRun";
-import { employmentWindow, monthBounds, round2 } from "@/lib/payroll";
+import { employmentWindow, isShortfallMode, monthBounds, round2, type ShortfallMode } from "@/lib/payroll";
 import { buildDays, type DayInput, type DayRow } from "@/lib/payDays";
 import { cellsDiffer, parseDailyHours } from "@/lib/timesheetCells";
 
@@ -13,7 +13,9 @@ export type PayDaysView = {
   hourly: boolean; editable: boolean; why: string | null; canAlign: boolean;
   hasTimesheet: boolean; timesheetStatus: string | null; dailyHours: number;
   rows: DayRow[];
-  totals: { salary: number; otPay: number; deduction: number; net: number; absent: number; ot: number; rest: number; hours: number; mismatches: number; recorded: number };
+  totals: { salary: number; otPay: number; deduction: number; net: number; absent: number; ot: number; rest: number; hours: number; mismatches: number; recorded: number; shortfall: number; shortHours: number };
+  /** The company's short-hours rule; the per-day column only shows when it is not off. */
+  shortRule: { mode: ShortfallMode; halfDayUnder: number };
   other: number; lineNet: number;
   /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
   /** Timesheet days changed from payroll after the sheet was made, against the first value they had. */
@@ -41,7 +43,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   if (!window) return { error: "This person was not employed in this month." };
 
   const [att, sheet] = await Promise.all([
-    prisma.attendance.findMany({ where: { employeeId: e.id, date: { gte: bounds.start, lte: bounds.end } }, select: { date: true, status: true, normalHours: true, otHours: true } }),
+    prisma.attendance.findMany({ where: { employeeId: e.id, date: { gte: bounds.start, lte: bounds.end } }, select: { date: true, status: true, normalHours: true, otHours: true, countShortfall: true } }),
     prisma.timesheetEntry.findMany({ where: { branchId: line.run.branchId, employeeIdNo: e.employeeIdNo, month: line.run.month }, orderBy: { updatedAt: "desc" }, select: { id: true, dailyHours: true, status: true, supplierId: true } }),
   ]);
   const entry = sheet.find((s) => s.supplierId === e.supplierId) ?? sheet[0] ?? null;
@@ -52,7 +54,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   for (let d = 0; d < bounds.days; d++) {
     const date = iso(new Date(Date.UTC(bounds.start.getUTCFullYear(), bounds.start.getUTCMonth(), d + 1)));
     const a = byDate.get(date);
-    days.push({ date, status: a?.status ?? null, normalHours: a?.normalHours ?? null, otHours: a?.otHours ?? null, ts: entry ? (cells.get(date) ?? "") : null });
+    days.push({ date, status: a?.status ?? null, normalHours: a?.normalHours ?? null, otHours: a?.otHours ?? null, countShortfall: a?.countShortfall ?? null, ts: entry ? (cells.get(date) ?? "") : null });
   }
 
   // Days changed from payroll (recorded as "day:<date>" changes on the sheet's audit trail), shown against the first value each had.
@@ -81,12 +83,14 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   const basic = pf.payStructure === "FLAT" ? pf.flatMonthlyRate : pf.basicSalary;
   const monthlyFixed = pf.payStructure === "FLAT" ? pf.flatMonthlyRate : pf.basicSalary + pf.housingAllowance + pf.foodAllowance + pf.transportAllowance + pf.otherAllowance;
   const dailyHours = pf.dailyHours > 0 ? pf.dailyHours : 8;
+  const shortRule = { mode: (isShortfallMode(e.supplier?.shortfallMode) ? e.supplier!.shortfallMode : "OFF") as ShortfallMode, halfDayUnder: e.supplier ? num(e.supplier.shortfallHalfDayUnder) : 4 };
   const { rows, totals } = buildDays({
     from: iso(window.from), to: iso(window.to), days, hasTimesheet: !!entry,
     pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [5] },
     hourly, hourlyRate: pf.hourlyRate, fixedPaid: hourly ? 0 : round2(num(line.basic) + num(line.allowances)),
     paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otHourlyBase: basic / 30 / dailyHours,
     absence: { freeDays: e.supplier?.absentFreeDays ?? 2, perDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30, dailyRate: monthlyFixed / 30 },
+    shortfall: hourly ? undefined : { rule: shortRule, rates: { hourly: basic / 30 / dailyHours, day: monthlyFixed / 30 } },
   });
 
   const draft = line.run.status === "DRAFT" && !line.run.submittedAt;
@@ -110,7 +114,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     view: {
       lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry && !hourly,
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
-      edits,
+      edits, shortRule,
       mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),
       other, lineNet: num(line.net), parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
       adjust: { lineId: line.id, deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "" },

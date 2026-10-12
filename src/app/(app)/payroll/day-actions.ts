@@ -128,6 +128,36 @@ export async function saveDayAction(formData: FormData): Promise<Result> {
   return applyDay(g, String(formData.get("date") || ""), { status, normalHours: worked ? normal : null, otHours: worked ? ot : null }, "payroll");
 }
 
+/** Counts or skips the short-hours deduction on one day, then recalculates the run. Following the company rule is stored as no choice. */
+export async function setShortfallDayAction(formData: FormData): Promise<Result> {
+  assertContactsValid(formData);
+  const g = await guard(String(formData.get("runId") || ""), String(formData.get("employeeId") || ""));
+  if ("error" in g) return { error: g.error ?? "Not allowed." };
+  const { user, loaded } = g;
+  const view = loaded.view;
+  if (!view.editable || view.hourly) return { error: view.why ?? "This day can't be changed." };
+  const date = String(formData.get("date") || "");
+  const count = String(formData.get("count") || "") === "1";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date.slice(0, 7) !== view.month) return { error: "That day isn't in this payroll month." };
+  const row = view.rows.find((r) => r.date === date);
+  if (!row?.short) return { error: "That day has no short hours to count." };
+
+  const run = await prisma.payrollRun.findUnique({ where: { id: view.runId } });
+  const dateValue = new Date(`${date}T00:00:00.000Z`);
+  const existing = await prisma.attendance.findUnique({ where: { employeeId_date: { employeeId: view.employee.id, date: dateValue } } });
+  if (!run || !existing) return { error: "Attendance for that day wasn't found." };
+  if (existing.locked && !isAdminRole(user.role)) return { error: "That day is approved and locked. Ask an admin." };
+  await prisma.attendance.update({ where: { id: existing.id }, data: { countShortfall: count ? null : false } });
+  await logAudit({ entityType: "ATTENDANCE", entityId: existing.id, action: "UPDATE", before: { countShortfall: existing.countShortfall }, after: { countShortfall: count ? null : false, date }, userId: user.id, userName: user.name, branchId: run.branchId });
+  await rebuildRunLines(run);
+  await prisma.payrollRunEvent.create({ data: { runId: run.id, action: "RECALCULATED", note: `${view.employee.name}: short hours on ${date} ${count ? "counted" : "not counted"}`, userId: user.id, userName: user.name } });
+  revalidatePath(`/payroll/${run.id}`);
+
+  const after = await loadPayDays(view.runId, view.employee.id, { canEditAttendance: true, canEditPayroll: true });
+  if ("error" in after) return { error: after.error };
+  return { error: null, view: after.view };
+}
+
 /** Copies what the client timesheet says for one day into attendance. */
 export async function alignDayAction(formData: FormData): Promise<Result> {
   assertContactsValid(formData);

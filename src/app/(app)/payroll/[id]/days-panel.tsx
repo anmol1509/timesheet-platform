@@ -7,12 +7,13 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import { Hint } from "@/components/Hint";
-import { alignDayAction, loadPayDaysAction, saveDayAction } from "../day-actions";
+import { alignDayAction, loadPayDaysAction, saveDayAction, setShortfallDayAction } from "../day-actions";
 import { recomputeRunAction, saveLineAction } from "../actions";
 import type { PayDaysView } from "@/lib/payDaysData";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dash = (n: number, sign = "") => (n === 0 ? "—" : `${sign}${aed(n)}`);
+const showShort = (v: PayDaysView) => !v.hourly && v.shortRule.mode !== "OFF";
 const HOURLY_STATUS = new Set(["PRESENT", "ABSENT", "OFF", "HOLIDAY"]);
 const STATUS_OPTIONS = [["PRESENT", "Present"], ["ABSENT", "Absent"], ["LEAVE", "Leave"], ["SICK_LEAVE", "Sick"], ["IDLE", "Idle"], ["HOLIDAY", "Holiday"], ["OFF", "Off"]] as const;
 
@@ -45,6 +46,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       router.refresh();
     });
   }
+  const toggleShort = (date: string, count: boolean) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); fd.set("count", count ? "1" : "0"); return setShortfallDayAction(fd); });
   function saveAdjustments() {
     if (!view || !adj) return;
     setError(null);
@@ -87,10 +89,11 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
         {error && <p role="alert" className="mt-3 rounded-md border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">{error}</p>}
         {view && (
           <div className="mt-4 space-y-4">
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className={cn("grid gap-3", showShort(view) ? "sm:grid-cols-5" : "sm:grid-cols-4")}>
               <Stat label="Salary for the days" value={`AED ${aed(view.totals.salary)}`} />
               <Stat label={`Overtime${view.totals.ot + view.totals.rest > 0 ? ` (${view.totals.ot + view.totals.rest} h)` : ""}`} value={`AED ${aed(view.totals.otPay)}`} />
               <Stat label={`Absence${view.totals.absent > 0 ? ` (${view.totals.absent} day${view.totals.absent === 1 ? "" : "s"})` : ""}`} value={view.totals.deduction > 0 ? `−AED ${aed(view.totals.deduction)}` : "AED 0.00"} />
+              {showShort(view) && <Stat label={`Short hours${view.totals.shortHours > 0 ? ` (${view.totals.shortHours} h)` : ""}`} value={view.totals.shortfall > 0 ? `−AED ${aed(view.totals.shortfall)}` : "AED 0.00"} />}
               <Stat label="Net pay" value={`AED ${aed(view.lineNet)}`} strong />
             </div>
 
@@ -136,7 +139,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                 <thead className="sticky top-0 bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                   <tr>
                     <th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Hours</th><th className="px-3 py-2 text-right">Salary</th>
-                    <th className="px-3 py-2 text-right">Overtime</th><th className="px-3 py-2 text-right">Absence</th><th className="px-3 py-2 text-right">Day total</th>
+                    <th className="px-3 py-2 text-right">Overtime</th><th className="px-3 py-2 text-right">Absence</th>{showShort(view) && <th className="px-3 py-2 text-right">Short hours</th>}<th className="px-3 py-2 text-right">Day total</th>
                     <th className="px-3 py-2">Timesheet<Hint term="TIMESHEET" /></th><th className="px-3 py-2" />
                   </tr>
                 </thead>
@@ -165,6 +168,17 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                         <td className="px-3 py-1.5 text-right tabular-nums">{dash(r.salary)}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">{dash(r.otPay, "+")}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">{dash(r.deduction, "−")}</td>
+                        {showShort(view) && (
+                          <td className="whitespace-nowrap px-3 py-1.5 text-right text-xs tabular-nums">
+                            {r.short ? (
+                              <label className="inline-flex items-center justify-end gap-1.5" title={`Worked ${r.short.worked} h of a ${view.dailyHours} h day. Untick to not deduct for this day.`}>
+                                <span className={r.short.counted ? "text-[var(--error)]" : "text-muted line-through"}>−{aed(r.short.suggested)}</span>
+                                <span className="text-muted">({r.short.hours} h)</span>
+                                {view.editable && <input type="checkbox" checked={r.short.counted} disabled={pending} onChange={(e) => toggleShort(r.date, e.target.checked)} aria-label={`Deduct short hours on ${r.date}`} />}
+                              </label>
+                            ) : "—"}
+                          </td>
+                        )}
                         <td className="px-3 py-1.5 text-right font-medium tabular-nums">{r.kind === "outside" ? "—" : aed(r.net)}</td>
                         <td className="px-3 py-1.5 text-xs">
                           {r.kind === "outside" || r.sync === "no-timesheet" ? <span className="text-subtle">{r.ts ?? "—"}</span> : r.sync === "match" ? <span className="text-[var(--success)]">{r.ts || "—"} ✓</span> : <span className="font-medium text-[var(--warning)]">Sheet: {r.ts || "blank"}</span>}
@@ -187,21 +201,21 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                   })}
                 </tbody>
                 <tfoot className="border-t border-default bg-surface-subtle text-sm">
-                  <tr><td className="px-3 py-2 font-medium" colSpan={3}>Total for the days</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td><td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
+                  <tr><td className="px-3 py-2 font-medium" colSpan={3}>Total for the days</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td>{showShort(view) && <td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.shortfall, "−")}</td>}<td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
                   {view.parts.map((x, i) => (
-                    <tr key={`${x.label}-${i}`}><td className="px-3 py-1.5 text-secondary" colSpan={6}>{x.label}{x.note && <span className="ml-2 text-xs text-subtle">{x.note}</span>}</td><td className="px-3 py-1.5 text-right tabular-nums">{x.amount > 0 ? "+" : "−"}{aed(Math.abs(x.amount))}</td><td colSpan={2} /></tr>
+                    <tr key={`${x.label}-${i}`}><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 7 : 6}>{x.label}{x.note && <span className="ml-2 text-xs text-subtle">{x.note}</span>}</td><td className="px-3 py-1.5 text-right tabular-nums">{x.amount > 0 ? "+" : "−"}{aed(Math.abs(x.amount))}</td><td colSpan={2} /></tr>
                   ))}
-                  {view.parts.length === 0 && view.unexplained === 0 && <tr><td className="px-3 py-1.5 text-secondary" colSpan={6}>No gas charge, advances, deductions or adjustments</td><td className="px-3 py-1.5 text-right tabular-nums">—</td><td colSpan={2} /></tr>}
+                  {view.parts.length === 0 && view.unexplained === 0 && <tr><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 7 : 6}>No gas charge, advances, deductions or adjustments</td><td className="px-3 py-1.5 text-right tabular-nums">—</td><td colSpan={2} /></tr>}
                   {view.unexplained !== 0 && (
                     <tr className="bg-[var(--warning-soft)]/50">
-                      <td className="px-3 py-2 text-xs text-[var(--warning)]" colSpan={6}>
+                      <td className="px-3 py-2 text-xs text-[var(--warning)]" colSpan={showShort(view) ? 7 : 6}>
                         The saved pay is out of date: it is {aed(Math.abs(view.unexplained))} {view.unexplained > 0 ? "above" : "below"} what these days add up to.
                         {view.canAdjust && <button type="button" disabled={pending} className="ml-2 font-medium underline" onClick={recalculate}>{pending ? "Recalculating…" : "Recalculate"}</button>}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-[var(--warning)]">{view.unexplained > 0 ? "+" : "−"}{aed(Math.abs(view.unexplained))}</td><td colSpan={2} />
                     </tr>
                   )}
-                  <tr><td className="px-3 py-2 font-semibold text-primary" colSpan={6}>Net pay</td><td className="px-3 py-2 text-right font-semibold tabular-nums text-primary">{aed(view.lineNet)}</td><td colSpan={2} /></tr>
+                  <tr><td className="px-3 py-2 font-semibold text-primary" colSpan={showShort(view) ? 7 : 6}>Net pay</td><td className="px-3 py-2 text-right font-semibold tabular-nums text-primary">{aed(view.lineNet)}</td><td colSpan={2} /></tr>
                 </tfoot>
               </table>
             </div>

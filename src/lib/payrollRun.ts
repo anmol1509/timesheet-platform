@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
+import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -42,7 +42,7 @@ export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
 
 /** What is read about an employee to work out their pay; shared with the day-by-day view. */
 export const PAY_EMPLOYEE_SELECT = {
-    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
+    id: true, name: true, employeeIdNo: true, active: true, joinDate: true, exitDate: true, projectId: true, supplierId: true, trade: true, position: true, payOverride: true, project: { select: { weeklyOffDays: true } }, supplier: { select: { absentFreeDays: true, absentDeductionPerDay: true, gasPerDay: true, gasMonthlyCap: true, shortfallMode: true, shortfallHalfDayUnder: true } }, gasWaived: true, siteArrivalDate: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true,
     otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, paysOvertime: true, otMultiplier: true, dailyHours: true, restOtMultiplier: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true,
     wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
   } as const;
@@ -123,7 +123,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   // Attendance for basic (and legacy) runs; timesheet hours for hourly runs.
   const attendance = ids.length === 0 ? [] : await prisma.attendance.findMany({
     where: { branchId: run.branchId, employeeId: { in: ids }, date: { gte: start, lt: nextMonth } },
-    select: { employeeId: true, date: true, status: true, otHours: true, normalHours: true },
+    select: { employeeId: true, date: true, status: true, otHours: true, normalHours: true, countShortfall: true },
   });
   const hourlyPeople = payable.filter((e) => paidHourly(type, payOf(e).payStructure));
   const sheetRows = hourlyPeople.length > 0
@@ -136,11 +136,11 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
 
   const patterns = new Map(payable.map((e) => [e.id, { dailyHours: payOf(e).dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [5] }]));
-  const att = new Map<string, { absent: number; idle: number; sick: number; ot: number; normal: number; rest: number }>();
+  const att = new Map<string, { absent: number; idle: number; sick: number; ot: number; normal: number; rest: number; shorts: { worked: number; override: boolean | null }[] }>();
   for (const a of attendance) {
     const w = windows.get(a.employeeId);
     if (w && (a.date < w.from || a.date > w.to)) continue; // before they joined or after they left
-    const row = att.get(a.employeeId) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
+    const row = att.get(a.employeeId) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0, shorts: [] };
     if (a.status === "ABSENT") row.absent += 1;
     else if (a.status === "IDLE") row.idle += 1;
     else if (a.status === "SICK_LEAVE") row.sick += 1;
@@ -148,6 +148,8 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     row.ot += split.ot;
     row.normal += split.normal;
     row.rest += split.rest;
+    const shortWorked = shortDayWorked(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [5] });
+    if (shortWorked !== null) row.shorts.push({ worked: shortWorked, override: a.countShortfall });
     att.set(a.employeeId, row);
   }
 
@@ -174,7 +176,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     const pf = payOf(e);
     const isHourly = paidHourly(type, pf.payStructure);
     const hours = isHourly ? sheetHours.get(e.employeeIdNo) ?? 0 : 0;
-    const facts = att.get(e.id) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0 };
+    const facts = att.get(e.id) ?? { absent: 0, idle: 0, sick: 0, ot: 0, normal: 0, rest: 0, shorts: [] };
     const r = computePay(
       {
         payStructure: (isHourly ? "HOURLY" : pf.payStructure) as PayStructure,
@@ -195,7 +197,14 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       gasChargeFor({ checkIn: e.siteArrivalDate, monthStart: start, daysInMonth: days, perDay: e.supplier ? num(e.supplier.gasPerDay) : 1, cap: e.supplier ? num(e.supplier.gasMonthlyCap) : 30, waived: e.gasWaived }),
       Math.max(0, round2(r.fixed - r.deductions + r.overtimePay))
     );
-    const recurring = { otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction: 0, manualDeduction: 0, gasCharge };
+    // Short hours (salaried staff only): the company's rule applied to each short present day, never taking more than is left.
+    const dailyHours = pf.dailyHours > 0 ? pf.dailyHours : 8;
+    const base = pf.payStructure === "FLAT" ? pf.flatMonthlyRate : pf.basicSalary;
+    const monthlyFixed = pf.payStructure === "FLAT" ? pf.flatMonthlyRate : pf.basicSalary + pf.housingAllowance + pf.foodAllowance + pf.transportAllowance + pf.otherAllowance;
+    const shortRule = { mode: isShortfallMode(e.supplier?.shortfallMode) ? e.supplier!.shortfallMode as ShortfallMode : "OFF" as ShortfallMode, halfDayUnder: e.supplier ? num(e.supplier.shortfallHalfDayUnder) : 4 };
+    const short = isHourly ? { hours: 0, amount: 0 } : shortfallTotal(shortRule, dailyHours, facts.shorts, { hourly: base / 30 / dailyHours, day: monthlyFixed / 30 });
+    const shortfall = Math.min(short.amount, Math.max(0, round2(r.fixed - r.deductions + r.overtimePay - gasCharge)));
+    const recurring = { otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction: 0, manualDeduction: 0, gasCharge, shortfall };
 
     // Typed entries can never push net pay below zero: the deduction takes what it
     // can first, then the advance takes what is left of that.
@@ -210,7 +219,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     return {
       runId: run.id, employeeId: e.id, projectId: e.projectId, payStructure: (isHourly ? "HOURLY" : pf.payStructure) as string, daysInMonth: days,
       employedDays: windows.get(e.id)?.partial ? windows.get(e.id)!.days : null, periodStart: windows.get(e.id)?.from ?? null, periodEnd: windows.get(e.id)?.to ?? null,
-      absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
+      absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, shortfallHours: shortfall > 0 ? short.hours : 0, shortfallDeduction: shortfall, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
       manualDeduction, deductionNote: old?.deductionNote ?? null,
