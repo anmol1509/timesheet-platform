@@ -577,17 +577,34 @@ async function syncTradeFromSkills(employeeId: string, justAdded?: string) {
   await prisma.employee.update({ where: { id: employeeId }, data: { position: next, trade: next } });
 }
 
-export async function addVisaApplicationAction(formData: FormData) {
+/**
+ * An optional scan attached straight to a visa or labour card history entry: stored as a normal worker document of that
+ * type (so it also shows under Documents), and linked to the entry. Returns the new document's id, or why it wasn't saved.
+ */
+async function storeEntryDocument(employeeId: string, type: "VISA" | "LABOR_CARD", file: FormDataEntryValue | null, user: { id: string; name: string }, branchId: string | null): Promise<{ id: string | null; error: string | null }> {
+  if (!(file instanceof File) || file.size === 0) return { id: null, error: null };
+  if (file.size > MAX_UPLOAD_BYTES) return { id: null, error: `That file is too large (limit ${(MAX_UPLOAD_BYTES / 1048576).toFixed(0)} MB). Nothing was added.` };
+  if (!isAcceptedUploadType(file.type)) return { id: null, error: "That file type isn't supported. Use a PDF or an image. Nothing was added." };
+  const created = await prisma.document.create({
+    data: { employeeId, type, displayInEss: false, filename: safeFilename(file.name), fileData: Buffer.from(await file.arrayBuffer()), mimeType: file.type || "application/octet-stream", expiryDate: null, uploadedById: user.id },
+  });
+  await logAudit({ entityType: "DOCUMENT", entityId: created.id, action: "CREATE", after: { employeeId, type, filename: file.name }, userId: user.id, userName: user.name, branchId });
+  return { id: created.id, error: null };
+}
+
+export async function addVisaApplicationAction(formData: FormData): Promise<{ error: string | null }> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const stage = String(formData.get("stage") || "").trim();
-  if (!employeeId || !stage) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  if (!employeeId || !stage) return { error: null };
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return { error: null };
 
   const date = dateOrNull(formData.get("date"));
   const notes = stringOrNull(formData.get("notes"));
-  const documentId = stringOrNull(formData.get("documentId"));
+  const attached = await storeEntryDocument(employeeId, "VISA", formData.get("file"), user, branchId);
+  if (attached.error) return { error: attached.error };
+  const documentId = attached.id ?? stringOrNull(formData.get("documentId"));
 
   const created = await prisma.visaApplication.create({
     data: { employeeId, stage, date, notes, documentId },
@@ -604,6 +621,8 @@ export async function addVisaApplicationAction(formData: FormData) {
   });
 
   revalidatePath(`/employees/${employeeId}`);
+  revalidatePath("/documents");
+  return { error: null };
 }
 
 export async function removeVisaApplicationAction(formData: FormData) {
@@ -633,17 +652,19 @@ export async function removeVisaApplicationAction(formData: FormData) {
   revalidatePath(`/employees/${employeeId}`);
 }
 
-export async function addLabourCardApplicationAction(formData: FormData) {
+export async function addLabourCardApplicationAction(formData: FormData): Promise<{ error: string | null }> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const employeeId = String(formData.get("employeeId") || "");
   const stage = String(formData.get("stage") || "").trim();
-  if (!employeeId || !stage) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  if (!employeeId || !stage) return { error: null };
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return { error: null };
 
   const date = dateOrNull(formData.get("date"));
   const notes = stringOrNull(formData.get("notes"));
-  const documentId = stringOrNull(formData.get("documentId"));
+  const attached = await storeEntryDocument(employeeId, "LABOR_CARD", formData.get("file"), user, branchId);
+  if (attached.error) return { error: attached.error };
+  const documentId = attached.id ?? stringOrNull(formData.get("documentId"));
 
   const created = await prisma.labourCardApplication.create({
     data: { employeeId, stage, date, notes, documentId },
@@ -660,6 +681,8 @@ export async function addLabourCardApplicationAction(formData: FormData) {
   });
 
   revalidatePath(`/employees/${employeeId}`);
+  revalidatePath("/documents");
+  return { error: null };
 }
 
 export async function removeLabourCardApplicationAction(formData: FormData) {
