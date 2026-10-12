@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { loadRunPayslips } from "@/lib/payslipData";
-import { PayslipCard } from "@/components/PayslipCard";
-import { PrintButton } from "./print-button";
+import { loadPayslipIssuer } from "@/lib/payslipPrint";
+import { PayslipStudio } from "./payslip-studio";
 
 export const metadata = { title: "Payslips" };
 
@@ -11,23 +11,20 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
   const { id } = await params;
   const { line } = await searchParams;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const doc = await loadRunPayslips(id, line);
-  if (!doc || isOutsideBranch(doc.branchId, branchId, isSuperAdmin)) notFound();
-  const pdf = `/api/payroll/${id}/payslips${line ? `?line=${encodeURIComponent(line)}` : ""}`;
+  // Always load the whole run: the screen is where you choose who gets one. ?line= only preselects a single person.
+  const [doc, issuer] = await Promise.all([loadRunPayslips(id), loadPayslipIssuer(id)]);
+  if (!doc || !issuer || isOutsideBranch(doc.branchId, branchId, isSuperAdmin)) notFound();
+  const preselect = line && doc.slips.some((s) => s.lineId === line) ? line : null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Payslips — {doc.month}</h1>
-          <p className="mt-1 text-sm text-muted">{doc.slips.length} payslip{doc.slips.length === 1 ? "" : "s"}, issued in the name of {doc.letterhead.name}.</p>
-        </div>
-        <div className="flex gap-2">
-          <a className="btn btn-primary" href={pdf} target="_blank" rel="noreferrer">Download PDF{doc.slips.length > 1 ? " (all)" : ""}</a>
-          <PrintButton />
-        </div>
+      <div className="print:hidden">
+        <h1 className="text-xl font-semibold tracking-tight text-primary">Payslips — {doc.month}</h1>
+        <p className="mt-1 text-sm text-muted">Choose who gets a payslip, how it is printed, check the preview, then download.</p>
       </div>
-      {doc.slips.map((_, i) => <PayslipCard key={doc.slips[i].lineId} doc={doc} i={i} />)}
+      {doc.slips.length === 0
+        ? <p className="card p-6 text-sm text-muted">There are no payslips in this run yet.</p>
+        : <PayslipStudio runId={id} doc={doc} issuer={issuer.issuer} preselect={preselect} />}
     </div>
   );
 }

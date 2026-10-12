@@ -29,11 +29,13 @@ The expected numbers, for the example above (30-day pay month, overtime rate = b
 | Basic + allowances | 4,500.00 |
 | Absence, 2 days (4,500 / 30 × 2) | −300.00 |
 | Overtime, 10 hours (12.50 × 1.25 × 10) | +156.25 |
-| **Net pay** | **4,356.25** |
+| **Net pay** | **4,596.25** |
 | Advance recovered (added in step 4) | −200.00 |
-| **Net pay after advance** | **4,156.25** |
+| **Net pay after advance** | **4,396.25** |
 
-If your supplier has its own absence rule (free days, fixed amount per day), the absence line will differ. Check the screen before you quote numbers.
+The numbers above are for the demo data: 4 absent days in September, of which the first 2 are free and the rest cost AED 30 each (the default absence rule, so only 60 comes off), plus 10 overtime hours. With a different absence rule the absence line will differ. Check the screen before you quote numbers.
+
+The hourly demo employee is paid 200 timesheet hours x AED 15 = AED 3,000.00. Hourly pay has no overtime premium; every timesheet hour is paid at the hourly rate.
 
 ## The demo, step by step
 
@@ -66,8 +68,10 @@ Say: "Payroll is usually a spreadsheet, a bank file built by hand, and payslips 
 - Download the **bank file (WPS / SIF)**. Say: "This is what you upload to your bank's portal to pay everyone at once."
 - Press **Mark as paid**.
 
-### 7. Payslips and records (1 minute)
-- Open **Payslips** and print or save the worker's payslip.
+### 7. Payslips and records (2 minutes)
+- Open **Payslips**. Tick one employee, several, or all (use "Only" next to a name for a single payslip).
+- Choose plain paper or **On letterhead**, tick signature and stamp if the company has them on file, and watch the preview change.
+- Press **Download PDF** for exactly the people you ticked.
 - Open the **three-dot menu** to download the CSV, the payroll register, and the accounting journal.
 
 ### 8. Close (1 minute)

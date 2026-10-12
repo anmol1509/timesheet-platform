@@ -2,8 +2,14 @@ import type { PayslipDoc } from "@/lib/payslipData";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** How a payslip is dressed on screen when previewing a print: the letterhead behind it, and the signature block. */
+export type PayslipPaper = {
+  onLetterhead: boolean; letterheadUrl: string | null; topMm: number; bottomMm: number;
+  signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null;
+};
+
 /** One payslip on screen: the issuing company, earnings and deductions side by side, net pay, year to date. */
-export function PayslipCard({ doc, i }: { doc: PayslipDoc; i: number }) {
+export function PayslipCard({ doc, i, paper }: { doc: PayslipDoc; i: number; paper?: PayslipPaper }) {
   const { slip, ytd, employee, paidBy } = doc.slips[i];
   const h = doc.letterhead;
   const contact = [h.phone && `Tel ${h.phone}`, h.email, h.poBox && `P.O. Box ${h.poBox}`, h.trn && `TRN ${h.trn}`].filter(Boolean).join(" · ");
@@ -21,9 +27,16 @@ export function PayslipCard({ doc, i }: { doc: PayslipDoc; i: number }) {
     </div>
   );
   return (
-    <article className="card mx-auto max-w-2xl space-y-4 p-6 text-sm [break-after:page] print:border-0 print:shadow-none">
+    <article
+      className={paper ? "mx-auto aspect-[210/297] w-full max-w-2xl space-y-4 overflow-hidden border border-default bg-white text-sm text-neutral-900 shadow-sm [break-after:page] print:border-0 print:shadow-none" : "card mx-auto max-w-2xl space-y-4 p-6 text-sm [break-after:page] print:border-0 print:shadow-none"}
+      style={paper ? {
+        // Percentages are of the sheet's width, so millimetres of an A4 page (210 mm wide) scale with the preview.
+        paddingTop: `${((paper.onLetterhead ? paper.topMm : 12) / 210) * 100}%`, paddingBottom: `${((paper.onLetterhead ? paper.bottomMm : 12) / 210) * 100}%`, paddingLeft: "7%", paddingRight: "7%",
+        ...(paper.onLetterhead && paper.letterheadUrl ? { backgroundImage: `url(${paper.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : {}),
+      } : undefined}
+    >
       <header className="flex items-start justify-between gap-4 border-b border-default pb-3">
-        <div className="flex items-center gap-3">
+        {paper?.onLetterhead ? <div /> : <div className="flex items-center gap-3">
           {h.logo && (
             // eslint-disable-next-line @next/next/no-img-element -- data URI of the company's own logo
             <img src={h.logo} alt="" className="h-12 w-12 rounded-md object-contain" />
@@ -33,7 +46,7 @@ export function PayslipCard({ doc, i }: { doc: PayslipDoc; i: number }) {
             {h.addressLines.length > 0 && <p className="text-xs text-muted">{h.addressLines.join(", ")}</p>}
             {contact && <p className="text-xs text-muted">{contact}</p>}
           </div>
-        </div>
+        </div>}
         <div className="text-right">
           <p className="text-base font-semibold text-primary">Payslip</p>
           <p className="text-xs text-muted">{month}</p>
@@ -55,7 +68,22 @@ export function PayslipCard({ doc, i }: { doc: PayslipDoc; i: number }) {
           Year to date ({ytd.months} month{ytd.months === 1 ? "" : "s"} of {doc.month.slice(0, 4)}): earnings {aed(ytd.gross)} · deductions {aed(ytd.deductions)} · net pay {aed(ytd.net)}
         </p>
       )}
-      <p className="text-xs text-muted">Computer-generated payslip. No signature required.</p>
+      {paper && (paper.signatureUrl || paper.stampUrl) ? (
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div>
+            <p>For and on behalf of</p>
+            <p className="font-bold">{h.name}</p>
+            {paper.signatureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- our own image route
+              <img src={paper.signatureUrl} alt="" className="my-1 h-11 w-[7.5rem] object-contain" />
+            ) : <div className="h-7" />}
+            <p className="font-bold">{paper.signatoryName || "Authorised Signatory"}</p>
+            {paper.signatoryTitle && <p>{paper.signatoryTitle}</p>}
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- our own image route */}
+          {paper.stampUrl && <img src={paper.stampUrl} alt="" className="h-[5.75rem] w-[5.75rem] object-contain" />}
+        </div>
+      ) : <p className="text-xs text-muted">Computer-generated payslip. No signature required.</p>}
     </article>
   );
 }
