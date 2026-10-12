@@ -2,9 +2,10 @@ import { prisma } from "@/lib/db";
 import { PAY_EMPLOYEE_SELECT, loadPayOf } from "@/lib/payrollRun";
 import { employmentWindow, monthBounds, round2 } from "@/lib/payroll";
 import { buildDays, type DayInput, type DayRow } from "@/lib/payDays";
-import { parseDailyHours } from "@/lib/timesheetCells";
+import { cellsDiffer, parseDailyHours } from "@/lib/timesheetCells";
 
 const num = (v: unknown) => (v == null ? 0 : Number(String(v)));
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export type PayDaysView = {
@@ -15,6 +16,8 @@ export type PayDaysView = {
   totals: { salary: number; otPay: number; deduction: number; net: number; absent: number; ot: number; rest: number; hours: number; mismatches: number; recorded: number };
   other: number; lineNet: number;
   /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
+  /** Timesheet days changed from payroll after the sheet was made, against the first value they had. */
+  edits: { date: string; weekday: string; from: string; to: string; by: string; at: string }[];
   /** The typed amounts can be changed here (draft run, payroll edit permission). */
   canAdjust: boolean;
   /** Days where attendance and the client timesheet say different things, for the list at the top. */
@@ -39,7 +42,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
 
   const [att, sheet] = await Promise.all([
     prisma.attendance.findMany({ where: { employeeId: e.id, date: { gte: bounds.start, lte: bounds.end } }, select: { date: true, status: true, normalHours: true, otHours: true } }),
-    prisma.timesheetEntry.findMany({ where: { branchId: line.run.branchId, employeeIdNo: e.employeeIdNo, month: line.run.month }, orderBy: { updatedAt: "desc" }, select: { dailyHours: true, status: true, supplierId: true } }),
+    prisma.timesheetEntry.findMany({ where: { branchId: line.run.branchId, employeeIdNo: e.employeeIdNo, month: line.run.month }, orderBy: { updatedAt: "desc" }, select: { id: true, dailyHours: true, status: true, supplierId: true } }),
   ]);
   const entry = sheet.find((s) => s.supplierId === e.supplierId) ?? sheet[0] ?? null;
   const cells = new Map((entry ? parseDailyHours(entry.dailyHours) : []).map((c) => [c.date, c.value]));
@@ -51,6 +54,27 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     const a = byDate.get(date);
     days.push({ date, status: a?.status ?? null, normalHours: a?.normalHours ?? null, otHours: a?.otHours ?? null, ts: entry ? (cells.get(date) ?? "") : null });
   }
+
+  // Days changed from payroll (recorded as "day:<date>" changes on the sheet's audit trail), shown against the first value each had.
+  const trail = entry ? await prisma.auditLog.findMany({ where: { entityType: "TIMESHEET_ENTRY", entityId: entry.id, action: "UPDATE" }, orderBy: { createdAt: "asc" }, select: { changes: true, userName: true, createdAt: true } }) : [];
+  const firstSeen = new Map<string, { from: string; by: string; at: Date }>();
+  const lastBy = new Map<string, { by: string; at: Date }>();
+  for (const t of trail) {
+    for (const [k, c] of Object.entries((t.changes ?? {}) as Record<string, { from?: unknown; to?: unknown }>)) {
+      if (!k.startsWith("day:")) continue;
+      const date = k.slice(4);
+      if (!firstSeen.has(date)) firstSeen.set(date, { from: String(c.from ?? ""), by: t.userName, at: t.createdAt });
+      lastBy.set(date, { by: t.userName, at: t.createdAt });
+    }
+  }
+  const edits: PayDaysView["edits"] = [];
+  for (const [date, f] of firstSeen) {
+    const now = cells.get(date) ?? "";
+    if (!cellsDiffer(f.from, now)) continue; // changed back to what it was
+    const who = lastBy.get(date) ?? f;
+    edits.push({ date, weekday: WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()], from: f.from || "blank", to: now || "blank", by: who.by, at: who.at.toISOString().slice(0, 10) });
+  }
+  edits.sort((a, b) => a.date.localeCompare(b.date));
 
   const pf = (await loadPayOf(line.run.branchId, [e]))(e);
   const hourly = line.payStructure === "HOURLY";
@@ -86,6 +110,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     view: {
       lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry && !hourly,
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
+      edits,
       mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),
       other, lineNet: num(line.net), parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
       adjust: { lineId: line.id, deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "" },
