@@ -29,11 +29,36 @@ export async function applyTimesheets(
       }
     }
   }
+  // Workers the sheet gives no usable ID for carry a placeholder id made from their name. Where exactly one
+  // existing worker in this branch has that name, the sheet's row is theirs: use their real ID rather than
+  // creating a second record. Two with the same name are left alone and reported, never guessed.
+  let matchedByName = 0;
+  let ambiguousByName: string[] = [];
+  let placeholderIds = 0;
+  const placeholderEntries = parsed.months.flatMap((m) => m.entries).filter((e) => e.employeeIdNo.startsWith("NOID-"));
+  if (placeholderEntries.length > 0) {
+    const people = await ctx.db.employee.findMany({ where: { branchId: ctx.branchId }, select: { employeeIdNo: true, name: true } });
+    const byName = new Map<string, string[]>();
+    for (const p of people) byName.set(nameKey(p.name), [...(byName.get(nameKey(p.name)) ?? []), p.employeeIdNo]);
+    const ambiguous = new Set<string>();
+    for (const e of placeholderEntries) {
+      const hits = byName.get(nameKey(e.employeeName)) ?? [];
+      if (hits.length === 1) {
+        e.employeeIdNo = hits[0];
+        matchedByName++;
+      } else {
+        placeholderIds++;
+        if (hits.length > 1) ambiguous.add(e.employeeName);
+      }
+    }
+    ambiguousByName = [...ambiguous];
+  }
+
   if (parsed.months.length === 0) {
     return {
       rows: [],
       counts: { created: 0, updated: 0, failed: 0 },
-      notes: [{ tone: "warn", title: "No timesheet months found", detail: "Expected sheets named like \"Aug 26\" or \"MAY-25\", with an \"EMPLOYEE NAME\" column." }],
+      notes: [{ tone: "warn", title: "No timesheet months found", detail: "Expected sheets named like \"Aug 26\" or \"MAY-25\", with an \"EMPLOYEE NAME\" (or \"NAME\") column." }],
     };
   }
 
@@ -57,6 +82,27 @@ export async function applyTimesheets(
   const notes: ImportNote[] = [];
   for (const s of parsed.unrecognizedSheets) {
     notes.push({ tone: "info", title: `Sheet "${s}" was skipped`, detail: "Its name isn't a month (like \"Aug 26\") or it has no EMPLOYEE NAME column." });
+  }
+  for (const m of parsed.months) {
+    for (const text of m.notes ?? []) notes.push({ tone: "info", title: `${m.sheetName}: ${text}` });
+    if (m.blankMeansNotDeployed && m.entries.some((e) => e.dailyHours.some((d) => /^(W|HL|ND)$/i.test(d.value.trim())))) {
+      const halfDay = m.entries.reduce((n, e) => n + e.dailyHours.filter((d) => d.value.trim().toUpperCase() === "HL").length, 0);
+      notes.push({
+        tone: "info",
+        title: `${m.sheetName}: how the day cells were read`,
+        detail: `W is the weekly off, H a holiday, SL sick leave, A absent, ND not deployed (idle, the same as a blank day), and HL half-day leave, counted as a leave day${halfDay > 0 ? ` (${halfDay} in this sheet)` : ""}: the half day worked is not paid separately. A blank day means not deployed: it is recorded as idle for any worker with at least one day filled in.`,
+      });
+    }
+  }
+  if (matchedByName > 0) {
+    notes.push({ tone: "info", title: `${matchedByName} worker${matchedByName === 1 ? "" : "s"} with no ID on the sheet matched an existing worker by name`, detail: "Their days were added to the existing record." });
+  }
+  if (placeholderIds > 0) {
+    notes.push({
+      tone: "warn",
+      title: `${placeholderIds} worker${placeholderIds === 1 ? " has" : "s have"} no ID on the sheet and no existing worker with that name`,
+      detail: `They get a placeholder ID made from the name (NOID-…). Give them a real ID on their record later; the same placeholder is used each month, so no duplicates are made.${ambiguousByName.length > 0 ? ` Two or more existing workers share the name: ${ambiguousByName.slice(0, 5).join(", ")}.` : ""}`,
+    });
   }
   if (warn.zeroRateCount > 0) {
     notes.push({

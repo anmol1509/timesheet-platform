@@ -59,6 +59,10 @@ export type ParsedMonth = {
   entries: ParsedEntry[];
   skippedRows: number;
   skippedRowDetails: SkippedRow[];
+  /** Things worth telling the person about how this sheet was read (not errors). */
+  notes?: string[];
+  /** On this sheet's layout a blank day means the worker was not deployed that day (idle). */
+  blankMeansNotDeployed?: boolean;
 };
 
 export type ImportWarning = {
@@ -216,9 +220,21 @@ const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   // rate" (the company's cost rate, a different column entirely).
   ["rate", /^(sale\s*rate|rate)$/i],
   ["total", /^total$/i],
-  ["absentCount", /no\.?\s*of\s*absent/i],
-  ["absentDeduction", /absent\s*deduction/i],
+  ["absentCount", /no\.?\s*of\s*absent|^absent\s*days?$/i],
+  ["absentDeduction", /absent\s*deduction|^absent\s*fine$/i],
   ["invoiceValue", /invoice\s*value/i],
+];
+
+// Other wordings of the same columns, tried only when the usual heading isn't on the sheet, so a sheet
+// that already imports is read exactly as before. (A staffing client's sheet says "NAME", "COMPANY" for the
+// employing company, "WORKING COMPANY" for where the worker is deployed, "OS ID" and "SALARY RATE".)
+const FALLBACK_PATTERNS: [keyof ColumnMap, RegExp][] = [
+  ["name", /^name$/i],
+  ["idNo", /^os\s*id$/i],
+  ["supplier", /^company$/i],
+  ["client", /^working\s*company$/i],
+  ["payRate", /^salary\s*rate$/i],
+  ["total", /^total\s*hours$/i],
 ];
 
 export type TimesheetColumnKey = keyof ColumnMap;
@@ -244,6 +260,15 @@ function detectColumns(sheet: ExcelJS.Worksheet, headerRowNum: number, overrides
     if (!text) continue;
     for (const [key, pattern] of HEADER_PATTERNS) {
       if (colMap[key] == null && pattern.test(text)) {
+        colMap[key] = c;
+        break;
+      }
+    }
+  }
+  for (const [key, pattern] of FALLBACK_PATTERNS) {
+    if (colMap[key] != null) continue;
+    for (let c = 1; c <= lastCol; c++) {
+      if (pattern.test(cellText(headerRow.getCell(c)))) {
         colMap[key] = c;
         break;
       }
@@ -317,6 +342,28 @@ export async function describeTimesheetWorkbook(buffer: Buffer, overrides: Times
   return out;
 }
 
+/** An ID worth keeping as a worker's identifier: at least four characters with a digit in them. */
+const looksLikeId = (v: string) => v.trim().length >= 4 && /\d/.test(v);
+
+/**
+ * The columns of a day grid in a header row: 1, 2, 3 … one per column in order, as some client sheets
+ * label their days. Empty when there is no such run of at least 28 days.
+ */
+function dayNumberColumns(row: ExcelJS.Row, lastCol: number): number[] {
+  const cols: number[] = [];
+  let expected = 1;
+  for (let c = 1; c <= lastCol; c++) {
+    const n = cellNumber(row.getCell(c)) ?? (/^\d{1,2}$/.test(cellText(row.getCell(c))) ? Number(cellText(row.getCell(c))) : null);
+    if (n === expected) {
+      cols.push(c);
+      expected++;
+    } else if (cols.length > 0) {
+      break;
+    }
+  }
+  return cols.length >= 28 ? cols : [];
+}
+
 function findHeaderRow(sheet: ExcelJS.Worksheet): number | null {
   for (let r = 1; r <= Math.min(10, sheet.rowCount); r++) {
     const row = sheet.getRow(r);
@@ -325,6 +372,15 @@ function findHeaderRow(sheet: ExcelJS.Worksheet): number | null {
         return r;
       }
     }
+  }
+  // No "Employee Name" heading: accept a "Name" heading on a row that also has the days 1 … 28+ across it.
+  for (let r = 1; r <= Math.min(10, sheet.rowCount); r++) {
+    const row = sheet.getRow(r);
+    let hasName = false;
+    for (let c = 1; c <= Math.min(20, sheet.columnCount); c++) {
+      if (/^name$/i.test(cellText(row.getCell(c)))) hasName = true;
+    }
+    if (hasName && dayNumberColumns(row, sheet.columnCount).length > 0) return r;
   }
   return null;
 }
@@ -481,7 +537,38 @@ export async function parseConsolidatedWorkbook(
       dayCols.push({ col: c, date, label: label || "" });
     }
 
-    const dataStart = headerRowNum + (hasDateRow ? 2 : 1);
+    // A client sheet whose days (1, 2, 3 …) run before the TOTAL column: the days are the numbered
+    // columns, the month is the sheet's, and the row under them holds weekday names rather than dates.
+    const gridCols = dayNumberColumns(headerRow, lastCol);
+    const gridMode = gridCols.length > 0 && (colMap.total == null || gridCols[gridCols.length - 1] < colMap.total);
+    const monthNotes: string[] = [];
+    if (gridMode) {
+      const [gy, gm] = monthInfo.month.split("-").map(Number);
+      const daysInMonth = new Date(Date.UTC(gy, gm, 0)).getUTCDate();
+      dayCols.length = 0;
+      const weekdayRow = sheet.getRow(headerRowNum + 1);
+      let weekdayMismatch = 0;
+      let weekdayChecked = 0;
+      gridCols.forEach((col, i) => {
+        const dayNo = i + 1;
+        if (dayNo > daysInMonth) return; // a 31-column grid in a shorter month
+        const date = new Date(Date.UTC(gy, gm - 1, dayNo));
+        const label = WEEKDAY_ABBR[date.getUTCDay()];
+        dayCols.push({ col, date, label });
+        const written = cellText(weekdayRow.getCell(col)).slice(0, 3).toUpperCase();
+        if (written) {
+          weekdayChecked++;
+          if (written !== label.toUpperCase()) weekdayMismatch++;
+        }
+      });
+      if (weekdayChecked >= 7 && weekdayMismatch > 2) {
+        monthNotes.push(`The weekday names under the day numbers don't match the calendar for ${monthInfo.month} (${weekdayMismatch} of ${weekdayChecked} differ). Check the month and year in the sheet name "${sheet.name}".`);
+      }
+    }
+    const dataStart = headerRowNum + (hasDateRow && !gridMode ? 2 : 1);
+    let footerRow: number | null = null;
+    let repeatedHeaders = 0;
+    const headerName = colMap.name ? cellText(headerRow.getCell(colMap.name)).toUpperCase() : "";
     const entries: ParsedEntry[] = [];
     let skippedRows = 0;
     const skippedRowDetails: SkippedRow[] = [];
@@ -497,6 +584,19 @@ export async function parseConsolidatedWorkbook(
         (colMap.supplier ? cellText(row.getCell(colMap.supplier)) : "") || sponsorName || "";
 
       if (!name && !idNo) continue; // blank separator row
+      if (gridMode) {
+        // Merged heading cells repeat the heading in the row under it.
+        if (headerName && name.toUpperCase() === headerName) {
+          repeatedHeaders++;
+          continue;
+        }
+        // The sign-off line ("Prepared By", "Checked By", a TOTAL line) ends the workers. What follows it is a
+        // billing summary and lists that are not timesheet rows, so nothing below is read.
+        if (/^(total\b|sub\s*total|grand\s*total|checked\s*by|approved\s*by|final\s*approved|prepared\s*by|verified\s*by)/i.test(name)) {
+          footerRow = r;
+          break;
+        }
+      }
       if (!supplierName) {
         skippedRows++;
         skippedRowDetails.push({
@@ -540,7 +640,12 @@ export async function parseConsolidatedWorkbook(
       }
 
       entries.push({
-        employeeIdNo: (idNo || `NOID-${name}-${r}`).trim(),
+        // Without a usable ID the id comes from the name alone (not the row, so the same worker keeps the same id
+        // next month and a later import can match them to a real record). A usable ID has a digit and is not a stub
+        // like "M": the OS ID column on these sheets holds a few of those, and two workers must never share one.
+        employeeIdNo: gridMode
+          ? (looksLikeId(idNo) ? idNo : `NOID-${name.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "")}`).trim()
+          : (idNo || `NOID-${name}-${r}`).trim(),
         employeeName: name || "(unnamed)",
         supplierName,
         clientName,
@@ -561,7 +666,11 @@ export async function parseConsolidatedWorkbook(
     normalizeTradeCasing(entries);
     const mergedEntries = mergeDuplicateRows(entries);
 
+    if (repeatedHeaders > 0) monthNotes.push("The heading row repeated under the day numbers was ignored.");
+    if (footerRow !== null) monthNotes.push(`Everything from row ${footerRow} down (sign-off line, totals and summaries) was ignored: workers end above it.`);
     months.push({
+      notes: monthNotes.length > 0 ? monthNotes : undefined,
+      blankMeansNotDeployed: gridMode || undefined,
       sheetName: sheet.name,
       month: monthInfo.month,
       monthLabel: monthInfo.monthLabel,

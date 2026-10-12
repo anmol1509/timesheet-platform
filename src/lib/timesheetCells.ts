@@ -126,6 +126,24 @@ export function attendanceCellValue(a: {
 }
 
 /**
+ * The one spelling for a non-hours cell: client sheets write the same thing several ways
+ * (W for weekly off, HL for a half-day leave, ND for not deployed), so they are compared and
+ * read as A (absent), L (leave), SL (sick), I (idle), H (holiday) or OFF (weekly off).
+ */
+const MARKER_ALIASES: Record<string, string> = {
+  A: "A", ABS: "A", ABSENT: "A",
+  L: "L", AL: "L", LEAVE: "L", HL: "L",
+  SL: "SL", SICK: "SL",
+  I: "I", IDLE: "I", ND: "I",
+  H: "H", HOL: "H", HOLIDAY: "H", PH: "H",
+  OFF: "OFF", O: "OFF", W: "OFF", WO: "OFF", "W/O": "OFF",
+};
+export function canonicalMarker(value: string | null | undefined): string {
+  const v = (value ?? "").trim().toUpperCase();
+  return MARKER_ALIASES[v] ?? v;
+}
+
+/**
  * Whether two cell values disagree.
  *
  * Compared as numbers when both are numeric, so "10" and "10.0" are the same
@@ -137,5 +155,9 @@ export function cellsDiffer(a: string | null, b: string | null): boolean {
   const aNum = a !== null && a.trim() !== "" && Number.isFinite(na);
   const bNum = b !== null && b.trim() !== "" && Number.isFinite(nb);
   if (aNum && bNum) return na !== nb;
-  return (a ?? "").trim().toUpperCase() !== (b ?? "").trim().toUpperCase();
+  // A day the worker was not deployed (idle) is blank on a client's sheet: the two say the same thing.
+  const ca = canonicalMarker(a);
+  const cb = canonicalMarker(b);
+  if ((ca === "I" && cb === "") || (cb === "I" && ca === "")) return false;
+  return ca !== cb;
 }

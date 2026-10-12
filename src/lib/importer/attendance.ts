@@ -22,11 +22,14 @@ export function cellToAttendance(raw: string): Day | null | "unknown" {
   }
   switch (v.toUpperCase()) {
     case "A": case "ABS": case "ABSENT": return { status: "ABSENT", normalHours: null };
-    case "L": case "LEAVE": case "AL": case "ANNUAL LEAVE": return { status: "LEAVE", normalHours: null };
+    // HL (half-day leave) is counted as leave.
+    case "L": case "LEAVE": case "AL": case "ANNUAL LEAVE": case "HL": return { status: "LEAVE", normalHours: null };
     case "SL": case "SICK": case "SICK LEAVE": return { status: "SICK_LEAVE", normalHours: null };
-    case "I": case "IDLE": return { status: "IDLE", normalHours: null };
+    // ND (not deployed) is counted as idle.
+    case "I": case "IDLE": case "ND": return { status: "IDLE", normalHours: null };
     case "H": case "HOL": case "HOLIDAY": case "PH": return { status: "HOLIDAY", normalHours: null };
-    case "OFF": case "O": case "WO": case "W/O": return { status: "OFF", normalHours: null };
+    // W is the weekly off.
+    case "OFF": case "O": case "WO": case "W/O": case "W": return { status: "OFF", normalHours: null };
     default: return "unknown";
   }
 }
@@ -68,13 +71,16 @@ export async function writeAttendanceFromEntry(
     /** The worker's current site-arrival date and stage, so a first attendance can confirm the one and promote the other. */
     worker?: { siteArrivalDate: Date | null; status: string };
     days: DailyHourCell[];
+    /** A blank day on this sheet means the worker was not deployed that day (idle), for a worker with at least one day filled in. */
+    blankMeansNotDeployed?: boolean;
   },
   stats: AttendanceStats,
 ) {
   const wanted: { date: string; day: Day }[] = [];
+  const deployedSomeDay = args.days.some((c) => c.value.trim() !== "");
   for (const cell of args.days) {
     if (!cell.date) continue;
-    const day = cellToAttendance(cell.value);
+    const day = args.blankMeansNotDeployed && deployedSomeDay && cell.value.trim() === "" ? ({ status: "IDLE", normalHours: null } as Day) : cellToAttendance(cell.value);
     if (day === null) continue;
     if (day === "unknown") {
       stats.attendanceUnrecognised++;

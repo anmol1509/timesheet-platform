@@ -1,5 +1,5 @@
 import { round2, shortDayWorked, shortfallDay, splitDayHours, type ShortfallRates, type ShortfallRule } from "@/lib/payroll";
-import { attendanceCellValue, cellsDiffer } from "@/lib/timesheetCells";
+import { attendanceCellValue, canonicalMarker, cellsDiffer } from "@/lib/timesheetCells";
 
 export type DayInput = { date: string; status: string | null; normalHours: number | null; otHours: number | null; ts: string | null; countShortfall?: boolean | null };
 export type DayKind = "work" | "absent" | "leave" | "sick" | "idle" | "off" | "holiday" | "unrecorded" | "outside";
@@ -58,9 +58,9 @@ export function buildDays(plan: DayPlan): { rows: DayRow[]; totals: { salary: nu
       const n = Number(d.ts);
       const hours = d.ts && Number.isFinite(n) && n > 0 ? n : 0;
       const salary = round2(hours * plan.hourlyRate);
-      const marker = (d.ts ?? "").trim().toUpperCase();
-      const kind: DayKind = hours > 0 ? "work" : marker === "A" ? "absent" : marker === "OFF" ? "off" : marker === "H" ? "holiday" : "unrecorded";
-      rows.push({ ...base, kind, label: hours > 0 ? "Worked" : kind === "absent" ? "Absent" : kind === "off" ? "Off" : kind === "holiday" ? "Holiday" : "No hours", hours, ot: 0, rest: 0, salary, otPay: 0, deduction: 0, net: salary, sync: d.status ? sync : "no-timesheet" });
+      const marker = canonicalMarker(d.ts);
+      const kind: DayKind = hours > 0 ? "work" : marker === "A" ? "absent" : marker === "OFF" ? "off" : marker === "H" ? "holiday" : marker === "L" ? "leave" : marker === "SL" ? "sick" : marker === "I" ? "idle" : "unrecorded";
+      rows.push({ ...base, kind, label: hours > 0 ? "Worked" : kind === "absent" ? "Absent" : kind === "off" ? "Off" : kind === "holiday" ? "Holiday" : kind === "leave" ? "Leave" : kind === "sick" ? "Sick" : kind === "idle" ? "Idle" : "No hours", hours, ot: 0, rest: 0, salary, otPay: 0, deduction: 0, net: salary, sync: d.status ? sync : "no-timesheet" });
       continue;
     }
 
@@ -99,7 +99,8 @@ export function attendanceFromCell(value: string | null, dailyHours: number): { 
   const v = (value ?? "").trim().toUpperCase();
   if (!v) return null;
   const map: Record<string, string> = { A: "ABSENT", L: "LEAVE", SL: "SICK_LEAVE", I: "IDLE", H: "HOLIDAY", OFF: "OFF" };
-  if (map[v]) return { status: map[v], normalHours: null, otHours: null };
+  const marker = map[canonicalMarker(v)];
+  if (marker) return { status: marker, normalHours: null, otHours: null };
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0) return null;
   const limit = dailyHours > 0 ? dailyHours : 8;
