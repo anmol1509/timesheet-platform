@@ -20,13 +20,14 @@ type Tab = { key: string; label: string; count: number };
 type Filters = { type: string; q: string; age: string; min: string; from: string };
 
 const KIND_LABEL: Record<string, string> = {
-  EXPENSE: "Expense", BILL: "Supplier bill", PAYROLL: "Payroll", WORKER: "New worker", CHANGE: "Detail change", SUPPLIER: "Supplier", DEMAND: "Demand", TIMESHEET: "Timesheet", CORRECTION: "Attendance",
+  EXPENSE: "Expense", BILL: "Supplier bill", PAYROLL: "Payroll", ADVANCE: "Advance", WORKER: "New worker", CHANGE: "Detail change", SUPPLIER: "Supplier", DEMAND: "Demand", TIMESHEET: "Timesheet", CORRECTION: "Attendance",
 };
 // One icon + tint per kind, so the queue scans by type before reading a word.
 const KIND_ICON: Record<string, { icon: React.ComponentType<{ className?: string }>; tint: string }> = {
   EXPENSE: { icon: Receipt, tint: "bg-[#fff7ed] text-[#c2410c]" },
   BILL: { icon: Banknote, tint: "bg-[var(--info-soft)] text-[var(--info)]" },
   PAYROLL: { icon: Wallet, tint: "bg-brand-soft text-[var(--brand-primary)]" },
+  ADVANCE: { icon: Banknote, tint: "bg-[var(--warning-soft)] text-[var(--warning)]" },
   WORKER: { icon: UserPlus, tint: "bg-[var(--success-soft)] text-[var(--success)]" },
   CHANGE: { icon: UserRoundPen, tint: "bg-[var(--warning-soft)] text-[var(--warning)]" },
   SUPPLIER: { icon: Truck, tint: "bg-[#ecfeff] text-[#0e7490]" },

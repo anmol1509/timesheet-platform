@@ -9,12 +9,13 @@ import { billVariance, exceedsApprovalLimit } from "@/lib/financeRules";
  * lets someone decide them, and the page never needs to know how any of the
  * underlying modules work.
  */
-export type ApprovalKind = "EXPENSE" | "BILL" | "PAYROLL" | "WORKER" | "CHANGE" | "SUPPLIER" | "DEMAND" | "TIMESHEET" | "CORRECTION";
+export type ApprovalKind = "EXPENSE" | "BILL" | "PAYROLL" | "ADVANCE" | "WORKER" | "CHANGE" | "SUPPLIER" | "DEMAND" | "TIMESHEET" | "CORRECTION";
 
 export const APPROVAL_KINDS: { kind: ApprovalKind; label: string; module: string; action: "approve" | "edit" }[] = [
   { kind: "EXPENSE", label: "Expenses", module: "finance", action: "approve" },
   { kind: "BILL", label: "Supplier bills", module: "finance", action: "approve" },
   { kind: "PAYROLL", label: "Payroll runs", module: "payroll", action: "approve" },
+  { kind: "ADVANCE", label: "Advances", module: "payroll", action: "approve" },
   { kind: "WORKER", label: "New workers", module: "partners", action: "edit" },
   { kind: "CHANGE", label: "Supplier detail changes", module: "partners", action: "edit" },
   { kind: "SUPPLIER", label: "Supplier approvals", module: "partners", action: "approve" },
@@ -116,6 +117,27 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
         key: `PAYROLL:${r.id}`, kind: "PAYROLL", id: r.id, title: `Payroll — ${r.company?.name ?? "Own companies"} · ${r.month}`, subtitle: `${r.lines.length} employee${r.lines.length === 1 ? "" : "s"} · ${r.payType === "HOURLY" ? "hourly, from timesheet" : "basic, from attendance"}`,
         requester: r.submittedById ? nameOf.get(r.submittedById) ?? null : null, at: r.submittedAt!, amount: r.lines.reduce((s, l) => s + num(l.net), 0), branch: branchTag(r.branch.code), href: `/payroll/${r.id}`,
         chips: [], inline: true, rejectNeedsReason: true, confirmApprove: true,
+      });
+    }
+  }
+
+  if (has("ADVANCE")) {
+    const rows = await prisma.employeeLoan.findMany({
+      where: { ...bw, approvalStatus: "PENDING", status: "ACTIVE" },
+      orderBy: { createdAt: "asc" },
+      take: LIMIT,
+      include: { employee: { select: { name: true, employeeIdNo: true } }, branch: { select: { code: true } } },
+    });
+    const askers = rows.length ? await prisma.user.findMany({ where: { id: { in: rows.map((r) => r.createdById) } }, select: { id: true, name: true } }) : [];
+    const nameOf = new Map(askers.map((u) => [u.id, u.name]));
+    for (const r of rows) {
+      const planned = Array.isArray(r.schedule) && r.schedule.length > 0;
+      out.push({
+        key: `ADVANCE:${r.id}`, kind: "ADVANCE", id: r.id,
+        title: `${r.type === "LOAN" ? "Loan" : "Advance"} — ${r.employee.name} (${r.employee.employeeIdNo})`,
+        subtitle: `${r.reason ?? "No reason given"} · ${planned ? `planned month by month from ${r.startMonth}` : num(r.instalment) >= num(r.principal) ? `deducted in full in ${r.startMonth}` : `AED ${num(r.instalment).toLocaleString("en-AE")} a month from ${r.startMonth}`}`,
+        requester: nameOf.get(r.createdById) ?? null, at: r.createdAt, amount: num(r.principal), branch: branchTag(r.branch.code), href: "/payroll/loans",
+        chips: [{ text: "Recovered from payroll", tone: "info" }], inline: true, rejectNeedsReason: true, confirmApprove: false,
       });
     }
   }
@@ -227,6 +249,7 @@ export async function countPendingApprovals(scope: ApprovalScope): Promise<numbe
     has("EXPENSE") ? prisma.expense.count({ where: { ...bw, status: "PENDING" } }) : 0,
     has("BILL") ? prisma.supplierBill.count({ where: { ...bw, approvalStatus: "PENDING" } }) : 0,
     has("PAYROLL") ? prisma.payrollRun.count({ where: { ...bw, status: "DRAFT", submittedAt: { not: null } } }) : 0,
+    has("ADVANCE") ? prisma.employeeLoan.count({ where: { ...bw, approvalStatus: "PENDING", status: "ACTIVE" } }) : 0,
     has("WORKER") ? prisma.workerSubmission.count({ where: { ...bw, status: "PENDING" } }) : 0,
     has("CHANGE") ? prisma.supplierChangeRequest.count({ where: { ...bw, status: "PENDING" } }) : 0,
     ...(has("SUPPLIER") ? SUPPLIER_FLAGS.map(([f]) => prisma.supplier.count({ where: { ...bw, isOwnCompany: false, [f]: "Pending" } })) : [0]),

@@ -65,6 +65,15 @@ Say: "Payroll is usually a spreadsheet, a bank file built by hand, and payslips 
 - Say: "Every manual change carries a reason, so the audit trail explains itself."
 - Optional: show **Loans** and **Recurring** under Payroll. A loan repays itself over the months.
 
+### 4b. Advances (2 minutes, optional)
+- Open **Payroll › Loans & advances**. Show the list: each advance has a reference (ADV-0001), who asked, who approved, the day it was handed over, how it is deducted and how much has been recovered.
+- Press **New advance / loan**: choose the employee, amount and reason, then choose how it is deducted: all in one month, the same amount every month, or a plan month by month (it must add up to the amount). Press **Request approval**.
+- Say: "It does not touch payroll yet. An approver sees it under Approvals › Advances and approves or rejects it with a reason."
+- After approval, press **Record as given** and enter the day the money was handed over, how it was paid and a reference. Nothing is deducted before this.
+- Press **Receipt** (or **Request letter** before it is given), choose letterhead, signature and stamp, and open the PDF. The employee signs the declaration.
+- Click the employee's name for their **statement**: every advance, the plan month by month, and what has been deducted.
+- Back on the payroll run, show that the advance is deducted in the planned month and that the payslip names it with the balance left.
+
 ### 5. Send for approval (1 minute)
 - Press **Submit for approval**.
 - Switch to the approver window. Open **Approvals** and choose the Payroll tab.

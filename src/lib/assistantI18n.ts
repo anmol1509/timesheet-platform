@@ -13,6 +13,7 @@ type Strings = {
   ready: string; hello: string; sub: string; placeholder: string; newChat: string; language: string;
   suggestions: [string, string, string, string];
   downloadCsv: string; showing: (shown: number, total: number) => string;
+  helpful: string; notHelpful: string; thanks: string; sendToSupport: string; sentToSupport: string; sending: string; thisScreen: string;
 };
 
 const EN: Strings = {
@@ -25,6 +26,13 @@ const EN: Strings = {
   suggestions: ["Where do I renew a visa?", "How do I get workers onto a project?", "Who is absent today?", "What work is approved but not yet invoiced?"],
   downloadCsv: "Download CSV",
   showing: (shown, total) => `Showing ${shown} of ${total}`,
+  helpful: "Helpful",
+  notHelpful: "Not helpful",
+  thanks: "Thanks for the feedback",
+  sendToSupport: "Send this to support",
+  sentToSupport: "Sent to support. They'll follow up by email.",
+  sending: "Sending…",
+  thisScreen: "What can I do on this screen?",
 };
 
 export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
@@ -39,6 +47,13 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     suggestions: ["वीज़ा का नवीनीकरण कहाँ करें?", "वर्कर्स को प्रोजेक्ट पर कैसे भेजें?", "आज कौन अनुपस्थित है?", "किस काम का बिल बनना अभी बाकी है?"],
     downloadCsv: "CSV डाउनलोड करें",
     showing: (shown, total) => `कुल ${total} में से ${shown} दिखाए गए`,
+    helpful: "काम का",
+    notHelpful: "काम का नहीं",
+    thanks: "फ़ीडबैक के लिए धन्यवाद",
+    sendToSupport: "इसे सपोर्ट को भेजें",
+    sentToSupport: "सपोर्ट को भेज दिया गया। वे ईमेल से संपर्क करेंगे।",
+    sending: "भेजा जा रहा है…",
+    thisScreen: "इस स्क्रीन पर मैं क्या कर सकता हूँ?",
   },
   ur: {
     ready: "مدد کے لیے تیار",
@@ -50,6 +65,13 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     suggestions: ["ویزا کی تجدید کہاں کریں؟", "ورکرز کو پروجیکٹ پر کیسے بھیجیں؟", "آج کون غیر حاضر ہے؟", "کن کاموں کا بل بننا ابھی باقی ہے؟"],
     downloadCsv: "CSV ڈاؤن لوڈ کریں",
     showing: (shown, total) => `کل ${total} میں سے ${shown} دکھائے گئے`,
+    helpful: "مددگار",
+    notHelpful: "مددگار نہیں",
+    thanks: "رائے کا شکریہ",
+    sendToSupport: "اسے سپورٹ کو بھیجیں",
+    sentToSupport: "سپورٹ کو بھیج دیا گیا۔ وہ ای میل پر رابطہ کریں گے۔",
+    sending: "بھیجا جا رہا ہے…",
+    thisScreen: "اس اسکرین پر میں کیا کر سکتا ہوں؟",
   },
   ne: {
     ready: "सहयोगका लागि तयार",
@@ -61,6 +83,13 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     suggestions: ["भिसा नवीकरण कहाँ गर्ने?", "कामदारहरूलाई प्रोजेक्टमा कसरी पठाउने?", "आज को अनुपस्थित छ?", "कुन कामको बिल बनाउन बाँकी छ?"],
     downloadCsv: "CSV डाउनलोड गर्नुहोस्",
     showing: (shown, total) => `जम्मा ${total} मध्ये ${shown} देखाइएको`,
+    helpful: "उपयोगी",
+    notHelpful: "उपयोगी भएन",
+    thanks: "प्रतिक्रियाका लागि धन्यवाद",
+    sendToSupport: "यसलाई सपोर्टमा पठाउनुहोस्",
+    sentToSupport: "सपोर्टमा पठाइयो। उनीहरूले इमेलमा सम्पर्क गर्नेछन्।",
+    sending: "पठाइँदैछ…",
+    thisScreen: "यो स्क्रिनमा म के गर्न सक्छु?",
   },
 };
 

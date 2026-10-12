@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/db";
+import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
 import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
 
+/** The first moment after a pay month, so an advance handed over later than the month is not recovered in it. */
+const monthAfter = (month: string) => {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 1));
+};
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
 export type RunScope = { id: string; branchId: string; month: string; companyId: string | null; payType: string | null };
@@ -93,8 +99,9 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       select: { employeeId: true, kind: true, amount: true, startMonth: true, endMonth: true, label: true, category: true },
     }),
     prisma.employeeLoan.findMany({
-      where: { branchId: run.branchId, status: "ACTIVE", startMonth: { lte: run.month } },
-      select: { id: true, employeeId: true, principal: true, repaid: true, instalment: true },
+      // Only advances that are approved and handed over are recovered.
+      where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null, lt: monthAfter(run.month) }, startMonth: { lte: run.month } },
+      select: { id: true, employeeId: true, principal: true, repaid: true, instalment: true, schedule: true, refNo: true, type: true, givenDate: true },
       orderBy: { createdAt: "asc" },
     }),
   ]);
@@ -163,12 +170,15 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     extras.set(a.employeeId, row);
   }
   const loansByEmployee = new Map<string, { id: string; remaining: number; instalment: number }[]>();
+  const loanInfo = new Map<string, { label: string }>();
   for (const l of loans) {
     const remaining = round2(num(l.principal) - num(l.repaid));
     if (remaining <= 0) continue;
     const list = loansByEmployee.get(l.employeeId) ?? [];
-    list.push({ id: l.id, remaining, instalment: num(l.instalment) });
+    // A planned advance takes this month's amount from its plan; a fixed one takes its instalment.
+    list.push({ id: l.id, remaining, instalment: loanInstalmentFor({ instalment: num(l.instalment), schedule: readSchedule(l.schedule) }, run.month) });
     loansByEmployee.set(l.employeeId, list);
+    loanInfo.set(l.id, { label: `${l.type === "ADVANCE" ? "Advance" : "Loan"} ${advanceRef(l.refNo)}${l.givenDate ? `, taken ${l.givenDate.toISOString().slice(0, 10)}` : ""}` });
   }
   const prev = new Map(existing.map((x) => [x.employeeId, x]));
 
@@ -212,9 +222,18 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     const manualDeduction = capToAvailable(num(old?.manualDeduction), beforeManual);
     const beforeAdvance = round2(beforeManual - manualDeduction);
     const advanceManual = !!old?.advanceManual;
+    const loanPlan = advanceManual ? [] : planLoanRecovery(loansByEmployee.get(e.id) ?? [], beforeAdvance);
     const loanDeduction = advanceManual
       ? capToAvailable(num(old?.loanDeduction), beforeAdvance)
-      : round2(planLoanRecovery(loansByEmployee.get(e.id) ?? [], beforeAdvance).reduce((sum, x) => sum + x.amount, 0));
+      : round2(loanPlan.reduce((sum, x) => sum + x.amount, 0));
+    // The payslip says which advance is being recovered and what is left of it, unless someone typed their own note.
+    const loanNote = loanPlan
+      .map((x) => {
+        const mine = loansByEmployee.get(e.id)?.find((m) => m.id === x.loanId);
+        return `${loanInfo.get(x.loanId)?.label ?? "Advance"} (balance AED ${round2((mine?.remaining ?? x.amount) - x.amount).toFixed(2)})`;
+      })
+      .join("; ")
+      .slice(0, 200);
 
     return {
       runId: run.id, employeeId: e.id, projectId: e.projectId, payStructure: (isHourly ? "HOURLY" : pf.payStructure) as string, daysInMonth: days,
@@ -223,7 +242,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
       manualDeduction, deductionNote: old?.deductionNote ?? null,
-      advanceNote: old?.advanceNote ?? null, advanceManual,
+      advanceNote: advanceManual ? old?.advanceNote ?? null : loanNote || null, advanceManual,
       otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction, items: ex.items.length > 0 ? ex.items : undefined,
       net: netPayWithExtras(r, adjustment, { ...recurring, loanDeduction, manualDeduction }),
       paymentMode: e.wpsPaymentMode, personCode: e.molPersonCode, bankName: e.wpsBankName, routingCode: e.wpsRoutingCode, account: e.wpsIban || e.wpsAccountNumber,
@@ -246,14 +265,14 @@ export async function recordLoanRepayments(run: { id: string; branchId: string; 
   const lines = await prisma.payrollLine.findMany({ where: { runId: run.id, loanDeduction: { gt: 0 } }, select: { id: true, employeeId: true, loanDeduction: true } });
   if (lines.length === 0) return;
   const loans = await prisma.employeeLoan.findMany({
-    where: { branchId: run.branchId, status: "ACTIVE", employeeId: { in: lines.map((l) => l.employeeId) } },
+    where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null, lt: monthAfter(run.month) }, startMonth: { lte: run.month }, employeeId: { in: lines.map((l) => l.employeeId) } },
     orderBy: { createdAt: "asc" },
   });
   await prisma.$transaction(async (tx) => {
     for (const line of lines) {
       const mine = loans
         .filter((l) => l.employeeId === line.employeeId)
-        .map((l) => ({ id: l.id, remaining: round2(num(l.principal) - num(l.repaid)), instalment: num(l.instalment) }));
+        .map((l) => ({ id: l.id, remaining: round2(num(l.principal) - num(l.repaid)), instalment: loanInstalmentFor({ instalment: num(l.instalment), schedule: readSchedule(l.schedule) }, run.month) }));
       for (const { loanId, amount } of planLoanRecovery(mine, num(line.loanDeduction))) {
         const made = await tx.loanRepayment.createMany({ data: [{ loanId, lineId: line.id, amount, month: run.month }], skipDuplicates: true });
         if (made.count === 0) continue;

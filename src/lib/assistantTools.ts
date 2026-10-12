@@ -6,6 +6,10 @@ import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
 import { getRenewals, summarise } from "@/lib/renewals";
+import { findGuides } from "@/lib/helpLibrary";
+import { approvalBlockers, missingFromPayrollReasons } from "@/lib/assistantDiagnose";
+import { PAY_EMPLOYEE_SELECT, loadPayOf } from "@/lib/payrollRun";
+import { employmentWindow, isPayType, monthBounds, wpsGaps } from "@/lib/payroll";
 
 /**
  * Read-only tools My Assistant can call.
@@ -78,6 +82,41 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
         month: { type: "string", description: "YYYY-MM. Omit for the most recent run that includes this worker." },
       },
       required: ["employee"],
+    },
+  },
+  {
+    name: "find_help_guide",
+    description:
+      "Look up the step-by-step guide for a how-to or why question about the app (payroll setup and runs, why pay is what it is, short hours, gas charge, payslips, WPS bank file, importing a client's timesheet from Excel, attendance, timesheet approval, letters, reporting a problem). Use this FIRST for 'how do I…' and 'why can't I…' questions, then answer from the steps it returns, in the order given. If nothing matches, say you are not sure and offer to send it to support.",
+    input_schema: {
+      type: "object",
+      properties: { question: { type: "string", description: "The person's question in a few words" } },
+      required: ["question"],
+    },
+  },
+  {
+    name: "explain_missing_from_payroll",
+    description:
+      "Why a worker is not in a month's payroll run, with the fix for each cause (company not an own company, terminated, not employed that month, no pay set, no timesheet hours, no run yet). Needs payroll access. Say only what the tool returned.",
+    input_schema: {
+      type: "object",
+      properties: {
+        employee: { type: "string", description: "Worker name or employee ID (2+ characters)" },
+        month: { type: "string", description: "YYYY-MM. Omit for the current month." },
+      },
+      required: ["employee"],
+    },
+  },
+  {
+    name: "explain_payroll_blockers",
+    description:
+      "Why a draft payroll run can't be approved yet (not submitted, workers with incomplete bank details, the approval limit, no workers). Needs payroll access. month: YYYY-MM, omit for the latest draft run. company: part of the company name when there are several runs.",
+    input_schema: {
+      type: "object",
+      properties: {
+        month: { type: "string", description: "YYYY-MM. Omit for the latest draft run." },
+        company: { type: "string", description: "Part of the company's name, when more than one run matches" },
+      },
     },
   },
   {
@@ -335,10 +374,80 @@ async function explainPayrollLine(input: Record<string, unknown>, ctx: ToolConte
     daysInMonth: l.daysInMonth, absentDays: l.absentDays, unpaidLeaveDays: l.unpaidLeaveDays, idleDays: l.idleDays, sickDays: l.sickDays,
     normalHours: l.normalHours, overtimeHours: l.otHours, restDayHours: l.restHours, timesheetHours: l.timesheetHours,
     basicOrFlat: n(l.basic), allowances: n(l.allowances), overtimePay: n(l.overtimePay), absenceAndUnpaidLeaveDeductions: n(l.deductions),
-    gasCharge: n(l.gasCharge), loanRecovery: n(l.loanDeduction), recurringEarnings: n(l.otherEarnings), recurringDeductions: n(l.otherDeductions),
+    gasCharge: n(l.gasCharge), shortHoursDeduction: n(l.shortfallDeduction), shortHours: l.shortfallHours, loanRecovery: n(l.loanDeduction), recurringEarnings: n(l.otherEarnings), recurringDeductions: n(l.otherDeductions),
     manualDeduction: n(l.manualDeduction), manualDeductionNote: l.deductionNote, adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote, net: n(l.net),
   };
   return { content: JSON.stringify(data), links: [{ href: `/payroll/${l.run.id}`, label: `Payroll ${l.run.month}`, group: "Payroll" }] };
+}
+
+async function findHelpGuide(input: Record<string, unknown>): Promise<ToolResult> {
+  const q = typeof input.question === "string" ? input.question.trim().slice(0, 200) : "";
+  if (q.length < 3) return { content: "Question too short." };
+  const guides = findGuides(q, 2);
+  if (guides.length === 0) return { content: "No guide matches. Say you're not sure, give any general pointer you can from the page list, and offer to send the question to support." };
+  return {
+    content: JSON.stringify(guides.map((g) => ({ title: g.title, steps: g.steps, notes: g.notes ?? [], pages: g.pages ?? [] }))) +
+      " Answer from these steps in order. Link only pages that are in the page list you were given.",
+  };
+}
+
+async function explainMissingFromPayroll(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  if (!can(ctx.subject, "payroll", "view")) return denied("payroll");
+  const q = typeof input.employee === "string" ? input.employee.trim().slice(0, 80) : "";
+  if (q.length < 2) return { content: "Query too short." };
+  const month = monthArg(input.month) ?? new Date().toISOString().slice(0, 7);
+  const bounds = monthBounds(month);
+  if (!bounds) return { content: "Invalid month." };
+  const found = await prisma.employee.findMany({
+    where: { ...branchWhere(ctx.branchId), OR: [{ name: contains(q) }, { employeeIdNo: contains(q) }] },
+    select: { ...PAY_EMPLOYEE_SELECT, status: true, branchId: true, supplier: { select: { ...PAY_EMPLOYEE_SELECT.supplier.select, name: true, isOwnCompany: true, payType: true } } },
+    take: 3,
+  });
+  if (found.length === 0) return { content: "No worker matches that name or ID in this branch." };
+  if (found.length > 1) return { content: JSON.stringify({ ambiguous: true, matches: found.map((e) => `${e.name} (${e.employeeIdNo})`) }) + " Ask which one." };
+  const e = found[0];
+  const pf = (await loadPayOf(e.branchId, [e]))(e);
+  const run = e.supplierId ? await prisma.payrollRun.findFirst({ where: { ...branchWhere(ctx.branchId), month, companyId: e.supplierId }, select: { id: true } }) : null;
+  const line = run ? await prisma.payrollLine.findFirst({ where: { runId: run.id, employeeId: e.id }, select: { id: true } }) : null;
+  const payType = isPayType(e.supplier?.payType) ? e.supplier!.payType as "BASIC" | "HOURLY" : null;
+  const paidHourly = payType ? payType === "HOURLY" : pf.payStructure === "HOURLY";
+  const hours = paidHourly ? (await prisma.timesheetEntry.aggregate({ where: { month, employeeIdNo: e.employeeIdNo, status: { not: "REJECTED" } }, _sum: { totalHours: true } }))._sum.totalHours ?? 0 : null;
+  const reasons = missingFromPayrollReasons({
+    company: e.supplier ? { name: e.supplier.name, isOwnCompany: e.supplier.isOwnCompany, payType } : null,
+    status: String(e.status),
+    employedInMonth: !!employmentWindow(bounds, e.joinDate, e.exitDate),
+    pay: { payStructure: pf.payStructure, basicSalary: pf.basicSalary, flatMonthlyRate: pf.flatMonthlyRate, hourlyRate: pf.hourlyRate },
+    hourlyHours: hours,
+    runExists: !!run,
+    inRun: !!line,
+  });
+  const links = run ? [{ href: `/payroll/${run.id}`, label: `Payroll ${month}`, group: "Payroll" }] : [];
+  return { content: JSON.stringify({ worker: `${e.name} (${e.employeeIdNo})`, month, inTheRun: !!line, reasons }), links };
+}
+
+async function explainPayrollBlockers(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  if (!can(ctx.subject, "payroll", "view")) return denied("payroll");
+  const month = monthArg(input.month);
+  const company = typeof input.company === "string" ? input.company.trim().slice(0, 60) : "";
+  const runs = await prisma.payrollRun.findMany({
+    where: { ...branchWhere(ctx.branchId), status: "DRAFT", ...(month ? { month } : {}), ...(company.length >= 2 ? { company: { name: contains(company) } } : {}) },
+    include: { company: { select: { name: true } }, branch: { select: { payrollApprovalThreshold: true } }, lines: { select: { net: true, paymentMode: true, personCode: true, routingCode: true, account: true, employee: { select: { name: true } } } } },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
+  if (runs.length === 0) return { content: "No draft payroll run matches. It may already be approved or paid, or not started. Payroll lists every run." };
+  if (runs.length > 1 && !month && company.length < 2) {
+    return { content: JSON.stringify({ ambiguous: true, runs: runs.map((r) => `${r.company?.name ?? "run"} ${r.month}`) }) + " Ask which run." };
+  }
+  const r = runs[0];
+  const total = r.lines.reduce((sum, l) => sum + Number(l.net), 0);
+  const threshold = r.branch.payrollApprovalThreshold ? Number(r.branch.payrollApprovalThreshold) : null;
+  const bankGaps = r.lines.map((l) => ({ name: l.employee.name, gaps: wpsGaps({ paymentMode: l.paymentMode, personCode: l.personCode, routingCode: l.routingCode, account: l.account }) })).filter((x) => x.gaps.length > 0);
+  const blockers = approvalBlockers({ status: r.status, submitted: !!r.submittedAt, lineCount: r.lines.length, total, threshold, bankGaps });
+  return {
+    content: JSON.stringify({ run: `${r.company?.name ?? "Payroll"} ${r.month}`, status: r.status, submitted: !!r.submittedAt, blockers, note: blockers.length === 0 ? "Nothing is in the way. If Approve is still missing, the person may lack the payroll approve permission (Settings › Roles)." : undefined }),
+    links: [{ href: `/payroll/${r.id}`, label: `Payroll ${r.month}`, group: "Payroll" }],
+  };
 }
 
 async function draftLetter(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
@@ -369,6 +478,9 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext): P
     if (name === "get_stats") return await getStats(args, ctx);
     if (name === "list_rows") return await listRows(args, ctx);
     if (name === "explain_payroll_line") return await explainPayrollLine(args, ctx);
+    if (name === "find_help_guide") return await findHelpGuide(args);
+    if (name === "explain_missing_from_payroll") return await explainMissingFromPayroll(args, ctx);
+    if (name === "explain_payroll_blockers") return await explainPayrollBlockers(args, ctx);
     if (name === "draft_letter") return await draftLetter(args, ctx);
     return { content: "Unknown tool." };
   } catch (err) {

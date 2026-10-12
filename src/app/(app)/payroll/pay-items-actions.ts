@@ -9,6 +9,9 @@ import { monthBounds, round2 } from "@/lib/payroll";
 import { arrearsFor } from "@/lib/payrollSchedule";
 import { cleanCategory } from "@/lib/payItems";
 import { assertContactsValid, contactsError } from "@/lib/validators";
+import { advanceRef, buildRecoveryPlan } from "@/lib/advances";
+import { anotherApproverExists } from "@/lib/payrollControls";
+import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -23,6 +26,15 @@ async function employeeInBranch(employeeId: string, branchId: string) {
 }
 
 // ------------------------------------------------------- loans & advances
+// An advance is a request first: it is approved by someone, handed over on a recorded day, and only then recovered
+// from payroll, month by month, as planned. Each step is recorded against the person who did it.
+const METHODS = new Set(["CASH", "BANK", "OTHER"]);
+
+async function loanInBranch(id: string, branchId: string | null, isSuperAdmin: boolean) {
+  const loan = await prisma.employeeLoan.findUnique({ where: { id }, include: { employee: { select: { name: true } } } });
+  return loan && !isOutsideBranch(loan.branchId, branchId, isSuperAdmin) ? loan : null;
+}
+
 export async function createLoanAction(_prev: State, formData: FormData): Promise<State> {
   await requireWrite("payroll.payroll");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
@@ -32,18 +44,101 @@ export async function createLoanAction(_prev: State, formData: FormData): Promis
 
   const emp = await employeeInBranch(str(formData.get("employeeId")), branchId);
   if (!emp) return { error: "Choose an employee." };
-  const type = str(formData.get("type")) === "ADVANCE" ? "ADVANCE" : "LOAN";
+  const type = str(formData.get("type")) === "LOAN" ? "LOAN" : "ADVANCE";
   const principal = money(formData.get("principal"));
-  const instalment = money(formData.get("instalment"));
-  const startMonth = str(formData.get("startMonth"));
-  if (!(principal > 0)) return { error: "Enter the amount advanced." };
-  if (!(instalment > 0) || instalment > principal) return { error: "The monthly recovery must be above zero and no more than the amount advanced." };
-  if (!monthBounds(startMonth)) return { error: "Choose the first month to deduct." };
+  const reason = str(formData.get("reason")).slice(0, 300);
+  if (!reason) return { error: "Say what the advance is for, so whoever approves it knows." };
+
+  const mode = str(formData.get("planMode"));
+  let rows: { month: string; amount: number }[] = [];
+  if (mode === "CUSTOM") {
+    try {
+      const raw = JSON.parse(str(formData.get("planRows")) || "[]") as { month?: unknown; amount?: unknown }[];
+      rows = raw.map((r) => ({ month: String(r.month ?? ""), amount: Number(r.amount) }));
+    } catch {
+      return { error: "The month-by-month plan couldn't be read. Add the rows again." };
+    }
+  }
+  const plan = buildRecoveryPlan(
+    mode === "CUSTOM" ? { mode: "CUSTOM", principal, rows }
+    : mode === "EQUAL" ? { mode: "EQUAL", principal, startMonth: str(formData.get("startMonth")), instalment: money(formData.get("instalment")) }
+    : { mode: "ONE_MONTH", principal, month: str(formData.get("month")) }
+  );
+  if ("error" in plan) return { error: plan.error };
 
   const loan = await prisma.employeeLoan.create({
-    data: { type, principal, instalment, startMonth, reason: str(formData.get("reason")) || null, employeeId: emp.id, branchId, createdById: user.id },
+    data: {
+      type, principal, instalment: plan.instalment, startMonth: plan.startMonth, schedule: plan.schedule ?? undefined, reason,
+      approvalStatus: "PENDING", employeeId: emp.id, branchId, createdById: user.id,
+    },
   });
-  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "CREATE", after: { employee: emp.name, type, principal, instalment, startMonth }, userId: user.id, userName: user.name, branchId });
+  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "CREATE", after: { ref: advanceRef(loan.refNo), employee: emp.name, type, principal, startMonth: plan.startMonth, instalment: plan.instalment, planned: !!plan.schedule }, userId: user.id, userName: user.name, branchId });
+  await notifyUsers({
+    userIds: (await approverIds("payroll", branchId)).filter((id) => id !== user.id),
+    kind: "ADVANCE_REQUESTED",
+    title: `Advance to approve: ${emp.name}`,
+    body: `${user.name} asked for ${type === "LOAN" ? "a loan" : "an advance"} of AED ${principal.toFixed(2)} for ${emp.name}.`,
+    href: "/approvals?type=ADVANCE",
+  });
+  revalidatePath("/payroll/loans");
+  revalidatePath("/approvals");
+  return { error: null, ok: true };
+}
+
+/** An approver accepts a request. The person who asked cannot approve their own request when someone else can. */
+export async function approveAdvanceAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const loan = await loanInBranch(str(formData.get("id")), branchId, isSuperAdmin);
+  if (!loan) return { error: "Request not found." };
+  if (loan.approvalStatus !== "PENDING" || loan.status !== "ACTIVE") return { error: "That request has already been decided." };
+  if (loan.createdById === user.id && (await anotherApproverExists(loan.branchId, user.id))) return { error: "Someone other than the person who asked for the advance has to approve it." };
+  await prisma.employeeLoan.update({ where: { id: loan.id }, data: { approvalStatus: "APPROVED", approvedById: user.id, approvedAt: new Date(), decisionNote: null } });
+  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "UPDATE", before: { approval: "PENDING" }, after: { approval: "APPROVED", ref: advanceRef(loan.refNo), employee: loan.employee.name }, userId: user.id, userName: user.name, branchId: loan.branchId });
+  await notifyUsers({ userIds: [loan.createdById].filter((id) => id !== user.id), kind: "ADVANCE_DECIDED", title: `Advance approved: ${loan.employee.name}`, body: `${advanceRef(loan.refNo)} was approved by ${user.name}. Record the day it is handed over.`, href: "/payroll/loans" });
+  revalidatePath("/payroll/loans");
+  revalidatePath("/approvals");
+  return { error: null, ok: true };
+}
+
+export async function rejectAdvanceAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const loan = await loanInBranch(str(formData.get("id")), branchId, isSuperAdmin);
+  if (!loan) return { error: "Request not found." };
+  if (loan.approvalStatus !== "PENDING" || loan.status !== "ACTIVE") return { error: "That request has already been decided." };
+  const note = str(formData.get("note")).slice(0, 300);
+  if (!note) return { error: "Say why it is being turned down." };
+  await prisma.employeeLoan.update({ where: { id: loan.id }, data: { approvalStatus: "REJECTED", status: "CANCELLED", approvedById: user.id, approvedAt: new Date(), decisionNote: note } });
+  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "UPDATE", before: { approval: "PENDING" }, after: { approval: "REJECTED", note, ref: advanceRef(loan.refNo), employee: loan.employee.name }, userId: user.id, userName: user.name, branchId: loan.branchId });
+  await notifyUsers({ userIds: [loan.createdById].filter((id) => id !== user.id), kind: "ADVANCE_DECIDED", title: `Advance not approved: ${loan.employee.name}`, body: `${advanceRef(loan.refNo)}: ${note}`, href: "/payroll/loans" });
+  revalidatePath("/payroll/loans");
+  revalidatePath("/approvals");
+  return { error: null, ok: true };
+}
+
+/** Records the day the money was actually handed over, and how. Recovery from payroll starts from here. */
+export async function markAdvanceGivenAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const loan = await loanInBranch(str(formData.get("id")), branchId, isSuperAdmin);
+  if (!loan) return { error: "Advance not found." };
+  if (loan.approvalStatus !== "APPROVED" || loan.status !== "ACTIVE") return { error: "Only an approved advance can be marked as given." };
+  if (loan.givenDate) return { error: "The day it was given is already recorded." };
+  const day = str(formData.get("givenDate"));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(day))) return { error: "Enter the day the money was handed over." };
+  const givenDate = new Date(`${day}T00:00:00.000Z`);
+  if (givenDate.getTime() > Date.now() + 86_400_000) return { error: "That day is in the future. Record it once the money has been handed over." };
+  const method = METHODS.has(str(formData.get("method"))) ? str(formData.get("method")) : "CASH";
+  const reference = str(formData.get("reference")).slice(0, 80) || null;
+  await prisma.employeeLoan.update({ where: { id: loan.id }, data: { givenDate, method, reference } });
+  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "UPDATE", before: { givenDate: null }, after: { givenDate: day, method, reference, ref: advanceRef(loan.refNo), employee: loan.employee.name }, userId: user.id, userName: user.name, branchId: loan.branchId });
   revalidatePath("/payroll/loans");
   return { error: null, ok: true };
 }

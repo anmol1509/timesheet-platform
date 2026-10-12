@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, m } from "motion/react";
 import {
   ArrowRight,
   ArrowUp,
   BarChart3,
   Download,
+  Check,
   Globe,
+  LifeBuoy,
   ListChecks,
   RotateCcw,
   Search,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
   UserSearch,
   X,
   type LucideIcon,
@@ -20,11 +24,18 @@ import {
 import { getNavPages } from "@/app/(app)/nav-links";
 import { cn } from "@/lib/cn";
 import { SPRING } from "@/lib/motion";
+import { submitSupportTicketAction } from "@/app/(app)/support/actions";
 import { LANGUAGE_OPTIONS, isAssistantLang, stringsFor, type AssistantLang } from "@/lib/assistantI18n";
 
 type Link = { href: string; label: string; group: string };
 type Table = { title: string; columns: string[]; rows: string[][]; total: number };
-type Msg = { role: "user" | "assistant"; content: string; links?: Link[]; table?: Table; error?: boolean };
+type Msg = {
+  role: "user" | "assistant"; content: string; links?: Link[]; table?: Table; error?: boolean;
+  /** The assistant could not resolve it: offer to send it to support. */
+  needsSupport?: boolean;
+  rating?: "UP" | "DOWN";
+  support?: "sending" | "sent";
+};
 
 const SUGGESTION_ICONS: LucideIcon[] = [Search, ListChecks, UserSearch, BarChart3];
 
@@ -100,6 +111,17 @@ function ResultTable({ table, downloadLabel, showing }: { table: Table; download
   );
 }
 
+/** Text of an error banner currently showing on the page (not the assistant's own), so a question like "why can't I save?" has the message. */
+function visibleError(): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  for (const el of document.querySelectorAll('[role="alert"]')) {
+    if (el.closest('[aria-label="My Assistant"]')) continue;
+    const text = el.textContent?.trim();
+    if (text) return text.slice(0, 300);
+  }
+  return undefined;
+}
+
 /**
  * "My Assistant" — floating chat for finding pages, records and quick answers.
  * Sends the conversation plus the user's own sidebar pages (getNavPages, already
@@ -121,6 +143,7 @@ export function NavAssistant({
   const [busy, setBusy] = useState(false);
   const [lang, setLang] = useState<AssistantLang>("auto");
   const router = useRouter();
+  const pathname = usePathname();
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pages = useMemo(
@@ -190,16 +213,49 @@ export function NavAssistant({
           messages: next.filter((m) => !m.error).map(({ role, content }) => ({ role, content })),
           pages,
           language: lang,
+          page: pathname,
+          pageError: visibleError(),
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
-      setMessages([...next, { role: "assistant", content: data.answer || "I couldn't find a match.", links: data.links, table: data.table }]);
+      setMessages([...next, { role: "assistant", content: data.answer || "I couldn't find a match.", links: data.links, table: data.table, needsSupport: data.needsSupport === true }]);
     } catch (e) {
       setMessages([...next, { role: "assistant", content: e instanceof Error ? e.message : "Something went wrong.", error: true }]);
     } finally {
       setBusy(false);
     }
+  }
+
+  /** The question an answer replied to. */
+  const questionFor = (i: number) => (messages[i - 1]?.role === "user" ? messages[i - 1].content : "");
+
+  function rate(i: number, rating: "UP" | "DOWN") {
+    const msg = messages[i];
+    if (!msg || msg.rating) return;
+    setMessages((all) => all.map((m, k) => (k === i ? { ...m, rating } : m)));
+    void fetch("/api/assistant/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: questionFor(i), answer: msg.content, rating, page: pathname }),
+    }).catch(() => undefined);
+  }
+
+  /** Sends the conversation, the screen and the person's name to the support inbox in one click. */
+  async function sendToSupport(i: number) {
+    setMessages((all) => all.map((m, k) => (k === i ? { ...m, support: "sending" } : m)));
+    const question = questionFor(i);
+    const transcript = messages
+      .slice(0, i + 1)
+      .slice(-8)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+    const fd = new FormData();
+    fd.set("subject", `Assistant couldn't help: ${question.slice(0, 70) || "a question"}`);
+    fd.set("message", `The in-app assistant could not resolve this.\n\n${transcript}`);
+    fd.set("page", pathname);
+    const res = await submitSupportTicketAction({ error: undefined, ok: false }, fd).catch(() => ({ ok: false as const }));
+    setMessages((all) => all.map((m, k) => (k === i ? { ...m, support: res.ok ? "sent" : undefined } : m)));
   }
 
   function go(href: string) {
@@ -329,6 +385,14 @@ export function NavAssistant({
                       </m.button>
                       );
                     })}
+                    <button
+                      type="button"
+                      onClick={() => send(t.thisScreen)}
+                      className="flex items-center gap-3 rounded-card border border-dashed border-default px-3 py-2.5 text-left text-sm text-secondary transition-colors hover:border-[var(--brand-primary)] hover:text-primary"
+                    >
+                      <Sparkles className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+                      <span className="min-w-0 flex-1">{t.thisScreen}</span>
+                    </button>
                   </div>
                 </m.div>
               )}
@@ -385,6 +449,27 @@ export function NavAssistant({
                           </span>
                         </button>
                       ))}
+                    </div>
+                  )}
+                  {msg.role === "assistant" && !msg.error && (
+                    <div className="flex w-full max-w-[88%] flex-wrap items-center gap-2 pl-8 text-[11px] text-muted">
+                      {msg.rating ? (
+                        <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" aria-hidden /> {t.thanks}</span>
+                      ) : (
+                        <>
+                          <button type="button" onClick={() => rate(i, "UP")} className="inline-flex items-center gap-1 rounded-control px-1.5 py-1 hover:bg-surface-hover hover:text-primary" aria-label={t.helpful}><ThumbsUp className="h-3 w-3" aria-hidden /> {t.helpful}</button>
+                          <button type="button" onClick={() => rate(i, "DOWN")} className="inline-flex items-center gap-1 rounded-control px-1.5 py-1 hover:bg-surface-hover hover:text-primary" aria-label={t.notHelpful}><ThumbsDown className="h-3 w-3" aria-hidden /> {t.notHelpful}</button>
+                        </>
+                      )}
+                      {(msg.needsSupport || msg.rating === "DOWN") && (
+                        msg.support === "sent" ? (
+                          <span className="inline-flex items-center gap-1 text-[var(--success)]"><Check className="h-3 w-3" aria-hidden /> {t.sentToSupport}</span>
+                        ) : (
+                          <button type="button" disabled={msg.support === "sending"} onClick={() => sendToSupport(i)} className="inline-flex items-center gap-1 rounded-control border border-default bg-surface px-2 py-1 font-medium text-primary hover:border-[var(--brand-primary)] disabled:opacity-50">
+                            <LifeBuoy className="h-3 w-3" aria-hidden /> {msg.support === "sending" ? t.sending : t.sendToSupport}
+                          </button>
+                        )
+                      )}
                     </div>
                   )}
                 </m.div>

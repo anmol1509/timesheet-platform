@@ -7,6 +7,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { allowedKinds, type ApprovalKind } from "@/lib/approvals";
 import { decideExpenseAction, decideBillAction } from "../finance/actions";
 import { approveRunAction, returnRunAction } from "../payroll/actions";
+import { approveAdvanceAction, rejectAdvanceAction } from "../payroll/pay-items-actions";
 import { approveWorkerAction, rejectWorkerAction, approveChangeAction, rejectChangeAction } from "../suppliers/requests/actions";
 import { updateSupplierApprovalAction } from "../suppliers/actions";
 import { setTradeApprovalAction } from "../demand/actions";
@@ -72,6 +73,9 @@ export async function decideApprovalAction(input: Input): Promise<State> {
       break;
     case "PAYROLL":
       result = approve ? await approveRunAction(fd({ id: input.id })) : await returnRunAction(fd({ id: input.id, note }));
+      break;
+    case "ADVANCE":
+      result = approve ? await approveAdvanceAction(fd({ id: input.id })) : await rejectAdvanceAction(fd({ id: input.id, note }));
       break;
     case "WORKER":
       result = approve ? await approveWorkerAction(fd({ id: input.id })) : await rejectWorkerAction(fd({ id: input.id, note }));

@@ -1884,6 +1884,19 @@ model EmployeeLoan {
   createdAt   DateTime @default(now())
   createdById String
 
+  // Approval and hand-over. A request starts PENDING; nothing is recovered until it is APPROVED and the
+  // day the money was handed over is recorded. Rows from before approvals existed count as approved and given.
+  approvalStatus String    @default("APPROVED") // "PENDING" | "APPROVED" | "REJECTED"
+  approvedById   String?
+  approvedAt     DateTime?
+  decisionNote   String?
+  givenDate      DateTime?
+  method         String? // "CASH" | "BANK" | "OTHER"
+  reference      String?
+  // [{ month: "YYYY-MM", amount }] when recovery follows a plan month by month; null = a fixed instalment.
+  schedule       Json?
+  refNo          Int       @unique @default(autoincrement())
+
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId String
   branch     Branch   @relation(fields: [branchId], references: [id])
@@ -2701,4 +2714,23 @@ model FinalSettlement {
 
   @@index([branchId, status])
   @@index([employeeId])
+}
+
+// What people thought of My Assistant's answers, and the questions it could not resolve, so the help it gives can be improved.
+model AssistantFeedback {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  userId     String
+  userName   String
+  branchId   String?
+  page       String? // the screen the person was on
+  question   String
+  answer     String
+  rating     String? // "UP" | "DOWN"
+  unanswered Boolean  @default(false) // the assistant said it could not resolve this
+  comment    String?
+  reviewed   Boolean  @default(false)
+
+  @@index([branchId, createdAt])
+  @@index([reviewed, createdAt])
 }
