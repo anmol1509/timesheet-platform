@@ -97,7 +97,7 @@ async function applyTimesheetDay(g: Exclude<Awaited<ReturnType<typeof guard>>, {
   const cells = writeCell(parseDailyHours(entry.dailyHours), date, value);
   const { totalHours, absentCount } = recompute(cells);
   await prisma.timesheetEntry.update({ where: { id: entry.id }, data: { dailyHours: JSON.stringify(cells), totalHours, absentCount, invoiceValue: Math.round(totalHours * entry.rate * 100) / 100 } });
-  await logAudit({ entityType: "TIMESHEET_ENTRY", entityId: entry.id, action: "UPDATE", before: { date, value: before }, after: { date, value, source: "payroll" }, userId: user.id, userName: user.name, branchId: run.branchId });
+  await logAudit({ entityType: "TIMESHEET_ENTRY", entityId: entry.id, action: "UPDATE", before: { [`day:${date}`]: before ?? "" }, after: { [`day:${date}`]: value }, userId: user.id, userName: user.name, branchId: run.branchId });
   await rebuildRunLines(run);
   await prisma.payrollRunEvent.create({ data: { runId: run.id, action: "RECALCULATED", note: `${emp.name}: timesheet ${date} changed to ${value || "blank"}`, userId: user.id, userName: user.name } });
   revalidatePath(`/payroll/${run.id}`);

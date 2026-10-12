@@ -94,12 +94,26 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               <Stat label="Net pay" value={`AED ${aed(view.lineNet)}`} strong />
             </div>
 
-            <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm", !view.hasTimesheet ? "border-default bg-surface-subtle text-secondary" : view.totals.mismatches === 0 ? "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]" : "border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning)]")}>
+            <div className={cn("flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm", !view.hasTimesheet ? "border-default bg-surface-subtle text-secondary" : view.totals.mismatches === 0 && view.edits.length === 0 ? "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]" : "border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning)]")}>
               <span className="font-medium">
-                {view.hourly ? "Paid from the client timesheet hours." : !view.hasTimesheet ? "No client timesheet for this month yet, so there is nothing to compare with." : view.totals.mismatches === 0 ? "Attendance matches the client timesheet on every day." : `${view.totals.mismatches} day${view.totals.mismatches === 1 ? "" : "s"} differ from the client timesheet.`}
+                {view.hourly ? (view.edits.length > 0 ? `Paid from the timesheet hours, but ${view.edits.length} day${view.edits.length === 1 ? " was" : "s were"} changed in payroll after the timesheet was made.` : "Paid from the client timesheet hours.") : !view.hasTimesheet ? "No client timesheet for this month yet, so there is nothing to compare with." : view.totals.mismatches === 0 ? "Attendance matches the client timesheet on every day." : `${view.totals.mismatches} day${view.totals.mismatches === 1 ? "" : "s"} differ from the client timesheet.`}
               </span>
-              {view.hasTimesheet && view.timesheetStatus && <Badge color="slate">Timesheet: {view.timesheetStatus.toLowerCase().replace("_", " ")}</Badge>}
+              {view.hasTimesheet && view.timesheetStatus && <Badge color={view.edits.length > 0 ? "amber" : "slate"}>Timesheet: {view.timesheetStatus.toLowerCase().replace("_", " ")}{view.edits.length > 0 ? " · edited in payroll" : ""}</Badge>}
             </div>
+            {view.edits.length > 0 && (
+              <div className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm">
+                <p className="font-medium text-[var(--warning)]">Changed in payroll, so no longer what the timesheet first said{view.timesheetStatus === "CLIENT_APPROVED" ? " (and the client approved)" : ""}:</p>
+                <ul className="mt-1.5 flex flex-wrap gap-2">
+                  {view.edits.map((e) => (
+                    <li key={e.date}>
+                      <button type="button" className="rounded border border-[var(--warning-border)] bg-surface px-2 py-1 text-xs text-primary hover:bg-surface-hover" onClick={() => document.getElementById(`day-${e.date}`)?.scrollIntoView({ block: "center", behavior: "smooth" })} title="Go to this day">
+                        <span className="font-medium">{e.date.slice(8)} {e.weekday}</span> · was {e.from}, now {e.to} · {e.by}, {e.at}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {view.mismatches.length > 0 && (
               <div className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm">
                 <p className="font-medium text-[var(--warning)]">Attendance and the client timesheet disagree on {view.mismatches.length} day{view.mismatches.length === 1 ? "" : "s"}:</p>
@@ -115,6 +129,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               </div>
             )}
             {view.why && <p className="text-xs text-muted">{view.why}</p>}
+            {view.hourly && view.editable && view.timesheetStatus && view.timesheetStatus !== "DRAFT" && <p className="text-xs text-muted">Changing an hour here changes the timesheet itself ({view.timesheetStatus.toLowerCase().replace("_", " ")}) and is recorded above, so the client&apos;s sheet and your payroll no longer agree. Tell the client if they need to re-approve it.</p>}
 
             <div className="max-h-[50vh] overflow-auto rounded-md border border-default">
               <table className="w-full text-sm">
