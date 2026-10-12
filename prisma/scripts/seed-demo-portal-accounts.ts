@@ -31,7 +31,7 @@ const EMPLOYEE_ID = "DEMO-0001";
 async function main() {
   const branch = await prisma.branch.findUnique({ where: { code: "MAIN" } });
   if (!branch) throw new Error("MAIN branch not found — refusing to run.");
-  const supplier = await prisma.supplier.findUnique({ where: { name: SUPPLIER_NAME } });
+  const supplier = await prisma.supplier.findFirst({ where: { name: SUPPLIER_NAME, branchId: branch.id } });
   const employee = await prisma.employee.findUnique({ where: { employeeIdNo: EMPLOYEE_ID } });
 
   if (REMOVE) {

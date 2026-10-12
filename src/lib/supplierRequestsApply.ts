@@ -9,11 +9,11 @@ export type ApplyResult<T> = ({ ok: true } & T) | { ok: false; error: string };
  * time: someone may have registered the same person since it was submitted.
  */
 export async function approveWorkerSubmission(submissionId: string, decidedById: string): Promise<ApplyResult<{ employeeId: string; employeeIdNo: string; name: string; supplier: string; branchId: string }>> {
-  const sub = await prisma.workerSubmission.findUnique({ where: { id: submissionId }, include: { supplier: { select: { name: true } } } });
+  const sub = await prisma.workerSubmission.findUnique({ where: { id: submissionId }, include: { supplier: { select: { name: true, branchId: true } } } });
   if (!sub) return { ok: false, error: "Submission not found." };
   if (sub.status !== "PENDING") return { ok: false, error: `Already ${sub.status.toLowerCase()}.` };
 
-  const clash = await prisma.employee.count({ where: { OR: [{ passportNumber: { equals: sub.passportNumber, mode: "insensitive" } }, { emiratesId: sub.emiratesId }] } });
+  const clash = await prisma.employee.count({ where: { branchId: sub.supplier.branchId ?? undefined, OR: [{ passportNumber: { equals: sub.passportNumber, mode: "insensitive" } }, { emiratesId: sub.emiratesId }] } });
   if (clash > 0) return { ok: false, error: "An employee with this passport or Emirates ID already exists. Reject this submission, or check the employee list." };
 
   const prefix = initialsOf(sub.supplier.name);

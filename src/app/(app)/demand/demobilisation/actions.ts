@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import {
   demobiliseEmployees,
   type DemobilisationOutcome,
@@ -12,6 +12,7 @@ import { assertContactsValid } from "@/lib/validators";
 export async function demobiliseAction(
   formData: FormData
 ): Promise<{ result?: DemobilisationResult; error?: string }> {
+  await requireWrite("demand.list");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {

@@ -1,5 +1,6 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { FileSignature } from "lucide-react";
+import { FileSignature, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -45,25 +46,26 @@ export default async function QuotationsPage({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Quotations</h1>
-          <p className="mt-1 text-sm text-muted">
-            Formal quotations with trade/quantity/rate line items.
-          </p>
-        </div>
+        <PageHeader
+          title="Quotations"
+          icon={FileSignature}
+          description={<>Formal quotations with trade/quantity/rate line items.</>}
+        />
         <div className="flex items-center gap-3">
           <ViewToggle base="/sales/quotations" view={view} />
           <Link
             href="/sales/quotations/new"
             className="btn btn-primary"
           >
-            + New Quotation
+            <Plus className="h-4 w-4" aria-hidden />
+
+            New Quotation
           </Link>
         </div>
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}
         </p>
       )}

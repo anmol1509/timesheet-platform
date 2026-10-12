@@ -1,5 +1,6 @@
 "use client";
 
+import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { m } from "motion/react";
@@ -29,6 +30,7 @@ type Employee = {
   sponsorSupplierId: string | null;
   nationality: string | null;
   position: string | null;
+  department: string | null;
   passportNumber: string | null;
   emiratesId: string | null;
   visaExpiry: Date | null;
@@ -40,6 +42,9 @@ type Employee = {
   salaryRate: number | null;
   payStructure: string | null;
   paysOvertime: boolean;
+  gasWaived: boolean;
+  payOverride: boolean;
+  trade: string | null;
   essEnabled: boolean;
   projectId: string | null;
   siteId: string | null;
@@ -61,6 +66,7 @@ type Employee = {
   wpsAccountHolderName: string | null;
   wpsAccountNumber: string | null;
   active: boolean;
+  exitDate: Date | null;
   inactiveReason: string | null;
   lastDemobilizedDate: Date | null;
   religion: string | null;
@@ -110,15 +116,16 @@ type Project = { id: string; name: string; code: string };
 type Site = { id: string; name: string; projectId: string };
 type Vehicle = { id: string; plateNumber: string; type: string | null };
 
-type Supplier = { id: string; name: string };
+type Supplier = { id: string; name: string; parentSupplierId?: string | null };
 type LookupsByCategory = Record<string, { value: string }[]>;
 
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "documents", label: "Documents" },
+  { id: "trade", label: "Trade & pay" },
   { id: "payroll", label: "Payroll & WPS" },
   { id: "project", label: "Project & Site" },
-  { id: "records", label: "Trades & Records" },
+  { id: "records", label: "Notes" },
 ];
 
 const INACTIVE_REASONS = [
@@ -141,6 +148,7 @@ export type PayFormValues = {
   flatMonthlyRate: string;
   hourlyRate: string;
   otMultiplier: string;
+  dailyHours: string;
 };
 
 function toDateInput(d: Date | null) {
@@ -158,6 +166,9 @@ export function EditForm({
   documents,
   lookups,
   recordsContent,
+  tradesContent,
+  siteContent,
+  documentsContent,
   pay,
 }: {
   employee: Employee;
@@ -175,7 +186,12 @@ export function EditForm({
   // single <form> (nested forms are invalid HTML and silently break).
   // Rendered as a sibling, still switched by the same tab state.
   recordsContent: React.ReactNode;
+  tradesContent: React.ReactNode;
+  siteContent: React.ReactNode;
+  documentsContent: React.ReactNode;
 }) {
+  const [supplierSel, setSupplierSel] = useState(employee.supplierId || "");
+  const [sponsorSel, setSponsorSel] = useState(employee.sponsorSupplierId || "");
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   // ~100 fields sit in this form; leaving the page used to bin every edit
@@ -188,9 +204,12 @@ export function EditForm({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState("overview");
+  const [tabState, setTab] = useState("overview");
   const [active, setActive] = useState(employee.active);
     const [payStructure, setPayStructure] = useState(employee.payStructure || "");
+  const [category, setCategory] = useState(employee.category);
+  const isStaff = category === "STAFF";
+  const tab = isStaff && tabState === "project" ? "overview" : tabState;
   const [nationality, setNationality] = useState(employee.nationality || "");
   const [projectId, setProjectId] = useState(employee.projectId || "");
   const [siteId, setSiteId] = useState(employee.siteId || "");
@@ -216,10 +235,14 @@ export function EditForm({
     if (fields.laborCardPersonalNo && laborCardPersonalNoRef.current) laborCardPersonalNoRef.current.value = fields.laborCardPersonalNo;
   }
 
+  // Office staff are white-collar: no trade, project or site. Their position (designation + department)
+  // sits on Overview, so those tabs go and "Trade & pay" becomes just "Pay".
+  const tabs = isStaff ? TABS.filter((t) => t.id !== "project").map((t) => (t.id === "trade" ? { ...t, label: "Pay" } : t)) : TABS;
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-1 border-b border-default">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
@@ -240,6 +263,9 @@ export function EditForm({
           </button>
         ))}
       </div>
+
+      {/* Known trades come first on this tab; they own their own forms, so they sit above the main form, not in it. */}
+      <div className={tab === "trade" && !isStaff ? "mb-8 space-y-8" : "hidden"}>{tradesContent}</div>
 
       <form
         onInput={() => {
@@ -269,7 +295,8 @@ export function EditForm({
             <Field label="Category">
               <Select
                 name="category"
-                defaultValue={employee.category}
+                value={category}
+                onChange={(v) => setCategory(v as "STAFF" | "SITE_STAFF")}
                 searchable={false}
                 options={[
                   { value: "SITE_STAFF", label: "Site Staff" },
@@ -305,6 +332,10 @@ export function EditForm({
                     />
                   </Field>
                 )}
+                <Field required label="Last working day">
+                  <DatePicker name="exitDate" defaultValue={toDateInput(employee.exitDate)} className="w-full" />
+                  <span className="mt-1 block text-xs text-muted">Payroll pays up to this day, then final settlement picks up the rest.</span>
+                </Field>
                 <Field label="Last demobilized date">
                   <DatePicker name="lastDemobilizedDate" defaultValue={toDateInput(employee.lastDemobilizedDate)} className="w-full" />
                 </Field>
@@ -339,9 +370,10 @@ export function EditForm({
             <Field label="Supplier">
               <Select
                 name="supplierId"
-                defaultValue={employee.supplierId || ""}
+                value={supplierSel}
+                onChange={(v) => { setSupplierSel(v); if (!sponsorFits(sponsors, v, sponsorSel)) setSponsorSel(""); }}
                 placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                options={primaryOptions(suppliers, employee.supplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             <Field label="Nationality">
@@ -350,12 +382,23 @@ export function EditForm({
             <Field label="Visa sponsor">
               <Select
                 name="sponsorSupplierId"
-                defaultValue={employee.sponsorSupplierId || ""}
+                value={sponsorSel}
+                onChange={setSponsorSel}
                 placeholder="Not set"
-                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsorOptions(sponsors, supplierSel, employee.sponsorSupplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
-            <LookupField label="Position" name="position" defaultValue={employee.position} options={lookups.POSITION} />
+            {category === "STAFF" && (
+              <>
+                <p className="-mb-2 text-xs font-semibold uppercase tracking-wide text-muted sm:col-span-2">Position</p>
+                <Field label="Designation">
+                  <input name="position" defaultValue={employee.position || ""} maxLength={80} placeholder="e.g. Accountant" className="input w-full" />
+                </Field>
+                <Field label="Department">
+                  <input name="department" defaultValue={employee.department || ""} maxLength={80} placeholder="e.g. Finance" className="input w-full" />
+                </Field>
+              </>
+            )}
             <Field label="Date of birth">
               <DatePicker key={`dateOfBirth-${auto.dateOfBirth ?? ""}`} name="dateOfBirth" defaultValue={auto.dateOfBirth ?? toDateInput(employee.dateOfBirth)} />
             </Field>
@@ -371,7 +414,12 @@ export function EditForm({
                 ]}
               />
             </Field>
-            <LookupField label="Blood group" name="bloodGroup" defaultValue={employee.bloodGroup} options={lookups.BLOOD_GROUP} />
+            <LookupField
+              label="Blood group"
+              name="bloodGroup"
+              defaultValue={employee.bloodGroup}
+              options={[...new Set([...["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], ...(employee.bloodGroup ? [employee.bloodGroup] : [])])].map((value) => ({ value }))}
+            />
             <Field label="Mobile number">
               <PhoneField name="mobileNumber" defaultValue={employee.mobileNumber} />
             </Field>
@@ -614,12 +662,12 @@ export function EditForm({
         </section>
       </div>
 
-      <div className={tab === "payroll" ? "space-y-8" : "hidden"}>
+      <div className={tab === "trade" ? "space-y-8" : "hidden"}>
         {pay && (
           <section>
             <h2 className="mb-1 text-sm font-semibold text-primary">Pay structure</h2>
             <p className="mb-3 text-xs text-muted">
-              Choose how this worker is paid. Overtime hours from attendance are paid on top (monthly pay: basic ÷ 240 × multiplier; hourly: rate × multiplier).
+              Choose how this worker is paid. Overtime is worked out from attendance hours beyond the standard day (rate = basic ÷ 30 ÷ standard hours).
               {!pay.canEdit && " You can view these figures but not change them."}
             </p>
             <input type="hidden" name="_pay" value="1" />
@@ -634,6 +682,7 @@ export function EditForm({
                   options={[
                     { value: "ITEMISED", label: "Itemised — basic + allowances" },
                     { value: "FLAT", label: "Flat — one monthly rate" },
+                    // The hourly rate is not typed here: it is the rate on the worker's trade (Known Trade Details).
                     { value: "HOURLY", label: "Hourly — paid per hour worked" },
                   ]}
                 />
@@ -643,10 +692,15 @@ export function EditForm({
                   <NumberInput name="flatMonthlyRate" defaultValue={pay.flatMonthlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
-              {payStructure === "HOURLY" && (
-                <Field label="Hourly rate (AED per normal hour)">
+              {payStructure === "HOURLY" && isStaff && (
+                <Field label="Hourly rate (AED)">
                   <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
+              )}
+              {payStructure === "HOURLY" && !isStaff && (
+                <p className="rounded-lg border border-default bg-surface-subtle px-4 py-2 text-xs text-secondary sm:col-span-2">
+                  Paid per hour worked at the rate on this worker&apos;s trade — set it in Known Trade Details above.
+                </p>
               )}
               {payStructure === "ITEMISED" && (
                 <>
@@ -667,19 +721,38 @@ export function EditForm({
                   </Field>
                 </>
               )}
+              {payStructure && pay.canEdit && (
+                <>
+                  <Field label="Pay change takes effect from (optional)">
+                    <DatePicker name="payEffectiveFrom" defaultValue="" className="w-full" />
+                  </Field>
+                  <Field label="Reason for a pay change (optional)">
+                    <input name="payChangeReason" className="input w-full" placeholder="e.g. Annual increment" />
+                  </Field>
+                </>
+              )}
               {payStructure && (
                 <>
                   <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
                     <input type="checkbox" name="paysOvertime" defaultChecked={employee.paysOvertime} /> Paid for overtime
                   </label>
+                  <Field label="Standard hours per day">
+                    <NumberInput name="dailyHours" defaultValue={pay.dailyHours} min={1} max={16} step={0.25} className="w-full" />
+                  </Field>
                   <Field label="Overtime multiplier">
                     <NumberInput name="otMultiplier" defaultValue={pay.otMultiplier} min={1} max={3} step={0.01} className="w-full" />
                   </Field>
                 </>
               )}
             </fieldset>
+            <label className="mt-3 flex items-center gap-2 text-sm text-secondary">
+              <input type="checkbox" name="gasWaived" defaultChecked={employee.gasWaived} disabled={!pay.canEdit} /> Waive gas charge for this worker
+            </label>
           </section>
         )}
+      </div>
+
+      <div className={tab === "payroll" ? "space-y-8" : "hidden"}>
         <section>
           <h2 className="mb-3 text-sm font-semibold text-primary">
             Payroll & WPS
@@ -759,15 +832,18 @@ export function EditForm({
             <span className="text-sm text-[var(--warning)]">Unsaved changes</span>
           )}
           {saved && !pending && (
-            <span className="text-sm text-emerald-600">Saved.</span>
+            <span className="text-sm text-[var(--success)]">Saved.</span>
           )}
           {error && !pending && (
-            <span className="text-sm text-red-600">{error}</span>
+            <span className="text-sm text-[var(--error)]">{error}</span>
           )}
         </div>
       )}
       </form>
 
+      {/* Each of these owns its own <form>, so they sit beside the main form rather than in it. */}
+      <div className={tab === "project" ? "mt-8 space-y-8" : "hidden"}>{siteContent}</div>
+      <div className={tab === "documents" ? "mt-8 space-y-8" : "hidden"}>{documentsContent}</div>
       <div className={tab === "records" ? "space-y-8" : "hidden"}>
         {recordsContent}
       </div>

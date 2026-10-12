@@ -13,30 +13,33 @@ type RoleValue = (typeof ROLES)[number];
 export async function updateIssuedToAction(formData: FormData) {
   assertContactsValid(formData);
   const admin = await requireAdmin();
+  const branchId = String(formData.get("branchId") || "");
   const issuedTo = String(formData.get("issuedTo") || "").trim();
   const companyTrn = String(formData.get("companyTrn") || "").trim() || null;
-  if (!issuedTo) return;
+  if (!issuedTo || !branchId) return;
+  // A branch admin edits only their own branch; a super admin any. These are the
+  // name and tax number printed on a branch's invoices and sheets, so one tenant
+  // must never be able to change another's.
+  if (admin.role !== "SUPER_ADMIN" && admin.branchId !== branchId) return;
 
-  const before = await prisma.settings.findUnique({ where: { id: "singleton" } });
+  const before = await prisma.branch.findUnique({ where: { id: branchId }, select: { issuedTo: true, trn: true } });
+  if (!before) return;
 
-  await prisma.settings.upsert({
-    where: { id: "singleton" },
-    update: { issuedTo, companyTrn },
-    create: { id: "singleton", issuedTo, companyTrn },
-  });
+  await prisma.branch.update({ where: { id: branchId }, data: { issuedTo, trn: companyTrn } });
 
   await logAudit({
-    entityType: "SETTINGS",
-    entityId: "singleton",
-    action: before ? "UPDATE" : "CREATE",
-    before: before ? (before as unknown as Record<string, unknown>) : undefined,
-    after: { issuedTo, companyTrn },
+    entityType: "BRANCH",
+    entityId: branchId,
+    action: "UPDATE",
+    before: before as unknown as Record<string, unknown>,
+    after: { issuedTo, trn: companyTrn },
     userId: admin.id,
     userName: admin.name,
-    branchId: null,
+    branchId,
   });
 
   revalidatePath("/settings");
+  revalidatePath("/settings/company");
 }
 
 export async function createBranchAction(
@@ -96,4 +99,27 @@ export async function createBranchAction(
   if (switchTo) await setActiveBranchCookie(created.id);
   revalidatePath("/", "layout");
   return { error: null, ok: true };
+}
+
+/** Super admins switch public API access on or off for a branch (a Pro or Custom plan feature). Keys keep working only while it is on. */
+export async function setBranchApiAccessAction(formData: FormData) {
+  const admin = await requireAdmin();
+  if (admin.role !== "SUPER_ADMIN") return;
+  const branchId = String(formData.get("branchId") || "");
+  const enabled = formData.get("enabled") === "1";
+  const before = await prisma.branch.findUnique({ where: { id: branchId }, select: { apiAccess: true } });
+  if (!before || before.apiAccess === enabled) return;
+  await prisma.branch.update({ where: { id: branchId }, data: { apiAccess: enabled } });
+  await logAudit({
+    entityType: "BRANCH",
+    entityId: branchId,
+    action: "UPDATE",
+    before: { apiAccess: before.apiAccess },
+    after: { apiAccess: enabled },
+    userId: admin.id,
+    userName: admin.name,
+    branchId,
+  });
+  revalidatePath("/settings");
+  revalidatePath("/settings/developers");
 }

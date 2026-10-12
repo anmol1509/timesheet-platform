@@ -1,3 +1,5 @@
+import { KeyRound } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { RolesManager } from "./roles-manager";
@@ -19,13 +21,11 @@ export default async function RolesPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Roles &amp; permissions</h1>
-        <p className="mt-1 text-sm text-muted">
-          A role is a set of modules and actions. Assign one to a team member on the Team tab to limit what they can see and do.
-          Admins always have full access.
-        </p>
-      </div>
+      <PageHeader
+        title="Roles & permissions"
+        icon={KeyRound}
+        description={<>A role is a set of modules and actions. Assign one to a team member on the Team tab to limit what they can see and do. Admins always have full access.</>}
+      />
       <RolesManager
         isSuperAdmin={isSuperAdmin}
         branches={branches}

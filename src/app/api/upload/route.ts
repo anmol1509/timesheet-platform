@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { parseConsolidatedWorkbook } from "@/lib/parseTimesheet";
 import { importParsedMonths } from "@/lib/importTimesheet";
 
+// A consolidated sheet runs to hundreds of workers; each is several writes.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
@@ -56,7 +59,9 @@ export async function POST(request: Request) {
     data: { filename: file.name, fileData: buffer, uploadedById: user.id, branchId },
   });
 
-  const stats = await importParsedMonths(parsed.months, upload.id, branchId);
+  // Nothing here adds a supplier or client on its own: a name that isn't on record is reported back, and the rows
+  // that need it wait. (Administrators decide on those names in Import Data, which has a review screen.)
+  const stats = await importParsedMonths(parsed.months, upload.id, branchId, null, { userId: user.id, supplierChoice: { decisions: {} } });
 
   return NextResponse.json({
     upload: { id: upload.id, filename: file.name },

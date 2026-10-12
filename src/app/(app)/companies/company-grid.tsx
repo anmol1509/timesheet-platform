@@ -1,11 +1,13 @@
 "use client";
 
+import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileArchive, Loader2 } from "lucide-react";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { Dialog, DialogContent } from "@/components/ui/Dialog";
 
 type CompanyRow = {
   id: string;
@@ -25,6 +27,11 @@ export function CompanyGrid({
   month: string;
 }) {
   const [query, setQuery] = useState("");
+  const [zipping, setZipping] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
+  const [askGas, setAskGas] = useState(false);
+  const [template, setTemplate] = useState<string>("standard");
+  const [waived, setWaived] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,6 +59,37 @@ export function CompanyGrid({
     downloadCsv(`companies-${month}.csv`, csv);
   }
 
+  async function downloadPdfs(gasWaived: Record<string, boolean>) {
+    setAskGas(false);
+    setZipping(true);
+    setZipError(null);
+    try {
+      const res = await fetch("/api/generate/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierIds: [...selected], month, gasWaived, template }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setZipError(body?.error ?? "Couldn't generate the timesheets.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `timesheets-${month}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const left = Number(res.headers.get("X-Skipped") ?? 0);
+      if (left > 0) setZipError(`${left} company(ies) were left out — see NOT-GENERATED.txt in the zip.`);
+    } catch {
+      setZipError("Couldn't generate the timesheets. Try again.");
+    } finally {
+      setZipping(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -75,8 +113,53 @@ export function CompanyGrid({
             <Download className="h-4 w-4" />
             {selected.size > 0 ? `Export selected (${selected.size})` : "Export CSV"}
           </button>
+          <button
+            type="button"
+            onClick={() => { setWaived({}); setAskGas(true); }}
+            disabled={selected.size === 0 || zipping}
+            title={selected.size === 0 ? "Select companies first" : "One PDF per company, zipped"}
+            className="btn btn-primary flex gap-1.5 px-3 disabled:opacity-50"
+          >
+            {zipping ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
+            {zipping ? "Generating…" : selected.size > 0 ? `Download PDFs (${selected.size})` : "Download PDFs"}
+          </button>
         </div>
       </div>
+
+      <Dialog open={askGas} onOpenChange={setAskGas}>
+        <DialogContent title="Layout and gas" description="Choose the layout for these timesheets. Gas is charged on each one unless you waive it; tick the companies that do not pay gas.">
+          <div className="mt-4 space-y-3">
+            <TemplatePicker value={template} onChange={setTemplate} compact />
+            <ul className="max-h-72 divide-y divide-[var(--border)] overflow-y-auto rounded-control border border-default">
+              {companies.filter((c) => selected.has(c.id)).map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <span className="min-w-0 truncate text-sm text-primary">{c.name}</span>
+                  <label className="flex shrink-0 items-center gap-2 text-sm text-secondary">
+                    <input type="checkbox" checked={waived[c.id] === true} onChange={(e) => setWaived((w) => ({ ...w, [c.id]: e.target.checked }))} />
+                    Waive gas
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex gap-3 text-xs">
+                <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={() => setWaived(Object.fromEntries([...selected].map((id) => [id, true])))}>Waive for all</button>
+                <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={() => setWaived({})}>Charge all</button>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" className="btn btn-secondary" onClick={() => setAskGas(false)}>Cancel</button>
+                <button type="button" className="btn btn-primary" onClick={() => void downloadPdfs(waived)}>Generate {selected.size} PDF{selected.size === 1 ? "" : "s"}</button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {zipError && (
+        <p role="alert" className="whitespace-pre-line rounded-control bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
+          {zipError}
+        </p>
+      )}
 
       {filtered.length === 0 && (
         <p className="text-sm text-muted">No companies match &ldquo;{query}&rdquo;.</p>
@@ -117,7 +200,7 @@ export function CompanyGrid({
             )}
             <Link
               href={`/companies/${c.id}/generate?month=${month}`}
-              className="mt-4 text-sm font-medium text-blue-600 hover:underline"
+              className="mt-4 text-sm font-medium text-[var(--brand-primary)] hover:underline"
             >
               Review &amp; generate →
             </Link>

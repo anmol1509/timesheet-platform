@@ -16,12 +16,17 @@ enum Role {
 }
 
 model Branch {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  emirate   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id               String            @id @default(cuid())
+  tradePays        TradePay[]
+  apiKeys          ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
+  // Public API access is part of the Pro and Custom plans; a super admin switches it on per branch.
+  apiAccess        Boolean           @default(false)
+  code             String            @unique
+  name             String
+  emirate          String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
 
   // Company master-data fields (address/contact details of this operating entity).
   address  String?
@@ -33,21 +38,26 @@ model Branch {
   fax      String?
   poBox    String?
   trn      String? // Tax Registration Number
+  // "Issued To" name printed on supplier timesheets (the company as billed by suppliers). Falls back to `name`.
+  issuedTo String?
 
   // Company logo, shown in the sidebar and on generated letterheads.
   logo   StoredImage? @relation("BranchLogo", fields: [logoId], references: [id], onDelete: SetNull)
   logoId String?
 
   // Letter defaults (Company profile -> Letters). All optional; using them is chosen per letter.
-  signatoryName     String?
-  signatoryTitle    String?
-  signature         StoredImage? @relation("BranchSignature", fields: [signatureId], references: [id], onDelete: SetNull)
-  signatureId       String?
-  stamp             StoredImage? @relation("BranchStamp", fields: [stampId], references: [id], onDelete: SetNull)
-  stampId           String?
+  signatoryName      String?
+  signatoryTitle     String?
+  signature          StoredImage? @relation("BranchSignature", fields: [signatureId], references: [id], onDelete: SetNull)
+  signatureId        String?
+  stamp              StoredImage? @relation("BranchStamp", fields: [stampId], references: [id], onDelete: SetNull)
+  stampId            String?
   // Full-page letterhead artwork (A4) used when printing letters "on letterhead".
-  letterheadImage   StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
-  letterheadImageId String?
+  letterheadImage    StoredImage? @relation("BranchLetterhead", fields: [letterheadImageId], references: [id], onDelete: SetNull)
+  letterheadImageId  String?
+  // Clear space (mm) kept free at the top and bottom of the page when a letter is printed on this letterhead.
+  letterheadTopMm    Int          @default(65)
+  letterheadBottomMm Int          @default(35)
 
   // WPS establishment details (Company profile -> Payroll / WPS).
   wpsEstablishmentId       String? // MOHRE establishment / employer ID
@@ -55,6 +65,8 @@ model Branch {
   wpsPayerBankId           String?
   // A payroll run above this total (AED) can't be approved by the person who created it.
   payrollApprovalThreshold Decimal?            @db.Decimal(14, 2)
+  // Salaries are due this many days after the month ends (0 = its last day). Blank = no due date is tracked.
+  payrollDueDays           Int?
   // Above this, an expense needs an admin to approve it (STAFF approvers are capped).
   expenseApprovalLimit     Decimal?            @db.Decimal(14, 2)
   expenseBudgets           ExpenseBudget[]
@@ -63,30 +75,38 @@ model Branch {
   payrollRuns              PayrollRun[]
   employeeLoans            EmployeeLoan[]
   payrollAdjustments       PayrollAdjustment[]
+  salaryRevisions          SalaryRevision[]
+  settlements              FinalSettlement[]
 
-  expenses        Expense[]
-  issuedLetters   IssuedLetter[]
-  supplierBills   SupplierBill[]
-  accessRoles     AccessRole[]
-  users           User[]
-  employees       Employee[]
-  clients         Client[]
-  suppliers       Supplier[]
-  projects        Project[]
-  uploads         Upload[]
-  invoices        ClientInvoice[]
-  sheets          GeneratedSheet[]
-  items           InventoryItem[]
-  entries         TimesheetEntry[]
-  banks           Bank[]
-  lookupValues    LookupValue[]
-  demandRequests  DemandRequest[]
-  letterTemplates LetterTemplate[]
-  nocs            Noc[]
-  lpos            Lpo[]
-  attendance      Attendance[]
-  enquiries       Enquiry[]
-  quotations      Quotation[]
+  expenses             Expense[]
+  issuedLetters        IssuedLetter[]
+  supplierBills        SupplierBill[]
+  accessRoles          AccessRole[]
+  users                User[]
+  employees            Employee[]
+  clients              Client[]
+  suppliers            Supplier[]
+  projects             Project[]
+  uploads              Upload[]
+  importBatches        ImportBatch[]
+  invoices             ClientInvoice[]
+  sheets               GeneratedSheet[]
+  items                InventoryItem[]
+  entries              TimesheetEntry[]
+  camps                Camp[]
+  vehicles             Vehicle[]
+  skills               Skill[]
+  banks                Bank[]
+  lookupValues         LookupValue[]
+  demandRequests       DemandRequest[]
+  letterTemplates      LetterTemplate[]
+  nocs                 Noc[]
+  lpos                 Lpo[]
+  attendance           Attendance[]
+  enquiries            Enquiry[]
+  quotations           Quotation[]
+  candidateOnboardings CandidateOnboarding[]
+  timesheetTemplates   TimesheetTemplate[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -127,12 +147,14 @@ model Bank {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         Role     @default(STAFF)
-  createdAt    DateTime @default(now())
+  id              String            @id @default(cuid())
+  apiKeysCreated  ApiKey[]
+  webhooksCreated WebhookEndpoint[]
+  email           String            @unique
+  name            String
+  passwordHash    String
+  role            Role              @default(STAFF)
+  createdAt       DateTime          @default(now())
 
   // Profile. `isActive` lets an admin suspend a sub-user without deleting
   // them (deleting fails anyway once they own uploads/documents).
@@ -159,6 +181,7 @@ model User {
   branchId String?
 
   uploads          Upload[]
+  importBatches    ImportBatch[]
   generatedSheets  GeneratedSheet[]
   documents        Document[]
   clientInvoices   ClientInvoice[]
@@ -169,12 +192,15 @@ model User {
   nocs             Noc[]
   employeeNotes    EmployeeNote[]
 
-  dashboardPreference DashboardPreference?
-  lettersIssued       IssuedLetter[]
-  expensesSubmitted   Expense[]            @relation("ExpenseSubmittedBy")
-  expensesDecided     Expense[]            @relation("ExpenseDecidedBy")
-  payrollCreated      PayrollRun[]         @relation("PayrollCreatedBy")
-  payrollApproved     PayrollRun[]         @relation("PayrollApprovedBy")
+  dashboardPreference                DashboardPreference?
+  lettersIssued                      IssuedLetter[]
+  expensesSubmitted                  Expense[]                      @relation("ExpenseSubmittedBy")
+  expensesDecided                    Expense[]                      @relation("ExpenseDecidedBy")
+  payrollCreated                     PayrollRun[]                   @relation("PayrollCreatedBy")
+  payrollApproved                    PayrollRun[]                   @relation("PayrollApprovedBy")
+  candidateOnboardingsAssigned       CandidateOnboarding[]
+  candidateOnboardingUpdates         CandidateOnboardingHistory[]
+  candidateOnboardingStageTasksOwned CandidateOnboardingStageTask[]
 }
 
 // Small uploaded images (user avatars, company logos). Its own table so the
@@ -185,11 +211,13 @@ model StoredImage {
   mimeType  String
   updatedAt DateTime @default(now()) @updatedAt
 
-  userAvatars       User[]   @relation("UserAvatar")
-  branchLogos       Branch[] @relation("BranchLogo")
-  branchSignatures  Branch[] @relation("BranchSignature")
-  branchStamps      Branch[] @relation("BranchStamp")
-  branchLetterheads Branch[] @relation("BranchLetterhead")
+  userAvatars        User[]     @relation("UserAvatar")
+  branchLogos        Branch[]   @relation("BranchLogo")
+  branchSignatures   Branch[]   @relation("BranchSignature")
+  branchStamps       Branch[]   @relation("BranchStamp")
+  branchLetterheads  Branch[]   @relation("BranchLetterhead")
+  supplierSignatures Supplier[] @relation("SupplierSignature")
+  supplierStamps     Supplier[] @relation("SupplierStamp")
 }
 
 // A named bundle of "module:action" permission keys (see src/lib/permissions.ts)
@@ -255,11 +283,12 @@ model UploadMonth {
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  code      String?  @unique
-  fullName  String? // formal letterhead name, e.g. "BURJ AL AWEER CONCRETE CARPENTER CONT."
-  createdAt DateTime @default(now())
+  id        String     @id @default(cuid())
+  tradePays TradePay[]
+  name      String
+  code      String?
+  fullName  String? // formal letterhead name, e.g. "GULF SKILLS GENERAL CONTRACTING"
+  createdAt DateTime   @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -303,7 +332,24 @@ model Supplier {
   // Our own entities vs third-party subcontractors. Same shape, but the
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
-  isOwnCompany Boolean @default(false)
+  isOwnCompany          Boolean      @default(false)
+  // Same, for this supplier's own letterhead (used when it sponsors workers). Unset = the standard 65 / 35.
+  letterheadTopMm       Int?
+  letterheadBottomMm    Int?
+  // Who signs letters issued on this company's letterhead, and the images printed when that is ticked.
+  signatoryName         String?
+  signatoryTitle        String?
+  signature             StoredImage? @relation("SupplierSignature", fields: [signatureId], references: [id], onDelete: SetNull)
+  signatureId           String?
+  stamp                 StoredImage? @relation("SupplierStamp", fields: [stampId], references: [id], onDelete: SetNull)
+  stampId               String?
+  // Pay rules for this company's own workers. Absences up to absentFreeDays a
+  // month cost nothing; every day after that deducts absentDeductionPerDay.
+  // Gas is charged per day from the worker's check-in date, up to a monthly cap.
+  absentFreeDays        Int          @default(2)
+  absentDeductionPerDay Decimal      @default(30) @db.Decimal(10, 2)
+  gasPerDay             Decimal      @default(1) @db.Decimal(6, 2)
+  gasMonthlyCap         Decimal      @default(30) @db.Decimal(8, 2)
 
   // The point of contact this supplier's workers' camp check-in slips are
   // printed with — distinct from contactPerson (the general business
@@ -341,17 +387,24 @@ model Supplier {
   // establishment id for the WPS file. Every employee of a company is paid the
   // same way: "BASIC" (monthly salary, adjusted from attendance) or "HOURLY"
   // (hours taken from the timesheet).
-  payType            String? // "BASIC" | "HOURLY"
-  wpsEstablishmentId String?
-  notifications      SupplierNotification[]
-  portalEnabled      Boolean                @default(false)
-  bills              SupplierBill[]
+  payType              String? // "BASIC" | "HOURLY"
+  wpsEstablishmentId   String?
+  notifications        SupplierNotification[]
+  portalEnabled        Boolean                @default(false)
+  bills                SupplierBill[]
+  candidateOnboardings CandidateOnboarding[]
+  agencyContacts       AgencyContact[]
+
+  // Unique within a branch, not across the platform: two companies can each have a
+  // supplier called "ABC Manpower", and adding one must not reveal that another has it.
+  @@unique([branchId, name])
+  @@unique([branchId, code])
 }
 
 model Client {
   id            String    @id @default(cuid())
-  name          String    @unique
-  code          String?   @unique
+  name          String
+  code          String?
   branch        Branch    @relation(fields: [branchId], references: [id])
   branchId      String
   contactPerson String?
@@ -363,6 +416,9 @@ model Client {
   contractEnd   DateTime?
   status        String    @default("ACTIVE")
   createdAt     DateTime  @default(now())
+  // Days this client's sites are closed (0=Sun..6=Sat). Workers placed here follow
+  // it unless their own record sets different off days.
+  weeklyOffDays Int[]     @default([5])
 
   trn                String? // Tax Registration Number
   tradeLicenseNumber String?
@@ -398,6 +454,11 @@ model Client {
   lpos           Lpo[]
   enquiries      Enquiry[]
   quotations     Quotation[]
+  ownedCamps     Camp[]            @relation("CampClientOwner")
+
+  // Unique within a branch: several manpower suppliers share the same big clients.
+  @@unique([branchId, name])
+  @@unique([branchId, code])
 }
 
 // Per-trade billing rate for a client, e.g. Carpenter AED 45/hr, Helper AED 35/hr.
@@ -583,8 +644,16 @@ model Employee {
   hourlyRate         Decimal?            @db.Decimal(12, 2)
   paysOvertime       Boolean             @default(true)
   otMultiplier       Decimal             @default(1.25) @db.Decimal(4, 2)
+  // Working pattern: hours beyond dailyHours on a working day are overtime at
+  // otMultiplier; hours on a weekly off day (0=Sun..6=Sat) or a HOLIDAY/OFF day
+  // are paid at restOtMultiplier. Overtime rate = basic / 30 / dailyHours.
+  dailyHours         Decimal             @default(8) @db.Decimal(4, 2)
+  weeklyOffDays      Int[]               @default([]) // empty = follow the client's off days
+  restOtMultiplier   Decimal             @default(1.5) @db.Decimal(4, 2)
   payrollLines       PayrollLine[]
   loans              EmployeeLoan[]
+  salaryRevisions    SalaryRevision[]
+  settlements        FinalSettlement[]
   payAdjustments     PayrollAdjustment[]
   issuedLetters      IssuedLetter[]
   // Self-service portal sign-in (phone + one-time code). On by default; an admin
@@ -601,6 +670,9 @@ model Employee {
   photoMimeType      String?
   nationality        String?
   position           String?
+  // Office/corporate roster only (category = STAFF) — "which team", where
+  // `trade` is the equivalent field for the field/manpower roster.
+  department         String?
   passportNumber     String?
   emiratesId         String?
   emiratesIdExpiry   DateTime?
@@ -618,6 +690,9 @@ model Employee {
   mobileNumber          String?
   whatsappNumber        String?
   joinDate              DateTime?
+  // Last day on the payroll. A leaver is paid up to it, then settled; blank while they are still working.
+  exitDate              DateTime?
+  exitReason            String?
   laborCardNumber       String?
   sponsorName           String? // visa-holding entity, if different from supplier
   emergencyContactName  String?
@@ -684,6 +759,10 @@ model Employee {
   // they are still only mobilised on paper; the gap between the two dates is
   // how late a mobilisation ran.
   siteArrivalDate     DateTime?
+  gasWaived           Boolean   @default(false) // no gas charge for this worker
+  // false = pay comes from the TradePay row for this worker's company + trade
+  // (when there is one); true = the figures on this record are used instead.
+  payOverride         Boolean   @default(false)
   religion            String?
   state               String? // state/province within nationality country
   accommodationType   String?
@@ -781,12 +860,18 @@ model EmployeeAssignmentHistory {
 // pointer; this is the audit trail, using string snapshots (not FKs) so
 // history stays readable even after a bed/room/camp is later deleted.
 model AccommodationHistory {
-  id           String    @id @default(cuid())
-  campName     String?
-  roomName     String?
-  bedLabel     String?
-  checkInDate  DateTime  @default(now())
-  checkOutDate DateTime?
+  id                    String    @id @default(cuid())
+  campName              String?
+  roomName              String?
+  bedLabel              String?
+  checkInDate           DateTime  @default(now())
+  checkOutDate          DateTime?
+  // Why the stay ended, and (when the checkout is set for a future date) the plan.
+  checkOutReason        String?
+  checkOutNote          String?
+  plannedCheckOutDate   DateTime?
+  plannedCheckOutReason String?
+  plannedCheckOutNote   String?
 
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
@@ -867,6 +952,7 @@ model Document {
 
 model Project {
   id            String    @id @default(cuid())
+  weeklyOffDays Int[]     @default([5]) // 0=Sun..6=Sat; work on these days is paid at the rest-day rate
   expenses      Expense[]
   code          String    @unique
   name          String
@@ -910,20 +996,21 @@ model Project {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
-  employees        Employee[]
-  vehicles         VehicleProject[]
-  timesheetEntries TimesheetEntry[]
-  tradeRates       ClientTradeRate[]
-  documents        ProjectDocument[]
-  holidays         ProjectHoliday[]
-  contacts         ProjectContact[]
-  inventory        ProjectInventoryAssignment[]
-  demandRequests   DemandRequest[]
-  routes           Route[]
-  sites            Site[]
-  lpos             Lpo[]
-  attendance       Attendance[]
-  quotations       Quotation[]
+  employees            Employee[]
+  vehicles             VehicleProject[]
+  timesheetEntries     TimesheetEntry[]
+  tradeRates           ClientTradeRate[]
+  documents            ProjectDocument[]
+  holidays             ProjectHoliday[]
+  contacts             ProjectContact[]
+  inventory            ProjectInventoryAssignment[]
+  demandRequests       DemandRequest[]
+  routes               Route[]
+  sites                Site[]
+  lpos                 Lpo[]
+  attendance           Attendance[]
+  quotations           Quotation[]
+  candidateOnboardings CandidateOnboarding[]
 }
 
 // A Local Purchase Order — the client's authorization + funding envelope for
@@ -970,7 +1057,7 @@ model Lpo {
 model Attendance {
   id           String    @id @default(cuid())
   date         DateTime
-  status       String    @default("PRESENT") // "PRESENT" | "ABSENT" | "LEAVE" | "HOLIDAY" | "OFF"
+  status       String    @default("PRESENT") // "PRESENT" | "ABSENT" | "LEAVE" | "SICK_LEAVE" | "IDLE" | "HOLIDAY" | "OFF"
   normalHours  Float?
   otHours      Float?
   locked       Boolean   @default(false)
@@ -1142,7 +1229,7 @@ model ProjectContact {
 
 model InventoryItem {
   id       String  @id @default(cuid())
-  name     String  @unique
+  name     String
   category String?
   notes    String?
 
@@ -1152,6 +1239,8 @@ model InventoryItem {
   assignments         ProjectInventoryAssignment[]
   employeeAssignments EmployeeInventoryAssignment[]
   variants            InventoryVariant[]
+
+  @@unique([branchId, name])
 }
 
 // A distinct purchasable/issuable option of an item — size, colour, or any
@@ -1223,15 +1312,28 @@ model EmployeeInventoryAssignment {
 
 model Skill {
   id       String  @id @default(cuid())
-  name     String  @unique
+  name     String
   // Short mnemonic (HLP, MSN, SFX) printed on timesheets and letters, where a
   // full trade name doesn't fit a column.
-  code     String? @unique
+  code     String?
   category String?
   trending Boolean @default(false)
 
+  // null = the shared catalogue every branch sees and only a super admin edits.
+  // Otherwise a trade the branch added itself, which only that branch sees and
+  // can change. This used to be one global list that any tenant could edit, and
+  // that every tenant's demand requests quietly added to.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
+
   employees    EmployeeSkill[]
   demandTrades DemandRequestTrade[]
+
+  // Postgres treats NULLs as distinct, so shared rows are not constrained by
+  // these; the application checks names within the shared scope itself.
+  @@unique([branchId, name])
+  @@unique([branchId, code])
+  @@index([branchId])
 }
 
 model EmployeeSkill {
@@ -1255,17 +1357,30 @@ model EmployeeSkill {
 
 model Camp {
   id    String @id @default(cuid())
-  name  String @unique
+  name  String
   rooms Room[]
+
+  // Branch-scoped: a camp belongs to one tenant. Room/Bed inherit this
+  // through their parent relation rather than carrying their own copy.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
 
   // Whether this camp is run by the company itself or by a manpower
   // supplier — printed as "Camp Type" on the check-in slip.
-  ownerType String @default("OWN") // "OWN" | "SUPPLIER"
+  ownerType String @default("OWN") // "OWN" | "SUPPLIER" | "CLIENT"
 
   owningSupplier   Supplier? @relation("CampOwner", fields: [owningSupplierId], references: [id])
   owningSupplierId String?
 
+  // Set when ownerType is "CLIENT": the client who provides the camp.
+  owningClient   Client? @relation("CampClientOwner", fields: [owningClientId], references: [id])
+  owningClientId String?
+
   checkIns CampCheckIn[]
+
+  // Two tenants may each run a camp of the same name.
+  @@unique([branchId, name])
+  @@index([branchId])
 }
 
 // A worker's placement into a camp, ahead of a specific room/bed — the first
@@ -1285,9 +1400,10 @@ model CampCheckIn {
   camp   Camp   @relation(fields: [campId], references: [id])
   campId String
 
-  status       String    @default("CHECKED_IN") // "CHECKED_IN" | "BED_ALLOCATED" | "CHECKED_OUT"
-  checkInDate  DateTime  @default(now())
-  checkOutDate DateTime?
+  status         String    @default("CHECKED_IN") // "CHECKED_IN" | "BED_ALLOCATED" | "CHECKED_OUT"
+  checkInDate    DateTime  @default(now())
+  checkOutDate   DateTime?
+  checkOutReason String?
 
   bed   Bed?    @relation(fields: [bedId], references: [id])
   bedId String? @unique
@@ -1303,7 +1419,7 @@ model CampCheckIn {
 
 model Vehicle {
   id                 String    @id @default(cuid())
-  plateNumber        String    @unique
+  plateNumber        String
   type               String? // e.g. "Bus", "Hiace Van", "Pickup"
   capacity           Int?
   driverName         String?
@@ -1317,6 +1433,13 @@ model Vehicle {
   employees Employee[]
   projects  VehicleProject[]
   routes    Route[]
+
+  // Branch-scoped: Route/RouteStop/VehicleProject inherit through `vehicle`.
+  branch   Branch? @relation(fields: [branchId], references: [id])
+  branchId String?
+
+  @@unique([branchId, plateNumber])
+  @@index([branchId])
 }
 
 // A named, recurring pickup route driven by a Vehicle — not branch-scoped,
@@ -1482,9 +1605,10 @@ model DemandRequest {
   requestedBy   User?   @relation(fields: [requestedById], references: [id])
   requestedById String?
 
-  trades         DemandRequestTrade[]
-  nocs           Noc[]
-  supplierOffers DemandSupplierOffer[]
+  trades               DemandRequestTrade[]
+  nocs                 Noc[]
+  supplierOffers       DemandSupplierOffer[]
+  candidateOnboardings CandidateOnboarding[]
 }
 
 model DemandRequestTrade {
@@ -1631,6 +1755,7 @@ model PayrollRun {
   submittedById String?
   returnNote    String? // why an approver sent it back to draft
   paidAt        DateTime?
+  dueDate       DateTime? // when salaries are due, from the branch's rule when the run was made
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -1666,31 +1791,41 @@ model PayrollLine {
   unpaidLeaveDays Int    @default(0)
   normalHours     Float  @default(0)
   otHours         Float  @default(0)
+  restHours       Float  @default(0) // hours worked on a weekly off day / holiday
 
-  basic           Decimal @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
-  allowances      Decimal @default(0) @db.Decimal(12, 2)
-  overtimePay     Decimal @default(0) @db.Decimal(12, 2)
-  deductions      Decimal @default(0) @db.Decimal(12, 2) // absence + unpaid leave
-  adjustment      Decimal @default(0) @db.Decimal(12, 2) // manual +/-
+  basic           Decimal   @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
+  allowances      Decimal   @default(0) @db.Decimal(12, 2)
+  overtimePay     Decimal   @default(0) @db.Decimal(12, 2)
+  deductions      Decimal   @default(0) @db.Decimal(12, 2) // absence + unpaid leave
+  adjustment      Decimal   @default(0) @db.Decimal(12, 2) // manual +/-
   adjustmentNote  String?
-  otherEarnings   Decimal @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
-  otherDeductions Decimal @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
+  otherEarnings   Decimal   @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
+  otherDeductions Decimal   @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
   // Typed in on the run. A deduction is a one-off amount taken off pay (a fine,
   // damage...); the advance is money already given that is recovered this
   // month. Each carries its own note. Both reduce net pay.
-  manualDeduction Decimal @default(0) @db.Decimal(12, 2)
+  manualDeduction Decimal   @default(0) @db.Decimal(12, 2)
   deductionNote   String?
   advanceNote     String?
-  advanceManual   Boolean @default(false) // true once someone has typed the advance, so a recalculation keeps it
-  timesheetHours  Float   @default(0) // hours taken from the timesheet (hourly companies)
-  loanDeduction   Decimal @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
+  advanceManual   Boolean   @default(false) // true once someone has typed the advance, so a recalculation keeps it
+  idleDays        Int       @default(0)
+  sickDays        Int       @default(0)
+  gasCharge       Decimal   @default(0) @db.Decimal(12, 2)
+  timesheetHours  Float     @default(0) // hours taken from the timesheet (hourly companies)
+  // A joiner or leaver is on the payroll for part of the month. null = the whole month.
+  employedDays    Int?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  // Each standing earning and deduction on this line, as it was when the run was calculated.
+  items           Json?
+  loanDeduction   Decimal   @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
   // Where the worker was assigned when the run was calculated, so cost-by-project
   // stays true after they move. Plain id, not a relation: history outlives the project row.
   projectId       String?
   // Bank reconciliation once the WPS file has been sent.
-  paymentStatus   String  @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
+  paymentStatus   String    @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
   paymentNote     String?
-  net             Decimal @default(0) @db.Decimal(12, 2)
+  net             Decimal   @default(0) @db.Decimal(12, 2)
 
   // Bank snapshot for the WPS file.
   paymentMode String?
@@ -1772,6 +1907,7 @@ model LoanRepayment {
 model PayrollAdjustment {
   id          String   @id @default(cuid())
   kind        String // "EARNING" | "DEDUCTION"
+  category    String? // see lib/payItems.ts
   label       String
   amount      Decimal  @db.Decimal(12, 2)
   startMonth  String // "YYYY-MM"
@@ -2168,4 +2304,393 @@ model Draft {
 
   @@unique([userId, type, key])
   @@index([userId, updatedAt])
+}
+
+// A "Book a demo" submission from the public marketing site. No user/branch —
+// the visitor isn't a customer yet.
+model DemoRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  company   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Tracks a candidate an agency has put forward, from "received" through to
+// "joined". Deliberately separate from Employee/WorkerSubmission: nothing here
+// is an employee yet (no visa, no labour card issued), so it shouldn't show up
+// in workforce lists, idle-worker counts, or payroll. Once `joined` is set,
+// employeeId can be pointed at the real Employee record created for them
+// (mirrors WorkerSubmission.employeeId — a soft reference, not a DB relation,
+// since we never want deleting an Employee to touch onboarding history).
+//
+// Each `*Status` column is the CURRENT status of that stage, kept in sync
+// with CandidateOnboardingHistory on every update — cheap to read/filter for
+// the tracker table without joining history. The allowed values per stage
+// live in src/lib/onboarding.ts (STAGES), not as a DB enum, matching this
+// codebase's convention for status fields that may grow over time.
+model CandidateOnboarding {
+  id          String @id @default(cuid())
+  candidateNo Int    @unique @default(autoincrement())
+
+  candidateName     String
+  trade             String?
+  nationality       String?
+  sponsorCompany    String?
+  joiningTargetDate DateTime?
+
+  // Profile detail — kept optional (most are filled in as documents come
+  // through the stages below, not all at intake) but needed in full before
+  // "Mark joined" can create the real Employee record, and to catch a
+  // candidate who's already on the roster before re-onboarding them.
+  phone          String?
+  email          String?
+  passportNumber String?
+  emiratesId     String?
+  dateOfBirth    DateTime?
+  gender         String? // "MALE" | "FEMALE"
+  bloodGroup     String?
+
+  offerStatus             String @default("Pending")
+  wppStatus               String @default("Pending")
+  workPermitPaymentStatus String @default("Pending")
+  entryPermitStatus       String @default("Pending")
+  arrivalStatus           String @default("Travel Pending")
+  medicalStatus           String @default("Pending")
+  tawjeehStatus           String @default("Pending")
+  iloeStatus              String @default("Pending")
+  contractStatus          String @default("Pending")
+  idVisaStatus            String @default("Pending")
+
+  // Recomputed by the app (not entered by hand) every time a stage status
+  // changes — true only once every mandatory stage above is at its
+  // "Completed"-equivalent terminal status. See computeReadyToJoin().
+  readyToJoin Boolean   @default(false)
+  joined      Boolean   @default(false)
+  joiningDate DateTime?
+  // The Employee created for them once joined — set at the same time as
+  // `joined`. See the note above: intentionally not a DB relation.
+  employeeId  String?
+
+  remarks String?
+
+  agency   Supplier? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  agencyId String?
+
+  // The person at the agency handling this candidate — a reusable contact,
+  // not free text, since the same coordinator typically handles many
+  // candidates from one agency. See AgencyContact below.
+  agencyContact   AgencyContact? @relation(fields: [agencyContactId], references: [id], onDelete: SetNull)
+  agencyContactId String?
+
+  demandRequest   DemandRequest? @relation(fields: [demandRequestId], references: [id], onDelete: SetNull)
+  demandRequestId String?
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId String?
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  assignedHr   User?   @relation(fields: [assignedHrId], references: [id], onDelete: SetNull)
+  assignedHrId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  history    CandidateOnboardingHistory[]
+  stageTasks CandidateOnboardingStageTask[]
+
+  @@index([branchId])
+  @@index([agencyId])
+  @@index([readyToJoin, joined])
+  @@index([passportNumber])
+  @@index([emiratesId])
+}
+
+// One row per stage transition — the full audit trail behind each
+// CandidateOnboarding.*Status column. A stage may have several rows over
+// time (Pending -> Applied -> Approved -> Received), each capturing what
+// changed, any reference/expiry, and who made the change.
+model CandidateOnboardingHistory {
+  id          String    @id @default(cuid())
+  stage       String // "OFFER" | "WPP" | "WORK_PERMIT_PAYMENT" | "ENTRY_PERMIT" | "ARRIVAL" | "MEDICAL" | "TAWJEEH" | "ILOE" | "CONTRACT" | "ID_VISA"
+  oldStatus   String
+  newStatus   String
+  statusDate  DateTime  @default(now())
+  referenceNo String?
+  expiryDate  DateTime?
+  remarks     String?
+
+  onboarding   CandidateOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  onboardingId String
+
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedAt   DateTime @default(now())
+
+  @@index([onboardingId, stage])
+}
+
+// Who owns getting a stage done, and by when — one row per (candidate, stage)
+// pair, upserted as the assignment changes. Separate from the *Status columns
+// on CandidateOnboarding (which track WHAT state a stage is in) and from
+// CandidateOnboardingHistory (which tracks every status CHANGE) — this tracks
+// WHO is responsible right now, the way Workday's onboarding tasks do, so the
+// "action required" queue can page an actual owner instead of just the whole
+// team once a stage's target date has passed.
+model CandidateOnboardingStageTask {
+  id    String @id @default(cuid())
+  stage String
+
+  owner   User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+  dueDate DateTime?
+
+  onboarding   CandidateOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  onboardingId String
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([onboardingId, stage])
+  @@index([ownerId])
+}
+
+// A point of contact at an agency, reusable across every candidate they
+// coordinate — created inline from the candidate form ("+ Add new contact")
+// rather than a separate CRUD screen, since the only place this is ever
+// needed is while picking one for a candidate.
+model AgencyContact {
+  id    String  @id @default(cuid())
+  name  String
+  phone String?
+  email String?
+
+  agency   Supplier @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  agencyId String
+
+  branchId  String
+  createdAt DateTime @default(now())
+
+  candidates CandidateOnboarding[]
+
+  @@index([agencyId])
+}
+
+// One run of the import wizard: a file, how its columns were mapped, what a
+// dry run said would happen, and (once run) every record it created or
+// changed, so the whole import can be undone.
+model ImportBatch {
+  id            String    @id @default(cuid())
+  kind          String // "SUPPLIERS" | "CLIENTS" | "WORKERS" | "TIMESHEETS"
+  filename      String
+  fileData      Bytes?
+  status        String    @default("DRAFT") // DRAFT | PREVIEWED | RUNNING | DONE | FAILED | UNDONE
+  mapping       String? // JSON: { sheet, headerRow, columns: { fieldKey: sourceHeader } }
+  options       String? // JSON
+  summary       String? // JSON: counts and the row-by-row report
+  progressDone  Int       @default(0)
+  progressTotal Int       @default(0)
+  error         String?
+  createdAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  undoUntil     DateTime?
+  undoneAt      DateTime?
+
+  branch      Branch @relation(fields: [branchId], references: [id])
+  branchId    String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  changes ImportChange[]
+
+  @@index([branchId, createdAt])
+}
+
+model ImportChange {
+  id       String      @id @default(cuid())
+  batch    ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batchId  String
+  seq      Int
+  model    String // Prisma model name, e.g. "Supplier"
+  recordId String
+  action   String // "CREATE" | "UPDATE"
+  before   String? // JSON of the previous values of the fields an UPDATE changed
+
+  @@index([batchId, seq])
+}
+
+// What a company pays for a trade. Workers of that company in that trade are
+// paid from this unless their own record overrides it.
+model TradePay {
+  id         String   @id @default(cuid())
+  trade      String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  payStructure       String // "ITEMISED" | "FLAT" | "HOURLY"
+  basicSalary        Decimal? @db.Decimal(12, 2)
+  housingAllowance   Decimal? @db.Decimal(12, 2)
+  foodAllowance      Decimal? @db.Decimal(12, 2)
+  transportAllowance Decimal? @db.Decimal(12, 2)
+  otherAllowance     Decimal? @db.Decimal(12, 2)
+  flatMonthlyRate    Decimal? @db.Decimal(12, 2)
+  hourlyRate         Decimal? @db.Decimal(12, 2)
+  dailyHours         Decimal  @default(8) @db.Decimal(4, 2)
+  paysOvertime       Boolean  @default(true)
+  otMultiplier       Decimal  @default(1.25) @db.Decimal(4, 2)
+  restOtMultiplier   Decimal  @default(1.5) @db.Decimal(4, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([supplierId, trade])
+  @@index([branchId])
+}
+
+// A secret a customer's software uses to call /api/v1 for one branch. Only the
+// hash is stored; the full key is shown once when it is created.
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  prefix      String // first characters of the key, so it can be recognised in the list
+  keyHash     String    @unique
+  scopes      String[]
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId    String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+
+  @@index([branchId])
+}
+
+// Where a customer wants to be told when something happens. The signing secret
+// is kept encrypted (it must be readable to sign) and shown once at creation.
+model WebhookEndpoint {
+  id                  String            @id @default(cuid())
+  url                 String
+  description         String?
+  events              String[] // event names, or "*" for all
+  secretEnc           String
+  secretHint          String // last characters of the secret, to tell endpoints apart
+  isActive            Boolean           @default(true)
+  disabledReason      String?
+  consecutiveFailures Int               @default(0)
+  lastDeliveryAt      DateTime?
+  lastStatusCode      Int?
+  branch              Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branchId            String
+  createdBy           User              @relation(fields: [createdById], references: [id])
+  createdById         String
+  createdAt           DateTime          @default(now())
+  deliveries          WebhookDelivery[]
+
+  @@index([branchId, isActive])
+}
+
+// One event sent (or waiting to be sent) to one endpoint. Kept 30 days.
+model WebhookDelivery {
+  id              String          @id @default(cuid())
+  endpoint        WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  endpointId      String
+  branchId        String
+  eventId         String
+  type            String
+  payload         String // the exact JSON body that is signed and sent
+  status          String          @default("PENDING") // PENDING | SUCCESS | FAILED
+  attempts        Int             @default(0)
+  nextAttemptAt   DateTime?
+  lastStatusCode  Int?
+  lastError       String?
+  responseSnippet String?
+  durationMs      Int?
+  createdAt       DateTime        @default(now())
+  deliveredAt     DateTime?
+
+  @@index([endpointId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+}
+
+// A company's own version of a timesheet layout: one of the four built-in layouts plus the wording,
+// columns, header details, blocks, notes and signature boxes the company chose. The built-ins stay
+// as they are; a template only ever changes how a sheet is printed, never the figures on it.
+model TimesheetTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  baseKey   String // "standard" | "summary" | "trade" | "signoff"
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+// Every change to what an employee is paid, with the date it takes effect, so
+// back pay can be worked out and the history is never lost to the next edit.
+model SalaryRevision {
+  id            String   @id @default(cuid())
+  effectiveFrom DateTime
+  reason        String?
+  before        Json
+  after         Json
+  fixedBefore   Decimal  @db.Decimal(12, 2)
+  fixedAfter    Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+  createdById   String
+  createdByName String
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  @@index([employeeId, effectiveFrom])
+  @@index([branchId])
+}
+
+// What a leaver is owed or owes when they go: pay up to the last day that no
+// run covers, gratuity, leave and notice pay, less what they still owe.
+model FinalSettlement {
+  id               String    @id @default(cuid())
+  status           String    @default("DRAFT") // "DRAFT" | "APPROVED" | "PAID"
+  exitDate         DateTime
+  reason           String?
+  serviceYears     Float     @default(0)
+  basic            Decimal   @default(0) @db.Decimal(12, 2)
+  gratuity         Decimal   @default(0) @db.Decimal(12, 2)
+  unpaidSalaryDays Int       @default(0)
+  unpaidSalary     Decimal   @default(0) @db.Decimal(12, 2)
+  leavePay         Decimal   @default(0) @db.Decimal(12, 2)
+  noticePay        Decimal   @default(0) @db.Decimal(12, 2)
+  otherEarnings    Decimal   @default(0) @db.Decimal(12, 2)
+  loanBalance      Decimal   @default(0) @db.Decimal(12, 2)
+  otherDeductions  Decimal   @default(0) @db.Decimal(12, 2)
+  net              Decimal   @default(0) @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  createdById      String
+  approvedAt       DateTime?
+  approvedById     String?
+  paidAt           DateTime?
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  @@index([branchId, status])
+  @@index([employeeId])
 }

@@ -1,9 +1,13 @@
 "use server";
 
+import { loadTradeCanon } from "@/lib/canon";
+import { normalizeNationality } from "@/lib/nationality";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { getOrCreateSkill } from "@/lib/skillScope";
 import { can } from "@/lib/permissions";
 import { subjectOf } from "@/lib/auth";
 import { PAY_STRUCTURES } from "@/lib/payroll";
@@ -60,6 +64,13 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 
   const before = await prisma.employee.findUnique({ where: { id } });
 
+  // Someone who has left is paid up to their last working day; someone brought back is not stopped by an old one.
+  let exitDate = dateOrNull(formData.get("exitDate"));
+  if (!active && !exitDate) return { error: "Enter the last working day for someone who is no longer active." };
+  if (active && exitDate && exitDate.getTime() < Date.now() - 86400000) exitDate = null;
+  const joinForCheck = dateOrNull(formData.get("joinDate"));
+  if (exitDate && joinForCheck && exitDate < joinForCheck) return { error: "The last working day can't be before the join date." };
+
   // Name and employee ID were captured at registration and then frozen — a
   // typo in either was permanent without database access.
   const name = String(formData.get("name") || "").trim();
@@ -78,6 +89,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       return { error: `Employee ID ${employeeIdNo} is already taken.` };
     }
   }
+
+  const category = (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? before?.category;
 
   // Pay structure: only applied when the form actually carried the pay section
   // (`_pay`) AND this user may edit payroll — a hidden section can never blank
@@ -99,11 +112,16 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
     if (structure === "ITEMISED" && !parsed.basicSalary) return { error: "Enter a basic salary for an itemised pay structure." };
     if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
-    if (structure === "HOURLY" && !parsed.hourlyRate) return { error: "Enter the hourly rate for an hourly pay structure." };
     const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
     if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
+    const daily = numberOrNull(formData.get("dailyHours")) ?? 8;
+    if (daily < 1 || daily > 16) return { error: "Daily hours must be between 1 and 16." };
     payData = {
+      dailyHours: daily,
       payStructure: structure,
+      // Pay typed on the worker is theirs, even if their trade gets a pay row later.
+      payOverride: !!structure,
+      gasWaived: formData.get("gasWaived") === "on",
       // Clear the figures the chosen structure doesn't use, so a switch can't leave stale pay behind.
       basicSalary: structure === "ITEMISED" ? parsed.basicSalary : null,
       housingAllowance: structure === "ITEMISED" ? parsed.housingAllowance : null,
@@ -111,7 +129,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       transportAllowance: structure === "ITEMISED" ? parsed.transportAllowance : null,
       otherAllowance: structure === "ITEMISED" ? parsed.otherAllowance : null,
       flatMonthlyRate: structure === "FLAT" ? parsed.flatMonthlyRate : null,
-      hourlyRate: structure === "HOURLY" ? parsed.hourlyRate : null,
+      // Hourly workers are paid at their trade's rate (Known Trade Details); a rate already on the record is left alone.
+      hourlyRate: structure === "HOURLY" ? (formData.has("hourlyRate") ? parsed.hourlyRate : undefined) : null,
       paysOvertime: formData.get("paysOvertime") === "on",
       otMultiplier: mult,
     };
@@ -121,13 +140,23 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       ...payData,
       name,
       employeeIdNo,
-      category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+      category: category ?? undefined,
       supplierId: stringOrNull(formData.get("supplierId")),
       sponsorSupplierId: stringOrNull(formData.get("sponsorSupplierId")),
       nationality: stringOrNull(formData.get("nationality")),
       sponsorName: stringOrNull(formData.get("sponsorName")),
       unifiedNo: stringOrNull(formData.get("unifiedNo")),
-      position: stringOrNull(formData.get("position")),
+      // Site staff's trade comes from Known Trade Details (kept in sync there), so the form
+      // does not carry it; only a form that sends `position` (office staff) changes it.
+      ...(formData.has("position")
+        ? {
+            position: stringOrNull(formData.get("position")),
+            // Office/corporate staff have a designation + department instead of a
+            // trade — mirrored the same way the create flow keeps them in sync.
+            trade: category === "STAFF" ? null : stringOrNull(formData.get("position")),
+          }
+        : {}),
+      department: category === "STAFF" ? stringOrNull(formData.get("department")) : null,
       passportNumber: stringOrNull(formData.get("passportNumber")),
       emiratesId: stringOrNull(formData.get("emiratesId")),
       visaExpiry: dateOrNull(formData.get("visaExpiry")),
@@ -146,6 +175,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       whatsappNumber: stringOrNull(formData.get("whatsappNumber")),
       essEnabled: formData.get("essEnabled") === "on",
       joinDate: dateOrNull(formData.get("joinDate")),
+      exitDate,
+      exitReason: active ? null : inactiveReason,
       emergencyContactName: stringOrNull(formData.get("emergencyContactName")),
       emergencyContactPhone: stringOrNull(formData.get("emergencyContactPhone")),
       laborCardNumber: stringOrNull(formData.get("laborCardNumber")),
@@ -201,6 +232,21 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       drivingLicenceStatus: stringOrNull(formData.get("drivingLicenceStatus")),
   };
 
+  // supplierId / sponsorSupplierId / projectId / vehicleId arrive from the form.
+  // Only links that actually changed are checked, so an existing (legacy)
+  // link never blocks an unrelated edit; a new link must be in this branch.
+  const changed = <T extends string | null | undefined>(next: T, prev: string | null | undefined) => (next && next !== prev ? next : null);
+  if (
+    before &&
+    !(await refsBelongToBranch(before.branchId, {
+      supplier: [changed(data.supplierId, before.supplierId), changed(data.sponsorSupplierId, before.sponsorSupplierId)],
+      project: changed(data.projectId, before.projectId),
+      vehicle: changed(data.vehicleId, before.vehicleId),
+    }))
+  ) {
+    return { error: "That supplier, project or vehicle isn't part of this branch." };
+  }
+
   if (before && data.supplierId && before.supplierId !== data.supplierId) {
     const newSupplier = await prisma.supplier.findUnique({
       where: { id: data.supplierId },
@@ -233,6 +279,27 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
   }
 
   await prisma.employee.update({ where: { id }, data });
+
+  // A change to what the worker is paid each month is kept as a dated revision, so pay history can be shown and arrears worked out.
+  if (before && Object.keys(payData).length > 0) {
+    const fixedOf = (e: { payStructure: string | null; basicSalary: unknown; housingAllowance: unknown; foodAllowance: unknown; transportAllowance: unknown; otherAllowance: unknown; flatMonthlyRate: unknown }) => {
+      const x = (v: unknown) => (v == null ? 0 : Number(String(v)));
+      return e.payStructure === "ITEMISED" ? x(e.basicSalary) + x(e.housingAllowance) + x(e.foodAllowance) + x(e.transportAllowance) + x(e.otherAllowance) : e.payStructure === "FLAT" ? x(e.flatMonthlyRate) : 0;
+    };
+    const snap = (e: Parameters<typeof fixedOf>[0]) => ({ payStructure: e.payStructure, basicSalary: e.basicSalary == null ? null : Number(String(e.basicSalary)), housingAllowance: e.housingAllowance == null ? null : Number(String(e.housingAllowance)), foodAllowance: e.foodAllowance == null ? null : Number(String(e.foodAllowance)), transportAllowance: e.transportAllowance == null ? null : Number(String(e.transportAllowance)), otherAllowance: e.otherAllowance == null ? null : Number(String(e.otherAllowance)), flatMonthlyRate: e.flatMonthlyRate == null ? null : Number(String(e.flatMonthlyRate)) });
+    const fixedBefore = fixedOf(before);
+    const fixedAfter = fixedOf(payData as unknown as Parameters<typeof fixedOf>[0]);
+    const structureChanged = (before.payStructure ?? null) !== ((payData as { payStructure?: string | null }).payStructure ?? null);
+    if (fixedBefore !== fixedAfter || structureChanged) {
+      await prisma.salaryRevision.create({
+        data: {
+          employeeId: id, branchId: before.branchId, effectiveFrom: dateOrNull(formData.get("payEffectiveFrom")) ?? new Date(),
+          reason: stringOrNull(formData.get("payChangeReason")), before: snap(before), after: snap(payData as unknown as Parameters<typeof fixedOf>[0]),
+          fixedBefore, fixedAfter, createdById: user.id, createdByName: user.name,
+        },
+      });
+    }
+  }
 
   // Taking the project away ends the placement, so the mobilisation stage and
   // its dates end with it — same rule the demand screen applies when a worker
@@ -296,13 +363,14 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+  const canonTrade = branchId ? await loadTradeCanon(prisma, branchId) : (t: string) => t;
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const employeeIdNo = (r["Employee ID No"] || "").trim();
+    const employeeIdNo = (r["Employee code"] || r["Employee ID No"] || "").trim();
     const name = (r["Full name"] || "").trim();
     if (!employeeIdNo || !name) {
-      results.push({ row: i + 2, status: "error", message: "Employee ID No and Full name are required." });
+      results.push({ row: i + 2, status: "error", message: "Employee code and Full name are required." });
       continue;
     }
     if (!branchId) {
@@ -310,7 +378,7 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       continue;
     }
     try {
-      const existing = await prisma.employee.findUnique({ where: { employeeIdNo } });
+      const existing = await prisma.employee.findFirst({ where: { employeeIdNo: { equals: employeeIdNo, mode: "insensitive" } } });
       if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
         results.push({ row: i + 2, status: "error", message: "That ID belongs to a different branch." });
         continue;
@@ -318,15 +386,21 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       const categoryRaw = (r["Category"] || "").trim().toLowerCase();
       const category: "STAFF" | "SITE_STAFF" | undefined =
         categoryRaw === "staff" ? "STAFF" : categoryRaw === "site staff" ? "SITE_STAFF" : undefined;
+      // A blank cell leaves the saved value alone; it never clears it. (The
+      // trade/department pairing only applies when the file says which
+      // category the row is.)
+      const cell = (label: string) => stringOrNull(r[label] ?? null) ?? undefined;
       const data = {
         name,
-        category,
-        trade: stringOrNull(r["Trade"] ?? null),
-        nationality: stringOrNull(r["Nationality"] ?? null),
-        position: stringOrNull(r["Position"] ?? null),
-        passportNumber: stringOrNull(r["Passport number"] ?? null),
-        emiratesId: stringOrNull(r["Emirates ID"] ?? null),
-        mobileNumber: stringOrNull(r["Mobile number"] ?? null),
+        ...(category ? { category } : {}),
+        ...(category === "STAFF"
+          ? { trade: null, department: cell("Department") }
+          : { trade: cell("Trade") ? canonTrade(cell("Trade")!) : undefined, ...(category === "SITE_STAFF" ? { department: null } : { department: cell("Department") }) }),
+        nationality: normalizeNationality(cell("Nationality")).value ?? undefined,
+        position: cell("Position"),
+        passportNumber: cell("Passport number"),
+        emiratesId: cell("Emirates ID"),
+        mobileNumber: cell("Mobile number"),
       };
       if (existing) {
         await prisma.employee.update({ where: { id: existing.id }, data });
@@ -481,16 +555,13 @@ export async function addSkillAction(formData: FormData) {
   const proficiencyPercent = numberOrNull(formData.get("proficiencyPercent"));
   const rate = numberOrNull(formData.get("rate"));
   if (!employeeId || !skillName) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  const skillOwner = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!skillOwner || isOutsideBranch(skillOwner.branchId, branchId, isSuperAdmin)) return;
 
   // Case-insensitive, so adding "carpenter" here folds into an existing
-  // "Carpentry" rather than creating a second skill — the third and last place
-  // this upsert was still exact-matching.
-  const existingSkill = await prisma.skill.findFirst({
-    where: { name: { equals: skillName, mode: "insensitive" } },
-  });
-  const skill =
-    existingSkill ?? (await prisma.skill.create({ data: { name: skillName } }));
+  // "Carpentry" rather than creating a second skill. A new trade belongs to the
+  // employee's own branch — never the shared catalogue.
+  const skill = await getOrCreateSkill(skillName, skillOwner.branchId);
 
   const detail = {
     proficiencyPercent:
@@ -503,8 +574,28 @@ export async function addSkillAction(formData: FormData) {
     create: { employeeId, skillId: skill.id, ...detail },
   });
 
+  await syncTradeFromSkills(employeeId, skill.name);
+
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/trades");
+}
+
+/**
+ * A site worker's trade is their first known trade: it is filled in when they
+ * have none (or one they no longer hold), and moves to another known trade when
+ * theirs is removed. Office staff keep their designation, which is not a trade.
+ */
+async function syncTradeFromSkills(employeeId: string, justAdded?: string) {
+  const e = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { category: true, position: true, trade: true, skills: { select: { skill: { select: { name: true } } }, orderBy: { skillId: "asc" } } },
+  });
+  if (!e || e.category === "STAFF") return;
+  const names = e.skills.map((s) => s.skill.name);
+  const current = e.trade ?? e.position;
+  if (current && names.some((n) => n.toLowerCase() === current.toLowerCase())) return;
+  const next = justAdded ?? names[0] ?? null;
+  await prisma.employee.update({ where: { id: employeeId }, data: { position: next, trade: next } });
 }
 
 export async function addVisaApplicationAction(formData: FormData) {
@@ -629,6 +720,7 @@ export async function removeSkillAction(formData: FormData) {
   await prisma.employeeSkill
     .delete({ where: { employeeId_skillId: { employeeId, skillId } } })
     .catch(() => {});
+  await syncTradeFromSkills(employeeId);
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/trades");
 }
@@ -655,7 +747,13 @@ export async function issueEmployeeInventoryAction(
   const employeeId = String(formData.get("employeeId") || "");
   const itemId = String(formData.get("itemId") || "");
   if (!employeeId || !itemId) return;
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return;
+  const owner = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!owner || isOutsideBranch(owner.branchId, branchId, isSuperAdmin)) return;
+  // Stock belongs to a branch too: the item and variant must be the employee's
+  // own branch's, or one tenant could issue — and use up — another's inventory.
+  if (!(await refsBelongToBranch(owner.branchId, { inventoryItem: itemId, inventoryVariant: stringOrNull(formData.get("variantId")) }))) {
+    return { error: "That item isn't part of this branch's inventory." };
+  }
 
   const quantity = numberOrNull(formData.get("quantity")) ?? 1;
   const condition = stringOrNull(formData.get("condition"));
@@ -682,6 +780,10 @@ export async function issueEmployeeInventoryAction(
   } else {
     const variantCount = await prisma.inventoryVariant.count({ where: { itemId } });
     if (variantCount > 0) return { error: "Select a variant before issuing this item." };
+    // No variants at all means no stock has ever been recorded for this item
+    // (the inventory list already shows 0 in stock for it) — issuing it
+    // anyway silently created assignments against phantom stock.
+    return { error: "This item has no stock recorded. Add stock (create a variant, or set a quantity when adding the item) before issuing it." };
   }
 
   const created = await prisma.employeeInventoryAssignment.create({

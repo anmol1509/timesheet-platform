@@ -235,7 +235,7 @@ export function MobilisationBoard({
                         type="button"
                         disabled={locked || pending}
                         onClick={() => unassign(a.id)}
-                        className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                        className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-60"
                       >
                         Remove
                       </button>

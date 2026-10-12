@@ -1,3 +1,5 @@
+import { History } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
@@ -15,13 +17,11 @@ export default async function HistoryPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">History</h1>
-        <p className="mt-1 text-sm text-muted">
-          Every timesheet generated, most recent first. Reopen a company&rsquo;s
-          review screen to regenerate with the latest figures.
-        </p>
-      </div>
+      <PageHeader
+        title="History"
+        icon={History}
+        description={<>Every timesheet generated, most recent first. Reopen a company&rsquo;s review screen to regenerate with the latest figures.</>}
+      />
 
       {sheets.length === 0 ? (
         <div className="empty-state">
@@ -81,7 +81,7 @@ export default async function HistoryPage() {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/companies/${s.supplier.id}/generate?month=${s.month}`}
-                      className="text-xs font-medium text-blue-600 hover:underline"
+                      className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                     >
                       Reopen →
                     </Link>

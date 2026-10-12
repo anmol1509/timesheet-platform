@@ -33,7 +33,7 @@ export default async function SupplierTicketPage({ params }: { params: Promise<{
           </li>
         ))}
       </ul>
-      <TicketReply ticketId={t.id} status={t.status} canReply={can(subjectOf(user), "partners", "edit")} />
+      <TicketReply ticketId={t.id} status={t.status} canReply={can(subjectOf(user), "partners.messages", "edit")} />
     </div>
   );
 }

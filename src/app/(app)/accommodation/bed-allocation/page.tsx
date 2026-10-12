@@ -1,3 +1,5 @@
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { byNameNatural } from "@/lib/naturalSort";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -7,7 +9,8 @@ import { ListChecks, BedDouble, Clock } from "lucide-react";
 import { BedAllocationTable } from "./bed-allocation-table";
 
 export default async function BedAllocationPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
 
   const checkIns = await prisma.campCheckIn.findMany({
     where: {
@@ -16,7 +19,7 @@ export default async function BedAllocationPage() {
       ...(branchId ? { employee: { branchId } } : {}),
     },
     include: {
-      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true, supplier: { select: { id: true, name: true } }, project: { select: { client: { select: { id: true, name: true } } } } } },
+      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true, photoMimeType: true, supplier: { select: { id: true, name: true } }, project: { select: { client: { select: { id: true, name: true } } } } } },
       camp: {
         select: {
           id: true,
@@ -33,11 +36,14 @@ export default async function BedAllocationPage() {
   });
 
   // Every own camp with its rooms and beds, so a placement can be made in any of them.
-  const campChoices = await prisma.camp.findMany({
-    where: { ownerType: "OWN" },
+  const campChoicesRaw = await prisma.camp.findMany({
+    where: { ...branchWhere(branchId), ownerType: "OWN" },
     select: { id: true, name: true, rooms: { select: { id: true, name: true, beds: { select: { id: true, label: true, employeeId: true } } }, orderBy: { name: "asc" } } },
     orderBy: { name: "asc" },
   });
+
+  // Rooms in number order (2 before 10).
+  const campChoices = campChoicesRaw.map((c) => ({ ...c, rooms: byNameNatural(c.rooms) }));
 
   const [suppliers, clients] = await Promise.all([
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -49,6 +55,8 @@ export default async function BedAllocationPage() {
     checkInNo: c.checkInNo,
     employeeName: c.employee.name,
     employeeIdNo: c.employee.employeeIdNo,
+    employeeRecordId: c.employee.id,
+    employeeHasPhoto: !!c.employee.photoMimeType,
     nationality: c.employee.nationality,
     supplierId: c.employee.supplier?.id ?? null,
     supplierName: c.employee.supplier?.name ?? null,

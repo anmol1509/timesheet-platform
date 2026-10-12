@@ -16,8 +16,8 @@ export function SectionTabs() {
   if (!section) return null;
 
   return (
-    <nav aria-label="Section" className="mb-5 overflow-x-auto">
-      <div className="inline-flex gap-0.5 rounded-control bg-[var(--surface-sunken)] p-0.5">
+    <nav aria-label="Section" className="-mx-4 mb-6 overflow-x-auto border-b border-default px-4 sm:-mx-6 sm:px-6">
+      <div className="flex gap-1">
         {section.tabs.map((tab) => {
           const active = tab.href === section.activeHref;
           return (
@@ -26,10 +26,10 @@ export function SectionTabs() {
               href={tab.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-9 items-center rounded-[6px] px-3 py-1 text-[13px] font-medium whitespace-nowrap transition sm:min-h-0",
+                "relative -mb-px inline-flex min-h-10 items-center border-b-2 px-3 text-[13px] font-medium whitespace-nowrap transition",
                 active
-                  ? "bg-surface text-primary shadow-xs"
-                  : "text-muted hover:text-primary"
+                  ? "border-[var(--brand-primary)] text-[var(--brand-primary)]"
+                  : "border-transparent text-muted hover:border-[var(--border-strong)] hover:text-primary"
               )}
             >
               {tab.label}

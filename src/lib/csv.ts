@@ -1,8 +1,12 @@
 export type CsvColumn<T> = { header: string; value: (row: T) => string | number | null | undefined };
 
 function escapeCsvCell(value: string | number | null | undefined): string {
-  const s = value == null ? "" : String(value);
-  if (/[",\n]/.test(s)) {
+  let s = value == null ? "" : String(value);
+  // A text cell that starts with = + - @ is run as a formula when the file is
+  // opened in Excel/Sheets, so mark it as text. Numbers and phone-style values
+  // (digits, spaces, brackets, dashes, one leading +) are left alone.
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(s) && !/^\+?[\d\s()-]+$/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s;
+  if (/[",\n\r]/.test(s)) {
     return `"${s.replace(/"/g, '""')}"`;
   }
   return s;
@@ -64,7 +68,8 @@ export function parseCsv(text: string): Record<string, string>[] {
   return rows.slice(1).filter((r) => r.some((cell) => cell.trim() !== "")).map((r) => {
     const obj: Record<string, string> = {};
     header.forEach((h, i) => {
-      obj[h] = (r[i] ?? "").trim();
+      // Undo the apostrophe our own exports add in front of formula-like text.
+      obj[h] = (r[i] ?? "").trim().replace(/^'(?=[=+\-@])/, "");
     });
     return obj;
   });

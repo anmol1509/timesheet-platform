@@ -6,7 +6,7 @@ import { isUsableBank } from "@/lib/bankStatus";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -21,7 +21,7 @@ async function loadEditableBranch(branchId: string) {
 const FIELDS = ["name", "emirate", "address", "country", "currency", "phone", "email", "fax", "poBox", "trn"] as const;
 
 export async function updateCompanyAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const branchId = String(formData.get("branchId") || "");
   const { admin, branch } = await loadEditableBranch(branchId);
   if (!branch) return { error: "You can't edit that company." };
@@ -100,7 +100,7 @@ export async function removeLogoAction(formData: FormData) {
 }
 
 export async function updateWpsAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
 
@@ -141,7 +141,7 @@ type LetterImageKind = keyof typeof LETTER_IMAGES;
 const asKind = (v: FormDataEntryValue | null): LetterImageKind | null => (typeof v === "string" && v in LETTER_IMAGES ? (v as LetterImageKind) : null);
 
 export async function updateLetterDefaultsAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
   if (!branch) return { error: "You can't edit that company." };
   const signatoryName = String(formData.get("signatoryName") || "").trim().slice(0, 80) || null;
@@ -180,6 +180,26 @@ export async function removeLetterImageAction(formData: FormData) {
   await prisma.branch.update({ where: { id: branch.id }, data: { [column]: null } });
   await deleteImage(previous);
   await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { [label]: "(set)" }, after: { [label]: null }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  revalidatePath("/letters");
+  return { error: null };
+}
+
+
+// ---- Letterhead margins ------------------------------------------------------------
+const clampMm = (v: FormDataEntryValue | null, min: number, max: number) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null;
+};
+
+export async function saveLetterheadMarginsAction(formData: FormData) {
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+  const top = clampMm(formData.get("topMm"), 15, 140);
+  const bottom = clampMm(formData.get("bottomMm"), 10, 100);
+  if (top === null || bottom === null) return { error: "Enter the margins in millimetres." };
+  await prisma.branch.update({ where: { id: branch.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { letterheadTopMm: branch.letterheadTopMm, letterheadBottomMm: branch.letterheadBottomMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom }, userId: admin.id, userName: admin.name, branchId: branch.id });
   revalidatePath("/settings/company");
   revalidatePath("/letters");
   return { error: null };

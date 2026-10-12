@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 
 export async function markInvoicePaidAction(formData: FormData) {
+  await requireWrite("billing.invoices");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const invoiceId = String(formData.get("invoiceId") || "");
@@ -37,8 +38,9 @@ export async function markInvoicePaidAction(formData: FormData) {
 }
 
 export async function deleteInvoiceAction(formData: FormData) {
+  await requireWrite("billing.invoices");
   assertContactsValid(formData);
-  await requirePermission("billing", "delete");
+  await requirePermission("billing.invoices", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const invoiceId = String(formData.get("invoiceId") || "");
   if (!invoiceId) return;

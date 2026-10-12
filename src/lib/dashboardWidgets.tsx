@@ -7,9 +7,14 @@ import {
   Upload as UploadIcon,
   FileText,
   Stethoscope,
+  FolderPlus,
+  ClipboardList,
+  FolderKanban,
+  Users,
 } from "lucide-react";
+import type { ApprovalsSummary, AttendanceToday, DemandFill, MoneySnapshot, PayrollStatus } from "@/lib/dashboardExtras";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
-import { KpiStrip } from "@/components/KpiStrip";
+import { DashboardKpiCards } from "@/components/DashboardKpiCards";
 import { Badge } from "@/components/Badge";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { WorkforcePie } from "@/components/WorkforcePie";
@@ -20,6 +25,9 @@ import { EmployeeTypeBreakdown } from "@/components/EmployeeTypeBreakdown";
 import { ComplianceRunway } from "@/components/ComplianceRunway";
 import { HoursSplitChart } from "@/components/HoursSplitChart";
 import { TimesheetPipelineChart } from "@/components/TimesheetPipelineChart";
+import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
+import { RecentActivityFeed } from "@/components/RecentActivityFeed";
+import { ManpowerAiCard } from "@/components/ManpowerAiCard";
 import type { ComplianceRunway as Runway } from "@/lib/complianceRunway";
 import type { HoursSplit } from "@/lib/attendanceHours";
 import type { TimesheetPipeline } from "@/lib/timesheetPipeline";
@@ -30,6 +38,8 @@ import type { AssignedStaffRow } from "@/lib/assignedStaff";
 import type { DocumentExpiryCategory } from "@/lib/documentExpiryCounts";
 import type { EmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import type { EntityCounts } from "@/lib/entityCounts";
+import type { DeploymentStage } from "@/lib/deploymentPipeline";
+import type { RecentActivityRow } from "@/lib/recentActivity";
 import { cn } from "@/lib/cn";
 
 function formatMonthLabel(month: string) {
@@ -72,6 +82,19 @@ export type DashboardData = {
   occupancyPct: number;
   latestUpload: { uploadedAt: Date; uploadedBy: { name: string } } | null;
   months: { month: string }[];
+  deploymentPipeline: DeploymentStage[];
+  recentActivity: RecentActivityRow[];
+  /** Headcount at the end of each of the last six months, oldest first. */
+  headcountTrend: number[];
+  newThisMonth: number;
+  /** Optional sections; null when the person may not see them or has switched them off. */
+  approvalsSummary: ApprovalsSummary | null;
+  attendanceToday: AttendanceToday | null;
+  /** Wrapped so "no payroll run yet" (run: null) differs from "may not see payroll" (null). */
+  payrollStatus: { run: PayrollStatus } | null;
+  money: MoneySnapshot | null;
+  demandFill: DemandFill | null;
+  activeProjects: { id: string; name: string; code: string; clientName: string; workers: number; required: number | null }[];
 };
 
 export type DashboardWidget = {
@@ -87,45 +110,184 @@ export type DashboardWidget = {
 export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   {
     id: "kpi",
-    label: "KPI strip (workforce, deployed, projects, needs attention)",
+    label: "KPI cards (workforce, deployment, projects, attention)",
     render: (d) => (
-      <KpiStrip
-        cells={[
-          {
-            label: "Total workforce",
-            value: d.employeeCount,
-            sub: `${d.onWorkCount} deployed · ${d.benchCount} on bench`,
-            href: "/employees",
-          },
-          {
-            label: "Deployed",
-            value: d.deployedPct,
-            suffix: "%",
-            meter: d.deployedPct,
-            sub: `${d.onWorkCount} of ${d.employeeCount} workers`,
-            href: "/employees?filter=on-work",
-          },
-          {
-            label: "Active projects",
-            value: d.activeProjectCount,
-            sub: `${d.activeClientCount} active clients`,
-            href: "/projects",
-          },
-          {
-            label: "Needs attention",
-            value: d.alerts.length + d.lpoAlerts.length,
-            tone:
-              d.expiredCount > 0
-                ? "danger"
-                : d.alerts.length + d.lpoAlerts.length > 0
-                  ? "warning"
-                  : "success",
-            sub: d.expiredCount > 0 ? `${d.expiredCount} already expired` : "expiring within 30 days",
-            href: "#needs-attention",
-          },
-        ]}
+      <DashboardKpiCards
+        employeeCount={d.employeeCount}
+        onWorkCount={d.onWorkCount}
+        benchCount={d.benchCount}
+        deployedPct={d.deployedPct}
+        activeProjectCount={d.activeProjectCount}
+        activeClientCount={d.activeClientCount}
+        attentionCount={d.alerts.length + d.lpoAlerts.length}
+        expiredCount={d.expiredCount}
+        headcountTrend={d.headcountTrend}
+        newThisMonth={d.newThisMonth}
       />
     ),
+  },
+  {
+    id: "today",
+    label: "Needs doing today (approvals, attendance, payroll)",
+    render: (d) => {
+      const a = d.approvalsSummary;
+      const t = d.attendanceToday;
+      const p = d.payrollStatus;
+      if (!a && !t && !p) return null;
+      const count = [a, t, p].filter(Boolean).length;
+      return (
+        <div className={`grid grid-cols-1 gap-4 ${count >= 3 ? "lg:grid-cols-3" : count === 2 ? "lg:grid-cols-2" : ""}`}>
+          {a && (
+            <Panel title="Approvals waiting" icon={CheckCircle2} href="/approvals" linkLabel="Open inbox">
+              {a.total === 0 ? (
+                <p className="py-4 text-center text-sm text-muted">Nothing is waiting for your decision.</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="flex items-baseline gap-2">
+                    <span className="tabular text-3xl font-semibold text-primary">{a.total}</span>
+                    <span className="text-xs text-muted">{a.oldestDays > 0 ? `oldest waiting ${a.oldestDays} day${a.oldestDays === 1 ? "" : "s"}` : "all new today"}</span>
+                  </p>
+                  <ul className="space-y-1.5">
+                    {a.byKind.slice(0, 4).map((k) => (
+                      <li key={k.kind}>
+                        <Link href={`/approvals?type=${k.kind}`} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm text-secondary transition hover:bg-surface-hover hover:text-primary">
+                          <span>{k.label}</span>
+                          <span className="tabular font-medium text-primary">{k.count}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Panel>
+          )}
+
+          {t && (
+            <Panel title="Attendance today" icon={Users} href="/attendance" linkLabel="Mark attendance">
+              {t.expected === 0 ? (
+                <p className="py-4 text-center text-sm text-muted">No one is linked to a project yet, so no attendance is expected.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex h-2 overflow-hidden rounded-full bg-surface-sunken">
+                    <span className="bg-[var(--success)]" style={{ width: `${(t.present / t.expected) * 100}%` }} />
+                    <span className="bg-[var(--error)]" style={{ width: `${(t.absent / t.expected) * 100}%` }} />
+                    <span className="bg-[var(--border-strong)]" style={{ width: `${(t.offOrLeave / t.expected) * 100}%` }} />
+                  </div>
+                  <p className="text-xs text-secondary">
+                    <span className="font-medium text-primary">{t.present}</span> present · <span className="font-medium text-primary">{t.absent}</span> absent ·{" "}
+                    <span className="font-medium text-primary">{t.offOrLeave}</span> off/leave · <span className={t.unmarked > 0 ? "font-medium text-[var(--warning)]" : "font-medium text-primary"}>{t.unmarked}</span> not marked
+                    <span className="text-subtle"> (of {t.expected})</span>
+                  </p>
+                  {t.byProject.length > 0 && (
+                    <ul className="space-y-1">
+                      {t.byProject.map((pr) => (
+                        <li key={pr.projectId}>
+                          <Link href="/attendance" className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs text-secondary transition hover:bg-surface-hover hover:text-primary">
+                            <span className="truncate">{pr.name}</span>
+                            <span className="tabular shrink-0 font-medium text-[var(--warning)]">{pr.unmarked} not marked</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </Panel>
+          )}
+
+          {p && (
+            <Panel title="Payroll" icon={FileText} href={p.run ? `/payroll/${p.run.runId}` : "/payroll"} linkLabel={p.run ? "Open run" : "Payroll"}>
+              {!p.run ? (
+                <p className="py-4 text-center text-sm text-muted">No payroll run yet. Start one from the Payroll page when a month closes.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="flex items-center gap-2">
+                    <span className="text-base font-semibold whitespace-nowrap text-primary">{formatMonthLabel(p.run.month)}</span>
+                    <Badge color={p.run.status === "PAID" ? "green" : p.run.status === "APPROVED" ? "blue" : p.run.submitted ? "amber" : "slate"} dot>
+                      {p.run.status === "DRAFT" && p.run.submitted ? "Awaiting approval" : p.run.status.toLowerCase()}
+                    </Badge>
+                  </p>
+                  <p className="text-sm text-secondary">
+                    <span className="tabular font-medium text-primary">{p.run.workers}</span> workers · net{" "}
+                    <span className="tabular font-medium text-primary">AED {Math.round(p.run.netTotal).toLocaleString()}</span>
+                  </p>
+                  {!p.run.hasCurrentMonth && <p className="text-xs text-muted">No run yet for this month.</p>}
+                </div>
+              )}
+            </Panel>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    id: "money-demand",
+    label: "Money in and out + Demand fill",
+    render: (d) => {
+      const m = d.money;
+      const f = d.demandFill;
+      if (!m && !f) return null;
+      const aed = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
+      return (
+        <div className={`grid grid-cols-1 gap-4 ${m && f ? "lg:grid-cols-2" : ""}`}>
+          {m && (
+            <Panel title="Money in and out" icon={FileText} href={m.scope.invoices ? "/dashboards/billing" : "/finance/bills"} linkLabel={m.scope.invoices ? "Billing" : "Bills"}>
+              <div className="grid grid-cols-2 gap-3">
+                {m.scope.invoices && (
+                  <>
+                    <Stat label="Invoiced this month" value={aed(m.invoicedThisMonth)} sub={`${m.invoicedCount} invoice${m.invoicedCount === 1 ? "" : "s"}`} />
+                    <Stat label="Waiting to be paid" value={aed(m.outstanding)} sub={`${m.outstandingCount} invoice${m.outstandingCount === 1 ? "" : "s"}`} />
+                    <Stat label="Overdue from clients" value={aed(m.overdue)} sub={`${m.overdueCount} invoice${m.overdueCount === 1 ? "" : "s"}`} tone={m.overdue > 0 ? "danger" : undefined} href="/invoices/history" />
+                  </>
+                )}
+                {m.scope.bills && (
+                  <>
+                    <Stat label="Supplier bills due in 7 days" value={aed(m.billsDueSoon.amount)} sub={`${m.billsDueSoon.count} bill${m.billsDueSoon.count === 1 ? "" : "s"}`} tone={m.billsDueSoon.count > 0 ? "warning" : undefined} href="/finance/bills" />
+                    <Stat label="Supplier bills overdue" value={aed(m.billsOverdue.amount)} sub={`${m.billsOverdue.count} bill${m.billsOverdue.count === 1 ? "" : "s"}`} tone={m.billsOverdue.count > 0 ? "danger" : undefined} href="/finance/bills" />
+                    <Stat label="We owe suppliers" value={aed(m.owedToSuppliers)} sub="approved bills, unpaid" href="/finance/bills" />
+                  </>
+                )}
+              </div>
+            </Panel>
+          )}
+
+          {f && (
+            <Panel title="Demand fill" icon={ClipboardList} href="/demand" linkLabel="Demands">
+              {f.openRequests === 0 ? (
+                <p className="py-4 text-center text-sm text-muted">No open demand requests.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="flex items-baseline gap-2">
+                      <span className="tabular text-3xl font-semibold text-primary">{f.needed > 0 ? Math.round((f.filled / f.needed) * 100) : 0}%</span>
+                      <span className="text-xs text-muted">{f.filled} of {f.needed} workers mobilised across {f.openRequests} open request{f.openRequests === 1 ? "" : "s"}</span>
+                    </p>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-sunken">
+                      <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${f.needed > 0 ? (f.filled / f.needed) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                  {f.gaps.length === 0 ? (
+                    <p className="text-xs text-[var(--success)]">Every open request is fully staffed.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {f.gaps.map((g) => (
+                        <li key={g.trade} className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs">
+                          <span className="text-secondary">{g.trade}</span>
+                          <span className="tabular">
+                            <span className="font-medium text-[var(--warning)]">short by {g.short}</span>
+                            <span className="text-muted"> · {g.bench >= g.short ? `${g.bench} on bench covers it` : `${g.bench} on bench`}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </Panel>
+          )}
+        </div>
+      );
+    },
   },
   {
     id: "trend-attention",
@@ -156,13 +318,13 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
               <p className="mt-1 text-xs text-muted">Nothing expires in the next 30 days.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-[var(--border)]">
+            <ul className="max-h-[22rem] divide-y divide-[var(--border)] overflow-y-auto">
               {d.attention.map((item) => (
-                <li key={item.key}>
-                  <Link href={item.href} className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-surface-hover">
+                <li key={item.key} className="px-5 py-3">
+                  <div className="flex items-start gap-3">
                     <span
                       className={cn(
-                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
                         item.overdue ? "bg-[var(--error-soft)] text-[var(--error)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"
                       )}
                     >
@@ -173,11 +335,103 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
                       <span className="block truncate text-xs text-muted">{item.sub}</span>
                     </span>
                     <Badge color={item.overdue ? "red" : "amber"}>{item.badge}</Badge>
-                  </Link>
+                  </div>
+                  <div className="mt-2 flex gap-2 pl-10">
+                    <Link href={item.href} className="rounded-full border border-default px-2.5 py-1 text-xs font-medium text-secondary transition hover:border-strong hover:text-primary">
+                      View employee
+                    </Link>
+                    <Link href={item.href} className="rounded-full border border-default px-2.5 py-1 text-xs font-medium text-secondary transition hover:border-strong hover:text-primary">
+                      Renew document
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+        </Panel>
+      </div>
+    ),
+  },
+  {
+    id: "utilization-projects",
+    label: "Workforce utilization + Active projects",
+    render: (d) => (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Workforce utilization" icon={Users} href="/employees?filter=bench" linkLabel="View bench">
+          <WorkforcePie onWork={d.onWorkCount} bench={d.benchCount} />
+        </Panel>
+        <Panel title="Active projects" icon={FolderKanban} className="lg:col-span-2" href="/projects" bodyClassName="p-0">
+          {d.activeProjects.length === 0 ? (
+            <div className="flex flex-col items-center px-5 py-10 text-center">
+              <p className="text-sm font-medium text-primary">No active projects</p>
+              <p className="mt-1 text-xs text-muted">Projects marked Active appear here with their workforce.</p>
+              <Link href="/projects/new" className="btn btn-secondary btn-sm mt-3">Create project</Link>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b border-default text-left text-xs uppercase">
+                <tr>
+                  <th className="px-5">Project / Client</th>
+                  <th className="px-3 text-right">Workers</th>
+                  <th className="w-2/5 px-5">Capacity</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {d.activeProjects.map((p) => {
+                  // Staffed against the project's required headcount when it has
+                  // one; otherwise its share of everyone deployed.
+                  const share = p.required
+                    ? Math.round((p.workers / p.required) * 100)
+                    : d.onWorkCount > 0
+                      ? Math.round((p.workers / d.onWorkCount) * 100)
+                      : 0;
+                  const barColor = !p.required ? "bg-[var(--brand-primary)]" : share >= 90 ? "bg-[var(--success)]" : share >= 60 ? "bg-[var(--info)]" : "bg-[var(--warning)]";
+                  return (
+                    <tr key={p.id} className="transition-colors hover:bg-surface-subtle">
+                      <td className="px-5 py-3">
+                        <Link href={`/projects/${p.id}`} className="group flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-violet-100 text-[11px] font-bold text-violet-600">
+                            {p.code.slice(-3)}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-primary group-hover:underline">{p.name}</span>
+                            <span className="block truncate text-xs text-subtle">{p.clientName}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="tabular px-3 py-3 text-right font-semibold text-primary">
+                        {p.workers}
+                        {p.required ? <span className="font-normal text-subtle"> / {p.required}</span> : null}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken">
+                            <div className={cn("h-full rounded-full", barColor)} style={{ width: `${Math.min(100, share)}%` }} />
+                          </div>
+                          <span className="tabular w-16 text-right text-xs font-medium text-muted">{share}%{p.required ? "" : " of all"}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
+    ),
+  },
+  {
+    id: "deployment-pipeline",
+    label: "Deployment pipeline + Recent activity",
+    render: (d) => (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Deployment pipeline" className="lg:col-span-2" href="/employees" linkLabel="Workforce">
+          <DeploymentPipelineFunnel stages={d.deploymentPipeline} />
+        </Panel>
+
+        <Panel title="Recent activity">
+          <RecentActivityFeed rows={d.recentActivity} />
         </Panel>
       </div>
     ),
@@ -228,17 +482,11 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "composition",
-    label: "Workforce composition + Deployment split",
+    label: "Workforce by type",
     render: (d) => (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Workforce by type" className="lg:col-span-2" href="/employees">
-          <EmployeeTypeBreakdown counts={d.employeeTypeCounts} />
-        </Panel>
-
-        <Panel title="Deployment" href="/employees?filter=bench" linkLabel="View bench">
-          <WorkforcePie onWork={d.onWorkCount} bench={d.benchCount} />
-        </Panel>
-      </div>
+      <Panel title="Workforce by type" icon={Users} href="/employees">
+        <EmployeeTypeBreakdown counts={d.employeeTypeCounts} />
+      </Panel>
     ),
   },
   {
@@ -296,17 +544,23 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "quick-actions",
-    label: "Quick actions",
+    label: "Quick actions + Assistant AI",
     render: () => (
-      <section>
-        <h2 className="mb-2.5 text-sm font-semibold text-primary">Quick actions</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <QuickAction href="/employees/new" icon={UserPlus} label="Add employee" sub="Register a new worker" />
-          <QuickAction href="/upload" icon={UploadIcon} label="Submit timesheet" sub="Record work hours" />
-          <QuickAction href="/documents" icon={FileText} label="Upload documents" sub="Add worker documents" />
-          <QuickAction href="/employees" icon={Stethoscope} label="Medical checks" sub="Review medical expiry" />
-        </div>
-      </section>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <section className="lg:col-span-2">
+          <h2 className="mb-2.5 text-sm font-semibold text-primary">Quick actions</h2>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <QuickAction href="/employees/new" icon={UserPlus} label="Add employee" sub="Register a new worker" />
+            <QuickAction href="/projects/new" icon={FolderPlus} label="Create project" sub="Set up a new project" />
+            <QuickAction href="/demand/new" icon={ClipboardList} label="Add demand" sub="Raise a labour request" />
+            <QuickAction href="/upload" icon={UploadIcon} label="Submit timesheet" sub="Record work hours" />
+            <QuickAction href="/documents" icon={FileText} label="Upload documents" sub="Add worker documents" />
+            <QuickAction href="/employees" icon={Stethoscope} label="Medical checks" sub="Review medical expiry" />
+          </div>
+        </section>
+
+        <ManpowerAiCard />
+      </div>
     ),
   },
   {
@@ -328,13 +582,41 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
 ];
 
+/**
+ * A saved order plus any widgets added since it was saved. New widgets go in
+ * right after the widget that precedes them in the default order, rather than
+ * all piling up at the bottom of an existing user's dashboard.
+ */
+export function mergeWidgetOrder(saved: string[]): string[] {
+  const ids = DASHBOARD_WIDGETS.map((w) => w.id);
+  const order = saved.filter((id) => ids.includes(id));
+  ids.forEach((id, i) => {
+    if (order.includes(id)) return;
+    const prev = ids.slice(0, i).reverse().find((p) => order.includes(p));
+    order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, id);
+  });
+  return order;
+}
+
 export function orderedVisibleWidgets(hiddenWidgets: string[], widgetOrder: string[]): DashboardWidget[] {
   const byId = new Map(DASHBOARD_WIDGETS.map((w) => [w.id, w]));
-  const known = widgetOrder.filter((id) => byId.has(id));
-  const missing = DASHBOARD_WIDGETS.map((w) => w.id).filter((id) => !known.includes(id));
-  const fullOrder = [...known, ...missing];
-  return fullOrder
+  return mergeWidgetOrder(widgetOrder)
     .filter((id) => !hiddenWidgets.includes(id))
     .map((id) => byId.get(id)!)
     .filter(Boolean);
+}
+
+function Stat({ label, value, sub, tone, href }: { label: string; value: string; sub?: string; tone?: "danger" | "warning"; href?: string }) {
+  const body = (
+    <>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`tabular mt-0.5 text-lg font-semibold ${tone === "danger" ? "text-[var(--error)]" : tone === "warning" ? "text-[var(--warning)]" : "text-primary"}`}>{value}</p>
+      {sub && <p className="text-[11px] text-subtle">{sub}</p>}
+    </>
+  );
+  return href ? (
+    <Link href={href} className="block rounded-lg border border-default p-3 transition hover:bg-surface-hover">{body}</Link>
+  ) : (
+    <div className="rounded-lg border border-default p-3">{body}</div>
+  );
 }

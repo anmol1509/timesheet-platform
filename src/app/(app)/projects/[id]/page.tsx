@@ -18,6 +18,8 @@ import { ProjectTabs } from "./project-tabs";
 import { deleteProjectAction } from "../actions";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { EmployeeAvatar } from "@/components/Avatar";
+import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 
 const STATUS_COLOR: Record<string, BadgeColor> = {
   ACTIVE: "green",
@@ -43,7 +45,12 @@ export default async function ProjectDetailPage({
       where: { id },
       include: {
         client: true,
-        employees: true,
+        // Only what the workforce table shows — `true` pulled every
+        // assigned worker's photo bytes along with the rest of the row.
+        employees: {
+          select: { id: true, name: true, employeeIdNo: true, trade: true, status: true, photoMimeType: true },
+          orderBy: { name: "asc" },
+        },
         documents: { orderBy: { uploadedAt: "desc" } },
         tradeRates: { where: { projectId: id }, orderBy: { trade: "asc" } },
         holidays: { orderBy: { date: "asc" } },
@@ -54,7 +61,7 @@ export default async function ProjectDetailPage({
       },
     }),
     prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
-    prisma.inventoryItem.findMany({ select: { name: true }, orderBy: { name: "asc" } }),
+    prisma.inventoryItem.findMany({ where: branchWhere(branchId), select: { name: true }, orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: true }, select: { name: true }, orderBy: { name: "asc" } }),
   ]);
   if (!project || isOutsideBranch(project.branchId, branchId, isSuperAdmin)) notFound();
@@ -82,13 +89,29 @@ export default async function ProjectDetailPage({
                 ? `Delete ${project.name}? ${project.employees.length} employee(s) will be unassigned from it.`
                 : `Delete ${project.name}?`
             }
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         <p className="mt-1 text-sm text-muted">
           {project.code} · {project.client.name} ·{" "}
           {project.employees.length} employees assigned
         </p>
+        {project.noOfEmployeesRequired != null && project.noOfEmployeesRequired > 0 && (
+          <div className="mt-3 max-w-sm">
+            <div className="mb-1 flex items-baseline justify-between text-xs">
+              <span className="text-muted">Workforce fill</span>
+              <span className="tabular font-medium text-secondary">
+                {project.employees.length}/{project.noOfEmployeesRequired}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary)]/75 transition-[width] duration-500"
+                style={{ width: `${Math.min(100, Math.round((project.employees.length / project.noOfEmployeesRequired) * 100))}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <ProjectTabs
@@ -129,6 +152,7 @@ export default async function ProjectDetailPage({
                   nightShiftEnd: project.nightShiftEnd,
                   interTransfer: project.interTransfer,
                   internalUse: project.internalUse,
+                  weeklyOffDays: project.weeklyOffDays,
                 }}
                 clients={clients.map((c) => ({ id: c.id, name: c.name }))}
               />
@@ -215,22 +239,39 @@ export default async function ProjectDetailPage({
       />
 
       {project.employees.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-primary">
-            Assigned employees
-          </h2>
-          <div className="card overflow-hidden">
+        <section className="card overflow-hidden">
+          <div className="card-header">
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-primary">
+              Assigned workforce
+              <span className="tabular rounded-full bg-brand-soft px-2 py-0.5 text-xs font-semibold text-[var(--brand-primary)]">{project.employees.length}</span>
+            </h2>
+            <Link href="/employees?filter=on-work" className="text-xs font-medium text-[var(--brand-primary)] hover:underline">All deployed</Link>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
+              <thead className="border-b border-default text-left text-xs uppercase">
+                <tr>
+                  <th className="px-4">Employee</th>
+                  <th className="px-4">Trade</th>
+                  <th className="px-4">Status</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-[var(--border)]">
                 {project.employees.map((e) => (
-                  <tr key={e.id}>
-                    <td className="px-4 py-3 font-medium text-primary">
-                      <Link href={`/employees/${e.id}`}>{e.name}</Link>
+                  <tr key={e.id} className="transition-colors hover:bg-surface-subtle">
+                    <td className="px-4 py-3">
+                      <Link href={`/employees/${e.id}`} className="group flex items-center gap-3">
+                        <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={!!e.photoMimeType} size="md" />
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-primary group-hover:underline">{e.name}</span>
+                          <span className="tabular block text-xs text-subtle">{e.employeeIdNo}</span>
+                        </span>
+                      </Link>
                     </td>
-                    <td className="px-4 py-3 text-muted">
-                      {e.employeeIdNo}
+                    <td className="px-4 py-3 text-secondary">{e.trade || "—"}</td>
+                    <td className="px-4 py-3">
+                      <Badge color={STAGE_COLOR[e.status] ?? "slate"} dot>{STAGE_LABEL[e.status] ?? e.status}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-secondary">{e.trade}</td>
                   </tr>
                 ))}
               </tbody>

@@ -93,6 +93,8 @@ export type LetterWorker = {
   /** The company the worker belongs to — printed in the Company Name column. */
   supplierId: string | null;
   supplierName: string | null;
+  /** The visa sponsor, when different from the supplier the worker belongs to. */
+  sponsorSupplierId?: string | null;
 };
 
 export type LetterGroup = {
@@ -126,8 +128,42 @@ export function groupWorkersBySupplier(workers: LetterWorker[]): LetterGroup[] {
   return [...groups.values()];
 }
 
+/**
+ * Splits workers by who sponsors their visa (falling back to their own company
+ * when no sponsor is set): a NOC is issued by the sponsor, on its letterhead.
+ * `supplierId` on each group is the sponsor's id.
+ */
+export function groupWorkersBySponsor(workers: LetterWorker[]): LetterGroup[] {
+  const groups = new Map<string, LetterGroup>();
+  for (const w of workers) {
+    const id = w.sponsorSupplierId ?? w.supplierId;
+    const key = id ?? "";
+    const existing = groups.get(key);
+    if (existing) existing.workers.push(w);
+    else groups.set(key, { supplierId: id, supplierName: null, workers: [w] });
+  }
+  return [...groups.values()];
+}
+
 export function formatLetterDate(date: Date): string {
   const d = String(date.getUTCDate()).padStart(2, "0");
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${d}-${m}-${date.getUTCFullYear()}`;
+}
+
+
+/** The text a worker-table cell shows for a column. Shared by the PDF and the on-screen preview. */
+export function letterCellValue(key: string, worker: LetterWorker, index: number, companyName: string): string {
+  switch (key) {
+    case "SNO": return String(index + 1);
+    case "NAME": return worker.name.toUpperCase();
+    case "COMPANY": return companyName;
+    case "DESIGNATION": return worker.trade ?? "";
+    case "NATIONALITY": return (worker.nationality ?? "").toUpperCase();
+    case "PASSPORT": return worker.passportNumber ?? "";
+    case "ID_NUMBER": return worker.emiratesId ?? "";
+    case "EMPLOYEE_ID": return worker.employeeIdNo;
+    case "VISA_STATUS": return worker.visaStatus ?? "";
+    default: return "";
+  }
 }

@@ -29,7 +29,7 @@ export default async function BankDetailPage({ params }: { params: Promise<{ id:
             <h1 className="text-xl font-semibold tracking-tight text-primary">{bank.accountName}</h1>
             <Badge color={color} dot>{label}</Badge>
           </div>
-          <DeleteButton action={deleteBankAction} hiddenFields={{ bankId: bank.id }} confirmMessage={`Delete bank "${bank.accountName}"?`} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50" />
+          <DeleteButton action={deleteBankAction} hiddenFields={{ bankId: bank.id }} confirmMessage={`Delete bank "${bank.accountName}"?`} className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]" />
         </div>
         <p className="mt-1 text-sm text-muted">{bank.bankName}</p>
       </div>

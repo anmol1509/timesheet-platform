@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Check, Pencil, UserPlus, Users, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
+import { EmployeeAvatar } from "@/components/Avatar";
+import { Nationality } from "@/components/Nationality";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
@@ -21,12 +23,16 @@ type EmployeeRow = {
   id: string;
   employeeIdNo: string;
   name: string;
+  hasPhoto: boolean;
   category: "STAFF" | "SITE_STAFF";
   trade: string | null;
+  position: string | null;
+  department: string | null;
   passportNumber: string | null;
   emiratesId: string | null;
   nationality: string | null;
   companyDisplayName: string | null;
+  companyCode: string | null;
   isOwnCompanySupplier: boolean;
   onWork: boolean;
   status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
@@ -36,7 +42,20 @@ type EmployeeRow = {
   campName: string | null;
   bedLabel: string | null;
   nextExpiry: { doc: string; days: number } | null;
+  docCounts: { valid: number; expiring: number; expired: number };
 };
+
+/**
+ * Deployed means linked to a project. The stored stage can say ACTIVE for
+ * people who were only imported, so for the two plain stages the project link
+ * decides what the badge reads.
+ */
+function deployBadge(e: Pick<EmployeeRow, "status" | "projectName">) {
+  if (e.status === "ACTIVE" || e.status === "IDLE") {
+    return e.projectName ? { label: "Deployed", color: "green" as const } : { label: "On bench", color: "amber" as const };
+  }
+  return DEPLOY_BADGE[e.status];
+}
 
 const DEPLOY_BADGE: Record<EmployeeRow["status"], { label: string; color: "green" | "amber" | "blue" | "slate" | "red" }> = {
   ACTIVE: { label: "Active", color: "green" },
@@ -88,13 +107,14 @@ const STATUS_BADGE: Record<
 };
 
 const IMPORT_COLUMNS = [
-  { key: "employeeIdNo", label: "Employee ID No", required: true },
-  { key: "name", label: "Full name", required: true },
+  { key: "employeeIdNo", label: "Employee code", required: true, aliases: ["Employee ID No", "ID No", "ID", "Employee ID", "Emp ID", "Emp code", "Code"] },
+  { key: "name", label: "Full name", required: true, aliases: ["Employee", "Employee name", "Name"] },
   { key: "category", label: "Category" },
-  { key: "trade", label: "Trade" },
+  { key: "trade", label: "Trade", aliases: ["Trade / Designation", "Designation"] },
   { key: "nationality", label: "Nationality" },
   { key: "position", label: "Position" },
-  { key: "passportNumber", label: "Passport number" },
+  { key: "department", label: "Department" },
+  { key: "passportNumber", label: "Passport number", aliases: ["Passport No", "Passport"] },
   { key: "emiratesId", label: "Emirates ID" },
   { key: "mobileNumber", label: "Mobile number" },
 ];
@@ -144,7 +164,8 @@ export function EmployeeList({
       case "our-workers":
         return employees.filter((e) => e.isOwnCompanySupplier);
       case "idle":
-        return employees.filter((e) => e.status === "IDLE");
+        // Same rule as the dashboard: active, not on leave, not linked to a project.
+        return employees.filter((e) => !e.onWork && e.status !== "ON_VACATION" && e.status !== "TERMINATED");
       case "vacation":
         return employees.filter((e) => e.status === "ON_VACATION");
       case "incomplete":
@@ -157,8 +178,8 @@ export function EmployeeList({
   const columns: DataTableColumn<EmployeeRow>[] = [
     {
       key: "employeeIdNo",
-      header: "ID No",
-      locked: true,
+      header: "Employee code",
+      csvHeader: "Employee code",
       sortValue: (e) => e.employeeIdNo,
       csvValue: (e) => e.employeeIdNo,
       render: (e) => (
@@ -168,30 +189,24 @@ export function EmployeeList({
     {
       key: "name",
       header: "Employee",
+      csvHeader: "Full name",
       locked: true,
       sortValue: (e) => e.name,
       csvValue: (e) => e.name,
       render: (e) => (
-        <Link href={`/employees/${e.id}`} className="group/name flex items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-[10px] font-semibold text-secondary">
-            {e.name
-              .split(/\s+/)
-              .slice(0, 2)
-              .map((p) => p[0])
-              .join("")
-              .toUpperCase()}
-          </span>
+        <Link href={`/employees/${e.id}`} className="group/name flex items-center gap-3">
+          <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="md" />
           <span className="min-w-0">
             <span className="flex items-center gap-1 truncate font-medium text-primary group-hover/name:underline">
               {e.name}
               {e.isOwnCompanySupplier && (
                 <span title="Our worker">
-                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" aria-label="Our worker" />
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--brand-primary)]" aria-label="Our worker" />
                 </span>
               )}
             </span>
-            <span className="block truncate text-[11px] text-subtle">
-              {CATEGORY_LABEL[e.category]}
+            <span className="block truncate text-[11.5px] text-subtle">
+              {CATEGORY_LABEL[e.category]} · <span className="tabular">{e.employeeIdNo}</span>
             </span>
           </span>
         </Link>
@@ -199,13 +214,30 @@ export function EmployeeList({
     },
     {
       key: "trade",
-      header: "Trade",
-      sortValue: (e) => e.trade,
-      csvValue: (e) => e.trade,
-      render: (e) => e.trade || <span className="text-subtle">—</span>,
+      header: "Trade / Designation",
+      csvHeader: "Trade",
+      sortValue: (e) => (e.category === "STAFF" ? e.position : e.trade),
+      csvValue: (e) =>
+        e.category === "STAFF"
+          ? [e.position, e.department].filter(Boolean).join(" · ")
+          : e.trade,
+      render: (e) =>
+        e.category === "STAFF" ? (
+          e.position || e.department ? (
+            <span>
+              {e.position || <span className="text-subtle">—</span>}
+              {e.department && <span className="ml-1 text-xs text-subtle">({e.department})</span>}
+            </span>
+          ) : (
+            <span className="text-subtle">—</span>
+          )
+        ) : (
+          e.trade || <span className="text-subtle">—</span>
+        ),
     },
     {
       key: "passportNumber",
+      csvHeader: "Passport number",
       // Blank for most of the roster today; still available from Columns.
       defaultHidden: true,
       header: "Passport No",
@@ -237,7 +269,7 @@ export function EmployeeList({
       header: "Nationality",
       sortValue: (e) => e.nationality,
       csvValue: (e) => e.nationality,
-      render: (e) => e.nationality || <span className="text-subtle">—</span>,
+      render: (e) => <Nationality name={e.nationality} />,
     },
     {
       key: "company",
@@ -247,15 +279,41 @@ export function EmployeeList({
       render: (e) => e.companyDisplayName || <span className="text-subtle">—</span>,
     },
     {
+      key: "companyCode",
+      header: "Company code",
+      sortValue: (e) => e.companyCode,
+      csvValue: (e) => e.companyCode,
+      render: (e) => <span className="tabular text-xs text-muted">{e.companyCode || "—"}</span>,
+    },
+    {
       key: "deployment",
       header: "Deployment",
       sortValue: (e) => e.status,
-      csvValue: (e) => `${DEPLOY_BADGE[e.status].label}${e.projectName ? " - " + e.projectName : ""}`,
+      csvValue: (e) => `${deployBadge(e).label}${e.projectName ? " - " + e.projectName : ""}`,
       searchValue: (e) => e.projectName,
       render: (e) => (
         <div className="flex flex-col items-start gap-1">
-          <Badge color={DEPLOY_BADGE[e.status].color} dot>{DEPLOY_BADGE[e.status].label}</Badge>
+          <Badge color={deployBadge(e).color} dot>{deployBadge(e).label}</Badge>
           {e.projectName && <span className="max-w-[180px] truncate text-xs text-muted" title={e.projectName}>{e.projectName}</span>}
+        </div>
+      ),
+    },
+    {
+      key: "documents",
+      header: "Documents",
+      sortValue: (e) => e.docCounts.expired * 1000 + e.docCounts.expiring,
+      csvValue: (e) => `${e.docCounts.valid} valid, ${e.docCounts.expiring} expiring, ${e.docCounts.expired} expired`,
+      render: (e) => (
+        <div className="flex items-center gap-2.5 text-xs font-medium tabular-nums">
+          <span className="flex items-center gap-1 text-[var(--success)]" title="Compliant">
+            <Check className="h-3 w-3" aria-hidden />{e.docCounts.valid}
+          </span>
+          <span className="flex items-center gap-1 text-[var(--warning)]" title="Expiring soon">
+            <AlertTriangle className="h-3 w-3" aria-hidden />{e.docCounts.expiring}
+          </span>
+          <span className="flex items-center gap-1 text-[var(--error)]" title="Expired">
+            <CircleX className="h-3 w-3" aria-hidden />{e.docCounts.expired}
+          </span>
         </div>
       ),
     },
@@ -273,6 +331,54 @@ export function EmployeeList({
         ) : (
           <span className="text-subtle">Not housed</span>
         ),
+    },
+    {
+      key: "project",
+      header: "Project",
+      defaultHidden: true,
+      sortValue: (e) => e.projectName,
+      csvValue: (e) => e.projectName ?? "",
+      render: (e) => e.projectName ? <span className="text-secondary">{e.projectName}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "camp",
+      header: "Camp",
+      defaultHidden: true,
+      sortValue: (e) => e.campName,
+      csvValue: (e) => e.campName ?? "",
+      render: (e) => e.campName ? <span className="text-secondary">{e.campName}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "bed",
+      header: "Room / Bed",
+      defaultHidden: true,
+      sortValue: (e) => e.bedLabel,
+      csvValue: (e) => e.bedLabel ?? "",
+      render: (e) => e.bedLabel ? <span className="text-secondary">{e.bedLabel}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "position",
+      header: "Position",
+      defaultHidden: true,
+      sortValue: (e) => e.position,
+      csvValue: (e) => e.position ?? "",
+      render: (e) => e.position ? <span className="text-secondary">{e.position}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "department",
+      header: "Department",
+      defaultHidden: true,
+      sortValue: (e) => e.department,
+      csvValue: (e) => e.department ?? "",
+      render: (e) => e.department ? <span className="text-secondary">{e.department}</span> : <span className="text-subtle">—</span>,
+    },
+    {
+      key: "category",
+      header: "Category",
+      defaultHidden: true,
+      sortValue: (e) => (e.category === "STAFF" ? "Staff" : "Site staff"),
+      csvValue: (e) => (e.category === "STAFF" ? "Staff" : "Site staff"),
+      render: (e) => <span className="text-secondary">{e.category === "STAFF" ? "Staff" : "Site staff"}</span>,
     },
     {
       key: "status",
@@ -344,6 +450,7 @@ export function EmployeeList({
         entityLabel: "employees",
         columns: IMPORT_COLUMNS,
         importAction: bulkImportEmployeesAction,
+        wizardHref: "/import/new/workers",
       }}
       getRowClassName={(e) =>
         cn(

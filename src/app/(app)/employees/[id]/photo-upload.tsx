@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { uploadPhotoAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { shrinkImage } from "@/lib/compressImage";
 
 export function PhotoUpload({
   employeeId,
@@ -23,7 +24,8 @@ export function PhotoUpload({
     .join("")
     .toUpperCase();
 
-  function handleFile(file: File) {
+  async function handleFile(picked: File) {
+    const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(`Photo is too large — max ${MAX_UPLOAD_LABEL}.`);
       return;
@@ -43,7 +45,7 @@ export function PhotoUpload({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={pending}
-        className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken"
+        className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-brand-soft shadow-md ring-4 ring-[var(--surface)] sm:h-24 sm:w-24"
         title="Click to upload photo"
       >
         {hasPhoto ? (
@@ -54,11 +56,11 @@ export function PhotoUpload({
             className="h-full w-full object-cover"
           />
         ) : (
-          <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-muted">
+          <span className="flex h-full w-full items-center justify-center text-2xl font-semibold text-[var(--brand-primary)]">
             {initials || "?"}
           </span>
         )}
-        <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100">
+        <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-[11px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
           {pending ? "…" : "Change"}
         </span>
         <input
@@ -73,7 +75,7 @@ export function PhotoUpload({
           }}
         />
       </button>
-      {error && <p className="max-w-[8rem] text-[10px] text-red-600">{error}</p>}
+      {error && <p className="max-w-[8rem] text-[10px] text-[var(--error)]">{error}</p>}
     </div>
   );
 }

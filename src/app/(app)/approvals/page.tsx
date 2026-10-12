@@ -1,6 +1,8 @@
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { PageHeader } from "@/components/PageHeader";
+import { CheckCheck } from "lucide-react";
+import { PageHeader, CountPill } from "@/components/PageHeader";
 import { APPROVAL_KINDS, allowedKinds, countByKind, filterApprovals, loadApprovals, type ApprovalKind } from "@/lib/approvals";
+import { AgingHistogram } from "@/components/AgingHistogram";
 import { ApprovalsBoard, type BoardItem } from "./approvals-board";
 
 export const metadata = { title: "Approvals" };
@@ -32,18 +34,28 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
     <div className="space-y-5">
       <PageHeader
         title="Approvals"
+        icon={CheckCheck}
+        meta={all.length > 0 ? <CountPill>{all.length}</CountPill> : undefined}
         description={all.length === 0 ? "Nothing is waiting for a decision." : `${all.length} waiting for a decision${oldest >= 7 ? ` · the oldest has waited ${oldest} days` : ""}. Decide here, or open an item to see it in full.`}
       />
       {kinds.length === 0 ? (
         <div className="empty-state"><p className="text-sm text-muted">Your role doesn&apos;t include approving anything. If you should, ask an admin to add approval permissions to your role.</p></div>
       ) : (
-        <ApprovalsBoard
-          items={items}
-          totalShown={shown.length}
-          tabs={[{ key: "", label: "All", count: all.length }, ...APPROVAL_KINDS.filter((k) => kinds.includes(k.kind)).map((k) => ({ key: k.kind, label: k.label, count: counts[k.kind] }))]}
-          filters={{ type: type ?? "", q: q.q ?? "", age: q.age ?? "", min: q.min ?? "", from: q.from ?? "" }}
-          requesters={requesters}
-        />
+        <>
+          {all.length > 0 && (
+            <section className="card p-5">
+              <h2 className="mb-3 text-sm font-semibold text-primary">How long items have been waiting</h2>
+              <AgingHistogram ageDays={all.map((i) => Math.floor((now.getTime() - i.at.getTime()) / 86_400_000))} />
+            </section>
+          )}
+          <ApprovalsBoard
+            items={items}
+            totalShown={shown.length}
+            tabs={[{ key: "", label: "All", count: all.length }, ...APPROVAL_KINDS.filter((k) => kinds.includes(k.kind)).map((k) => ({ key: k.kind, label: k.label, count: counts[k.kind] }))]}
+            filters={{ type: type ?? "", q: q.q ?? "", age: q.age ?? "", min: q.min ?? "", from: q.from ?? "" }}
+            requesters={requesters}
+          />
+        </>
       )}
     </div>
   );

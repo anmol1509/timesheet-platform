@@ -113,7 +113,7 @@ export function ManualEntryForm({
       <input type="hidden" name="siteId" value={siteId} />
 
       {state.error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
           {state.error}
         </p>
       )}
@@ -254,7 +254,7 @@ export function ManualEntryForm({
                     type="button"
                     onClick={() => removeRow(row.id)}
                     disabled={rows.length === 1}
-                    className="rounded-lg p-1.5 text-subtle hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="rounded-lg p-1.5 text-subtle hover:bg-[var(--error-soft)] hover:text-[var(--error)] disabled:cursor-not-allowed disabled:opacity-30"
                     title="Remove row"
                   >
                     <Trash2 className="h-4 w-4" />

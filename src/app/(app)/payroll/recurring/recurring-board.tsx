@@ -8,15 +8,17 @@ import { Badge } from "@/components/Badge";
 import { createAdjustmentAction, toggleAdjustmentAction } from "../pay-items-actions";
 import { ComboSelect } from "@/components/ui/ComboSelect";
 import { RECURRING_ITEMS } from "@/lib/formLists";
+import { DEDUCTION_CATEGORIES, EARNING_CATEGORIES, categoryLabel } from "@/lib/payItems";
 import { MonthInput } from "@/components/ui/MonthInput";
 import { NumberInput } from "@/components/ui/NumberInput";
 
 type State = { error: string | null; ok?: boolean };
-export type RecurringRow = { id: string; employee: string; employeeIdNo: string; kind: string; label: string; amount: number; startMonth: string; endMonth: string | null; active: boolean };
+export type RecurringRow = { category?: string | null; id: string; employee: string; employeeIdNo: string; kind: string; label: string; amount: number; startMonth: string; endMonth: string | null; active: boolean };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 function NewItemForm({ employees, onDone }: { employees: { id: string; label: string }[]; onDone: () => void }) {
+  const [kind, setKind] = useState("EARNING");
   const [state, action, pending] = useActionState(
     async (prev: State, fd: FormData) => {
       const res = await createAdjustmentAction(prev, fd);
@@ -34,10 +36,11 @@ function NewItemForm({ employees, onDone }: { employees: { id: string; label: st
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Kind</span>
-          <Select name="kind" defaultValue="EARNING" searchable={false} options={[{ value: "EARNING", label: "Earning (added to pay)" }, { value: "DEDUCTION", label: "Deduction (taken from pay)" }]} />
+          <Select name="kind" value={kind} onChange={setKind} searchable={false} options={[{ value: "EARNING", label: "Earning (added to pay)" }, { value: "DEDUCTION", label: "Deduction (taken from pay)" }]} />
         </label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Monthly amount (AED) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-full" /></label>
       </div>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Type</span><Select key={kind} name="category" defaultValue={kind === "EARNING" ? "ALLOWANCE" : "FINE"} searchable={false} options={(kind === "EARNING" ? EARNING_CATEGORIES : DEDUCTION_CATEGORIES).map((c) => ({ value: c.value, label: c.label }))} /></label>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Name on the payslip *</span><ComboSelect name="label" options={RECURRING_ITEMS} required /></label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">First month *</span><MonthInput name="startMonth" defaultValue={thisMonth()} required className="w-full" /></label>
@@ -90,7 +93,7 @@ export function RecurringBoard({ rows, employees, canCreate, canEdit }: { rows: 
               {rows.map((r) => (
                 <tr key={r.id} className={r.active ? "" : "opacity-60"}>
                   <td className="px-4 py-3"><p className="font-medium text-primary">{r.employee}</p><p className="text-xs text-muted">{r.employeeIdNo}</p></td>
-                  <td className="px-4 py-3 text-secondary">{r.label}</td>
+                  <td className="px-4 py-3 text-secondary">{r.label}{r.category && <span className="block text-xs text-muted">{categoryLabel(r.category)}</span>}</td>
                   <td className={`px-4 py-3 text-right tabular-nums ${r.kind === "EARNING" ? "text-[var(--success)]" : "text-[var(--error)]"}`}>{r.kind === "EARNING" ? "+" : "−"}{aed(r.amount)}</td>
                   <td className="px-4 py-3 text-secondary">{r.startMonth} → {r.endMonth ?? "ongoing"}</td>
                   <td className="px-4 py-3"><Badge color={r.active ? "green" : "slate"} dot>{r.active ? "Active" : "Paused"}</Badge></td>

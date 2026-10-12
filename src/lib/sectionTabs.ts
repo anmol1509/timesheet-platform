@@ -18,6 +18,13 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     { href: "/settings/team", label: "Team", match: under("/settings/team") },
     { href: "/settings/roles", label: "Roles & permissions", match: under("/settings/roles") },
+    { href: "/settings/developers", label: "Developers", match: under("/settings/developers") },
+  ],
+  // Letters: made for employees, NOCs for clients, and the wording behind both
+  [
+    { href: "/letters", label: "All Letters", match: under("/letters") },
+    { href: "/operations/nocs", label: "NOC", match: under("/operations/nocs") },
+    { href: "/letter-templates", label: "Templates", match: under("/letter-templates") },
   ],
   // What suppliers send us through their portal
   [
@@ -41,22 +48,24 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     {
       href: "/payroll",
-      label: "Runs",
+      label: "Pay runs",
       match: (p) =>
         under("/payroll")(p) &&
         !under("/payroll/loans")(p) &&
         !under("/payroll/recurring")(p) &&
-        !under("/payroll/end-of-service")(p),
+        !under("/payroll/end-of-service")(p) &&
+        !under("/payroll/settlements")(p),
     },
     { href: "/payroll/loans", label: "Loans & advances", match: under("/payroll/loans") },
     { href: "/payroll/recurring", label: "Recurring items", match: under("/payroll/recurring") },
-    { href: "/payroll/end-of-service", label: "End of service", match: under("/payroll/end-of-service") },
+    { href: "/payroll/end-of-service", label: "Gratuity", match: under("/payroll/end-of-service") },
+    { href: "/payroll/settlements", label: "Leavers", match: under("/payroll/settlements") },
   ],
   // Timesheet import pipeline
   [
-    { href: "/upload", label: "Upload", match: under("/upload") },
-    { href: "/companies", label: "Generate sheets", match: under("/companies") },
+    { href: "/companies", label: "Generate sheets", match: (p) => under("/companies")(p) || under("/upload")(p) },
     { href: "/history", label: "History", match: under("/history") },
+    { href: "/timesheet-templates", label: "Templates", match: under("/timesheet-templates") },
   ],
   // Client timesheet. The attendance-sync review is reached from a banner on
   // the Timesheet tab (only when something differs), so it isn't a tab itself,

@@ -4,6 +4,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { createClientAction } from "../actions";
+import { ClientCodeField } from "../client-code-field";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -33,7 +34,7 @@ export default function NewClientPage() {
         className="card space-y-4 p-6"
       >
         {state.error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {state.error}
           </p>
         )}
@@ -45,6 +46,11 @@ export default function NewClientPage() {
             className="input w-full"
           />
         </Field>
+
+        <div>
+          <span className="mb-1 block text-xs font-medium text-muted">Client code</span>
+          <ClientCodeField />
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Contact person">

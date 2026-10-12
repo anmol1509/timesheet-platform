@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { Upload } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { UploadForm } from "./upload-form";
@@ -14,17 +17,24 @@ export default async function UploadPage() {
     include: { uploadedBy: true, months: true },
   });
   const isAdmin = user.role === "SUPER_ADMIN" || user.role === "BRANCH_ADMIN";
+  // Uploading now happens in Import Data (with a preview and undo); only
+  // people who can't use that keep this page.
+  if (isAdmin) redirect("/import/new/timesheets");
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Upload</h1>
-        <p className="mt-1 text-sm text-muted">
-          Upload the consolidated time sheet workbook. Each month tab (e.g.
-          &ldquo;MAY-25&rdquo;) is detected automatically, and re-uploading the
-          same month just refreshes the hours already on file.
+      <PageHeader
+        title="Upload"
+        icon={Upload}
+        description={<>Upload the consolidated time sheet workbook. Each month tab (e.g. &ldquo;MAY-25&rdquo;) is detected automatically, and re-uploading the same month just refreshes the hours already on file.</>}
+      />
+
+      {isAdmin && (
+        <p className="rounded-xl border border-default bg-surface-subtle px-4 py-3 text-sm text-secondary">
+          New: <Link href="/import/new/timesheets" className="font-medium text-[var(--brand-primary)] hover:underline">import a timesheet with a preview and undo</Link>.
+          You see exactly what will be created before anything is saved, and can undo it afterwards.
         </p>
-      </div>
+      )}
 
       <UploadForm />
 
@@ -68,14 +78,14 @@ export default async function UploadPage() {
                       <div className="flex items-center justify-end gap-3">
                         <Link
                           href={`/upload/${u.id}`}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                         >
                           View
                         </Link>
                         {u.fileData ? (
                           <a
                             href={`/api/upload/${u.id}/download`}
-                            className="text-xs font-medium text-blue-600 hover:underline"
+                            className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                           >
                             Download
                           </a>

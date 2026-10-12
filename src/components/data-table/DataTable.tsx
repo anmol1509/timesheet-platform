@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ChevronsUpDown,
   Columns3,
   Download,
@@ -19,13 +20,19 @@ import { CsvImportDialog, type ImportColumn, type ImportRowResult } from "@/comp
 import { Pagination } from "@/components/Pagination";
 import { useRowSelection } from "@/lib/useRowSelection";
 import { toCsv, downloadCsv } from "@/lib/csv";
+import { downloadXlsx } from "@/lib/spreadsheet";
+import { Select } from "@/components/ui/Select";
+import { ScrollRestore } from "@/components/ScrollRestore";
 import { cn } from "@/lib/cn";
 
 export type DataTableColumn<T> = {
   key: string;
   header: string;
+  /** Heading used in the CSV export, when it should differ from the on-screen one (e.g. to match the import template). */
+  csvHeader?: string;
   align?: "left" | "right";
-  render: (row: T) => React.ReactNode;
+  /** `ctx` is only supplied by tables that show rows as a tree (see the `tree` prop). */
+  render: (row: T, ctx?: DataTableRowContext) => React.ReactNode;
   // Omit for columns that shouldn't appear in CSV export (e.g. a status Badge).
   csvValue?: (row: T) => string | number | null | undefined;
   /** Sort key. Omit to leave the column unsortable. */
@@ -44,6 +51,25 @@ export type DataTableImportConfig = {
   entityLabel: string;
   columns: ImportColumn[];
   importAction: (rows: Record<string, string>[]) => Promise<ImportRowResult[]>;
+  /** Where the guided import for this kind of data lives, when there is one. */
+  wizardHref?: string;
+};
+
+/** Where a row sits when the table is shown as a tree of parents and children. */
+export type DataTableRowContext = {
+  depth: number;
+  childCount: number;
+  expanded: boolean;
+  toggle: () => void;
+};
+
+/** A dropdown that narrows the rows: "All …" plus one option per value. */
+export type DataTableFilter<T> = {
+  key: string;
+  /** Shown as the "All …" option, e.g. "All statuses". */
+  label: string;
+  options: { value: string; label: string }[];
+  get: (row: T) => string | null | undefined;
 };
 
 type SortState = { key: string; direction: "asc" | "desc" } | null;
@@ -70,6 +96,9 @@ export function DataTable<T extends { id: string }>({
   stickyHeader = true,
   toolbarExtra,
   pageSize,
+  filters,
+  initialFilters,
+  tree,
 }: {
   rows: T[];
   columns: DataTableColumn<T>[];
@@ -91,10 +120,17 @@ export function DataTable<T extends { id: string }>({
   toolbarExtra?: React.ReactNode;
   /** Rows per page. Omit to render every row without pagination. */
   pageSize?: number;
+  /** Dropdown filters shown beside the search box. */
+  filters?: DataTableFilter<T>[];
+  /** Filter values selected on first load, by filter key (e.g. from the URL). */
+  initialFilters?: Record<string, string>;
+  /** Shows children under their parent (collapsed until opened). Searching or filtering flattens it, so a match is never hidden inside a closed parent. */
+  tree?: { parentId: (row: T) => string | null };
 }) {
   const router = useRouter();
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
+  const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilters ?? {});
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.key))
   );
@@ -104,17 +140,22 @@ export function DataTable<T extends { id: string }>({
     [columns, hidden]
   );
 
+  const narrowed = useMemo(() => {
+    if (!filters || filters.length === 0) return rows;
+    return rows.filter((row) => filters.every((f) => !filterValues[f.key] || f.get(row) === filterValues[f.key]));
+  }, [rows, filters, filterValues]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
+    if (!q) return narrowed;
     const matchers = columns
       .map((c) => c.searchValue ?? c.csvValue)
       .filter(Boolean) as ((row: T) => string | number | null | undefined)[];
-    if (matchers.length === 0) return rows;
-    return rows.filter((row) =>
+    if (matchers.length === 0) return narrowed;
+    return narrowed.filter((row) =>
       matchers.some((get) => String(get(row) ?? "").toLowerCase().includes(q))
     );
-  }, [rows, query, columns]);
+  }, [narrowed, query, columns]);
 
   const sorted = useMemo(() => {
     if (!sort) return filtered;
@@ -138,8 +179,37 @@ export function DataTable<T extends { id: string }>({
     });
   }, [filtered, sort, columns]);
 
+  const sortedIds = useMemo(() => new Set(sorted.map((r) => r.id)), [sorted]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const anyFilter = query.trim() !== "" || Object.values(filterValues).some(Boolean);
+  const treeActive = !!tree && !anyFilter;
+
+  // Every row's children, when shown as a tree. A row whose parent isn't in
+  // the list stays at the top level.
+  const childMap = useMemo(() => {
+    const map = new Map<string, T[]>();
+    if (!tree) return map;
+    const ids = new Set(sorted.map((r) => r.id));
+    for (const r of sorted) {
+      const pid = tree.parentId(r);
+      if (pid && ids.has(pid)) map.set(pid, [...(map.get(pid) ?? []), r]);
+    }
+    return map;
+  }, [tree, sorted]);
+
+  const displayRows = useMemo(() => {
+    if (!tree || !treeActive) return sorted;
+    const ids = new Set(sorted.map((r) => r.id));
+    return sorted
+      .filter((r) => {
+        const pid = tree.parentId(r);
+        return !(pid && ids.has(pid));
+      })
+      .flatMap((top) => [top, ...(expandedIds.has(top.id) ? (childMap.get(top.id) ?? []) : [])]);
+  }, [tree, treeActive, sorted, childMap, expandedIds]);
+
   const [page, setPage] = useState(1);
-  const pageCount = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
+  const pageCount = pageSize ? Math.max(1, Math.ceil(displayRows.length / pageSize)) : 1;
 
   // Clamped during render rather than corrected in an effect: filtering can
   // shrink the list out from under the current page, and syncing that back
@@ -147,8 +217,8 @@ export function DataTable<T extends { id: string }>({
   const currentPage = Math.min(page, pageCount);
 
   const visibleRows = pageSize
-    ? sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : sorted;
+    ? displayRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : displayRows;
 
   // Selection spans the whole filtered set, not just the visible page, so
   // "select all" then "export" behaves the way the old per-module tables did.
@@ -156,21 +226,49 @@ export function DataTable<T extends { id: string }>({
     sorted.map((r) => r.id)
   );
 
+  function exportCells() {
+    const picked = selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
+    let exportRows = picked;
+    if (tree) {
+      // Each child is written right under its parent, so an exported file reads the way it looks.
+      const ids = new Set(picked.map((r) => r.id));
+      const kids = new Map<string, T[]>();
+      const tops: T[] = [];
+      for (const r of picked) {
+        const pid = tree.parentId(r);
+        if (pid && ids.has(pid)) kids.set(pid, [...(kids.get(pid) ?? []), r]);
+        else tops.push(r);
+      }
+      exportRows = tops.flatMap((t) => [t, ...(kids.get(t.id) ?? [])]);
+    }
+    // What's on screen, plus any hidden column that names its own CSV header
+    // (those are the importable fields, so a round trip keeps them).
+    const cols = columns
+      .filter((c) => visibleColumns.includes(c) || (c.defaultHidden && c.csvHeader))
+      .filter(
+        (c): c is DataTableColumn<T> & { csvValue: NonNullable<DataTableColumn<T>["csvValue"]> } => !!c.csvValue
+      );
+    return { exportRows, cols };
+  }
+
   function exportCsv() {
     if (!csvFilename) return;
-    const exportRows =
-      selected.size > 0 ? sorted.filter((r) => selected.has(r.id)) : sorted;
-    const csv = toCsv(
-      exportRows,
-      visibleColumns
-        .filter(
-          (c): c is DataTableColumn<T> & {
-            csvValue: NonNullable<DataTableColumn<T>["csvValue"]>;
-          } => !!c.csvValue
-        )
-        .map((c) => ({ header: c.header, value: c.csvValue }))
+    const { exportRows, cols } = exportCells();
+    downloadCsv(
+      csvFilename,
+      toCsv(exportRows, cols.map((c) => ({ header: c.csvHeader ?? c.header, value: c.csvValue })))
     );
-    downloadCsv(csvFilename, csv);
+  }
+
+  function exportExcel() {
+    if (!csvFilename) return;
+    const { exportRows, cols } = exportCells();
+    void downloadXlsx(
+      csvFilename.replace(/\.csv$/i, ".xlsx"),
+      "Export",
+      cols.map((c) => c.csvHeader ?? c.header),
+      exportRows.map((r) => cols.map((c) => c.csvValue(r)))
+    );
   }
 
   function toggleSort(key: string) {
@@ -182,7 +280,7 @@ export function DataTable<T extends { id: string }>({
   }
 
   // Nothing at all to show — the empty state stands alone, without a toolbar.
-  if (rows.length === 0 && emptyState) return <>{emptyState}</>;
+  if (rows.length === 0 && emptyState && !importConfig) return <>{emptyState}</>;
 
   // Row checkboxes carry no visible label, so name them after the row itself —
   // otherwise a screen reader announces 25 identical "checkbox, unchecked".
@@ -195,13 +293,13 @@ export function DataTable<T extends { id: string }>({
 
   const hideable = columns.filter((c) => !c.locked);
   const showToolbar =
-    !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0;
-  const cellY = density === "compact" ? "py-1.5" : "py-2.5";
+    !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0 || !!filters?.length;
+  const cellY = density === "compact" ? "py-2" : "py-3";
   const colSpan =
     visibleColumns.length + (selectable ? 1 : 0) + (renderRowActions ? 1 : 0);
 
   const toolbarButton =
-    "inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary";
+    "inline-flex h-9 items-center gap-1.5 rounded-control border border-strong bg-surface px-3 text-[13px] font-medium text-secondary shadow-xs transition hover:border-[#c3c8d4] hover:bg-surface-hover hover:text-primary";
 
   return (
     <div className="space-y-3">
@@ -209,9 +307,9 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-wrap items-center gap-2">
           {toolbarExtra}
           {searchable && (
-            <div className="relative min-w-[11rem] flex-1 sm:max-w-xs">
+            <div className="relative min-w-[12rem] flex-1 sm:max-w-sm">
               <Search
-                className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-subtle"
+                className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle"
                 aria-hidden
               />
               <input
@@ -223,7 +321,7 @@ export function DataTable<T extends { id: string }>({
                 }}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
-                className="input h-8 w-full py-0 pr-7 pl-8 text-xs"
+                className="input h-9 w-full py-0 pr-8 pl-9 text-sm"
               />
               {query && (
                 <button
@@ -240,6 +338,22 @@ export function DataTable<T extends { id: string }>({
               )}
             </div>
           )}
+
+          {filters?.map((f) => (
+            <div key={f.key} className="w-44 shrink-0">
+            <Select
+              value={filterValues[f.key] ?? ""}
+              onChange={(v) => {
+                setFilterValues((prev) => ({ ...prev, [f.key]: v }));
+                setPage(1);
+              }}
+              triggerClassName="h-9"
+              searchable={f.options.length > 8}
+              placeholder={f.label}
+              options={[{ value: "", label: f.label }, ...f.options]}
+            />
+            </div>
+          ))}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {hideable.length > 0 && (
@@ -289,14 +403,38 @@ export function DataTable<T extends { id: string }>({
                 entityLabel={importConfig.entityLabel}
                 columns={importConfig.columns}
                 importAction={importConfig.importAction}
+                wizardHref={importConfig.wizardHref}
                 onDone={() => router.refresh()}
               />
             )}
             {csvFilename && (
-              <button type="button" onClick={exportCsv} className={toolbarButton}>
-                <Download className="h-3.5 w-3.5" aria-hidden />
-                {selected.size > 0 ? `Export ${selected.size}` : "Export CSV"}
-              </button>
+              <Popover.Root>
+                <Popover.Trigger asChild>
+                  <button type="button" className={toolbarButton}>
+                    <Download className="h-3.5 w-3.5" aria-hidden />
+                    {selected.size > 0 ? `Export ${selected.size}` : "Export"}
+                    <ChevronDown className="h-3 w-3 text-muted" aria-hidden />
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    align="end"
+                    sideOffset={6}
+                    className="rx-popover z-50 w-44 rounded-card border border-default bg-surface p-1 shadow-popover"
+                  >
+                    <Popover.Close asChild>
+                      <button type="button" onClick={exportExcel} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
+                        Excel (.xlsx)
+                      </button>
+                    </Popover.Close>
+                    <Popover.Close asChild>
+                      <button type="button" onClick={exportCsv} className="flex w-full items-center rounded-sm px-2.5 py-1.5 text-left text-[13px] text-secondary transition hover:bg-surface-hover hover:text-primary">
+                        CSV (.csv)
+                      </button>
+                    </Popover.Close>
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
             )}
           </div>
         </div>
@@ -312,8 +450,8 @@ export function DataTable<T extends { id: string }>({
             transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
-            <div className="flex flex-wrap items-center gap-3 rounded-control border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2">
-              <span className="tabular text-xs font-medium text-[var(--brand-primary)]">
+            <div className="flex flex-wrap items-center gap-3 rounded-card border border-[var(--brand-primary-border)] bg-brand-soft px-4 py-2.5 shadow-xs">
+              <span className="tabular text-[13px] font-semibold text-[var(--brand-primary)]">
                 {selected.size} selected
               </span>
               {renderBulkActions && (
@@ -337,7 +475,8 @@ export function DataTable<T extends { id: string }>({
         {/* `overflow-x-auto` makes this a scroll container, so the sticky
             header below sticks to *this* box rather than the viewport — hence
             top-0 and a capped height, instead of offsetting the app header. */}
-        <div
+        <ScrollRestore
+          id="table"
           className={cn(
             "overflow-x-auto",
             stickyHeader && "max-h-[calc(100vh-15rem)] overflow-y-auto"
@@ -346,13 +485,13 @@ export function DataTable<T extends { id: string }>({
           <table className="w-full text-sm">
             <thead
               className={cn(
-                "border-b border-default bg-surface-subtle text-left text-[11px] font-medium tracking-wide text-muted uppercase",
+                "border-b border-default bg-surface-subtle text-left text-[11px] font-semibold tracking-[0.06em] text-muted uppercase",
                 stickyHeader && "sticky top-0 z-10"
               )}
             >
               <tr>
                 {selectable && (
-                  <th scope="col" className="w-10 px-3 py-2">
+                  <th scope="col" className="w-11 px-4 py-2.5">
                     <Checkbox
                       checked={allSelected}
                       indeterminate={selected.size > 0 && !allSelected}
@@ -378,7 +517,7 @@ export function DataTable<T extends { id: string }>({
                             : undefined
                       }
                       className={cn(
-                        "px-3 py-2 font-medium whitespace-nowrap",
+                        "px-3 py-2.5 font-semibold whitespace-nowrap",
                         c.align === "right" && "text-right"
                       )}
                     >
@@ -420,7 +559,12 @@ export function DataTable<T extends { id: string }>({
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {sorted.length === 0 && (
+              {sorted.length === 0 && rows.length === 0 && emptyState && (
+                <tr>
+                  <td colSpan={colSpan}>{emptyState}</td>
+                </tr>
+              )}
+              {sorted.length === 0 && !(rows.length === 0 && emptyState) && (
                 <tr>
                   <td colSpan={colSpan} className="px-3 py-10 text-center">
                     <p className="text-sm font-medium text-primary">
@@ -448,7 +592,7 @@ export function DataTable<T extends { id: string }>({
                     rowHref && "cursor-pointer",
                     selected.has(row.id)
                       ? "bg-brand-soft"
-                      : "hover:bg-surface-hover"
+                      : "hover:bg-surface-subtle"
                   )}
                   onClick={
                     rowHref
@@ -461,7 +605,7 @@ export function DataTable<T extends { id: string }>({
                   }
                 >
                   {selectable && (
-                    <td className={cn("px-3", cellY)}>
+                    <td className={cn("px-4", cellY)}>
                       <Checkbox
                         checked={selected.has(row.id)}
                         onCheckedChange={() => toggle(row.id)}
@@ -479,7 +623,7 @@ export function DataTable<T extends { id: string }>({
                         !c.wrap && "whitespace-nowrap"
                       )}
                     >
-                      {c.render(row)}
+                      {c.render(row, tree ? { depth: treeActive && tree.parentId(row) && sortedIds.has(tree.parentId(row)!) ? 1 : 0, childCount: treeActive ? (childMap.get(row.id)?.length ?? 0) : 0, expanded: expandedIds.has(row.id), toggle: () => setExpandedIds((prev) => { const next = new Set(prev); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next; }) } : undefined)}
                     </td>
                   ))}
                   {renderRowActions && (
@@ -491,19 +635,19 @@ export function DataTable<T extends { id: string }>({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRestore>
 
         {pageSize && pageCount > 1 ? (
           <Pagination
             page={currentPage}
             pageCount={pageCount}
             onPageChange={setPage}
-            totalItems={sorted.length}
+            totalItems={displayRows.length}
             pageSize={pageSize}
           />
         ) : (
           (query || sort) && (
-            <div className="flex items-center justify-between gap-3 border-t border-default bg-surface-subtle px-3 py-1.5 text-[11px] text-muted">
+            <div className="flex items-center justify-between gap-3 border-t border-default bg-surface-subtle px-4 py-2 text-xs text-muted">
               <span>
                 Showing {sorted.length} of {rows.length}
               </span>

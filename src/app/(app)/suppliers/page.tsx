@@ -1,13 +1,16 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Truck } from "lucide-react";
+import { Truck, Plus } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 import { prisma } from "@/lib/db";
 import { billTotals } from "@/lib/payables";
 import { complianceStatus } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
-import { createSupplierAction } from "./actions";
 import { SupplierList } from "./supplier-list";
 
 function outstanding(bills: { amount: unknown; vatAmount: unknown; dueDate: Date; payments: { amount: unknown }[] }[]) {
@@ -54,6 +57,10 @@ export default async function SuppliersPage({
       code: true,
       contactPerson: true,
       contactPhone: true,
+      contactEmail: true,
+      fullName: true,
+      trn: true,
+      tradeLicenseNumber: true,
       status: true,
       tradeLicenseExpiry: true,
       category: true,
@@ -79,6 +86,10 @@ export default async function SuppliersPage({
     code: s.code,
     contactPerson: s.contactPerson,
     contactPhone: s.contactPhone,
+    contactEmail: s.contactEmail,
+    fullName: s.fullName,
+    trn: s.trn,
+    tradeLicenseNumber: s.tradeLicenseNumber,
     status: s.status,
     isOwnCompany: s.isOwnCompany,
     parentName: s.parent?.name ?? null,
@@ -96,67 +107,52 @@ export default async function SuppliersPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Suppliers</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage the manpower suppliers/subcontractors referenced across
-          timesheets and employees.
-        </p>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        icon={Truck}
+        description={<>Manage the manpower suppliers/subcontractors referenced across timesheets and employees.</>}
+        actions={
+          <Button href="/suppliers/new" size="sm">
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add supplier
+          </Button>
+        }
+      />
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}
         </p>
       )}
 
       {isSuperAdmin && !branchId && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
           You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the
           switcher (top right) before adding a supplier.
         </p>
       )}
 
-      <form
-        action={createSupplierAction}
-        className="card flex flex-wrap items-end gap-3 p-4"
-      >
-        <label className="block flex-1 min-w-[180px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Supplier name *</span>
-          <input
-            name="name"
-            required
-            placeholder="e.g. Top Peak"
-            className="input w-full"
+      {rows.length > 0 && rows.some((r) => r.employeeCount > 0) && (
+        <Panel title="Top suppliers by workforce">
+          <BarList
+            tone="info"
+            items={[...rows]
+              .filter((r) => r.employeeCount > 0)
+              .sort((a, b) => b.employeeCount - a.employeeCount)
+              .slice(0, 5)
+              .map((r) => ({ key: r.id, label: r.isOwnCompany ? `${r.name} (own company)` : r.name, value: r.employeeCount, href: `/suppliers/${r.id}` }))}
           />
-        </label>
-        <label className="block flex-1 min-w-[220px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Full name (for letterhead)
-          </span>
-          <input
-            name="fullName"
-            placeholder="e.g. TOP PEAK GENERAL CONTRACTING"
-            className="input w-full"
-          />
-        </label>
-        <button
-          type="submit"
-          className="btn btn-primary"
-        >
-          + Add Supplier
-        </button>
-      </form>
+        </Panel>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState
           icon={Truck}
           title="No suppliers yet"
-          description="Suppliers provide the manpower you deploy. Add one above to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
+          description="Suppliers provide the manpower you deploy. Use Add supplier to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
           action={
-            <Link href="/upload" className="btn btn-secondary btn-sm">
-              Upload a timesheet
+            <Link href="/import/new/suppliers" className="btn btn-secondary btn-sm">
+              Import suppliers
             </Link>
           }
         />

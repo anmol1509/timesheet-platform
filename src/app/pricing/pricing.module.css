@@ -1,0 +1,441 @@
+/* Pricing cards — soft lavender backdrop, rounded white cards, a purple plan
+   pill, a big price and a tick list, the last card tinted for "let's talk". */
+
+.wrap {
+  position: relative;
+  overflow: hidden;
+  padding: 148px 0 96px;
+  background:
+    radial-gradient(900px 420px at 50% -80px, #e4dcf7 0%, rgba(228, 220, 247, 0) 70%),
+    linear-gradient(180deg, #f3f0fb 0%, #faf9fd 60%, var(--canvas) 100%);
+}
+
+.head {
+  max-width: 720px;
+  margin: 0 auto 56px;
+  text-align: center;
+}
+.title {
+  margin: 0 0 16px;
+  font-size: clamp(36px, 5.2vw, 58px);
+  line-height: 1.08;
+  letter-spacing: -1.6px;
+  font-weight: 600;
+  color: #25203f;
+}
+.sub {
+  margin: 0 auto;
+  max-width: 560px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: #6b6784;
+}
+
+.toggle {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  margin: -24px auto 48px;
+  padding: 5px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(37, 32, 63, 0.05), 0 10px 28px -16px rgba(86, 69, 212, 0.3);
+}
+.toggleBtn {
+  padding: 13px 34px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b6784;
+  background: transparent;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+.toggleBtn:hover {
+  color: #25203f;
+}
+.toggleOn,
+.toggleOn:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #7a4fe3 0%, #6a45e8 100%);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.cardPopular {
+  position: relative;
+  border-color: rgba(106, 69, 232, 0.55);
+  box-shadow: 0 0 0 2px rgba(106, 69, 232, 0.18), 0 22px 48px -22px rgba(86, 69, 212, 0.45);
+}
+.badge {
+  position: absolute;
+  top: 28px;
+  right: 28px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #5a35d6;
+  background: #efe9ff;
+  border: 1px solid rgba(106, 69, 232, 0.28);
+}
+
+.cell {
+  display: flex;
+}
+
+.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(86, 69, 212, 0.1);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(37, 32, 63, 0.04), 0 18px 40px -24px rgba(86, 69, 212, 0.25);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 4px rgba(37, 32, 63, 0.05), 0 28px 56px -26px rgba(86, 69, 212, 0.38);
+}
+.cardCustom {
+  background: linear-gradient(160deg, #ddd2f9 0%, #ece6fb 45%, #f6f2fd 100%);
+  border-color: rgba(86, 69, 212, 0.18);
+}
+
+.pill {
+  align-self: flex-start;
+  padding: 11px 24px;
+  border-radius: 16px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(135deg, #7a4fe3 0%, #6a45e8 100%);
+}
+.pillLight {
+  color: #25203f;
+  background: #fff;
+}
+
+.blurb {
+  margin: 20px 0 0;
+  min-height: 78px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #6b6784;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 28px;
+  color: #25203f;
+}
+.currency {
+  font-size: 22px;
+  font-weight: 500;
+  color: #6b6784;
+}
+.price {
+  font-size: clamp(44px, 5vw, 58px);
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+.per {
+  font-size: 17px;
+  color: #8a86a0;
+}
+.talk {
+  margin: 28px 0 0;
+  font-size: clamp(40px, 4.6vw, 54px);
+  font-weight: 600;
+  letter-spacing: -1.4px;
+  line-height: 1.05;
+  color: #25203f;
+}
+
+.fees {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: #6b6784;
+}
+.fees strong {
+  color: #25203f;
+  font-weight: 600;
+}
+
+.rule {
+  height: 1px;
+  margin: 26px 0;
+  border: 0;
+  background: rgba(37, 32, 63, 0.1);
+}
+
+.list {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #25203f;
+}
+.list svg {
+  flex: none;
+  margin-top: 2px;
+  color: #25203f;
+}
+
+.list li.off {
+  color: #9a96b0;
+}
+.list li.off svg {
+  color: #b7b3c8;
+}
+
+.cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #25203f;
+  background: #fff;
+  border: 1px solid rgba(37, 32, 63, 0.14);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.cta:hover {
+  background: #f6f3fd;
+  border-color: rgba(86, 69, 212, 0.4);
+}
+.ctaDark {
+  color: #fff;
+  background: #2a2540;
+  border-color: #2a2540;
+}
+.ctaDark:hover {
+  background: #1b1730;
+  border-color: #1b1730;
+}
+
+.note {
+  max-width: 760px;
+  margin: 40px auto 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #6b6784;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .blurb {
+    min-height: 0;
+  }
+}
+@media (max-width: 560px) {
+  .toggleBtn {
+    padding: 11px 18px;
+    font-size: 14px;
+  }
+  .wrap {
+    padding-top: 120px;
+  }
+  .card {
+    padding: 26px 22px;
+    border-radius: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .cta {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
+}
+
+/* ---------- Cost estimator ---------- */
+.est {
+  margin: 64px auto 0;
+  max-width: 980px;
+  padding: 36px;
+  border-radius: 28px;
+  background: #fff;
+  border: 1px solid rgba(86, 69, 212, 0.12);
+  box-shadow: 0 1px 2px rgba(37, 32, 63, 0.04), 0 18px 40px -26px rgba(86, 69, 212, 0.28);
+}
+.estTitle {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  color: #25203f;
+}
+.estSub {
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: #6b6784;
+}
+.estInputs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 24px;
+}
+.range {
+  flex: 1;
+  min-width: 0;
+  accent-color: #6a45e8;
+  height: 6px;
+  cursor: pointer;
+}
+.estNumber {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(37, 32, 63, 0.16);
+  background: #fff;
+  font-size: 15px;
+  color: #6b6784;
+}
+.estNumber input {
+  width: 84px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  color: #25203f;
+  text-align: right;
+}
+.estNumber:focus-within {
+  border-color: #6a45e8;
+  box-shadow: 0 0 0 3px rgba(106, 69, 232, 0.15);
+}
+.estGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+.estCard {
+  padding: 22px 24px;
+  border-radius: 20px;
+  background: #faf9fd;
+  border: 1px solid rgba(37, 32, 63, 0.08);
+}
+.estBest {
+  background: #f1ecff;
+  border-color: rgba(106, 69, 232, 0.4);
+}
+.estTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.estName {
+  font-size: 18px;
+  font-weight: 600;
+  color: #25203f;
+}
+.estTag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #6a45e8;
+}
+.estTotal {
+  margin: 12px 0 0;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1.05;
+  color: #25203f;
+}
+.estTotal span {
+  font-size: 18px;
+  font-weight: 500;
+  color: #6b6784;
+  letter-spacing: 0;
+}
+.estTotal small {
+  margin-left: 6px;
+  font-size: 16px;
+  font-weight: 400;
+  color: #8a86a0;
+  letter-spacing: 0;
+}
+.estMath {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6b6784;
+}
+.estFoot {
+  margin: 20px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #6b6784;
+}
+
+@media (max-width: 640px) {
+  .est {
+    padding: 24px 20px;
+    border-radius: 24px;
+  }
+  .estInputs {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .estGrid {
+    grid-template-columns: 1fr;
+  }
+  .badge {
+    top: 22px;
+    right: 18px;
+  }
+}
+
+.estNumber input:focus-visible {
+  outline: none;
+}

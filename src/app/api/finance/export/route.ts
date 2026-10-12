@@ -8,8 +8,8 @@ import { billStatus, billTotals } from "@/lib/payables";
 
 export async function GET(request: Request) {
   const { user, branchId } = await requireUserWithBranch();
-  if (!can(subjectOf(user), "finance", "export")) return NextResponse.json({ error: "You don't have permission to export finance data." }, { status: 403 });
   const q = new URL(request.url).searchParams;
+  if (!can(subjectOf(user), q.get("type") === "bills" ? "finance.bills" : "finance.expenses", "export")) return NextResponse.json({ error: "You don't have permission to export finance data." }, { status: 403 });
   const stamp = new Date().toISOString().slice(0, 10);
   const n = (d: { toString(): string }) => Number(d.toString());
 

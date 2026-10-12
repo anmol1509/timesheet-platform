@@ -23,11 +23,12 @@ export function TableSkeleton({
       </div>
       <div className="divide-y divide-[var(--border)]">
         {Array.from({ length: rows }).map((_, r) => (
-          <div key={r} className="flex gap-4 px-4 py-3">
+          <div key={r} className="flex items-center gap-4 px-4 py-3">
+            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
             {Array.from({ length: columns }).map((_, c) => (
               <Skeleton
                 key={c}
-                className={cn("h-3.5 flex-1", c === 0 && "max-w-24")}
+                className={cn("h-3.5 flex-1", c === 0 && "max-w-36")}
               />
             ))}
           </div>
@@ -46,7 +47,7 @@ export function StatTileSkeleton({ count = 4 }: { count?: number }) {
     >
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="card p-4">
-          <Skeleton className="h-3 w-24" />
+          <div className="flex items-center gap-2.5"><Skeleton className="h-8 w-8 rounded-[10px]" /><Skeleton className="h-3 w-24" /></div>
           <Skeleton className="mt-3 h-7 w-16" />
           <Skeleton className="mt-2.5 h-3 w-28" />
         </div>

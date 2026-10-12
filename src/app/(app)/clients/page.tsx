@@ -1,8 +1,11 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 import { EmptyState } from "@/components/EmptyState";
-import { Building2, FileCheck2, DollarSign } from "lucide-react";
+import { Building2, FileCheck2, DollarSign, Plus } from "lucide-react";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -53,19 +56,18 @@ export default async function ClientsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">
-            Client Management
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            Manage your clients and contract details.
-          </p>
-        </div>
+        <PageHeader
+          title="Client Management"
+          icon={Building2}
+          description={<>Manage your clients and contract details.</>}
+        />
         <Link
           href="/clients/new"
           className="btn btn-primary"
         >
-          + Add Client
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add Client
         </Link>
       </div>
 
@@ -90,6 +92,28 @@ export default async function ClientsPage() {
         />
       </div>
 
+      {rows.length > 0 && rows.some((r) => r.lpoValue > 0) && (
+        <Panel title="Top clients by active LPO value" href="/finance/bills">
+          <BarList
+            tone="info"
+            items={[...rows]
+              .filter((r) => r.lpoValue > 0)
+              .sort((a, b) => b.lpoValue - a.lpoValue)
+              .slice(0, 5)
+              .map((r) => {
+                const value = Math.round(r.lpoValue);
+                return {
+                  key: r.id,
+                  label: r.name,
+                  value,
+                  valueLabel: `AED ${value.toLocaleString("en-AE")}`,
+                  href: `/clients/${r.id}`,
+                };
+              })}
+          />
+        </Panel>
+      )}
+
       {rows.length === 0 ? (
         <EmptyState
           icon={Building2}
@@ -101,8 +125,8 @@ export default async function ClientsPage() {
             </Link>
           }
           secondaryAction={
-            <Link href="/upload" className="btn btn-secondary btn-sm">
-              Upload a timesheet
+            <Link href="/import/new/clients" className="btn btn-secondary btn-sm">
+              Import clients
             </Link>
           }
         />

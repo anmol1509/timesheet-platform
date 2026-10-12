@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { monthBounds, round2 } from "@/lib/payroll";
-import { assertContactsValid } from "@/lib/validators";
+import { arrearsFor } from "@/lib/payrollSchedule";
+import { cleanCategory } from "@/lib/payItems";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -22,8 +24,9 @@ async function employeeInBranch(employeeId: string, branchId: string) {
 
 // ------------------------------------------------------- loans & advances
 export async function createLoanAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "create");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
 
@@ -46,8 +49,9 @@ export async function createLoanAction(_prev: State, formData: FormData): Promis
 }
 
 export async function cancelLoanAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "edit");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const loan = await prisma.employeeLoan.findUnique({ where: { id: str(formData.get("id")) }, include: { employee: { select: { name: true } } } });
   if (!loan || isOutsideBranch(loan.branchId, branchId, isSuperAdmin)) return { error: "Loan not found." };
@@ -61,8 +65,9 @@ export async function cancelLoanAction(formData: FormData): Promise<State> {
 
 // ---------------------------------------------- recurring earnings / deductions
 export async function createAdjustmentAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "create");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
 
@@ -78,20 +83,49 @@ export async function createAdjustmentAction(_prev: State, formData: FormData): 
   if (!monthBounds(startMonth)) return { error: "Choose the first month." };
   if (endMonth && (!monthBounds(endMonth) || endMonth < startMonth)) return { error: "The last month can't be before the first." };
 
-  const row = await prisma.payrollAdjustment.create({ data: { kind, label, amount, startMonth, endMonth, employeeId: emp.id, branchId, createdById: user.id } });
-  await logAudit({ entityType: "PAYROLL_ADJUSTMENT", entityId: row.id, action: "CREATE", after: { employee: emp.name, kind, label, amount, startMonth, endMonth }, userId: user.id, userName: user.name, branchId });
+  const category = cleanCategory(str(formData.get("category")));
+  const row = await prisma.payrollAdjustment.create({ data: { kind, category, label, amount, startMonth, endMonth, employeeId: emp.id, branchId, createdById: user.id } });
+  await logAudit({ entityType: "PAYROLL_ADJUSTMENT", entityId: row.id, action: "CREATE", after: { employee: emp.name, kind, category, label, amount, startMonth, endMonth }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/payroll/recurring");
   return { error: null, ok: true };
 }
 
 export async function toggleAdjustmentAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "edit");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const row = await prisma.payrollAdjustment.findUnique({ where: { id: str(formData.get("id")) }, include: { employee: { select: { name: true } } } });
   if (!row || isOutsideBranch(row.branchId, branchId, isSuperAdmin)) return { error: "Not found." };
   await prisma.payrollAdjustment.update({ where: { id: row.id }, data: { active: !row.active } });
   await logAudit({ entityType: "PAYROLL_ADJUSTMENT", entityId: row.id, action: "UPDATE", before: { active: row.active }, after: { active: !row.active, employee: row.employee.name, label: row.label }, userId: user.id, userName: user.name, branchId: row.branchId });
+  revalidatePath("/payroll/recurring");
+  return { error: null, ok: true };
+}
+
+/** A pay rise that took effect in months already paid: add what was missed to the next payroll as one arrears item. */
+export async function addArrearsAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "create");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const rev = await prisma.salaryRevision.findUnique({ where: { id: str(formData.get("revisionId")) }, include: { employee: { select: { name: true } } } });
+  if (!rev || isOutsideBranch(rev.branchId, branchId, isSuperAdmin)) return { error: "Salary change not found." };
+  const increase = round2(Number(rev.fixedAfter.toString()) - Number(rev.fixedBefore.toString()));
+  if (!(increase > 0)) return { error: "This change was not an increase, so there are no arrears." };
+  const closed = await prisma.payrollRun.findMany({ where: { branchId: rev.branchId, status: { in: ["APPROVED", "PAID"] }, lines: { some: { employeeId: rev.employeeId } } }, select: { month: true } });
+  const closedMonths = [...new Set(closed.map((r) => r.month))];
+  const a = arrearsFor(increase, rev.effectiveFrom, closedMonths);
+  if (a.months.length === 0) return { error: "No payroll has been approved since this change took effect, so the next run already pays the new rate." };
+  const [y, m] = a.months[a.months.length - 1].split("-").map(Number);
+  const next = new Date(Date.UTC(y, m, 1));
+  const month = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+  const label = `Salary arrears ${a.months[0]} to ${a.months[a.months.length - 1]}`;
+  const dup = await prisma.payrollAdjustment.findFirst({ where: { employeeId: rev.employeeId, category: "ARREARS", label } });
+  if (dup) return { error: "These arrears have already been added to a payroll." };
+  const row = await prisma.payrollAdjustment.create({ data: { kind: "EARNING", category: "ARREARS", label, amount: a.amount, startMonth: month, endMonth: month, employeeId: rev.employeeId, branchId: rev.branchId, createdById: user.id } });
+  await logAudit({ entityType: "PAYROLL_ADJUSTMENT", entityId: row.id, action: "CREATE", after: { employee: rev.employee.name, label, amount: a.amount, appliesTo: month }, userId: user.id, userName: user.name, branchId: rev.branchId });
+  revalidatePath(`/employees/${rev.employeeId}`);
   revalidatePath("/payroll/recurring");
   return { error: null, ok: true };
 }

@@ -1,13 +1,16 @@
 "use server";
 
+import { checkOutNow, settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { checkoutKind, checkoutProblem, dayKey } from "@/lib/checkoutReasons";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUser, requireUserWithBranch, requirePermission } from "@/lib/auth";
-import { isOutsideBranch } from "@/lib/branch";
+import { requireUser, requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { bedBranch, campBranch, roomBranch } from "@/lib/facilityScope";
 import { logAudit } from "@/lib/audit";
 import { bunkLabel, nextBunkNo, singleLabel } from "@/lib/bunk";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type RoomSpec = { name: string; bedCount: number; bunkCount: number };
 
@@ -33,8 +36,12 @@ function parseRoomSpecs(raw: FormDataEntryValue | null): RoomSpec[] {
 export async function createCampWithRoomsAction(
   formData: FormData
 ): Promise<{ campId: string } | { error: string }> {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
-  const user = await requireUser();
+  const { user, branchId } = await requireUserWithBranch();
+  // A camp with no branch is invisible to every branch-scoped user, including
+  // whoever just created it — so a super admin must pick one first.
+  if (!branchId) return { error: "Pick a branch from the switcher first." };
   const name = String(formData.get("name") || "").trim();
   // Camps created here are always the company's own; supplier and client camps are recorded at check-in.
   const ownerType = "OWN";
@@ -46,7 +53,7 @@ export async function createCampWithRoomsAction(
   let campId: string;
   try {
     campId = await prisma.$transaction(async (tx) => {
-      const camp = await tx.camp.create({ data: { name, ownerType, owningSupplierId } });
+      const camp = await tx.camp.create({ data: { name, ownerType, owningSupplierId, branchId } });
       for (const room of rooms) {
         const createdRoom = await tx.room.create({
           data: { campId: camp.id, name: room.name, bedSpace: room.bedCount + room.bunkCount * 2, usableBedSpace: room.bedCount + room.bunkCount * 2 },
@@ -74,7 +81,7 @@ export async function createCampWithRoomsAction(
     after: { name, ownerType, owningSupplierId, rooms },
     userId: user.id,
     userName: user.name,
-    branchId: null,
+    branchId,
   });
 
   revalidatePath("/accommodation/camps");
@@ -82,25 +89,36 @@ export async function createCampWithRoomsAction(
 }
 
 export async function updateCampOwnershipAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
-  const ownerType = String(formData.get("ownerType") || "OWN") === "SUPPLIER" ? "SUPPLIER" : "OWN";
+  const rawType = String(formData.get("ownerType") || "OWN");
+  const ownerType = rawType === "SUPPLIER" || rawType === "CLIENT" ? rawType : "OWN";
   const owningSupplierId = ownerType === "SUPPLIER" ? stringOrNull(formData.get("supplierId")) : null;
+  const owningClientId = ownerType === "CLIENT" ? stringOrNull(formData.get("clientId")) : null;
   if (!campId) return;
 
+  const campOwner = await campBranch(campId, { branchId, isSuperAdmin });
+  if (campOwner === undefined) return;
+  // The supplier is a foreign id from the form: it must be one of this camp's
+  // own branch's suppliers, or a camp could be pointed at another tenant's.
+  if (owningSupplierId && !(await prisma.supplier.findFirst({ where: { id: owningSupplierId, ...branchWhere(campOwner) }, select: { id: true } }))) return;
+
+  if (owningClientId && !(await prisma.client.findFirst({ where: { id: owningClientId, ...branchWhere(campOwner) }, select: { id: true } }))) return;
+
   const before = await prisma.camp.findUnique({ where: { id: campId } });
-  await prisma.camp.update({ where: { id: campId }, data: { ownerType, owningSupplierId } });
+  await prisma.camp.update({ where: { id: campId }, data: { ownerType, owningSupplierId, owningClientId } });
 
   await logAudit({
     entityType: "CAMP",
     entityId: campId,
     action: "UPDATE",
     before: before as unknown as Record<string, unknown>,
-    after: { ownerType, owningSupplierId },
+    after: { ownerType, owningSupplierId, owningClientId },
     userId: user.id,
     userName: user.name,
-    branchId: null,
+    branchId: campOwner,
   });
 
   revalidatePath("/accommodation/camps");
@@ -119,8 +137,9 @@ function intOrNull(value: FormDataEntryValue | null) {
 }
 
 export async function createRoomAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
   const bedCount = Math.max(0, Math.min(20, Number(formData.get("bedCount")) || 0));
@@ -130,6 +149,8 @@ export async function createRoomAction(formData: FormData) {
   const roomType = stringOrNull(formData.get("roomType"));
   const nationality = stringOrNull(formData.get("nationality"));
   if (!campId || !name || bedCount + bunkCount === 0) return;
+  const campOwner = await campBranch(campId, { branchId, isSuperAdmin });
+  if (campOwner === undefined) return;
 
   const room = await prisma.room.create({
     data: { campId, name, bedSpace, usableBedSpace, roomType, nationality },
@@ -151,18 +172,21 @@ export async function createRoomAction(formData: FormData) {
     after: { campId, name, bedCount, bunkCount, bedSpace, usableBedSpace, roomType, nationality },
     userId: user.id,
     userName: user.name,
-    branchId: null,
+    branchId: campOwner,
   });
 
   revalidatePath("/accommodation/camps");
 }
 
 export async function updateCampAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
   const name = String(formData.get("name") || "").trim();
   if (!campId || !name) return;
+  const campOwner = await campBranch(campId, { branchId, isSuperAdmin });
+  if (campOwner === undefined) return;
 
   const before = await prisma.camp.findUnique({ where: { id: campId } });
   await prisma.camp.update({ where: { id: campId }, data: { name } });
@@ -175,43 +199,21 @@ export async function updateCampAction(formData: FormData) {
     after: { name },
     userId: user.id,
     userName: user.name,
-    branchId: null,
-  });
-
-  revalidatePath("/accommodation/camps");
-}
-
-export async function updateRoomAction(formData: FormData) {
-  assertContactsValid(formData);
-  const user = await requireUser();
-  const roomId = String(formData.get("roomId") || "");
-  const name = String(formData.get("name") || "").trim();
-  if (!roomId || !name) return;
-
-  const before = await prisma.room.findUnique({ where: { id: roomId } });
-  await prisma.room.update({ where: { id: roomId }, data: { name } });
-
-  await logAudit({
-    entityType: "ROOM",
-    entityId: roomId,
-    action: "UPDATE",
-    before: before as unknown as Record<string, unknown>,
-    after: { name },
-    userId: user.id,
-    userName: user.name,
-    branchId: null,
+    branchId: campOwner,
   });
 
   revalidatePath("/accommodation/camps");
 }
 
 export async function addBedsToRoomAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
-  await requireUser();
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const roomId = String(formData.get("roomId") || "");
   const kind = String(formData.get("kind") || "single") === "bunk" ? "bunk" : "single";
   const count = Math.max(1, Math.min(20, Number(formData.get("count")) || 1));
   if (!roomId) return;
+  if ((await roomBranch(roomId, { branchId, isSuperAdmin })) === undefined) return;
 
   const existing = await prisma.bed.findMany({ where: { roomId }, select: { label: true } });
   if (kind === "bunk") {
@@ -231,16 +233,19 @@ export async function addBedsToRoomAction(formData: FormData) {
   revalidatePath("/accommodation/camps");
 }
 
-// Beds/rooms/camps themselves aren't branch-scoped yet — only the employee
-// being assigned/unassigned needs to belong to the caller's branch.
+// The employee AND the bed must both belong to the caller's branch, and to the
+// same branch as each other: checking only the employee let one tenant put a
+// worker into another tenant's bed.
 //
 // A direct bed assignment (from the Employee profile's own Accommodation
 // section, bypassing Create Check-In/Bed Allocation) still needs a
 // CampCheckIn row behind it, or the employee would show a bed but never
 // appear "checked in" anywhere — so one is opened (or reused/moved) here too.
 export async function assignBedAction(formData: FormData) {
+  await requireWrite("facilities");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
   const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
   if (!bedId || !employeeId) return;
@@ -249,6 +254,9 @@ export async function assignBedAction(formData: FormData) {
 
   const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { room: { include: { camp: true } } } });
   if (!bed) return;
+  if (isOutsideBranch(bed.room.camp.branchId, branchId, isSuperAdmin)) return;
+  // Even a super admin must not house one tenant's worker in another's camp.
+  if (bed.room.camp.branchId !== employee.branchId) return;
 
   await prisma.$transaction(async (tx) => {
     await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
@@ -295,64 +303,65 @@ export async function assignBedAction(formData: FormData) {
   revalidatePath(`/employees/${employeeId}`);
 }
 
-export async function unassignBedAction(formData: FormData) {
-  assertContactsValid(formData);
+export type CheckoutResult = { error?: string; scheduled?: boolean; date?: string };
+
+/**
+ * Checks a worker out of their bed with a reason and a date. A date today or earlier frees the bed at
+ * once and records the stay as ending then; a later date is a scheduled checkout: the worker keeps the
+ * bed until that day, when it is released the next time a camp screen loads.
+ */
+export async function checkOutWorkerAction(formData: FormData): Promise<CheckoutResult> {
+  await requireWrite("facilities.camps");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("facilities", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const bedId = String(formData.get("bedId") || "");
   const employeeId = String(formData.get("employeeId") || "");
-  if (!bedId) return;
-  if (employeeId) {
-    const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
-    if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return;
+  const date = String(formData.get("date") || "");
+  const reason = String(formData.get("reason") || "");
+  const note = String(formData.get("note") || "").trim().slice(0, 300);
+  if (!employeeId) return { error: "Choose who is leaving." };
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, bed: { select: { id: true } } } });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't check that worker out." };
+  if (!employee.bed) return { error: "They aren't in a bed." };
+
+  const open = await prisma.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
+  const problem = checkoutProblem({ date, reason, note, checkInDate: open ? dayKey(open.checkInDate) : "1970-01-01" });
+  if (problem) return { error: problem };
+
+  if (checkoutKind(date) === "future") {
+    if (!open) return { error: "There's no open stay to schedule a checkout for." };
+    await prisma.accommodationHistory.update({ where: { id: open.id }, data: { plannedCheckOutDate: new Date(`${date}T12:00:00Z`), plannedCheckOutReason: reason, plannedCheckOutNote: note || null } });
+    await logAudit({ entityType: "ACCOMMODATION", entityId: employee.bed.id, action: "UPDATE", after: { employeeId, scheduledCheckOut: date, reason, note }, userId: user.id, userName: user.name, branchId: employee.branchId });
+    revalidateCampScreens(employeeId);
+    return { scheduled: true, date };
   }
 
-  const bed = await prisma.bed.update({
-    where: { id: bedId },
-    data: { employeeId: null },
-    include: { room: { include: { camp: true } } },
-  });
+  const bed = await prisma.$transaction((tx) => checkOutNow(tx, { employeeId, date, reason, note: note || null }));
+  await logAudit({ entityType: "ACCOMMODATION", entityId: employee.bed.id, action: "UPDATE", before: { employeeId, ...bed }, after: { employeeId: null, checkOutDate: date, reason, note }, userId: user.id, userName: user.name, branchId: employee.branchId });
+  revalidateCampScreens(employeeId);
+  return { date };
+}
 
-  if (employeeId) {
-    await prisma.$transaction(async (tx) => {
-      const openHistory = await tx.accommodationHistory.findFirst({
-        where: { employeeId, checkOutDate: null },
-        orderBy: { checkInDate: "desc" },
-      });
-      if (openHistory) {
-        await tx.accommodationHistory.update({
-          where: { id: openHistory.id },
-          data: { checkOutDate: new Date() },
-        });
-      }
+/** Cancels a scheduled checkout: the worker simply stays. */
+export async function cancelScheduledCheckoutAction(employeeId: string): Promise<CheckoutResult> {
+  await requireWrite("facilities.camps");
+  await requirePermission("facilities", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
+  if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't change that worker." };
+  const open = await prisma.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
+  if (!open?.plannedCheckOutDate) return { error: "No checkout is scheduled." };
+  await prisma.accommodationHistory.update({ where: { id: open.id }, data: { plannedCheckOutDate: null, plannedCheckOutReason: null, plannedCheckOutNote: null } });
+  await logAudit({ entityType: "ACCOMMODATION", entityId: open.id, action: "UPDATE", before: { scheduledCheckOut: dayKey(open.plannedCheckOutDate) }, after: { scheduledCheckOut: null }, userId: user.id, userName: user.name, branchId: employee.branchId });
+  revalidateCampScreens(employeeId);
+  return {};
+}
 
-      const openCheckIn = await tx.campCheckIn.findFirst({
-        where: { employeeId, status: { in: ["CHECKED_IN", "BED_ALLOCATED"] } },
-        orderBy: { createdAt: "desc" },
-      });
-      if (openCheckIn) {
-        await tx.campCheckIn.update({
-          where: { id: openCheckIn.id },
-          data: { status: "CHECKED_OUT", checkOutDate: new Date(), bedId: null },
-        });
-      }
-    });
-
-    await logAudit({
-      entityType: "ACCOMMODATION",
-      entityId: bedId,
-      action: "UPDATE",
-      before: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label },
-      after: { employeeId: null },
-      userId: user.id,
-      userName: user.name,
-      branchId,
-    });
-  }
-
+function revalidateCampScreens(employeeId: string) {
   revalidatePath("/accommodation/camps");
   revalidatePath("/accommodation/checkin");
   revalidatePath("/accommodation/bed-allocation");
-  if (employeeId) revalidatePath(`/employees/${employeeId}`);
+  revalidatePath(`/employees/${employeeId}`);
 }
 
 /**
@@ -364,11 +373,14 @@ export async function unassignBedAction(formData: FormData) {
  * worker out first, then the bed can go.
  */
 export async function deleteBedAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "delete");
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const bedId = String(formData.get("bedId") || "");
   if (!bedId) return;
+  const bedOwner = await bedBranch(bedId, { branchId, isSuperAdmin });
+  if (bedOwner === undefined) return;
 
   const bed = await prisma.bed.findUnique({
     where: { id: bedId },
@@ -392,18 +404,21 @@ export async function deleteBedAction(formData: FormData) {
     before: { roomId: bed.roomId, roomName: bed.room.name, label: bed.label },
     userId: user.id,
     userName: user.name,
-    branchId: null,
+    branchId: bedOwner,
   });
 
   revalidatePath("/accommodation/camps");
 }
 
 export async function deleteRoomAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "delete");
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const roomId = String(formData.get("roomId") || "");
   if (!roomId) return;
+  const roomOwner = await roomBranch(roomId, { branchId, isSuperAdmin });
+  if (roomOwner === undefined) return;
 
   const existing = await prisma.room.findUnique({ where: { id: roomId } });
 
@@ -433,7 +448,7 @@ export async function deleteRoomAction(formData: FormData) {
       before: { campId: existing.campId, name: existing.name },
       userId: user.id,
       userName: user.name,
-      branchId: null,
+      branchId: roomOwner,
     });
   }
 
@@ -442,11 +457,14 @@ export async function deleteRoomAction(formData: FormData) {
 }
 
 export async function deleteCampAction(formData: FormData) {
+  await requireWrite("facilities.camps");
   assertContactsValid(formData);
   await requirePermission("facilities", "delete");
-  const user = await requireUser();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campId = String(formData.get("campId") || "");
   if (!campId) return;
+  const campOwner = await campBranch(campId, { branchId, isSuperAdmin });
+  if (campOwner === undefined) return;
 
   const existing = await prisma.camp.findUnique({ where: { id: campId } });
   if (!existing) return;
@@ -473,7 +491,7 @@ export async function deleteCampAction(formData: FormData) {
       before: { name: existing.name },
       userId: user.id,
       userName: user.name,
-      branchId: null,
+      branchId: campOwner,
     });
   }
 
@@ -487,11 +505,19 @@ export async function deleteCampAction(formData: FormData) {
  * check-in slip relies on goes missing.
  */
 export async function placeWorkerInBedAction(employeeId: string, bedId: string): Promise<{ error?: string }> {
+  await requireWrite("facilities.camps");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
   const employee = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, name: true } });
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) return { error: "You can't move that worker." };
   const bed = await prisma.bed.findUnique({ where: { id: bedId }, include: { room: { include: { camp: true } } } });
   if (!bed) return { error: "That bed no longer exists." };
+  // Same rule as assignBedAction: the bed must be the caller's, and in the
+  // worker's own branch. Checking only the worker let drag-and-drop place them
+  // in another tenant's camp.
+  if (isOutsideBranch(bed.room.camp.branchId, branchId, isSuperAdmin) || bed.room.camp.branchId !== employee.branchId) {
+    return { error: "That bed no longer exists." };
+  }
   if (bed.employeeId) return { error: bed.employeeId === employeeId ? "They're already in that bed." : "That bed was just taken." };
 
   try {
@@ -500,7 +526,7 @@ export async function placeWorkerInBedAction(employeeId: string, bedId: string):
       if (current) {
         await tx.bed.update({ where: { id: current.id }, data: { employeeId: null } });
         const open = await tx.accommodationHistory.findFirst({ where: { employeeId, checkOutDate: null }, orderBy: { checkInDate: "desc" } });
-        if (open) await tx.accommodationHistory.update({ where: { id: open.id }, data: { checkOutDate: new Date() } });
+        if (open) await tx.accommodationHistory.update({ where: { id: open.id }, data: { checkOutDate: new Date(), checkOutReason: "Moved to another bed" } });
       }
       await tx.bed.update({ where: { id: bedId }, data: { employeeId } });
       await tx.accommodationHistory.create({ data: { employeeId, campName: bed.room.camp.name, roomName: bed.room.name, bedLabel: bed.label } });

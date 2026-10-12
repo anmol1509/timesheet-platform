@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { m } from "motion/react";
 import { SPRING } from "@/lib/motion";
@@ -43,8 +43,12 @@ import {
   Landmark,
   Inbox,
   FileClock,
+  UserCheck,
   type LucideIcon,
-} from "lucide-react";
+  HeartPulse,
+  FileOutput,
+  Pin,
+  PinOff, KeyRound } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
@@ -78,42 +82,43 @@ const NAV: Entry[] = [
       icon: LayoutDashboard,
       alsoMatch: ["/dashboards"],
     },
-    category: "Workspace",
+    category: "Home",
   },
   {
     type: "link",
     item: { href: "/approvals", label: "Approvals", icon: ShieldCheck },
-    category: "Workspace",
+    category: "Home",
   },
   {
     type: "link",
     item: { href: "/drafts", label: "Drafts", icon: FileClock },
-    category: "Workspace",
+    category: "Home",
   },
+  // People: the journey of a worker, from candidate to employee.
   {
     type: "group",
     label: "Workforce",
     icon: Users,
-    category: "Operations",
+    category: "People",
     children: [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/employees/instant-view", label: "Instant View", icon: FileSearch },
       { href: "/employees/renewals", label: "Renewals", icon: CalendarClock },
       { href: "/documents", label: "Documents", icon: FileText },
-      { href: "/trades", label: "Trades", icon: Wrench },
-      { href: "/inventory", label: "PPE & Inventory", icon: Package },
     ],
   },
   {
     type: "group",
-    label: "Projects",
-    icon: ClipboardList,
-    category: "Operations",
+    label: "Letters",
+    icon: FileSignature,
+    category: "People",
     children: [
-      { href: "/projects", label: "Projects", icon: ClipboardList },
-      { href: "/sites", label: "Sites", icon: MapPin },
+      { href: "/letters", label: "All Letters", icon: FileSignature },
+      { href: "/operations/nocs", label: "NOC", icon: FileText },
+      { href: "/letter-templates", label: "Templates", icon: FileStack },
     ],
   },
+  // Operations: demand, the projects it serves, and the camps and transport behind it.
   {
     type: "group",
     label: "Demand",
@@ -135,6 +140,16 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
+    label: "Projects",
+    icon: ClipboardList,
+    category: "Operations",
+    children: [
+      { href: "/projects", label: "Projects", icon: ClipboardList },
+      { href: "/sites", label: "Sites", icon: MapPin },
+    ],
+  },
+  {
+    type: "group",
     label: "Facilities",
     icon: BedDouble,
     category: "Operations",
@@ -144,48 +159,43 @@ const NAV: Entry[] = [
       { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
       // Vehicles and Routes are tabs of this one row.
       { href: "/transport", label: "Transport", icon: Bus },
+      { href: "/inventory", label: "Inventory", icon: Package },
     ],
   },
+  // Time & Billing: hours worked, then what is invoiced and paid for them.
   {
     type: "group",
     label: "Timesheets",
     icon: FileSpreadsheet,
-    category: "Operations",
+    category: "Time & Billing",
     children: [
       { href: "/attendance", label: "Daily Attendance", icon: Clock },
       // Daily view and Attendance sync are tabs of this row.
       { href: "/invoices/client-timesheet", label: "Client Timesheet", icon: FileSearch },
-      // Upload → Generate Sheets → History is one pipeline; three tabs.
+      // Generate Sheets and History are the tabs of this row.
       {
-        href: "/upload",
-        label: "Import & Generate",
-        icon: UploadIcon,
-        alsoMatch: ["/companies", "/history"],
+        href: "/companies",
+        label: "Generate",
+        icon: FileOutput,
+        alsoMatch: ["/history", "/upload"],
       },
     ],
   },
   {
     type: "group",
-    label: "Letters",
-    icon: FileSignature,
-    category: "Operations",
+    label: "Finance",
+    icon: Landmark,
+    category: "Time & Billing",
     children: [
-      { href: "/letters", label: "Employee Letters", icon: FileSignature },
-      { href: "/operations/nocs", label: "NOCs", icon: FileText },
+      { href: "/finance", label: "Overview", icon: Landmark, exact: true },
+      // Invoice history is a tab of Invoices.
+      { href: "/invoices", label: "Invoices", icon: Receipt },
+      { href: "/payroll", label: "Payroll", icon: Banknote },
+      { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
+      { href: "/finance/expenses", label: "Expenses", icon: Wallet },
     ],
   },
-  {
-    type: "group",
-    label: "Business Partners",
-    icon: Building2,
-    category: "Commercial",
-    children: [
-      { href: "/clients", label: "Clients", icon: Building2 },
-      { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/suppliers/tickets", label: "Supplier Messages", icon: Inbox, alsoMatch: ["/suppliers/contacts"] },
-      { href: "/banks", label: "Banks", icon: Wallet },
-    ],
-  },
+  // Commercial: who you sell to and buy from.
   {
     type: "group",
     label: "Sales",
@@ -198,16 +208,35 @@ const NAV: Entry[] = [
   },
   {
     type: "group",
-    label: "Finance",
-    icon: Landmark,
+    label: "Business Partners",
+    icon: Building2,
     category: "Commercial",
     children: [
-      { href: "/finance", label: "Overview", icon: Landmark, exact: true },
-      // Invoice history is a tab of Invoices.
-      { href: "/invoices", label: "Invoices", icon: Receipt },
-      { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
-      { href: "/finance/expenses", label: "Expenses", icon: Wallet },
-      { href: "/payroll", label: "Payroll", icon: Banknote },
+      { href: "/clients", label: "Clients", icon: Building2 },
+      { href: "/suppliers", label: "Suppliers", icon: Truck },
+      { href: "/suppliers/tickets", label: "Supplier Messages", icon: Inbox, alsoMatch: ["/suppliers/contacts"] },
+    ],
+  },
+  // Setup: reference lists that change rarely.
+  {
+    type: "group",
+    label: "Reference Data",
+    icon: Wrench,
+    category: "Setup",
+    children: [
+      { href: "/trades", label: "Trades", icon: Wrench },
+      { href: "/banks", label: "Banks", icon: Wallet },
+    ],
+  },
+  // Onboarding is still being worked on, so it sits at the very bottom of the list, out of the way.
+  {
+    type: "group",
+    label: "Onboarding",
+    icon: UserCheck,
+    category: "Setup",
+    children: [
+      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
+      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
     ],
   },
 ];
@@ -224,7 +253,7 @@ export function getNavPages(
   isSuperAdmin: boolean,
   allowedModules: string[] | null = null
 ): NavPage[] {
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
   const pages: NavPage[] = [];
   for (const entry of entries) {
     if (entry.type === "link") {
@@ -254,23 +283,23 @@ function visibleEntries(entries: Entry[], allowed: string[] | null): Entry[] {
   });
 }
 
-function adminGroup(isSuperAdmin: boolean): Entry {
+function adminGroup(): Entry {
   return {
     type: "group",
     label: "Administration",
     icon: ListChecks,
-    category: "Administration",
+    category: "Setup",
     children: [
       { href: "/settings/company", label: "Company Profile", icon: Building },
+      { href: "/import", label: "Import Data", icon: UploadIcon },
+      { href: "/data-health", label: "Data health", icon: HeartPulse },
       { href: "/settings/team", label: "Team & Access", icon: UserCog },
+      { href: "/settings/developers", label: "Developers", icon: KeyRound },
       { href: "/lookups", label: "Lookups", icon: ListChecks },
-      { href: "/letter-templates", label: "Letter Templates", icon: FileText },
       { href: "/audit-log", label: "Audit Log", icon: History },
-      // Deletes real data — kept out of the nav (and the page itself
-      // redirects away) for anyone but a Super Admin.
-      ...(isSuperAdmin
-        ? [{ href: "/settings/data-reset", label: "Data Reset", icon: Trash2 }]
-        : []),
+      // Deletes real data. The whole group is admin-only; the page and its
+      // actions additionally confine a branch admin to their own branch.
+      { href: "/settings/data-reset", label: "Data Reset", icon: Trash2 },
     ],
   };
 }
@@ -321,16 +350,53 @@ function groupContainsActive(activeHref: string | null, children: Item[]) {
 // Active state reads as "selected", not as a coloured button: a tinted surface
 // plus a brand rail, so a long nav doesn't turn into a stack of blue blocks.
 const ROW =
-  "group/row relative flex items-center rounded-control text-sm transition-colors";
-const ACTIVE = "bg-brand-soft font-medium text-[var(--brand-primary)]";
+  "group/row relative flex items-center rounded-[10px] text-[13.5px] transition-colors";
+const ACTIVE =
+  "bg-brand-soft font-semibold text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_var(--brand-primary-border)]";
 const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
+
+/* ---- Per-browser sidebar preferences (open group, pinned pages) -------------
+ * Read through useSyncExternalStore so the server render and first client
+ * render agree (both see "nothing saved") and the saved value then arrives
+ * without an effect pushing state around. */
+const OPEN_KEY = "nav.openGroup";
+const PINS_KEY = "nav.pins";
+const MAX_PINS = 6;
+const PREFS_EVENT = "nav-prefs";
+
+function subscribePrefs(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener(PREFS_EVENT, cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(PREFS_EVENT, cb);
+  };
+}
+function readPref(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode: the choice just isn't remembered */
+  }
+  window.dispatchEvent(new Event(PREFS_EVENT));
+}
+function usePref(key: string) {
+  return useSyncExternalStore(subscribePrefs, () => readPref(key), () => null);
+}
 
 export function NavLinks({
   isAdmin,
-  isSuperAdmin,
   allowedModules = null,
   collapsed = false,
   pendingApprovals = 0,
+  badges = {},
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -340,9 +406,11 @@ export function NavLinks({
   collapsed?: boolean;
   /** Items waiting for this person, shown as a count on the Approvals row. */
   pendingApprovals?: number;
+  /** Other rows that need someone to act, by href — shown as a count. */
+  badges?: Record<string, number>;
 }) {
   const pathname = usePathname();
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup(isSuperAdmin)] : NAV, allowedModules);
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
 
   // One winner across the *whole* nav, not per group — fixes two rows (in
   // different groups, or a group row and a top-level item) lighting up for
@@ -354,26 +422,65 @@ export function NavLinks({
     : entries;
   const activeHref = resolveActiveHref(pathname, navCandidates);
 
-  // Only records groups the user explicitly toggled. Whether a group is *open*
-  // is derived below, so navigating into a group (via search or a deep link)
-  // reveals it without an effect syncing state back after the fact.
-  const [overrides, setOverrides] = useState<Map<string, boolean>>(new Map());
+  // One group open at a time. What is open comes from, in order: a choice made
+  // on this page (cleared by navigating), the group holding the current page,
+  // then the group that was open last time. Navigating into a group (via
+  // search or a deep link) therefore reveals it with no effect syncing state.
+  const [choice, setChoice] = useState<{ path: string; group: string | null } | null>(null);
+  const rememberedRaw = usePref(OPEN_KEY);
+  const remembered = rememberedRaw || null;
+  let activeGroup: string | null = null;
+  for (const e of entries) if (e.type === "group" && groupContainsActive(activeHref, e.children)) activeGroup = e.label;
+  const chosen = choice && choice.path === pathname ? choice : null;
+  const openLabel = chosen ? chosen.group : (activeGroup ?? remembered);
 
-  function isOpen(label: string, children: Item[]) {
-    const override = overrides.get(label);
-    if (override !== undefined) return override;
-    return groupContainsActive(activeHref, children);
+  // Remember the group you were last working in, for the next visit.
+  useEffect(() => {
+    if (activeGroup) writePref(OPEN_KEY, activeGroup);
+  }, [activeGroup]);
+
+  function isOpen(label: string) {
+    return openLabel === label;
   }
 
-  function toggle(label: string, children: Item[]) {
-    setOverrides((prev) => {
-      const next = new Map(prev);
-      next.set(label, !isOpen(label, children));
-      return next;
-    });
+  function toggle(label: string) {
+    const next = openLabel === label ? null : label;
+    setChoice({ path: pathname, group: next });
+    writePref(OPEN_KEY, next ?? "");
   }
 
-  function renderLeaf(item: Item, depth: 0 | 1, keyPrefix = "") {
+  // Pinned pages: a short list kept at the top, saved in this browser. Only pages
+  // this person can open are kept (entries is already permission-filtered).
+  const pinsRaw = usePref(PINS_KEY);
+  const itemByHref = useMemo(() => {
+    const m = new Map<string, Item>();
+    for (const e of entries) {
+      if (e.type === "link") m.set(e.item.href, e.item);
+      else for (const c of e.children) m.set(c.href, c);
+    }
+    if (isAdmin) m.set(ADMIN_ITEM.href, ADMIN_ITEM);
+    return m;
+  }, [entries, isAdmin]);
+  const pins = useMemo(() => {
+    let list: string[] = [];
+    try {
+      const parsed = JSON.parse(pinsRaw ?? "[]");
+      if (Array.isArray(parsed)) list = parsed.filter((h): h is string => typeof h === "string");
+    } catch {
+      /* ignore a corrupt value */
+    }
+    return list.filter((h) => itemByHref.has(h)).slice(0, MAX_PINS);
+  }, [pinsRaw, itemByHref]);
+
+  function togglePin(href: string) {
+    const next = pins.includes(href) ? pins.filter((h) => h !== href) : pins.length < MAX_PINS ? [...pins, href] : pins;
+    writePref(PINS_KEY, JSON.stringify(next));
+  }
+
+  const countFor = (href: string) => (href === "/approvals" ? pendingApprovals : badges[href] ?? 0);
+
+  function renderLeaf(item: Item, depth: 0 | 1, keyPrefix = "", opts: { rail?: boolean; pin?: boolean } = {}) {
+    const { rail = true, pin = true } = opts;
     const active = item.href === activeHref;
     const Icon = item.icon;
 
@@ -396,45 +503,75 @@ export function NavLinks({
       );
     }
 
+    const count = countFor(item.href);
+    const isPinned = pins.includes(item.href);
+    const canPin = pin && (isPinned || pins.length < MAX_PINS);
     return (
-      <Link
-        key={item.href}
-        href={item.href}
-        aria-current={active ? "page" : undefined}
-        className={cn(
-          ROW,
-          "gap-2.5 py-1.5",
-          depth === 0 ? "px-2.5" : "px-2.5",
-          active ? ACTIVE : INACTIVE
+      <div key={keyPrefix + item.href} className="group/pin relative">
+        <Link
+          href={item.href}
+          aria-current={active ? "page" : undefined}
+          className={cn(
+            ROW,
+            depth === 0 ? "gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-1.5 text-[13px]",
+            active ? ACTIVE : INACTIVE
+          )}
+        >
+          {active && rail && (
+            <m.span
+              layoutId="nav-active-rail"
+              transition={SPRING}
+              className="absolute top-1/2 -left-3 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
+              aria-hidden
+            />
+          )}
+          <Icon className={cn("shrink-0", depth === 0 ? "h-[18px] w-[18px]" : "h-4 w-4", !active && "text-muted group-hover/row:text-secondary")} />
+          <span className="truncate">{item.label}</span>
+          {count > 0 && (
+            <span
+              className={cn(
+                "tabular ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold text-white transition-opacity group-hover/pin:opacity-0 group-focus-within/pin:opacity-0",
+                item.href === "/approvals" ? "bg-[var(--error)]" : "bg-[var(--warning)]"
+              )}
+              aria-label={`${count} need attention`}
+            >
+              {count > 99 ? "99+" : count}
+            </span>
+          )}
+        </Link>
+        {pin && (
+          <button
+            type="button"
+            onClick={() => togglePin(item.href)}
+            disabled={!canPin}
+            aria-label={isPinned ? `Unpin ${item.label}` : `Pin ${item.label}`}
+            aria-pressed={isPinned}
+            title={isPinned ? "Unpin" : canPin ? "Pin to the top" : `You can pin up to ${MAX_PINS} pages`}
+            className="absolute top-1/2 right-1.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-subtle opacity-0 transition hover:bg-surface-hover hover:text-primary focus-visible:opacity-100 group-hover/pin:opacity-100 disabled:cursor-not-allowed disabled:opacity-0"
+          >
+            {isPinned ? <PinOff className="h-3.5 w-3.5" aria-hidden /> : <Pin className="h-3.5 w-3.5" aria-hidden />}
+          </button>
         )}
-      >
-        {active && (
-          <m.span
-            layoutId="nav-active-rail"
-            transition={SPRING}
-            className="absolute top-1/2 -left-3 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--brand-primary)]"
-            aria-hidden
-          />
-        )}
-        <Icon className={cn("shrink-0", depth === 0 ? "h-4 w-4" : "h-3.5 w-3.5")} />
-        <span className="truncate">{item.label}</span>
-        {item.href === "/approvals" && pendingApprovals > 0 && (
-          <span className="ml-auto rounded-full bg-[var(--warning)] px-1.5 text-[10px] font-semibold text-white" aria-label={`${pendingApprovals} waiting`}>{pendingApprovals > 99 ? "99+" : pendingApprovals}</span>
-        )}
-      </Link>
+      </div>
     );
   }
 
   return (
     <nav className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
+      {!collapsed && pins.length > 0 && (
+        <div className="contents">
+          <p className="px-2.5 pt-1.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase">Pinned</p>
+          {pins.map((href) => renderLeaf(itemByHref.get(href)!, 0, "pin-", { rail: false, pin: false }))}
+        </div>
+      )}
       {entries.map((entry, i) => {
         const showCategory = !collapsed && entry.category !== entries[i - 1]?.category;
         const categoryHeader = showCategory && (
           <p
             key={`cat-${entry.category}`}
             className={cn(
-              "px-2.5 pt-3 pb-1 text-[10px] font-semibold tracking-wider text-subtle uppercase",
-              i === 0 && "pt-1"
+              "px-2.5 pt-5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase",
+              i === 0 && "pt-1.5"
             )}
           >
             {entry.category}
@@ -467,8 +604,9 @@ export function NavLinks({
         }
 
         const GroupIcon = entry.icon;
-        const open = isOpen(entry.label, entry.children);
+        const open = isOpen(entry.label);
         const hasActiveChild = groupContainsActive(activeHref, entry.children);
+        const groupCount = entry.children.reduce((n, c) => n + countFor(c.href), 0);
 
         // Collapsed rail: one icon per GROUP (not per child — flattening every
         // child into the rail left ~40 near-identical icons with no way to
@@ -517,21 +655,22 @@ export function NavLinks({
             <div>
             <button
               type="button"
-              onClick={() => toggle(entry.label, entry.children)}
+              onClick={() => toggle(entry.label)}
               aria-expanded={open}
               className={cn(
                 ROW,
-                "w-full gap-2.5 px-2.5 py-1.5",
-                hasActiveChild && !open
-                  ? "font-medium text-primary"
+                "w-full gap-3 px-2.5 py-2",
+                hasActiveChild
+                  ? "font-semibold text-primary hover:bg-surface-hover"
                   : "text-secondary hover:bg-surface-hover hover:text-primary"
               )}
             >
-              <GroupIcon className="h-4 w-4 shrink-0" />
+              <GroupIcon className={cn("h-[18px] w-[18px] shrink-0", hasActiveChild ? "text-[var(--brand-primary)]" : "text-muted")} />
               <span className="flex-1 truncate text-left">{entry.label}</span>
-              {hasActiveChild && !open && (
+              {!open && (hasActiveChild || groupCount > 0) && (
                 <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-primary)]"
+                  className={cn("h-1.5 w-1.5 shrink-0 rounded-full", groupCount > 0 ? "bg-[var(--error)]" : "bg-[var(--brand-primary)]")}
+                  title={groupCount > 0 ? `${groupCount} need attention` : undefined}
                   aria-hidden
                 />
               )}
@@ -554,7 +693,15 @@ export function NavLinks({
               }}
             >
               <div className="overflow-hidden">
-                <div className="mt-0.5 ml-[1.0625rem] flex flex-col gap-0.5 border-l border-default pl-3">
+                <div
+                  className="mt-0.5 mb-1 ml-[1.125rem] flex flex-col gap-0.5 border-l border-default pl-3"
+                  style={{
+                    opacity: open ? 1 : 0,
+                    transform: open ? "translateY(0)" : "translateY(-4px)",
+                    transition: "opacity var(--duration) var(--ease), transform var(--duration) var(--ease)",
+                  }}
+                  inert={!open}
+                >
                   {entry.children.map((child) => renderLeaf(child, 1))}
                 </div>
               </div>

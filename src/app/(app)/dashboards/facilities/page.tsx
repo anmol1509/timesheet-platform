@@ -1,20 +1,44 @@
+import { Tent } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { PageHeader } from "@/components/PageHeader";
+import { FacilitiesExtras } from "@/components/dashboard/ModuleExtras";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
-import { StatusBreakdown } from "@/components/StatusBreakdown";
+import { StatusDonut } from "@/components/Donut";
 import { OccupancyRing } from "@/components/OccupancyRing";
+import { BarList, type BarListTone } from "@/components/BarList";
 
 export default async function FacilitiesDashboardPage() {
-  // Camp/Room/Bed/Vehicle aren't branch-scoped (deliberate, see Facilities
-  // module history), so this dashboard stays cross-branch like the main one.
-  const [beds, vehicles, campCount, awaitingBed] = await Promise.all([
-    prisma.bed.findMany({ select: { employeeId: true } }),
-    prisma.vehicle.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.camp.count(),
-    prisma.campCheckIn.count({ where: { status: "CHECKED_IN" } }),
+  const { user, branchId } = await requireUserWithBranch();
+  // Camp and Vehicle are branch-scoped; Room/Bed/Route inherit through them.
+  const [beds, vehicles, camps, awaitingBed] = await Promise.all([
+    prisma.bed.findMany({ where: { room: { camp: branchWhere(branchId) } }, select: { employeeId: true } }),
+    prisma.vehicle.groupBy({ by: ["status"], where: branchWhere(branchId), _count: { _all: true } }),
+    prisma.camp.findMany({
+      where: branchWhere(branchId),
+      select: { id: true, name: true, rooms: { select: { beds: { select: { employeeId: true } } } } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.campCheckIn.count({ where: { ...branchWhere(branchId), status: "CHECKED_IN" } }),
   ]);
+  const campCount = camps.length;
+
+  const campOccupancy = camps
+    .map((c) => {
+      const campBeds = c.rooms.flatMap((r) => r.beds);
+      const occupied = campBeds.filter((b) => b.employeeId).length;
+      const pct = campBeds.length > 0 ? Math.round((occupied / campBeds.length) * 100) : 0;
+      const tone: BarListTone = pct >= 90 ? "danger" : pct >= 70 ? "warning" : "success";
+      return { id: c.id, name: c.name, occupied, total: campBeds.length, pct, tone };
+    })
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.pct - a.pct);
 
   const totalBeds = beds.length;
   const occupiedBeds = beds.filter((b) => b.employeeId).length;
@@ -23,11 +47,15 @@ export default async function FacilitiesDashboardPage() {
     totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
   const totalVehicles = vehicles.reduce((sum, v) => sum + v._count._all, 0);
 
+  const hiddenSections = await getHiddenSections(user.id, "facilities");
+
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={Tent}
         title="Facilities overview"
         description="Camps, bed occupancy and the vehicle fleet."
+      actions={<CustomizeSections module="facilities" sections={[{ id: "overview", label: "Occupancy and vehicles" }, { id: "extras", label: "Vehicle documents and movement" }]} hidden={[...hiddenSections]} />}
       />
       <DashboardTabs />
 
@@ -63,6 +91,7 @@ export default async function FacilitiesDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {totalBeds > 0 && (
           <Panel title="Camp occupancy" href="/accommodation/camps">
@@ -75,16 +104,37 @@ export default async function FacilitiesDashboardPage() {
         )}
 
         <Panel title="Vehicles by status" href="/transport">
-          <StatusBreakdown
+          <StatusDonut
             items={vehicles.map((v) => ({
               status: v.status,
               count: v._count._all,
             }))}
-            unit="vehicles"
             emptyMessage="No vehicles registered."
           />
         </Panel>
+
+        {campOccupancy.length > 0 && (
+          <Panel title="Occupancy by camp" href="/accommodation/camps" className="lg:col-span-2">
+            <BarList
+              showShare={false}
+              items={campOccupancy.map((c) => ({
+                key: c.id,
+                label: `${c.name} · ${c.occupied}/${c.total} beds`,
+                value: c.pct,
+                valueLabel: `${c.pct}%`,
+                tone: c.tone,
+                href: `/accommodation/camps`,
+              }))}
+              emptyLabel="No camps with beds yet."
+            />
+          </Panel>
+        )}
       </div>
+      </Sec>
+
+      <Sec id="extras" hidden={hiddenSections}>
+      <FacilitiesExtras branchId={branchId} />
+      </Sec>
     </div>
   );
 }

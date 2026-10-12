@@ -1,24 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { Building2, Sparkles, ChevronRight } from "lucide-react";
+import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { cn } from "@/lib/cn";
 
 export type Brand = {
   name: string;
-  /** /api/images/<id> URL of the uploaded company logo, or null for the initials tile. */
+  /** /api/images/<id> URL of the uploaded company logo, or null for the default mark. */
   logoUrl: string | null;
+  /** The active branch's city/emirate, shown under its name — falls back to a generic label when not set. */
+  city?: string | null;
 };
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "?";
-}
-
-/** Sidebar brand block: the company's uploaded logo (or an initials tile) and name. */
+/** Product wordmark: the ManpowerSync mark + name. Links to the dashboard. */
 export function BrandMark({
-  brand,
   collapsed = false,
   onNavigate,
 }: {
-  brand: Brand;
+  brand?: Brand;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
@@ -27,30 +27,66 @@ export function BrandMark({
       href="/"
       onClick={onNavigate}
       className="flex min-w-0 items-center gap-2.5"
-      aria-label={`${brand.name} — dashboard`}
+      aria-label="ManpowerSync — dashboard"
     >
+      {/* eslint-disable @next/next/no-img-element -- data URIs, no loader needed */}
+      {collapsed ? (
+        <img src={BRAND_ICON} alt="" width={32} height={32} className="h-8 w-8 shrink-0" />
+      ) : (
+        <img src={BRAND_LOGO} alt="ManpowerSync" width={Math.round(34 * BRAND_LOGO_ASPECT)} height={34} className="brand-logo h-[34px] w-auto max-w-full" />
+      )}
+      {/* eslint-enable @next/next/no-img-element */}
+    </Link>
+  );
+}
+
+/** The active branch (company) — its uploaded logo, or a tinted building tile.
+ * For an admin (who can actually see it), links into the company profile
+ * page — the one place its own details, including this city label, are
+ * edited. Everyone else sees the same card, just not clickable. */
+export function BranchCard({ brand, isAdmin = false, onNavigate }: { brand: Brand; isAdmin?: boolean; onNavigate?: () => void }) {
+  const content = (
+    <>
       {brand.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded, served by our own route
-        <img
-          src={brand.logoUrl}
-          alt=""
-          className="h-8 w-8 shrink-0 rounded-md bg-surface-sunken object-contain"
-        />
+        <img src={brand.logoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg bg-surface object-contain" />
       ) : (
-        <span
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-[var(--brand-navy)] text-[11px] font-bold text-white"
-          )}
-        >
-          {initials(brand.name)}
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[image:var(--brand-gradient)] text-white shadow-xs">
+          <Building2 className="h-4 w-4" aria-hidden />
         </span>
       )}
-      {!collapsed && (
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-primary">{brand.name}</span>
-          <span className="block truncate text-[11px] text-subtle">Manpower ERP</span>
-        </span>
-      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold text-primary">{brand.name}</span>
+        <span className="block truncate text-[11px] text-subtle">{brand.city || "Manpower ERP"}</span>
+      </span>
+    </>
+  );
+  const className = "flex items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-2.5 py-2";
+  return isAdmin ? (
+    <Link href="/settings/company" onClick={onNavigate} className={cn(className, "transition hover:bg-surface-hover")}>
+      {content}
     </Link>
+  ) : (
+    <div className={className}>{content}</div>
+  );
+}
+
+/** Sidebar footer shortcut into the floating assistant. */
+export function AskAiCard() {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new CustomEvent("open-my-assistant", { detail: {} }))}
+      className="group flex w-full items-center gap-3 rounded-xl border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2.5 text-left transition hover:shadow-sm"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[image:var(--brand-gradient)] text-white shadow-[var(--shadow-brand)]">
+        <Sparkles className="h-4 w-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] text-muted">Need help?</span>
+        <span className="block truncate text-[13px] font-semibold text-[var(--brand-primary)]">Ask Assistant AI</span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[var(--brand-primary)] transition-transform group-hover:translate-x-0.5" aria-hidden />
+    </button>
   );
 }

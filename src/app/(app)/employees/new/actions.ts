@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { getOrCreateSkill } from "@/lib/skillScope";
+import { requireUserWithBranch, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import {
@@ -104,6 +105,7 @@ export async function generateEmployeeIdAction(
   supplierId: string | null,
   sponsorSupplierId: string | null
 ): Promise<{ id: string | null; error: string | null; source: string | null }> {
+  await requireView("workforce.employees");
   const { branchId } = await requireUserWithBranch();
 
   // Scoped to the branch, so the generated prefix can't disclose the name of
@@ -134,8 +136,12 @@ export async function generateEmployeeIdAction(
   }
 
   // Scan existing IDs under this prefix and continue from the highest serial.
+  // Deliberately across ALL branches: employee IDs are unique across the whole
+  // system, so counting only this branch's would hand two companies whose names
+  // share initials the same ID (BAA001) and the second one would fail to save.
+  // Only the ID strings are read, never the employees behind them.
   const existing = await prisma.employee.findMany({
-    where: { ...branchWhere(branchId), employeeIdNo: { startsWith: prefix } },
+    where: { employeeIdNo: { startsWith: prefix } },
     select: { employeeIdNo: true },
   });
 
@@ -157,6 +163,7 @@ export async function generateEmployeeIdAction(
 export async function checkEmployeeIdAction(
   employeeIdNo: string
 ): Promise<{ taken: boolean; name: string | null }> {
+  await requireView("workforce.employees");
   const trimmed = employeeIdNo.trim();
   if (!trimmed) return { taken: false, name: null };
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -176,6 +183,7 @@ export async function createEmployeeAction(
   _prevState: { error: string | null; createdId?: string },
   formData: FormData
 ): Promise<{ error: string | null; createdId?: string }> {
+  await requireWrite("workforce.employees");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
@@ -232,20 +240,37 @@ export async function createEmployeeAction(
   }
 
   const skillEntries = parseSkills(formData.get("skills"));
+  const category = (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined;
+  const isStaff = category === "STAFF";
+
+  // The salary typed in the wizard is the employee's own pay: payroll reads it
+  // as a flat monthly figure (basic) or an hourly rate, so no pay-type setup is needed later.
+  const salaryType = isStaff ? "BASIC" : stringOrNull(formData.get("salaryType"));
+  const salaryRate = numberOrNull(formData.get("salaryRate"));
+  const ownPay =
+    salaryRate && salaryRate > 0 && (salaryType === "BASIC" || salaryType === "HOURLY")
+      ? salaryType === "HOURLY"
+        ? { payStructure: "HOURLY", hourlyRate: salaryRate, payOverride: true }
+        : { payStructure: "FLAT", flatMonthlyRate: salaryRate, payOverride: true }
+      : {};
 
   const data = {
+    ...ownPay,
     employeeIdNo,
     name,
     branchId,
-    category: (stringOrNull(formData.get("category")) as "STAFF" | "SITE_STAFF" | null) ?? undefined,
+    category,
     // Supplier and sponsorship are interrelated but distinct: the supplier
     // employs the worker, the sponsorship company holds the visa. Supplier was
     // previously only settable from the edit form, never at creation.
     supplierId,
     sponsorSupplierId,
     nationality: stringOrNull(formData.get("nationality")),
+    // For office/corporate staff `position` is their designation and there's no
+    // trade; for site staff it's the trade name, mirrored onto both fields.
     position: stringOrNull(formData.get("position")),
-    trade: stringOrNull(formData.get("position")),
+    trade: isStaff ? null : stringOrNull(formData.get("position")),
+    department: isStaff ? stringOrNull(formData.get("department")) : null,
     gender: stringOrNull(formData.get("gender")),
     mobileNumber: stringOrNull(formData.get("mobileNumber")),
     joinDate: dateOrNull(formData.get("joinDate")),
@@ -267,8 +292,9 @@ export async function createEmployeeAction(
     emiratesIdExpiry: dateOrNull(formData.get("emiratesIdExpiry")),
     notes: stringOrNull(formData.get("notes")),
     projectId,
-    salaryType: stringOrNull(formData.get("salaryType")),
-    salaryRate: numberOrNull(formData.get("salaryRate")),
+    // Office/corporate staff are always paid a fixed monthly salary — never hourly.
+    salaryType,
+    salaryRate,
     photoData:
       photo instanceof File && photo.size > 0
         ? Buffer.from(await photo.arrayBuffer())
@@ -383,14 +409,11 @@ export async function createEmployeeAction(
     });
   }
 
-  for (const entry of skillEntries) {
+  for (const entry of isStaff ? [] : skillEntries) {
     // Matched case-insensitively so "Carpentry" and "carpentry" don't become
-    // two skills — the same rule the Skills module uses.
-    const existingSkill = await prisma.skill.findFirst({
-      where: { name: { equals: entry.name, mode: "insensitive" } },
-    });
-    const skill =
-      existingSkill ?? (await prisma.skill.create({ data: { name: entry.name } }));
+    // two skills. A trade the branch doesn't have yet is created as the
+    // branch's own, not added to the catalogue every other branch reads.
+    const skill = await getOrCreateSkill(entry.name, branchId);
     await prisma.employeeSkill.create({
       data: {
         employeeId: employee.id,
@@ -405,7 +428,7 @@ export async function createEmployeeAction(
 
   // `Employee.trade` is what the roster, demands and timesheets read, so the
   // active trade is mirrored onto it rather than living only on the join.
-  const activeTrade = skillEntries.find((e) => e.isActive);
+  const activeTrade = isStaff ? undefined : skillEntries.find((e) => e.isActive);
   if (activeTrade) {
     await prisma.employee.update({
       where: { id: employee.id },

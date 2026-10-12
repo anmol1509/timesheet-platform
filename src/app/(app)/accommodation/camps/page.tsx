@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { PageHeader } from "@/components/PageHeader";
-import { BedDouble, Home, Percent, Building2 } from "lucide-react";
+import { BedDouble, Download, Home, Percent, Building2, Upload } from "lucide-react";
 import { deleteCampAction } from "../actions";
 import { CampView } from "./camp-view";
 import { AddCampForm } from "./add-camp-form";
@@ -11,7 +11,11 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { Select } from "@/components/ui/Select";
 import { CountrySelect } from "@/components/ui/CountrySelect";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { dayKey } from "@/lib/checkoutReasons";
+import { can } from "@/lib/permissions";
+import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { cn } from "@/lib/cn";
@@ -24,11 +28,17 @@ export default async function CampsPage({
   searchParams: Promise<{ campId?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canExport = can(subjectOf(user), "facilities.camps", "export");
+  const canImport = isAdminRole(user.role);
+  // Release beds whose scheduled checkout date has arrived before showing anything.
+  await settleDueCheckouts(branchId, user);
   const [camps, lookupValues, suppliers] = await Promise.all([
     prisma.camp.findMany({
+      where: branchWhere(branchId),
       include: {
         owningSupplier: { select: { name: true } },
+        owningClient: { select: { name: true } },
         rooms: {
           include: { beds: { orderBy: { label: "asc" } } },
           orderBy: { name: "asc" },
@@ -67,25 +77,35 @@ export default async function CampsPage({
     campBedEmployeeIds.length > 0
       ? await prisma.employee.findMany({
           where: { id: { in: campBedEmployeeIds } },
-          select: { id: true, name: true, employeeIdNo: true },
+          select: { id: true, name: true, employeeIdNo: true, photoMimeType: true },
         })
       : [];
 
   const unhoused = await prisma.employee.findMany({
     where: { ...branchWhere(branchId), bed: null, active: true, status: { not: "TERMINATED" } },
-    select: { id: true, name: true, employeeIdNo: true, trade: true },
+    select: { id: true, name: true, employeeIdNo: true, trade: true, photoMimeType: true },
     orderBy: { name: "asc" },
     take: 500,
   });
 
+  // Each occupant's current stay: when it began, and a checkout already scheduled, if any.
+  const stayRows = occupants.length
+    ? await prisma.accommodationHistory.findMany({
+        where: { employeeId: { in: occupants.map((e) => e.id) }, checkOutDate: null },
+        orderBy: { checkInDate: "asc" },
+        select: { employeeId: true, checkInDate: true, plannedCheckOutDate: true, plannedCheckOutReason: true },
+      })
+    : [];
+  const stays = Object.fromEntries(stayRows.map((h) => [h.employeeId, { checkInDate: dayKey(h.checkInDate), planned: h.plannedCheckOutDate ? { date: dayKey(h.plannedCheckOutDate), reason: h.plannedCheckOutReason ?? "" } : null }]));
+
   const employeeNames = Object.fromEntries(
-    occupants.map((e) => [e.id, { name: e.name, employeeIdNo: e.employeeIdNo }])
+    occupants.map((e) => [e.id, { id: e.id, name: e.name, employeeIdNo: e.employeeIdNo, hasPhoto: !!e.photoMimeType }])
   );
 
   return (
     <div className="space-y-5">
       {params.error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {params.error}
         </p>
       )}
@@ -93,6 +113,14 @@ export default async function CampsPage({
       <PageHeader
         title="Camps"
         description="Manage camps, rooms and beds. Move employees in with Create Check-In and Bed Allocation."
+        actions={
+          (canExport || canImport) ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {canImport && <Link href="/import/new/camps" className="btn btn-secondary btn-sm flex gap-1.5"><Upload className="h-3.5 w-3.5" aria-hidden /> Import</Link>}
+              {canExport && camps.length > 0 && <a href="/api/accommodation/camps/export" className="btn btn-secondary btn-sm flex gap-1.5"><Download className="h-3.5 w-3.5" aria-hidden /> Export</a>}
+            </div>
+          ) : undefined
+        }
         meta={
           <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
             {camps.length} camp{camps.length === 1 ? "" : "s"}
@@ -139,7 +167,7 @@ export default async function CampsPage({
                   <span
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",
-                      c.ownerType === "SUPPLIER" ? "bg-amber-500" : "bg-blue-500"
+                      c.ownerType !== "OWN" ? "bg-[var(--warning)]" : "bg-[var(--brand-primary)]"
                     )}
                     aria-hidden
                   />
@@ -163,13 +191,15 @@ export default async function CampsPage({
                 hiddenFields={{ campId: selectedCamp.id }}
               />
               <div className="ml-auto flex flex-wrap items-center gap-3">
-
+                <span className="rounded-full bg-[var(--info-soft)] px-2.5 py-1 text-xs font-medium text-[var(--brand-primary)]">
+                  {selectedCamp.ownerType === "SUPPLIER" ? `Supplier camp${selectedCamp.owningSupplier ? ` — ${selectedCamp.owningSupplier.name}` : ""}` : selectedCamp.ownerType === "CLIENT" ? `Client camp${selectedCamp.owningClient ? ` — ${selectedCamp.owningClient.name}` : ""}` : "Own camp"}
+                </span>
                 <DeleteButton
                   action={deleteCampAction}
                   hiddenFields={{ campId: selectedCamp.id }}
                   confirmMessage={`Delete ${selectedCamp.name}? All its rooms and beds will be removed, and anyone housed there will be unassigned.`}
                   label="Delete Camp"
-                  className="rounded-control border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="rounded-control border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
                 />
               </div>
             </div>
@@ -195,7 +225,8 @@ export default async function CampsPage({
               })),
             }))}
             employeeNames={employeeNames}
-            unhoused={unhoused}
+            stays={stays}
+            unhoused={unhoused.map(({ photoMimeType, ...u }) => ({ ...u, hasPhoto: !!photoMimeType }))}
           />
         </div>
       ) : (
@@ -223,8 +254,8 @@ export default async function CampsPage({
               className="input w-full"
             />
             <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2">
-              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Single beds</span><NumberInput name="bedCount" defaultValue={4} min={0} max={20} className="w-full" /></label>
-              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bunks (upper + lower)</span><NumberInput name="bunkCount" defaultValue={0} min={0} max={20} className="w-full" /></label>
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Bunks (upper + lower)</span><NumberInput name="bunkCount" defaultValue={2} min={0} max={20} className="w-full" /></label>
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Single beds</span><NumberInput name="bedCount" defaultValue={0} min={0} max={20} className="w-full" /></label>
             </div>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3">
               <label className="block">

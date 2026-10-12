@@ -132,7 +132,7 @@ export function EmployeeIssuanceSection({
           </button>
         </div>
 
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-2 text-xs text-[var(--error)]">{error}</p>}
 
         {assignments.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">Never issued to an employee.</p>
@@ -175,7 +175,7 @@ export function EmployeeIssuanceSection({
                         <form action={returnEmployeeInventoryAssignmentAction} className="inline">
                           <input type="hidden" name="employeeId" value={a.employee.id} />
                           <input type="hidden" name="assignmentId" value={a.id} />
-                          <button type="submit" className="text-xs font-medium text-blue-600 hover:underline">
+                          <button type="submit" className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
                             Mark returned
                           </button>
                         </form>

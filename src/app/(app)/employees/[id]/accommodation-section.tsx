@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { assignBedAction, unassignBedAction } from "../../accommodation/actions";
+import { useRouter } from "next/navigation";
+import { assignBedAction } from "../../accommodation/actions";
+import { CheckoutForm } from "@/components/CheckoutForm";
 import { Select } from "@/components/ui/Select";
-import { DeleteButton } from "@/components/DeleteButton";
 
 type BedOption = {
   id: string;
@@ -14,14 +15,21 @@ type BedOption = {
 
 export function AccommodationSection({
   employeeId,
+  employeeName,
   currentBed,
+  stay,
   vacantBeds,
 }: {
   employeeId: string;
+  employeeName: string;
+  /** The current stay: when it began, and a checkout already scheduled. */
+  stay: { checkInDate: string; planned: { date: string; reason: string } | null } | null;
   currentBed: BedOption | null;
   vacantBeds: BedOption[];
 }) {
   const camps = [...new Set(vacantBeds.map((b) => b.campName))].sort();
+  const router = useRouter();
+  const [checkingOut, setCheckingOut] = useState(false);
   const [camp, setCamp] = useState("");
   const [selected, setSelected] = useState("");
   const bedsInCamp = vacantBeds.filter((b) => b.campName === camp);
@@ -32,19 +40,30 @@ export function AccommodationSection({
         Accommodation
       </h2>
       {currentBed ? (
+        <>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-secondary">
             <span className="font-medium text-primary">
               {currentBed.campName} · {currentBed.roomName} · {currentBed.label}
             </span>
           </p>
-          <DeleteButton
-            action={unassignBedAction}
-            hiddenFields={{ bedId: currentBed.id, employeeId }}
-            confirmMessage={`Unassign ${currentBed.campName} · ${currentBed.roomName} · ${currentBed.label} from this employee?`}
-            label="Unassign bed"
-          />
+          <button type="button" className="btn btn-secondary btn-sm text-[var(--error)]" onClick={() => setCheckingOut((v) => !v)}>
+            {stay?.planned ? "Change or cancel checkout" : "Check out"}
+          </button>
         </div>
+        {stay?.planned && !checkingOut && <p className="mt-2 text-xs text-[var(--warning)]">Leaving on {new Date(`${stay.planned.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} &mdash; {stay.planned.reason}.</p>}
+        {checkingOut && (
+          <CheckoutForm
+            employeeId={employeeId}
+            name={employeeName}
+            bedLabel={`${currentBed.campName} · ${currentBed.roomName} · ${currentBed.label}`}
+            checkInDate={stay?.checkInDate ?? "1970-01-01"}
+            planned={stay?.planned ?? null}
+            onCancel={() => setCheckingOut(false)}
+            onDone={() => { setCheckingOut(false); router.refresh(); }}
+          />
+        )}
+        </>
       ) : vacantBeds.length === 0 ? (
         <p className="text-sm text-muted">
           Not housed yet, and no vacant beds available right now.

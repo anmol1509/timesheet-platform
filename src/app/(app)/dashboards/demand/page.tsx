@@ -1,21 +1,32 @@
+import { ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { DemandExtras } from "@/components/dashboard/ModuleExtras";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
 import { Panel } from "@/components/DashboardPanel";
+import { StatusDonut } from "@/components/Donut";
 import { Badge } from "@/components/Badge";
 import { approvedHeadcount } from "@/lib/demandApproval";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
 export default async function DemandDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
-  const [openCount, demands] = await Promise.all([
+  const [openCount, demandsByStatus, demands] = await Promise.all([
     prisma.demandRequest.count({
       where: { ...branchScope, status: { notIn: ["Rejected", "Closed"] } },
+    }),
+    prisma.demandRequest.groupBy({
+      by: ["status"],
+      where: branchScope,
+      _count: { _all: true },
     }),
     prisma.demandRequest.findMany({
       where: { ...branchScope, status: { notIn: ["Rejected", "Closed"] } },
@@ -51,11 +62,15 @@ export default async function DemandDashboardPage() {
   const shortfall = rows.filter((r) => r.filled < r.needed);
   const pendingApprovalCount = rows.filter((r) => r.pendingApproval).length;
 
+  const hiddenSections = await getHiddenSections(user.id, "demand");
+
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={ClipboardList}
         title="Demand overview"
         description="Open manpower requests and how well they are staffed."
+      actions={<CustomizeSections module="demand" sections={[{ id: "overview", label: "Fulfilment, requests and status" }, { id: "extras", label: "Shortfall, ageing and mobilisation" }]} hidden={[...hiddenSections]} />}
       />
       <DashboardTabs />
 
@@ -96,6 +111,7 @@ export default async function DemandDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel
           title="Fulfilment"
@@ -127,7 +143,6 @@ export default async function DemandDashboardPage() {
         <Panel
           title="Requests short of headcount"
           href="/demand/mobilisation"
-          className="lg:col-span-2"
         >
           {shortfall.length === 0 ? (
             <p className="text-sm text-muted">
@@ -163,7 +178,22 @@ export default async function DemandDashboardPage() {
             </ul>
           )}
         </Panel>
+
+        <Panel title="Requests by status" href="/demand">
+          <StatusDonut
+            items={demandsByStatus.map((r) => ({
+              status: r.status,
+              count: r._count._all,
+            }))}
+            emptyMessage="No demand requests yet."
+          />
+        </Panel>
       </div>
+      </Sec>
+
+      <Sec id="extras" hidden={hiddenSections}>
+      <DemandExtras branchId={branchId} />
+      </Sec>
     </div>
   );
 }

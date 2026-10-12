@@ -89,18 +89,26 @@ const TONES: Record<
 
 function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const { icon: Icon, className, iconClass } = TONES[toast.tone];
+  const [leaving, setLeaving] = useState(false);
+
+  // Slide out first, then remove; the card is gone from state only once it has left.
+  const leave = useCallback(() => {
+    setLeaving(true);
+    setTimeout(onDismiss, 180);
+  }, [onDismiss]);
 
   useEffect(() => {
     // Errors stay until dismissed; everything else clears itself.
     if (toast.tone === "error") return;
-    const timer = setTimeout(onDismiss, 4500);
+    const timer = setTimeout(leave, 4500);
     return () => clearTimeout(timer);
-  }, [toast.tone, onDismiss]);
+  }, [toast.tone, leave]);
 
   return (
     <div
       className={cn(
-        "toast-enter pointer-events-auto flex items-start gap-2.5 rounded-card border p-3 shadow-md",
+        "pointer-events-auto flex items-start gap-2.5 rounded-card border p-3 shadow-md",
+        leaving ? "toast-leave" : "toast-enter",
         className
       )}
     >
@@ -113,7 +121,7 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       </div>
       <button
         type="button"
-        onClick={onDismiss}
+        onClick={leave}
         aria-label="Dismiss notification"
         className="-m-1 rounded-sm p-1 text-subtle transition hover:text-secondary"
       >

@@ -23,8 +23,12 @@ export function Panel({
   return (
     <section className={cn("card flex flex-col", className)}>
       <div className="card-header">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-primary">
-          {Icon && <Icon className="h-4 w-4 text-subtle" />}
+        <h2 className="flex items-center gap-2.5 text-[15px] font-semibold tracking-tight text-primary">
+          {Icon && (
+            <span className="icon-chip h-7 w-7 rounded-lg">
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+          )}
           {title}
         </h2>
         {href && (
@@ -56,9 +60,9 @@ export function QuickAction({
   return (
     <Link
       href={href}
-      className="group card flex items-start gap-3 p-3.5 transition hover:border-strong hover:shadow-sm"
+      className="group card flex items-center gap-3 p-3.5 transition hover:-translate-y-px hover:border-[var(--brand-primary-border)] hover:shadow-md"
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-secondary transition group-hover:bg-brand-soft group-hover:text-[var(--brand-primary)]">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-soft text-[var(--brand-primary)] transition group-hover:bg-[var(--brand-primary)] group-hover:text-white">
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">

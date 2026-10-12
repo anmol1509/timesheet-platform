@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { sanitizePermissions } from "@/lib/permissions";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -19,7 +19,7 @@ async function editableRole(id: string) {
 }
 
 export async function saveRoleAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const admin = await requireAdmin();
   const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();

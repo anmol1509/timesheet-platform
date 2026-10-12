@@ -1,3 +1,6 @@
+import { LetterheadMargins } from "@/components/LetterheadMargins";
+import { saveSupplierLetterheadMarginsAction } from "../actions";
+import { SupplierLettersSection } from "./supplier-letters-section";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
@@ -11,10 +14,11 @@ import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { PortalAccessCard } from "./portal-access";
-import { isOutsideBranch, branchWhere } from "@/lib/branch";
+import { isOutsideBranch } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { SupplierTabs } from "./supplier-tabs";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
+import { SupplierHierarchyCard } from "./hierarchy-card";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -39,6 +43,7 @@ export default async function SupplierDetailPage({
         select: {
           id: true,
           name: true,
+          isOwnCompany: true,
           subsidiaries: { select: { id: true, name: true }, orderBy: { name: "asc" } },
         },
       },
@@ -57,22 +62,11 @@ export default async function SupplierDetailPage({
       select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
     }),
     prisma.supplier.findMany({
-      where: { ...branchWhere(branchId), parentSupplierId: null, id: { not: supplier.id } },
+      where: { branchId: supplier.branchId, parentSupplierId: null, id: { not: supplier.id } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
   ]);
-
-  // The current parent might belong to a different branch (e.g. legacy data,
-  // or a subsidiary created before parents always matched branches) — always
-  // include it so the Parent Supplier <select> has a matching option to
-  // display its name instead of falling back to the raw id.
-  const parentOptionsWithCurrent =
-    supplier.parent && !parentOptions.some((p) => p.id === supplier.parent!.id)
-      ? [...parentOptions, { id: supplier.parent.id, name: supplier.parent.name }].sort((a, b) =>
-          a.name.localeCompare(b.name)
-        )
-      : parentOptions;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -91,7 +85,7 @@ export default async function SupplierDetailPage({
         />
         <div className="rounded-b-3xl rounded-tr-3xl border border-default bg-surface p-5">
           {isSuperAdmin && !branchId && (
-            <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <p className="mb-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
               You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from
               the switcher (top right) before editing or adding a subsidiary here.
             </p>
@@ -103,7 +97,7 @@ export default async function SupplierDetailPage({
             </h1>
             {supplier.isOwnCompany && (
               <span title="Own company">
-                <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" aria-label="Own company" />
+                <BadgeCheck className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-label="Own company" />
               </span>
             )}
             {supplier.code && (
@@ -123,7 +117,7 @@ export default async function SupplierDetailPage({
                 ? ` ${supplier._count.employees} employee(s) will be unassigned.`
                 : ""
             }`}
-            className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -140,7 +134,7 @@ export default async function SupplierDetailPage({
           · {supplier._count.entries} timesheet rows
         </p>
         {error && (
-          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {error}
           </p>
         )}
@@ -150,7 +144,7 @@ export default async function SupplierDetailPage({
       <PortalAccessCard
         supplierId={supplier.id}
         enabled={supplier.portalEnabled}
-        canEdit={can(subjectOf(user), "partners", "edit")}
+        canEdit={can(subjectOf(user), "partners.suppliers", "edit")}
         phones={[supplier.contactPhone, supplier.phone, supplier.coordinatorPhone].filter((p): p is string => !!p)}
       />
 
@@ -193,6 +187,30 @@ export default async function SupplierDetailPage({
                     }))}
                   />
                 </section>
+                <section>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">Signatory, signature &amp; stamp</h2>
+                  <p className="mb-3 text-sm text-muted">Used on employee letters issued for this company (as the visa or supplier company), when you tick them on the letter. Upload the letterhead itself under Documents, as type Letterhead.</p>
+                  <SupplierLettersSection
+                    supplierId={supplier.id}
+                    signatoryName={supplier.signatoryName ?? ""}
+                    signatoryTitle={supplier.signatoryTitle ?? ""}
+                    signatureUrl={supplier.signatureId ? `/api/images/${supplier.signatureId}` : null}
+                    stampUrl={supplier.stampId ? `/api/images/${supplier.stampId}` : null}
+                  />
+                </section>
+                {attachments.some((a) => a.docType === "LETTERHEAD") && (
+                  <section>
+                    <h2 className="mb-1 text-sm font-semibold text-primary">Letterhead margins</h2>
+                    <p className="mb-3 text-sm text-muted">NOCs for workers this supplier sponsors are printed on its letterhead. Set how much space to keep clear for the header and footer.</p>
+                    <LetterheadMargins
+                      letterheadUrl={`/api/suppliers/${supplier.id}/letterhead`}
+                      topMm={supplier.letterheadTopMm ?? 65}
+                      bottomMm={supplier.letterheadBottomMm ?? 35}
+                      action={saveSupplierLetterheadMarginsAction}
+                      extraFields={{ supplierId: supplier.id }}
+                    />
+                  </section>
+                )}
               </div>
             ),
           },
@@ -214,10 +232,20 @@ export default async function SupplierDetailPage({
             id: "company",
             label: "Company",
             content: (
+              <div className="space-y-6">
+              <SupplierHierarchyCard
+                supplierId={supplier.id}
+                supplierName={supplier.name}
+                parent={supplier.parent ? { id: supplier.parent.id, name: supplier.parent.name } : null}
+                subsidiaryCount={supplier.subsidiaries.length}
+                primaryOptions={parentOptions}
+              />
               <SupplierCompanyForm
-                parentOptions={parentOptionsWithCurrent}
+                parentIsOwnCompany={!!supplier.parent?.isOwnCompany}
                 supplier={{
                   id: supplier.id,
+                  name: supplier.name,
+                  code: supplier.code,
                   isOwnCompany: supplier.isOwnCompany,
                   payType: supplier.payType,
                   wpsEstablishmentId: supplier.wpsEstablishmentId,
@@ -233,13 +261,17 @@ export default async function SupplierDetailPage({
                   previousId: supplier.previousId,
                   country: supplier.country,
                   emirate: supplier.emirate,
-                  pointOfContact: supplier.pointOfContact,
                   supplierAmountLimit: supplier.supplierAmountLimit,
                   account: supplier.account,
                   allowManualLabourId: supplier.allowManualLabourId,
                   overtime: supplier.overtime,
+                  absentFreeDays: supplier.absentFreeDays,
+                  absentDeductionPerDay: Number(supplier.absentDeductionPerDay),
+                  gasPerDay: Number(supplier.gasPerDay),
+                  gasMonthlyCap: Number(supplier.gasMonthlyCap),
                 }}
               />
+              </div>
             ),
           },
           {

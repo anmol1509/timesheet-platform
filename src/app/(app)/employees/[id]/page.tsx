@@ -1,6 +1,9 @@
+import { toPlain } from "@/lib/plain";
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
+import { dayKey } from "@/lib/checkoutReasons";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, CalendarDays, ChevronRight, Hash, Home, MapPin, Phone } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -13,6 +16,8 @@ import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { VisaHistorySection } from "./visa-history-section";
+import { SalaryHistorySection, type RevisionRow } from "./salary-history-section";
+import { arrearsFor } from "@/lib/payrollSchedule";
 import { LabourCardHistorySection } from "./labour-card-history-section";
 import { AccommodationSection } from "./accommodation-section";
 import { NotesSection } from "./notes-section";
@@ -36,6 +41,8 @@ export default async function EmployeeDetailPage({
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const canViewPay = can(subjectOf(user), "payroll", "view");
   const canEditPay = can(subjectOf(user), "payroll", "edit");
+  // Free any bed whose scheduled checkout date has arrived before reading this worker.
+  await settleDueCheckouts(branchId, user);
   const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues, inventoryItems] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
@@ -50,6 +57,7 @@ export default async function EmployeeDetailPage({
         flatMonthlyRate: true,
         hourlyRate: true,
         otMultiplier: true,
+        dailyHours: true,
       },
       include: {
         supplier: true,
@@ -75,20 +83,20 @@ export default async function EmployeeDetailPage({
         },
       },
     }),
-    prisma.project.findMany({ orderBy: { name: "asc" } }),
+    prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
     prisma.site.findMany({
       where: { project: branchWhere(branchId) },
       select: { id: true, name: true, projectId: true },
       orderBy: { name: "asc" },
     }),
-    prisma.vehicle.findMany({ orderBy: { plateNumber: "asc" } }),
+    prisma.vehicle.findMany({ where: branchWhere(branchId), orderBy: { plateNumber: "asc" } }),
     prisma.bed.findMany({
       where: { employeeId: null },
       include: { room: { include: { camp: true } } },
       orderBy: [{ room: { camp: { name: "asc" } } }, { room: { name: "asc" } }, { label: "asc" }],
     }),
-    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
-    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" }, select: { id: true, name: true, parentSupplierId: true } }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true, parentSupplierId: true }, orderBy: { name: "asc" } }),
     prisma.lookupValue.findMany({
       where: { ...branchWhere(branchId), isActive: true },
       orderBy: [{ sortOrder: "asc" }, { value: "asc" }],
@@ -114,6 +122,10 @@ export default async function EmployeeDetailPage({
     }),
   ]);
   if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) notFound();
+  const openStay = employee.bed
+    ? await prisma.accommodationHistory.findFirst({ where: { employeeId: employee.id, checkOutDate: null }, orderBy: { checkInDate: "desc" }, select: { checkInDate: true, plannedCheckOutDate: true, plannedCheckOutReason: true } })
+    : null;
+  const stay = openStay ? { checkInDate: dayKey(openStay.checkInDate), planned: openStay.plannedCheckOutDate ? { date: dayKey(openStay.plannedCheckOutDate), reason: openStay.plannedCheckOutReason ?? "" } : null } : null;
 
   const payRow = canViewPay
     ? await prisma.employee.findUnique({
@@ -127,6 +139,7 @@ export default async function EmployeeDetailPage({
           flatMonthlyRate: true,
           hourlyRate: true,
           otMultiplier: true,
+        dailyHours: true,
         },
       })
     : null;
@@ -142,8 +155,20 @@ export default async function EmployeeDetailPage({
         flatMonthlyRate: n(payRow.flatMonthlyRate),
         hourlyRate: n(payRow.hourlyRate),
         otMultiplier: n(payRow.otMultiplier) || "1.25",
+        dailyHours: n(payRow.dailyHours) || "8",
       }
     : null;
+
+  const revisions = canViewPay ? await prisma.salaryRevision.findMany({ where: { employeeId: id }, orderBy: { effectiveFrom: "desc" }, take: 20 }) : [];
+  const closedRuns = revisions.length > 0 ? await prisma.payrollRun.findMany({ where: { branchId: employee.branchId, status: { in: ["APPROVED", "PAID"] }, lines: { some: { employeeId: id } } }, select: { month: true } }) : [];
+  const closedMonths = [...new Set(closedRuns.map((r) => r.month))];
+  const arrearsAdded = revisions.length > 0 ? await prisma.payrollAdjustment.findMany({ where: { employeeId: id, category: "ARREARS" }, select: { label: true } }) : [];
+  const revisionRows: RevisionRow[] = revisions.map((r) => {
+    const increase = Number(r.fixedAfter.toString()) - Number(r.fixedBefore.toString());
+    const a = increase > 0 ? arrearsFor(increase, r.effectiveFrom, closedMonths) : null;
+    const label = a && a.months.length > 0 ? `Salary arrears ${a.months[0]} to ${a.months[a.months.length - 1]}` : null;
+    return { id: r.id, effectiveFrom: r.effectiveFrom.toISOString().slice(0, 10), reason: r.reason, fixedBefore: Number(r.fixedBefore.toString()), fixedAfter: Number(r.fixedAfter.toString()), by: r.createdByName, arrears: a && a.months.length > 0 && !arrearsAdded.some((x) => x.label === label) ? { months: a.months.length, amount: a.amount } : null };
+  });
 
   const lookups = groupLookups(lookupValues);
   const documentOptions = employee.documents.map((d) => ({ id: d.id, filename: d.filename }));
@@ -154,55 +179,89 @@ export default async function EmployeeDetailPage({
   });
 
   return (
-    <div className="space-y-8">
-      <div>
-        <Link href="/employees" className="text-sm text-muted hover:underline">
-          ← Employees
+    <div className="space-y-6">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted">
+        <Link href="/" aria-label="Dashboard" className="transition hover:text-primary">
+          <Home className="h-3.5 w-3.5" aria-hidden />
         </Link>
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <ChevronRight className="h-3 w-3 text-subtle" aria-hidden />
+        <Link href="/employees" className="font-medium transition hover:text-primary">Employees</Link>
+        <ChevronRight className="h-3 w-3 text-subtle" aria-hidden />
+        <span className="truncate font-medium text-secondary">{employee.name}</span>
+      </nav>
+
+      <section className="card relative overflow-hidden">
+        {/* Soft brand wash behind the identity block — the one decorative
+            touch on the page, so the person reads first. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-[var(--brand-primary-soft)] via-[var(--surface)] to-[var(--surface)]" aria-hidden />
+        <div className="relative flex flex-wrap items-center justify-between gap-6 p-5 sm:p-6">
+          <div className="flex min-w-0 items-center gap-5">
             <PhotoUpload
               employeeId={employee.id}
-              hasPhoto={!!employee.photoData}
+              hasPhoto={!!employee.photoMimeType}
               name={employee.name}
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl tracking-tight text-primary font-semibold">
-                  {employee.name}
-                </h1>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-page-title text-primary">{employee.name}</h1>
                 {employee.supplier?.isOwnCompany && (
                   <span title="Our worker">
-                    <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" aria-label="Our worker" />
+                    <BadgeCheck className="h-5 w-5 shrink-0 text-[var(--brand-primary)]" aria-label="Our worker" />
                   </span>
                 )}
-                <Badge color={employee.active ? "green" : "slate"}>
+              </div>
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                <span className="tabular font-medium text-secondary">{employee.employeeIdNo}</span>
+                <span aria-hidden>·</span>
+                <span>
+                  {employee.category === "STAFF"
+                    ? [employee.position, employee.department].filter(Boolean).join(" · ") || "No position set"
+                    : employee.trade || "No trade set"}
+                </span>
+                <span aria-hidden>·</span>
+                <span>{employee.supplier?.name || "No company"}</span>
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Badge color={employee.active ? "green" : "slate"} dot>
                   {employee.active ? "Active" : "Inactive"}
                 </Badge>
                 {/* Where the worker sits in the mobilisation cycle. The
-                    active/inactive chip above is about the employment; this is
+                    active/inactive chip is about the employment; this is
                     about the job, and they differ often enough to show both. */}
                 <Badge color={STAGE_COLOR[employee.status] ?? "slate"}>
                   {STAGE_LABEL[employee.status] ?? employee.status}
                 </Badge>
-              </div>
-              <p className="mt-1 text-sm text-muted">
-                {employee.employeeIdNo} · {employee.trade || "No trade set"} ·{" "}
-                {employee.supplier?.name || "No company"}
+                {employee.category !== "STAFF" && employee.project && (
+                  <Link href={`/projects/${employee.project.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">
+                    <MapPin className="h-3.5 w-3.5 text-subtle" aria-hidden />
+                    {employee.project.name}
+                  </Link>
+                )}
                 {employee.status === "UNDER_MOBILISATION" && employee.mobilisationDate && (
-                  <> · due on site {formatShortDate(employee.mobilisationDate)}</>
+                  <span className="text-xs text-muted">due on site {formatShortDate(employee.mobilisationDate)}</span>
                 )}
                 {employee.status === "ON_SITE" && employee.siteArrivalDate && (
-                  <> · on site since {formatShortDate(employee.siteArrivalDate)}</>
+                  <span className="text-xs text-muted">on site since {formatShortDate(employee.siteArrivalDate)}</span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
+          <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
+            <HeaderFact icon={CalendarDays} label="Joined" value={employee.joinDate ? formatShortDate(employee.joinDate) : "—"} />
+            <HeaderFact icon={Hash} label="Category" value={employee.category === "STAFF" ? "Staff" : "Site staff"} />
+            <HeaderFact icon={Phone} label="Mobile" value={employee.mobileNumber || "—"} />
+          </dl>
+        </div>
+      </section>
+
+      {canViewPay && employee.supplier?.isOwnCompany && (
+        <div className="flex justify-end">
+          <Link href={`/letters?employee=${employee.id}&template=salary`} className="btn btn-secondary text-sm">Salary certificate</Link>
+        </div>
+      )}
       <ProfileSummary
-        employee={employee}
+        employee={toPlain(employee)}
         project={
           employee.project
             ? { id: employee.project.id, name: employee.project.name, manager: employee.project.manager, managerPhone: employee.project.managerPhone, client: { name: employee.project.client.name } }
@@ -216,17 +275,18 @@ export default async function EmployeeDetailPage({
       />
 
       <EditForm
-        employee={employee}
+        employee={toPlain(employee)}
         pay={pay}
         projects={projects}
         sites={sites}
         vehicles={vehicles}
-        sponsors={sponsors}
-        suppliers={suppliers}
+        sponsors={toPlain(sponsors)}
+        suppliers={toPlain(suppliers)}
         documents={employee.documents}
         lookups={lookups}
-        recordsContent={
+        tradesContent={
           <>
+            {canViewPay && <SalaryHistorySection rows={revisionRows} canAddArrears={canEditPay} />}
             <SkillsSection
               employeeId={employee.id}
               skills={employee.skills.map((s) => ({
@@ -236,7 +296,10 @@ export default async function EmployeeDetailPage({
                 rate: s.rate,
               }))}
             />
-
+          </>
+        }
+        recordsContent={
+          <>
 <NotesSection
               employeeId={employee.id}
               notes={employee.noteEntries.map((note) => ({
@@ -247,11 +310,16 @@ export default async function EmployeeDetailPage({
                 documents: note.documents,
               }))}
             />
-
+          </>
+        }
+        siteContent={
+          <>
             {/* Below the identity form, not above it: a camp and bed matter less
                 than who this is, and this card is empty for most workers. */}
             <AccommodationSection
               employeeId={employee.id}
+              employeeName={employee.name}
+              stay={stay}
               currentBed={
                 employee.bed
                   ? {
@@ -269,23 +337,6 @@ export default async function EmployeeDetailPage({
                 campName: b.room.camp.name,
               }))}
             />
-
-            <VisaHistorySection
-              employeeId={employee.id}
-              entries={employee.visaApplications}
-              stages={lookups.VISA_APPLICATION_STAGE}
-              documents={documentOptions}
-            />
-
-            <LabourCardHistorySection
-              employeeId={employee.id}
-              entries={employee.labourCardApplications}
-              stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
-              documents={documentOptions}
-            />
-
-            <DocumentsSection employeeId={employee.id} documents={employee.documents} />
-
             <InventorySection
               employeeId={employee.id}
               assignments={employee.inventoryAssignments.map((a) => ({
@@ -311,7 +362,38 @@ export default async function EmployeeDetailPage({
             />
           </>
         }
+        documentsContent={
+          <>
+            <VisaHistorySection
+              employeeId={employee.id}
+              entries={employee.visaApplications}
+              stages={lookups.VISA_APPLICATION_STAGE}
+              documents={documentOptions}
+            />
+            <LabourCardHistorySection
+              employeeId={employee.id}
+              entries={employee.labourCardApplications}
+              stages={lookups.LABOUR_CARD_APPLICATION_STAGE}
+              documents={documentOptions}
+            />
+            <DocumentsSection employeeId={employee.id} documents={employee.documents} />
+          </>
+        }
       />
+    </div>
+  );
+}
+
+function HeaderFact({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-muted">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[11px] font-medium text-subtle">{label}</dt>
+        <dd className="truncate font-semibold text-primary">{value}</dd>
+      </div>
     </div>
   );
 }

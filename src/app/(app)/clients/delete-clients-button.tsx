@@ -54,7 +54,7 @@ export function DeleteClientsButton({
           type="button"
           onClick={open}
           disabled={pending || ids.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-control border border-red-200 bg-surface px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-control border border-[var(--error-border)] bg-surface px-2.5 py-1 text-xs font-medium text-[var(--error)] transition hover:bg-[var(--error-soft)] disabled:opacity-50"
         >
           <Trash2 className="h-3.5 w-3.5" aria-hidden />
           Delete {ids.length}

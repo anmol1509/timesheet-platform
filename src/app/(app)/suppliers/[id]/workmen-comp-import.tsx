@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { uploadAttachmentAction } from "@/lib/attachments";
 import { createEmployeesFromInsuranceAction } from "../actions";
@@ -155,7 +156,7 @@ export function WorkmenCompImport({
 
       {extracting && <p className="text-sm text-muted">Reading the certificate…</p>}
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
           {error} You can still add rows manually below.
         </p>
       )}
@@ -216,7 +217,7 @@ export function WorkmenCompImport({
                       <button
                         type="button"
                         onClick={() => removeRow(r.id)}
-                        className="text-xs font-medium text-red-600 hover:underline"
+                        className="text-xs font-medium text-[var(--error)] hover:underline"
                       >
                         Remove
                       </button>
@@ -232,7 +233,9 @@ export function WorkmenCompImport({
               onClick={addRow}
               className="btn btn-secondary btn-sm"
             >
-              + Add row
+              <Plus className="h-4 w-4" aria-hidden />
+
+              Add row
             </button>
             <button
               type="button"

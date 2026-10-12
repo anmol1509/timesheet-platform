@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import {
   addProjectInventoryAction,
@@ -37,10 +38,12 @@ export function ProjectInventory({
   const [quantity, setQuantity] = useState("1");
   const [assignedDate, setAssignedDate] = useState("");
   const [condition, setCondition] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function add() {
     if (!itemName.trim()) return;
+    setError(null);
     const formData = new FormData();
     formData.set("projectId", projectId);
     formData.set("itemName", itemName.trim());
@@ -48,7 +51,11 @@ export function ProjectInventory({
     formData.set("assignedDate", assignedDate);
     formData.set("condition", condition);
     startTransition(async () => {
-      await addProjectInventoryAction(formData);
+      const result = await addProjectInventoryAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
       setItemName("");
       setQuantity("1");
       setAssignedDate("");
@@ -86,7 +93,7 @@ export function ProjectInventory({
                       <input type="hidden" name="assignmentId" value={a.id} />
                       <button
                         type="submit"
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                       >
                         Mark returned
                       </button>
@@ -144,8 +151,11 @@ export function ProjectInventory({
             onClick={add}
             className="btn btn-primary"
           >
-            + Add
+            <Plus className="h-4 w-4" aria-hidden />
+
+            Add
           </button>
+          {error && <p role="alert" className="w-full text-sm text-[var(--error)]">{error}</p>}
         </div>
       </div>
 

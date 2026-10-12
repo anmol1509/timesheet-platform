@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { viewableModules } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
+import { branchWhere } from "@/lib/branch";
 import { AppShell } from "./app-shell";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { MobileSidebar } from "./mobile-sidebar";
@@ -27,9 +28,10 @@ export default async function AppLayout({
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
   const themeCookieValue = cookieStore.get(THEME_COOKIE)?.value;
+  // Same default as the root layout: unset means light, not "follow system".
   const themePref: ThemePreference = isThemePreference(themeCookieValue)
     ? themeCookieValue
-    : "system";
+    : "light";
   // Header extras, not the app itself — a transient DB hiccup (e.g. a cold
   // connection) fetching these shouldn't take down every page via the root
   // layout, which no per-page error boundary can catch (error.js doesn't
@@ -40,7 +42,7 @@ export default async function AppLayout({
     // Only SUPER_ADMIN gets a switcher — everyone else has exactly one branch.
     prisma.branch.findMany({
       orderBy: { code: "asc" },
-      select: { id: true, code: true, name: true, isActive: true, logoId: true },
+      select: { id: true, code: true, name: true, isActive: true, logoId: true, emirate: true },
     }),
     prisma.notification.findMany({
       where: { userId: user.id },
@@ -61,6 +63,15 @@ export default async function AppLayout({
   // A failed count must never take the page down: the badge just doesn't show.
   const pendingApprovals = await countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }).catch(() => 0);
 
+  // Sidebar badges, only where somebody has to act: documents expiring or
+  // expired, and supplier tickets still waiting for a reply. Both degrade to
+  // "no badge" rather than failing the page.
+  const openTickets = await prisma.supplierTicket.count({ where: { ...branchWhere(branchId), status: "OPEN" } }).catch(() => 0);
+  const badges: Record<string, number> = {
+    "/employees/renewals": alerts.length,
+    "/suppliers/tickets": openTickets,
+  };
+
   // Sidebar brand: the active branch's own name and uploaded logo. A super
   // admin viewing "all branches" (branchId null) keeps the group name and
   // borrows the first uploaded logo, so uploading one is visible immediately.
@@ -71,16 +82,17 @@ export default async function AppLayout({
   const brand = {
     name: activeBranch?.name ?? "Workforce ERP",
     logoUrl: logoSource?.logoId ? `/api/images/${logoSource.logoId}` : null,
+    city: activeBranch?.emirate ?? null,
   };
 
   const header = (
-    <header className="sticky top-0 z-30 border-b border-default bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-      <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} />
-        <div className="min-w-0 flex-1">
+    <header className="sticky top-0 z-30 border-b border-default bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} badges={badges} />
+        <div className="min-w-0 flex-1 lg:max-w-xl">
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {isSuperAdmin && (
             <div className="hidden sm:block">
               <BranchSwitcher branches={branches.filter((b) => b.isActive)} activeBranchId={branchId} />
@@ -113,6 +125,7 @@ export default async function AppLayout({
         isSuperAdmin={isSuperAdmin}
         allowedModules={allowedModules}
         pendingApprovals={pendingApprovals}
+        badges={badges}
         brand={brand}
         defaultCollapsed={sidebarCollapsed}
         header={header}

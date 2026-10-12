@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { formatLetterDate } from "@/lib/letterLayout";
 
+import { loadPayOf } from "@/lib/payrollRun";
+import { supplierLetterName } from "@/lib/employeeLetterIssuer";
 const money = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -12,12 +14,14 @@ export const SALARY_KEYS = ["BASICSALARY", "TOTALSALARY"];
 export type EmployeeValues = { values: Record<string, string>; salaryAvailable: boolean };
 
 /** Loads an employee and turns them into merge-field values for a letter. */
-export async function employeeLetterValues(employeeId: string, opts: { canSeePay: boolean }): Promise<(EmployeeValues & { employee: { id: string; branchId: string; name: string } }) | null> {
+export async function employeeLetterValues(employeeId: string, opts: { canSeePay: boolean; companyName?: string | null }): Promise<(EmployeeValues & { employee: { id: string; branchId: string; name: string } }) | null> {
   const e = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: {
       id: true, branchId: true, name: true, employeeIdNo: true, trade: true, position: true, nationality: true, passportNumber: true, emiratesId: true, joinDate: true,
       payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true,
+      hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true, payOverride: true, supplierId: true,
+      supplier: { select: { name: true, fullName: true, isOwnCompany: true } },
       project: { select: { name: true } },
       branch: { select: { name: true } },
     },
@@ -27,12 +31,13 @@ export async function employeeLetterValues(employeeId: string, opts: { canSeePay
   let basic = "";
   let total = "";
   if (opts.canSeePay) {
-    if (e.payStructure === "ITEMISED") {
-      const b = num(e.basicSalary);
-      basic = money(b);
-      total = money(b + num(e.housingAllowance) + num(e.foodAllowance) + num(e.transportAllowance) + num(e.otherAllowance));
-    } else if (e.payStructure === "FLAT") {
-      basic = total = money(num(e.flatMonthlyRate));
+    // The pay that applies to them: their trade's, unless set on their own record.
+    const pf = (await loadPayOf(e.branchId, [e]))(e);
+    if (pf.payStructure === "ITEMISED") {
+      basic = money(pf.basicSalary);
+      total = money(pf.basicSalary + pf.housingAllowance + pf.foodAllowance + pf.transportAllowance + pf.otherAllowance);
+    } else if (pf.payStructure === "FLAT") {
+      basic = total = money(pf.flatMonthlyRate);
     }
   }
   return {
@@ -49,7 +54,7 @@ export async function employeeLetterValues(employeeId: string, opts: { canSeePay
       PROJECTNAME: e.project?.name ?? "",
       BASICSALARY: basic,
       TOTALSALARY: total,
-      COMPANYNAME: e.branch.name.toUpperCase(),
+      COMPANYNAME: (opts.companyName || (e.supplier?.isOwnCompany ? e.supplier.fullName || e.supplier.name : e.branch.name)).toUpperCase(),
       BRANCHNAME: e.branch.name,
       DATE: formatLetterDate(new Date()),
     },
@@ -74,10 +79,13 @@ export async function renderEmployeeLetter(opts: {
   inputs: Record<string, string>;
   canSeePay: boolean;
   refNo?: string;
+  /** Letters issued for a visa or supplier company name that company as the employer. */
+  issuerSupplierId?: string | null;
 }): Promise<RenderedLetter> {
+  const companyName = opts.issuerSupplierId ? await supplierLetterName(opts.issuerSupplierId) : null;
   const [template, ev] = await Promise.all([
     prisma.letterTemplate.findUnique({ where: { id: opts.templateId } }),
-    employeeLetterValues(opts.employeeId, { canSeePay: opts.canSeePay }),
+    employeeLetterValues(opts.employeeId, { canSeePay: opts.canSeePay, companyName }),
   ]);
   if (!ev) return { ok: false, error: "Employee not found." };
   if (!template || template.audience !== "EMPLOYEE") return { ok: false, error: "Choose an employee letter template." };

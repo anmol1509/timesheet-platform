@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import { emitWebhookEvent, hasSubscribers, processDue, purgeOldDeliveries } from "@/lib/webhooks/deliver";
 import { prisma } from "@/lib/db";
 import { getRenewals, summarise } from "@/lib/renewals";
 import { notifyUsers } from "@/lib/notifications/notify";
-import { getExpiryDigestRecipients, sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
 
 /**
  * Daily sweep for documents falling due.
@@ -12,26 +12,12 @@ import { getExpiryDigestRecipients, sendWhatsAppMessage } from "@/lib/notificati
  * the PRO was on leave went unnoticed. This runs per branch and returns a
  * digest.
  *
- * Delivery is via WhatsApp (Twilio) once TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/
- * TWILIO_WHATSAPP_FROM/EXPIRY_DIGEST_WHATSAPP_TO are set in the environment —
- * see src/lib/notifications/whatsapp.ts. Without those, sendWhatsAppMessage
- * no-ops and this still returns the JSON digest, same as before.
+ * Delivery is an in-app notification plus an email to opted-in admins.
  */
 
-function formatDigestMessage(branchName: string, counts: ReturnType<typeof summarise>, top: { subject: string; document: string; days: number }[]) {
-  const lines = [
-    `*Expiry sweep — ${branchName}*`,
-    `Expired: ${counts.expired} · Within 7d: ${counts.urgent} · Within 30d: ${counts.soon}`,
-    "",
-    ...top.slice(0, 10).map((i) => {
-      const runway = i.days < 0 ? `${Math.abs(i.days)}d overdue` : `${i.days}d left`;
-      return `• ${i.subject} — ${i.document} (${runway})`;
-    }),
-  ];
-  if (top.length > 10) lines.push(`…and ${top.length - 10} more.`);
-  return lines.join("\n");
-}
 export const dynamic = "force-dynamic";
+
+const EXPIRY_EVENT_DAYS = new Set([60, 30, 14, 7, 1, 0]);
 
 export async function GET(request: Request) {
   // Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Without the secret
@@ -46,8 +32,6 @@ export async function GET(request: Request) {
     where: { isActive: true },
     select: { id: true, code: true, name: true },
   });
-
-  const recipients = getExpiryDigestRecipients();
 
   const digest = [];
   for (const branch of branches) {
@@ -65,6 +49,15 @@ export async function GET(request: Request) {
 
     digest.push({ branch: branch.code, counts, top });
 
+    // Webhook subscribers hear about each document as it crosses a threshold, once per threshold.
+    if (await hasSubscribers(branch.id, "document.expiring")) {
+      for (const i of items.filter((x) => EXPIRY_EVENT_DAYS.has(x.days)).slice(0, 300)) {
+        await emitWebhookEvent(branch.id, "document.expiring", {
+          subject_type: i.kind, subject_id: i.subjectId, subject_ref: i.subjectRef, document: i.document, expiry_date: i.expiry.slice(0, 10), days_remaining: i.days,
+        });
+      }
+    }
+
     // Left in the server log so a run is traceable even before delivery is configured.
     console.info(
       `[expiry-sweep] ${branch.code}: ${counts.expired} expired, ${counts.urgent} within 7d, ${counts.soon} within 30d, ${counts.planned} within 60d, ${counts.horizon} within 90d`
@@ -73,7 +66,7 @@ export async function GET(request: Request) {
     // Nothing due beyond the 90-day horizon means nothing worth a message.
     if (actionable.length === 0) continue;
 
-    // In-app + (opted-in) email/WhatsApp digest for the admins who own this
+    // In-app + (opted-in) email digest for the admins who own this
     // branch, once per day even if the cron is retried.
     const title = `Expiry digest — ${branch.name}`;
     const startOfDay = new Date();
@@ -93,17 +86,11 @@ export async function GET(request: Request) {
       body: `${counts.expired} expired · ${counts.urgent} within 7 days · ${counts.soon} within 30 days.`,
       href: "/employees/renewals",
     });
-
-    if (recipients.length === 0) continue;
-
-    const message = formatDigestMessage(branch.name, counts, top);
-    for (const to of recipients) {
-      const result = await sendWhatsAppMessage(to, message);
-      if (!result.sent) {
-        console.warn(`[expiry-sweep] WhatsApp not delivered to ${to}: ${result.reason}`);
-      }
-    }
   }
 
-  return NextResponse.json({ ranAt: new Date().toISOString(), digest });
+  // Webhook housekeeping: retry anything still waiting, drop records past the retention period.
+  const retried = await processDue({ limit: 200 });
+  const purged = await purgeOldDeliveries();
+
+  return NextResponse.json({ ranAt: new Date().toISOString(), digest, webhooks: { retried, purged } });
 }

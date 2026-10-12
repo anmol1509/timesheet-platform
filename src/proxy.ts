@@ -4,19 +4,56 @@ import { verifySessionToken } from "@/lib/session";
 import { ESS_COOKIE, verifyEssToken } from "@/lib/ess/token";
 import { VENDOR_COOKIE, verifyVendorToken } from "@/lib/vendor/token";
 
-const PUBLIC_PATHS = ["/login"];
+// The marketing site's homepage content lives at /welcome (rewritten to from
+// "/" on the marketing domain, see below); everything else here is a
+// root-level content/landing page. Kept as one list so both the marketing-
+// domain gate and the general public-path check stay in sync.
+const MARKETING_CONTENT_PATHS = [
+  "/welcome",
+  "/blog",
+  "/guides",
+  "/industries",
+  "/solutions",
+  "/features",
+  "/faq",
+  "/pricing",
+  "/manpower-erp-uae",
+  "/wps-payroll-software-uae",
+  "/timesheet-software-construction-uae",
+  "/camp-accommodation-management-software-uae",
+  "/supplier-portal-software-uae",
+  "/employee-self-service-portal-uae",
+  "/ai-assistant-workforce-management",
+  "/construction-invoicing-software-uae",
+  "/manpower-demand-mobilization-software-uae",
+];
 
-// Static brand assets (the login page's logo/illustration) served from
-// `public/brand/*` — file requests only, not the `/brand` component-gallery
-// page itself (which has no sub-paths, so this can't shadow a real route).
-// Without this, /login's own images 307'd back to /login when signed out
-// (flagged in the Phase 0 redesign audit, finding X15).
+const PUBLIC_PATHS = ["/login", ...MARKETING_CONTENT_PATHS];
+
+// Static brand assets (the login page's logo/illustration/hero photo) served
+// from `public/brand/*` or `public/brand-assets/*` — file requests only, not
+// the `/brand` component-gallery page itself (which has no sub-paths, so
+// this can't shadow a real route). Without this, /login's own images 307'd
+// back to /login when signed out (flagged in the Phase 0 redesign audit,
+// finding X15; brand-assets/webp added when /login grew a hero photo).
 function isPublicBrandAsset(pathname: string) {
-  return /^\/brand\/[^/]+\.(svg|png|jpg|jpeg)$/.test(pathname);
+  return /^\/brand(-assets)?\/[^/]+\.(svg|png|jpg|jpeg|webp)$/.test(pathname);
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // The marketing site runs on its own domain (e.g. www.example.com) while the
+  // app keeps its current one. On that domain, / is the landing page, its
+  // content/blog/landing pages are reachable too, and nothing else in the
+  // app is reachable.
+  const marketingHost = process.env.MARKETING_HOST;
+  if (marketingHost && request.headers.get("host") === marketingHost) {
+    if (pathname === "/") return NextResponse.rewrite(new URL("/welcome", request.url));
+    const isMarketingContent = MARKETING_CONTENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    if (isMarketingContent) return NextResponse.next();
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   if (
     PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path + "/")) ||
@@ -65,6 +102,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/auth|api/cron|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|robots.txt|sitemap.xml).*)",
   ],
 };

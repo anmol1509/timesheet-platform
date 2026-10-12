@@ -7,6 +7,7 @@ export const ENTITY_META: Record<string, Meta> = {
   EMPLOYEE: M("Employee", "Workforce", (id) => `/employees/${id}`),
   EMPLOYEE_NOTE: M("Employee note", "Workforce"),
   EMPLOYEE_LOAN: M("Loan or advance", "Payroll", () => "/payroll/loans"),
+  FINAL_SETTLEMENT: M("Final settlement", "Payroll", (id) => `/payroll/settlements/${id}`),
   EMPLOYEE_INVENTORY_ASSIGNMENT: M("Issued item", "Inventory"),
   EMPLOYEE_SITE_ARRIVAL: M("Site arrival", "Demand"),
   EMPLOYEE_DEMOBILISATION: M("Demobilisation", "Demand"),

@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { complianceStatus } from "@/lib/compliance";
 import { uploadDocumentAction, deleteDocumentAction, applyExtractedFieldsAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { shrinkImage } from "@/lib/compressImage";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 
 type Doc = {
@@ -71,8 +72,10 @@ export function InlineDocumentUpload({
   }
 
   async function handleUpload() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) return;
+    const picked = fileRef.current?.files?.[0];
+    if (!picked) return;
+    // A phone photo is scaled down first; a PDF is left as it is.
+    const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
       if (fileRef.current) fileRef.current.value = "";
@@ -143,7 +146,7 @@ export function InlineDocumentUpload({
                   type="button"
                   disabled={removingId === d.id}
                   onClick={() => handleRemove(d.id)}
-                  className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                  className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-60"
                 >
                   {removingId === d.id ? "Removing…" : "Remove"}
                 </button>
@@ -159,14 +162,14 @@ export function InlineDocumentUpload({
         disabled={pending}
         className="file-input"
       />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-[var(--error)]">{error}</p>}
       {extracting && <p className="mt-1 text-xs text-muted">Reading document details…</p>}
       {extracted && !applied && (
-        <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
-          <p className="mb-2 text-xs font-medium text-blue-900">
+        <div className="mt-2 rounded-lg border border-[var(--info-border)] bg-[var(--info-soft)] p-3">
+          <p className="mb-2 text-xs font-medium text-[var(--brand-primary)]">
             Auto-read from the document — apply to this employee&rsquo;s profile?
           </p>
-          <div className="mb-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-blue-800 sm:grid-cols-4">
+          <div className="mb-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--brand-primary)] sm:grid-cols-4">
             {extracted.name && <span>Name: {extracted.name}</span>}
             {extracted.passportNumber && <span>Passport: {extracted.passportNumber}</span>}
             {extracted.emiratesId && <span>Emirates ID: {extracted.emiratesId}</span>}
@@ -189,14 +192,14 @@ export function InlineDocumentUpload({
                   setApplied(true);
                 });
               }}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+              className="btn btn-primary btn-sm"
             >
               Apply to profile
             </button>
             <button
               type="button"
               onClick={() => setExtracted(null)}
-              className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+              className="rounded-lg border border-[var(--info-border)] px-3 py-1.5 text-xs font-medium text-[var(--brand-primary)] hover:bg-[var(--info-soft)]"
             >
               Dismiss
             </button>
@@ -204,7 +207,7 @@ export function InlineDocumentUpload({
         </div>
       )}
       {applied && (
-        <p className="mt-1 text-xs text-emerald-600">
+        <p className="mt-1 text-xs text-[var(--success)]">
           {onExtracted
             ? "Auto-filled below — review before saving."
             : "Applied to profile."}

@@ -6,6 +6,8 @@ import {
   can,
   canWrite,
   moduleForPath,
+  isPageKey,
+  moduleOf,
   type PermissionAction,
   type PermissionSubject,
 } from "@/lib/permissions";
@@ -59,9 +61,30 @@ export async function requireUser() {
 }
 
 /** Explicit check for one module action — use on delete / approve / export paths. */
-export async function requirePermission(module: string, action: PermissionAction) {
+export async function requirePermission(target: string, action: PermissionAction) {
   const user = await requireUser();
-  if (!can(subjectOf(user), module, action)) redirect("/no-access");
+  let t = target;
+  // A module-wide check made from inside one of its pages means that page: a person with rights
+  // on Camps only doesn't pass an Inventory check because the code asked about "facilities".
+  if (!isPageKey(target)) {
+    const here = moduleForPath((await headers()).get("x-pathname") ?? "");
+    if (here && isPageKey(here) && moduleOf(here) === target) t = here;
+  }
+  if (!can(subjectOf(user), t, action)) redirect("/no-access");
+  return user;
+}
+
+/** For server actions that change data: the person must be able to write to this page (or module). */
+export async function requireWrite(target: string) {
+  const user = await requireUser();
+  if (!canWrite(subjectOf(user), target)) redirect("/no-access");
+  return user;
+}
+
+/** For server actions that only read: the person must be able to view this page (or module). */
+export async function requireView(target: string) {
+  const user = await requireUser();
+  if (!can(subjectOf(user), target, "view")) redirect("/no-access");
   return user;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { Select } from "@/components/ui/Select";
 import { isOnWork } from "@/lib/employeeStage";
 import {
@@ -26,6 +27,7 @@ type EmployeeOption = {
   id: string;
   name: string;
   employeeIdNo: string;
+  hasPhoto: boolean;
   trade: string | null;
   status: string;
   siteArrivalDate: string | null;
@@ -39,7 +41,7 @@ type EmployeeOption = {
 };
 type ExistingRow = { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean };
 
-const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "HOLIDAY", "OFF"];
+const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "SICK_LEAVE", "IDLE", "HOLIDAY", "OFF"];
 
 /**
  * A standard site day. Pre-filled for active workers so marking a day is a
@@ -370,7 +372,7 @@ export function AttendanceForm({
               <button
                 type="button"
                 onClick={() => setSupplierIds([])}
-                className="px-2 py-1 text-xs font-medium text-blue-600 hover:underline"
+                className="px-2 py-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
               >
                 Clear
               </button>
@@ -409,7 +411,7 @@ export function AttendanceForm({
         ) : (
           <div className="overflow-x-auto">
             {allLocked && (
-              <p className="mb-2 text-xs font-medium text-amber-600">
+              <p className="mb-2 text-xs font-medium text-[var(--warning)]">
                 This day is approved and locked — use &ldquo;Request correction&rdquo; to change a row.
               </p>
             )}
@@ -441,7 +443,10 @@ export function AttendanceForm({
                         />
                       </td>
                       <td className="px-2 py-2 text-primary">
-                        {e.name} <span className="text-subtle">{e.employeeIdNo}</span>
+                        <span className="inline-flex items-center gap-2 align-middle">
+                          <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="xs" />
+                          <span>{e.name} <span className="text-subtle">{e.employeeIdNo}</span></span>
+                        </span>
                         {!eligible && (
                           <span
                             className="ml-1.5 text-xs text-[var(--warning)]"
@@ -486,7 +491,7 @@ export function AttendanceForm({
                           <button
                             type="button"
                             onClick={() => setCorrectionFor(e.id)}
-                            className="text-xs font-medium text-blue-600 hover:underline"
+                            className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                           >
                             Request correction
                           </button>
@@ -536,7 +541,7 @@ export function AttendanceForm({
             type="button"
             onClick={handleApproveDay}
             disabled={pending || !projectId || rows.length === 0}
-            className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+            className="rounded-lg border border-[var(--success-border)] px-4 py-2 text-sm font-medium text-[var(--success)] hover:bg-[var(--success-soft)] disabled:opacity-50"
           >
             Submit day for approval (lock)
           </button>
@@ -587,7 +592,7 @@ function CorrectionRequestPanel({
     <div className="empty-state p-4">
       <h3 className="mb-2 text-sm font-semibold text-primary">Request correction — {employeeName}</h3>
       {done ? (
-        <p className="text-sm text-emerald-600">Correction request submitted for manager review.</p>
+        <p className="text-sm text-[var(--success)]">Correction request submitted for manager review.</p>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

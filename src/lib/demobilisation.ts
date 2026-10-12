@@ -126,7 +126,7 @@ export async function demobiliseEmployees(
       if (openStay) {
         await prisma.accommodationHistory.update({
           where: { id: openStay.id },
-          data: { checkOutDate: opts.date },
+          data: { checkOutDate: opts.date, checkOutReason: "Demobilised" },
         });
       }
       result.bedsReleased++;

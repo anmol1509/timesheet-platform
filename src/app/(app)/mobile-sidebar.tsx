@@ -5,19 +5,22 @@ import Link from "next/link";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
 import { NavLinks } from "./nav-links";
-import { BrandMark, type Brand } from "@/components/BrandMark";
+import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
+import { SupportTicketCard } from "@/components/SupportTicketCard";
 
 export function MobileSidebar({
   isAdmin,
   isSuperAdmin,
   allowedModules,
   pendingApprovals,
+  badges,
   brand,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   allowedModules: string[] | null;
   pendingApprovals?: number;
+  badges?: Record<string, number>;
   brand: Brand;
 }) {
   const [open, setOpen] = useState(false);
@@ -37,8 +40,8 @@ export function MobileSidebar({
         <RadixDialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/40 backdrop-blur-[2px] lg:hidden" />
         <RadixDialog.Content className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-default bg-surface outline-none lg:hidden">
           <RadixDialog.Title className="sr-only">Navigation</RadixDialog.Title>
-          <div className="flex h-14 shrink-0 items-center justify-between border-b border-default pr-2 pl-3">
-            <BrandMark brand={brand} onNavigate={() => setOpen(false)} />
+          <div className="flex h-16 shrink-0 items-center justify-between pr-2.5 pl-4">
+            <BrandMark onNavigate={() => setOpen(false)} />
             <RadixDialog.Close
               aria-label="Close navigation"
               className="shrink-0 rounded-md p-1.5 text-subtle transition hover:bg-surface-hover hover:text-secondary"
@@ -46,14 +49,26 @@ export function MobileSidebar({
               <X className="h-4 w-4" />
             </RadixDialog.Close>
           </div>
+          <div className="shrink-0 px-3 pb-2">
+            <BranchCard brand={brand} isAdmin={isAdmin} onNavigate={() => setOpen(false)} />
+          </div>
           {/* Only actual navigation (an <a> click) closes the drawer — group-expand toggles are buttons and must not. */}
           <div
-            className="flex-1 overflow-y-auto px-3 py-3"
+            className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
             onClick={(e) => {
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
-            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} />
+            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} badges={badges} />
+          </div>
+          <div className="shrink-0 space-y-2 border-t border-default p-3">
+            <div onClick={() => setOpen(false)}>
+              <AskAiCard />
+            </div>
+            {/* No close-on-click here: it opens its own dialog inside this
+                drawer's React tree, which the drawer closing would unmount
+                mid-open. */}
+            <SupportTicketCard />
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

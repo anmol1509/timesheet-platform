@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
-import { calculateAbsentDeduction, calculateGasDeduction } from "@/lib/deductions";
+import { calculateAbsentDeduction, calculateGasDeduction, type AbsenceRule, type GasRule } from "@/lib/deductions";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
 
 type Entry = {
   id: string;
@@ -17,37 +18,38 @@ type Entry = {
   absentDeduction: number;
   dailyHours: DailyHourCell[];
   clientName: string | null;
+  checkIn: string | null;
 };
 
 export function ReviewClient({
   supplier,
   month,
   monthLabel,
-  issuedTo: initialIssuedTo,
   entries,
+  absenceRule,
+  gasRule,
 }: {
+  absenceRule: AbsenceRule;
+  gasRule: GasRule;
   supplier: { id: string; name: string; fullName: string | null };
   month: string;
   monthLabel: string;
-  issuedTo: string;
   entries: Entry[];
 }) {
-  const [fullName, setFullName] = useState(supplier.fullName || supplier.name);
-  const [issuedTo, setIssuedTo] = useState(initialIssuedTo);
-
   const defaultAbsentDeductions = useMemo(
     () =>
       Object.fromEntries(
-        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount)])
+        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount, absenceRule)])
       ),
-    [entries]
+    [entries, absenceRule]
   );
+  const [gasWaived, setGasWaived] = useState(false);
   const defaultGasDeductions = useMemo(
     () =>
       Object.fromEntries(
-        entries.map((e) => [e.id, calculateGasDeduction(e.dailyHours)])
+        entries.map((e) => [e.id, gasWaived ? 0 : calculateGasDeduction(e.dailyHours, gasRule, { checkIn: e.checkIn ? new Date(e.checkIn) : null, month })])
       ),
-    [entries]
+    [entries, gasRule, gasWaived, month]
   );
 
   const [deductions, setDeductions] = useState<Record<string, number>>(() =>
@@ -57,11 +59,20 @@ export function ReviewClient({
     () => ({ ...defaultGasDeductions })
   );
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
+  const [template, setTemplate] = useState<string>("standard");
   const [error, setError] = useState<string | null>(null);
 
   function resetRow(id: string) {
     setDeductions((d) => ({ ...d, [id]: defaultAbsentDeductions[id] }));
     setGasDeductions((d) => ({ ...d, [id]: defaultGasDeductions[id] }));
+  }
+
+  /** Waiving zeroes every worker's gas; switching it off restores the calculated amounts. */
+  function waiveGas(on: boolean) {
+    setGasWaived(on);
+    setGasDeductions(
+      Object.fromEntries(entries.map((e) => [e.id, on ? 0 : calculateGasDeduction(e.dailyHours, gasRule, { checkIn: e.checkIn ? new Date(e.checkIn) : null, month })]))
+    );
   }
 
   function resetAll() {
@@ -121,8 +132,7 @@ export function ReviewClient({
           supplierId: supplier.id,
           month,
           format,
-          fullName,
-          issuedTo,
+          template,
           gasDeductions,
           deductions,
         }),
@@ -182,38 +192,31 @@ export function ReviewClient({
             </button>
           </div>
         </div>
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium text-muted">Layout</p>
+          <TemplatePicker value={template} onChange={setTemplate} />
+          <Link href="/timesheet-templates" className="mt-1.5 inline-block text-xs text-[var(--brand-primary)] hover:underline">See all templates</Link>
+        </div>
         {error && (
-          <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
             {error}
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Letterhead name (as it appears on the document)">
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="input w-full"
-          />
-        </Field>
-        <Field label="Issued to">
-          <input
-            value={issuedTo}
-            onChange={(e) => setIssuedTo(e.target.value)}
-            className="input w-full"
-          />
-        </Field>
-      </div>
-
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-primary">Employees</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <h2 className="text-sm font-semibold text-primary">Employees</h2>
+            <label className="flex items-center gap-2 text-sm text-secondary">
+              <input type="checkbox" checked={gasWaived} onChange={(e) => waiveGas(e.target.checked)} /> Waive gas charge for this company
+            </label>
+          </div>
           {anyEdited && (
             <button
               type="button"
               onClick={resetAll}
-              className="text-xs font-medium text-blue-600 hover:underline"
+              className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
             >
               Reset all to calculated
             </button>
@@ -296,7 +299,7 @@ export function ReviewClient({
                         <button
                           type="button"
                           onClick={() => resetRow(e.id)}
-                          className="text-xs font-medium text-blue-600 hover:underline"
+                          className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                         >
                           Reset
                         </button>
@@ -368,22 +371,6 @@ export function ReviewClient({
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 function SummaryRow({
   label,

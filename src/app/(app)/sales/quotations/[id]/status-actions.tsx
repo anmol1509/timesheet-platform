@@ -42,7 +42,7 @@ export function QuotationStatusActions({ quotationId, status }: { quotationId: s
           onClick={() => transition(opt.to)}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${
             opt.tone === "danger"
-              ? "border border-red-300 text-red-700 hover:bg-red-50"
+              ? "border border-[var(--error-border)] text-[var(--error)] hover:bg-[var(--error-soft)]"
               : "bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-hover)]"
           }`}
         >

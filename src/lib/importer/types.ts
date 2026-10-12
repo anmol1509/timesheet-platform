@@ -1,0 +1,143 @@
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+
+/** A client that can be the real database or a transaction (a dry run is the
+ * real import run inside a transaction that is rolled back). */
+export type Db = PrismaClient | Prisma.TransactionClient;
+
+export type ImportKind = "SUPPLIERS" | "CLIENTS" | "WORKERS" | "TIMESHEETS" | "CAMPS" | "VEHICLES" | "MOBILISATION";
+
+export type FieldDef = {
+  key: string;
+  label: string;
+  required?: boolean;
+  /** Other names this column goes by in the wild. */
+  aliases?: string[];
+  hint?: string;
+  /** A date field that takes headings with or without the word "date" (e.g. a bare "CHECK IN"). */
+  lenientDate?: boolean;
+};
+
+export type ImportNote = { tone: "warn" | "info"; title: string; detail?: string };
+
+export type RowReport = {
+  /** Row number in the source sheet (header row is not counted as data). */
+  row: number;
+  name?: string;
+  status: "created" | "updated" | "skipped" | "error";
+  message?: string;
+  notes?: ImportNote[];
+};
+
+/** Something in a timesheet file that can be corrected before it is imported. */
+export type Fixable = {
+  type: "rate" | "hours" | "nationality" | "field";
+  /** For a worker field fix: which field, what to call it, why it was flagged and what kind of value it takes. */
+  field?: string;
+  label?: string;
+  reason?: string;
+  kind?: "country" | "gender" | "date" | "text" | "phone";
+  /** The worker's employee code, as in the sheet. */
+  id: string;
+  name: string;
+  /** Month key ("2026-09") the row is in; nationality belongs to the worker, not a month. */
+  month?: string;
+  monthLabel?: string;
+  /** For an hours fix: the day. */
+  date?: string;
+  /** What the sheet has now. */
+  current: string;
+};
+
+/** A correction the person typed in: replaces the value from the sheet when the import runs. */
+export type Fix = { type: Fixable["type"]; id: string; month?: string; date?: string; field?: string; value: string };
+
+/** What to do with a supplier name in the file that isn't on record yet. Nothing is added unless the person chose to. */
+export type SupplierDecision = { action: "add"; name?: string } | { action: "existing"; supplierId: string } | { action: "ignore" };
+/** A name in the file that isn't on record. `party` says whether it is a supplier or a client; the decision key for a client starts with "client:". For a client, `existing` means a client. */
+export type NewSupplier = { key: string; name: string; role: "supplier" | "sponsor" | "both"; rows: number; party?: "supplier" | "client" | "project"; ai?: { id: string | null; name?: string; confidence: "high" | "medium" | "low"; reason: string } };
+
+/** What the person decided for a worker name in the file that couldn't be matched on its own. */
+export type WorkerChoice = { action: "use"; employeeId: string } | { action: "skip" } | { action: "create" };
+
+export type WorkerCandidate = { id: string; name: string; code: string; trade: string | null; supplier: string | null; housed: string | null; score: number };
+/** A worker name in a camp file that needs a decision: unknown, several people share it, or only a close match exists. */
+export type PlacementIssue = {
+  key: string;
+  fileName: string;
+  rows: number[];
+  camp: string;
+  room: string;
+  kind: "unknown" | "several" | "close";
+  /** Heading for the card when a camp / room doesn't apply (e.g. "Emaar Properties / Tower 1"). */
+  context?: string;
+  /** For a name not on record: what a new worker would be created with. */
+  proposed?: { code: string; codeFromFile: boolean; trade: string | null; mobile: string | null };
+  candidates: WorkerCandidate[];
+  /** The assistant's pick among the candidates (never anyone else). */
+  ai?: { id: string | null; confidence: "high" | "medium" | "low"; reason: string };
+};
+/** One line of the camp review: who goes where. */
+export type PlacementRow = {
+  row: number;
+  fileName: string;
+  worker: { name: string; code: string; trade: string | null } | null;
+  camp: string;
+  room: string;
+  bed: string | null;
+  /** The check-in date used (YYYY-MM-DD); today when the file gave none. */
+  checkIn?: string | null;
+  status: "placed" | "decide" | "skipped" | "blocked" | "past";
+  note?: string;
+};
+
+/** One line of the mobilisation review: a worker and the deployment they would be given. */
+export type DeploymentRow = {
+  row: number;
+  fileName: string;
+  worker: { name: string; code: string; trade: string | null } | null;
+  client: string | null;
+  project: string | null;
+  stage: string | null;
+  mobilisedOn: string | null;
+  arrivedOn: string | null;
+  status: "set" | "unchanged" | "decide" | "skipped";
+  note?: string;
+};
+
+export type ApplyResult = {
+  rows: RowReport[];
+  counts: Record<string, number>;
+  /** Things about the file as a whole (not tied to one row). */
+  notes: ImportNote[];
+  /** Problems that can be corrected on the review screen before importing. */
+  fixables?: Fixable[];
+  /** Supplier names in the file that aren't on record; each needs a decision before importing. */
+  newSuppliers?: NewSupplier[];
+  /** The suppliers already on record, to pick from. */
+  existingSuppliers?: { id: string; name: string }[];
+  existingClients?: { id: string; name: string }[];
+  existingProjects?: { id: string; name: string }[];
+  deployments?: DeploymentRow[];
+  placementIssues?: PlacementIssue[];
+  placements?: PlacementRow[];
+};
+
+export type ApplyCtx = {
+  db: Db;
+  branchId: string;
+  user: { id: string; name: string };
+  /** False during a dry run: audit-log writes go to the real database and would outlive the rollback. */
+  audit: boolean;
+  progress?: (done: number, total: number) => void | Promise<void>;
+};
+
+/** One source row, already mapped to field keys. */
+export type MappedRow = { row: number; values: Record<string, string> };
+
+/** How the user (or the auto-detector) lined the file up with our fields. */
+export type Mapping = {
+  sheet?: string;
+  headerRow?: number;
+  /** field key -> the header text of the source column */
+  columns: Record<string, string>;
+};

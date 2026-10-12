@@ -1,22 +1,30 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
 import { RouteForm } from "../route-form";
 import { deleteRouteAction } from "../actions";
 
 export default async function RouteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const [route, vehicles, projects] = await Promise.all([
     prisma.route.findUnique({
       where: { id },
-      include: { stops: { orderBy: { stopOrder: "asc" } } },
+      include: {
+        stops: { orderBy: { stopOrder: "asc" } },
+        // Needed for the branch guard below — a route has no branch of its own.
+        vehicle: { select: { branchId: true } },
+      },
     }),
-    prisma.vehicle.findMany({ select: { id: true, plateNumber: true }, orderBy: { plateNumber: "asc" } }),
-    prisma.project.findMany({ select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
+    prisma.vehicle.findMany({ where: branchWhere(branchId), select: { id: true, plateNumber: true }, orderBy: { plateNumber: "asc" } }),
+    prisma.project.findMany({ where: branchWhere(branchId), select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
   ]);
-  if (!route) notFound();
+  // A route inherits its vehicle's branch.
+  if (!route || isOutsideBranch(route.vehicle?.branchId, branchId, isSuperAdmin)) notFound();
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -31,7 +39,7 @@ export default async function RouteDetailPage({ params }: { params: Promise<{ id
             hiddenFields={{ routeId: route.id }}
             confirmMessage={`Delete route "${route.name}"?`}
             label="Delete Route"
-            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-2 text-sm font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
           />
         </div>
       </div>

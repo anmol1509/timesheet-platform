@@ -7,6 +7,10 @@ import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
+import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
+import { BarList } from "@/components/BarList";
+import { Treemap } from "@/components/Treemap";
+import { Panel } from "@/components/DashboardPanel";
 import { EmployeeList } from "./employee-list";
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
@@ -14,9 +18,9 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string }>;
+  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string; trade?: string; nationality?: string }>;
 }) {
-  const { filter, supplier: supplierId, sponsor: sponsorId, registered } = await searchParams;
+  const { filter, supplier: supplierId, sponsor: sponsorId, registered, trade, nationality } = await searchParams;
   const { branchId } = await requireUserWithBranch();
 
   const [employees, entityFilter] = await Promise.all([
@@ -25,9 +29,14 @@ export default async function EmployeesPage({
         ...branchWhere(branchId),
         ...(supplierId ? { supplierId } : {}),
         ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}),
+        ...(trade ? { trade: { equals: trade, mode: "insensitive" as const } } : {}),
+        ...(nationality ? { nationality: { equals: nationality, mode: "insensitive" as const } } : {}),
       },
+      // The photo bytes aren't needed for a list — the avatar loads them
+      // separately from /api/employees/[id]/photo, and only when one exists.
+      omit: { photoData: true },
       include: {
-        supplier: { include: { parent: { select: { name: true } } } },
+        supplier: { include: { parent: { select: { name: true, code: true } } } },
         project: { select: { name: true } },
         documents: { select: { type: true } },
         campCheckIns: {
@@ -39,7 +48,11 @@ export default async function EmployeesPage({
       },
       orderBy: { name: "asc" },
     }),
-    supplierId
+    trade
+      ? Promise.resolve({ label: "Trade", name: trade })
+      : nationality
+        ? Promise.resolve({ label: "Nationality", name: nationality })
+        : supplierId
       ? prisma.supplier.findUnique({ where: { id: supplierId }, select: { name: true } }).then(
           (s) => (s ? { label: "Supplier", name: s.name } : null)
         )
@@ -64,16 +77,25 @@ export default async function EmployeesPage({
     const worstStatus = statuses.sort(
       (a, b) => STATUS_RANK[a] - STATUS_RANK[b]
     )[0];
+    const docCounts = {
+      valid: statuses.filter((s) => s === "valid").length,
+      expiring: statuses.filter((s) => s === "expiring").length,
+      expired: statuses.filter((s) => s === "expired").length,
+    };
     return {
       id: e.id,
       employeeIdNo: e.employeeIdNo,
       name: e.name,
+      hasPhoto: !!e.photoMimeType,
       category: e.category,
       trade: e.trade,
+      position: e.position,
+      department: e.department,
       passportNumber: e.passportNumber,
       emiratesId: e.emiratesId,
       nationality: e.nationality,
       companyDisplayName: e.supplier?.parent?.name ?? e.supplier?.name ?? null,
+      companyCode: e.supplier?.parent ? (e.supplier.parent.code ?? null) : (e.supplier?.code ?? null),
       isOwnCompanySupplier: !!e.supplier?.isOwnCompany,
       onWork: e.active && e.project != null,
       status: e.status,
@@ -82,9 +104,25 @@ export default async function EmployeesPage({
       campName: e.campCheckIns[0]?.camp.name ?? null,
       bedLabel: e.campCheckIns[0]?.bed ? `${e.campCheckIns[0].bed.room.name} · ${e.campCheckIns[0].bed.label}` : null,
       nextExpiry,
+      docCounts,
       complete: isEmployeeComplete(e),
     };
   });
+
+  const onWorkCount = rows.filter((r) => r.onWork).length;
+  const benchCount = rows.length - onWorkCount;
+  const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
+
+  const byTrade = new Map<string, number>();
+  const byNationality = new Map<string, number>();
+  for (const r of rows) {
+    const t = r.trade ?? "Not set";
+    byTrade.set(t, (byTrade.get(t) ?? 0) + 1);
+    const n = r.nationality ?? "Not set";
+    byNationality.set(n, (byNationality.get(n) ?? 0) + 1);
+  }
+  const topTrades = [...byTrade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const nationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-5">
@@ -97,12 +135,38 @@ export default async function EmployeesPage({
           </span>
         }
         actions={
-          <Button href="/employees/new" size="sm">
-            <UserPlus className="h-3.5 w-3.5" aria-hidden />
-            Add employee
-          </Button>
+          <>
+            <Button href="/data-health" size="sm" variant="secondary">
+              Data health
+            </Button>
+            <Button href="/employees/new" size="sm">
+              <UserPlus className="h-3.5 w-3.5" aria-hidden />
+              Add employee
+            </Button>
+          </>
         }
       />
+
+      <EmployeeKpiCards
+        total={rows.length}
+        onWork={onWorkCount}
+        bench={benchCount}
+        complianceIssues={complianceIssuesCount}
+      />
+
+      {rows.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Panel title="By trade">
+            <BarList
+              tone="brand"
+              items={topTrades.map(([label, count]) => ({ key: label, label, value: count }))}
+            />
+          </Panel>
+          <Panel title="By nationality">
+            <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count }))} />
+          </Panel>
+        </div>
+      )}
 
       {entityFilter && (
         <div className="flex items-center gap-1.5 self-start rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">

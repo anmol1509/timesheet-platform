@@ -1,16 +1,18 @@
 "use server";
 
+import { dueDateFor } from "@/lib/payrollSchedule";
+import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { isPayType, monthBounds, round2, wpsGaps } from "@/lib/payroll";
+import { monthBounds, round2, wpsGaps } from "@/lib/payroll";
 import { isUsableBank } from "@/lib/bankStatus";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { rebuildRunLines, recordLoanRepayments, reverseLoanRepayments } from "@/lib/payrollRun";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -27,8 +29,9 @@ async function loadRun(id: string) {
 }
 
 export async function createRunAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "create");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
   const month = String(formData.get("month") || "");
@@ -38,32 +41,32 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
   const companyId = String(formData.get("companyId") || "");
   const company = companyId ? await prisma.supplier.findFirst({ where: { id: companyId, branchId, isOwnCompany: true }, select: { id: true, name: true, payType: true, wpsEstablishmentId: true } }) : null;
   if (!company) return { error: "Choose which of your companies this payroll is for." };
-  if (!isPayType(company.payType)) return { error: `Set how ${company.name} pays its people (Basic or Hourly) on its company page first.` };
   if (await prisma.payrollRun.count({ where: { branchId, companyId: company.id, month } }) > 0) return { error: `A payroll run for ${company.name} in ${month} already exists.` };
 
   // Pay from the company's own account if it has a usable one; otherwise the branch default.
   const banks = await prisma.bank.findMany({ where: { branchId, companyId: company.id, status: "ACTIVE" }, orderBy: { accountName: "asc" } });
   const bank = banks.find((b) => isUsableBank(b) && b.routingCode) ?? null;
-  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { wpsPayerBankId: true } });
+  const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { wpsPayerBankId: true, payrollDueDays: true } });
 
   let created;
   try {
     created = await prisma.payrollRun.create({
-      data: { month, branchId, companyId: company.id, payType: company.payType, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null },
+      data: { month, branchId, companyId: company.id, payType: null, createdById: user.id, payerBankId: bank?.id ?? branch?.wpsPayerBankId ?? null, dueDate: dueDateFor(month, branch?.payrollDueDays) },
     });
   } catch {
     return { error: `A payroll run for ${company.name} in ${month} already exists.` };
   }
   const { count, skipped } = await rebuildRunLines(created);
   await trail(created.id, "CREATED", user, skipped.length > 0 ? `${skipped.length} employee${skipped.length === 1 ? "" : "s"} skipped: missing pay details` : null);
-  await logAudit({ entityType: "PAYROLL_RUN", entityId: created.id, action: "CREATE", after: { month, company: company.name, payType: company.payType, employees: count, skipped: skipped.length }, userId: user.id, userName: user.name, branchId });
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: created.id, action: "CREATE", after: { month, company: company.name, employees: count, skipped: skipped.length }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/payroll");
   redirect(`/payroll/${created.id}`);
 }
 
 export async function recomputeRunAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "edit");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Only a draft run can be recalculated. Reopen it first." };
@@ -80,8 +83,9 @@ export async function recomputeRunAction(formData: FormData): Promise<State> {
  * components, and the typed amounts can't push it below zero.
  */
 export async function saveLineAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "edit");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
   const lineId = String(formData.get("lineId") || "");
   const line = await prisma.payrollLine.findUnique({ where: { id: lineId }, include: { employee: { select: { name: true } } } });
   if (!line) return { error: "Line not found." };
@@ -122,8 +126,9 @@ export async function saveLineAction(formData: FormData): Promise<State> {
 
 /** The creator sends a finished draft for approval; it then appears in the Approvals inbox. */
 export async function submitRunAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "edit");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Only a draft can be sent for approval." };
@@ -147,8 +152,9 @@ export async function submitRunAction(formData: FormData): Promise<State> {
 
 /** An approver sends a submitted run back to its creator, with the reason. */
 export async function returnRunAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT" || !run.submittedAt) return { error: "That run isn't waiting for approval." };
@@ -165,8 +171,9 @@ export async function returnRunAction(formData: FormData): Promise<State> {
 }
 
 export async function approveRunAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Already approved." };
@@ -178,8 +185,10 @@ export async function approveRunAction(formData: FormData): Promise<State> {
   const rule = await prisma.branch.findUnique({ where: { id: run.branchId }, select: { payrollApprovalThreshold: true } });
   const threshold = rule?.payrollApprovalThreshold ? Number(rule.payrollApprovalThreshold) : null;
   const runTotal = round2(run.lines.reduce((s, l) => s + Number(l.net), 0));
-  if (threshold !== null && runTotal > threshold && run.createdById === user.id) {
-    return { error: `This run is AED ${runTotal.toLocaleString("en-AE", { minimumFractionDigits: 2 })}, over the AED ${threshold.toLocaleString("en-AE")} limit, so someone other than its creator has to approve it.` };
+  if (run.createdById === user.id && needsSeparateApprover(threshold, runTotal, await anotherApproverExists(run.branchId, user.id))) {
+    return { error: threshold !== null
+      ? `This run is AED ${runTotal.toLocaleString("en-AE", { minimumFractionDigits: 2 })}, over the AED ${threshold.toLocaleString("en-AE")} limit, so someone other than its creator has to approve it.`
+      : "Someone other than the person who prepared this run has to approve it. Ask another approver to sign it off." };
   }
 
   const blocked = run.lines
@@ -201,8 +210,9 @@ export async function approveRunAction(formData: FormData): Promise<State> {
 }
 
 export async function reopenRunAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "APPROVED") return { error: "Only an approved (unpaid) run can be reopened." };
@@ -216,8 +226,9 @@ export async function reopenRunAction(formData: FormData): Promise<State> {
 }
 
 export async function markPaidAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run) return { error: "Run not found." };
   if (run.status !== "APPROVED") return { error: "Approve the run before marking it paid." };
@@ -232,8 +243,9 @@ export async function markPaidAction(formData: FormData): Promise<State> {
 }
 
 export async function deleteRunAction(formData: FormData) {
+  await requireWrite("payroll.payroll");
   assertContactsValid(formData);
-  await requirePermission("payroll", "delete");
+  await requirePermission("payroll.payroll", "delete");
   const { user, run } = await loadRun(String(formData.get("id") || ""));
   if (!run || run.status !== "DRAFT") return;
   await prisma.payrollRun.delete({ where: { id: run.id } });
@@ -246,8 +258,9 @@ const PAYMENT_STATUSES = ["PENDING", "PAID", "REJECTED", "RESUBMIT"] as const;
 
 /** Record what the bank did with one worker's salary after the WPS file went out. */
 export async function setLinePaymentAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const lineId = String(formData.get("lineId") || "");
   const status = String(formData.get("status") || "");
   const note = String(formData.get("note") || "").trim() || null;
@@ -267,8 +280,9 @@ export async function setLinePaymentAction(formData: FormData): Promise<State> {
 
 /** Copy the employee's current bank details onto a rejected line so it can be re-sent. */
 export async function refreshLineBankAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const lineId = String(formData.get("lineId") || "");
   const line = await prisma.payrollLine.findUnique({ where: { id: lineId }, include: { employee: { select: { name: true, molPersonCode: true, wpsPaymentMode: true, wpsBankName: true, wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true } } } });
   if (!line) return { error: "Line not found." };
@@ -288,9 +302,26 @@ export async function refreshLineBankAction(formData: FormData): Promise<State> 
 }
 
 /** Set (or clear) the run total above which the creator may not approve their own run. */
+export async function setDueDaysAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  const raw = String(formData.get("dueDays") ?? "").trim();
+  const value = raw === "" ? null : Number(raw);
+  if (value !== null && (!Number.isInteger(value) || value < 0 || value > 60)) return { error: "Enter a whole number of days between 0 and 60, or leave blank for no due date." };
+  const before = await prisma.branch.findUnique({ where: { id: branchId }, select: { payrollDueDays: true } });
+  await prisma.branch.update({ where: { id: branchId }, data: { payrollDueDays: value } });
+  await logAudit({ entityType: "BRANCH", entityId: branchId, action: "UPDATE", before: { payrollDueDays: before?.payrollDueDays ?? null }, after: { payrollDueDays: value }, userId: user.id, userName: user.name, branchId });
+  revalidatePath("/payroll");
+  return { error: null, ok: true };
+}
+
 export async function setApprovalThresholdAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
-  await requirePermission("payroll", "approve");
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "approve");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch from the switcher first." };
   const raw = String(formData.get("threshold") || "").trim();
@@ -300,5 +331,30 @@ export async function setApprovalThresholdAction(formData: FormData): Promise<St
   await prisma.branch.update({ where: { id: branchId }, data: { payrollApprovalThreshold: value } });
   await logAudit({ entityType: "BRANCH", entityId: branchId, action: "UPDATE", before: { payrollApprovalThreshold: before?.payrollApprovalThreshold ? Number(before.payrollApprovalThreshold) : null }, after: { payrollApprovalThreshold: value }, userId: user.id, userName: user.name, branchId });
   revalidatePath("/payroll");
+  return { error: null, ok: true };
+}
+
+/** After a run is approved or paid: put a one-off earning or deduction into next month's run, instead of reopening this one. */
+export async function addCorrectionAction(formData: FormData): Promise<State> {
+  await requireWrite("payroll.payroll");
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
+  await requirePermission("payroll.payroll", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const line = await prisma.payrollLine.findUnique({ where: { id: String(formData.get("lineId") || "") }, include: { run: true, employee: { select: { name: true } } } });
+  if (!line || isOutsideBranch(line.run.branchId, branchId, isSuperAdmin)) return { error: "Payslip line not found." };
+  if (line.run.status === "DRAFT") return { error: "This run is still a draft: change the amounts in it directly." };
+  const kind = String(formData.get("kind")) === "DEDUCTION" ? "DEDUCTION" : "EARNING";
+  const amount = round2(Number(formData.get("amount")));
+  const label = String(formData.get("label") || "").trim().slice(0, 120);
+  if (!(amount > 0) || amount > 1_000_000) return { error: "Enter the amount to add or take off." };
+  if (!label) return { error: "Say what the correction is for." };
+  const [y, m] = line.run.month.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m, 1));
+  const month = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+  const adj = await prisma.payrollAdjustment.create({
+    data: { kind, category: "CORRECTION", label: `${label} (correction for ${line.run.month})`, amount, startMonth: month, endMonth: month, employeeId: line.employeeId, branchId: line.run.branchId, createdById: user.id },
+  });
+  await logAudit({ entityType: "PAYROLL_RUN", entityId: line.runId, action: "UPDATE", after: { correction: adj.id, employee: line.employee.name, kind, amount, appliesTo: month }, userId: user.id, userName: user.name, branchId: line.run.branchId });
+  revalidatePath(`/payroll/${line.runId}`);
   return { error: null, ok: true };
 }

@@ -1,10 +1,11 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, FileSearch, Plus } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
 import { Select } from "@/components/ui/Select";
 
@@ -122,12 +123,11 @@ export default async function ClientTimesheetPage({
         </Link>
       )}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Client Timesheet</h1>
-          <p className="mt-1 text-sm text-muted">
-            Review and edit a month&rsquo;s day-by-day hours before invoicing.
-          </p>
-        </div>
+        <PageHeader
+          title="Client Timesheet"
+          icon={FileSearch}
+          description={<>Review and edit a month&rsquo;s day-by-day hours before invoicing.</>}
+        />
         <div className="flex items-center gap-2">
           <Link
             href="/invoices/client-timesheet/daily"
@@ -139,7 +139,9 @@ export default async function ClientTimesheetPage({
             href="/invoices/client-timesheet/new"
             className="btn btn-primary"
           >
-            + New Entry
+            <Plus className="h-4 w-4" aria-hidden />
+
+            New Entry
           </Link>
         </div>
       </div>

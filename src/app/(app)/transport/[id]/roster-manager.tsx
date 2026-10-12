@@ -158,7 +158,7 @@ export function RosterManager({
                     </span>
                   </span>
                   {e.vehicleId && (
-                    <span className="shrink-0 text-[10px] text-amber-600">
+                    <span className="shrink-0 text-[10px] text-[var(--warning)]">
                       on another vehicle
                     </span>
                   )}

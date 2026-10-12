@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { emitWebhookEvent } from "@/lib/webhooks/deliver";
 import { z } from "zod";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -54,11 +55,14 @@ export async function POST(request: Request) {
   }
 
   const monthLabel = monthLabelFromKey(month);
-  const settings = await prisma.settings.upsert({
-    where: { id: "singleton" },
-    update: {},
-    create: { id: "singleton" },
+  // Issued by the branch this client belongs to. This used to read one global
+  // Settings row, so every tenant's invoices named the same company (by default
+  // the original one) and printed its tax number instead of their own.
+  const issuer = await prisma.branch.findUnique({
+    where: { id: client.branchId },
+    select: { name: true, issuedTo: true, trn: true },
   });
+  if (!issuer) return NextResponse.json({ error: "Client not found." }, { status: 404 });
 
   const lines = entries.map((e) => ({
     employeeIdNo: e.employeeIdNo,
@@ -108,12 +112,20 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+    const issued = await prisma.clientInvoice.findUnique({ where: { invoiceNumber }, select: { id: true } });
+    await emitWebhookEvent(branchId!, "invoice.issued", {
+      invoice_id: issued?.id ?? null,
+      invoice_number: invoiceNumber,
+      client_id: clientId,
+      month,
+      total_amount: Math.round(totalAmount * 100) / 100,
+    });
   }
 
   const genInput = {
     invoiceNumber,
-    issuedByName: settings.issuedTo,
-    issuedByTrn: settings.companyTrn,
+    issuedByName: issuer.issuedTo || issuer.name,
+    issuedByTrn: issuer.trn,
     monthLabel,
     issueDate,
     dueDate: save ? dueDate : null,

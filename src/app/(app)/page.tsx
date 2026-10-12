@@ -11,13 +11,20 @@ import { getAssignedStaff } from "@/lib/assignedStaff";
 import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEmployeeTypeCounts } from "@/lib/employeeTypeCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
-import { requireUserWithBranch } from "@/lib/auth";
+import { getDeploymentPipeline } from "@/lib/deploymentPipeline";
+import { getRecentActivity } from "@/lib/recentActivity";
+import { resolvePeriod } from "@/lib/dashboardPeriod";
+import { getApprovalsSummary, getAttendanceToday, getDemandFill, getMoneySnapshot, getPayrollStatus } from "@/lib/dashboardExtras";
+import { can } from "@/lib/permissions";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { DASHBOARD_WIDGETS, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
+import { DASHBOARD_WIDGETS, mergeWidgetOrder, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { CustomizeDashboardButton } from "./customize-dashboard";
-import { UserPlus, Upload as UploadIcon } from "lucide-react";
+import { CalendarDays, FileText, UserPlus, Upload as UploadIcon } from "lucide-react";
+import { GetStarted } from "@/components/GetStarted";
+import { isAdminRole } from "@/lib/roles";
 
 function greeting() {
   const hour = Number(
@@ -32,6 +39,8 @@ function greeting() {
 
 export default async function DashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
+  // The hours chart always shows the current month; everything else is as of today.
+  const period = resolvePeriod("this-month");
   const branchScope = branchWhere(branchId);
   const firstName = user.name.trim().split(/\s+/)[0];
 
@@ -53,6 +62,10 @@ export default async function DashboardPage() {
     documentExpiryCounts,
     employeeTypeCounts,
     entityCounts,
+    deploymentPipeline,
+    recentActivity,
+    joinDates,
+    activeProjects,
     preference,
   ] = await Promise.all([
     prisma.employee.count({ where: branchScope }),
@@ -64,13 +77,12 @@ export default async function DashboardPage() {
     getComplianceAlerts(branchId),
     getLpoAlerts(branchId),
     getWeeklyHours(branchId),
-    getHoursSplit(branchId),
+    getHoursSplit(branchId, { from: period.from, to: period.to }),
     getTimesheetPipeline(branchId),
     getComplianceRunway(branchId),
     getAssignedStaff(4, branchId),
-    // Camp/Room/Bed aren't branch-scoped yet (deferred to a later phase),
-    // so occupancy stays cross-branch for now.
-    prisma.bed.findMany({ select: { employeeId: true } }),
+    // A camp belongs to one company; rooms and beds inherit that through it.
+    prisma.bed.findMany({ where: { room: { camp: branchWhere(branchId) } }, select: { employeeId: true } }),
     prisma.upload.findFirst({
       where: branchScope,
       orderBy: { uploadedAt: "desc" },
@@ -85,10 +97,46 @@ export default async function DashboardPage() {
     getDocumentExpiryCounts(branchId),
     getEmployeeTypeCounts(branchId),
     getEntityCounts(branchId),
+    getDeploymentPipeline(branchId),
+    getRecentActivity(branchId),
+    // Only the dates — enough to draw the six-month headcount line.
+    prisma.employee.findMany({ where: branchScope, select: { createdAt: true } }),
+    prisma.project.findMany({
+      where: { ...branchScope, status: "ACTIVE" },
+      select: { id: true, name: true, code: true, noOfEmployeesRequired: true, client: { select: { name: true } }, _count: { select: { employees: true } } },
+      orderBy: { employees: { _count: "desc" } },
+      take: 6,
+    }),
     prisma.dashboardPreference.findUnique({ where: { userId: user.id } }),
   ]);
 
   const benchCount = employeeCount - onWorkCount;
+
+  // Optional sections: worked out only when the person may see them and hasn't
+  // switched them off, so an unused section costs nothing.
+  const subject = subjectOf(user);
+  const off = new Set(preference?.hiddenWidgets ?? []);
+  const wantsToday = !off.has("today");
+  const wantsMoneyDemand = !off.has("money-demand");
+  const canInvoices = can(subject, "billing", "view");
+  const canBills = can(subject, "finance", "view");
+  const approvalScope = { branchId, isSuperAdmin: user.role === "SUPER_ADMIN", subject, role: user.role };
+  const [approvalsSummary, attendanceToday, payrollStatus, money, demandFill] = await Promise.all([
+    wantsToday ? getApprovalsSummary(approvalScope).catch(() => null) : null,
+    wantsToday && can(subject, "timesheets", "view") ? getAttendanceToday(branchId).catch(() => null) : null,
+    wantsToday && can(subject, "payroll", "view") ? getPayrollStatus(branchId).then((p) => ({ run: p })).catch(() => null) : null,
+    wantsMoneyDemand && (canInvoices || canBills) ? getMoneySnapshot(branchId, { invoices: canInvoices, bills: canBills }).catch(() => null) : null,
+    wantsMoneyDemand && can(subject, "demand", "view") ? getDemandFill(branchId).catch(() => null) : null,
+  ]);
+
+  // Headcount at the end of each of the last six months (records only ever
+  // leave by being deactivated, not deleted, so created-before is headcount).
+  const now = new Date();
+  const monthEnds = Array.from({ length: 6 }, (_, i) => new Date(now.getFullYear(), now.getMonth() - 4 + i, 1));
+  const headcountTrend = monthEnds.map((end) => joinDates.filter((e) => e.createdAt < end).length);
+  headcountTrend[headcountTrend.length - 1] = employeeCount;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const newThisMonth = joinDates.filter((e) => e.createdAt >= monthStart).length;
   const deployedPct =
     employeeCount > 0 ? Math.round((onWorkCount / employeeCount) * 100) : 0;
   const expiredCount = alerts.filter((a) => a.days < 0).length;
@@ -154,22 +202,35 @@ export default async function DashboardPage() {
     occupancyPct,
     latestUpload,
     months,
+    deploymentPipeline,
+    recentActivity,
+    headcountTrend,
+    newThisMonth,
+    approvalsSummary,
+    attendanceToday,
+    payrollStatus,
+    money,
+    demandFill,
+    activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees, required: p.noOfEmployeesRequired })),
   };
 
   const hiddenWidgets = preference?.hiddenWidgets ?? [];
-  const fullOrder = [
-    ...(preference?.widgetOrder ?? []).filter((id) => DASHBOARD_WIDGETS.some((w) => w.id === id)),
-  ];
-  for (const w of DASHBOARD_WIDGETS) {
-    if (!fullOrder.includes(w.id)) fullOrder.push(w.id);
-  }
+  const fullOrder = mergeWidgetOrder(preference?.widgetOrder ?? []);
   const visibleWidgets = orderedVisibleWidgets(hiddenWidgets, fullOrder);
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title={`${greeting()}, ${firstName}.`}
-        description="Here's what's happening across your workforce today."
+        title={`${greeting()}, ${firstName}`}
+        description={
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>Here&apos;s what needs your attention today.</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-default bg-surface px-2.5 py-0.5 text-xs font-medium text-secondary shadow-xs">
+              <CalendarDays className="h-3.5 w-3.5 text-subtle" aria-hidden />
+              {new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Dubai" }).format(new Date())}
+            </span>
+          </span>
+        }
         actions={
           <>
             <CustomizeDashboardButton
@@ -178,11 +239,18 @@ export default async function DashboardPage() {
               initialHidden={hiddenWidgets}
             />
             <Link
-              href="/upload"
+              href="/import"
               className="inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary"
             >
               <UploadIcon className="h-3.5 w-3.5" aria-hidden />
-              Upload timesheet
+              Upload data
+            </Link>
+            <Link
+              href="/companies"
+              className="inline-flex h-8 items-center gap-1.5 rounded-control border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs transition hover:bg-surface-hover hover:text-primary"
+            >
+              <FileText className="h-3.5 w-3.5" aria-hidden />
+              Generate timesheets
             </Link>
             <Link
               href="/employees/new"
@@ -194,6 +262,8 @@ export default async function DashboardPage() {
           </>
         }
       />
+
+      {branchId && isAdminRole(user.role) && <GetStarted branchId={branchId} compact />}
 
       <DashboardTabs />
 

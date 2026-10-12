@@ -1,3 +1,5 @@
+import { History } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -34,10 +36,11 @@ export default async function AuditLogPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Audit Log</h1>
-          <p className="mt-1 text-sm text-muted">Who changed what, across every module. Showing the most recent {MAX_ROWS} entries.</p>
-        </div>
+        <PageHeader
+          title="Audit Log"
+          icon={History}
+          description={<>Who changed what, across every module. Showing the most recent {MAX_ROWS} entries.</>}
+        />
         <ExportDialog />
       </div>
 

@@ -1,18 +1,22 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { parseCsv } from "@/lib/csv";
+import { parseSpreadsheetFile, remapHeaders } from "@/lib/spreadsheet";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ResultSection, Tile, type ImportRowResult } from "@/components/import/report";
 import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/Dialog";
 
-export type ImportColumn = { key: string; label: string; required?: boolean };
-export type ImportRowResult = { row: number; status: "created" | "updated" | "error"; message?: string };
+export type ImportColumn = { key: string; label: string; required?: boolean; aliases?: string[] };
+export type { ImportNote, ImportRowResult } from "@/components/import/report";
 
 export function CsvImportDialog({
   entityLabel,
   columns,
   importAction,
   onDone,
+  wizardHref,
 }: {
+  wizardHref?: string;
   entityLabel: string;
   columns: ImportColumn[];
   importAction: (rows: Record<string, string>[]) => Promise<ImportRowResult[]>;
@@ -37,13 +41,15 @@ export function CsvImportDialog({
   async function handleFile(file: File) {
     setError(null);
     setResults(null);
-    const text = await file.text();
-    const parsed = parseCsv(text);
-    if (parsed.length === 0) {
-      setError("No data rows found in that file.");
+    let parsed: Record<string, string>[];
+    try {
+      parsed = await parseSpreadsheetFile(file);
+    } catch {
+      setError("That file couldn't be read. Use an Excel (.xlsx) or CSV file.");
       setRows([]);
       return;
     }
+    parsed = remapHeaders(parsed, columns);
     const missing = columns
       .filter((c) => c.required)
       .filter((c) => !(c.label in parsed[0]));
@@ -88,7 +94,14 @@ export function CsvImportDialog({
 
   const createdCount = results?.filter((r) => r.status === "created").length ?? 0;
   const updatedCount = results?.filter((r) => r.status === "updated").length ?? 0;
+  const skippedCount = results?.filter((r) => r.status === "skipped").length ?? 0;
   const errorRows = results?.filter((r) => r.status === "error") ?? [];
+  const withNotes = (results ?? []).filter(
+    (r) => r.status !== "error" && r.status !== "skipped" && ((r.notes && r.notes.length > 0) || r.message)
+  );
+  const noteTone = (r: ImportRowResult) => (r.notes ?? []).some((n) => n.tone === "warn");
+  const checkRows = withNotes.filter(noteTone);
+  const infoRows = withNotes.filter((r) => !noteTone(r));
 
   return (
     <Dialog
@@ -103,16 +116,22 @@ export function CsvImportDialog({
           type="button"
           className="btn btn-secondary px-3"
         >
-          Import CSV
+          Import Excel / CSV
         </button>
       </DialogTrigger>
       <DialogContent title={`Import ${entityLabel}`} className="max-h-[85vh] max-w-2xl overflow-y-auto">
         {!results && (
           <>
             <p className="mt-3 mb-3 text-sm text-muted">
-              Upload a CSV with a header row. Existing records are matched and
+              Upload an Excel (.xlsx) or CSV file with a header row. Existing records are matched and
               updated; new ones are created.
             </p>
+            {wizardHref && (
+              <p className="mb-3 rounded-lg bg-surface-subtle px-3 py-2 text-xs text-secondary">
+                Want to see what will happen before anything is saved, and be able to undo it?{" "}
+                <a href={wizardHref} className="font-medium text-[var(--brand-primary)] hover:underline">Use the import wizard</a>.
+              </p>
+            )}
             <button
               type="button"
               onClick={downloadTemplate}
@@ -123,7 +142,7 @@ export function CsvImportDialog({
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
@@ -184,32 +203,53 @@ export function CsvImportDialog({
         )}
 
         {results && (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm text-secondary">
-              {createdCount} created, {updatedCount} updated, {errorRows.length} failed.
-            </p>
-            {errorRows.length > 0 && (
-              <div className="max-h-48 overflow-auto rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                {errorRows.map((r) => (
-                  <p key={r.row}>
-                    Row {r.row}: {r.message || "Unknown error"}
-                  </p>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={reset}
-                className="btn btn-secondary"
-              >
+          <div className="mt-3 space-y-4">
+            <div className="flex items-center gap-2">
+              {errorRows.length === 0 ? (
+                <CheckCircle2 className="h-5 w-5 text-[var(--success)]" aria-hidden />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-[var(--warning)]" aria-hidden />
+              )}
+              <p className="text-sm font-semibold text-primary">
+                {errorRows.length === 0 ? "Import finished" : "Import finished with some failed rows"}
+                {fileName && <span className="ml-2 font-normal text-muted">{fileName}</span>}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Tile label="Created" value={createdCount} tone="success" />
+              <Tile label="Updated" value={updatedCount} tone="info" />
+              <Tile label="Merged" value={skippedCount} tone="neutral" hint="repeated rows" />
+              <Tile label="Failed" value={errorRows.length} tone={errorRows.length > 0 ? "error" : "neutral"} />
+            </div>
+
+            <ResultSection
+              title="Failed rows"
+              help="These were not imported. Fix them in your file and upload again."
+              items={errorRows}
+              tone="error"
+              defaultOpen
+            />
+            <ResultSection
+              title="Worth checking"
+              help="Imported, but you may want to confirm these."
+              items={checkRows}
+              tone="warn"
+              defaultOpen
+            />
+            <ResultSection
+              title="For your information"
+              help="Things the import did for you."
+              items={infoRows}
+              tone="info"
+              defaultOpen={false}
+            />
+
+            <div className="flex gap-2 border-t border-default pt-3">
+              <button type="button" onClick={reset} className="btn btn-secondary">
                 Import another file
               </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="btn btn-primary"
-              >
+              <button type="button" onClick={() => setOpen(false)} className="btn btn-primary">
                 Done
               </button>
             </div>

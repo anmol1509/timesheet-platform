@@ -60,7 +60,7 @@ export function LookupValueList({ values }: { values: Row[] }) {
                   type="button"
                   disabled={pending}
                   onClick={() => toggle(v.id)}
-                  className="mr-3 text-xs font-medium text-blue-600 hover:underline disabled:opacity-60"
+                  className="mr-3 text-xs font-medium text-[var(--brand-primary)] hover:underline disabled:opacity-60"
                 >
                   {v.isActive ? "Deactivate" : "Activate"}
                 </button>

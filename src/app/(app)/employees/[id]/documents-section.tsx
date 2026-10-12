@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { complianceStatus } from "@/lib/compliance";
 import { uploadDocumentAction, deleteDocumentAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { shrinkImage } from "@/lib/compressImage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DatePicker } from "@/components/ui/DatePicker";
 
@@ -48,9 +49,11 @@ export function DocumentsSection({
 
   const otherDocs = documents.filter((d) => d.type === "OTHER");
 
-  function handleUpload() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) return;
+  async function handleUpload() {
+    const picked = fileRef.current?.files?.[0];
+    if (!picked) return;
+    // A phone photo is scaled down first; a PDF is left as it is.
+    const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
       setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
       if (fileRef.current) fileRef.current.value = "";
@@ -102,7 +105,7 @@ export function DocumentsSection({
           />
         </div>
         {error && (
-          <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700">
+          <p className="border-b border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-xs text-[var(--error)]">
             {error}
           </p>
         )}

@@ -3,12 +3,14 @@ import {
   DEFAULT_LETTER_COLUMNS,
   LETTER_TABLE_COLUMNS,
   formatLetterDate,
+  letterCellValue as cellValue,
   type LetterColumnKey,
   type LetterGroup,
   type LetterWorker,
 } from "@/lib/letterLayout";
 import { splitAtWorkerTable } from "@/lib/letterHtml";
 import { RichHtml } from "@/lib/richPdf";
+import { mergePdfs, overlayOnLetterheadPdf } from "@/lib/letterheadOverlay";
 
 /**
  * The NOC and Undertaking, in the format the client's own letters use.
@@ -29,6 +31,15 @@ export type LetterIssuer = {
    * and a usable image is on file. Null prints the plain layout.
    */
   letterheadImage: string | null;
+  /** The letterhead as a PDF, when that is what was uploaded; the letter is laid over its first page. */
+  letterheadPdf?: Uint8Array | null;
+  /** Clear space kept at the top and bottom of each page on a letterhead, in mm (defaults 65 / 35). */
+  topMm?: number | null;
+  bottomMm?: number | null;
+  signatoryTitle?: string | null;
+  /** Optional signature and stamp images (data URIs), drawn in the signature block when set. */
+  signatureImage?: string | null;
+  stampImage?: string | null;
 };
 
 export type LetterSection = {
@@ -50,10 +61,11 @@ export type LetterPdfInput = {
 };
 
 // Printed content is inset from the top when a letterhead image is behind it,
-// so the pre-printed header is never written over. 150pt clears the header
+// so the pre-printed header is never written over. 185pt clears the header
 // block on a normal A4 letterhead; the footer margin does the same at the foot.
-const LETTERHEAD_TOP_INSET = 150;
-const LETTERHEAD_BOTTOM_INSET = 90;
+const MM = 72 / 25.4; // millimetres to points
+const LETTERHEAD_TOP_INSET = 65 * MM;
+const LETTERHEAD_BOTTOM_INSET = 35 * MM;
 
 // A4 in points. The background needs real page dimensions because a percentage
 // height resolves against the page's *content* box, not the page: with the
@@ -101,31 +113,6 @@ const s = StyleSheet.create({
   signature: { marginTop: 26 },
   signatureCompany: { fontFamily: "Helvetica-Bold", marginTop: 2 },
 });
-
-function cellValue(key: string, worker: LetterWorker, index: number, companyName: string) {
-  switch (key) {
-    case "SNO":
-      return String(index + 1);
-    case "NAME":
-      return worker.name.toUpperCase();
-    case "COMPANY":
-      return companyName;
-    case "DESIGNATION":
-      return worker.trade ?? "";
-    case "NATIONALITY":
-      return (worker.nationality ?? "").toUpperCase();
-    case "PASSPORT":
-      return worker.passportNumber ?? "";
-    case "ID_NUMBER":
-      return worker.emiratesId ?? "";
-    case "EMPLOYEE_ID":
-      return worker.employeeIdNo;
-    case "VISA_STATUS":
-      return worker.visaStatus ?? "";
-    default:
-      return "";
-  }
-}
 
 function LetterBody({
   input,
@@ -186,28 +173,36 @@ function LetterBody({
 
       {after && <View style={{ marginTop: 10 }}><RichHtml html={after} /></View>}
 
-      <View style={s.signature}>
-        <Text>For and on behalf of</Text>
-        <Text style={s.signatureCompany}>{section.issuer.name.toUpperCase()}</Text>
-        {section.issuer.signatoryName && <Text>{section.issuer.signatoryName}</Text>}
-        {section.issuer.signatoryPhone && <Text>Mob: {section.issuer.signatoryPhone}</Text>}
-        {section.issuer.signatoryEmail && <Text>Email: {section.issuer.signatoryEmail}</Text>}
+      <View style={s.signature} wrap={false}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <View>
+            <Text>For and on behalf of</Text>
+            <Text style={s.signatureCompany}>{section.issuer.name.toUpperCase()}</Text>
+            {section.issuer.signatureImage && <Image src={section.issuer.signatureImage} style={{ width: 120, height: 44, objectFit: "contain", marginTop: 6, marginBottom: 2 }} />}
+            {section.issuer.signatoryName && <Text>{section.issuer.signatoryName}</Text>}
+            {section.issuer.signatoryTitle && <Text>{section.issuer.signatoryTitle}</Text>}
+            {section.issuer.signatoryPhone && <Text>Mob: {section.issuer.signatoryPhone}</Text>}
+            {section.issuer.signatoryEmail && <Text>Email: {section.issuer.signatoryEmail}</Text>}
+          </View>
+          {section.issuer.stampImage && <Image src={section.issuer.stampImage} style={{ width: 92, height: 92, objectFit: "contain" }} />}
+        </View>
       </View>
     </>
   );
 }
 
 export async function generateLetterPdf(input: LetterPdfInput): Promise<Buffer> {
-  const doc = (
+  const render = (sections: LetterSection[]) => (
     <Document>
-      {input.sections.map((section, i) => {
-        const onLetterhead = !!section.issuer.letterheadImage;
+      {sections.map((section, i) => {
+        const onLetterhead = !!section.issuer.letterheadImage || !!section.issuer.letterheadPdf;
         return (
-          <Page key={i} size="A4" style={onLetterhead ? s.pageOnLetterhead : s.page}>
+          <Page key={i} size="A4" style={onLetterhead ? [s.pageOnLetterhead, { paddingTop: (section.issuer.topMm ?? 65) * MM, paddingBottom: (section.issuer.bottomMm ?? 35) * MM }] : s.page}>
             {/* Repeated on every page of this letter, so a table that runs on
-                doesn't leave later pages bare. */}
-            {onLetterhead && (
-              <Image src={section.issuer.letterheadImage!} style={s.background} fixed />
+                doesn't leave later pages bare. A PDF letterhead is laid under the
+                finished pages afterwards instead. */}
+            {section.issuer.letterheadImage && (
+              <Image src={section.issuer.letterheadImage} style={s.background} fixed />
             )}
             <LetterBody input={input} section={section} />
           </Page>
@@ -215,5 +210,18 @@ export async function generateLetterPdf(input: LetterPdfInput): Promise<Buffer> 
       })}
     </Document>
   );
-  return renderToBuffer(doc);
+
+  if (!input.sections.some((sec) => sec.issuer.letterheadPdf && !sec.issuer.letterheadImage)) {
+    return renderToBuffer(render(input.sections));
+  }
+
+  // At least one company has a PDF letterhead: render each letter alone, put it
+  // over its own letterhead, then join them in order.
+  const parts: Uint8Array[] = [];
+  for (const section of input.sections) {
+    const bytes = await renderToBuffer(render([section]));
+    const pdf = section.issuer.letterheadPdf;
+    parts.push(pdf && !section.issuer.letterheadImage ? await overlayOnLetterheadPdf(bytes, pdf) : bytes);
+  }
+  return Buffer.from(await mergePdfs(parts));
 }

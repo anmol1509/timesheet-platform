@@ -9,7 +9,8 @@ import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/ui/Button";
-import { initials, avatarGradient } from "@/lib/avatar";
+import { EmployeeAvatar } from "@/components/Avatar";
+import { Nationality } from "@/components/Nationality";
 import { cn } from "@/lib/cn";
 import { createCheckInAction, switchCampAction, switchToExternalCampAction } from "../checkin-actions";
 import { ExternalCampFields, type Party } from "../external-camp-fields";
@@ -19,6 +20,7 @@ type EmployeeRow = {
   id: string;
   name: string;
   employeeIdNo: string;
+  hasPhoto: boolean;
   nationality: string | null;
   supplierName: string | null;
   supplierCode: string | null;
@@ -143,21 +145,14 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white",
-                          avatarGradient(r.name)
-                        )}
-                      >
-                        {initials(r.name)}
-                      </div>
+<EmployeeAvatar employeeId={r.id} name={r.name} hasPhoto={r.hasPhoto} size="sm" />
                       <div className="min-w-0">
                         <p className="truncate font-medium text-primary">{r.name}</p>
                         <p className="truncate text-xs text-subtle">{r.employeeIdNo}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-secondary">{r.nationality || "—"}</td>
+                  <td className="px-4 py-3 text-secondary"><Nationality name={r.nationality} /></td>
                   <td className="px-4 py-3 text-secondary">
                     {r.supplierName ? (
                       <>
@@ -202,7 +197,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
                       <button
                         type="button"
                         onClick={() => setSwitchRow(r)}
-                        className="text-xs font-medium text-blue-600 hover:underline"
+                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
                       >
                         Switch Camp
                       </button>
@@ -390,7 +385,7 @@ function CheckInForm({
         </>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={handleSubmit} disabled={!canSubmit || pending} className="btn btn-primary">
           {pending ? "Checking in…" : "Check In"}
@@ -498,7 +493,7 @@ function SwitchCampForm({ row, camps, suppliers, clients, onClose }: { row: Empl
           <DatePicker value={checkInDate} onChange={setCheckInDate} className="w-full" />
         </label>
       )}
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
       <DialogFooter>
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Cancel

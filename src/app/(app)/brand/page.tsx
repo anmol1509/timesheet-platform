@@ -8,7 +8,7 @@ export default async function BrandPage() {
   const themeCookieValue = cookieStore.get(THEME_COOKIE)?.value;
   const initialTheme: ThemePreference = isThemePreference(themeCookieValue)
     ? themeCookieValue
-    : "system";
+    : "light";
 
   return <BrandClient initialTheme={initialTheme} />;
 }

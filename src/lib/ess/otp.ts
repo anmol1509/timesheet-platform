@@ -1,8 +1,7 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { normalizePhone, phoneTail } from "@/lib/phone";
-import { isSmsConfigured, sendSms } from "@/lib/notifications/sms";
-import { sendWhatsAppMessage } from "@/lib/notifications/whatsapp";
+import { sendSms } from "@/lib/notifications/sms";
 import { demoCodeMatches, isDemoPhone, isDemoPrincipal } from "@/lib/ess/demoLogin";
 
 const CODE_TTL_MS = 10 * 60_000;
@@ -84,8 +83,7 @@ export async function requestOtp(rawPhone: string, ip: string | null, kind: OtpK
 
   if (matches.length === 1) {
     const text = `${code} is your Workforce ERP ${kind === "SUPPLIER" ? "supplier portal " : ""}sign-in code. It expires in 10 minutes. Don't share it with anyone.`;
-    const channel = process.env.OTP_CHANNEL ?? (isSmsConfigured() ? "sms" : "whatsapp");
-    const result = channel === "whatsapp" ? await sendWhatsAppMessage(phone, text) : await sendSms(phone, text);
+    const result = await sendSms(phone, text);
     if (!result.sent) {
       console.warn(`[ess-otp] code not delivered (${result.reason}).`);
       // Development convenience only — never in production.

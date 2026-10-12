@@ -136,7 +136,7 @@ export function NotesSection({
                         <li key={doc.id}>
                           <a
                             href={`/api/documents/${doc.id}`}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
                           >
                             <FileText className="h-3 w-3" aria-hidden />
                             {doc.filename}

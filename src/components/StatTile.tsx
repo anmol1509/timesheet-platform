@@ -63,65 +63,72 @@ export function StatTile({
 
   const content = (
     <>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        {Icon && (
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]",
+              hero
+                ? "bg-white/15 text-white"
+                : isWarning
+                  ? "bg-[var(--surface)] text-[var(--warning)] ring-1 ring-[var(--warning-border)]"
+                  : "bg-brand-soft text-[var(--brand-primary)]"
+            )}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+          </span>
+        )}
         <span
           className={cn(
-            "text-xs font-medium tracking-wide uppercase",
-            hero ? "text-blue-100" : isWarning ? "text-[var(--warning)]" : "text-muted"
+            "min-w-0 flex-1 truncate text-[13px] font-medium",
+            hero ? "text-white/80" : isWarning ? "text-[var(--warning)]" : "text-muted"
           )}
         >
           {label}
         </span>
-        {Icon && (
-          <Icon
-            className={cn(
-              "h-4 w-4 shrink-0",
-              hero ? "text-blue-100" : isWarning ? "text-[var(--warning)]" : "text-subtle"
-            )}
-          />
-        )}
-        {href && !Icon && (
+        {href && (
           <ArrowRight
             className={cn(
-              "h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5",
-              hero ? "text-blue-100" : "text-subtle"
+              "h-4 w-4 shrink-0 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100",
+              hero ? "text-white" : "text-subtle"
             )}
+            aria-hidden
           />
         )}
       </div>
 
       <div
         className={cn(
-          "tabular mt-2 text-[28px] leading-9 font-semibold tracking-tight",
-          hero ? "text-white" : "text-primary"
+          "tabular mt-3 text-[30px] leading-9 font-semibold tracking-[-0.02em]",
+          hero ? "text-white" : isWarning ? "text-[var(--warning)]" : "text-primary"
         )}
       >
         {animatedValue}
       </div>
 
       {(trend || hint) && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           {trend && (
             <span
               className={cn(
-                "inline-flex items-center gap-1 text-xs font-medium",
+                "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
                 hero
-                  ? "text-white"
+                  ? "bg-white/15 text-white"
                   : trendPositive
-                    ? "text-[var(--success)]"
-                    : "text-[var(--error)]"
+                    ? "bg-[var(--success-soft)] text-[var(--success)]"
+                    : "bg-[var(--error-soft)] text-[var(--error)]"
               )}
             >
               {trend.direction === "up" ? (
-                <TrendingUp className="h-3.5 w-3.5" />
+                <TrendingUp className="h-3 w-3" />
               ) : (
-                <TrendingDown className="h-3.5 w-3.5" />
+                <TrendingDown className="h-3 w-3" />
               )}
               {trend.label}
             </span>
           )}
           {(trend?.comparison || hint) && (
-            <span className={cn("text-xs", hero ? "text-blue-100" : "text-subtle")}>
+            <span className={cn("text-xs", hero ? "text-white/70" : "text-subtle")}>
               {trend?.comparison ?? hint}
             </span>
           )}
@@ -131,13 +138,13 @@ export function StatTile({
   );
 
   const className = cn(
-    "group block rounded-card border p-4",
+    "group block rounded-card border p-4 shadow-card",
     hero
-      ? "border-transparent bg-gradient-to-br from-blue-600 to-[var(--brand-navy)] text-white"
+      ? "border-transparent bg-[image:var(--brand-gradient)] text-white shadow-[var(--shadow-brand)]"
       : isWarning
         ? "border-[var(--warning-border)] bg-[var(--warning-soft)]"
         : "border-default bg-surface",
-    href && "transition hover:border-strong hover:shadow-sm",
+    href && "transition hover:-translate-y-px hover:border-strong hover:shadow-md",
     href && hero && "hover:brightness-110"
   );
 

@@ -33,14 +33,7 @@ export async function saveNotificationPrefsAction(
   const user = await getCurrentUser();
   if (!user) return { error: "Not signed in." };
   const notifyEmail = formData.get("notifyEmail") === "on";
-  const notifyWhatsapp = formData.get("notifyWhatsapp") === "on";
-  const raw = String(formData.get("whatsappNumber") || "").replace(/[\s()-]/g, "");
-  const whatsappNumber = raw || null;
-  if (whatsappNumber && !/^\+\d{8,15}$/.test(whatsappNumber)) {
-    return { error: "Enter the WhatsApp number in international format, e.g. +971501234567." };
-  }
-  if (notifyWhatsapp && !whatsappNumber) return { error: "Add a WhatsApp number to turn WhatsApp alerts on." };
-  await prisma.user.update({ where: { id: user.id }, data: { notifyEmail, notifyWhatsapp, whatsappNumber } });
+  await prisma.user.update({ where: { id: user.id }, data: { notifyEmail } });
   revalidatePath("/profile");
   return { error: null, ok: true };
 }

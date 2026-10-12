@@ -7,16 +7,16 @@ import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSumma
 import { generateSupplierXlsx } from "@/lib/generateXlsx";
 import {
   generateTimesheetPdf,
-  DEFAULT_TIMESHEET_NOTES,
 } from "@/lib/generateTimesheetPdf";
 import { buildLetterhead } from "@/lib/letterhead";
+import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
+import { generateTemplatedPdf, generateTemplatedXlsx } from "@/lib/generateTemplatedTimesheet";
 
 const bodySchema = z.object({
   supplierId: z.string().min(1),
   month: z.string().regex(/^\d{4}-\d{2}$/),
   format: z.enum(["xlsx", "pdf"]),
-  fullName: z.string().min(1),
-  issuedTo: z.string().min(1),
+  template: z.string().max(80).default("standard"),
   gasDeductions: z.record(z.string(), z.number()),
   deductions: z.record(z.string(), z.number()),
 });
@@ -28,11 +28,13 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { supplierId, month, format, fullName, issuedTo, gasDeductions, deductions } =
-    parsed.data;
+  const { supplierId, month, format, template: templateValue, gasDeductions, deductions } = parsed.data;
   const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
-  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
+  const supplier = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    include: { parent: { select: { name: true, fullName: true, mohrePermitNumber: true } } },
+  });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) {
     return NextResponse.json({ error: "Company not found." }, { status: 404 });
   }
@@ -61,6 +63,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const chosen = await resolveTemplate(templateValue, branchId, isSuperAdmin);
+  if (!chosen) return NextResponse.json({ error: "That template isn't available any more. Pick another one." }, { status: 400 });
+  const template = chosen.base;
+  const cfg = chosen.config;
+
   const entryIds = Object.keys(deductions);
   const owned = await prisma.timesheetEntry.count({
     where: { id: { in: entryIds }, supplierId, month },
@@ -78,9 +85,14 @@ export async function POST(request: Request) {
     )
   );
 
-  if (fullName !== (supplier.fullName || supplier.name)) {
-    await prisma.supplier.update({ where: { id: supplierId }, data: { fullName } });
-  }
+  // Nothing to type on this screen any more: the supplier's own name goes on
+  // the Excel, the branch it bills is "Issued To", and the PDF's sub-contractor
+  // is the main (parent) supplier, or the supplier itself when it has no parent.
+  const fullName = supplier.fullName || supplier.name;
+  const issuer = await prisma.branch.findUnique({ where: { id: supplier.branchId }, select: { name: true, issuedTo: true } });
+  const issuedTo = issuer?.issuedTo || issuer?.name || fullName;
+  const mainSupplier = supplier.parent ?? supplier;
+  const subContractor = mainSupplier.fullName || mainSupplier.name;
 
   const entries = await getSupplierMonthEntries(supplierId, month);
   if (entries.length === 0) {
@@ -117,8 +129,44 @@ export async function POST(request: Request) {
 
   let buffer: Buffer;
   let contentType: string;
-  if (format === "xlsx") {
-    buffer = await generateSupplierXlsx(genInput);
+  if (template !== "standard") {
+    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
+    const [year, monthNo] = month.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
+    const dmy = (day: number) => `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
+    const input = {
+      template,
+      config: cfg,
+      letterhead: await buildLetterhead({
+        name: branch?.name ?? fullName,
+        address: branch?.address ?? null,
+        emirate: branch?.emirate ?? null,
+        country: branch?.country ?? null,
+        phone: branch?.phone ?? null,
+        fax: branch?.fax ?? null,
+        email: branch?.email ?? null,
+        poBox: branch?.poBox ?? null,
+        trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
+      }),
+      subContractor,
+      monthLabel,
+      periodFrom: dmy(1),
+      periodTo: dmy(lastDay),
+      issuedTo,
+      entries: genInput.entries.map((e, i) => ({ ...e, projectCode: entries[i]?.project?.code ?? projectByEmployeeId.get(e.employeeIdNo) ?? null })),
+      gasDeduction,
+      vatPercent: 5,
+      preparedBy: user.name,
+    };
+    if (format === "xlsx") {
+      buffer = await generateTemplatedXlsx(input);
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    } else {
+      buffer = await generateTemplatedPdf(input);
+      contentType = "application/pdf";
+    }
+  } else if (format === "xlsx") {
+    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined });
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   } else {
@@ -131,7 +179,7 @@ export async function POST(request: Request) {
       `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
 
     buffer = await generateTimesheetPdf({
-      letterhead: await buildLetterhead({
+      letterhead: maskLetterhead(await buildLetterhead({
         name: branch?.name ?? fullName,
         address: branch?.address ?? null,
         emirate: branch?.emirate ?? null,
@@ -140,10 +188,10 @@ export async function POST(request: Request) {
         fax: branch?.fax ?? null,
         email: branch?.email ?? null,
         poBox: branch?.poBox ?? null,
-        trn: branch?.trn ?? null,
-      }),
-      subContractor: issuedTo,
-      subContractorCode: supplier.mohrePermitNumber ?? null,
+        trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
+      }), cfg),
+      subContractor,
+      subContractorCode: mainSupplier.mohrePermitNumber ?? null,
       periodFrom: dmy(1),
       periodTo: dmy(lastDay),
       entries: genInput.entries.map((e, i) => ({
@@ -154,9 +202,9 @@ export async function POST(request: Request) {
           entries[i]?.project?.code ?? projectByEmployeeId.get(e.employeeIdNo) ?? null,
       })),
       additions: 0,
-      safetyDeduction: gasDeduction,
+      gasDeduction: gasDeduction,
       otherDeduction: 0,
-      vatPercent: 5,
+      ...standardExtras(cfg, 5),
       preparedBy: user.name,
       preparedByRole: null,
       // Left blank so the verifier signs by hand; preparing and verifying are
@@ -165,7 +213,6 @@ export async function POST(request: Request) {
       verifiedByRole: null,
       approvedBy: null,
       approvedByRole: null,
-      notes: DEFAULT_TIMESHEET_NOTES,
     });
     contentType = "application/pdf";
   }
@@ -184,7 +231,7 @@ export async function POST(request: Request) {
   });
 
   const safeName = supplier.name.replace(/[^a-z0-9]+/gi, "-");
-  const filename = `${safeName}-${month}.${format}`;
+  const filename = `${safeName}-${month}${templateValue === "standard" ? "" : `-${chosen.name.replace(/[^a-z0-9]+/gi, "-")}`}.${format}`;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

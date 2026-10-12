@@ -1,3 +1,5 @@
+import { Receipt } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
@@ -5,6 +7,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { InvoiceGrid } from "./invoice-grid";
 import { Select } from "@/components/ui/Select";
+import { StatusDonut } from "@/components/Donut";
+import { Panel } from "@/components/DashboardPanel";
 
 export default async function InvoicesPage({
   searchParams,
@@ -25,29 +29,31 @@ export default async function InvoicesPage({
     ? params.month
     : months[0];
 
-  const clients = selectedMonth
-    ? await prisma.client.findMany({
-        where: {
-          entries: { some: { month: selectedMonth, status: "CLIENT_APPROVED" } },
-          ...branchWhere(branchId),
-        },
-        include: {
-          entries: { where: { month: selectedMonth, status: "CLIENT_APPROVED" } },
-          tradeRates: true,
-        },
-        orderBy: { name: "asc" },
-      })
-    : [];
+  const [clients, invoicesByStatus] = await Promise.all([
+    selectedMonth
+      ? prisma.client.findMany({
+          where: {
+            entries: { some: { month: selectedMonth, status: "CLIENT_APPROVED" } },
+            ...branchWhere(branchId),
+          },
+          include: {
+            entries: { where: { month: selectedMonth, status: "CLIENT_APPROVED" } },
+            tradeRates: true,
+          },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
+    prisma.clientInvoice.groupBy({ by: ["status"], where: branchWhere(branchId), _count: { _all: true } }),
+  ]);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Invoices</h1>
-          <p className="mt-1 text-sm text-muted">
-            Pick a month, then review and generate a client invoice.
-          </p>
-        </div>
+        <PageHeader
+          title="Invoices"
+          icon={Receipt}
+          description={<>Pick a month, then review and generate a client invoice.</>}
+        />
         <div className="flex items-center gap-3">
           {months.length > 0 && (
             <form className="flex items-center gap-2">
@@ -60,12 +66,20 @@ export default async function InvoicesPage({
           )}
           <Link
             href="/invoices/history"
-            className="text-sm font-medium text-blue-600 hover:underline"
+            className="text-sm font-medium text-[var(--brand-primary)] hover:underline"
           >
             History →
           </Link>
         </div>
       </div>
+
+      {invoicesByStatus.length > 0 && (
+        <Panel title="All-time invoices by status" href="/invoices/history">
+          <StatusDonut
+            items={invoicesByStatus.map((r) => ({ status: r.status, count: r._count._all }))}
+          />
+        </Panel>
+      )}
 
       {clients.length === 0 && (
         <div className="empty-state">

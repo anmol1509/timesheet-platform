@@ -10,28 +10,32 @@
 :root {
   color-scheme: light;
 
-  /* Neutrals — canvas sits behind surfaces; surfaces carry content. */
-  --canvas: #f7f8fa;
+  /* Neutrals — canvas sits behind surfaces; surfaces carry content. A cool,
+     slightly blue-tinted gray family so the purple brand reads as native. */
+  --canvas: #f4f5f9;
   --surface: #ffffff;
-  --surface-subtle: #fafbfc; /* table headers, muted rows, inset panels */
-  --surface-hover: #f4f5f7; /* row/menu-item hover */
-  --surface-sunken: #f1f3f5; /* wells, disabled fields */
+  --surface-subtle: #f8f9fc; /* table headers, muted rows, inset panels */
+  --surface-hover: #f2f3f8; /* row/menu-item hover */
+  --surface-sunken: #eceef4; /* wells, disabled fields, tracks */
 
-  --border: #e5e7eb; /* default hairline */
-  --border-strong: #d3d7de; /* input borders, dividers that need to read */
+  --border: #e6e8ef; /* default hairline */
+  --border-strong: #d4d8e2; /* input borders, dividers that need to read */
 
-  --text: #101828; /* primary copy, headings, data values */
-  --text-secondary: #475467; /* body copy, table cells */
-  --text-muted: #667085; /* labels, helper text */
-  --text-subtle: #667085; /* placeholders, disabled, timestamps — darkened from #98a2b3 (2.6:1) to meet AA (4.6:1) */
+  --text: #0f172a; /* primary copy, headings, data values */
+  --text-secondary: #3d4658; /* body copy, table cells */
+  --text-muted: #5b6477; /* labels, helper text */
+  --text-subtle: #677084; /* placeholders, timestamps — AA on white */
 
-  /* Brand chrome — primary actions, active nav, checked controls, focus rings */
-  --brand-primary: #2563eb;
-  --brand-primary-hover: #1d4ed8;
-  --brand-primary-active: #1e40af;
-  --brand-primary-soft: #eff6ff;
-  --brand-primary-border: #bfdbfe;
-  --brand-navy: #1e2a6e; /* company wordmark navy — logo only, not chrome */
+  /* Brand chrome — primary actions, active nav, checked controls, focus
+     rings. Matches the ManpowerSync brand palette used on the marketing
+     site (src/app/welcome/welcome.module.css: --primary/--navy). */
+  --brand-primary: #5645d4;
+  --brand-primary-hover: #4938c4;
+  --brand-primary-active: #3a2a99;
+  --brand-primary-soft: #f1effd;
+  --brand-primary-border: #d3ccf6;
+  --brand-navy: #0a1530; /* company wordmark navy — logo only, not chrome */
+  --brand-gradient: linear-gradient(135deg, #5b4ae0 0%, #7a4fe3 100%);
 
   /* Semantic states. Each has a solid (text/icon) and a soft (fill) value. */
   --success: #067647;
@@ -47,28 +51,30 @@
   --info-soft: #eff8ff;
   --info-border: #b2ddff;
 
-  /* Radius scale. Controls 8px, cards 10px, overlays 14px — nothing rounder. */
+  /* Radius scale. Controls 9px, cards 12px, overlays 16px. */
   --radius-xs: 4px;
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
-  /* Elevation — deliberately shallow. Depth comes from borders, not shadow. */
-  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.08), 0 1px 2px -1px rgb(16 24 40 / 0.04);
-  --shadow-md: 0 4px 8px -2px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.04);
-  --shadow-lg: 0 12px 16px -4px rgb(16 24 40 / 0.08), 0 4px 6px -2px rgb(16 24 40 / 0.03);
-  --shadow-xl: 0 20px 24px -4px rgb(16 24 40 / 0.10), 0 8px 8px -4px rgb(16 24 40 / 0.04);
+  /* Elevation — soft and layered; borders still do most of the work. */
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --elevation-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 6px 12px -4px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 16px 24px -8px rgb(15 23 42 / 0.12), 0 4px 8px -4px rgb(15 23 42 / 0.05);
+  --shadow-xl: 0 24px 40px -12px rgb(15 23 42 / 0.18), 0 8px 12px -6px rgb(15 23 42 / 0.06);
+  --shadow-brand: 0 1px 2px 0 rgb(58 42 153 / 0.25), 0 4px 12px -4px rgb(86 69 212 / 0.45);
 
-  /* Type scale — variable font (Geist, already loaded), tabular numerals for
-     data columns. rem-based so browser zoom keeps working. */
+  /* Type scale — DM Sans body / Plus Jakarta Sans headings, already loaded,
+     tabular numerals for data columns. rem-based so browser zoom keeps working. */
   --text-xs: 0.75rem; /* 12px — meta, timestamps, badges */
   --text-sm: 0.8125rem; /* 13px — body copy, table cells, form labels */
   --text-base: 0.875rem; /* 14px — default UI text */
   --text-md: 1rem; /* 16px — card titles, emphasized values */
-  --text-lg: 1.25rem; /* 20px — page titles */
-  --text-xl: 1.5rem; /* 24px — KPI figures */
+  --text-lg: 1.5rem; /* 24px — page titles */
+  --text-xl: 1.75rem; /* 28px — KPI figures */
   --text-2xl: 1.875rem; /* 30px — hero numbers */
   --leading-tight: 1.2;
   --leading-normal: 1.5;
@@ -87,6 +93,58 @@
   /* Tooltip — deliberately inverted from the surface so it always reads as
      "floating", light or dark. */
   --tooltip-bg: #101828;
+  --tooltip-text: #ffffff;
+}
+
+/* Re-declares the light-theme color tokens, scoped to whatever element
+   carries this class — for surfaces that must stay light regardless of the
+   visitor's theme choice (the /login sign-in panel), rather than the whole
+   page opting out of dark mode. CSS custom properties cascade to
+   descendants from any element, not just :root, so this overrides the
+   dark-mode values below for everything inside it without touching the
+   `data-theme` attribute on <html> (which stays whatever the visitor set,
+   for the rest of the app). Scale/motion tokens aren't repeated — those
+   don't change between themes. */
+.theme-force-light {
+  color-scheme: light;
+  --canvas: #f4f5f9;
+  --surface: #ffffff;
+  --surface-subtle: #f8f9fc;
+  --surface-hover: #f2f3f8;
+  --surface-sunken: #eceef4;
+  --border: #e6e8ef;
+  --border-strong: #d4d8e2;
+  --text: #0f172a;
+  --text-secondary: #3d4658;
+  --text-muted: #5b6477;
+  --text-subtle: #677084;
+  --brand-primary: #5645d4;
+  --brand-primary-hover: #4938c4;
+  --brand-primary-active: #3a2a99;
+  --brand-primary-soft: #f1effd;
+  --brand-primary-border: #d3ccf6;
+  --brand-navy: #0a1530;
+  --success: #067647;
+  --success-soft: #ecfdf3;
+  --success-border: #abefc6;
+  --warning: #b54708;
+  --warning-soft: #fffaeb;
+  --warning-border: #fedf89;
+  --error: #b42318;
+  --error-soft: #fef3f2;
+  --error-border: #fecdca;
+  --info: #175cd3;
+  --info-soft: #eff8ff;
+  --info-border: #b2ddff;
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --elevation-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 6px 12px -4px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 16px 24px -8px rgb(15 23 42 / 0.12), 0 4px 8px -4px rgb(15 23 42 / 0.05);
+  --shadow-xl: 0 24px 40px -12px rgb(15 23 42 / 0.18), 0 8px 12px -6px rgb(15 23 42 / 0.06);
+  --background: var(--surface);
+  --foreground: var(--text);
+  --tooltip-bg: #0f172a;
   --tooltip-text: #ffffff;
 }
 
@@ -115,12 +173,12 @@
     --text-muted: #9099a8;
     --text-subtle: #9099a8;
 
-    --brand-primary: #5b8def;
-    --brand-primary-hover: #7ba1f2;
-    --brand-primary-active: #3f6fd6;
-    --brand-primary-soft: #182238;
-    --brand-primary-border: #2c4a85;
-    --brand-navy: #a7b6f5;
+    --brand-primary: #8b7ff0;
+    --brand-primary-hover: #a79cf5;
+    --brand-primary-active: #6f62d9;
+    --brand-primary-soft: #241f42;
+    --brand-primary-border: #4a3f85;
+    --brand-navy: #b3aef2;
 
     --success: #3dd68c;
     --success-soft: #103224;
@@ -143,6 +201,8 @@
 
     --tooltip-bg: #2c313d;
     --tooltip-text: #f0f2f5;
+    --elevation-card: 0 0 0 0 transparent;
+    --shadow-brand: 0 4px 14px -4px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -164,12 +224,12 @@
   --text-muted: #9099a8;
   --text-subtle: #9099a8;
 
-  --brand-primary: #5b8def;
-  --brand-primary-hover: #7ba1f2;
-  --brand-primary-active: #3f6fd6;
-  --brand-primary-soft: #182238;
-  --brand-primary-border: #2c4a85;
-  --brand-navy: #a7b6f5;
+  --brand-primary: #8b7ff0;
+  --brand-primary-hover: #a79cf5;
+  --brand-primary-active: #6f62d9;
+  --brand-primary-soft: #241f42;
+  --brand-primary-border: #4a3f85;
+  --brand-navy: #b3aef2;
 
   --success: #3dd68c;
   --success-soft: #103224;
@@ -192,6 +252,8 @@
 
   --tooltip-bg: #2c313d;
   --tooltip-text: #f0f2f5;
+  --elevation-card: 0 0 0 0 transparent;
+  --shadow-brand: 0 4px 14px -4px rgb(0 0 0 / 0.6);
 }
 
 /* Expose the tokens as Tailwind utilities: bg-surface, text-muted, border-default,
@@ -228,11 +290,12 @@
   --radius-card: var(--radius-lg);
   --radius-control: var(--radius-md);
 
-  --shadow-card: var(--shadow-xs);
+  --shadow-card: var(--elevation-card);
   --shadow-popover: var(--shadow-lg);
   --shadow-modal: var(--shadow-xl);
 
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-dm), "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 
   --color-background: var(--background);
@@ -242,11 +305,13 @@
 body {
   background: var(--canvas);
   color: var(--text);
-  /* Geist is loaded in the root layout; it was previously never applied. */
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-feature-settings: "cv11"; /* disambiguated l/1/I for ID and code columns */
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
 }
 
 /* ---------------------------------------------------------------------------
@@ -283,11 +348,23 @@ summary:focus-visible,
    copy-pasted hundreds of times across screens have one definition.
 --------------------------------------------------------------------------- */
 @layer components {
-  /* Card — the default content container. Replaces the old rounded-3xl block. */
+  /* Card — the default content container. Soft elevation + hairline; hover
+     lift only for cards that are links. */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
+    box-shadow: var(--elevation-card);
+  }
+  a.card {
+    transition:
+      border-color var(--duration) var(--ease),
+      box-shadow var(--duration) var(--ease),
+      transform var(--duration) var(--ease);
+  }
+  a.card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
   }
 
   .card-padded {
@@ -300,7 +377,8 @@ summary:focus-visible,
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.875rem 1.25rem;
+    min-height: 3.25rem;
+    padding: 0.75rem 1.25rem;
     border-bottom: 1px solid var(--border);
   }
 
@@ -314,18 +392,25 @@ summary:focus-visible,
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    gap: 0.375rem;
+    gap: 0.4rem;
     height: 2.25rem;
-    padding-inline: 0.875rem;
+    padding-inline: 0.9rem;
     border-radius: var(--radius-md);
-    font-size: 0.875rem;
-    font-weight: 500;
+    border: 1px solid transparent;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    letter-spacing: -0.005em;
     line-height: 1;
     white-space: nowrap;
     transition:
       background-color var(--duration-fast) var(--ease),
       border-color var(--duration-fast) var(--ease),
-      color var(--duration-fast) var(--ease);
+      box-shadow var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease),
+      transform var(--duration-fast) var(--ease);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(0.5px);
   }
   .btn:disabled,
   .btn[aria-disabled="true"] {
@@ -335,24 +420,26 @@ summary:focus-visible,
 
   .btn-primary {
     background: var(--brand-primary);
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0));
     color: #fff;
-    box-shadow: var(--shadow-xs);
+    box-shadow: var(--shadow-brand), inset 0 1px 0 rgb(255 255 255 / 0.14);
   }
   .btn-primary:hover:not(:disabled) {
-    background: var(--brand-primary-hover);
+    background-color: var(--brand-primary-hover);
   }
   .btn-primary:active:not(:disabled) {
-    background: var(--brand-primary-active);
+    background-color: var(--brand-primary-active);
   }
 
   .btn-secondary {
     background: var(--surface);
-    border: 1px solid var(--border-strong);
+    border-color: var(--border-strong);
     color: var(--text-secondary);
     box-shadow: var(--shadow-xs);
   }
   .btn-secondary:hover:not(:disabled) {
     background: var(--surface-hover);
+    border-color: #c3c8d4;
     color: var(--text);
   }
 
@@ -368,7 +455,7 @@ summary:focus-visible,
   /* Compact variant for row actions and toolbars. */
   .btn-sm {
     height: 2rem;
-    padding-inline: 0.625rem;
+    padding-inline: 0.7rem;
     font-size: 0.75rem;
   }
 
@@ -382,6 +469,7 @@ summary:focus-visible,
     font-size: 0.875rem;
     line-height: 1.25rem;
     color: var(--text);
+    box-shadow: var(--shadow-xs);
     transition: border-color var(--duration-fast) var(--ease),
       box-shadow var(--duration-fast) var(--ease);
   }
@@ -389,12 +477,12 @@ summary:focus-visible,
     color: var(--text-subtle);
   }
   .input:hover:not(:disabled):not(:focus) {
-    border-color: #b9bfc9;
+    border-color: #bcc2cf;
   }
   .input:focus {
     outline: none;
     border-color: var(--brand-primary);
-    box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+    box-shadow: 0 0 0 4px rgb(86 69 212 / 0.14);
   }
   .input:focus-visible {
     outline: none; /* the ring above is the focus affordance for fields */
@@ -444,8 +532,8 @@ summary:focus-visible,
     display: block;
     margin-bottom: 0.375rem;
     font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--text-muted);
+    font-weight: 550;
+    color: var(--text-secondary);
   }
   .field-help {
     margin-top: 0.375rem;
@@ -460,7 +548,9 @@ summary:focus-visible,
 
   /* Dashed placeholder block used by empty states. */
   .empty-state {
-    background: var(--surface);
+    background:
+      radial-gradient(120% 80% at 50% 0%, var(--brand-primary-soft) 0%, transparent 60%),
+      var(--surface);
     border: 1px dashed var(--border-strong);
     border-radius: var(--radius-lg);
     padding: 3rem 1.5rem;
@@ -485,8 +575,30 @@ summary:focus-visible,
   .text-page-title {
     font-size: var(--text-lg);
     line-height: var(--leading-tight);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    font-weight: 650;
+  }
+
+  /* Uppercase micro-label: section eyebrows, table headers, KPI labels. */
+  .eyebrow {
+    font-size: 0.6875rem;
     font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* Icon chip — the tinted rounded square used beside KPI and section titles. */
+  .icon-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 10px;
+    background: var(--brand-primary-soft);
+    color: var(--brand-primary);
   }
   .text-card-title {
     font-size: var(--text-md);
@@ -514,6 +626,34 @@ summary:focus-visible,
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes overlay-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes content-pop-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
+}
+@keyframes popover-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to { opacity: 0; transform: translateX(24px) scale(0.98); }
+}
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes palette-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes palette-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
@@ -530,6 +670,24 @@ summary:focus-visible,
 }
 .toast-enter {
   animation: toast-in var(--duration) var(--ease);
+}
+/* Radix keeps a closing overlay/popover mounted until its exit animation ends. */
+.rx-overlay[data-state="closed"] {
+  animation: overlay-fade-out var(--duration-fast) var(--ease) forwards;
+}
+.rx-content.rx-dialog[data-state="closed"] {
+  animation: content-pop-out var(--duration-fast) var(--ease) forwards;
+}
+.rx-popover[data-state="closed"] {
+  animation: popover-out var(--duration-fast) var(--ease) forwards;
+}
+/* The command palette positions with the translate property, so its motion uses transform only. */
+.rx-palette { animation: palette-in var(--duration) var(--ease); }
+.rx-palette[data-state="closed"] { animation: palette-out var(--duration-fast) var(--ease) forwards; }
+.rx-palette-host[data-state="closed"] { animation: overlay-fade-out var(--duration-fast) var(--ease) forwards; }
+.step-enter { animation: step-in 220ms var(--ease); }
+.toast-leave {
+  animation: toast-out 180ms var(--ease) forwards;
 }
 
 /* Skeleton shimmer used by loading states. */
@@ -550,6 +708,10 @@ summary:focus-visible,
   .rx-content,
   .rx-popover,
   .toast-enter,
+  .toast-leave,
+  .rx-palette,
+  .rx-palette-host,
+  .step-enter,
   .skeleton {
     animation: none;
   }
@@ -577,6 +739,53 @@ summary:focus-visible,
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Design-system normalization
+   Unlayered on purpose: most screens hand-roll their page title, section
+   titles and tables with the same utility strings (text-xl … on ~85 <h1>s,
+   text-sm font-semibold on ~100 <h2>s, one thead string on ~60 tables).
+   These rules lift all of them onto the current type scale and table style
+   in one place, beating the utilities they carry, instead of a hundred edits.
+--------------------------------------------------------------------------- */
+main h1.text-xl {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: -0.022em;
+  font-weight: 650;
+}
+main h2.text-sm.font-semibold {
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+}
+main table > thead > tr > th {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background-color: var(--surface-subtle);
+}
+main table > thead > tr > th:first-child {
+  padding-left: 1rem;
+}
+main table > tbody > tr > td:first-child {
+  padding-left: 1rem;
+}
+main table > tbody > tr > td {
+  vertical-align: middle;
+}
+/* Card-framed tables: the header row should sit flush with the card's own
+   rounded corners rather than floating inside them. */
+main .card > table:first-child > thead > tr:first-child > th:first-child,
+main .card > div > table > thead > tr:first-child > th:first-child {
+  border-top-left-radius: calc(var(--radius-lg) - 1px);
+}
+main .card > table:first-child > thead > tr:first-child > th:last-child,
+main .card > div > table > thead > tr:first-child > th:last-child {
+  border-top-right-radius: calc(var(--radius-lg) - 1px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -685,6 +894,11 @@ summary:focus-visible,
 .letter-paper table.letter-sample-table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 9px; }
 .letter-paper table.letter-sample-table th, .letter-paper table.letter-sample-table td { border: 1px solid #000; padding: 2px 4px; text-align: left; }
 .letter-paper table.letter-sample-table th { background: #e5e5e5; }
+/* The app's table styling (uppercase, tracked, padded) must not leak onto the paper, or the sample table is wider than the page. */
+.letter-paper table.letter-sample-table { table-layout: fixed; }
+.letter-paper table.letter-sample-table th, .letter-paper table.letter-sample-table td { font-size: 7.5px; line-height: 1.25; letter-spacing: 0; text-transform: none; font-weight: 400; color: #000; padding: 2px 3px; overflow-wrap: anywhere; word-break: break-word; vertical-align: top; }
+.letter-paper table.letter-sample-table th { font-weight: 700; background: #e5e5e5; }
+.letter-paper table { max-width: 100%; }
 .letter-paper p { margin: 0 0 0.55em; }
 .letter-paper h1 { font-size: 1.5em; font-weight: 700; } .letter-paper h2 { font-size: 1.25em; font-weight: 700; } .letter-paper h3 { font-size: 1.1em; font-weight: 700; }
 .letter-paper ul { list-style: disc; padding-left: 1.4rem; margin: 0 0 0.5em; } .letter-paper ol { list-style: decimal; padding-left: 1.4rem; margin: 0 0 0.5em; }
@@ -709,3 +923,9 @@ summary:focus-visible,
     min-height: 2.25rem;
   }
 }
+
+/* The full wordmark is dark navy; flip it to white on dark surfaces. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo { filter: brightness(0) invert(1); }
+}
+:root[data-theme="dark"] .brand-logo { filter: brightness(0) invert(1); }

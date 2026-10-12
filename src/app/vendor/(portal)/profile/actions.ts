@@ -8,7 +8,7 @@ import { normalizePhone } from "@/lib/phone";
 import { parseDay } from "@/lib/dates";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { changedFields, FIELDS_FOR, isValidIban, sanitizePayload, SUPPLIER_DOC_TYPES, type ChangeKind } from "@/lib/supplierRequests";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -16,7 +16,7 @@ const ALLOWED = ["application/pdf", "image/jpeg", "image/png"];
 
 /** Ask to change bank or contact details. Nothing changes until our staff approve it. */
 export async function requestChangeAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   const kind = str(formData.get("kind")) as ChangeKind;
@@ -60,7 +60,7 @@ export async function requestChangeAction(_prev: State, formData: FormData): Pro
 }
 
 export async function cancelChangeAction(formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   await prisma.supplierChangeRequest.deleteMany({ where: { id: str(formData.get("id")), supplierId: vendor.id, status: "PENDING" } });
@@ -70,7 +70,7 @@ export async function cancelChangeAction(formData: FormData): Promise<State> {
 
 /** Add a company document (licence, insurance, permit…) to the supplier's record. */
 export async function uploadDocumentAction(_prev: State, formData: FormData): Promise<State> {
-  assertContactsValid(formData);
+  { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   const vendor = await getVendor();
   if (!vendor) return { error: "Please sign in again." };
   const docType = str(formData.get("docType"));

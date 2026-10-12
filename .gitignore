@@ -51,3 +51,6 @@ next-env.d.ts
 /.windsurf
 /.claude/skills
 skills-lock.json
+
+# static export of the landing page (scripts/export-landing.mjs)
+/.landing-dist

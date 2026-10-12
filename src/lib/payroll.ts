@@ -5,8 +5,10 @@
  * Conventions (UAE labour-law practice; change here, not at call sites):
  *  - A pay month is 30 days for absence deductions: daily rate = fixed / 30.
  *  - Overtime is paid on the *basic* wage only (for a FLAT rate, the flat rate
- *    is treated as the basic): hourly = basic / 240 (30 days x 8 hours),
- *    times the employee's multiplier (default 1.25).
+ *    is treated as the basic): hourly = basic / 30 / the employee's daily hours
+ *    (default 8, i.e. basic / 240). Hours beyond the day's standard on a working
+ *    day pay at otMultiplier (default 1.25); hours worked on a weekly off day or
+ *    holiday use the same multiplier.
  *  - HOURLY workers are paid normal hours x hourly rate (so there is nothing to
  *    deduct for absence), and overtime at hourly rate x multiplier.
  *  - Allowances are fixed monthly amounts and are not used for overtime.
@@ -35,13 +37,25 @@ export type PayProfile = {
   hourly: number; // HOURLY rate per normal hour
   paysOvertime: boolean;
   otMultiplier: number;
+  dailyHours?: number; // standard hours in a working day (default 8)
+  restOtMultiplier?: number; // rest-day / holiday work (default 1.5)
+  // The supplier's absence rule: the first absenceFreeDays absences in the month
+  // cost nothing, every one after that deducts absencePerDay. Unset = the old
+  // rule of one thirtieth of pay per absent day.
+  absenceFreeDays?: number;
+  absencePerDay?: number;
 };
 
 export type PayPeriodFacts = {
   normalHours: number;
   absentDays: number;
   unpaidLeaveDays: number;
-  otHours: number;
+  otHours: number; // overtime hours on working days
+  restHours?: number; // hours worked on weekly off days / holidays
+  // A joiner or leaver is on the payroll for only part of the month: fixed pay is
+  // scaled to the days employed. Hourly workers are paid for hours, so it does not apply to them.
+  employedDays?: number;
+  daysInMonth?: number;
 };
 
 export type PayResult = {
@@ -52,36 +66,131 @@ export type PayResult = {
   overtimePay: number;
 };
 
+/** What the supplier's absence rule takes off for the absences in the period. */
+function absencePenalty(p: PayProfile, f: PayPeriodFacts, fixed = 0) {
+  const absent = Math.max(0, f.absentDays);
+  if (p.absencePerDay == null) return round2((fixed / 30) * absent);
+  return round2(Math.max(0, absent - (p.absenceFreeDays ?? 0)) * p.absencePerDay);
+}
+
+/**
+ * Gas charge for a month: `perDay` for each day from the check-in date (inclusive)
+ * to the end of the month, never more than `cap`. Nothing without a check-in
+ * date, after the month, or when waived.
+ */
+export function gasChargeFor(o: { checkIn: Date | null; monthStart: Date; daysInMonth: number; perDay: number; cap: number; waived: boolean }): number {
+  if (o.waived || !o.checkIn || o.perDay <= 0) return 0;
+  const monthEnd = Date.UTC(o.monthStart.getUTCFullYear(), o.monthStart.getUTCMonth(), o.daysInMonth);
+  const from = Date.UTC(o.checkIn.getUTCFullYear(), o.checkIn.getUTCMonth(), o.checkIn.getUTCDate());
+  if (from > monthEnd) return 0;
+  const days = Math.min(o.daysInMonth, Math.floor((monthEnd - Math.max(from, o.monthStart.getTime())) / 86400000) + 1);
+  return round2(Math.min(Math.max(0, o.cap), days * o.perDay));
+}
+
+const dailyHoursOf = (p: { dailyHours?: number }) => (p.dailyHours && p.dailyHours > 0 ? p.dailyHours : 8);
+
+function overtimeAmount(rate: number, p: PayProfile, f: PayPeriodFacts) {
+  const rest = p.restOtMultiplier && p.restOtMultiplier > 0 ? p.restOtMultiplier : 1.5;
+  return round2(Math.max(0, f.otHours) * rate * p.otMultiplier + Math.max(0, f.restHours ?? 0) * rate * rest);
+}
+
+/** How a day's recorded hours split into normal, working-day overtime and rest-day hours. */
+export function splitDayHours(
+  day: { date: Date; status: string; normalHours: number | null; otHours: number | null },
+  pattern: { dailyHours: number; weeklyOffDays: number[] }
+): { normal: number; ot: number; rest: number } {
+  const total = (day.normalHours ?? 0) + (day.otHours ?? 0);
+  if (day.status === "ABSENT" || day.status === "LEAVE" || day.status === "SICK_LEAVE" || day.status === "IDLE" || total <= 0) return { normal: 0, ot: 0, rest: 0 };
+  const restDay = day.status === "HOLIDAY" || day.status === "OFF" || pattern.weeklyOffDays.includes(day.date.getUTCDay());
+  if (restDay) return { normal: 0, ot: 0, rest: total };
+  const limit = pattern.dailyHours > 0 ? pattern.dailyHours : 8;
+  return { normal: Math.min(total, limit), ot: Math.max(0, total - limit), rest: 0 };
+}
+
+/**
+ * Fixed monthly pay for a month the worker was only on the payroll part of:
+ * one thirtieth per day employed, never more than the full month, and the whole
+ * amount when they were there for every day of it.
+ */
+export function proratedFixed(monthly: number, employedDays: number | undefined, daysInMonth: number | undefined): number {
+  if (employedDays == null || daysInMonth == null || employedDays >= daysInMonth) return round2(monthly);
+  return round2(Math.min(monthly, (monthly / 30) * Math.max(0, employedDays)));
+}
+
+export type EmploymentWindow = { from: Date; to: Date; days: number; partial: boolean };
+
+const dayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+/**
+ * The days of a month a person is employed: from their join date (or the 1st) to
+ * their exit date (or the last day), inclusive. null when they were not employed
+ * at all that month, so they are not in its payroll.
+ */
+export function employmentWindow(month: { start: Date; end: Date; days: number }, joinDate: Date | null, exitDate: Date | null): EmploymentWindow | null {
+  const first = Math.max(dayStart(month.start), joinDate ? dayStart(joinDate) : -Infinity);
+  const last = Math.min(dayStart(month.end), exitDate ? dayStart(exitDate) : Infinity);
+  if (first > last) return null;
+  const days = Math.round((last - first) / 86400000) + 1;
+  return { from: new Date(first), to: new Date(last), days, partial: days < month.days };
+}
+
 export function computePay(p: PayProfile, f: PayPeriodFacts): PayResult {
   if (p.payStructure === "HOURLY") {
     const earned = round2(Math.max(0, f.normalHours) * p.hourly);
-    const overtimePay = p.paysOvertime ? round2(Math.max(0, f.otHours) * p.hourly * p.otMultiplier) : 0;
-    return { basic: earned, allowances: 0, fixed: earned, deductions: 0, overtimePay };
+    const overtimePay = p.paysOvertime ? overtimeAmount(p.hourly, p, f) : 0;
+    // Hourly pay is already only for hours worked; the supplier's absence penalty still applies on top.
+    const penalty = Math.min(earned, absencePenalty(p, f));
+    return { basic: earned, allowances: 0, fixed: earned, deductions: penalty, overtimePay };
   }
   const basic = p.payStructure === "FLAT" ? p.flat : p.basic;
   const allowances = p.payStructure === "ITEMISED" ? p.housing + p.food + p.transport + p.other : 0;
-  const fixed = round2(basic + allowances);
+  const monthlyFixed = round2(basic + allowances);
+  // What is earned for the days actually on the payroll this month (the whole month unless a joiner or leaver).
+  const fixed = proratedFixed(monthlyFixed, f.employedDays, f.daysInMonth);
+  const share = monthlyFixed > 0 ? fixed / monthlyFixed : 1;
+  const basicPaid = round2(basic * share);
+  const allowancesPaid = round2(fixed - basicPaid);
 
-  const unpaidDays = Math.max(0, f.absentDays) + Math.max(0, f.unpaidLeaveDays);
-  const deductions = Math.min(fixed, round2((fixed / 30) * unpaidDays));
+  // Daily rates stay those of the full month: a partial month is not a cheaper day.
+  const unpaidLeave = round2((monthlyFixed / 30) * Math.max(0, f.unpaidLeaveDays));
+  const deductions = Math.min(fixed, round2(absencePenalty(p, f, monthlyFixed) + unpaidLeave));
 
-  const hourly = basic / 240;
-  const overtimePay = p.paysOvertime ? round2(Math.max(0, f.otHours) * hourly * p.otMultiplier) : 0;
+  const hourly = basic / 30 / dailyHoursOf(p);
+  const overtimePay = p.paysOvertime ? overtimeAmount(hourly, p, f) : 0;
 
-  return { basic: round2(basic), allowances: round2(allowances), fixed, deductions, overtimePay };
+  return { basic: basicPaid, allowances: allowancesPaid, fixed, deductions, overtimePay };
+}
+
+export type PayFigures = {
+  payStructure: string | null;
+  basicSalary: number; housingAllowance: number; foodAllowance: number; transportAllowance: number; otherAllowance: number;
+  flatMonthlyRate: number; hourlyRate: number;
+  dailyHours: number; paysOvertime: boolean; otMultiplier: number; restOtMultiplier: number;
+};
+
+/** Case- and space-insensitive key for matching a worker's trade to a trade pay row. */
+export const tradeKey = (t: string | null | undefined) => (t ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * The pay figures to use for a worker: the trade's, unless they have their own
+ * set (payOverride) or their trade has no pay row.
+ */
+export function effectivePay(own: PayFigures & { payOverride: boolean }, trade: PayFigures | null): PayFigures & { fromTrade: boolean } {
+  if (trade && !own.payOverride) return { ...trade, fromTrade: true };
+  return { ...own, fromTrade: false };
 }
 
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
 /** Standing earnings/deductions and loan recovery layered on top of computePay. */
-export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number };
+export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number; gasCharge?: number };
 
 /**
  * Net pay including recurring items, the advance recovered (loanDeduction) and
  * the deduction typed on the run (manualDeduction).
  */
 export const netPayWithExtras = (r: PayResult, adjustment: number, x: PayExtras) =>
-  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0));
+  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0) - (x.gasCharge ?? 0));
 
 /** How a company pays everyone in it. */
 export const PAY_TYPES = ["BASIC", "HOURLY"] as const;
@@ -99,13 +208,19 @@ export function payDataGap(
   type: CompanyPayType | null,
   e: { payStructure: string | null; basicSalary: number; flatMonthlyRate: number; hourlyRate: number }
 ): string | null {
-  if (type === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate";
+  if (type === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate (set a rate on their trade)";
   if (type === "BASIC") {
     if (e.payStructure !== "ITEMISED" && e.payStructure !== "FLAT") return "no monthly pay set up";
     return (e.payStructure === "FLAT" ? e.flatMonthlyRate : e.basicSalary) > 0 ? null : "no basic salary";
   }
-  return e.payStructure ? null : "no pay structure";
+  // No company-wide type: each employee is paid by their own pay structure.
+  if (!e.payStructure) return "no pay structure";
+  if (e.payStructure === "HOURLY") return e.hourlyRate > 0 ? null : "no hourly rate";
+  return (e.payStructure === "FLAT" ? e.flatMonthlyRate : e.basicSalary) > 0 ? null : "no basic salary";
 }
+
+/** Whether this employee is paid from timesheet hours: the run's type if it has one, else their own pay structure. */
+export const paidHourly = (type: CompanyPayType | null, payStructure: string | null) => (type ? type === "HOURLY" : payStructure === "HOURLY");
 
 /** Splits an amount typed against what is available, so a deduction can never push net pay below zero. */
 export const capToAvailable = (wanted: number, available: number) => round2(Math.max(0, Math.min(wanted, available)));

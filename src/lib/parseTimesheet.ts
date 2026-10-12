@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { NOT_USED } from "@/lib/importer/columnKeys";
 
 const MONTH_NAMES = [
   "jan",
@@ -26,8 +27,15 @@ export type ParsedEntry = {
   employeeName: string;
   supplierName: string;
   clientName: string | null;
+  /** The visa-holding company ("Sponsor" column), when the sheet has one. */
+  sponsorName?: string | null;
+  nationality?: string | null;
   site: string | null;
   siteId?: string | null;
+  /** Project code or name from the sheet's Project column, when it has one. */
+  projectName?: string | null;
+  /** The worker's own hourly pay rate (not the billing Rate), when the sheet has a Pay Rate column. */
+  payRate?: number | null;
   trade: string;
   rate: number;
   dailyHours: DailyHourCell[];
@@ -76,7 +84,7 @@ const IMPLAUSIBLE_DAILY_HOURS = 24;
 // but flag rows likely caused by a parsing mismatch (e.g. the "Sale Rate"
 // header incident) or a typo in the source sheet, so they get reviewed
 // instead of silently trusted.
-function computeImportWarnings(months: ParsedMonth[]): {
+export function computeImportWarnings(months: ParsedMonth[]): {
   zeroRateCount: number;
   zeroRateSample: ImportWarning[];
   implausibleHoursCount: number;
@@ -155,7 +163,8 @@ function cellText(cell: ExcelJS.Cell | undefined): string {
 function cellDate(cell: ExcelJS.Cell | undefined): Date | null {
   if (!cell || cell.value == null) return null;
   const v = cell.value;
-  if (v instanceof Date) return v;
+  // Excel sometimes hands back an invalid Date for a formula cell it can't evaluate.
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
   return null;
 }
 
@@ -174,8 +183,12 @@ type ColumnMap = {
   idNo: number | null;
   name: number | null;
   supplier: number | null;
+  sponsor: number | null;
+  nationality: number | null;
   client: number | null;
   site: number | null;
+  project: number | null;
+  payRate: number | null;
   trade: number | null;
   rate: number | null;
   total: number | null;
@@ -187,9 +200,16 @@ type ColumnMap = {
 const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["idNo", /^i\.?\s*d\.?\s*no\.?$/i],
   ["name", /employee\s*name/i],
-  ["supplier", /^supplier$/i],
+  // Sheets label the supplying company "Supplier", "Main Supplier" or
+  // "Supplier Name" ("Supplier Code" is a different column).
+  ["supplier", /^(main\s*supplier|supplier(\s*name)?)$/i],
+  ["sponsor", /^sponsor(\s*(name|company))?$/i],
+  ["nationality", /^nationality$/i],
   ["client", /client\s*name/i],
   ["site", /^site$/i],
+  ["project", /^project(\s*(code|name))?$/i],
+  // The worker's own pay per hour, for payroll. Deliberately not "Rate", which is what the client is billed.
+  ["payRate", /^(pay\s*rate(\s*\/?\s*(hr|hour))?|hourly\s*pay(\s*rate)?)$/i],
   ["trade", /^trade$/i],
   // The billing rate column is labeled "Rate" or "Sale Rate" depending on
   // the sheet. Matched as an exact phrase so it never picks up "Purchase
@@ -200,6 +220,102 @@ const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["absentDeduction", /absent\s*deduction/i],
   ["invoiceValue", /invoice\s*value/i],
 ];
+
+export type TimesheetColumnKey = keyof ColumnMap;
+/** Header text chosen by hand for a column the detector missed, by field. */
+export type TimesheetOverrides = Partial<Record<TimesheetColumnKey, string>>;
+
+const normHeader = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+function emptyColMap(): ColumnMap {
+  return {
+    idNo: null, name: null, supplier: null, sponsor: null, nationality: null, client: null, site: null, project: null, payRate: null,
+    trade: null, rate: null, total: null, absentCount: null, absentDeduction: null, invoiceValue: null,
+  };
+}
+
+/** Which column holds what, by the header's wording — then any that were picked by hand. */
+function detectColumns(sheet: ExcelJS.Worksheet, headerRowNum: number, overrides: TimesheetOverrides = {}): ColumnMap {
+  const headerRow = sheet.getRow(headerRowNum);
+  const colMap = emptyColMap();
+  const lastCol = sheet.columnCount;
+  for (let c = 1; c <= lastCol; c++) {
+    const text = cellText(headerRow.getCell(c));
+    if (!text) continue;
+    for (const [key, pattern] of HEADER_PATTERNS) {
+      if (colMap[key] == null && pattern.test(text)) {
+        colMap[key] = c;
+        break;
+      }
+    }
+  }
+  for (const [key, wanted] of Object.entries(overrides) as [TimesheetColumnKey, string][]) {
+    if (!wanted) continue;
+    // "Not used": the person said this detected column is not that field.
+    if (wanted === NOT_USED) {
+      colMap[key] = null;
+      continue;
+    }
+    for (let c = 1; c <= lastCol; c++) {
+      if (normHeader(cellText(headerRow.getCell(c))) === normHeader(wanted)) {
+        colMap[key] = c;
+        break;
+      }
+    }
+  }
+  return colMap;
+}
+
+export type TimesheetSheetInfo = {
+  sheet: string;
+  month: string | null;
+  headerRow: number | null;
+  headers: string[];
+  /** For each field, the header text of the column that was detected, or null. */
+  detected: Record<string, string | null>;
+  /** Up to three example values from the first rows under each detected column, so a match can be checked by eye. */
+  samples: Record<string, string[]>;
+  /** Data rows under the header (a rough count, for the review screen). */
+  rows: number;
+};
+
+/** What the parser sees in each sheet, without importing anything. */
+export async function describeTimesheetWorkbook(buffer: Buffer, overrides: TimesheetOverrides = {}): Promise<TimesheetSheetInfo[]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+  const out: TimesheetSheetInfo[] = [];
+  for (const sheet of workbook.worksheets) {
+    const monthInfo = parseMonthFromSheetName(sheet.name);
+    const headerRowNum = findHeaderRow(sheet);
+    if (!headerRowNum) {
+      out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: null, headers: [], detected: {}, samples: {}, rows: 0 });
+      continue;
+    }
+    const headerRow = sheet.getRow(headerRowNum);
+    const headers: string[] = [];
+    for (let c = 1; c <= sheet.columnCount; c++) {
+      const t = cellText(headerRow.getCell(c));
+      if (t && !headers.includes(t)) headers.push(t);
+    }
+    const colMap = detectColumns(sheet, headerRowNum, overrides);
+    const detected: Record<string, string | null> = {};
+    const samples: Record<string, string[]> = {};
+    for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "project", "trade", "rate", "payRate", "nationality"] as const) {
+      detected[key] = colMap[key] ? cellText(headerRow.getCell(colMap[key]!)) || null : null;
+      if (colMap[key]) {
+        const vals: string[] = [];
+        // The row under the heading often holds dates, which are blank in these columns, so blanks are skipped.
+        for (let r = headerRowNum + 1; r <= Math.min(sheet.rowCount, headerRowNum + 12) && vals.length < 3; r++) {
+          const t = cellText(sheet.getRow(r).getCell(colMap[key]!));
+          if (t && !vals.includes(t)) vals.push(t.slice(0, 40));
+        }
+        samples[key] = vals;
+      }
+    }
+    out.push({ sheet: sheet.name, month: monthInfo?.month ?? null, headerRow: headerRowNum, headers, detected, samples, rows: Math.max(0, sheet.rowCount - headerRowNum - 1) });
+  }
+  return out;
+}
 
 function findHeaderRow(sheet: ExcelJS.Worksheet): number | null {
   for (let r = 1; r <= Math.min(10, sheet.rowCount); r++) {
@@ -240,7 +356,7 @@ function normalizeTradeCasing(entries: ParsedEntry[]) {
 function mergeDuplicateRows(entries: ParsedEntry[]): ParsedEntry[] {
   const groups = new Map<string, ParsedEntry[]>();
   for (const entry of entries) {
-    const key = `${entry.supplierName.trim().toLowerCase()}||${entry.employeeIdNo}||${entry.trade}`;
+    const key = `${entry.supplierName.trim().toLowerCase()}||${entry.employeeIdNo.trim().toUpperCase()}||${entry.trade.trim().toLowerCase()}`;
     const group = groups.get(key);
     if (group) group.push(entry);
     else groups.set(key, [entry]);
@@ -285,7 +401,8 @@ function mergeDuplicateRows(entries: ParsedEntry[]): ParsedEntry[] {
 }
 
 export async function parseConsolidatedWorkbook(
-  buffer: Buffer
+  buffer: Buffer,
+  overrides: TimesheetOverrides = {}
 ): Promise<ParseResult> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
@@ -307,31 +424,8 @@ export async function parseConsolidatedWorkbook(
     }
 
     const headerRow = sheet.getRow(headerRowNum);
-    const colMap: ColumnMap = {
-      idNo: null,
-      name: null,
-      supplier: null,
-      client: null,
-      site: null,
-      trade: null,
-      rate: null,
-      total: null,
-      absentCount: null,
-      absentDeduction: null,
-      invoiceValue: null,
-    };
-
     const lastCol = sheet.columnCount;
-    for (let c = 1; c <= lastCol; c++) {
-      const text = cellText(headerRow.getCell(c));
-      if (!text) continue;
-      for (const [key, pattern] of HEADER_PATTERNS) {
-        if (colMap[key] == null && pattern.test(text)) {
-          colMap[key] = c;
-          break;
-        }
-      }
-    }
+    const colMap = detectColumns(sheet, headerRowNum, overrides);
 
     // Day columns sit strictly between "total" and the next known trailing
     // column (absentCount / absentDeduction / invoiceValue), whichever comes
@@ -356,9 +450,32 @@ export async function parseConsolidatedWorkbook(
     }
 
     const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    // Formula-driven date cells often come back broken (1899-12-31, or nothing
+    // at all) for the first days of the month while the rest are right. Day
+    // columns run one day apiece, so a broken one is worked out from a good
+    // one; with none, the first day column is the 1st of the sheet's month.
+    const dateAt = new Map<number, Date>();
+    if (hasDateRow) {
+      for (let c = dayStart; c <= dayEnd; c++) {
+        const d = cellDate(dateRow.getCell(c));
+        if (d && d.getUTCFullYear() >= 2000) dateAt.set(c, d);
+      }
+    }
+    const DAY_MS = 86_400_000;
+    let anchor: { col: number; date: Date } | null = null;
+    for (const [c, d] of dateAt) {
+      anchor = { col: c, date: d };
+      break;
+    }
+    if (!anchor && hasDateRow) {
+      const [yy, mm] = monthInfo.month.split("-").map(Number);
+      anchor = { col: dayStart, date: new Date(Date.UTC(yy, mm - 1, 1)) };
+    }
     const dayCols: { col: number; date: Date | null; label: string }[] = [];
     for (let c = dayStart; c <= dayEnd; c++) {
-      const date = hasDateRow ? cellDate(dateRow.getCell(c)) : null;
+      const date = hasDateRow
+        ? (dateAt.get(c) ?? (anchor ? new Date(anchor.date.getTime() + (c - anchor.col) * DAY_MS) : null))
+        : null;
       const label = date ? WEEKDAY_ABBR[date.getUTCDay()] : cellText(headerRow.getCell(c));
       if (!label && !date) continue;
       dayCols.push({ col: c, date, label: label || "" });
@@ -373,9 +490,11 @@ export async function parseConsolidatedWorkbook(
       const row = sheet.getRow(r);
       const name = colMap.name ? cellText(row.getCell(colMap.name)) : "";
       const idNo = colMap.idNo ? cellText(row.getCell(colMap.idNo)) : "";
-      const supplierName = colMap.supplier
-        ? cellText(row.getCell(colMap.supplier))
-        : "";
+      const sponsorName = colMap.sponsor ? cellText(row.getCell(colMap.sponsor)) || null : null;
+      // A blank supplier falls back to the sponsor: a worker's visa company is
+      // the next best answer to "whose worker is this".
+      const supplierName =
+        (colMap.supplier ? cellText(row.getCell(colMap.supplier)) : "") || sponsorName || "";
 
       if (!name && !idNo) continue; // blank separator row
       if (!supplierName) {
@@ -385,7 +504,9 @@ export async function parseConsolidatedWorkbook(
           row: r,
           name: name || "(unnamed)",
           idNo: idNo || "(no ID)",
-          reason: "Missing company name",
+          reason: colMap.supplier
+            ? "Missing company name"
+            : 'This sheet has no "Supplier" or "Main Supplier" column (or a "Sponsor" column) to take the company from.',
         });
         continue;
       }
@@ -394,6 +515,8 @@ export async function parseConsolidatedWorkbook(
         ? cellText(row.getCell(colMap.client)) || null
         : null;
       const site = colMap.site ? cellText(row.getCell(colMap.site)) || null : null;
+      const projectName = colMap.project ? cellText(row.getCell(colMap.project)) || null : null;
+      const payRate = colMap.payRate ? cellNumber(row.getCell(colMap.payRate)) : null;
       const trade = colMap.trade ? cellText(row.getCell(colMap.trade)) : "";
       const rate = colMap.rate ? cellNumber(row.getCell(colMap.rate)) ?? 0 : 0;
 
@@ -417,11 +540,15 @@ export async function parseConsolidatedWorkbook(
       }
 
       entries.push({
-        employeeIdNo: idNo || `NOID-${name}-${r}`,
+        employeeIdNo: (idNo || `NOID-${name}-${r}`).trim(),
         employeeName: name || "(unnamed)",
         supplierName,
         clientName,
+        sponsorName,
+        nationality: colMap.nationality ? cellText(row.getCell(colMap.nationality)) || null : null,
         site,
+        projectName,
+        payRate: payRate != null && payRate > 0 ? payRate : null,
         trade: trade || "(unspecified)",
         rate,
         dailyHours,

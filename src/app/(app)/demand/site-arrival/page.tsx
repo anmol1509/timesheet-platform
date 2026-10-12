@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { MapPinCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -79,13 +80,11 @@ export default async function SiteArrivalPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Site arrival</h1>
-        <p className="mt-1 text-sm text-muted">
-          Confirm who actually reached site. Mobilising commits a worker; this
-          records that they turned up.
-        </p>
-      </div>
+      <PageHeader
+        title="Site arrival"
+        icon={MapPinCheck}
+        description={<>Confirm who actually reached site. Mobilising commits a worker; this records that they turned up.</>}
+      />
 
       {pending.length === 0 && arrived.length === 0 ? (
         <EmptyState

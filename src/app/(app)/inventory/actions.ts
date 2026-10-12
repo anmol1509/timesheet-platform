@@ -3,10 +3,12 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
+import { blank, cellOf, rowError } from "@/lib/bulkImport";
+import type { ImportRowResult } from "@/components/import/report";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -22,6 +24,7 @@ export async function createInventoryItemAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -34,7 +37,7 @@ export async function createInventoryItemAction(
     };
   }
 
-  const existing = await prisma.inventoryItem.findUnique({ where: { name } });
+  const existing = await prisma.inventoryItem.findFirst({ where: { name, branchId }, select: { id: true } });
   if (existing) return { error: "An item with that name already exists." };
 
   const data = {
@@ -65,16 +68,25 @@ export async function createInventoryItemAction(
   redirect(`/inventory/${item.id}`);
 }
 
-export async function updateInventoryItemAction(formData: FormData) {
+export async function updateInventoryItemAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
-  if (!id) return;
-  if (!(await assertItemInBranch(id, branchId, isSuperAdmin))) return;
+  if (!id) return { error: null };
+  if (!(await assertItemInBranch(id, branchId, isSuperAdmin))) return { error: null };
 
   const before = await prisma.inventoryItem.findUnique({ where: { id } });
 
+  // The name can be corrected here; two items in one company can't share a name.
+  const name = String(formData.get("name") ?? "").trim() || before?.name || "";
+  if (before && name !== before.name) {
+    const taken = await prisma.inventoryItem.findFirst({ where: { branchId: before.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another item is already called "${name}".` };
+  }
+
   const data = {
+    name,
     category: stringOrNull(formData.get("category")),
     notes: stringOrNull(formData.get("notes")),
   };
@@ -94,11 +106,13 @@ export async function updateInventoryItemAction(formData: FormData) {
 
   revalidatePath(`/inventory/${id}`);
   revalidatePath("/inventory");
+  return { error: null };
 }
 
 export async function deleteInventoryItemAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
-  await requirePermission("facilities", "delete");
+  await requirePermission("facilities.inventory", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("itemId") || "");
   if (!id) return;
@@ -137,6 +151,7 @@ export async function deleteInventoryItemAction(formData: FormData) {
 export async function createVariantAction(
   formData: FormData
 ): Promise<{ error?: string } | void> {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const itemId = String(formData.get("itemId") || "");
@@ -167,6 +182,7 @@ export async function createVariantAction(
 }
 
 export async function updateVariantStockAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");
@@ -193,8 +209,9 @@ export async function updateVariantStockAction(formData: FormData) {
 }
 
 export async function deleteVariantAction(formData: FormData) {
+  await requireWrite("facilities.inventory");
   assertContactsValid(formData);
-  await requirePermission("facilities", "delete");
+  await requirePermission("facilities.inventory", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const variantId = String(formData.get("variantId") || "");
   if (!variantId) return;
@@ -228,3 +245,65 @@ export async function deleteVariantAction(formData: FormData) {
   revalidatePath(`/inventory/${existing.itemId}`);
 }
 
+
+/**
+ * Bulk add/update stock. One row per item variant (size, colour…); an item with
+ * no variant column gets a single "Standard" variant. Items and variants are
+ * matched by name, ignoring case, and stock is only changed when the cell is filled.
+ */
+export async function bulkImportInventoryAction(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
+  await requireWrite("facilities.inventory");
+  await requirePermission("facilities.inventory", "create");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  if (!branchId) {
+    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin.";
+    return rows.map((_, i) => rowError(i, undefined, message));
+  }
+  const items = await prisma.inventoryItem.findMany({ where: { branchId }, include: { variants: true } });
+  const byKey = new Map(items.map((it) => [it.name.trim().toLowerCase(), it]));
+  const results: ImportRowResult[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const itemName = cellOf(r, "Item").replace(/\s+/g, " ");
+    if (!itemName) { results.push(rowError(i, undefined, "Item name is required.")); continue; }
+    const variantName = cellOf(r, "Variant") || "Standard";
+    const stockText = cellOf(r, "Stock");
+    const stock = stockText === "" ? null : Number(stockText.replace(/,/g, ""));
+    if (stock !== null && (!Number.isFinite(stock) || stock < 0)) { results.push(rowError(i, itemName, `Stock "${stockText}" isn't a whole number of units.`)); continue; }
+    try {
+      let item = byKey.get(itemName.toLowerCase());
+      let created = false;
+      const category = blank(cellOf(r, "Category"));
+      const notes = blank(cellOf(r, "Notes"));
+      if (!item) {
+        const made = await prisma.inventoryItem.create({ data: { name: itemName, branchId, category, notes }, include: { variants: true } });
+        await logAudit({ entityType: "INVENTORY_ITEM", entityId: made.id, action: "CREATE", after: { name: itemName, category, notes }, userId: user.id, userName: user.name, branchId });
+        item = made;
+        byKey.set(itemName.toLowerCase(), made);
+        created = true;
+      } else if (category || notes) {
+        const changes = { ...(category ? { category } : {}), ...(notes ? { notes } : {}) };
+        await prisma.inventoryItem.update({ where: { id: item.id }, data: changes });
+        await logAudit({ entityType: "INVENTORY_ITEM", entityId: item.id, action: "UPDATE", before: { category: item.category, notes: item.notes }, after: changes, userId: user.id, userName: user.name, branchId });
+        Object.assign(item, changes);
+      }
+      const sku = blank(cellOf(r, "SKU"));
+      const variant = item.variants.find((v) => v.name.trim().toLowerCase() === variantName.toLowerCase());
+      if (variant) {
+        const changes = { ...(stock !== null ? { stock: Math.trunc(stock) } : {}), ...(sku ? { sku } : {}) };
+        if (Object.keys(changes).length > 0) await prisma.inventoryVariant.update({ where: { id: variant.id }, data: changes });
+        Object.assign(variant, changes);
+        results.push({ row: i + 2, name: `${itemName} · ${variant.name}`, status: created ? "created" : "updated" });
+      } else {
+        const v = await prisma.inventoryVariant.create({ data: { itemId: item.id, name: variantName, sku, stock: stock === null ? 0 : Math.trunc(stock) } });
+        item.variants.push(v);
+        results.push({ row: i + 2, name: `${itemName} · ${v.name}`, status: created ? "created" : "updated" });
+      }
+    } catch (e) {
+      results.push(rowError(i, itemName, e instanceof Error ? e.message : "Failed to import row."));
+    }
+  }
+  revalidatePath("/inventory");
+  return results;
+}

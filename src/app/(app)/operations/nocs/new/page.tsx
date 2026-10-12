@@ -1,6 +1,9 @@
+import { FilePlus2 } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { templateHtml } from "@/lib/letterHtml";
 import { NocForm } from "./noc-form";
 
 export default async function NewNocPage({
@@ -21,7 +24,8 @@ export default async function NewNocPage({
       },
       orderBy: { requestNo: "desc" },
     }),
-    prisma.letterTemplate.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } }),
+    // Only the NOC wording belongs here; salary certificates, warnings and the rest have their own screens.
+    prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), category: "No Objection Letter" }, orderBy: { name: "asc" } }),
   ]);
 
   const requests = demandRequests.map((r) => {
@@ -45,16 +49,15 @@ export default async function NewNocPage({
   });
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">New NOC</h1>
-        <p className="mt-1 text-sm text-muted">
-          Generate a no-objection/mobilization letter for a subset of a Demand Request&apos;s allocated employees.
-        </p>
-      </div>
+    <div className="max-w-6xl space-y-6">
+      <PageHeader
+        title="New NOC"
+        icon={FilePlus2}
+        description={<>Generate a no-objection/mobilization letter for a subset of a Demand Request&apos;s allocated employees.</>}
+      />
       <NocForm
         requests={requests}
-        templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+        templates={templates.map((t) => ({ id: t.id, name: t.name, title: t.title || t.name, html: templateHtml(t) }))}
         initialDemandRequestId={demandRequestId || ""}
       />
     </div>

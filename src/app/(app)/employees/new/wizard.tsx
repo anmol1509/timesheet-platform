@@ -16,6 +16,7 @@ import {
 } from "./actions";
 import { MultiUploadSlot, PhotoSlot, UploadSlot, type UploadStatus } from "./upload-slot";
 import { DocumentChecklist, type ChecklistItem } from "./document-checklist";
+import { MAX_REQUEST_BYTES, shrinkImage } from "@/lib/compressImage";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { Select } from "@/components/ui/Select";
 import { PhoneInput } from "@/components/ui/PhoneInput";
@@ -33,11 +34,12 @@ import {
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { CountrySelect } from "@/components/ui/CountrySelect";
+import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Project = { id: string; name: string; code: string };
 
-type Supplier = { id: string; name: string };
+type Supplier = { id: string; name: string; parentSupplierId?: string | null };
 
 const STEPS = [
   { key: "documents", label: "Documents" },
@@ -88,6 +90,7 @@ type Fields = {
   gender: string;
   nationality: string;
   position: string;
+  department: string;
   dateOfBirth: string;
   mobileNumber: string;
   joinDate: string;
@@ -120,6 +123,7 @@ const EMPTY_FIELDS: Fields = {
   gender: "",
   nationality: "",
   position: "",
+  department: "",
   dateOfBirth: "",
   mobileNumber: "",
   joinDate: "",
@@ -227,6 +231,7 @@ export function EmployeeWizard({
   // accumulates these over time, so one overwritable field wouldn't do.
   const [notes, setNotes] = useState<NoteDraft[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [sizeNotice, setSizeNotice] = useState<string | null>(null);
 
   const [found, setFound] = useState<string[]>([]);
   const [autofilled, setAutofilled] = useState<string[]>([]);
@@ -356,6 +361,61 @@ export function EmployeeWizard({
     }
   }
 
+  /** Bytes already held for upload, optionally not counting a file that is about to be replaced. */
+  function heldBytes(except?: File | null) {
+    const all = [photo, ...packFiles, ...Object.values(docFiles), ...notes.flatMap((n) => n.files)];
+    return all.reduce((sum, f) => (f && f !== except ? sum + f.size : sum), 0);
+  }
+
+  /**
+   * One save carries every file in a single request the host caps at about 4.5 MB. So a file is shrunk (photos)
+   * and checked the moment it's chosen, and refused here with a message on this screen, instead of the save
+   * failing later on an error page.
+   */
+  async function admit(raw: File, except?: File | null, alreadyAccepted = 0): Promise<File | null> {
+    const file = await shrinkImage(raw);
+    const room = MAX_REQUEST_BYTES - heldBytes(except) - alreadyAccepted;
+    if (file.size > room) {
+      const mb = (n: number) => (n / 1048576).toFixed(1);
+      setSizeNotice(
+        `"${raw.name}" wasn't added: it's ${mb(file.size)} MB${raw.type.startsWith("image/") ? " even after shrinking" : ""} and only ${mb(Math.max(room, 0))} MB is left, since one save carries at most ${(MAX_REQUEST_BYTES / 1048576).toFixed(1)} MB in all. Use a smaller or compressed copy, or register the employee now and add this document later from their profile.`,
+      );
+      return null;
+    }
+    setSizeNotice(null);
+    return file;
+  }
+
+  async function pickDoc(slot: DocSlot, raw: File | null) {
+    if (!raw) return;
+    const f = await admit(raw, docFiles[slot]);
+    if (!f) return;
+    setDocFiles((d) => ({ ...d, [slot]: f }));
+    void readSingle(slot, f);
+  }
+
+  async function pickPhoto(raw: File | null) {
+    if (!raw) { setPhoto(null); setPhotoPreview(null); return; }
+    const f = await admit(raw, photo);
+    if (!f) return;
+    setPhoto(f);
+    setPhotoPreview(URL.createObjectURL(f));
+  }
+
+  async function addPackFiles(picked: File[]) {
+    const accepted: File[] = [];
+    let used = 0;
+    for (const raw of picked) {
+      const f = await admit(raw, null, used);
+      if (!f) continue;
+      accepted.push(f);
+      used += f.size;
+    }
+    if (accepted.length === 0) return;
+    setPackFiles((prev) => [...prev, ...accepted]);
+    void readPack(accepted);
+  }
+
   async function readPack(files: File[]) {
     const readable = files.filter(
       (f) => f.type.startsWith("image/") || f.type === "application/pdf"
@@ -483,10 +543,19 @@ export function EmployeeWizard({
     setNotes((n) => n.map((note) => (note.id === id ? { ...note, remarks } : note)));
   }
 
-  function addNoteFiles(id: string, picked: File[]) {
+  async function addNoteFiles(id: string, picked: File[]) {
+    const accepted: File[] = [];
+    let used = 0;
+    for (const raw of picked) {
+      const f = await admit(raw, null, used);
+      if (!f) continue;
+      accepted.push(f);
+      used += f.size;
+    }
+    if (accepted.length === 0) return;
     setNotes((n) =>
       n.map((note) =>
-        note.id === id ? { ...note, files: [...note.files, ...picked] } : note
+        note.id === id ? { ...note, files: [...note.files, ...accepted] } : note
       )
     );
   }
@@ -673,7 +742,7 @@ export function EmployeeWizard({
     return done;
   }, [fields, packFiles, docFiles, skills, idTaken]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const identityIndex = STEPS.findIndex((s) => s.key === "identity");
     const error = validate(identityIndex);
@@ -693,18 +762,30 @@ export function EmployeeWizard({
     const hasResidency =
       found.includes("RESIDENCY_ISSUANCE") || !!docFiles.RESIDENCY_ISSUANCE;
     if (hasResidency && !fields.emiratesId) body.set("eidStatus", "APPLIED");
-    if (photo) body.set("photo", photo);
-    packFiles.forEach((file) => body.append("docFile_PACK", file));
+    // Everything goes in one request that the host caps at about 4.5 MB, so photos are scaled down first
+    // and the total is checked here, rather than failing with a generic error page after the wait.
+    let total = 0;
+    const add = (key: string, file: File, append = false) => {
+      total += file.size;
+      if (append) body.append(key, file); else body.set(key, file);
+    };
+    if (photo) add("photo", await shrinkImage(photo));
+    for (const file of packFiles) add("docFile_PACK", await shrinkImage(file), true);
     for (const [slot, file] of Object.entries(docFiles)) {
-      if (file) body.set(`docFile_${slot}`, file);
+      if (file) add(`docFile_${slot}`, await shrinkImage(file));
     }
     // Each note's remarks are indexed, and its files ride along under the same
     // index so the server can put them back together.
     body.set("noteCount", String(notes.length));
     notes.forEach((note, i) => {
       body.set(`noteRemarks_${i}`, note.remarks);
-      note.files.forEach((file) => body.append(`noteFile_${i}`, file));
     });
+    for (const [i, note] of notes.entries()) for (const file of note.files) add(`noteFile_${i}`, await shrinkImage(file), true);
+    if (total > MAX_REQUEST_BYTES) {
+      setStepError(`The files add up to ${(total / 1048576).toFixed(1)} MB, but one save can carry at most ${(MAX_REQUEST_BYTES / 1048576).toFixed(1)} MB. Remove or shrink a PDF, or register the employee now and add the larger documents afterwards from their profile.`);
+      return;
+    }
+    setStepError(null);
     if (onRegistered) body.set("inline", "1");
     startTransition(() => formAction(body));
   }
@@ -724,7 +805,7 @@ export function EmployeeWizard({
     );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} data-managed-checks className="space-y-5">
       <DraftBar
         type="EMPLOYEE_REGISTRATION"
         draftKey={onRegistered ? `dialog-${prefill?.supplierId ?? ""}` : "new"}
@@ -764,7 +845,7 @@ export function EmployeeWizard({
                   ) : (
                     <span className="tabular text-[10px] opacity-70">{i + 1}</span>
                   )}
-                  {s.label}
+                  {s.key === "extras" && fields.category === "STAFF" ? "Notes" : s.key === "deployment" && fields.category === "STAFF" ? "Joining" : s.label}
                 </button>
               </li>
             );
@@ -772,6 +853,12 @@ export function EmployeeWizard({
         </ol>
       </nav>
 
+      {sizeNotice && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
+          <p>{sizeNotice}</p>
+          <button type="button" onClick={() => setSizeNotice(null)} className="shrink-0 text-xs font-medium underline">Dismiss</button>
+        </div>
+      )}
       {(state.error || stepError) && (
         <p className="rounded-control border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
           {state.error ?? stepError}
@@ -790,9 +877,9 @@ export function EmployeeWizard({
             <Field label="Supplier">
               <Select
                 value={fields.supplierId}
-                onChange={(v) => set("supplierId", v)}
+                onChange={(v) => { set("supplierId", v); if (!sponsorFits(sponsors, v, fields.sponsorshipCompanyId)) set("sponsorshipCompanyId", ""); }}
                 placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                options={primaryOptions(suppliers, fields.supplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
             <Field label="Sponsorship company">
@@ -800,7 +887,7 @@ export function EmployeeWizard({
                 value={fields.sponsorshipCompanyId}
                 onChange={(v) => set("sponsorshipCompanyId", v)}
                 placeholder="Not set"
-                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsorOptions(sponsors, fields.supplierId, fields.sponsorshipCompanyId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </Field>
           </div>
@@ -845,10 +932,7 @@ export function EmployeeWizard({
                     label="Document pack"
                     files={packFiles}
                     status={packStatus}
-                    onAdd={(picked) => {
-                      setPackFiles((prev) => [...prev, ...picked]);
-                      void readPack(picked);
-                    }}
+                    onAdd={(picked) => void addPackFiles(picked)}
                     onRemove={(i) =>
                       setPackFiles((prev) => prev.filter((_, idx) => idx !== i))
                     }
@@ -879,11 +963,7 @@ export function EmployeeWizard({
                 label="Passport"
                 file={docFiles.PASSPORT ?? null}
                 status={docStatus.PASSPORT ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, PASSPORT: f }));
-                  void readSingle("PASSPORT", f);
-                }}
+                onSelect={(f) => void pickDoc("PASSPORT", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -897,11 +977,7 @@ export function EmployeeWizard({
                 label="Emirates ID"
                 file={docFiles.EMIRATES_ID ?? null}
                 status={docStatus.EMIRATES_ID ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, EMIRATES_ID: f }));
-                  void readSingle("EMIRATES_ID", f);
-                }}
+                onSelect={(f) => void pickDoc("EMIRATES_ID", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -915,11 +991,7 @@ export function EmployeeWizard({
                 label="Labour card"
                 file={docFiles.LABOR_CARD ?? null}
                 status={docStatus.LABOR_CARD ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, LABOR_CARD: f }));
-                  void readSingle("LABOR_CARD", f);
-                }}
+                onSelect={(f) => void pickDoc("LABOR_CARD", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -934,11 +1006,7 @@ export function EmployeeWizard({
                 hint="Use this when the Emirates ID card hasn't been printed yet."
                 file={docFiles.RESIDENCY_ISSUANCE ?? null}
                 status={docStatus.RESIDENCY_ISSUANCE ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, RESIDENCY_ISSUANCE: f }));
-                  void readSingle("RESIDENCY_ISSUANCE", f);
-                }}
+                onSelect={(f) => void pickDoc("RESIDENCY_ISSUANCE", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -951,10 +1019,7 @@ export function EmployeeWizard({
                 id="doc-photo"
                 file={photo}
                 preview={photoPreview}
-                onSelect={(f) => {
-                  setPhoto(f);
-                  setPhotoPreview(f ? URL.createObjectURL(f) : null);
-                }}
+                onSelect={(f) => void pickPhoto(f)}
                 onClear={() => {
                   setPhoto(null);
                   setPhotoPreview(null);
@@ -969,11 +1034,7 @@ export function EmployeeWizard({
                 hint="Visa, medical, CICPA, insurance…"
                 file={docFiles.ADDITIONAL ?? null}
                 status={docStatus.ADDITIONAL ?? { kind: "idle" }}
-                onSelect={(f) => {
-                  if (!f) return;
-                  setDocFiles((d) => ({ ...d, ADDITIONAL: f }));
-                  void readSingle("ADDITIONAL", f);
-                }}
+                onSelect={(f) => void pickDoc("ADDITIONAL", f)}
                 onClear={() =>
                   setDocFiles((d) => {
                     const n = { ...d };
@@ -1069,17 +1130,25 @@ export function EmployeeWizard({
                 ]}
               />
             </Field>
-            <Field label="Position / Trade">
-              <Select
-                value={fields.position}
-                onChange={(v) => set("position", v)}
-                placeholder="Select position"
-                options={(lookups.POSITION ?? []).map((o) => ({
-                  value: o.value,
-                  label: o.value,
-                }))}
-              />
-            </Field>
+            {fields.category === "STAFF" ? (
+              <>
+                <Field label="Designation">
+                  <input value={fields.position} onChange={(e) => set("position", e.target.value)} maxLength={80} placeholder="e.g. Accountant" className="input w-full" />
+                </Field>
+                <Field label="Department">
+                  <input value={fields.department} onChange={(e) => set("department", e.target.value)} maxLength={80} placeholder="e.g. Finance" className="input w-full" />
+                </Field>
+              </>
+            ) : (
+              <Field label="Trade">
+                <Select
+                  value={fields.position}
+                  onChange={(v) => set("position", v)}
+                  placeholder="Select trade"
+                  options={TRADES.map((t) => ({ value: t, label: t }))}
+                />
+              </Field>
+            )}
             <Field label="Nationality">
               <CountrySelect
                 value={fields.nationality}
@@ -1212,8 +1281,9 @@ export function EmployeeWizard({
       {/* ---------------- Deployment ---------------- */}
       {stepKey === "deployment" && (
         <div className="space-y-5">
-          <Group title="Deployment">
-            <Field label="Project">
+          <Group title={fields.category === "STAFF" ? "Joining" : "Deployment"}>
+            {/* Office staff aren't deployed to a project or site. */}
+            {fields.category !== "STAFF" && <Field label="Project">
               <Select
                 value={fields.projectId}
                 onChange={(v) => set("projectId", v)}
@@ -1223,7 +1293,7 @@ export function EmployeeWizard({
                   label: `${p.code} — ${p.name}`,
                 }))}
               />
-            </Field>
+            </Field>}
             <Field label="Join date">
               <DatePicker value={fields.joinDate} onChange={(v) => set("joinDate", v)} className="w-full" />
             </Field>
@@ -1231,30 +1301,39 @@ export function EmployeeWizard({
 
           <Group
             title="Salary"
-            description="Reference only — billing rates come from the timesheet and invoice flow."
+            description="Used for payroll. Allowances can be added later in the employee's pay settings."
           >
-            <Field label="Salary type">
-              <Select
-                value={fields.salaryType}
-                onChange={(v) => set("salaryType", v)}
-                placeholder="Not set"
-                searchable={false}
-                options={[
-                  { value: "BASIC", label: "Basic salary" },
-                  { value: "HOURLY", label: "Hourly rate" },
-                ]}
-              />
-            </Field>
-            {fields.salaryType && (
-              <Field
-                label={
-                  fields.salaryType === "HOURLY"
-                    ? "Hourly rate (AED)"
-                    : "Basic salary (AED)"
-                }
-              >
-                <NumberInput value={fields.salaryRate} onChange={(v) => set("salaryRate", String(v))} step={0.01} className="w-full" />
+            {fields.category === "STAFF" ? (
+              // Office/corporate roster is always paid a fixed monthly salary — no hourly option.
+              <Field label="Basic salary (AED)">
+                <NumberInput value={fields.salaryRate} onChange={(v) => { set("salaryRate", String(v)); set("salaryType", "BASIC"); }} step={0.01} className="w-full" />
               </Field>
+            ) : (
+              <>
+                <Field label="Salary type">
+                  <Select
+                    value={fields.salaryType}
+                    onChange={(v) => set("salaryType", v)}
+                    placeholder="Not set"
+                    searchable={false}
+                    options={[
+                      { value: "BASIC", label: "Basic salary" },
+                      { value: "HOURLY", label: "Hourly rate" },
+                    ]}
+                  />
+                </Field>
+                {fields.salaryType && (
+                  <Field
+                    label={
+                      fields.salaryType === "HOURLY"
+                        ? "Hourly rate (AED)"
+                        : "Basic salary (AED)"
+                    }
+                  >
+                    <NumberInput value={fields.salaryRate} onChange={(v) => set("salaryRate", String(v))} step={0.01} className="w-full" />
+                  </Field>
+                )}
+              </>
             )}
           </Group>
         </div>
@@ -1263,6 +1342,10 @@ export function EmployeeWizard({
       {/* ---------------- Skills & notes ---------------- */}
       {stepKey === "extras" && (
         <div className="space-y-4">
+          {/* Office/corporate staff have a designation and department instead
+              of a trade — this whole picker only applies to the site roster. */}
+          {fields.category !== "STAFF" && (
+            <>
           {/* A closed list, not free text: typed trades are what produced
               "Carpentry", "carpenter" and "car" as three separate trades. */}
           <Field label="Trades">
@@ -1374,6 +1457,8 @@ export function EmployeeWizard({
               ))}
             </div>
           </div>
+            </>
+          )}
 
           <Field label="Notes">
             <textarea
@@ -1493,9 +1578,9 @@ export function EmployeeWizard({
             <ReviewRow label="Supplier">
               <Select
                 value={fields.supplierId}
-                onChange={(v) => set("supplierId", v)}
+                onChange={(v) => { set("supplierId", v); if (!sponsorFits(sponsors, v, fields.sponsorshipCompanyId)) set("sponsorshipCompanyId", ""); }}
                 placeholder="No supplier assigned"
-                options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+                options={primaryOptions(suppliers, fields.supplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </ReviewRow>
 
@@ -1504,7 +1589,7 @@ export function EmployeeWizard({
                 value={fields.sponsorshipCompanyId}
                 onChange={(v) => set("sponsorshipCompanyId", v)}
                 placeholder="Not set"
-                options={sponsors.map((s) => ({ value: s.id, label: s.name }))}
+                options={sponsorOptions(sponsors, fields.supplierId, fields.sponsorshipCompanyId).map((s) => ({ value: s.id, label: s.name }))}
               />
             </ReviewRow>
 

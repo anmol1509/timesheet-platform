@@ -12,8 +12,14 @@ import { round2 } from "@/lib/payroll";
  * figure, not a legal settlement.
  */
 export function yearsOfService(join: Date, asOf: Date): number {
-  const ms = asOf.getTime() - join.getTime();
-  return ms > 0 ? ms / (365.25 * 24 * 3600 * 1000) : 0;
+  if (asOf.getTime() <= join.getTime()) return 0;
+  // Whole calendar years first, so exactly three years of service is 3, not 3.0007; the part year is a fraction of the year it falls in.
+  const on = (y: number) => Date.UTC(y, join.getUTCMonth(), join.getUTCDate());
+  let years = asOf.getUTCFullYear() - join.getUTCFullYear();
+  if (on(join.getUTCFullYear() + years) > asOf.getTime()) years -= 1;
+  const from = on(join.getUTCFullYear() + years);
+  const to = on(join.getUTCFullYear() + years + 1);
+  return years + (asOf.getTime() - from) / (to - from);
 }
 
 export function gratuity(basicMonthly: number, years: number): number {

@@ -13,7 +13,7 @@ const fail = (error: string, status = 400) => NextResponse.json({ error }, { sta
 // aren't paid through the bank), everything else must have complete details.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  if (!can(subjectOf(user), "payroll", "export")) return fail("You don't have permission to export payroll.", 403);
+  if (!can(subjectOf(user), "payroll.payroll", "export")) return fail("You don't have permission to export payroll.", 403);
 
   const { id } = await params;
   const run = await prisma.payrollRun.findUnique({
@@ -50,9 +50,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       personCode: l.personCode!,
       routingCode: l.routingCode!.trim(),
       account: l.account!,
-      periodStart: day(bounds.start),
-      periodEnd: day(bounds.end),
-      days: bounds.days,
+      // A joiner or leaver is paid for the days they were on the payroll, and the file says so.
+      periodStart: day(l.periodStart ?? bounds.start),
+      periodEnd: day(l.periodEnd ?? bounds.end),
+      days: l.employedDays ?? bounds.days,
       net: Number(l.net),
       overtimePay: Number(l.overtimePay),
       adjustment: Number(l.adjustment),

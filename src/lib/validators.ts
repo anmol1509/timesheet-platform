@@ -61,3 +61,9 @@ export function assertContactsValid(formData: FormData): void {
   const bad = firstInvalidContact(formData.entries());
   if (bad) throw new Error(`${bad.message} (${bad.field})`);
 }
+
+/** The same check as `assertContactsValid`, for actions that report problems back to the form instead of throwing. */
+export function contactsError(formData: FormData): string | null {
+  const bad = firstInvalidContact(formData.entries());
+  return bad ? `${bad.message} (${bad.field})` : null;
+}

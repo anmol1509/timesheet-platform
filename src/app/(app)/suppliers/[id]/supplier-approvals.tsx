@@ -58,7 +58,7 @@ export function SupplierApprovals({
                 type="button"
                 disabled={pending || values[r.field] === "Rejected"}
                 onClick={() => setValue(r.field, "Rejected")}
-                className="rounded-lg border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg border border-[var(--error-border)] px-2 py-1 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Reject
               </button>

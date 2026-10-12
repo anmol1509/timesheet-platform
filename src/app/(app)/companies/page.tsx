@@ -1,5 +1,10 @@
+import { Building, Upload } from "lucide-react";
+import { isAdminRole } from "@/lib/roles";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { CompanyGrid } from "./company-grid";
 import { Select } from "@/components/ui/Select";
@@ -11,7 +16,10 @@ export default async function CompaniesPage({
 }) {
   const params = await searchParams;
 
+  const { user, branchId } = await requireUserWithBranch();
+  const canImport = isAdminRole(user.role);
   const monthRows = await prisma.timesheetEntry.findMany({
+    where: branchWhere(branchId),
     distinct: ["month"],
     select: { month: true },
     orderBy: { month: "desc" },
@@ -23,7 +31,7 @@ export default async function CompaniesPage({
 
   const suppliers = selectedMonth
     ? await prisma.supplier.findMany({
-        where: { entries: { some: { month: selectedMonth } } },
+        where: { ...branchWhere(branchId), entries: { some: { month: selectedMonth } } },
         include: {
           entries: {
             where: { month: selectedMonth },
@@ -36,12 +44,13 @@ export default async function CompaniesPage({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Companies</h1>
-          <p className="mt-1 text-sm text-muted">
-            Pick a month, then generate a timesheet for any company.
-          </p>
-        </div>
+        <PageHeader
+          title="Companies"
+          icon={Building}
+          description={<>Pick a month, then generate a timesheet for any company, or <Link href="/companies/employees" className="font-medium text-primary underline">pick individual employees</Link>.</>}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+        {canImport && <Link href="/import/new/timesheets" className="btn btn-secondary gap-1.5"><Upload className="h-4 w-4" aria-hidden />Import</Link>}
         {months.length > 0 && (
           <form className="flex items-center gap-2">
             <label htmlFor="month" className="text-sm text-muted">
@@ -51,6 +60,7 @@ export default async function CompaniesPage({
             <NativeSubmit />
           </form>
         )}
+        </div>
       </div>
 
       {suppliers.length === 0 && (

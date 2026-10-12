@@ -1,3 +1,5 @@
+import { History } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -54,17 +56,16 @@ export default async function InvoiceHistoryPage({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {error}
         </p>
       )}
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-xl tracking-tight text-primary font-semibold">Invoice history</h1>
-          <p className="mt-1 text-sm text-muted">
-            Every client invoice issued, most recent first.
-          </p>
-        </div>
+        <PageHeader
+          title="Invoice history"
+          icon={History}
+          description={<>Every client invoice issued, most recent first.</>}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">

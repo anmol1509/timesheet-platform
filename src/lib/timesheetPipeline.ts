@@ -32,15 +32,19 @@ const STAGES: Omit<PipelineStage, "count">[] = [
 
 /** Where this month's timesheet rows sit in the approval pipeline. */
 export async function getTimesheetPipeline(
-  branchId: string | null = null
+  branchId: string | null = null,
+  /** A specific YYYY-MM; the most recent month with rows when omitted. */
+  month?: string
 ): Promise<TimesheetPipeline> {
   const where = branchWhere(branchId);
 
-  const latest = await prisma.timesheetEntry.findFirst({
-    where,
-    orderBy: { month: "desc" },
-    select: { month: true },
-  });
+  const latest = month
+    ? { month }
+    : await prisma.timesheetEntry.findFirst({
+        where,
+        orderBy: { month: "desc" },
+        select: { month: true },
+      });
   if (!latest) {
     return { month: null, stages: STAGES.map((s) => ({ ...s, count: 0 })), rejected: 0, total: 0 };
   }

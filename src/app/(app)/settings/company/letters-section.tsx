@@ -1,7 +1,8 @@
 "use client";
 
 import { ImageUpload } from "@/components/ImageUpload";
-import { removeLetterImageAction, uploadLetterImageAction } from "./actions";
+import { LetterheadMargins } from "@/components/LetterheadMargins";
+import { removeLetterImageAction, saveLetterheadMarginsAction, uploadLetterImageAction } from "./actions";
 
 type Props = {
   branchId: string;
@@ -10,6 +11,8 @@ type Props = {
   signatureUrl: string | null;
   stampUrl: string | null;
   letterheadUrl: string | null;
+  topMm: number;
+  bottomMm: number;
 };
 
 export function LettersSection(p: Props) {
@@ -44,14 +47,19 @@ export function LettersSection(p: Props) {
         currentUrl={p.letterheadUrl}
         fallback={<span className="text-xs text-subtle">Letterhead</span>}
         label="Letterhead artwork (optional)"
-        hint="A full A4 image of your letterhead (header and footer). Used as the page background when a letter is printed on letterhead. Skip this if you print on pre-printed paper."
+        hint="Upload your letterhead as a PDF or an image (the first page of a PDF is used). Used as the page background when a letter is printed on letterhead. Skip this if you print on pre-printed paper."
         shape="square"
         format="image/jpeg"
         maxPx={1600}
+        acceptPdf
         uploadAction={uploadLetterImageAction}
         removeAction={removeLetterImageAction}
         extraFields={extra("letterhead")}
       />
+      <div>
+        <p className="mb-2 text-sm font-medium text-primary">Letterhead margins</p>
+        <LetterheadMargins letterheadUrl={p.letterheadUrl} topMm={p.topMm} bottomMm={p.bottomMm} action={saveLetterheadMarginsAction} extraFields={{ branchId: p.branchId }} />
+      </div>
     </div>
   );
 }

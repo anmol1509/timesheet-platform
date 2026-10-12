@@ -7,16 +7,16 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { resetAllAction } from "./actions";
 
-export function ResetAllCard({ totalCount }: { totalCount: number }) {
+export function ResetAllCard({ totalCount, allBranches }: { totalCount: number; allBranches: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="card flex flex-wrap items-center justify-between gap-3 border-red-300 bg-red-50/60 p-4">
+    <div className="card flex flex-wrap items-center justify-between gap-3 border-[var(--error-border)] bg-[var(--error-soft)]/60 p-4">
       <div className="flex items-start gap-3">
-        <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+        <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-[var(--error)]" />
         <div>
-          <h3 className="text-sm font-semibold text-red-900">Reset All Modules</h3>
-          <p className="mt-0.5 text-xs text-red-800">
+          <h3 className="text-sm font-semibold text-[var(--error)]">Reset All Modules</h3>
+          <p className="mt-0.5 text-xs text-[var(--error)]">
             Deletes every module below in one shot, in the order that avoids conflicts. One transaction — either
             all {totalCount} records across every module go, or (on any error) none do.
           </p>
@@ -26,7 +26,7 @@ export function ResetAllCard({ totalCount }: { totalCount: number }) {
         Reset Everything
       </Button>
 
-      <ResetAllDialog open={open} totalCount={totalCount} onClose={() => setOpen(false)} />
+      <ResetAllDialog open={open} totalCount={totalCount} allBranches={allBranches} onClose={() => setOpen(false)} />
     </div>
   );
 }
@@ -34,10 +34,12 @@ export function ResetAllCard({ totalCount }: { totalCount: number }) {
 function ResetAllDialog({
   open,
   totalCount,
+  allBranches,
   onClose,
 }: {
   open: boolean;
   totalCount: number;
+  allBranches: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -107,7 +109,7 @@ function ResetAllDialog({
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            <label className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <label className="flex items-start gap-2 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] p-3 text-sm text-[var(--error)]">
               <input
                 type="checkbox"
                 checked={acknowledge}
@@ -115,8 +117,9 @@ function ResetAllDialog({
                 className="mt-0.5"
               />
               <span>
-                I understand this deletes every module&apos;s data, including data that isn&apos;t split by branch
-                and every branch&apos;s data if none is selected.
+                {allBranches
+                  ? "I understand this deletes every module's data across every branch, because no specific branch is selected."
+                  : "I understand this deletes every module's data for this branch."}
               </span>
             </label>
             <label className="block">
@@ -131,7 +134,7 @@ function ResetAllDialog({
                 autoFocus
               />
             </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-[var(--error)]">{error}</p>}
             <DialogFooter>
               <button type="button" onClick={handleClose} className="btn btn-secondary">
                 Cancel

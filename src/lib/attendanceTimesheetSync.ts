@@ -66,9 +66,10 @@ const EMPTY: SyncResult = {
  * hold. Zero is the honest last resort — the row still has to exist so the
  * hours are not lost, and the caller reports how many need a rate.
  */
-async function inheritRate(employeeId: string, employeeIdNo: string, trade: string) {
+async function inheritRate(employeeId: string, employeeIdNo: string, trade: string, branchId: string) {
+  // Within the branch: another company's sheet must never supply this worker's billing rate.
   const previous = await prisma.timesheetEntry.findFirst({
-    where: { employeeIdNo, trade, rate: { gt: 0 } },
+    where: { branchId, employeeIdNo, trade, rate: { gt: 0 } },
     orderBy: { month: "desc" },
     select: { rate: true },
   });
@@ -194,7 +195,7 @@ export async function syncAttendanceDay(
         })
       : null;
 
-    const rate = await inheritRate(employee.id, employee.employeeIdNo, trade);
+    const rate = await inheritRate(employee.id, employee.employeeIdNo, trade, ctx.branchId);
     const cells = writeCell(buildMonthCells(month), date, value);
     const { totalHours, absentCount } = recompute(cells);
 

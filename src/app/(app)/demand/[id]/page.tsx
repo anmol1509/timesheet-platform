@@ -67,7 +67,7 @@ export default async function DemandRequestDetailPage({
               hiddenFields={{ requestId: request.id }}
               confirmMessage={`Delete request #${request.requestNo}?`}
               label="Delete Request"
-              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              className="rounded-lg border border-[var(--error-border)] px-3 py-2 text-sm font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
             />
           </div>
         </div>
@@ -77,7 +77,7 @@ export default async function DemandRequestDetailPage({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>
       )}
 
       <RequestDetailsForm
@@ -89,7 +89,7 @@ export default async function DemandRequestDetailPage({
 
       <SupplierOffers
         demandId={request.id}
-        canEdit={can(subjectOf(user), "demand", "edit")}
+        canEdit={can(subjectOf(user), "demand.list", "edit")}
         available={portalSuppliers.filter((s) => !offered.has(s.id))}
         offers={request.supplierOffers.map((o) => ({
           id: o.id, supplier: o.supplier.name, status: o.status, note: o.note, sentAt: day(o.sentAt), respondedAt: o.respondedAt ? day(o.respondedAt) : null,

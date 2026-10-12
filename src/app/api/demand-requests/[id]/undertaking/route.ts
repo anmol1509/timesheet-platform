@@ -9,10 +9,8 @@ import { buildLetterSections, toLetterWorker } from "@/lib/letterIssuer";
 /**
  * Undertaking letter for a demand's mobilised workers.
  *
- * Same shape and the same splitting as the NOC — an undertaking is one
- * company accepting responsibility for its own people, so a mobilisation
- * drawn from three suppliers produces three letters. `?letterhead=1` prints
- * each on that company's own letterhead.
+ * Issued by our own company, so it is one letter for everyone mobilised, and
+ * `?letterhead=1` prints it on the letterhead saved in Settings → Company profile.
  */
 export async function GET(
   request: Request,
@@ -23,6 +21,14 @@ export async function GET(
   const url = new URL(request.url);
   const templateId = url.searchParams.get("templateId") || "";
   const onLetterhead = url.searchParams.get("letterhead") === "1";
+  // Optional: a subset of the mobilised workers, and how the signature block is printed.
+  const only = new Set(url.searchParams.getAll("employee"));
+  const signing = {
+    signatoryName: url.searchParams.get("signatoryName"),
+    signatoryTitle: url.searchParams.get("signatoryTitle"),
+    showSignature: url.searchParams.get("signature") === "1",
+    showStamp: url.searchParams.get("stamp") === "1",
+  };
 
   const demand = await prisma.demandRequest.findUnique({
     where: { id },
@@ -50,7 +56,7 @@ export async function GET(
     return NextResponse.json({ error: "Template not found." }, { status: 404 });
   }
 
-  const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee));
+  const workers = demand.trades.flatMap((t) => t.allocations.map((a) => a.employee)).filter((e) => only.size === 0 || only.has(e.id));
   if (workers.length === 0) {
     return NextResponse.json(
       { error: "Nobody is mobilised on this demand yet." },
@@ -63,6 +69,9 @@ export async function GET(
     templateHtml: templateHtml(template),
     onLetterhead,
     fallbackIssuerName: demand.branch.name,
+    issuedBy: "COMPANY",
+    branchId: demand.branchId,
+    signing,
     context: {
       clientName: demand.client.name,
       clientAddress: demand.client.billingAddress,

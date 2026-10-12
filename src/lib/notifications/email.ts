@@ -1,6 +1,6 @@
 /**
  * Email delivery via Resend's REST API (no SDK). Same config-gate shape as the
- * WhatsApp sender: until RESEND_API_KEY and EMAIL_FROM are set, every call is a
+ * SMS sender: until RESEND_API_KEY and EMAIL_FROM are set, every call is a
  * logged no-op, so callers can send unconditionally.
  *
  * EMAIL_FROM must be an address on a domain verified in Resend, e.g.

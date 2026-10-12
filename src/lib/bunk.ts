@@ -44,3 +44,29 @@ export function groupBeds<B extends BedLike>(beds: B[]): BedGroup<B>[] {
 export function nextBunkNo(labels: string[]) {
   return labels.reduce((max, l) => Math.max(max, parseBerth(l)?.bunkNo ?? 0), 0) + 1;
 }
+
+/**
+ * A bed as a person types it in a spreadsheet: "Bed 03", "3", "Bunk 02 · Upper", "Bunk 2 lower", "2U", "B2L".
+ * A bare number means a single bed. Returns null when it can't be read.
+ */
+export function parseBedInput(raw: string): { kind: "single"; no: number } | { kind: "bunk"; no: number; level: Level } | null {
+  const t = raw.trim().toLowerCase().replace(/[·\-–_,/]/g, " ").replace(/\s+/g, " ");
+  if (!t) return null;
+  let m = /^(?:bunk|bk|b)?\s*(\d+)\s*(u|upper|up|top|l|lower|low|bottom|bot)$/.exec(t);
+  if (m) return { kind: "bunk", no: Number(m[1]), level: m[2].startsWith("u") || m[2] === "top" ? "Upper" : "Lower" };
+  m = /^(?:bunk|bk)\s*(\d+)\s+(u|upper|up|top|l|lower|low|bottom|bot)$/.exec(t);
+  if (m) return { kind: "bunk", no: Number(m[1]), level: m[2].startsWith("u") || m[2] === "top" ? "Upper" : "Lower" };
+  m = /^(?:bed|single)?\s*(\d+)$/.exec(t);
+  if (m) return { kind: "single", no: Number(m[1]) };
+  return null;
+}
+
+/** The label a parsed bed has in the database. */
+export const labelOfBed = (b: NonNullable<ReturnType<typeof parseBedInput>>) => (b.kind === "single" ? singleLabel(b.no) : bunkLabel(b.no, b.level));
+
+/** Order to hand out free beds: single beds, then lower berths, then upper berths (people prefer the bottom bunk). */
+export function bedPreference(label: string): number {
+  const p = parseBerth(label);
+  if (!p) return 0;
+  return p.level === "Lower" ? 1 : 2;
+}

@@ -1,22 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
 import { BedDouble, BedSingle, ExternalLink, Layers, MoreHorizontal, Plus, Search, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
-import { InlineEditRow } from "@/components/InlineEditRow";
+import { CheckoutForm } from "@/components/CheckoutForm";
+import { byNameNatural } from "@/lib/naturalSort";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Badge } from "@/components/Badge";
-import { initials, avatarGradient } from "@/lib/avatar";
+import { EmployeeAvatar } from "@/components/Avatar";
 import { groupBeds } from "@/lib/bunk";
 import { cn } from "@/lib/cn";
 import {
-  unassignBedAction,
-  updateRoomAction,
   deleteRoomAction,
   addBedsToRoomAction,
   deleteBedAction,
@@ -31,8 +30,9 @@ type Room = {
   roomType: string | null;
   nationality: string | null;
 };
-type Person = { name: string; employeeIdNo: string };
-type Unhoused = { id: string; name: string; employeeIdNo: string; trade: string | null };
+type Person = { id: string; name: string; employeeIdNo: string; hasPhoto: boolean };
+type Stay = { checkInDate: string; planned: { date: string; reason: string } | null };
+type Unhoused = { id: string; name: string; employeeIdNo: string; trade: string | null; hasPhoto: boolean };
 
 /** "Add beds" lives in a small popover so the room header stays readable: pick single beds or bunks, and how many. */
 function AddBeds({ roomId }: { roomId: string }) {
@@ -85,15 +85,20 @@ function AddBeds({ roomId }: { roomId: string }) {
 }
 
 export function CampView({
-  rooms,
+  rooms: roomsProp,
   employeeNames,
+  stays = {},
   unhoused = [],
 }: {
   rooms: Room[];
   employeeNames: Record<string, Person>;
+  /** Current stay per occupant, for checkout dates and scheduled checkouts. */
+  stays?: Record<string, Stay>;
   /** Workers with no bed, offered as a tray to drag onto a vacant bed. */
   unhoused?: Unhoused[];
 }) {
+  // Rooms read in number order (2 before 10), whatever order they were created in.
+  const rooms = useMemo(() => byNameNatural(roomsProp), [roomsProp]);
   const [vacantOnly, setVacantOnly] = useState(false);
   const router = useRouter();
   const [, start] = useTransition();
@@ -191,10 +196,11 @@ export function CampView({
         {caption && <span className="w-9 shrink-0 text-[10px] font-semibold tracking-wide text-subtle uppercase">{caption}</span>}
         {occupant ? (
           <>
-            <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-semibold text-white", avatarGradient(occupant.name))}>{initials(occupant.name)}</span>
+            <EmployeeAvatar employeeId={occupant.id} name={occupant.name} hasPhoto={occupant.hasPhoto} size="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold text-primary" title={occupant.name}>{occupant.name}</span>
               <span className="tabular block truncate text-[10px] text-subtle">{occupant.employeeIdNo}</span>
+              {stays[occupant.id]?.planned && <span className="block truncate text-[10px] font-medium text-[var(--warning)]">Leaving {new Date(`${stays[occupant.id].planned!.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>}
             </span>
           </>
         ) : (
@@ -245,7 +251,7 @@ export function CampView({
                 <header className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <InlineEditRow value={room.name} action={updateRoomAction} hiddenFields={{ roomId: room.id }} />
+                      <h3 className="text-base font-semibold text-primary">{room.name}</h3>
                       {full ? <Badge color="red" dot>Full</Badge> : <Badge color="green" dot>{total - occupied} free</Badge>}
                     </div>
                     <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
@@ -270,7 +276,7 @@ export function CampView({
                             hiddenFields={{ roomId: room.id }}
                             confirmMessage={`Delete ${room.name}? Its ${room.beds.length} bed(s) will be removed, unassigning anyone housed there.`}
                             label="Delete room"
-                            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                            className="flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm text-[var(--error)] hover:bg-[var(--error-soft)]"
                           />
                         </Popover.Content>
                       </Popover.Portal>
@@ -326,7 +332,7 @@ export function CampView({
                 }}
                 className="flex cursor-grab items-center gap-2 rounded-lg border border-default bg-surface px-2 py-1.5 active:cursor-grabbing"
               >
-                <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[10px] font-semibold text-white", avatarGradient(u.name))}>{initials(u.name)}</span>
+                <EmployeeAvatar employeeId={u.id} name={u.name} hasPhoto={u.hasPhoto} size="sm" />
                 <span className="min-w-0">
                   <span className="block truncate text-xs font-medium text-primary">{u.name}</span>
                   <span className="block truncate text-[10px] text-subtle">{u.employeeIdNo}{u.trade ? ` · ${u.trade}` : ""}</span>
@@ -351,22 +357,23 @@ export function CampView({
               {mode === "menu" && occ && (
                 <div className="mt-4 space-y-4">
                   <div className="flex items-center gap-3 rounded-lg border border-default bg-surface-subtle p-3">
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white", avatarGradient(occ.name))}>{initials(occ.name)}</span>
+                    <EmployeeAvatar employeeId={occ.id} name={occ.name} hasPhoto={occ.hasPhoto} size="md" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-primary">{occ.name}</span>
                       <span className="tabular block text-xs text-muted">{occ.employeeIdNo}</span>
                     </span>
                     <Link href={`/employees/${bed.employeeId}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Profile</Link>
                   </div>
+                  {stays[occ.id]?.planned && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">Leaving on <span className="font-medium text-primary">{new Date(`${stays[occ.id].planned!.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> &mdash; {stays[occ.id].planned!.reason}.</p>}
                   <p className="text-xs text-muted">To move them to another bed, drag them there, or check them out first.</p>
-                  <button type="button" className="btn btn-secondary w-full text-red-600" onClick={() => setMode("checkout")}>Check out of this bed</button>
+                  <button type="button" className="btn btn-secondary w-full text-[var(--error)]" onClick={() => setMode("checkout")}>{stays[occ.id]?.planned ? "Change or cancel the checkout" : "Check out of this bed"}</button>
                 </div>
               )}
 
               {mode === "menu" && !occ && (
                 <div className="mt-4 grid gap-2">
                   <button type="button" className="btn btn-primary w-full gap-2" onClick={() => setMode("assign")}><UserPlus className="h-4 w-4" aria-hidden />Assign a worker</button>
-                  <button type="button" className="btn btn-secondary w-full gap-2 text-red-600" onClick={() => setMode("delete")}><Trash2 className="h-4 w-4" aria-hidden />Delete this bed</button>
+                  <button type="button" className="btn btn-secondary w-full gap-2 text-[var(--error)]" onClick={() => setMode("delete")}><Trash2 className="h-4 w-4" aria-hidden />Delete this bed</button>
                 </div>
               )}
 
@@ -382,7 +389,7 @@ export function CampView({
                     {assignList.map((u) => (
                       <li key={u.id}>
                         <button type="button" onClick={() => assignTo(u.id)} className="flex w-full items-center gap-3 rounded-lg border border-default bg-surface px-3 py-2 text-left transition hover:border-[var(--brand-primary)] hover:bg-brand-soft">
-                          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-semibold text-white", avatarGradient(u.name))}>{initials(u.name)}</span>
+                          <EmployeeAvatar employeeId={u.id} name={u.name} hasPhoto={u.hasPhoto} size="sm" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-primary">{u.name}</span>
                             <span className="tabular block truncate text-xs text-muted">{u.employeeIdNo}{u.trade ? ` · ${u.trade}` : ""}</span>
@@ -415,22 +422,15 @@ export function CampView({
               )}
 
               {mode === "checkout" && occ && (
-                <form
-                  className="mt-4 space-y-4"
-                  action={async (fd) => {
-                    await unassignBedAction(fd);
-                    closeBed();
-                    router.refresh();
-                  }}
-                >
-                  <input type="hidden" name="bedId" value={bed.id} />
-                  <input type="hidden" name="employeeId" value={bed.employeeId ?? ""} />
-                  <p className="text-sm text-secondary">Check <span className="font-medium text-primary">{occ.name}</span> out of {bed.label}? They will show under &ldquo;Without a bed&rdquo;.</p>
-                  <div className="flex justify-end gap-2">
-                    <button type="button" className="btn btn-secondary" onClick={() => setMode("menu")}>Cancel</button>
-                    <button type="submit" className="btn btn-danger">Check out</button>
-                  </div>
-                </form>
+                <CheckoutForm
+                  employeeId={occ.id}
+                  name={occ.name}
+                  bedLabel={`${bed.label} · ${room.name}`}
+                  checkInDate={stays[occ.id]?.checkInDate ?? "1970-01-01"}
+                  planned={stays[occ.id]?.planned ?? null}
+                  onCancel={() => setMode("menu")}
+                  onDone={() => { closeBed(); router.refresh(); }}
+                />
               )}
             </DialogContent>
           );

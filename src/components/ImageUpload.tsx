@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Camera, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { pdfPageToImage } from "@/lib/pdfPageToImage";
 
 type ActionResult = { error?: string | null } | void;
 
@@ -33,6 +34,7 @@ export function ImageUpload({
   shape = "circle",
   format = "image/jpeg",
   maxPx = 512,
+  acceptPdf = false,
   uploadAction,
   removeAction,
   extraFields,
@@ -45,6 +47,8 @@ export function ImageUpload({
   shape?: "circle" | "square";
   format?: "image/png" | "image/jpeg";
   maxPx?: number;
+  /** Also take a PDF: its first page is turned into the image. */
+  acceptPdf?: boolean;
   uploadAction: (fd: FormData) => Promise<ActionResult>;
   removeAction?: (fd: FormData) => Promise<ActionResult>;
   extraFields?: Record<string, string>;
@@ -67,7 +71,13 @@ export function ImageUpload({
     setError(null);
     start(async () => {
       try {
-        const small = await shrink(file, maxPx, format);
+        let source = file;
+        if (acceptPdf && (file.type === "application/pdf" || /\.pdf$/i.test(file.name))) {
+          const page = await pdfPageToImage(file, 1, { maxEdge: maxPx, quality: 0.9 }).catch((e) => { console.error("pdf->image failed:", e); return null; });
+          if (!page) throw new Error("Could not read that PDF. Try exporting the letterhead as a PNG or JPEG.");
+          source = page;
+        }
+        const small = await shrink(source, maxPx, format);
         setPreview(URL.createObjectURL(small));
         const fd = fields();
         fd.set("image", small);
@@ -128,7 +138,7 @@ export function ImageUpload({
         </div>
         {error && <p role="alert" className="mt-2 text-xs text-[var(--danger-text,#b42318)]">{error}</p>}
       </div>
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={onPick} />
+      <input ref={inputRef} type="file" accept={acceptPdf ? "image/png,image/jpeg,image/webp,application/pdf" : "image/png,image/jpeg,image/webp"} className="sr-only" onChange={onPick} />
     </div>
   );
 }

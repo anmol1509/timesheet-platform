@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { NOC_DISPLAY_FIELDS, DEFAULT_NOC_DISPLAY_FIELDS } from "@/lib/nocDisplayFields";
+import { LetterPreview } from "@/components/LetterPreview";
 import { createNocAction } from "../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 
@@ -21,7 +22,7 @@ export function NocForm({
   initialDemandRequestId,
 }: {
   requests: RequestOption[];
-  templates: { id: string; name: string }[];
+  templates: { id: string; name: string; title: string; html: string }[];
   initialDemandRequestId: string;
 }) {
   const [pending, startTransition] = useTransition();
@@ -72,7 +73,10 @@ export function NocForm({
     });
   }
 
+  const chosenTemplate = templates.find((t) => t.id === templateId);
+
   return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_26rem]">
     <div className="space-y-6">
       <div className="card grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
         <label className="block">
@@ -92,7 +96,7 @@ export function NocForm({
           <Select
             value={templateId}
             onChange={setTemplateId}
-            placeholder="Select template"
+            placeholder={templates.length === 0 ? "No NOC template yet" : "Select template"}
             options={templates.map((t) => ({ value: t.id, label: t.name }))}
           />
         </label>
@@ -167,6 +171,21 @@ export function NocForm({
       >
         {pending ? "Generating…" : "Create NOC"}
       </button>
+    </div>
+
+    <aside className="lg:sticky lg:top-4 lg:self-start">
+      <p className="mb-2 text-xs font-medium text-muted">Preview</p>
+      <div className="rounded-lg bg-surface-sunken p-4">
+        {chosenTemplate ? (
+          <LetterPreview title={chosenTemplate.title} html={chosenTemplate.html} audience="SITE" />
+        ) : (
+          <p className="py-16 text-center text-sm text-muted">
+            {templates.length === 0 ? "Add a No Objection Letter under Administration → Letter Templates." : "Choose a template to see the letter."}
+          </p>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-muted">Sample workers shown. The real letter lists the employees you tick and is printed on the sponsor&apos;s letterhead.</p>
+    </aside>
     </div>
   );
 }

@@ -24,7 +24,7 @@ export function MonthInput({ name, value: controlled, defaultValue, onChange, re
     <div ref={rootRef} className={`flex gap-2 ${className ?? ""}`}>
       {name && <input type="hidden" name={name} value={val} />}
       <div className="min-w-0 flex-[3]"><Select value={m ?? ""} onChange={(v) => emit(y || String(now), v)} searchable={false} disabled={disabled} placeholder="Month" options={MONTHS.map((n, i) => ({ value: String(i + 1).padStart(2, "0"), label: n }))} /></div>
-      <div className="min-w-0 flex-[2]"><Select value={y ?? ""} onChange={(v) => emit(v, m || "01")} searchable={false} disabled={disabled} placeholder="Year" options={years.map((yr) => ({ value: yr, label: yr }))} /></div>
+      <div className="min-w-[5.5rem] flex-[2]"><Select value={y ?? ""} onChange={(v) => emit(v, m || "01")} searchable={false} disabled={disabled} placeholder="Year" options={years.map((yr) => ({ value: yr, label: yr }))} /></div>
       {required && !val && <input tabIndex={-1} aria-hidden className="sr-only" required value="" onChange={() => {}} />}
     </div>
   );

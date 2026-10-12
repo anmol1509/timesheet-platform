@@ -4,6 +4,7 @@ import { CitySelect } from "@/components/ui/CitySelect";
 import { useState, useTransition } from "react";
 import { FormSaveBar, useUnsavedGuard } from "@/components/FormSaveBar";
 import { updateSupplierCompanyAction } from "../actions";
+import { SupplierCodeField } from "../supplier-code-field";
 import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -15,6 +16,8 @@ import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Supplier = {
   id: string;
+  name: string;
+  code: string | null;
   parentSupplierId: string | null;
   fullName: string | null;
   status: string;
@@ -27,7 +30,6 @@ type Supplier = {
   previousId: string | null;
   country: string | null;
   emirate: string | null;
-  pointOfContact: string | null;
   supplierAmountLimit: number | null;
   account: string | null;
   isOwnCompany: boolean;
@@ -35,29 +37,43 @@ type Supplier = {
   wpsEstablishmentId: string | null;
   allowManualLabourId: boolean;
   overtime: boolean;
+  absentFreeDays: number;
+  absentDeductionPerDay: number;
+  gasPerDay: number;
+  gasMonthlyCap: number;
 };
 
 export function SupplierCompanyForm({
   supplier,
-  parentOptions,
+  parentIsOwnCompany = false,
 }: {
   supplier: Supplier;
-  parentOptions: { id: string; name: string }[];
+  /** The primary supplier above this one is one of our own companies. */
+  parentIsOwnCompany?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [country, setCountry] = useState(supplier.country || "United Arab Emirates");
   const guard = useUnsavedGuard();
+  const [ownChoice, setOwnChoice] = useState(supplier.isOwnCompany);
+  const own = parentIsOwnCompany || ownChoice;
 
   return (
     <form
       onInput={guard.onInput}
-      action={(formData) => {
+      // A submit handler rather than a form action: React resets a form after
+      // its action finishes, which flipped the switches back to how they were
+      // when the page loaded.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
         setSaved(false);
         guard.markSaved();
         startTransition(async () => {
-          await updateSupplierCompanyAction(formData);
-          setSaved(true);
+          const res = await updateSupplierCompanyAction(formData);
+          setError(res.error);
+          setSaved(!res.error);
         });
       }}
       className="card space-y-4 p-6"
@@ -65,14 +81,12 @@ export function SupplierCompanyForm({
       <input type="hidden" name="supplierId" value={supplier.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Parent Supplier">
-          <Select
-            name="parentSupplierId"
-            defaultValue={supplier.parentSupplierId || ""}
-            placeholder="None — top-level supplier"
-            options={parentOptions.map((p) => ({ value: p.id, label: p.name }))}
-          />
+        <Field label="Supplier name">
+          <input name="name" required maxLength={200} defaultValue={supplier.name} className="input w-full" />
         </Field>
+        <FieldBlock label="Supplier code">
+          <SupplierCodeField defaultValue={supplier.code || ""} fixedName={supplier.name} supplierId={supplier.id} />
+        </FieldBlock>
         <Field label="Full name (for letterhead)">
           <input
             name="fullName"
@@ -142,13 +156,6 @@ export function SupplierCompanyForm({
         <Field label="Emirate">
           <CitySelect name="emirate" country={country} defaultValue={supplier.emirate ?? ""} />
         </Field>
-        <Field label="Point of contact">
-          <input
-            name="pointOfContact"
-            defaultValue={supplier.pointOfContact || ""}
-            className="input w-full"
-          />
-        </Field>
         <FieldBlock label="Supplier amount limit (credit limit)">
           <NumberInput
             name="supplierAmountLimit"
@@ -168,10 +175,12 @@ export function SupplierCompanyForm({
         <SwitchField
           label="Our own company"
           name="isOwnCompany"
-          defaultChecked={supplier.isOwnCompany}
-          description="Issues documents on our letterhead, and bills this entity rather than paying it."
+          checked={own}
+          disabled={parentIsOwnCompany}
+          onCheckedChange={(v) => { setOwnChoice(v); guard.onInput(); }}
+          description={parentIsOwnCompany ? "Set by the primary supplier: it is one of our own companies, so its subsidiaries are too." : "Issues documents on our letterhead, and bills this entity rather than paying it. Its subsidiaries follow this setting."}
         />
-        {supplier.isOwnCompany && (
+        {own && (
           <>
             <Field label="How this company pays its people">
               <Select name="payType" defaultValue={supplier.payType ?? ""} searchable={false} options={[{ value: "", label: "— not set —" }, { value: "BASIC", label: "Basic — monthly salary, from attendance" }, { value: "HOURLY", label: "Hourly — hours from the timesheet" }]} triggerClassName="w-full" />
@@ -181,14 +190,33 @@ export function SupplierCompanyForm({
             </Field>
           </>
         )}
+          <input type="hidden" name="ruleSent" value="1" />
+          <Field label="Absent days with no deduction (each month)">
+            <NumberInput name="absentFreeDays" defaultValue={supplier.absentFreeDays} min={0} max={31} step={1} className="w-full" />
+          </Field>
+          <Field label="Deduction per absent day after that (AED)">
+            <NumberInput name="absentDeductionPerDay" defaultValue={supplier.absentDeductionPerDay} min={0} step={0.5} className="w-full" />
+          </Field>
+          <Field label="Gas charge per day from check-in (AED)">
+            <NumberInput name="gasPerDay" defaultValue={supplier.gasPerDay} min={0} step={0.5} className="w-full" />
+          </Field>
+          <Field label="Gas charge limit per month (AED)">
+            <NumberInput name="gasMonthlyCap" defaultValue={supplier.gasMonthlyCap} min={0} step={1} className="w-full" />
+          </Field>
         <SwitchField
           label="Allow manual labour ID"
           name="allowManualLabourId"
           defaultChecked={supplier.allowManualLabourId}
+          onChange={guard.onInput}
         />
-        <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} />
+        <SwitchField label="Overtime applies" name="overtime" defaultChecked={supplier.overtime} onChange={guard.onInput} />
       </div>
 
+      {error && (
+        <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
+          {error}
+        </p>
+      )}
       <FormSaveBar pending={pending} saved={saved} dirty={guard.dirty} />
     </form>
   );
@@ -220,20 +248,29 @@ function FieldBlock({ label, children }: { label: string; children: React.ReactN
 }
 
 /**
- * A supplier setting that takes effect on its own, so it reads as a switch
- * rather than a checkbox. Unchecked switches submit nothing, which is what
+ * A supplier setting that reads as a switch rather than a checkbox. It is part
+ * of the form and only saved with it, so flipping it raises the Save bar. Unchecked switches submit nothing, which is what
  * the `=== "on"` parse in the save action expects.
  */
 function SwitchField({
   label,
   name,
   defaultChecked,
+  checked,
+  disabled,
   description,
+  onChange,
+  onCheckedChange,
 }: {
   label: string;
   name: string;
-  defaultChecked: boolean;
+  defaultChecked?: boolean;
+  checked?: boolean;
+  disabled?: boolean;
   description?: string;
+  /** A switch is a button, so it doesn't fire the form's input event by itself. */
+  onChange?: () => void;
+  onCheckedChange?: (v: boolean) => void;
 }) {
   return (
     <div className="pt-5">
@@ -241,6 +278,9 @@ function SwitchField({
         name={name}
         value="on"
         defaultChecked={defaultChecked}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(v) => { onCheckedChange?.(v); onChange?.(); }}
         label={label}
         description={description}
       />

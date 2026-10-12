@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { useRouter } from "next/navigation";
@@ -28,19 +29,19 @@ type Entry = {
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-surface-sunken text-secondary",
-  SUBMITTED: "bg-blue-100 text-blue-700",
-  UNDER_REVIEW: "bg-amber-100 text-amber-700",
-  CLIENT_APPROVED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-700",
+  SUBMITTED: "bg-[var(--info-soft)] text-[var(--brand-primary)]",
+  UNDER_REVIEW: "bg-[var(--warning-soft)] text-[var(--warning)]",
+  CLIENT_APPROVED: "bg-[var(--success-soft)] text-[var(--success)]",
+  REJECTED: "bg-[var(--error-soft)] text-[var(--error)]",
   LOCKED: "bg-slate-800 text-white",
 };
 
 function badgeClass(value: string) {
   const v = value.trim().toUpperCase();
   if (!v) return "bg-surface-subtle text-subtle"; // missing
-  if (v === "A") return "bg-red-50 text-red-700";
+  if (v === "A") return "bg-[var(--error-soft)] text-[var(--error)]";
   if (v === "OFF") return "bg-surface-sunken text-muted";
-  return "bg-emerald-50 text-emerald-700"; // numeric hours entered
+  return "bg-[var(--success-soft)] text-[var(--success)]"; // numeric hours entered
 }
 
 export function ClientTimesheetGrid({ month, entries }: { month: string; entries: Entry[] }) {
@@ -143,7 +144,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
             type="button"
             disabled={selected.size === 0 || pending}
             onClick={() => runTransition(approveTimesheetAction)}
-            className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-[var(--success-border)] px-3 py-1.5 text-xs font-medium text-[var(--success)] hover:bg-[var(--success-soft)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Approve selected
           </button>
@@ -151,7 +152,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
             type="button"
             disabled={selected.size === 0 || pending}
             onClick={() => runTransition(rejectTimesheetAction)}
-            className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             Reject selected
           </button>
@@ -339,7 +340,7 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
               type="button"
               onClick={() => setRanges((prev) => prev.filter((row) => row.id !== r.id))}
               disabled={ranges.length === 1}
-              className="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-[var(--error-border)] px-3 py-2 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Remove
             </button>
@@ -352,7 +353,9 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
           onClick={() => setRanges((prev) => [...prev, blankRange()])}
           className="btn btn-secondary btn-sm"
         >
-          + Add range
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add range
         </button>
         <button
           type="button"

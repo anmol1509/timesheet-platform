@@ -1,9 +1,12 @@
 "use server";
 
+import { payrollLockedEmployees } from "@/lib/payrollControls";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { isAdminRole } from "@/lib/roles";
 import { logAudit } from "@/lib/audit";
 import { markActiveFromAttendance } from "@/lib/employeeStageTransitions";
 import { syncAttendanceDay, type SyncResult } from "@/lib/attendanceTimesheetSync";
@@ -15,6 +18,7 @@ export async function loadDayAttendanceAction(formData: FormData): Promise<{
     { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean }
   >;
 }> {
+  await requireView("timesheets.attendance");
   assertContactsValid(formData);
   const { branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
@@ -50,7 +54,7 @@ type AttendanceRow = {
   otHours: string;
 };
 
-const VALID_STATUSES = new Set(["PRESENT", "ABSENT", "LEAVE", "HOLIDAY", "OFF"]);
+const VALID_STATUSES = new Set(["PRESENT", "ABSENT", "LEAVE", "SICK_LEAVE", "IDLE", "HOLIDAY", "OFF"]);
 
 function numberOrNull(value: string) {
   const s = value.trim();
@@ -72,6 +76,7 @@ export async function markAttendanceAction(
   sync?: SyncResult;
   skipped?: { name: string; reason: string }[];
 }> {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
@@ -89,6 +94,10 @@ export async function markAttendanceAction(
   const supplierId = String(formData.get("supplierId") || "").trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { saved: 0, requested: 0, error: "Pick a valid date." };
+  }
+  // Both are written onto every row saved below, so they must be this branch's.
+  if (!(await refsBelongToBranch(branchId, { project: projectId, supplier: supplierId }))) {
+    return { saved: 0, requested: 0, error: "That project or supplier isn't part of this branch." };
   }
 
   let rows: AttendanceRow[];
@@ -110,6 +119,7 @@ export async function markAttendanceAction(
   const markedEmployeeIds: string[] = [];
   const skipped: { name: string; reason: string }[] = [];
 
+  const frozen = await payrollLockedEmployees(rows.map((r) => r.employeeId), date.slice(0, 7));
   for (const row of rows) {
     const status = VALID_STATUSES.has(row.status) ? row.status : "PRESENT";
     const employee = await prisma.employee.findUnique({ where: { id: row.employeeId } });
@@ -131,10 +141,14 @@ export async function markAttendanceAction(
       continue;
     }
 
+    if (frozen.has(employee.id)) {
+      skipped.push({ name: employee.name, reason: `payroll for ${date.slice(0, 7)} is already approved. Add a correction to next month's payroll instead` });
+      continue;
+    }
     const existing = await prisma.attendance.findUnique({
       where: { employeeId_date: { employeeId: employee.id, date: dateValue } },
     });
-    if (existing?.locked && !isSuperAdmin) continue;
+    if (existing?.locked && !isAdminRole(user.role)) continue;
 
     const data = {
       status,
@@ -208,9 +222,10 @@ export async function markAttendanceAction(
 // expressed as a boolean here since Attendance only has two states
 // (open/locked) rather than a multi-stage pipeline.
 export async function approveAttendanceDayAction(formData: FormData) {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
-  await requirePermission("timesheets", "approve");
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await requirePermission("timesheets.attendance", "approve");
+  const { user, branchId } = await requireUserWithBranch();
   const date = String(formData.get("date") || "").trim();
   const projectId = String(formData.get("projectId") || "").trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { updated: 0 };
@@ -220,7 +235,9 @@ export async function approveAttendanceDayAction(formData: FormData) {
     date: dateValue,
     projectId,
     locked: false,
-    ...(isSuperAdmin ? {} : { branchId: branchId ?? undefined }),
+    // Scope to the branch in view for everyone, super admins included: with no
+    // filter, approving "no project" for a date locked every tenant's rows on it.
+    ...(branchId ? { branchId } : {}),
   };
 
   const rows = await prisma.attendance.findMany({ where });
@@ -247,6 +264,7 @@ export async function approveAttendanceDayAction(formData: FormData) {
 }
 
 export async function requestAttendanceCorrectionAction(formData: FormData) {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const attendanceId = String(formData.get("attendanceId") || "");
@@ -285,9 +303,10 @@ export async function requestAttendanceCorrectionAction(formData: FormData) {
 }
 
 export async function reviewCorrectionRequestAction(formData: FormData) {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
   // Deciding a correction is an approval; it used to be open to any signed-in user.
-  await requirePermission("timesheets", "approve");
+  await requirePermission("timesheets.attendance", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const correctionId = String(formData.get("correctionId") || "");
   const decision = String(formData.get("decision") || "");
@@ -299,6 +318,8 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
   });
   if (!correction || correction.status !== "PENDING") return;
   if (isOutsideBranch(correction.attendance.branchId, branchId, isSuperAdmin)) return;
+
+  if (decision === "APPROVED" && (await payrollLockedEmployees([correction.attendance.employeeId], correction.attendance.date.toISOString().slice(0, 7))).size > 0) return; // pay for that month is already approved
 
   await prisma.attendanceCorrectionRequest.update({
     where: { id: correctionId },
@@ -334,14 +355,15 @@ export async function reviewCorrectionRequestAction(formData: FormData) {
 /**
  * Removes an attendance mark entirely, for the case where a day was recorded
  * against the wrong employee — setting a status can't express "this shouldn't
- * exist". Locked days stay put unless a super admin does it, matching the
+ * exist". Locked days stay put unless an admin does it, matching the
  * edit rule in markAttendanceAction.
  */
 export async function deleteAttendanceAction(
   formData: FormData
 ): Promise<{ deleted: number; error?: string }> {
+  await requireWrite("timesheets.attendance");
   assertContactsValid(formData);
-  await requirePermission("timesheets", "delete");
+  await requirePermission("timesheets.attendance", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("attendanceId") || "").trim();
   if (!id) return { deleted: 0 };
@@ -353,8 +375,12 @@ export async function deleteAttendanceAction(
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
     return { deleted: 0 };
   }
-  if (existing.locked && !isSuperAdmin) {
+  if (existing.locked && !isAdminRole(user.role)) {
     return { deleted: 0, error: "That day is approved and locked — ask an admin." };
+  }
+
+  if ((await payrollLockedEmployees([existing.employeeId], existing.date.toISOString().slice(0, 7))).size > 0) {
+    return { deleted: 0, error: `Payroll for ${existing.date.toISOString().slice(0, 7)} is already approved, so its attendance is frozen. Add a correction to next month's payroll instead.` };
   }
 
   // Correction requests against this mark cascade from the schema.

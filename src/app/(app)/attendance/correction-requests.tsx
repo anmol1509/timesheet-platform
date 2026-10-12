@@ -54,7 +54,7 @@ export function CorrectionRequests({ corrections }: { corrections: Correction[] 
                 type="button"
                 disabled={pending}
                 onClick={() => review(c.id, "APPROVED")}
-                className="rounded-lg border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                className="rounded-lg border border-[var(--success-border)] px-3 py-1.5 text-xs font-medium text-[var(--success)] hover:bg-[var(--success-soft)] disabled:opacity-50"
               >
                 Approve
               </button>
@@ -62,7 +62,7 @@ export function CorrectionRequests({ corrections }: { corrections: Correction[] 
                 type="button"
                 disabled={pending}
                 onClick={() => review(c.id, "REJECTED")}
-                className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:opacity-50"
               >
                 Reject
               </button>

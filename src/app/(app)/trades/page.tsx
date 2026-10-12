@@ -1,26 +1,42 @@
+import { Wrench, Plus } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { branchWhere } from "@/lib/branch";
+import { mayEditSkill, visibleSkillWhere } from "@/lib/skillScope";
 import { createSkillAction } from "./actions";
 import { TradeTable } from "./trade-table";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { BarList } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 
 export default async function SkillsPage() {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [skills, totalEmployees] = await Promise.all([
     prisma.skill.findMany({
-      include: { _count: { select: { employees: true } } },
+      // The shared catalogue plus this branch's own trades — never another branch's.
+      where: visibleSkillWhere(branchId),
       orderBy: { name: "asc" },
     }),
-    prisma.employee.count(),
+    prisma.employee.count({ where: branchWhere(branchId) }),
   ]);
 
-  const [idleRows, demandRows] = await Promise.all([
-    prisma.employee.groupBy({ by: ["trade"], where: { status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
+  const [idleRows, demandRows, headcountRows] = await Promise.all([
+    prisma.employee.groupBy({ by: ["trade"], where: { ...branchWhere(branchId), status: "IDLE", trade: { not: null } }, _count: { _all: true } }),
     prisma.demandRequestTrade.findMany({
-      where: { demandRequest: { status: { in: ["Open", "Approved"] } } },
+      where: { demandRequest: { ...branchWhere(branchId), status: { in: ["Open", "Approved"] } } },
       select: { trade: true, quantity: true, approvedQuantity: true, _count: { select: { allocations: true } } },
     }),
+    // The employee's own `trade` field is what every other trade dropdown
+    // and filter reads — a Skill's `_count.employees` instead counts
+    // EmployeeSkill rows, which only exist once someone manually tags a
+    // "Known Trade Detail" on a profile, so it read ~0 for almost everyone
+    // despite `trade` being populated. Headcount here now matches Employees.
+    prisma.employee.groupBy({ by: ["trade"], where: { ...branchWhere(branchId), trade: { not: null } }, _count: { _all: true } }),
   ]);
   const key = (t: string | null) => (t ?? "").trim().toLowerCase();
   const idleBy = new Map(idleRows.map((r) => [key(r.trade), r._count._all]));
+  const headcountBy = new Map(headcountRows.map((r) => [key(r.trade), r._count._all]));
   const openBy = new Map<string, number>();
   for (const d of demandRows) {
     const gap = Math.max(0, (d.approvedQuantity ?? d.quantity) - d._count.allocations);
@@ -28,13 +44,17 @@ export default async function SkillsPage() {
   }
 
   const rows = skills.map((s) => {
-    const employeeCount = s._count.employees;
+    const employeeCount = headcountBy.get(key(s.name)) ?? 0;
     const popularity = totalEmployees > 0 ? (employeeCount / totalEmployees) * 100 : 0;
     return {
       id: s.id,
       name: s.name,
+      code: s.code,
       category: s.category,
       trending: s.trending,
+      // Shared trades are read-only to a client; only their own can be changed.
+      shared: s.branchId === null,
+      editable: mayEditSkill(s, { branchId, isSuperAdmin }),
       employeeCount,
       popularity,
       idle: idleBy.get(key(s.name)) ?? 0,
@@ -44,12 +64,11 @@ export default async function SkillsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Trades</h1>
-        <p className="mt-1 text-sm text-muted">
-          The trades your workforce holds, and where demand is highest.
-        </p>
-      </div>
+      <PageHeader
+        title="Trades"
+        icon={Wrench}
+        description={<>The trades your workforce holds, and where demand is highest.</>}
+      />
 
       <form
         action={createSkillAction}
@@ -82,18 +101,25 @@ export default async function SkillsPage() {
           type="submit"
           className="btn btn-primary"
         >
-          + Add Trade
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add Trade
         </button>
       </form>
 
-      {rows.length === 0 ? (
-        <p className="empty-state text-sm text-muted">
-          No skills tracked yet. Add one above, or tag skills from an
-          employee&rsquo;s profile.
-        </p>
-      ) : (
-        <TradeTable trades={rows} />
+      {rows.length > 0 && (
+        <Panel title="Top trades by headcount" href="/employees">
+          <BarList
+            tone="brand"
+            items={[...rows]
+              .sort((a, b) => b.employeeCount - a.employeeCount)
+              .slice(0, 8)
+              .map((r) => ({ key: r.id, label: r.name, value: r.employeeCount }))}
+            emptyLabel="No employees assigned to a trade yet."
+          />
+        </Panel>
       )}
+      <TradeTable trades={rows} />
     </div>
   );
 }

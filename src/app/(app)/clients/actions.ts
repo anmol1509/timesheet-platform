@@ -1,9 +1,11 @@
 "use server";
 
+import { findClientByName, uniqueClientCode } from "@/lib/entityCode";
+import { normalizeCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
@@ -34,11 +36,6 @@ function stringOrNull(value: FormDataEntryValue | null) {
   return s || null;
 }
 
-async function nextClientCode() {
-  const count = await prisma.client.count();
-  return `CLI${String(count + 1).padStart(3, "0")}`;
-}
-
 function billingFields(formData: FormData) {
   const billingType = String(formData.get("billingType") || "");
   const billingRate = numberOrNull(formData.get("billingRate"));
@@ -52,6 +49,7 @@ export async function createClientAction(
   _prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
@@ -64,12 +62,19 @@ export async function createClientAction(
     };
   }
 
-  const existing = await prisma.client.findUnique({ where: { name } });
+  // Names are unique within a branch: several suppliers share the same big clients.
+  const existing = await findClientByName(name, branchId);
   if (existing) return { error: "A client with that name already exists." };
+
+  // A code typed into the form wins; blank means "generate it from the name".
+  const typed = normalizeCode(String(formData.get("code") || ""));
+  if (typed && (await prisma.client.findFirst({ where: { branchId, code: typed }, select: { id: true } }))) {
+    return { error: `The code ${typed} is already used by another client.` };
+  }
 
   const data = {
     name,
-    code: await nextClientCode(),
+    code: typed || (await uniqueClientCode(name, branchId)),
     branchId,
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
@@ -96,16 +101,39 @@ export async function createClientAction(
   redirect(`/clients/${client.id}`);
 }
 
-export async function updateClientAction(formData: FormData) {
+export async function updateClientAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
-  if (!id) return;
-  if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return;
+  if (!id) return { error: null };
+  if (!(await assertClientInBranch(id, branchId, isSuperAdmin))) return { error: null };
 
   const before = await prisma.client.findUnique({ where: { id } });
+  if (!before) return { error: null };
+
+  // Blank keeps the current code (or makes one if the client never had one).
+  const typedCode = normalizeCode(String(formData.get("code") || ""));
+  const code = typedCode || before.code || (await uniqueClientCode(before.name, before.branchId!));
+  if (code !== before.code) {
+    const clash = await prisma.client.findFirst({
+      where: { branchId: before.branchId, code, NOT: { id } },
+      select: { id: true },
+    });
+    if (clash) return { error: `The code ${code} is already used by another client.` };
+  }
+
+  // The name can be corrected here; two clients in one company can't share a name.
+  const typedName = String(formData.get("name") ?? "").trim();
+  const name = typedName || before.name;
+  if (name !== before.name) {
+    const taken = await prisma.client.findFirst({ where: { branchId: before.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another client is already called "${name}".` };
+  }
 
   const data = {
+    name,
+    code,
     contactPerson: stringOrNull(formData.get("contactPerson")),
     contactEmail: stringOrNull(formData.get("contactEmail")),
     contactPhone: stringOrNull(formData.get("contactPhone")),
@@ -151,9 +179,11 @@ export async function updateClientAction(formData: FormData) {
 
   revalidatePath(`/clients/${id}`);
   revalidatePath("/clients");
+  return { error: null };
 }
 
 export async function addClientContactAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -175,6 +205,7 @@ export async function addClientContactAction(formData: FormData) {
 }
 
 export async function updateClientContactAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -197,6 +228,7 @@ export async function updateClientContactAction(formData: FormData) {
 }
 
 export async function removeClientContactAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -208,6 +240,7 @@ export async function removeClientContactAction(formData: FormData) {
 }
 
 export async function addClientTradeRateAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -229,6 +262,7 @@ export async function addClientTradeRateAction(formData: FormData) {
 }
 
 export async function removeClientTradeRateAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -240,6 +274,7 @@ export async function removeClientTradeRateAction(formData: FormData) {
 }
 
 export async function addClientDocumentAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
@@ -277,8 +312,9 @@ export async function addClientDocumentAction(formData: FormData) {
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.clients", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("documentId") || "");
   const clientId = String(formData.get("clientId") || "");
@@ -304,7 +340,8 @@ export async function deleteClientDocumentAction(formData: FormData) {
 }
 
 export async function bulkImportClientsAction(rows: Record<string, string>[]) {
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  await requireWrite("partners.clients");
+  const { user, branchId } = await requireUserWithBranch();
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -319,11 +356,10 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       continue;
     }
     try {
-      const existing = await prisma.client.findUnique({ where: { name } });
-      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
-        results.push({ row: i + 2, status: "error", message: "That name belongs to a different branch." });
-        continue;
-      }
+      // Looked up within this branch only: matching another company's client
+      // would update it, and refusing with "belongs to a different branch" would
+      // tell you a client of that name exists elsewhere.
+      const existing = await findClientByName(name, branchId);
       const data = {
         contactPerson: stringOrNull(r["Contact person"] ?? null),
         contactEmail: stringOrNull(r["Contact email"] ?? null),
@@ -333,13 +369,15 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       };
       if (existing) {
         const before = existing as unknown as Record<string, unknown>;
-        await prisma.client.update({ where: { id: existing.id }, data });
+        // A blank cell means "not in this file", not "clear it".
+        const changes = Object.fromEntries(Object.entries(data).filter(([, v]) => v !== null));
+        await prisma.client.update({ where: { id: existing.id }, data: changes });
         await logAudit({
           entityType: "CLIENT",
           entityId: existing.id,
           action: "UPDATE",
           before,
-          after: data,
+          after: changes,
           userId: user.id,
           userName: user.name,
           branchId,
@@ -347,7 +385,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
         results.push({ row: i + 2, status: "updated" });
       } else {
         const created = await prisma.client.create({
-          data: { name, code: await nextClientCode(), branchId, ...data },
+          data: { name, code: await uniqueClientCode(name, branchId), branchId, ...data },
         });
         await logAudit({
           entityType: "CLIENT",
@@ -374,8 +412,9 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
 }
 
 export async function deleteClientAction(formData: FormData) {
+  await requireWrite("partners.clients");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.clients", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("clientId") || "");
   if (!id) return;
@@ -425,7 +464,8 @@ export async function deleteClientAction(formData: FormData) {
 export async function deleteClientsAction(
   ids: string[]
 ): Promise<{ deleted: number; blocked: { name: string; reason: string }[] }> {
-  await requirePermission("partners", "delete");
+  await requireWrite("partners.clients");
+  await requirePermission("partners.clients", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const blocked: { name: string; reason: string }[] = [];
   let deleted = 0;
@@ -462,4 +502,12 @@ export async function deleteClientsAction(
 
   revalidatePath("/clients");
   return { deleted, blocked };
+}
+
+/** The code the "Auto" button fills in: the name's initials, made unique in the branch. */
+export async function suggestClientCodeAction(name: string, clientId?: string): Promise<string> {
+  await requireView("partners.clients");
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return "";
+  return uniqueClientCode(name.trim(), branchId, clientId);
 }

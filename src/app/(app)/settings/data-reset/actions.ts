@@ -7,8 +7,16 @@ import { prisma } from "@/lib/db";
 import { RESET_MODULES, SAFE_RESET_ORDER } from "@/lib/dataReset";
 import { assertContactsValid } from "@/lib/validators";
 
-function checkAccess(role: string) {
-  return role === "SUPER_ADMIN";
+/**
+ * Admins only — but a branch admin is confined to their own branch. Every
+ * module is branch-scoped, so a concrete branchId is all that keeps a client's
+ * reset from touching anyone else. A branch admin with no branch would fall
+ * through to "no filter" and wipe every tenant, so that case is refused
+ * outright rather than trusted to never happen.
+ */
+function checkAccess(role: string, branchId: string | null) {
+  if (role === "SUPER_ADMIN") return true;
+  return role === "BRANCH_ADMIN" && branchId !== null;
 }
 
 export async function resetModuleAction(
@@ -16,8 +24,8 @@ export async function resetModuleAction(
 ): Promise<{ counts: Record<string, number> } | { error: string }> {
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
-  if (!checkAccess(user.role)) {
-    return { error: "Only a Super Admin can reset data." };
+  if (!checkAccess(user.role, branchId)) {
+    return { error: "Only an admin assigned to a branch can reset data." };
   }
 
   const moduleId = String(formData.get("moduleId") || "");
@@ -78,8 +86,8 @@ export async function resetAllAction(
 ): Promise<{ counts: Record<string, Record<string, number>> } | { error: string }> {
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
-  if (!checkAccess(user.role)) {
-    return { error: "Only a Super Admin can reset data." };
+  if (!checkAccess(user.role, branchId)) {
+    return { error: "Only an admin assigned to a branch can reset data." };
   }
 
   const confirmText = String(formData.get("confirmText") || "").trim();
@@ -88,8 +96,9 @@ export async function resetAllAction(
   if (confirmText.toUpperCase() !== "RESET ALL") {
     return { error: 'Type "RESET ALL" exactly to confirm.' };
   }
-  if (!acknowledgeGlobal) {
-    return { error: "Confirm you understand this deletes every module's data, including modules that affect every branch." };
+  // Only a super admin viewing "All branches" can reach every tenant's data.
+  if (!branchId && !acknowledgeGlobal) {
+    return { error: "Confirm you understand this deletes every module's data across every branch, since no specific branch is selected." };
   }
 
   let allCounts: Record<string, Record<string, number>>;

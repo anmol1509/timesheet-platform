@@ -1,5 +1,6 @@
 "use client";
 
+import { WeekdayPicker } from "@/components/WeekdayPicker";
 import { useState, useTransition } from "react";
 import { updateProjectAction } from "../actions";
 import { Select } from "@/components/ui/Select";
@@ -42,6 +43,7 @@ type Project = {
   nightShiftEnd: string | null;
   interTransfer: boolean;
   internalUse: boolean;
+  weeklyOffDays: number[];
 };
 
 export function EditProjectForm({
@@ -175,6 +177,10 @@ export function EditProjectForm({
             className="input w-full"
           />
         </Field>
+        <Field label="Weekly off day(s) on this project" className="sm:col-span-2">
+          <WeekdayPicker name="weeklyOffDays" defaultValue={project.weeklyOffDays} />
+          <p className="mt-1 text-xs text-secondary">Work on these days is paid as overtime in payroll.</p>
+        </Field>
         <CheckboxField label="Inter transfer" name="interTransfer" defaultChecked={project.interTransfer} />
         <CheckboxField label="Internal use" name="internalUse" defaultChecked={project.internalUse} />
       </Section>
@@ -189,7 +195,7 @@ export function EditProjectForm({
         </button>
         {error && <span className="text-sm text-[var(--error)]">{error}</span>}
         {saved && !pending && (
-          <span className="text-sm text-emerald-600">Saved.</span>
+          <span className="text-sm text-[var(--success)]">Saved.</span>
         )}
       </div>
     </form>

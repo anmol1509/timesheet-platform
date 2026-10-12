@@ -11,6 +11,13 @@ import type { WeeklyHoursDay } from "@/lib/weeklyHours";
 export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
   const max = Math.max(1, ...days.map((d) => d.hours));
   const peak = days.reduce((best, d) => (d.hours > best.hours ? d : best), days[0]);
+  if (!days.some((d) => d.hours > 0)) {
+    return (
+      <p className="flex h-44 items-center justify-center text-center text-sm text-muted">
+        No hours logged this week yet. Mark attendance or import a timesheet and the daily bars appear here.
+      </p>
+    );
+  }
 
   return (
     <div className="flex h-44 items-end justify-between gap-3">
@@ -25,8 +32,8 @@ export function WeeklyHoursChart({ days }: { days: WeeklyHoursDay[] }) {
               )}
               <m.div
                 title={hasData ? `${d.hours}h logged` : "No hours logged"}
-                initial={{ height: 0 }}
-                animate={{ height: hasData ? `${Math.max(8, Math.round((d.hours / max) * 100))}%` : 2 }}
+                initial={{ height: "0%" }}
+                animate={{ height: hasData ? `${Math.max(8, Math.round((d.hours / max) * 100))}%` : "2%" }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.03 }}
                 className={`w-full max-w-7 rounded-t-[4px] ${
                   isPeak

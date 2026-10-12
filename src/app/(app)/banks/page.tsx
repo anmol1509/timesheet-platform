@@ -30,7 +30,7 @@ export default async function BanksPage() {
       <PageHeader
         title="Banks"
         description="Your bank accounts. An account is active only once its account number and a valid IBAN are entered."
-        actions={branchId && can(subject, "partners", "create") ? <AddBank companies={companies} /> : undefined}
+        actions={branchId && can(subject, "partners.banks", "create") ? <AddBank companies={companies} /> : undefined}
       />
       {rows.length > 0 && (
         <p className="text-sm text-muted">

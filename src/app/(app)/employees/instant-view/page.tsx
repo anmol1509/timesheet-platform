@@ -1,3 +1,5 @@
+import { FileSearch } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
@@ -82,12 +84,11 @@ export default async function InstantViewPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl tracking-tight text-primary font-semibold">Employee Instant View</h1>
-        <p className="mt-1 text-sm text-muted">
-          A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.
-        </p>
-      </div>
+      <PageHeader
+        title="Employee Instant View"
+        icon={FileSearch}
+        description={<>A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.</>}
+      />
 
       <InstantViewPicker category={category} employeeId={employeeId ?? ""} employees={employees} />
 
@@ -250,6 +251,7 @@ export default async function InstantViewPage({
                     <th className="py-2">Bed</th>
                     <th className="py-2">Check In Date</th>
                     <th className="py-2">Check Out Date</th>
+                    <th className="py-2">Reason</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -259,7 +261,8 @@ export default async function InstantViewPage({
                       <td className="py-2">{h.roomName || "—"}</td>
                       <td className="py-2">{h.bedLabel || "—"}</td>
                       <td className="py-2">{formatDate(h.checkInDate)}</td>
-                      <td className="py-2">{formatDate(h.checkOutDate)}</td>
+                      <td className="py-2">{h.checkOutDate ? formatDate(h.checkOutDate) : h.plannedCheckOutDate ? <span className="text-[var(--warning)]">Leaving {formatDate(h.plannedCheckOutDate)}</span> : formatDate(h.checkOutDate)}</td>
+                      <td className="py-2">{h.checkOutReason ? `${h.checkOutReason}${h.checkOutNote ? ` — ${h.checkOutNote}` : ""}` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

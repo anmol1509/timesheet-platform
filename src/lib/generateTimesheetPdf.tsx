@@ -46,7 +46,7 @@ export type TimesheetPdfInput = {
   periodTo: string;
   entries: TimesheetEntry[];
   additions: number;
-  safetyDeduction: number;
+  gasDeduction: number;
   otherDeduction: number;
   vatPercent: number;
   /** Two separate blocks: preparing and verifying are different signatures. */
@@ -57,6 +57,10 @@ export type TimesheetPdfInput = {
   approvedBy: string | null;
   approvedByRole: string | null;
   notes: string[];
+  /** A company's own wording for the heading, the signature boxes and the page footer. */
+  titleText?: string;
+  signatureLabels?: string[];
+  footerText?: string;
 };
 
 /** The competitor's standard payment conditions, kept as the default. */
@@ -144,14 +148,13 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.4,
     borderColor: "#94A3B8",
   },
+  // In the flow, after the summary, rather than pinned to the page foot: a
+  // pinned block drew over the totals whenever the summary ran long.
   signatureRow: {
-    position: "absolute",
-    bottom: 34,
-    left: 16,
-    right: 16,
+    marginTop: 22,
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 24,
+    gap: 14,
   },
   signatureBox: { flex: 1 },
   signatureLabel: { fontSize: 7, fontFamily: "Helvetica-Bold" },
@@ -256,7 +259,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
 
   const grossBeforeDeductions = summaryRows.reduce((sum, r) => sum + r.amount, 0);
   const totalDeduction =
-    totals.deduction + (input.safetyDeduction || 0) + (input.otherDeduction || 0);
+    totals.deduction + (input.gasDeduction || 0) + (input.otherDeduction || 0);
   const grossTotal = grossBeforeDeductions + (input.additions || 0) - totalDeduction;
   const vat = grossTotal * (input.vatPercent / 100);
   const netPayable = grossTotal + vat;
@@ -305,7 +308,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
         {input.subContractor.toUpperCase()}
       </Text>
       <Text style={s.period}>
-        Time Sheet Period From {input.periodFrom} to {input.periodTo}
+        {input.titleText ? `${input.titleText}  ·  ` : "Time Sheet "}{input.titleText ? "" : "Period From "}{input.periodFrom} to {input.periodTo}
       </Text>
     </View>
   );
@@ -539,12 +542,12 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
                 <Text style={s.moneyValue}>{money(input.additions || 0)}</Text>
               </View>
               <View style={s.moneyRow}>
-                <Text style={s.moneyLabel}>Absent Penalty</Text>
+                <Text style={s.moneyLabel}>Absent Deduction</Text>
                 <Text style={s.moneyValue}>{money(totals.deduction)}</Text>
               </View>
               <View style={s.moneyRow}>
-                <Text style={s.moneyLabel}>Safety Items</Text>
-                <Text style={s.moneyValue}>{money(input.safetyDeduction || 0)}</Text>
+                <Text style={s.moneyLabel}>Gas Deduction</Text>
+                <Text style={s.moneyValue}>{money(input.gasDeduction || 0)}</Text>
               </View>
               <View style={s.moneyRow}>
                 <Text style={s.moneyLabel}>Other Deduction</Text>
@@ -578,31 +581,33 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
               </Text>
             ))}
 
+            {/* Under the notes, beside the money lines: that column has the room,
+                and below the summary there is none once a sheet runs long. In
+                one piece so a signature box is never split across pages. */}
+          <View style={s.signatureRow} wrap={false}>
+            {(input.signatureLabels
+              ? input.signatureLabels.map((label, i) => [label, [input.preparedBy, input.verifiedBy, input.approvedBy][i] ?? null, [input.preparedByRole, input.verifiedByRole, input.approvedByRole][i] ?? null])
+              : [
+                  ["PREPARED BY", input.preparedBy, input.preparedByRole],
+                  ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
+                  ["APPROVED BY", input.approvedBy, input.approvedByRole],
+                ]
+            ).map(([label, name, role], i) => (
+              <View key={`${label}-${i}`} style={s.signatureBox}>
+                <Text style={s.signatureLabel}>{label}</Text>
+                <View style={{ height: 30 }} />
+                <View style={s.signatureLine} />
+                <Text style={s.signatureName}>{name || ""}</Text>
+                {role && <Text style={s.signatureRole}>{role}</Text>}
+              </View>
+            ))}
           </View>
-        </View>
-
-        {/* Pinned to the foot of the page and spread across its width: these
-            are signed by three different people, so each needs its own space
-            rather than being stacked beside the notes. */}
-        <View style={s.signatureRow}>
-          {[
-            ["PREPARED BY", input.preparedBy, input.preparedByRole],
-            ["VERIFIED BY", input.verifiedBy, input.verifiedByRole],
-            ["APPROVED BY", input.approvedBy, input.approvedByRole],
-          ].map(([label, name, role]) => (
-            <View key={label as string} style={s.signatureBox}>
-              <Text style={s.signatureLabel}>{label}</Text>
-              <View style={{ height: 34 }} />
-              <View style={s.signatureLine} />
-              <Text style={s.signatureName}>{name || ""}</Text>
-              {role && <Text style={s.signatureRole}>{role}</Text>}
-            </View>
-          ))}
+          </View>
         </View>
 
         <Text
           style={s.footer}
-          render={({ pageNumber }) => `Page ${pageNumber}`}
+          render={({ pageNumber }) => `${input.footerText ? `${input.footerText}  ·  ` : ""}Page ${pageNumber}`}
           fixed
         />
       </Page>

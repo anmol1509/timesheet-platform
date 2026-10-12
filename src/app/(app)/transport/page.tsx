@@ -1,10 +1,17 @@
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Bus, CalendarClock, Phone, Route as RouteIcon, ShieldAlert, Users } from "lucide-react";
+import { Bus, CalendarClock, Download, Phone, Route as RouteIcon, ShieldAlert, Upload, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { isAdminRole } from "@/lib/roles";
+import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
+import { BarList, type BarListTone } from "@/components/BarList";
+import { Panel } from "@/components/DashboardPanel";
 import { daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { AddVehicleDialog } from "./add-vehicle-dialog";
@@ -26,7 +33,11 @@ function DocChip({ label, date }: { label: string; date: Date | null }) {
 
 export default async function TransportPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const { error, status: statusFilter } = await searchParams;
+  const { user, branchId } = await requireUserWithBranch();
+  const canExport = can(subjectOf(user), "facilities.transport", "export");
+  const canImport = isAdminRole(user.role);
   const vehicles = await prisma.vehicle.findMany({
+    where: branchWhere(branchId),
     include: {
       _count: { select: { employees: true } },
       projects: { include: { project: { select: { name: true } } } },
@@ -40,6 +51,16 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
   const seats = vehicles.reduce((n, v) => n + (v.capacity ?? 0), 0);
   const riders = vehicles.reduce((n, v) => n + v._count.employees, 0);
   const shown = statusFilter && STATUS[statusFilter] ? vehicles.filter((v) => v.status === statusFilter) : vehicles;
+
+  const utilization = vehicles
+    .filter((v) => v.capacity)
+    .map((v) => {
+      const pct = Math.round((v._count.employees / v.capacity!) * 100);
+      const tone: BarListTone = pct >= 100 ? "danger" : pct >= 75 ? "warning" : "success";
+      return { id: v.id, label: `${v.plateNumber} · ${v._count.employees}/${v.capacity} seats`, pct, tone };
+    })
+    .sort((a, b) => b.pct - a.pct)
+    .slice(0, 8);
 
   const runs = vehicles
     .flatMap((v) => v.routes.map((r) => ({ id: r.id, name: r.name, plate: v.plateNumber, vehicleId: v.id, driver: v.driverName, project: r.project?.name ?? null, first: r.stops[0], last: r.stops[r.stops.length - 1], stops: r.stops.length })))
@@ -55,17 +76,20 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Transport</h1>
-          <p className="mt-1 text-sm text-muted">Vehicles, their drivers and rosters, and the daily pickup runs.</p>
-        </div>
+        <PageHeader
+          title="Transport"
+          icon={Bus}
+          description={<>Vehicles, their drivers and rosters, and the daily pickup runs.</>}
+        />
         <div className="flex items-center gap-2">
           <Link href="/transport/routes" className="btn btn-secondary gap-1.5"><RouteIcon className="h-4 w-4" aria-hidden />Routes</Link>
+          {canImport && <Link href="/import/new/vehicles" className="btn btn-secondary gap-1.5"><Upload className="h-4 w-4" aria-hidden />Import</Link>}
+          {canExport && vehicles.length > 0 && <a href="/api/transport/vehicles/export" className="btn btn-secondary gap-1.5"><Download className="h-4 w-4" aria-hidden />Export</a>}
           <AddVehicleDialog />
         </div>
       </div>
 
-      {error && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{error}</p>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map((t) => (
@@ -76,6 +100,15 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
           </div>
         ))}
       </div>
+
+      {utilization.length > 0 && (
+        <Panel title="Seat utilization by vehicle">
+          <BarList
+            showShare={false}
+            items={utilization.map((v) => ({ key: v.id, label: v.label, value: v.pct, valueLabel: `${v.pct}%`, tone: v.tone }))}
+          />
+        </Panel>
+      )}
 
       {vehicles.length === 0 ? (
         <EmptyState icon={Bus} title="No vehicles yet" description="Vehicles carry workers between the camp and site. Add one to record its plate, capacity and driver, then build pickup routes around it." />

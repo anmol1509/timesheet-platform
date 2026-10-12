@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import { Paperclip, Plus, Trash2 } from "lucide-react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { Paperclip, Plus, Trash2, ScanLine, Loader2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Badge, type BadgeColor } from "@/components/Badge";
@@ -12,11 +12,15 @@ import { createExpenseAction, deleteExpenseAction, markReimbursedAction } from "
 import { ComboSelect } from "@/components/ui/ComboSelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import type { ExtractedReceiptFields } from "@/app/api/expenses/extract-receipt/route";
 
 type State = { error: string | null; ok?: boolean };
 export type ExpenseRow = { id: string; date: string; category: string; description: string; total: number; paidTo: string | null; method: string | null; project: string | null; status: string; by: string; note: string | null; outOfPocket: boolean; reimbursed: boolean; branchId: string; files: AttachmentRow[] };
 const STATUS: Record<string, { label: string; color: BadgeColor }> = { PENDING: { label: "Pending", color: "amber" }, APPROVED: { label: "Approved", color: "green" }, REJECTED: { label: "Rejected", color: "red" } };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const TODAY = new Date().toISOString().slice(0, 10);
 
 function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: string }[]; onDone: () => void }) {
   const [allowDuplicate, setAllowDuplicate] = useState(false);
@@ -30,28 +34,84 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
     { error: null } as State
   );
   const dup = state.error?.startsWith("DUPLICATE:");
+
+  // AI receipt scan — fills the fields below, which a person still reviews
+  // and submits themselves; nothing here posts an expense on its own.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [extracted, setExtracted] = useState<ExtractedReceiptFields>({});
+  // Bumped after a scan so the (uncontrolled) fields below remount and pick
+  // up their new `defaultValue` — same pattern as elsewhere in this app for
+  // programmatically filling components that only read defaultValue once.
+  const [formKey, setFormKey] = useState(0);
+
+  async function handleScan() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setScanError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    setScanning(true);
+    setScanError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/expenses/extract-receipt", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) {
+        setScanError(data.error || "Couldn't read this receipt.");
+        return;
+      }
+      setExtracted(data);
+      setFormKey((k) => k + 1);
+    } catch {
+      setScanError("Couldn't read this receipt. Enter the details manually.");
+    } finally {
+      setScanning(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   return (
     <form action={action} className="mt-4 space-y-3">
       {allowDuplicate && <input type="hidden" name="allowDuplicate" value="1" />}
+
+      <div className="flex items-center gap-2 rounded-lg border border-dashed border-default bg-surface-subtle px-3 py-2.5">
+        <ScanLine className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-primary">Scan a receipt to fill this in</p>
+          <p className="text-xs text-subtle">Photo or PDF — you still review everything before submitting.</p>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" id="receipt-scan-input" onChange={handleScan} disabled={scanning} />
+        <label htmlFor="receipt-scan-input" className={`btn btn-secondary shrink-0 ${scanning ? "pointer-events-none opacity-60" : "cursor-pointer"}`}>
+          {scanning ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ScanLine className="h-4 w-4" aria-hidden />}
+          {scanning ? "Reading…" : "Scan receipt"}
+        </label>
+      </div>
+      {scanError && <p role="alert" className="text-sm text-[var(--error)]">{scanError}</p>}
+
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date *</span><DatePicker name="date" defaultValue={new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Date *</span><DatePicker key={`date-${formKey}`} name="date" defaultValue={extracted.date || TODAY} required className="w-full" /></label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Category</span>
-          <ComboSelect name="category" options={EXPENSE_CATEGORIES.filter((c) => c !== "Other")} required />
+          <ComboSelect key={`category-${formKey}`} name="category" options={EXPENSE_CATEGORIES.filter((c) => c !== "Other")} defaultValue={extracted.category || undefined} required />
           <datalist id="expense-categories">{EXPENSE_CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
         </label>
       </div>
-      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description *</span><input name="description" required className="input w-full" /></label>
+      <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description *</span><input key={`description-${formKey}`} name="description" defaultValue={extracted.description || ""} required className="input w-full" /></label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput name="amount" required min={0} step={0.01} className="w-full" /></label>
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput name="vatAmount" defaultValue="0" min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED, before VAT) *</span><NumberInput key={`amount-${formKey}`} name="amount" defaultValue={extracted.amount || undefined} required min={0} step={0.01} className="w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">VAT (AED)</span><NumberInput key={`vat-${formKey}`} name="vatAmount" defaultValue={extracted.vatAmount || "0"} min={0} step={0.01} className="w-full" /></label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid to</span><input name="paidTo" className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid to</span><input key={`paidTo-${formKey}`} name="paidTo" defaultValue={extracted.vendor || ""} className="input w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Method</span><Select name="paymentMethod" defaultValue="" searchable={false} options={[{ value: "", label: "—" }, ...PAYMENT_METHODS.map((m) => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))]} /></label>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference / receipt no.</span><input name="reference" className="input w-full" /></label>
+        <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference / receipt no.</span><input key={`reference-${formKey}`} name="reference" defaultValue={extracted.reference || ""} className="input w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Project (optional)</span><Select name="projectId" defaultValue="" placeholder="—" options={[{ value: "", label: "—" }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} /></label>
       </div>
       <label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" name="outOfPocket" value="1" className="h-4 w-4" /> Paid out of pocket (owed back to the person who submits it)</label>

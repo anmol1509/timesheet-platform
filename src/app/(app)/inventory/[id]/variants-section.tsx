@@ -66,7 +66,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
           </button>
         </div>
 
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-2 text-xs text-[var(--error)]">{error}</p>}
 
         {variants.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">
@@ -101,7 +101,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
                     <td className="px-3 py-2 text-right text-secondary">{v.held}</td>
                     <td
                       className={`px-3 py-2 text-right font-medium ${
-                        v.stock - v.held <= 0 ? "text-red-600" : "text-primary"
+                        v.stock - v.held <= 0 ? "text-[var(--error)]" : "text-primary"
                       }`}
                     >
                       {v.stock - v.held}

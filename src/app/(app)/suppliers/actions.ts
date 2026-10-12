@@ -1,13 +1,17 @@
 "use server";
 
+import { findSupplierByName, uniqueSupplierCode } from "@/lib/entityCode";
+import { normalizeCode } from "@/lib/partyCode";
+import { applySuppliers } from "@/lib/importer/apply/suppliers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { deleteImage, storeImage } from "@/lib/storedImage";
 import { matchTrade } from "@/lib/trades";
-import { assertContactsValid } from "@/lib/validators";
+import { assertContactsValid, contactsError } from "@/lib/validators";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -26,14 +30,10 @@ function numberOrNull(value: FormDataEntryValue | null) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Same "PREFIX + zero-padded sequence" shape as Client's nextClientCode().
-async function nextSupplierCode() {
-  const count = await prisma.supplier.count();
-  return `SUP${String(count + 1).padStart(3, "0")}`;
-}
-
 export async function createSupplierAction(formData: FormData) {
-  assertContactsValid(formData);
+  await requireWrite("partners.suppliers");
+  const badContact = contactsError(formData);
+  if (badContact) redirect(`/suppliers?error=${encodeURIComponent(badContact)}`);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -49,14 +49,19 @@ export async function createSupplierAction(formData: FormData) {
     );
   }
 
-  const existing = await prisma.supplier.findUnique({ where: { name } });
+  const existing = await findSupplierByName(name, branchId);
   if (existing) {
     redirect(
       `/suppliers?error=${encodeURIComponent("A supplier with that name already exists.")}`
     );
   }
 
-  const code = await nextSupplierCode();
+  // A code typed into the form wins; blank means "generate it from the name".
+  const typed = normalizeCode(String(formData.get("code") || ""));
+  if (typed && (await prisma.supplier.findFirst({ where: { branchId, code: typed }, select: { id: true } }))) {
+    redirect(`/suppliers?error=${encodeURIComponent(`The code ${typed} is already used by another supplier.`)}`);
+  }
+  const code = typed || (await uniqueSupplierCode(name, branchId));
   const created = await prisma.supplier.create({ data: { name, code, fullName, branchId } });
 
   await logAudit({
@@ -90,6 +95,7 @@ export async function createSupplierAction(formData: FormData) {
 export async function createSubsidiaryAction(
   formData: FormData
 ): Promise<{ error: string } | { id: string }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parentSupplierId = String(formData.get("parentSupplierId") || "").trim();
@@ -103,14 +109,15 @@ export async function createSubsidiaryAction(
     return { error: "Parent supplier not found." };
   }
 
-  const existing = await prisma.supplier.findUnique({ where: { name } });
+  const existing = await findSupplierByName(name, parent.branchId!);
   if (existing) {
     return { error: "A supplier with that name already exists." };
   }
 
-  const code = await nextSupplierCode();
+  const code = await uniqueSupplierCode(name, parent.branchId!);
   const created = await prisma.supplier.create({
-    data: { name, code, parentSupplierId, branchId: parent.branchId },
+    // A subsidiary of one of our own companies is one of ours, with the same pay setup.
+    data: { name, code, parentSupplierId, branchId: parent.branchId, ...(parent.isOwnCompany ? { isOwnCompany: true, payType: parent.payType, wpsEstablishmentId: parent.wpsEstablishmentId } : {}) },
   });
 
   await logAudit({
@@ -130,19 +137,44 @@ export async function createSubsidiaryAction(
 
 // Company & Compliance tab — every field this action writes lives in that
 // tab's form, so a save here never touches Contact/Payment fields.
-export async function updateSupplierCompanyAction(formData: FormData) {
+export async function updateSupplierCompanyAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
-  if (!id) return;
+  if (!id) return { error: null };
 
   const existing = await prisma.supplier.findUnique({ where: { id } });
-  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return { error: null };
 
-  const parentSupplierIdRaw = stringOrNull(formData.get("parentSupplierId"));
+  // Blank keeps the current code (or makes one if the supplier never had one).
+  const typedCode = normalizeCode(String(formData.get("code") || ""));
+  const code = typedCode || existing.code || (await uniqueSupplierCode(existing.name, existing.branchId!));
+  if (code !== existing.code) {
+    const clash = await prisma.supplier.findFirst({
+      where: { branchId: existing.branchId, code, NOT: { id } },
+      select: { id: true },
+    });
+    if (clash) return { error: `The code ${code} is already used by another supplier.` };
+  }
+
+  // Under one of our own companies a subsidiary is always ours too, whatever
+  // the form says; a primary supplier's setting is passed down to its subsidiaries.
+  const parentRow = existing.parentSupplierId
+    ? await prisma.supplier.findUnique({ where: { id: existing.parentSupplierId }, select: { isOwnCompany: true } })
+    : null;
+  const own = parentRow?.isOwnCompany ? true : formData.get("isOwnCompany") === "on";
+
+  // The name can be corrected here; two suppliers in one company can't share a name.
+  const name = String(formData.get("name") ?? "").trim() || existing.name;
+  if (name !== existing.name) {
+    const taken = await prisma.supplier.findFirst({ where: { branchId: existing.branchId, name: { equals: name, mode: "insensitive" }, NOT: { id } }, select: { id: true } });
+    if (taken) return { error: `Another supplier is already called "${name}".` };
+  }
 
   const data = {
-    parentSupplierId: parentSupplierIdRaw === id ? null : parentSupplierIdRaw,
+    name,
+    code,
     fullName: stringOrNull(formData.get("fullName")),
     status: String(formData.get("status") || "ACTIVE"),
     trn: stringOrNull(formData.get("trn")),
@@ -154,18 +186,28 @@ export async function updateSupplierCompanyAction(formData: FormData) {
     previousId: stringOrNull(formData.get("previousId")),
     country: stringOrNull(formData.get("country")),
     emirate: stringOrNull(formData.get("emirate")),
-    pointOfContact: stringOrNull(formData.get("pointOfContact")),
     supplierAmountLimit: numberOrNull(formData.get("supplierAmountLimit")),
     account: stringOrNull(formData.get("account")),
-    isOwnCompany: formData.get("isOwnCompany") === "on",
+    isOwnCompany: own,
     // Pay settings only mean something for our own companies; clear them otherwise.
-    payType: formData.get("isOwnCompany") === "on" && ["BASIC", "HOURLY"].includes(String(formData.get("payType") || "")) ? String(formData.get("payType")) : null,
-    wpsEstablishmentId: formData.get("isOwnCompany") === "on" ? stringOrNull(formData.get("wpsEstablishmentId")) : null,
+    payType: own && ["BASIC", "HOURLY"].includes(String(formData.get("payType") || "")) ? String(formData.get("payType")) : null,
+    wpsEstablishmentId: own ? stringOrNull(formData.get("wpsEstablishmentId")) : null,
     allowManualLabourId: formData.get("allowManualLabourId") === "on",
     overtime: formData.get("overtime") === "on",
+    ...(formData.has("ruleSent")
+      ? {
+          absentFreeDays: Math.min(31, Math.max(0, Math.trunc(numberOrNull(formData.get("absentFreeDays")) ?? 2))),
+          absentDeductionPerDay: Math.max(0, numberOrNull(formData.get("absentDeductionPerDay")) ?? 30),
+          gasPerDay: Math.max(0, numberOrNull(formData.get("gasPerDay")) ?? 1),
+          gasMonthlyCap: Math.max(0, numberOrNull(formData.get("gasMonthlyCap")) ?? 30),
+        }
+      : {}),
   };
 
   await prisma.supplier.update({ where: { id }, data });
+  if (!existing.parentSupplierId) {
+    await prisma.supplier.updateMany({ where: { parentSupplierId: id }, data: { isOwnCompany: own, payType: data.payType, wpsEstablishmentId: data.wpsEstablishmentId } });
+  }
 
   await logAudit({
     entityType: "SUPPLIER",
@@ -180,11 +222,76 @@ export async function updateSupplierCompanyAction(formData: FormData) {
 
   revalidatePath(`/suppliers/${id}`);
   revalidatePath("/suppliers");
+  return { error: null };
+}
+
+/** Move a supplier under a primary supplier, or (parentId null) make it a
+ * primary supplier itself. The hierarchy is two levels, so a supplier that has
+ * subsidiaries can't become one, and the parent must be a primary supplier in
+ * the same branch. The forms confirm before calling this. */
+export async function setSupplierParentAction(
+  supplierId: string,
+  parentId: string | null,
+): Promise<{ error: string | null }> {
+  await requireWrite("partners.suppliers");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const s = await prisma.supplier.findUnique({
+    where: { id: supplierId },
+    include: { _count: { select: { subsidiaries: true } } },
+  });
+  if (!s || isOutsideBranch(s.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
+  if (parentId === s.parentSupplierId) return { error: null };
+
+  if (parentId) {
+    if (parentId === s.id) return { error: "A supplier can't be its own parent." };
+    if (s._count.subsidiaries > 0) {
+      return {
+        error: `${s.name} has subsidiaries of its own. Make them primary suppliers or move them first.`,
+      };
+    }
+    const parent = await prisma.supplier.findUnique({ where: { id: parentId } });
+    if (!parent || parent.branchId !== s.branchId || isOutsideBranch(parent.branchId, branchId, isSuperAdmin)) {
+      return { error: "Primary supplier not found." };
+    }
+    if (parent.parentSupplierId) return { error: `${parent.name} is itself a subsidiary. Pick a primary supplier.` };
+  }
+
+  let adopt = {};
+  if (parentId) {
+    const p = await prisma.supplier.findUnique({ where: { id: parentId }, select: { isOwnCompany: true } });
+    if (p?.isOwnCompany) adopt = { isOwnCompany: true };
+  }
+  await prisma.supplier.update({ where: { id: supplierId }, data: { parentSupplierId: parentId, ...adopt } });
+  await logAudit({
+    entityType: "SUPPLIER",
+    entityId: supplierId,
+    action: "UPDATE",
+    before: { parentSupplierId: s.parentSupplierId },
+    after: { parentSupplierId: parentId },
+    userId: user.id,
+    userName: user.name,
+    branchId: s.branchId,
+  });
+
+  revalidatePath(`/suppliers/${supplierId}`);
+  if (s.parentSupplierId) revalidatePath(`/suppliers/${s.parentSupplierId}`);
+  if (parentId) revalidatePath(`/suppliers/${parentId}`);
+  revalidatePath("/suppliers");
+  return { error: null };
+}
+
+/** The code the "Auto" button fills in: the name's acronym, made unique in the branch. */
+export async function suggestSupplierCodeAction(name: string, supplierId?: string): Promise<string> {
+  await requireView("partners.suppliers");
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return "";
+  return uniqueSupplierCode(name.trim(), branchId, supplierId);
 }
 
 // Contact & Payment tab — every field this action writes lives in that
 // tab's form, so a save here never touches Company/Compliance fields.
 export async function updateSupplierContactPaymentAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
@@ -237,8 +344,9 @@ const APPROVAL_FIELDS = ["approvalStatus", "labourApprovalStatus", "invoiceAppro
 type ApprovalField = (typeof APPROVAL_FIELDS)[number];
 
 export async function updateSupplierApprovalAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "approve");
+  await requirePermission("partners.suppliers", "approve");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   const field = String(formData.get("field") || "") as ApprovalField;
@@ -264,78 +372,42 @@ export async function updateSupplierApprovalAction(formData: FormData) {
   revalidatePath(`/suppliers/${id}`);
 }
 
-export async function bulkImportSuppliersAction(rows: Record<string, string>[]) {
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
+type ImportNote = { tone: "warn" | "info"; title: string; detail?: string };
+type ImportResult = {
+  row: number;
+  name?: string;
+  status: "created" | "updated" | "skipped" | "error";
+  message?: string;
+  notes?: ImportNote[];
+};
 
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    const name = (r["Supplier name"] || "").trim();
-    if (!name) {
-      results.push({ row: i + 2, status: "error", message: "Supplier name is required." });
-      continue;
-    }
-    if (!branchId) {
-      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
-      continue;
-    }
-    try {
-      const existing = await prisma.supplier.findUnique({ where: { name } });
-      if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
-        results.push({ row: i + 2, status: "error", message: "That name belongs to a different branch." });
-        continue;
-      }
-      const data = {
-        fullName: stringOrNull(r["Full name"] ?? null),
-        contactPerson: stringOrNull(r["Contact person"] ?? null),
-        contactPhone: stringOrNull(r["Contact phone"] ?? null),
-        contactEmail: stringOrNull(r["Contact email"] ?? null),
-        tradeLicenseNumber: stringOrNull(r["Trade license number"] ?? null),
-      };
-      if (existing) {
-        const before = existing as unknown as Record<string, unknown>;
-        await prisma.supplier.update({ where: { id: existing.id }, data });
-        await logAudit({
-          entityType: "SUPPLIER",
-          entityId: existing.id,
-          action: "UPDATE",
-          before,
-          after: data,
-          userId: user.id,
-          userName: user.name,
-          branchId,
-        });
-        results.push({ row: i + 2, status: "updated" });
-      } else {
-        const code = await nextSupplierCode();
-        const created = await prisma.supplier.create({ data: { name, code, ...data, branchId } });
-        await logAudit({
-          entityType: "SUPPLIER",
-          entityId: created.id,
-          action: "CREATE",
-          after: { name, code, ...data },
-          userId: user.id,
-          userName: user.name,
-          branchId,
-        });
-        results.push({ row: i + 2, status: "created" });
-      }
-    } catch (e) {
-      results.push({
-        row: i + 2,
-        status: "error",
-        message: e instanceof Error ? e.message : "Failed to import row.",
-      });
-    }
+const SUPPLIER_LABELS: Record<string, string> = {
+  "Supplier name": "name", "Supplier code": "code", "Parent supplier": "parent", "Full name": "fullName",
+  "Contact person": "contactPerson", "Contact phone": "contactPhone", "Contact email": "contactEmail",
+  "Trade license number": "tradeLicenseNumber", Category: "category", TRN: "trn",
+};
+
+/** The list-page "Import" dialog. The work is done by the import engine (the same code the import wizard runs). */
+export async function bulkImportSuppliersAction(rows: Record<string, string>[]): Promise<ImportResult[]> {
+  await requireWrite("partners.suppliers");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) {
+    return rows.map((_, i) => ({ row: i + 2, status: "error" as const, message: "No branch selected to import into." }));
   }
-
+  const mapped = rows.map((r, i) => {
+    const values: Record<string, string> = {};
+    for (const [label, key] of Object.entries(SUPPLIER_LABELS)) values[key] = r[label] ?? "";
+    return { row: i + 2, values };
+  });
+  const res = await applySuppliers({ db: prisma, branchId, user: { id: user.id, name: user.name }, audit: true }, mapped);
   revalidatePath("/suppliers");
-  return results;
+  return res.rows;
 }
 
 export async function deleteSupplierAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "delete");
+  await requirePermission("partners.suppliers", "delete");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   if (!id) return;
@@ -397,6 +469,7 @@ export async function createEmployeesFromInsuranceAction(
   supplierId: string,
   rows: InsuranceEmployeeRow[]
 ): Promise<{ created: number; requested: number; errors: { row: number; message: string }[] }> {
+  await requireWrite("partners.suppliers");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const errors: { row: number; message: string }[] = [];
   if (!branchId) {
@@ -507,6 +580,7 @@ export async function matchInsuredNamesAction(
   supplierId: string,
   names: string[]
 ): Promise<InsuredNameMatch[]> {
+  await requireView("partners.suppliers");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const supplier = await prisma.supplier.findUnique({
@@ -583,6 +657,7 @@ export type SupplierPanel = {
  * with the document rather than being remembered separately.
  */
 export async function getSupplierPanelAction(supplierId: string): Promise<SupplierPanel> {
+  await requireView("partners.suppliers");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const supplier = await prisma.supplier.findUnique({
@@ -630,8 +705,9 @@ export async function getSupplierPanelAction(supplierId: string): Promise<Suppli
 
 /** Opt a supplier in/out of the supplier portal (phone + one-time-code sign-in). */
 export async function setSupplierPortalAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireWrite("partners.suppliers");
   assertContactsValid(formData);
-  await requirePermission("partners", "edit");
+  await requirePermission("partners.suppliers", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("supplierId") || "");
   const enabled = formData.get("enabled") === "1";
@@ -649,5 +725,77 @@ export async function setSupplierPortalAction(formData: FormData): Promise<{ err
     branchId: supplier.branchId,
   });
   revalidatePath(`/suppliers/${id}`);
+  return { error: null };
+}
+
+
+/** How much clear space letters leave at the top and bottom on this supplier's letterhead (used for NOCs it sponsors). */
+export async function saveSupplierLetterheadMarginsAction(formData: FormData) {
+  await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, letterheadTopMm: true, letterheadBottomMm: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "Supplier not found." };
+  const clamp = (v: FormDataEntryValue | null, min: number, max: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : null; };
+  const top = clamp(formData.get("topMm"), 15, 140);
+  const bottom = clamp(formData.get("bottomMm"), 10, 100);
+  if (top === null || bottom === null) return { error: "Enter the margins in millimetres." };
+  await prisma.supplier.update({ where: { id: supplier.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom } });
+  await logAudit({ entityType: "SUPPLIER", entityId: supplier.id, action: "UPDATE", before: { letterheadTopMm: supplier.letterheadTopMm, letterheadBottomMm: supplier.letterheadBottomMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom }, userId: user.id, userName: user.name, branchId: supplier.branchId });
+  revalidatePath(`/suppliers/${supplier.id}`);
+  return { error: null };
+}
+
+
+// ---- Letters issued on this company's letterhead: signatory, signature, stamp -----------------
+const SUPPLIER_LETTER_IMAGES = { signature: { column: "signatureId", label: "signature" }, stamp: { column: "stampId", label: "stamp" } } as const;
+type SupplierLetterImage = keyof typeof SUPPLIER_LETTER_IMAGES;
+
+async function loadLetterSupplier(formData: FormData) {
+  await requireWrite("partners.suppliers");
+  await requirePermission("partners.suppliers", "edit");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, signatureId: true, stampId: true, signatoryName: true, signatoryTitle: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return null;
+  return { user, supplier };
+}
+const imageKind = (v: FormDataEntryValue | null): SupplierLetterImage | null => (v === "signature" || v === "stamp" ? v : null);
+
+export async function uploadSupplierLetterImageAction(formData: FormData) {
+  const ctx = await loadLetterSupplier(formData);
+  const kind = imageKind(formData.get("kind"));
+  if (!ctx || !kind) return { error: "Supplier not found." };
+  const saved = await storeImage(formData.get("image"));
+  if ("error" in saved) return { error: saved.error };
+  const { column, label } = SUPPLIER_LETTER_IMAGES[kind];
+  const previous = ctx.supplier[column];
+  await prisma.supplier.update({ where: { id: ctx.supplier.id }, data: { [column]: saved.id } });
+  await deleteImage(previous);
+  await logAudit({ entityType: "SUPPLIER", entityId: ctx.supplier.id, action: "UPDATE", before: { [label]: previous ? "(set)" : null }, after: { [label]: "(replaced)" }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.supplier.branchId });
+  revalidatePath(`/suppliers/${ctx.supplier.id}`);
+  return { error: null };
+}
+
+export async function removeSupplierLetterImageAction(formData: FormData) {
+  const ctx = await loadLetterSupplier(formData);
+  const kind = imageKind(formData.get("kind"));
+  if (!ctx || !kind) return { error: "Supplier not found." };
+  const { column, label } = SUPPLIER_LETTER_IMAGES[kind];
+  const previous = ctx.supplier[column];
+  await prisma.supplier.update({ where: { id: ctx.supplier.id }, data: { [column]: null } });
+  await deleteImage(previous);
+  await logAudit({ entityType: "SUPPLIER", entityId: ctx.supplier.id, action: "UPDATE", before: { [label]: "(set)" }, after: { [label]: null }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.supplier.branchId });
+  revalidatePath(`/suppliers/${ctx.supplier.id}`);
+  return { error: null };
+}
+
+export async function saveSupplierSignatoryAction(formData: FormData) {
+  const ctx = await loadLetterSupplier(formData);
+  if (!ctx) return { error: "Supplier not found." };
+  const signatoryName = String(formData.get("signatoryName") || "").trim().slice(0, 80) || null;
+  const signatoryTitle = String(formData.get("signatoryTitle") || "").trim().slice(0, 80) || null;
+  await prisma.supplier.update({ where: { id: ctx.supplier.id }, data: { signatoryName, signatoryTitle } });
+  await logAudit({ entityType: "SUPPLIER", entityId: ctx.supplier.id, action: "UPDATE", before: { signatoryName: ctx.supplier.signatoryName, signatoryTitle: ctx.supplier.signatoryTitle }, after: { signatoryName, signatoryTitle }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.supplier.branchId });
+  revalidatePath(`/suppliers/${ctx.supplier.id}`);
   return { error: null };
 }

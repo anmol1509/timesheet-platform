@@ -1,3 +1,4 @@
+import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -12,7 +13,8 @@ function stayDays(from: Date, to: Date | null) {
 }
 
 export default async function CheckInPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  await settleDueCheckouts(branchId, user);
 
   const [employees, camps, suppliers, clients] = await Promise.all([
     prisma.employee.findMany({
@@ -22,6 +24,7 @@ export default async function CheckInPage() {
         name: true,
         employeeIdNo: true,
         nationality: true,
+        photoMimeType: true,
         supplier: { select: { name: true, code: true } },
         supplierId: true,
         project: { select: { code: true, name: true, clientId: true, client: { select: { name: true } } } },
@@ -29,6 +32,7 @@ export default async function CheckInPage() {
       orderBy: { name: "asc" },
     }),
     prisma.camp.findMany({
+      where: branchWhere(branchId),
       include: {
         owningSupplier: { select: { name: true } },
         rooms: { select: { beds: { select: { employeeId: true } } } },
@@ -55,6 +59,7 @@ export default async function CheckInPage() {
       id: e.id,
       name: e.name,
       employeeIdNo: e.employeeIdNo,
+      hasPhoto: !!e.photoMimeType,
       nationality: e.nationality,
       supplierName: e.supplier?.name ?? null,
       supplierCode: e.supplier?.code ?? null,
@@ -82,7 +87,7 @@ export default async function CheckInPage() {
   const history = await prisma.campCheckIn.findMany({
     where: branchId ? { employee: { branchId } } : {},
     include: {
-      employee: { select: { name: true, employeeIdNo: true, nationality: true } },
+      employee: { select: { id: true, name: true, employeeIdNo: true, nationality: true, photoMimeType: true } },
       camp: { select: { id: true, name: true } },
       bed: { select: { label: true, room: { select: { name: true } } } },
     },
@@ -93,8 +98,10 @@ export default async function CheckInPage() {
   const historyRows = history.map((c) => ({
     checkInId: c.id,
     checkInNo: c.checkInNo,
+    employeeId: c.employee.id,
     employeeName: c.employee.name,
     employeeIdNo: c.employee.employeeIdNo,
+    employeeHasPhoto: !!c.employee.photoMimeType,
     nationality: c.employee.nationality,
     campId: c.camp.id,
     campName: c.camp.name,

@@ -17,8 +17,8 @@ export default async function PortalContactsPage() {
       <PageHeader title="Supplier portal contacts" description="Who suppliers are told to contact, by department. These appear on the Support page of their portal." />
       <ContactsBoard
         rows={rows.map((c) => ({ id: c.id, department: c.department, personName: c.personName, designation: c.designation, phone: c.phone, email: c.email, isActive: c.isActive }))}
-        canEdit={!!branchId && can(subject, "partners", "edit")}
-        canDelete={can(subject, "partners", "delete")}
+        canEdit={!!branchId && can(subject, "partners.messages", "edit")}
+        canDelete={can(subject, "partners.messages", "delete")}
       />
     </div>
   );

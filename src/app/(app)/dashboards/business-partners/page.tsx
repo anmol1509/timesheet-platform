@@ -1,16 +1,24 @@
+import { Handshake } from "lucide-react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
+import { PartnersExtras } from "@/components/dashboard/ModuleExtras";
+import { can } from "@/lib/permissions";
+import { subjectOf } from "@/lib/auth";
+import { Sec } from "@/components/dashboard/Sec";
+import { CustomizeSections } from "@/components/dashboard/CustomizeSections";
+import { getHiddenSections } from "@/lib/dashboardSections";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { KpiStrip } from "@/components/KpiStrip";
+import { BarList } from "@/components/BarList";
 import { Panel } from "@/components/DashboardPanel";
-import { StatusBreakdown } from "@/components/StatusBreakdown";
+import { StatusDonut } from "@/components/Donut";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
 export default async function BusinessPartnersDashboardPage() {
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);
 
   const pendingWhere = {
@@ -29,6 +37,7 @@ export default async function BusinessPartnersDashboardPage() {
     pendingTotal,
     pendingSuppliers,
     suppliersByStatus,
+    workforceBySupplier,
   ] = await Promise.all([
     prisma.supplier.count({ where: branchScope }),
     prisma.client.count({ where: branchScope }),
@@ -51,13 +60,23 @@ export default async function BusinessPartnersDashboardPage() {
       where: branchScope,
       _count: { _all: true },
     }),
+    prisma.supplier.findMany({
+      where: { ...branchScope, employees: { some: {} } },
+      select: { id: true, name: true, isOwnCompany: true, _count: { select: { employees: true } } },
+      orderBy: { employees: { _count: "desc" } },
+      take: 8,
+    }),
   ]);
+
+  const hiddenSections = await getHiddenSections(user.id, "business-partners");
 
   return (
     <div className="space-y-5">
       <PageHeader
+        icon={Handshake}
         title="Partners overview"
         description="Suppliers, clients and pending approvals."
+      actions={<CustomizeSections module="business-partners" sections={[{ id: "overview", label: "Suppliers and approvals" }, { id: "extras", label: "Licences and supplier bills" }]} hidden={[...hiddenSections]} />}
       />
       <DashboardTabs />
 
@@ -92,14 +111,22 @@ export default async function BusinessPartnersDashboardPage() {
         ]}
       />
 
+      <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Panel title="Workforce by supplier" href="/suppliers" className="lg:col-span-2">
+          <BarList
+            tone="info"
+            items={workforceBySupplier.map((sp) => ({ key: sp.id, label: sp.isOwnCompany ? `${sp.name} (own company)` : sp.name, value: sp._count.employees, href: `/suppliers/${sp.id}` }))}
+            emptyLabel="No suppliers have workers on the roster yet."
+          />
+        </Panel>
+
         <Panel title="Suppliers by status" href="/suppliers">
-          <StatusBreakdown
+          <StatusDonut
             items={suppliersByStatus.map((r) => ({
               status: r.status,
               count: r._count._all,
             }))}
-            unit="suppliers"
             emptyMessage="No suppliers yet."
           />
         </Panel>
@@ -138,6 +165,11 @@ export default async function BusinessPartnersDashboardPage() {
           )}
         </Panel>
       </div>
+      </Sec>
+
+      <Sec id="extras" hidden={hiddenSections}>
+      <PartnersExtras branchId={branchId} canBills={can(subjectOf(user), "finance", "view")} />
+      </Sec>
     </div>
   );
 }

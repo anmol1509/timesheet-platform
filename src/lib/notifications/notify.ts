@@ -1,7 +1,6 @@
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "./email";
-import { sendWhatsAppMessage } from "./whatsapp";
 
 export type NotifyInput = {
   userIds: string[];
@@ -14,7 +13,7 @@ export type NotifyInput = {
 
 /**
  * Creates the in-app notification for each user and, per their preferences,
- * emails / WhatsApps them. The inbox rows are written inline; the outbound
+ * emails them. The inbox rows are written inline; the outbound
  * copies run after the response so a slow provider never delays the action
  * that triggered them. Never throws — a failed notification must not fail the
  * business action that caused it.
@@ -26,7 +25,7 @@ export async function notifyUsers({ userIds, kind, title, body = null, href = nu
 
     const users = await prisma.user.findMany({
       where: { id: { in: ids }, isActive: true },
-      select: { id: true, email: true, name: true, notifyEmail: true, notifyWhatsapp: true, whatsappNumber: true },
+      select: { id: true, email: true, name: true, notifyEmail: true },
     });
     if (users.length === 0) return;
 
@@ -42,7 +41,6 @@ export async function notifyUsers({ userIds, kind, title, body = null, href = nu
       const sends: Promise<unknown>[] = [];
       for (const u of users) {
         if (u.notifyEmail) sends.push(sendEmail(u.email, title, `Hi ${u.name},\n\n${text}`));
-        if (u.notifyWhatsapp && u.whatsappNumber) sends.push(sendWhatsAppMessage(u.whatsappNumber, `*${title}*\n${text}`));
       }
       await Promise.allSettled(sends);
     });

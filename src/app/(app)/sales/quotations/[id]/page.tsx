@@ -49,7 +49,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
         </div>
         <p className="mt-1 text-sm text-muted">{quotation.client.name}</p>
         {quotation.project && (
-          <p className="mt-1 text-sm text-emerald-600">
+          <p className="mt-1 text-sm text-[var(--success)]">
             Converted to{" "}
             <Link href={`/projects/${quotation.project.id}`} className="underline">
               {quotation.project.name}

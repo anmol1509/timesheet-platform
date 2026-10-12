@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { requireUserWithBranch } from "@/lib/auth";
+import { isOutsideBranch } from "@/lib/branch";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
+import { absenceRuleOf, gasRuleOf } from "@/lib/deductions";
 import { ReviewClient } from "./review-client";
 
 export default async function GeneratePage({
@@ -14,19 +17,21 @@ export default async function GeneratePage({
   const { id } = await params;
   const { month } = await searchParams;
 
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({ where: { id } });
-  if (!supplier || !month) notFound();
+  // A guessed URL must not open another branch's supplier sheet.
+  if (!supplier || !month || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [entries, settings] = await Promise.all([
-    getSupplierMonthEntries(id, month),
-    prisma.settings.upsert({
-      where: { id: "singleton" },
-      update: {},
-      create: { id: "singleton" },
-    }),
-  ]);
+  const entries = await getSupplierMonthEntries(id, month);
 
   if (entries.length === 0) notFound();
+
+  // Check-in dates drive the gas charge; workers without one fall back to the days on the sheet.
+  const roster = await prisma.employee.findMany({
+    where: { employeeIdNo: { in: entries.map((e) => e.employeeIdNo) } },
+    select: { employeeIdNo: true, siteArrivalDate: true },
+  });
+  const checkIn = new Map(roster.map((r) => [r.employeeIdNo, r.siteArrivalDate ? r.siteArrivalDate.toISOString() : null]));
 
   return (
     <>
@@ -46,9 +51,10 @@ export default async function GeneratePage({
       )}
       <ReviewClient
       supplier={{ id: supplier.id, name: supplier.name, fullName: supplier.fullName }}
+      absenceRule={absenceRuleOf(supplier)}
+      gasRule={gasRuleOf(supplier)}
       month={month}
       monthLabel={monthLabelFromKey(month)}
-      issuedTo={settings.issuedTo}
       entries={entries.map((e) => ({
         id: e.id,
         employeeIdNo: e.employeeIdNo,
@@ -60,6 +66,7 @@ export default async function GeneratePage({
         absentDeduction: e.absentDeduction,
         dailyHours: e.dailyHours,
         clientName: e.client?.name ?? null,
+        checkIn: checkIn.get(e.employeeIdNo) ?? null,
       }))}
       />
     </>

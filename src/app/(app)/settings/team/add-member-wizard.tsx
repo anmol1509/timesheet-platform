@@ -6,7 +6,7 @@ import { PermissionMatrix } from "@/components/settings/PermissionMatrix";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import { MODULES, ROLE_PRESETS, permissionKey } from "@/lib/permissions";
+import { MODULES, ROLE_PRESETS, describeAccess } from "@/lib/permissions";
 import { createUserAction } from "./actions";
 
 type Branch = { id: string; code: string; name: string };
@@ -24,8 +24,10 @@ type Choice =
 const choiceId = (c: Choice) => (c.kind === "existing" ? `role:${c.role.id}` : c.kind === "preset" ? `preset:${c.name}` : c.kind);
 
 function summary(perms: string[]) {
-  const n = MODULES.filter((m) => perms.includes(permissionKey(m.key, "view"))).length;
-  return `${n} of ${MODULES.length} modules`;
+  const lines = describeAccess(perms);
+  const whole = lines.filter((l) => l.wholeModule).length;
+  const pages = lines.filter((l) => !l.wholeModule).reduce((n, l) => n + l.pages.length, 0);
+  return `${whole} of ${MODULES.length} modules${pages ? ` + ${pages} page${pages === 1 ? "" : "s"}` : ""}`;
 }
 
 export function AddMemberWizard({

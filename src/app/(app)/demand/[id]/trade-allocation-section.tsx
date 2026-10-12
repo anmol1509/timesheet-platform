@@ -69,7 +69,7 @@ export function TradeAllocationSection({
 
   return (
     <div className="card p-4">
-      {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mb-2 text-xs text-[var(--error)]">{error}</p>}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <span className="font-medium text-primary">{trade.trade}</span>
@@ -155,7 +155,7 @@ export function TradeAllocationSection({
                 type="button"
                 disabled={pending}
                 onClick={() => handleUnallocate(a.id)}
-                className="text-xs font-medium text-red-600 hover:underline disabled:opacity-60"
+                className="text-xs font-medium text-[var(--error)] hover:underline disabled:opacity-60"
               >
                 Unallocate
               </button>

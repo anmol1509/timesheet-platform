@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Select } from "@/components/ui/Select";
 import { createQuotationAction } from "../actions";
@@ -176,7 +177,7 @@ export function QuotationForm({
                   type="button"
                   onClick={() => setLines((prev) => prev.filter((r) => r.id !== l.id))}
                   disabled={lines.length === 1}
-                  className="shrink-0 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="shrink-0 rounded-lg border border-[var(--error-border)] px-3 py-2 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Remove
                 </button>
@@ -189,7 +190,9 @@ export function QuotationForm({
           onClick={() => setLines((prev) => [...prev, blankLine()])}
           className="btn btn-secondary btn-sm mt-3"
         >
-          + Add line
+          <Plus className="h-4 w-4" aria-hidden />
+
+          Add line
         </button>
       </div>
 

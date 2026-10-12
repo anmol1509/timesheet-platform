@@ -1,6 +1,8 @@
+import { UserRound } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { requireUser, subjectOf } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { MODULES, can, ACTION_LABELS, type PermissionAction } from "@/lib/permissions";
+import { MODULES, can, ACTION_LABELS, describeAccess, type PermissionAction } from "@/lib/permissions";
 import { Avatar } from "@/components/Avatar";
 import { ImageUpload } from "@/components/ImageUpload";
 import { NotificationPrefsForm, PasswordForm, ProfileForm } from "./profile-forms";
@@ -24,10 +26,11 @@ export default async function ProfilePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-primary">My profile</h1>
-        <p className="mt-1 text-sm text-muted">Your name, photo and password.</p>
-      </div>
+      <PageHeader
+        title="My profile"
+        icon={UserRound}
+        description={<>Your name, photo and password.</>}
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="card p-5 lg:col-span-2">
@@ -74,15 +77,18 @@ export default async function ProfilePage() {
             </p>
             {!unrestricted && (
               <ul className="mt-2 space-y-1.5 text-xs">
-                {MODULES.filter((m) => can(subject, m.key, "view")).map((m) => (
-                  <li key={m.key} className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="font-medium text-primary">{m.label}</span>
-                    <span className="text-muted">
-                      {m.actions
-                        .filter((a) => can(subject, m.key, a as PermissionAction))
-                        .map((a) => ACTION_LABELS[a as PermissionAction])
-                        .join(", ")}
-                    </span>
+                {describeAccess(subject.permissions ?? []).map((m) => (
+                  <li key={m.key} className="space-y-0.5">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-medium text-primary">{m.label}</span>
+                      {m.wholeModule && <span className="text-muted">{m.actions.map((a) => ACTION_LABELS[a]).join(", ")}</span>}
+                    </div>
+                    {m.pages.map((p) => (
+                      <div key={p.label} className="flex flex-wrap items-baseline gap-x-2 pl-3">
+                        <span className="text-secondary">{p.label}</span>
+                        <span className="text-muted">{p.actions.map((a) => ACTION_LABELS[a]).join(", ")}</span>
+                      </div>
+                    ))}
                   </li>
                 ))}
               </ul>
@@ -91,7 +97,7 @@ export default async function ProfilePage() {
 
           <section className="card p-5">
             <h2 className="mb-3 text-sm font-semibold text-primary">Notifications</h2>
-            <NotificationPrefsForm notifyEmail={user.notifyEmail} notifyWhatsapp={user.notifyWhatsapp} whatsappNumber={user.whatsappNumber ?? ""} />
+            <NotificationPrefsForm notifyEmail={user.notifyEmail} />
           </section>
 
           <section className="card p-5">

@@ -33,6 +33,8 @@ export type RenewalItem = {
   subjectName: string;
   /** Employee ID number, or the count of workers a supplier certificate covers. */
   subjectRef: string;
+  /** Employee has an uploaded photo (always false for suppliers). */
+  hasPhoto: boolean;
   /** "Visa", "Passport", "Workmen's compensation", … */
   document: string;
   expiry: string;
@@ -61,6 +63,7 @@ export async function getRenewals(
       id: true,
       name: true,
       employeeIdNo: true,
+      photoMimeType: true,
       // Must cover every COMPLIANCE_FIELDS key — see the note in
       // dashboardAlerts.ts: an unselected column is skipped silently.
       visaExpiry: true,
@@ -90,6 +93,7 @@ export async function getRenewals(
         subjectId: e.id,
         subjectName: e.name,
         subjectRef: e.employeeIdNo,
+        hasPhoto: !!e.photoMimeType,
         document: field.label,
         expiry: date.toISOString(),
         days,
@@ -125,6 +129,7 @@ export async function getRenewals(
       subjectRef: `${supplier._count.employees} worker${
         supplier._count.employees === 1 ? "" : "s"
       }`,
+      hasPhoto: false,
       document: "Trade licence",
       expiry: supplier.tradeLicenseExpiry!.toISOString(),
       days,
@@ -173,6 +178,7 @@ export async function getRenewals(
         subjectRef: `${supplier._count.employees} worker${
           supplier._count.employees === 1 ? "" : "s"
         }`,
+        hasPhoto: false,
         document: "Workmen's compensation",
         expiry: expiryDate.toISOString(),
         days,

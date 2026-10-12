@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { applyDivergences } from "@/lib/attendanceTimesheetSync";
 import { assertContactsValid } from "@/lib/validators";
 
 export async function applyDivergencesAction(formData: FormData) {
+  await requireWrite("timesheets.client-timesheet");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {

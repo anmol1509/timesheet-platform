@@ -7,6 +7,7 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export type AssignedStaffRow = {
   id: string;
   name: string;
+  hasPhoto: boolean;
   projectName: string;
   status: ComplianceStatus;
 };
@@ -21,6 +22,7 @@ export async function getAssignedStaff(
     select: {
       id: true,
       name: true,
+      photoMimeType: true,
       project: { select: { name: true } },
       visaExpiry: true,
       laborCardExpiry: true,
@@ -43,6 +45,6 @@ export async function getAssignedStaff(
         complianceStatus(e.emiratesIdExpiry),
       ];
       const status = statuses.sort((a, b) => STATUS_RANK[a] - STATUS_RANK[b])[0];
-      return { id: e.id, name: e.name, projectName: e.project!.name, status };
+      return { id: e.id, name: e.name, hasPhoto: !!e.photoMimeType, projectName: e.project!.name, status };
     });
 }
