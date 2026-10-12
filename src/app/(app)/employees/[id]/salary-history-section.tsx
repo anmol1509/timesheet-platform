@@ -33,7 +33,7 @@ export function SalaryHistorySection({ rows, canAddArrears }: { rows: RevisionRo
               </div>
               {canAddArrears && r.arrears && (
                 <div className="text-right">
-                  <button type="button" disabled={pending} className="btn btn-secondary h-8 px-3 text-xs" onClick={() => add(r.id)}>Pay arrears: AED {aed(r.arrears.amount)} ({r.arrears.months} month{r.arrears.months === 1 ? "" : "s"})</button>
+                  <button type="button" disabled={pending} className="btn btn-secondary h-8 px-3 text-xs" title="Arrears: pay owed for earlier months. This adds the difference to next month's payroll." onClick={() => add(r.id)}>Pay arrears: AED {aed(r.arrears.amount)} ({r.arrears.months} month{r.arrears.months === 1 ? "" : "s"})</button>
                   {msg[r.id] && <p className="mt-1 text-xs text-muted">{msg[r.id]}</p>}
                 </div>
               )}

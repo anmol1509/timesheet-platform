@@ -86,10 +86,10 @@ export function NextStep({ status, submitted, blocking, warnings, people, canApp
   let title = "";
   let body = "";
   if (status === "PAID") { tone = "done"; title = "This payroll is paid"; body = "Payslips are ready to share. Nothing else to do for this month."; }
-  else if (status === "APPROVED") { tone = "go"; title = "Approved: pay your people"; body = canApprove ? "Download the bank (WPS) file, upload it to your bank, then press “Mark as paid”." : "Waiting for an approver to download the bank file and mark it as paid."; }
+  else if (status === "APPROVED") { tone = "go"; title = "Approved: pay your people"; body = canApprove ? "Download the bank file (WPS: the UAE salary system), upload it in your bank's online portal, then press “Mark as paid”." : "Waiting for an approver to download the bank file and mark it as paid."; }
   else if (submitted) { tone = "wait"; title = "Waiting for approval"; body = "It has been sent to the approvals inbox. You will see it here once someone signs it off."; }
   else if (people === 0) { tone = "stop"; title = "No one is in this run yet"; body = "Add pay details to your employees (their Payroll & WPS tab), then press Recalculate."; }
-  else if (blocking > 0) { tone = "stop"; title = `Fix ${blocking} ${blocking === 1 ? "person" : "people"} before you can submit`; body = "Their bank details are incomplete. Open each name under “Needs fixing” below, then press Recalculate."; }
+  else if (blocking > 0) { tone = "stop"; title = `Fix ${blocking} ${blocking === 1 ? "person" : "people"} before you can submit`; body = "Their bank details are incomplete. Press “Fix now” beside each name in the “Needs fixing” box below."; }
   else { tone = "go"; title = "Review the numbers, then submit"; body = warnings > 0 ? `Everything needed is there. ${warnings} thing${warnings === 1 ? "" : "s"} worth a quick look under “Worth checking”.` : "Everything needed is there. Look over the totals, then press Submit for approval."; }
   const ring = tone === "stop" ? "border-[var(--warning-border)] bg-[var(--warning-soft)]" : tone === "done" ? "border-[var(--success-border)] bg-[var(--success-soft)]" : "border-[var(--info-border)] bg-[var(--info-soft)]";
   return (

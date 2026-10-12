@@ -6,6 +6,7 @@ import { CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
+import { Hint } from "@/components/Hint";
 import { alignDayAction, loadPayDaysAction, saveDayAction } from "../day-actions";
 import type { PayDaysView } from "@/lib/payDaysData";
 
@@ -74,7 +75,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                   <tr>
                     <th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Hours</th><th className="px-3 py-2 text-right">Salary</th>
                     <th className="px-3 py-2 text-right">Overtime</th><th className="px-3 py-2 text-right">Absence</th><th className="px-3 py-2 text-right">Day total</th>
-                    <th className="px-3 py-2">Timesheet</th><th className="px-3 py-2" />
+                    <th className="px-3 py-2">Timesheet<Hint term="TIMESHEET" /></th><th className="px-3 py-2" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">

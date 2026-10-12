@@ -15,6 +15,8 @@ import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insig
 import { DetailView } from "./detail-view";
 import { CorrectionCell } from "./correction-cell";
 import { DaysButton } from "./days-panel";
+import { BankFix } from "./bank-fix";
+import { Hint } from "@/components/Hint";
 import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { buildPayslip } from "@/lib/payslip";
 import { dueDateFor, dueState } from "@/lib/payrollSchedule";
@@ -146,15 +148,16 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card flex gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
           <div>
-            <p className="font-medium text-primary">Needs fixing: {gapRows.length} employee{gapRows.length === 1 ? "" : "s"} need their bank details completed</p>
+            <p className="font-medium text-primary">Needs fixing: {gapRows.length} employee{gapRows.length === 1 ? " needs" : "s need"} their bank details completed</p>
             <ul className="mt-1 space-y-0.5 text-secondary">
               {gapRows.slice(0, 8).map(({ l, gaps }) => (
-                <li key={l.id}>
+                <li key={l.employeeId}>
                   <Link href={`/employees/${l.employee.id}`} className="text-[var(--brand-primary)] hover:underline">{l.employee.name}</Link> — missing {gaps.join(", ")}
+                  {can(subject, "payroll.payroll", "edit") && !run.submittedAt && <BankFix runId={run.id} employeeId={l.employee.id} name={l.employee.name} defaults={{ personCode: l.personCode ?? "", routingCode: l.routingCode ?? "", iban: l.account ?? "", bankName: l.bankName ?? "" }} />}
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-xs text-muted">Click a name, add the missing bank details on their Payroll &amp; WPS tab, then come back and press Recalculate. If someone is paid in cash, set their payment mode to Cash instead.</p>
+            <p className="mt-1 text-xs text-muted">Press “Fix now” beside a name, fill in their details and save. The run updates by itself. If someone is paid in cash, choose “Paid in cash instead”.</p>
           </div>
         </div>
       )}
@@ -219,8 +222,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className="px-3 py-3 text-right">Earns</th>
                 <th className="px-3 py-3 text-right">Deductions</th>
                 <th className="px-3 py-3">Fines, advances, bonus</th>
-                <th className="px-3 py-3 text-right">Net pay</th>
-                <th className="px-3 py-3">Bank</th>
+                <th className="px-3 py-3 text-right">Net pay<Hint term="NET_PAY" /></th>
+                <th className="px-3 py-3">Bank<Hint term="WPS" /></th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
               </tr>
             </thead>
