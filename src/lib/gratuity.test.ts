@@ -8,8 +8,20 @@ test("beyond five years: 30 days per year", () => assert.equal(gratuity(3000, 7)
 test("capped at two years of basic", () => assert.equal(gratuity(3000, 30), 72000));
 test("part years count pro rata", () => assert.equal(gratuity(3000, 1.5), 3150));
 test("no basic, no gratuity", () => assert.equal(gratuity(0, 10), 0));
-test("service is measured in years from the join date", () => {
-  const y = yearsOfService(new Date(Date.UTC(2020, 0, 1)), new Date(Date.UTC(2025, 0, 1)));
-  assert.ok(y > 4.99 && y < 5.01);
+test("whole calendar years count exactly, leap years or not", () => {
+  const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
+  assert.equal(yearsOfService(d("2020-01-01"), d("2025-01-01")), 5);
+  assert.equal(yearsOfService(d("2023-01-01"), d("2026-01-01")), 3);
+  assert.equal(yearsOfService(d("2022-06-15"), d("2025-06-15")), 3);
+});
+
+test("a part year is the fraction of that year served", () => {
+  const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
+  assert.equal(yearsOfService(d("2025-01-01"), d("2025-07-02")).toFixed(2), "0.50");
+  assert.equal(yearsOfService(d("2024-03-10"), d("2026-03-09")).toFixed(2), "2.00"); // a day short of two years
+  assert.ok(yearsOfService(d("2024-03-10"), d("2026-03-09")) < 2);
+});
+
+test("no service before the join date", () => {
   assert.equal(yearsOfService(new Date(Date.UTC(2026, 0, 1)), new Date(Date.UTC(2025, 0, 1))), 0);
 });
