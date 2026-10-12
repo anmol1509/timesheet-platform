@@ -14,6 +14,7 @@ export const EMPLOYEE_DOC_TYPES: DocTypeOption[] = [
   { value: "CICPA", label: "CICPA" },
   { value: "INSURANCE", label: "Insurance" },
   { value: "DRIVING_LICENCE", label: "Driving licence" },
+  { value: "PHOTO", label: "Profile picture" },
   { value: "OTHER", label: "Other" },
 ];
 export const SUPPLIER_DOC_TYPE_OPTIONS: DocTypeOption[] = [
