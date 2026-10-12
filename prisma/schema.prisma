@@ -350,6 +350,10 @@ model Supplier {
   absentDeductionPerDay Decimal      @default(30) @db.Decimal(10, 2)
   gasPerDay             Decimal      @default(1) @db.Decimal(6, 2)
   gasMonthlyCap         Decimal      @default(30) @db.Decimal(8, 2)
+  // Short hours on a present working day: OFF (no deduction), HOURLY (the missing hours at the
+  // hourly rate) or HALF_DAY (half a day's pay when under shortfallHalfDayUnder hours).
+  shortfallMode         String       @default("OFF")
+  shortfallHalfDayUnder Decimal      @default(4) @db.Decimal(4, 2)
 
   // The point of contact this supplier's workers' camp check-in slips are
   // printed with — distinct from contactPerson (the general business
@@ -1061,6 +1065,8 @@ model Attendance {
   normalHours  Float?
   otHours      Float?
   locked       Boolean   @default(false)
+  // null = follow the company's short-hours rule; true/false = counted / not counted for this day.
+  countShortfall Boolean?
   markedById   String
   approvedById String?
   approvedAt   DateTime?
@@ -1811,6 +1817,8 @@ model PayrollLine {
   idleDays        Int       @default(0)
   sickDays        Int       @default(0)
   gasCharge       Decimal   @default(0) @db.Decimal(12, 2)
+  shortfallHours      Float     @default(0) // hours short on present working days that were counted
+  shortfallDeduction  Decimal   @default(0) @db.Decimal(12, 2)
   timesheetHours  Float     @default(0) // hours taken from the timesheet (hourly companies)
   // A joiner or leaver is on the payroll for part of the month. null = the whole month.
   employedDays    Int?

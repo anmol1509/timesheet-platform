@@ -235,7 +235,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 const gaps = wpsGaps(l);
                 const slip = buildPayslip({
                   payStructure: l.payStructure, basic: n(l.basic), allowances: n(l.allowances), overtimePay: n(l.overtimePay), deductions: n(l.deductions), adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote,
-                  otherEarnings: n(l.otherEarnings), otherDeductions: n(l.otherDeductions), manualDeduction: n(l.manualDeduction), deductionNote: l.deductionNote, loanDeduction: n(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: n(l.gasCharge),
+                  otherEarnings: n(l.otherEarnings), otherDeductions: n(l.otherDeductions), manualDeduction: n(l.manualDeduction), deductionNote: l.deductionNote, loanDeduction: n(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: n(l.gasCharge), shortfallHours: n(l.shortfallHours), shortfallDeduction: n(l.shortfallDeduction),
                   absentDays: n(l.absentDays), unpaidLeaveDays: 0, otHours: n(l.otHours), restHours: 0, normalHours: 0, employedDays: l.employedDays, daysInMonth: l.daysInMonth ?? 30, net: n(l.net),
                 });
                 const editable = draft && !run.submittedAt && can(subject, "payroll.payroll", "edit");
@@ -267,7 +267,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                       {n(l.otherEarnings) > 0 && <span className="block text-[var(--success)]">+{aed(n(l.otherEarnings))}</span>}
                       {n(l.otherDeductions) > 0 && <span className="block">−{aed(n(l.otherDeductions))}</span>}
                       {n(l.gasCharge) > 0 && <span className="block" title="Gas charge">−{aed(n(l.gasCharge))} gas</span>}
-                      {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && n(l.gasCharge) === 0 && "—"}
+                      {n(l.shortfallDeduction) > 0 && <span className="block" title={`${n(l.shortfallHours)} h short on days worked less than the standard day`}>−{aed(n(l.shortfallDeduction))} short hrs</span>}
+                      {n(l.otherEarnings) === 0 && n(l.otherDeductions) === 0 && n(l.gasCharge) === 0 && n(l.shortfallDeduction) === 0 && "—"}
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(slip.gross)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{slip.totalDeductions > 0 ? `−${aed(slip.totalDeductions)}` : "—"}</td>

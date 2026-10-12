@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  capToAvailable, computePay, employmentWindow, gasChargeFor, monthBounds, netPayWithExtras, planLoanRecovery, proratedFixed, round2, splitDayHours, wpsGaps, appliesToMonth,
+  capToAvailable, computePay, employmentWindow, gasChargeFor, monthBounds, netPayWithExtras, planLoanRecovery, proratedFixed, round2, splitDayHours, wpsGaps, appliesToMonth, shortDayWorked, shortfallDay, shortfallTotal,
   type PayProfile,
 } from "./payroll";
 
@@ -141,4 +141,48 @@ test("approver separation: a limit decides when set; otherwise whenever someone 
   assert.equal(needsSeparateApprover(10000, 15000, false), true);
   assert.equal(needsSeparateApprover(null, 500, true), true);
   assert.equal(needsSeparateApprover(null, 500, false), false);
+});
+
+// Short hours. Rates for the demo worker: basic 3,000, fixed 4,500: hourly 12.50, day 150.
+const rates = { hourly: 12.5, day: 150 };
+const sat = (d: string) => new Date(`${d}T00:00:00Z`);
+const pattern = { dailyHours: 8, weeklyOffDays: [5] };
+
+test("short hours: only a present working day under the standard counts", () => {
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "PRESENT", normalHours: 5, otHours: 0 }, pattern), 5);
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "PRESENT", normalHours: 8, otHours: 0 }, pattern), null); // a full day
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "PRESENT", normalHours: 6, otHours: 3 }, pattern), null); // overtime made it a long day
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "PRESENT", normalHours: 0, otHours: 0 }, pattern), null); // nothing recorded
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "ABSENT", normalHours: 5, otHours: 0 }, pattern), null);
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "SICK_LEAVE", normalHours: 5, otHours: 0 }, pattern), null);
+  assert.equal(shortDayWorked({ date: sat("2026-09-25"), status: "PRESENT", normalHours: 5, otHours: 0 }, pattern), null); // a Friday, the weekly off
+  assert.equal(shortDayWorked({ date: sat("2026-09-10"), status: "HOLIDAY", normalHours: 5, otHours: 0 }, pattern), null);
+});
+
+test("short hours, hourly rule: the missing hours at the overtime hourly rate", () => {
+  const r = shortfallDay({ mode: "HOURLY", halfDayUnder: 4 }, 8, 5, null, rates);
+  assert.deepEqual(r, { hours: 3, suggested: 37.5, counted: true });
+});
+
+test("short hours, half day rule: half a day only when under the threshold", () => {
+  const rule = { mode: "HALF_DAY" as const, halfDayUnder: 4 };
+  assert.deepEqual(shortfallDay(rule, 8, 3, null, rates), { hours: 5, suggested: 75, counted: true });
+  assert.deepEqual(shortfallDay(rule, 8, 6, null, rates), { hours: 2, suggested: 0, counted: false }); // above the threshold: nothing
+});
+
+test("short hours: off takes nothing, and the day's own choice wins", () => {
+  assert.equal(shortfallDay({ mode: "OFF", halfDayUnder: 4 }, 8, 5, true, rates).counted, false);
+  assert.equal(shortfallDay({ mode: "HOURLY", halfDayUnder: 4 }, 8, 5, false, rates).counted, false);
+  assert.equal(shortfallDay({ mode: "HOURLY", halfDayUnder: 4 }, 8, 5, null, rates).counted, true);
+});
+
+test("short hours: the total adds up only the days that count", () => {
+  const days = [{ worked: 5, override: null }, { worked: 6, override: null }, { worked: 7, override: false }];
+  assert.deepEqual(shortfallTotal({ mode: "HOURLY", halfDayUnder: 4 }, 8, days, rates), { hours: 5, amount: 62.5 });
+});
+
+test("net pay takes the short-hours deduction off", () => {
+  const r = computePay(base, facts);
+  const x = { otherEarnings: 0, otherDeductions: 0, loanDeduction: 0 };
+  assert.equal(netPayWithExtras(r, 0, { ...x, shortfall: 25 }), netPayWithExtras(r, 0, x) - 25);
 });

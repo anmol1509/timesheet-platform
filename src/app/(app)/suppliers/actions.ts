@@ -200,6 +200,8 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
           absentDeductionPerDay: Math.max(0, numberOrNull(formData.get("absentDeductionPerDay")) ?? 30),
           gasPerDay: Math.max(0, numberOrNull(formData.get("gasPerDay")) ?? 1),
           gasMonthlyCap: Math.max(0, numberOrNull(formData.get("gasMonthlyCap")) ?? 30),
+          shortfallMode: ["OFF", "HOURLY", "HALF_DAY"].includes(String(formData.get("shortfallMode") || "")) ? String(formData.get("shortfallMode")) : "OFF",
+          shortfallHalfDayUnder: Math.min(24, Math.max(0, numberOrNull(formData.get("shortfallHalfDayUnder")) ?? 4)),
         }
       : {}),
   };

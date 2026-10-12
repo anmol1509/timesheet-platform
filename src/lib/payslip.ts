@@ -8,7 +8,7 @@ import { round2 } from "@/lib/payroll";
 export type PayslipLine = {
   payStructure: string;
   basic: number; allowances: number; overtimePay: number; deductions: number; adjustment: number; adjustmentNote: string | null;
-  otherEarnings: number; otherDeductions: number; manualDeduction: number; deductionNote: string | null; loanDeduction: number; advanceNote: string | null; gasCharge: number;
+  otherEarnings: number; otherDeductions: number; manualDeduction: number; deductionNote: string | null; loanDeduction: number; advanceNote: string | null; gasCharge: number; shortfallHours?: number; shortfallDeduction?: number;
   absentDays: number; unpaidLeaveDays: number; otHours: number; restHours: number; normalHours: number; employedDays: number | null; daysInMonth: number; net: number;
   items?: { kind: string; label: string; amount: number }[] | null;
 };
@@ -33,6 +33,7 @@ export function buildPayslip(l: PayslipLine): Payslip {
   const deductions: PayslipRow[] = [];
   add(deductions, "Absence", l.deductions, days > 0 ? `${days} day${days === 1 ? "" : "s"}` : undefined);
   add(deductions, "Gas charge", l.gasCharge);
+  add(deductions, "Short hours", l.shortfallDeduction ?? 0, (l.shortfallHours ?? 0) > 0 ? `${l.shortfallHours} h short on days worked less than the standard day` : undefined);
   const dedItems = (l.items ?? []).filter((i) => i.kind === "DEDUCTION");
   if (dedItems.length > 0) for (const i of dedItems) add(deductions, i.label, i.amount);
   else add(deductions, "Other deductions", l.otherDeductions);

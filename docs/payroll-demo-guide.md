@@ -27,13 +27,18 @@ The expected numbers, for the example above (30-day pay month, overtime rate = b
 | Item | Amount (AED) |
 |---|---|
 | Basic + allowances | 4,500.00 |
-| Absence, 2 days (4,500 / 30 × 2) | −300.00 |
+| Absence, 4 days (first 2 free, then 30 each) | −60.00 |
 | Overtime, 10 hours (12.50 × 1.25 × 10) | +156.25 |
-| **Net pay** | **4,596.25** |
+| Gas charge (AED 1 a day, capped at 30 a month) | −30.00 |
+| Short hours, 10 Sep: worked 5 h of 8, 3 h short (3 × 12.50) | −37.50 |
+| Short hours, 17 Sep: worked 6 h of 8, 2 h short (2 × 12.50) | −25.00 |
+| **Net pay** | **4,503.75** |
 | Advance recovered (added in step 4) | −200.00 |
-| **Net pay after advance** | **4,396.25** |
+| **Net pay after advance** | **4,303.75** |
 
-The numbers above are for the demo data: 4 absent days in September, of which the first 2 are free and the rest cost AED 30 each (the default absence rule, so only 60 comes off), plus 10 overtime hours. With a different absence rule the absence line will differ. Check the screen before you quote numbers.
+Press **Recalculate** on the run after any change to the demo data, so the saved lines pick it up.
+
+The numbers above are for the demo data: 4 absent days in September, 10 overtime hours, two short days, and the company's short-hours rule set to **Hourly**. With a different rule the lines will differ. Check the screen before you quote numbers.
 
 The hourly demo employee is paid 200 timesheet hours x AED 15 = AED 3,000.00. Hourly pay has no overtime premium; every timesheet hour is paid at the hourly rate.
 
@@ -49,9 +54,11 @@ Say: "Payroll is usually a spreadsheet, a bank file built by hand, and payslips 
 
 ### 3. Open the employee's line (3 minutes)
 - Open the run and find the worker's row.
-- Walk through basic, allowances, absence deduction, overtime and net.
+- Walk through basic, allowances, absence deduction, overtime, gas charge, short hours and net.
 - Open the **day-by-day view**. It shows each day against the client's timesheet. Show that you can edit a day or copy it from the timesheet.
 - Say: "If the client's hours and your records disagree, you see it here before anyone is paid."
+- **Short hours.** In the day table, 10 Sep and 17 Sep show a **Short hours** amount with a tick box. Say: "This worker did 5 hours instead of 8, so the company rule deducts the missing 3 hours at the hourly rate. The company decides the rule once, under Suppliers, and you can untick any single day if there was a good reason." Untick 17 Sep to show net pay going up by 25.00, then tick it again.
+- The rule itself is on the company's page under **Suppliers**: Short hours on a present day, with three choices: Off, Hourly, or Half day (half a day's pay when under a set number of hours).
 
 ### 4. Add the human adjustments (2 minutes)
 - On the worker's line add a **Deduction** (for example a fine, AED 50), an **Advance** of AED 200, or an **Adjustment** (a bonus, or a negative to deduct). Each takes a note. Press **Save**.

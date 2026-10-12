@@ -41,6 +41,8 @@ type Supplier = {
   absentDeductionPerDay: number;
   gasPerDay: number;
   gasMonthlyCap: number;
+  shortfallMode: string;
+  shortfallHalfDayUnder: number;
 };
 
 export function SupplierCompanyForm({
@@ -202,6 +204,16 @@ export function SupplierCompanyForm({
           </Field>
           <Field label="Gas charge limit per month (AED)">
             <NumberInput name="gasMonthlyCap" defaultValue={supplier.gasMonthlyCap} min={0} step={1} className="w-full" />
+          </Field>
+          <Field label="Short hours on a present day">
+            <Select
+              name="shortfallMode" defaultValue={supplier.shortfallMode || "OFF"} searchable={false}
+              options={[{ value: "OFF", label: "Off: no deduction for short days" }, { value: "HOURLY", label: "Hourly: the missing hours at the hourly rate" }, { value: "HALF_DAY", label: "Half day: half a day's pay when under a set number of hours" }]}
+              triggerClassName="w-full"
+            />
+          </Field>
+          <Field label="Half day when under this many hours (Half day rule only)">
+            <NumberInput name="shortfallHalfDayUnder" defaultValue={supplier.shortfallHalfDayUnder} min={0} max={24} step={0.5} className="w-full" />
           </Field>
         <SwitchField
           label="Allow manual labour ID"

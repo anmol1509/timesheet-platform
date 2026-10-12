@@ -108,6 +108,58 @@ export function splitDayHours(
 }
 
 /**
+ * Short hours: a present working day with fewer hours than the standard day.
+ * The company chooses what it costs: nothing (OFF), the missing hours at the
+ * overtime hourly rate (HOURLY), or half a day's pay when the day is under
+ * `halfDayUnder` hours (HALF_DAY; a short day above that costs nothing).
+ * Only present working days count: absent, leave, sick, idle, holiday, off and
+ * weekly-off days never do, and a present day with no hours recorded says nothing.
+ */
+export const SHORTFALL_MODES = ["OFF", "HOURLY", "HALF_DAY"] as const;
+export type ShortfallMode = (typeof SHORTFALL_MODES)[number];
+export const SHORTFALL_LABELS: Record<ShortfallMode, string> = { OFF: "Off: no deduction for short days", HOURLY: "Hourly: the missing hours at the hourly rate", HALF_DAY: "Half day: half a day's pay when under a set number of hours" };
+export const isShortfallMode = (v: unknown): v is ShortfallMode => v === "OFF" || v === "HOURLY" || v === "HALF_DAY";
+export type ShortfallRule = { mode: ShortfallMode; halfDayUnder: number };
+export type ShortfallRates = { hourly: number; day: number };
+
+/** Hours worked on a day that counts as short, or null when the day is not a short present working day. */
+export function shortDayWorked(
+  day: { date: Date; status: string; normalHours: number | null; otHours: number | null },
+  pattern: { dailyHours: number; weeklyOffDays: number[] }
+): number | null {
+  if (day.status !== "PRESENT") return null;
+  const split = splitDayHours(day, pattern);
+  const limit = pattern.dailyHours > 0 ? pattern.dailyHours : 8;
+  const worked = split.normal + split.ot;
+  return split.rest === 0 && worked > 0 && worked < limit ? worked : null;
+}
+
+/**
+ * What one short day costs under the rule. `suggested` is the amount the rule gives;
+ * `counted` is whether it is taken (the day's own choice, `override`, wins over the company
+ * rule, but nothing is taken while the rule is OFF); `hours` is the time short.
+ */
+export function shortfallDay(rule: ShortfallRule, standard: number, worked: number, override: boolean | null, rates: ShortfallRates): { hours: number; suggested: number; counted: boolean } {
+  const hours = round2(Math.max(0, standard - worked));
+  if (rule.mode === "OFF" || hours <= 0) return { hours, suggested: 0, counted: false };
+  const suggested = rule.mode === "HALF_DAY" ? (worked < rule.halfDayUnder ? round2(rates.day / 2) : 0) : round2(hours * rates.hourly);
+  return { hours, suggested, counted: override !== false && suggested > 0 };
+}
+
+/** Total hours short and the deduction for a set of short days, as counted. */
+export function shortfallTotal(rule: ShortfallRule, standard: number, days: { worked: number; override: boolean | null }[], rates: ShortfallRates): { hours: number; amount: number } {
+  let hours = 0;
+  let amount = 0;
+  for (const d of days) {
+    const r = shortfallDay(rule, standard, d.worked, d.override, rates);
+    if (!r.counted) continue;
+    hours = round2(hours + r.hours);
+    amount = round2(amount + r.suggested);
+  }
+  return { hours, amount };
+}
+
+/**
  * Fixed monthly pay for a month the worker was only on the payroll part of:
  * one thirtieth per day employed, never more than the full month, and the whole
  * amount when they were there for every day of it.
@@ -183,14 +235,14 @@ export function effectivePay(own: PayFigures & { payOverride: boolean }, trade: 
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
 /** Standing earnings/deductions and loan recovery layered on top of computePay. */
-export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number; gasCharge?: number };
+export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number; gasCharge?: number; shortfall?: number };
 
 /**
  * Net pay including recurring items, the advance recovered (loanDeduction) and
  * the deduction typed on the run (manualDeduction).
  */
 export const netPayWithExtras = (r: PayResult, adjustment: number, x: PayExtras) =>
-  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0) - (x.gasCharge ?? 0));
+  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0) - (x.gasCharge ?? 0) - (x.shortfall ?? 0));
 
 /** How a company pays everyone in it. */
 export const PAY_TYPES = ["BASIC", "HOURLY"] as const;

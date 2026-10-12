@@ -269,6 +269,8 @@ export default async function SupplierDetailPage({
                   absentDeductionPerDay: Number(supplier.absentDeductionPerDay),
                   gasPerDay: Number(supplier.gasPerDay),
                   gasMonthlyCap: Number(supplier.gasMonthlyCap),
+                  shortfallMode: supplier.shortfallMode,
+                  shortfallHalfDayUnder: Number(supplier.shortfallHalfDayUnder),
                 }}
               />
               </div>

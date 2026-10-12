@@ -432,7 +432,7 @@ export async function importParsedMonths(
       if (opts.userId) {
         await writeAttendanceFromEntry(
           db,
-          { employeeId: employeeRecord.id, supplierId: supplier.id, branchId, markedById: opts.userId, projectId: entryProjectId ?? known?.projectId ?? employeeRecord.projectId ?? null, worker: { siteArrivalDate: employeeRecord.siteArrivalDate, status: employeeRecord.status }, days: entry.dailyHours },
+          { employeeId: employeeRecord.id, supplierId: supplier.id, branchId, markedById: opts.userId, projectId: entryProjectId ?? known?.projectId ?? employeeRecord.projectId ?? null, worker: { siteArrivalDate: employeeRecord.siteArrivalDate, status: employeeRecord.status }, days: entry.dailyHours, blankMeansNotDeployed: month.blankMeansNotDeployed },
           attendance,
         );
       }

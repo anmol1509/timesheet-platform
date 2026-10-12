@@ -58,3 +58,23 @@ test("copying a timesheet cell into attendance", () => {
   assert.equal(attendanceFromCell("", 8), null);
   assert.equal(attendanceFromCell("??", 8), null);
 });
+
+test("short hours: counted days come off the day's net, and an unticked day does not", () => {
+  const days: DayInput[] = [];
+  for (let d = 1; d <= 30; d++) {
+    const date = `2026-09-${String(d).padStart(2, "0")}`;
+    const hours = date === "2026-09-10" ? 5 : date === "2026-09-17" ? 6 : 8;
+    days.push({ date, status: "PRESENT", normalHours: hours, otHours: 0, ts: null, countShortfall: date === "2026-09-17" ? false : null });
+  }
+  const shortfall = { rule: { mode: "HOURLY" as const, halfDayUnder: 4 }, rates: { hourly: 12.5, day: 150 } };
+  const { rows, totals } = buildDays(plan({ days, fixedPaid: 4500, shortfall }));
+  const tenth = rows.find((r) => r.date === "2026-09-10")!;
+  const seventeenth = rows.find((r) => r.date === "2026-09-17")!;
+  assert.equal(tenth.short?.suggested, 37.5);
+  assert.equal(tenth.short?.counted, true);
+  assert.equal(seventeenth.short?.suggested, 25);
+  assert.equal(seventeenth.short?.counted, false); // unticked: shown but not taken
+  assert.equal(totals.shortfall, 37.5);
+  assert.equal(totals.shortHours, 3);
+  assert.equal(totals.net, Math.round((totals.salary + totals.otPay - totals.deduction - 37.5) * 100) / 100);
+});
