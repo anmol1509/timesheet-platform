@@ -9,7 +9,7 @@ import { isCashMode, wpsGaps } from "@/lib/payroll";
 import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
-import { LineEditor, RunControls } from "./run-controls";
+import { LineAdjustCells, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
 import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
@@ -221,7 +221,10 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className={D}>Recurring</th>
                 <th className="px-3 py-3 text-right">Earns</th>
                 <th className="px-3 py-3 text-right">Deductions</th>
-                <th className="px-3 py-3">Fines, advances, bonus</th>
+                <th className="px-2 py-3 text-right">Deduction</th>
+                <th className="px-2 py-3 text-right">Advance</th>
+                <th className="px-2 py-3 text-right">Adjustment</th>
+                {draft && <th className="px-2 py-3"><span className="sr-only">Save</span></th>}
                 <th className="px-3 py-3 text-right">Net pay<Hint term="NET_PAY" /></th>
                 <th className="px-3 py-3">Bank<Hint term="WPS" /></th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
@@ -235,7 +238,6 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                   otherEarnings: n(l.otherEarnings), otherDeductions: n(l.otherDeductions), manualDeduction: n(l.manualDeduction), deductionNote: l.deductionNote, loanDeduction: n(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: n(l.gasCharge),
                   absentDays: n(l.absentDays), unpaidLeaveDays: 0, otHours: n(l.otHours), restHours: 0, normalHours: 0, employedDays: l.employedDays, daysInMonth: l.daysInMonth ?? 30, net: n(l.net),
                 });
-                const typed = n(l.manualDeduction) !== 0 || n(l.loanDeduction) !== 0 || n(l.adjustment) !== 0;
                 const editable = draft && !run.submittedAt && can(subject, "payroll.payroll", "edit");
                 return (
                   <tr key={l.employeeId} className="align-top">
@@ -269,17 +271,11 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(slip.gross)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{slip.totalDeductions > 0 ? `−${aed(slip.totalDeductions)}` : "—"}</td>
-                    <td className="px-3 py-3">
-                      <details>
-                        <summary className="cursor-pointer text-xs font-medium text-[var(--brand-primary)] hover:underline">{typed ? "Edit" : editable ? "Add" : "View"}</summary>
-                        <div className="mt-2">
-                          <LineEditor
-                            lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
-                            adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!editable}
-                          />
-                        </div>
-                      </details>
-                    </td>
+                    <LineAdjustCells
+                      lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
+                      adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} disabled={!editable}
+                    />
+                    {!editable && draft && <td />}
                     <td className="px-3 py-3 text-right font-semibold tabular-nums text-primary">{aed(n(l.net))}</td>
                     <td className="px-3 py-3">
                       {isCashMode(l.paymentMode) ? <Badge color="slate">Cash</Badge> : gaps.length === 0 ? <Badge color="green">Ready</Badge> : <Badge color="amber">Needs fixing</Badge>}

@@ -105,7 +105,7 @@ export async function saveLineAction(formData: FormData): Promise<State> {
   if (advance > 0 && !note("advanceNote")) return { error: "Add a note for the advance." };
 
   const n = (d: { toString(): string }) => Number(d.toString());
-  const base = n(line.basic) + n(line.allowances) - n(line.deductions) + n(line.overtimePay) + adjustment + n(line.otherEarnings) - n(line.otherDeductions);
+  const base = n(line.basic) + n(line.allowances) - n(line.deductions) + n(line.overtimePay) + adjustment + n(line.otherEarnings) - n(line.otherDeductions) - n(line.gasCharge);
   if (round2(base - deduction - advance) < 0) {
     return { error: `Deduction plus advance (AED ${round2(deduction + advance).toFixed(2)}) is more than the pay available (AED ${round2(Math.max(0, base)).toFixed(2)}).` };
   }

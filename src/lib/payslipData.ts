@@ -67,13 +67,13 @@ async function ytdFor(employeeIds: string[], month: string, thisRunId: string) {
 }
 
 /** All payslips of a run (or one line), already scoped by the caller. null when the run is not found. */
-export async function loadRunPayslips(runId: string, lineId?: string): Promise<(PayslipDoc & { branchId: string }) | null> {
+export async function loadRunPayslips(runId: string, lineIds?: string | string[]): Promise<(PayslipDoc & { branchId: string }) | null> {
   const run = await prisma.payrollRun.findUnique({
     where: { id: runId },
     include: {
       branch: true,
       lines: {
-        where: lineId ? { id: lineId } : {},
+        where: lineIds === undefined ? {} : { id: { in: Array.isArray(lineIds) ? lineIds : [lineIds] } },
         include: { employee: { select: { id: true, name: true, employeeIdNo: true, trade: true, position: true, department: true, category: true } } },
         orderBy: { employee: { name: "asc" } },
       },

@@ -8,10 +8,12 @@ import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import { Hint } from "@/components/Hint";
 import { alignDayAction, loadPayDaysAction, saveDayAction } from "../day-actions";
+import { recomputeRunAction, saveLineAction } from "../actions";
 import type { PayDaysView } from "@/lib/payDaysData";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dash = (n: number, sign = "") => (n === 0 ? "—" : `${sign}${aed(n)}`);
+const HOURLY_STATUS = new Set(["PRESENT", "ABSENT", "OFF", "HOLIDAY"]);
 const STATUS_OPTIONS = [["PRESENT", "Present"], ["ABSENT", "Absent"], ["LEAVE", "Leave"], ["SICK_LEAVE", "Sick"], ["IDLE", "Idle"], ["HOLIDAY", "Holiday"], ["OFF", "Off"]] as const;
 
 /** "View days" on a run line: every day's status, hours and pay, with the client timesheet beside it, and edit while the run is a draft. */
@@ -22,13 +24,15 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ status: "PRESENT", normalHours: "", otHours: "" });
+  const [adj, setAdj] = useState<{ deduction: string; deductionNote: string; advance: string; advanceNote: string; adjustment: string; adjustmentNote: string } | null>(null);
+  const [saved, setSaved] = useState(false);
 
   function load(open: boolean) {
     if (!open) return;
     setError(null);
     start(async () => {
       const r = await loadPayDaysAction(runId, employeeId);
-      if (r.error || !r.view) setError(r.error ?? "Could not load the days."); else setView(r.view);
+      if (r.error || !r.view) setError(r.error ?? "Could not load the days."); else { setView(r.view); setAdj(adjFrom(r.view)); setSaved(false); }
     });
   }
   function apply(fn: () => Promise<{ error: string | null; view?: PayDaysView }>) {
@@ -36,11 +40,40 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
     start(async () => {
       const r = await fn();
       if (r.error) { setError(r.error); return; }
-      if (r.view) setView(r.view);
+      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); }
       setEditing(null);
       router.refresh();
     });
   }
+  function saveAdjustments() {
+    if (!view || !adj) return;
+    setError(null);
+    start(async () => {
+      const fd = new FormData();
+      fd.set("lineId", view.adjust.lineId);
+      for (const [k, v] of Object.entries(adj)) fd.set(k, v);
+      const res = await saveLineAction(fd);
+      if (res.error) { setError(res.error); return; }
+      const r = await loadPayDaysAction(runId, employeeId);
+      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); }
+      setSaved(true);
+      router.refresh();
+    });
+  }
+  function recalculate() {
+    setError(null);
+    start(async () => {
+      const fd = new FormData();
+      fd.set("id", runId);
+      const res = await recomputeRunAction(fd);
+      if (res.error) { setError(res.error); return; }
+      const r = await loadPayDaysAction(runId, employeeId);
+      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); }
+      router.refresh();
+    });
+  }
+  const adjDirty = !!view && !!adj && (Number(adj.deduction || 0) !== view.adjust.deduction || adj.deductionNote !== view.adjust.deductionNote || Number(adj.advance || 0) !== view.adjust.advance || adj.advanceNote !== view.adjust.advanceNote || Number(adj.adjustment || 0) !== view.adjust.adjustment || adj.adjustmentNote !== view.adjust.adjustmentNote);
+  const setA = (k: keyof NonNullable<typeof adj>) => (e: React.ChangeEvent<HTMLInputElement>) => { setSaved(false); setAdj((p) => (p ? { ...p, [k]: e.target.value } : p)); };
   const save = (date: string) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); for (const [k, v] of Object.entries(draft)) fd.set(k, v); return saveDayAction(fd); });
   const align = (date: string) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); return alignDayAction(fd); });
 
@@ -67,6 +100,20 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               </span>
               {view.hasTimesheet && view.timesheetStatus && <Badge color="slate">Timesheet: {view.timesheetStatus.toLowerCase().replace("_", " ")}</Badge>}
             </div>
+            {view.mismatches.length > 0 && (
+              <div className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm">
+                <p className="font-medium text-[var(--warning)]">Attendance and the client timesheet disagree on {view.mismatches.length} day{view.mismatches.length === 1 ? "" : "s"}:</p>
+                <ul className="mt-1.5 flex flex-wrap gap-2">
+                  {view.mismatches.map((m) => (
+                    <li key={m.date}>
+                      <button type="button" className="rounded border border-[var(--warning-border)] bg-surface px-2 py-1 text-xs text-primary hover:bg-surface-hover" onClick={() => document.getElementById(`day-${m.date}`)?.scrollIntoView({ block: "center", behavior: "smooth" })} title="Go to this day">
+                        <span className="font-medium">{m.date.slice(8)} {m.weekday}</span> · attendance: {m.attendance} · sheet: {m.sheet}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {view.why && <p className="text-xs text-muted">{view.why}</p>}
 
             <div className="max-h-[50vh] overflow-auto rounded-md border border-default">
@@ -82,12 +129,12 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                   {view.rows.map((r) => {
                     const off = r.kind === "off" || r.kind === "holiday" || r.kind === "outside";
                     return (
-                      <tr key={r.date} className={cn(r.kind === "absent" && "bg-[var(--error-soft)]/40", r.sync === "differs" && r.kind !== "outside" && "bg-[var(--warning-soft)]/50", off && "text-muted")}>
+                      <tr key={r.date} id={`day-${r.date}`} className={cn(r.kind === "absent" && "bg-[var(--error-soft)]/40", r.sync === "differs" && r.kind !== "outside" && "bg-[var(--warning-soft)]/50", off && "text-muted")}>
                         <td className="whitespace-nowrap px-3 py-1.5 font-medium">{r.date.slice(8)} {r.weekday}</td>
                         <td className="px-3 py-1.5">
                           {editing === r.date ? (
                             <select className="input h-8 text-xs" value={draft.status} onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value }))} aria-label="Status">
-                              {STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                              {STATUS_OPTIONS.filter(([v]) => !view.hourly || HOURLY_STATUS.has(v)).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                             </select>
                           ) : <span className={cn(r.kind === "absent" && "font-medium text-[var(--error)]", r.kind === "unrecorded" && "text-subtle")}>{r.label}</span>}
                         </td>
@@ -95,8 +142,8 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                           {editing === r.date && draft.status === "PRESENT" ? (
                             <span className="inline-flex items-center gap-1">
                               <input className="input h-8 w-14 text-right text-xs" type="number" step="0.25" min="0" max="24" value={draft.normalHours} onChange={(e) => setDraft((d) => ({ ...d, normalHours: e.target.value }))} aria-label="Normal hours" />
-                              <span className="text-xs text-muted">+</span>
-                              <input className="input h-8 w-14 text-right text-xs" type="number" step="0.25" min="0" max="24" value={draft.otHours} onChange={(e) => setDraft((d) => ({ ...d, otHours: e.target.value }))} aria-label="Overtime hours" />
+                              {!view.hourly && <span className="text-xs text-muted">+</span>}
+                              {!view.hourly && <input className="input h-8 w-14 text-right text-xs" type="number" step="0.25" min="0" max="24" value={draft.otHours} onChange={(e) => setDraft((d) => ({ ...d, otHours: e.target.value }))} aria-label="Overtime hours" />}
                             </span>
                           ) : r.hours > 0 ? <>{r.hours}{r.ot + r.rest > 0 && <span className="text-xs text-muted"> ({r.ot + r.rest} OT)</span>}</> : "—"}
                         </td>
@@ -126,11 +173,45 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                 </tbody>
                 <tfoot className="border-t border-default bg-surface-subtle text-sm">
                   <tr><td className="px-3 py-2 font-medium" colSpan={3}>Total for the days</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td><td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
-                  <tr><td className="px-3 py-2 text-secondary" colSpan={6}>Other items (recurring pay, gas, advances, adjustments)</td><td className="px-3 py-2 text-right tabular-nums">{view.other === 0 ? "—" : `${view.other > 0 ? "+" : "−"}${aed(Math.abs(view.other))}`}</td><td colSpan={2} /></tr>
+                  {view.parts.map((x, i) => (
+                    <tr key={`${x.label}-${i}`}><td className="px-3 py-1.5 text-secondary" colSpan={6}>{x.label}{x.note && <span className="ml-2 text-xs text-subtle">{x.note}</span>}</td><td className="px-3 py-1.5 text-right tabular-nums">{x.amount > 0 ? "+" : "−"}{aed(Math.abs(x.amount))}</td><td colSpan={2} /></tr>
+                  ))}
+                  {view.parts.length === 0 && view.unexplained === 0 && <tr><td className="px-3 py-1.5 text-secondary" colSpan={6}>No gas charge, advances, deductions or adjustments</td><td className="px-3 py-1.5 text-right tabular-nums">—</td><td colSpan={2} /></tr>}
+                  {view.unexplained !== 0 && (
+                    <tr className="bg-[var(--warning-soft)]/50">
+                      <td className="px-3 py-2 text-xs text-[var(--warning)]" colSpan={6}>
+                        The saved pay is out of date: it is {aed(Math.abs(view.unexplained))} {view.unexplained > 0 ? "above" : "below"} what these days add up to.
+                        {view.canAdjust && <button type="button" disabled={pending} className="ml-2 font-medium underline" onClick={recalculate}>{pending ? "Recalculating…" : "Recalculate"}</button>}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--warning)]">{view.unexplained > 0 ? "+" : "−"}{aed(Math.abs(view.unexplained))}</td><td colSpan={2} />
+                    </tr>
+                  )}
                   <tr><td className="px-3 py-2 font-semibold text-primary" colSpan={6}>Net pay</td><td className="px-3 py-2 text-right font-semibold tabular-nums text-primary">{aed(view.lineNet)}</td><td colSpan={2} /></tr>
                 </tfoot>
               </table>
             </div>
+
+            {adj && (
+              <div className="rounded-md border border-default p-3">
+                <h3 className="text-sm font-semibold text-primary">Deduction, advance and adjustment</h3>
+                <p className="mb-2 text-xs text-muted">Typed against this person for this month. Each needs a note. Net pay updates when you save.</p>
+                {view.canAdjust ? (
+                  <div className="space-y-1.5">
+                    {([["deduction", "Deduction", "What for? (fine, damage…)"], ["advance", "Advance", "Note (advance taken on…)"], ["adjustment", "Adjustment", "Bonus / correction (− to deduct)"]] as const).map(([k, label, ph]) => (
+                      <label key={k} className="grid grid-cols-[6rem_8rem_1fr] items-center gap-2">
+                        <span className="text-xs text-muted">{label}</span>
+                        <input className="input h-8 text-right text-xs tabular-nums" type="number" step="0.01" value={adj[k]} onChange={setA(k)} aria-label={`${label} (AED)`} />
+                        <input className="input h-8 text-xs" value={adj[`${k}Note` as const]} onChange={setA(`${k}Note` as const)} placeholder={ph} aria-label={`${label} note`} />
+                      </label>
+                    ))}
+                    <div className="flex items-center gap-3 pt-1">
+                      <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending || !adjDirty} onClick={saveAdjustments}>{pending ? "Saving…" : "Save changes"}</button>
+                      {saved && !adjDirty && <span className="text-xs text-[var(--success)]">Saved. Net pay is now AED {aed(view.lineNet)}.</span>}
+                    </div>
+                  </div>
+                ) : <p className="text-xs text-muted">{view.why ?? "This run can't be changed any more."}</p>}
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
@@ -148,3 +229,5 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
     </div>
   );
 }
+
+const adjFrom = (v: PayDaysView) => ({ deduction: String(v.adjust.deduction || ""), deductionNote: v.adjust.deductionNote, advance: String(v.adjust.advance || ""), advanceNote: v.adjust.advanceNote, adjustment: String(v.adjust.adjustment || ""), adjustmentNote: v.adjust.adjustmentNote });

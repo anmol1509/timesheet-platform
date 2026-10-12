@@ -1,5 +1,9 @@
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { PayslipDoc } from "@/lib/payslipData";
+import type { PayslipLayout } from "@/lib/payslipPrint";
+import { overlayOnLetterheadPdf } from "@/lib/letterheadOverlay";
+
+const MM = 72 / 25.4; // millimetres to points
 
 const INK = "#0f172a";
 const MUTED = "#64748b";
@@ -21,6 +25,7 @@ const s = StyleSheet.create({
   total: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, fontFamily: "Helvetica-Bold" },
   net: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f1f5f9", padding: 9, marginTop: 12, fontFamily: "Helvetica-Bold", fontSize: 12 },
   ytd: { marginTop: 14, borderTopWidth: 1, borderTopColor: LINE, paddingTop: 8 },
+  background: { position: "absolute", top: 0, left: 0, width: 595.28, height: 841.89 },
   foot: { position: "absolute", bottom: 24, left: 36, right: 36, textAlign: "center", fontSize: 7.5, color: MUTED },
 });
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -29,21 +34,25 @@ function monthName(m: string) {
   return new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-function PayslipPage({ doc, i }: { doc: PayslipDoc; i: number }) {
+function PayslipPage({ doc, i, layout }: { doc: PayslipDoc; i: number; layout?: PayslipLayout }) {
   const { slip, ytd, employee } = doc.slips[i];
   const h = doc.letterhead;
   const contact = [h.phone && `Tel ${h.phone}`, h.email, h.poBox && `P.O. Box ${h.poBox}`, h.trn && `TRN ${h.trn}`].filter(Boolean).join("  ·  ");
   return (
-    <Page size="A4" style={s.page}>
+    <Page size="A4" style={layout?.onLetterhead ? [s.page, { paddingTop: layout.topMm * MM, paddingBottom: layout.bottomMm * MM }] : s.page}>
+      {layout?.onLetterhead && layout.letterheadImage && <Image src={layout.letterheadImage} style={s.background} fixed />}
+      {/* On a letterhead the company's own header is already printed, so only the title and month are drawn. */}
       <View style={s.head}>
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          {h.logo && <Image src={h.logo} style={{ width: 42, height: 42, objectFit: "contain" }} />}
-          <View>
-            <Text style={s.company}>{h.name}</Text>
-            {h.addressLines.length > 0 && <Text style={s.small}>{h.addressLines.join(", ")}</Text>}
-            {contact !== "" && <Text style={s.small}>{contact}</Text>}
+        {layout?.onLetterhead ? <View /> : (
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {h.logo && <Image src={h.logo} style={{ width: 42, height: 42, objectFit: "contain" }} />}
+            <View>
+              <Text style={s.company}>{h.name}</Text>
+              {h.addressLines.length > 0 && <Text style={s.small}>{h.addressLines.join(", ")}</Text>}
+              {contact !== "" && <Text style={s.small}>{contact}</Text>}
+            </View>
           </View>
-        </View>
+        )}
         <View>
           <Text style={s.title}>PAYSLIP</Text>
           <Text style={[s.small, { textAlign: "right" }]}>{monthName(doc.month)}</Text>
@@ -85,11 +94,25 @@ function PayslipPage({ doc, i }: { doc: PayslipDoc; i: number }) {
           </View>
         </View>
       )}
-      <Text style={s.foot}>Computer-generated payslip. No signature required.</Text>
+      {layout && (layout.signatureImage || layout.stampImage) ? (
+        <View wrap={false} style={{ marginTop: 22, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <View>
+            <Text>For and on behalf of</Text>
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{h.name}</Text>
+            {layout.signatureImage ? <Image src={layout.signatureImage} style={{ width: 120, height: 44, objectFit: "contain", marginTop: 6, marginBottom: 2 }} /> : <View style={{ height: 30 }} />}
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>{layout.signatoryName || "Authorised Signatory"}</Text>
+            {layout.signatoryTitle && <Text>{layout.signatoryTitle}</Text>}
+          </View>
+          {layout.stampImage && <Image src={layout.stampImage} style={{ width: 92, height: 92, objectFit: "contain" }} />}
+        </View>
+      ) : <Text style={s.foot}>Computer-generated payslip. No signature required.</Text>}
     </Page>
   );
 }
 
-export async function generatePayslipPdf(doc: PayslipDoc): Promise<Buffer> {
-  return renderToBuffer(<Document title={`Payslips ${doc.month}`}>{doc.slips.map((_, i) => <PayslipPage key={doc.slips[i].lineId} doc={doc} i={i} />)}</Document>);
+export async function generatePayslipPdf(doc: PayslipDoc, layout?: PayslipLayout): Promise<Buffer | Uint8Array> {
+  const pdf = await renderToBuffer(<Document title={`Payslips ${doc.month}`}>{doc.slips.map((_, i) => <PayslipPage key={doc.slips[i].lineId} doc={doc} i={i} layout={layout} />)}</Document>);
+  // A letterhead kept as a PDF is laid under the finished pages rather than drawn as an image.
+  if (layout?.onLetterhead && layout.letterheadPdf && !layout.letterheadImage) return overlayOnLetterheadPdf(pdf, layout.letterheadPdf);
+  return pdf;
 }
