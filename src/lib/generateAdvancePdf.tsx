@@ -1,8 +1,8 @@
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { AdvanceDoc } from "@/lib/advanceDoc";
 import type { PayslipLayout } from "@/lib/payslipPrint";
-import { methodLabel } from "@/lib/advances";
 import { overlayOnLetterheadPdf } from "@/lib/letterheadOverlay";
+import { RichHtml } from "@/lib/richPdf";
 
 const MM = 72 / 25.4;
 const INK = "#0f172a";
@@ -51,52 +51,10 @@ function AdvancePage({ doc, layout }: { doc: AdvanceDoc; layout?: PayslipLayout 
       <Text style={s.title}>{doc.title}</Text>
       <View style={s.meta}>
         <Text>Ref: {doc.ref}</Text>
-        <Text>Date: {doc.given?.date ?? doc.requestedOn}</Text>
+        <Text>Date: {(doc.given?.date ?? doc.requestedOn).split("-").reverse().join("-")}</Text>
       </View>
 
-      <View style={s.grid}>
-        <View style={s.cell}><Text style={s.key}>Employee</Text><Text>{doc.employee.name}</Text></View>
-        <View style={s.cell}><Text style={s.key}>Employee ID</Text><Text>{doc.employee.idNo}</Text></View>
-        {doc.employee.trade && <View style={s.cell}><Text style={s.key}>Trade</Text><Text>{doc.employee.trade}</Text></View>}
-        <View style={s.cell}><Text style={s.key}>Type</Text><Text>{doc.kind}</Text></View>
-        <View style={s.cell}><Text style={s.key}>Requested</Text><Text>{doc.requestedOn} by {doc.requestedBy}</Text></View>
-        {doc.reason && <View style={s.cell}><Text style={s.key}>Reason</Text><Text style={{ flex: 1 }}>{doc.reason}</Text></View>}
-      </View>
-
-      <View style={s.amount}>
-        <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 13 }}>AED {aed(doc.amount)}</Text>
-        <Text style={{ color: MUTED, marginTop: 2 }}>{doc.words}</Text>
-      </View>
-
-      <View style={s.grid}>
-        <View style={s.cell}>
-          <Text style={s.key}>Approval</Text>
-          <Text>{decided ? `Approved${doc.approval.by ? ` by ${doc.approval.by}` : ""}${doc.approval.on ? ` on ${doc.approval.on}` : ""}` : doc.approval.status === "REJECTED" ? `Not approved${doc.approval.note ? `: ${doc.approval.note}` : ""}` : "Awaiting approval"}</Text>
-        </View>
-        <View style={s.cell}>
-          <Text style={s.key}>Handed over</Text>
-          <Text>{doc.given ? `${doc.given.date}, ${methodLabel(doc.given.method).toLowerCase()}${doc.given.reference ? `, ref ${doc.given.reference}` : ""}` : "Not yet"}</Text>
-        </View>
-      </View>
-
-      <Text style={s.h2}>How it is deducted from salary</Text>
-      {doc.plan.map((r) => (
-        <View key={r.month} style={s.row}><Text>{r.month}</Text><Text>AED {aed(r.amount)}</Text></View>
-      ))}
-      {doc.planNote && <Text style={[s.small, { marginTop: 4 }]}>{doc.planNote}</Text>}
-      {doc.recovered.length > 0 && (
-        <>
-          <Text style={s.h2}>Already deducted</Text>
-          {doc.recovered.map((r) => <View key={r.month} style={s.row}><Text>{r.month}</Text><Text>AED {aed(r.amount)}</Text></View>)}
-          <View style={s.row}><Text style={{ fontFamily: "Helvetica-Bold" }}>Balance still to deduct</Text><Text style={{ fontFamily: "Helvetica-Bold" }}>AED {aed(doc.balance)}</Text></View>
-        </>
-      )}
-
-      <Text style={s.para}>
-        {doc.given
-          ? `I, ${doc.employee.name}, acknowledge that I received AED ${aed(doc.amount)} (${doc.words.replace(/ only$/, "")}) on ${doc.given.date} as ${doc.kind === "Loan" ? "a loan" : "an advance"} against my salary, and I authorise ${h.name} to deduct it from my salary as set out above.`
-          : `I, ${doc.employee.name}, request ${doc.kind === "Loan" ? "a loan" : "an advance"} of AED ${aed(doc.amount)} against my salary, and I authorise ${h.name} to deduct it from my salary as set out above.`}
-      </Text>
+      <RichHtml html={doc.bodyHtml} />
 
       <View style={s.sigs} wrap={false}>
         <View style={s.sig}><View style={s.sigLine} /><Text style={s.small}>Employee: {doc.employee.name}</Text><Text style={s.small}>Date:</Text></View>

@@ -70,7 +70,8 @@ Say: "Payroll is usually a spreadsheet, a bank file built by hand, and payslips 
 - Press **New advance / loan**: choose the employee, amount and reason, then choose how it is deducted: all in one month, the same amount every month, or a plan month by month (it must add up to the amount). Press **Request approval**.
 - Say: "It does not touch payroll yet. An approver sees it under Approvals › Advances and approves or rejects it with a reason."
 - After approval, press **Record as given** and enter the day the money was handed over, how it was paid and a reference. Nothing is deducted before this.
-- Press **Receipt** (or **Request letter** before it is given), choose letterhead, signature and stamp, and open the PDF. The employee signs the declaration.
+- Press **Receipt** (or **Request letter** before it is given), choose letterhead, signature and stamp, and open the PDF. It is written in the company's voice, and the employee signs the acknowledgement at the bottom of the same page.
+- Show **Letters › Templates**: the Advance Request and Advance Receipt wording is a template (category Advance Letter). Add it from the gallery, edit it, and the Loans page uses your version.
 - Click the employee's name for their **statement**: every advance, the plan month by month, and what has been deducted.
 - Back on the payroll run, show that the advance is deducted in the planned month and that the payslip names it with the balance left.
 
