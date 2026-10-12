@@ -8,12 +8,13 @@ import { markFeedbackReviewedAction } from "./actions";
 export const metadata = { title: "Assistant feedback" };
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 export default async function AssistantFeedbackPage() {
   const user = await requireAdmin();
   const branchId = user.role === "SUPER_ADMIN" ? await resolveSuperAdminBranchId() : user.branchId;
   const where = branchWhere(branchId);
-  const since = new Date(Date.now() - 30 * 86_400_000);
+  const since = daysAgo(30);
   const [open, up, down, unanswered] = await Promise.all([
     prisma.assistantFeedback.findMany({ where: { ...where, reviewed: false, OR: [{ rating: "DOWN" }, { unanswered: true }] }, orderBy: { createdAt: "desc" }, take: 100 }),
     prisma.assistantFeedback.count({ where: { ...where, rating: "UP", createdAt: { gte: since } } }),
@@ -38,7 +39,7 @@ export default async function AssistantFeedbackPage() {
       <section className="card overflow-hidden">
         <h2 className="border-b border-default px-4 py-3 text-sm font-semibold text-primary">To review ({open.length})</h2>
         {open.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted">Nothing waiting. Questions the assistant can't resolve, and answers marked not helpful, will appear here.</p>
+          <p className="px-4 py-6 text-sm text-muted">Nothing waiting. Questions the assistant can&apos;t resolve, and answers marked not helpful, will appear here.</p>
         ) : (
           <ul className="divide-y divide-[var(--border)]">
             {open.map((f) => (
