@@ -4,7 +4,7 @@ import { loadOwnBatch, notFound, requireImporter } from "@/lib/importer/access";
 import { trackedClient } from "@/lib/importer/tracker";
 import { EMPLOYEE_DOC_TYPES, SUPPLIER_DOC_TYPE_OPTIONS, extOf, MIME_BY_EXT } from "@/lib/importer/documentMatch";
 import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
-import { safeFilename } from "@/lib/uploads";
+import { isAcceptedPhotoType, safeFilename } from "@/lib/uploads";
 import { EXPIRY_FIELD, READ_FIELDS } from "@/lib/importer/documentRead";
 import { normalizePhone } from "@/lib/phone";
 
@@ -94,6 +94,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (m.ownerKind === "EMPLOYEE") {
         if (!okEmp.has(m.ownerId)) throw new Error("That worker isn't in this company.");
         const type = EMP_TYPES.has(m.type) ? m.type : "OTHER";
+        // A profile picture isn't a document: it becomes the worker's photo, and only when they don't have one yet.
+        if (type === "PHOTO") {
+          if (!isAcceptedPhotoType(mime)) throw new Error("A profile picture has to be an image (JPG or PNG).");
+          const has = await prisma.employee.findUnique({ where: { id: m.ownerId }, select: { photoMimeType: true } });
+          if (has?.photoMimeType) { results.push({ name, status: "duplicate", message: "This worker already has a profile picture." }); continue; }
+          await db.employee.update({ where: { id: m.ownerId }, data: { photoData: bytes, photoMimeType: mime } });
+          results.push({ name, status: "created" });
+          continue;
+        }
         // The same file filed twice would only clutter the profile.
         if (await prisma.document.findFirst({ where: { employeeId: m.ownerId, type, filename }, select: { id: true } })) { results.push({ name, status: "duplicate", message: "Already on file." }); continue; }
         await db.document.create({ data: { employeeId: m.ownerId, type, filename, fileData: bytes, mimeType: mime, expiryDate: expiry, uploadedById: who.user.id } });
