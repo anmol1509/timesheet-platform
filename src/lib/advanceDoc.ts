@@ -4,9 +4,7 @@ import { headerFor } from "@/lib/payslipData";
 import { advanceRef, amountInWords, planRows, readSchedule, type ScheduleRow } from "@/lib/advances";
 import { advanceLetterValues } from "@/lib/advanceLetter";
 import { employeeLetterValues } from "@/lib/employeeLetter";
-import { ASK_PREFIX, askLabels, substituteInHtml, templateHtml } from "@/lib/letterHtml";
-import { presetByKey, presetHtml } from "@/lib/letterPresets";
-import { sanitizeLetterHtml } from "@/lib/letterSanitize";
+import { renderPresetDoc } from "@/lib/docTemplate";
 
 const n = (d: { toString(): string }) => Number(d.toString());
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -67,19 +65,14 @@ export async function loadAdvanceDoc(id: string): Promise<AdvanceDoc | null> {
   const kind = l.type === "LOAN" ? "Loan" : "Advance";
 
   // The wording: the company's own copy of the template if it has made one in Letters, else the built-in one.
-  const presetKey = given ? "advance-receipt" : "advance-request";
-  const preset = presetByKey(presetKey)!;
-  const own = await prisma.letterTemplate.findFirst({ where: { branchId: l.branchId, audience: "EMPLOYEE", presetKey }, orderBy: { createdAt: "desc" } });
-  const html = own ? templateHtml(own) : presetHtml(preset);
   const base = await employeeLetterValues(l.employeeId, { canSeePay: false, companyName: letterhead.name });
   const values: Record<string, string> = { ...(base?.values ?? {}), REFNO: ref, ...advanceLetterValues({ ref, kind, amount: principal, reason: l.reason, requestedOn: day(l.createdAt)!, requestedBy: nameOf.get(l.createdById) ?? "—", approval, given, plan, balance }) };
-  // "Ask when issuing" blanks have no one to ask here: leave them visibly open to fill in by hand.
-  for (const label of askLabels(html)) values[`${ASK_PREFIX}${label}`] = `[${label}]`;
+  const doc = await renderPresetDoc({ branchId: l.branchId, presetKey: given ? "advance-receipt" : "advance-request", values });
 
   return {
     ref,
     kind,
-    title: (own?.title || own?.category || preset.title).toUpperCase(),
+    title: doc.title,
     branchId: l.branchId,
     companyId,
     letterhead,
@@ -95,7 +88,7 @@ export async function loadAdvanceDoc(id: string): Promise<AdvanceDoc | null> {
     planNote: last ? `If anything is still owing after ${last.month}, it keeps being deducted at AED ${last.amount.toFixed(2)} a month until cleared.` : null,
     recovered,
     balance,
-    bodyHtml: sanitizeLetterHtml(substituteInHtml(html, values)),
-    templateName: own ? own.name : `${preset.name} (built in)`,
+    bodyHtml: doc.html,
+    templateName: doc.templateName,
   };
 }

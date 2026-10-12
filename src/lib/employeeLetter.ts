@@ -10,6 +10,8 @@ export const refLabel = (refNo: number) => `LTR-${String(refNo).padStart(6, "0")
 
 /** Fields whose values come from pay data — only filled for people allowed to see payroll. */
 export const SALARY_KEYS = ["BASICSALARY", "TOTALSALARY"];
+/** Bank details are as private as pay: only filled for people allowed to see payroll. */
+export const BANK_KEYS = ["BANKNAME", "IBAN"];
 
 export type EmployeeValues = { values: Record<string, string>; salaryAvailable: boolean };
 
@@ -20,7 +22,7 @@ export async function employeeLetterValues(employeeId: string, opts: { canSeePay
     select: {
       id: true, branchId: true, name: true, employeeIdNo: true, trade: true, position: true, nationality: true, passportNumber: true, emiratesId: true, joinDate: true,
       payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true,
-      hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true, payOverride: true, supplierId: true,
+      hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true, payOverride: true, supplierId: true, wpsBankName: true, wpsIban: true, wpsAccountNumber: true,
       supplier: { select: { name: true, fullName: true, isOwnCompany: true } },
       project: { select: { name: true } },
       branch: { select: { name: true } },
@@ -54,6 +56,8 @@ export async function employeeLetterValues(employeeId: string, opts: { canSeePay
       PROJECTNAME: e.project?.name ?? "",
       BASICSALARY: basic,
       TOTALSALARY: total,
+      BANKNAME: opts.canSeePay ? e.wpsBankName ?? "" : "",
+      IBAN: opts.canSeePay ? e.wpsIban || e.wpsAccountNumber || "" : "",
       COMPANYNAME: (opts.companyName || (e.supplier?.isOwnCompany ? e.supplier.fullName || e.supplier.name : e.branch.name)).toUpperCase(),
       BRANCHNAME: e.branch.name,
       DATE: formatLetterDate(new Date()),
@@ -97,6 +101,8 @@ export async function renderEmployeeLetter(opts: {
     if (!opts.canSeePay) return { ok: false, error: "This letter includes salary, which needs payroll access." };
     if (!ev.salaryAvailable) return { ok: false, error: `${ev.employee.name} has no monthly salary set (a pay structure of Itemised or Flat is needed on their Payroll & WPS tab).` };
   }
+
+  if (BANK_KEYS.some((k) => tokens.has(k)) && !opts.canSeePay) return { ok: false, error: "This letter includes bank details, which needs payroll access." };
 
   const asks = askLabels(html);
   const values: Record<string, string> = { ...ev.values, REFNO: opts.refNo ?? "LTR-••••••" };

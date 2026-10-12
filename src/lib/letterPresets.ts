@@ -22,7 +22,7 @@ export type LetterPreset = {
 };
 
 export const SITE_CATEGORIES = ["No Objection Letter", "Mobilization Letter", "Undertaking Letter", "Supplier Undertaking"] as const;
-export const EMPLOYEE_CATEGORIES = ["Salary Certificate", "Employment Certificate", "Experience Certificate", "Warning Letter", "Leave Approval Letter", "Advance Letter", "General Letter"] as const;
+export const EMPLOYEE_CATEGORIES = ["Salary Certificate", "Employment Certificate", "Experience Certificate", "Warning Letter", "Leave Approval Letter", "Advance Letter", "Salary Revision Letter", "Final Settlement Statement", "Salary Deduction Notice", "Salary Transfer Letter", "General Letter"] as const;
 /** Kept for older imports. */
 export const LETTER_CATEGORIES = SITE_CATEGORIES;
 export const categoriesFor = (a: Audience): readonly string[] => (a === "EMPLOYEE" ? EMPLOYEE_CATEGORIES : SITE_CATEGORIES);
@@ -100,6 +100,59 @@ export const LETTER_PRESETS: LetterPreset[] = [
       "It will be deducted from the employee's monthly salary as follows: %%ADVANCEPLAN%%.",
       "**Employee acknowledgement**",
       "I, %%EMPLOYEENAME%%, acknowledge that I received the amount above on %%ADVANCEGIVEN%% as a salary %%ADVANCETYPE%%, and I authorise the company to deduct it from my salary as shown.",
+    ]),
+  },
+  {
+    key: "salary-revision", audience: "EMPLOYEE", name: "Salary Revision Letter", category: "Salary Revision Letter", title: "Salary Revision Letter",
+    blurb: "Tells an employee their monthly salary has changed, from when, and from what to what. Used from the worker's Salary history.",
+    body: J([
+      "This is to inform you, **%%EMPLOYEENAME%%** (Employee ID %%EMPLOYEEID%%, %%DESIGNATION%%), that with effect from **%%SALARYEFFECTIVE%%** your total monthly salary with **%%COMPANYNAME%%** is revised from AED %%SALARYBEFORE%% to **AED %%SALARYAFTER%%** a month (a change of %%SALARYCHANGE%% AED, %%SALARYCHANGEPCT%%).",
+      "Reason: %%SALARYREASON%%",
+      "All other terms and conditions of your employment remain unchanged.",
+      "**Employee acknowledgement**",
+      "I acknowledge the revised salary stated above.",
+    ]),
+  },
+  {
+    key: "final-settlement", audience: "EMPLOYEE", name: "Final Settlement Statement", category: "Final Settlement Statement", title: "Final Settlement Statement",
+    blurb: "Itemises what a leaver is owed and owes, with the net amount, and has them acknowledge it. Used from a final settlement.",
+    body: J([
+      "This is the final settlement statement for **%%EMPLOYEENAME%%** (Employee ID %%EMPLOYEEID%%, %%DESIGNATION%%) of **%%COMPANYNAME%%**, whose last working day was **%%SETTLEEXIT%%** (%%SETTLEREASON%%), after %%SETTLEYEARS%% years of service.",
+      "**Amounts due to the employee**",
+      "- Gratuity: AED %%SETTLEGRATUITY%%",
+      "- Salary for days worked, not yet paid: AED %%SETTLEUNPAID%%",
+      "- Leave pay: AED %%SETTLELEAVE%%",
+      "- Notice pay: AED %%SETTLENOTICE%%",
+      "- Other amounts due to the employee: AED %%SETTLEOTHEREARN%%",
+      "- **Total due to the employee: AED %%SETTLETOTALEARN%%**",
+      "**Deductions**",
+      "- Loans and advances outstanding: AED %%SETTLELOAN%%",
+      "- Other amounts due from the employee: AED %%SETTLEOTHERDED%%",
+      "- **Total deductions: AED %%SETTLETOTALDED%%**",
+      "**Net amount %%SETTLENETLABEL%%: AED %%SETTLENET%%**",
+      "**Employee acknowledgement**",
+      "I acknowledge the statement above. On receiving the net amount payable, I confirm that I have no further claim against the company in respect of my employment.",
+    ]),
+  },
+  {
+    key: "deduction-notice", audience: "EMPLOYEE", name: "Salary Deduction Notice", category: "Salary Deduction Notice", title: "Salary Deduction Notice",
+    blurb: "Tells an employee an amount will be deducted from their salary, for what, and in which month. Used from the payroll run's Deduction.",
+    body: J([
+      "This is to inform you, **%%EMPLOYEENAME%%** (Employee ID %%EMPLOYEEID%%, %%DESIGNATION%%), that **AED %%DEDUCTIONAMOUNT%%** will be deducted from your salary for **%%DEDUCTIONMONTH%%**.",
+      "Reason: %%DEDUCTIONREASON%%",
+      "If you disagree with this deduction, please contact the HR department before the salary is processed.",
+      "**Employee acknowledgement**",
+      "I acknowledge that I have been informed of this deduction and its reason.",
+    ]),
+  },
+  {
+    key: "salary-transfer-letter", audience: "EMPLOYEE", name: "Salary Transfer Letter", category: "Salary Transfer Letter", title: "Salary Transfer Letter",
+    blurb: "Confirms to a bank that the employee's salary is paid into their account, with the amount. Choose it on the Letters screen.",
+    body: J([
+      "**To: %%ASK:Bank name%%**",
+      "This is to confirm that **%%EMPLOYEENAME%%** (%%NATIONALITY%%), holder of passport number %%PASSPORTNO%%, is employed with **%%COMPANYNAME%%** as **%%DESIGNATION%%** since %%JOINDATE%%, on a total monthly salary of **AED %%TOTALSALARY%%**.",
+      "The salary is credited each month to the employee's account at %%BANKNAME%% (account or IBAN %%IBAN%%) through the UAE Wages Protection System.",
+      "This letter is issued on %%DATE%% at the employee's request, without any liability on the part of the company.",
     ]),
   },
   {

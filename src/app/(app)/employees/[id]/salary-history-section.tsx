@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { addArrearsAction } from "../../payroll/pay-items-actions";
+import { ReceiptButton } from "../../payroll/loans/receipt-button";
 
 export type RevisionRow = { id: string; effectiveFrom: string; reason: string | null; fixedBefore: number; fixedAfter: number; by: string; arrears: { months: number; amount: number } | null };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,6 +32,7 @@ export function SalaryHistorySection({ rows, canAddArrears }: { rows: RevisionRo
                 <p className="text-primary">From {r.effectiveFrom}: AED {aed(r.fixedBefore)} → <span className="font-medium">AED {aed(r.fixedAfter)}</span> a month</p>
                 <p className="text-xs text-muted">{r.reason ? `${r.reason} · ` : ""}recorded by {r.by}</p>
               </div>
+              <div className="flex flex-col items-end gap-1 text-xs"><ReceiptButton id={r.id} base={`/api/payroll/docs/salary-revision/${r.id}`} label="Letter" hint="A letter telling the employee about this pay change, with an acknowledgement to sign. The wording comes from your Salary Revision Letter template (Letters › Templates)." /></div>
               {canAddArrears && r.arrears && (
                 <div className="text-right">
                   <button type="button" disabled={pending} className="btn btn-secondary h-8 px-3 text-xs" title="Arrears: pay owed for earlier months. This adds the difference to next month's payroll." onClick={() => add(r.id)}>Pay arrears: AED {aed(r.arrears.amount)} ({r.arrears.months} month{r.arrears.months === 1 ? "" : "s"})</button>

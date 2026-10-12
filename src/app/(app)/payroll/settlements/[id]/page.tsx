@@ -6,6 +6,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { SettlementEditor, SettlementButtons } from "./editor";
+import { ReceiptButton } from "../../loans/receipt-button";
 import { PrintButton } from "../../[id]/payslips/print-button";
 
 export const metadata = { title: "Final settlement" };
@@ -47,7 +48,7 @@ export default async function SettlementPage({ params }: { params: Promise<{ id:
           <Link href="/payroll/settlements" className="text-xs text-muted hover:text-secondary">← Final settlements</Link>
           <h1 className="mt-1 text-xl font-semibold tracking-tight text-primary">{s.employee.name} <Badge color={STATUS[s.status]?.color ?? "slate"} dot>{STATUS[s.status]?.label ?? s.status}</Badge></h1>
         </div>
-        <div className="flex items-center gap-2"><PrintButton /></div>
+        <div className="flex items-center gap-3"><ReceiptButton id={s.id} base={`/api/payroll/docs/settlement/${s.id}`} label="Settlement letter" hint="The final settlement as a letter to the employee, with an acknowledgement to sign. The wording comes from your Final Settlement Statement template (Letters › Templates)." /><PrintButton /></div>
       </div>
 
       {s.status === "DRAFT" && can(subject, "payroll.payroll", "edit") && (

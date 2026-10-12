@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 
 /** Opens the advance as a PDF, with the same printing choices as payslips and letters: plain paper or letterhead, signature, stamp. */
-export function ReceiptButton({ id, label, icon }: { id: string; label: string; icon?: React.ReactNode }) {
+export function ReceiptButton({ id, label, icon, base, hint }: { id: string; label: string; icon?: React.ReactNode; base?: string; hint?: string }) {
   const [open, setOpen] = useState(false);
   const [letterhead, setLetterhead] = useState(false);
   const [signature, setSignature] = useState(false);
@@ -17,12 +17,12 @@ export function ReceiptButton({ id, label, icon }: { id: string; label: string; 
   if (stamp) params.set("stamp", "1");
   if (name.trim()) params.set("name", name.trim());
   if (title.trim()) params.set("title", title.trim());
-  const href = `/api/payroll/loans/${id}/receipt${params.size > 0 ? `?${params}` : ""}`;
+  const href = `${base ?? `/api/payroll/loans/${id}/receipt`}${params.size > 0 ? `?${params}` : ""}`;
   return (
     <>
       <button type="button" className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline" onClick={() => setOpen(true)}>{icon} {label}</button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title={label} description="Opens as a PDF to print and sign. The employee signs the acknowledgement at the bottom of the same page. The wording comes from your Advance letter templates (Letters › Templates).">
+        <DialogContent title={label} description={hint ?? "Opens as a PDF to print and sign. The employee signs the acknowledgement at the bottom of the same page. The wording comes from your Advance letter templates (Letters › Templates)."}>
           <div className="mt-4 space-y-3 text-sm">
             <label className="flex items-center gap-2"><input type="checkbox" checked={letterhead} onChange={(e) => setLetterhead(e.target.checked)} /> On the company letterhead</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={signature} onChange={(e) => setSignature(e.target.checked)} /> Add the company signature (if on file)</label>

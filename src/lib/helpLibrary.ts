@@ -122,6 +122,23 @@ export const HELP_GUIDES: HelpGuide[] = [
     pages: ["/payroll/loans", "/approvals?type=ADVANCE", "/payroll"],
   },
   {
+    id: "payroll-letters",
+    title: "Print a salary revision, settlement or deduction letter",
+    keywords: ["salary revision letter", "increment letter", "pay rise letter", "final settlement letter", "end of service letter", "deduction notice", "deduction letter", "fine letter", "salary transfer letter", "bank letter", "letter to bank"],
+    steps: [
+      "Salary revision: open the employee, find Salary history, and press Letter on the change.",
+      "Final settlement: open Payroll › Final settlements, open the settlement and press Settlement letter.",
+      "Deduction notice: in a payroll run, open the day-by-day view for the employee, save a Deduction with a reason, then press Deduction notice.",
+      "Choose letterhead, signature and stamp and press Open PDF. The employee signs the acknowledgement at the bottom.",
+      "Salary transfer letter (to a bank): Letters › New letter, choose the Salary Transfer Letter template, pick the employee and type the bank name.",
+    ],
+    notes: [
+      "The wording comes from the Salary Revision Letter, Final Settlement Statement, Salary Deduction Notice and Salary Transfer Letter templates. Add them from the gallery in Letters › Templates and edit your copy to change the wording.",
+      "These letters show pay, so they need payroll access. The deduction notice only works once a deduction has been saved on the pay line.",
+    ],
+    pages: ["/payroll/settlements", "/letters", "/payroll"],
+  },
+  {
     id: "payroll-adjustments",
     title: "Add a deduction, bonus or recurring item to payroll",
     keywords: ["fine", "bonus", "deduction", "adjustment", "add deduction", "recurring deduction", "standing allowance", "add bonus"],
