@@ -403,8 +403,9 @@ export async function importParsedMonths(
       const fillProject = sheetProjectId && !known?.projectId ? { projectId: sheetProjectId } : {};
       const needsPay = !!entry.payRate && !Number(known?.hourlyRate ?? 0) && !payRateGiven.has(entry.employeeIdNo);
       // A rate with no pay structure leaves payroll asking for one, so the sheet's rate also marks them Hourly.
+      // A company paid on a monthly basis is left alone: its workers get a salary from their record, not an hourly rate.
       // That includes a worker whose rate on file is the same figure, so re-uploading repairs earlier imports.
-      const needsStructure = !!entry.payRate && !known?.payStructure && (needsPay || Number(known?.hourlyRate ?? 0) === entry.payRate);
+      const needsStructure = !!entry.payRate && !known?.payStructure && supplier.payType !== "BASIC" && (needsPay || Number(known?.hourlyRate ?? 0) === entry.payRate);
       const fillPay = { ...(needsPay ? { hourlyRate: entry.payRate } : {}), ...(needsStructure ? { payStructure: "HOURLY" } : {}) };
       if (sheetProjectId && !known?.projectId) linkedToProject++;
       if (needsPay) { payRatesSet++; payRateGiven.add(entry.employeeIdNo); }
