@@ -49,7 +49,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
       events: { orderBy: { at: "desc" }, take: 30 },
-      lines: { include: { employee: { select: { id: true, name: true, employeeIdNo: true, photoMimeType: true } } }, orderBy: { employee: { name: "asc" } } },
+      lines: { include: { employee: { select: { id: true, name: true, employeeIdNo: true, photoMimeType: true, supplier: { select: { name: true } } } } }, orderBy: { employee: { name: "asc" } } },
     },
   });
   if (!run || isOutsideBranch(run.branchId, branchId, isSuperAdmin)) notFound();
@@ -261,7 +261,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
                           <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <DaysButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} /><span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employee.supplier && run.company && l.employee.supplier.name !== run.company.name && <span className="text-muted"> · Employer {l.employee.supplier.name}</span>}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <DaysButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} /><span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
                         </div>
                       </div>
                     </td>
@@ -347,7 +347,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       <details className="text-xs text-muted">
         <summary className="cursor-pointer font-medium text-secondary">How is this calculated?</summary>
         <p className="mt-2">
-        Rules: only employees of the selected company are paid. <strong>Basic</strong> companies pay the monthly figure, deducting (base + allowances) ÷ 30 per day marked Absent in attendance, and paying overtime at (base ÷ 240) × the employee&apos;s multiplier. <strong>Hourly</strong> companies pay the hours on that month&apos;s timesheet × the employee&apos;s hourly rate; the timesheet carries one figure per day, so every hour is paid at the hourly rate. Deduction and advance are typed here with a note each and both reduce net pay; the advance starts from any active loan or advance instalment and can be overwritten. Recurring items apply automatically, and nothing typed can take net pay below zero.
+        Rules: only employees sponsored by the selected company are paid (or its own employees where no sponsor is set); employees of companies that are not yours are left out. <strong>Basic</strong> companies pay the monthly figure, deducting (base + allowances) ÷ 30 per day marked Absent in attendance, and paying overtime at (base ÷ 240) × the employee&apos;s multiplier. <strong>Hourly</strong> companies pay the hours on that month&apos;s timesheet × the employee&apos;s hourly rate; the timesheet carries one figure per day, so every hour is paid at the hourly rate. Deduction and advance are typed here with a note each and both reduce net pay; the advance starts from any active loan or advance instalment and can be overwritten. Recurring items apply automatically, and nothing typed can take net pay below zero.
         </p>
       </details>
     </div>
