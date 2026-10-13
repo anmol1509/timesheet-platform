@@ -44,11 +44,3 @@ test("workers outside your own companies don't use the checklist", () => {
   assert.equal(payrollReadiness({ ...ok, company: { name: "Supplier X", isOwnCompany: false, payType: null } }, now).applies, false);
   assert.equal(payrollReadiness({ ...ok, company: null }, now).applies, false);
 });
-
-test("pending arrival papers warn but don't block", () => {
-  const r = payrollReadiness({ ...ok, papersPending: true }, now);
-  assert.equal(r.ready, true);
-  assert.equal(r.items.find((i) => i.key === "papers")!.ok, false);
-  assert.equal(r.items.find((i) => i.key === "papers")!.blocking, false);
-  assert.equal(payrollReadiness({ ...ok, papersPending: false }, now).items.find((i) => i.key === "papers")!.ok, true);
-});

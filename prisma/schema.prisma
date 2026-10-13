@@ -672,9 +672,6 @@ model Employee {
   category           EmployeeCategory    @default(SITE_STAFF)
   photoData          Bytes?
   photoMimeType      String?
-  // True from the day someone is added from onboarding until their medical, visa stamping and labour card are done. See lib/papers.ts.
-  papersPending      Boolean             @default(false)
-  papers             EmployeePaper[]
   nationality        String?
   position           String?
   // Office/corporate roster only (category = STAFF) — "which team", where
@@ -2389,6 +2386,10 @@ model CandidateOnboarding {
   // Inside-UAE candidates only: the permit transfer replaces the entry permit and travel steps.
   permitTransferStatus   String @default("Pending")
 
+  // Arrival papers that were not tracked before: the health insurance card and Emirates ID biometrics.
+  healthCardStatus       String @default("Pending")
+  eidBiometricsStatus    String @default("Pending")
+
   offerStatus             String @default("Pending")
   wppStatus               String @default("Pending")
   workPermitPaymentStatus String @default("Pending")
@@ -2747,25 +2748,4 @@ model AssistantFeedback {
 
   @@index([branchId, createdAt])
   @@index([reviewed, createdAt])
-}
-
-// One row per (worker, arrival paper): the statutory steps that follow arrival. A worker whose medical, visa stamping or
-// labour card isn't done is "papers pending". See lib/papers.ts for the items and their statuses.
-model EmployeePaper {
-  id          String    @id @default(cuid())
-  item        String // "MEDICAL" | "TAWJEEH" | "ILOE" | "HEALTH_CARD" | "EID_BIOMETRICS" | "VISA_STAMPING" | "CONTRACT_LABOUR_CARD"
-  status      String    @default("Pending")
-  statusDate  DateTime?
-  referenceNo String?
-  expiryDate  DateTime?
-  remarks     String?
-  updatedById String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId String
-
-  @@unique([employeeId, item])
-  @@index([employeeId])
 }

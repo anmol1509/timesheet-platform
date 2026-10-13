@@ -7,7 +7,7 @@ import { branchWhere } from "@/lib/branch";
 import { isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
-import { AFTER_ARRIVAL_STAGES, STAGES, asCandidateType, CANDIDATE_TYPES, stagesFor, statusKind, overallStatusLabel } from "@/lib/onboarding";
+import { AFTER_ARRIVAL_STAGES, STAGES, asCandidateType, CANDIDATE_TYPES, papersApply, pendingPapers, stagesFor, statusKind, overallStatusLabel } from "@/lib/onboarding";
 import { CandidateForm } from "../candidate-form";
 import { StageRow } from "../stage-row";
 import { JoinPanel } from "../join-panel";
@@ -105,10 +105,18 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
         ))}
       </div>
 
-      <details className="card overflow-hidden" open={AFTER_ARRIVAL_STAGES.some((s) => candidate[s.field] !== "Pending" && statusKind(s, candidate[s.field]) !== "pending")}>
+      {papersApply(candidate) && (
+        <p className={pendingPapers(candidate).length > 0 ? "rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2.5 text-sm text-primary" : "rounded-md border border-default px-4 py-2.5 text-sm text-[var(--success)]"}>
+          {pendingPapers(candidate).length > 0
+            ? <><span className="font-medium">Papers pending.</span> Still needed: {pendingPapers(candidate).map((s) => s.label.toLowerCase()).join(", ")}.</>
+            : "Arrival papers complete: medical fit, visa stamped and labour card done."}
+        </p>
+      )}
+
+      <details className="card overflow-hidden" open={papersApply(candidate)}>
         <summary className="cursor-pointer border-b border-default px-4 py-3">
-          <span className="text-sm font-medium text-primary">After arrival</span>
-          <span className="ml-2 text-xs text-muted">These papers are done once the person is in the country, so they are no longer needed to be ready to join. They will move to the employee&rsquo;s papers checklist.</span>
+          <span className="text-sm font-medium text-primary">Arrival papers</span>
+          <span className="ml-2 text-xs text-muted">Done once the person is in the country. They aren&rsquo;t needed to be ready to join, and stay here after they have been added as an employee. Medical, visa stamping and the labour card must be done for the papers to be complete.</span>
         </summary>
         {AFTER_ARRIVAL_STAGES.map((stage) => (
           <StageRow

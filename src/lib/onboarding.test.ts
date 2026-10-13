@@ -1,18 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AFTER_ARRIVAL_STAGES, STAGES, STAGE_BY_KEY, computeReadyToJoin, currentStage, overallStatusLabel, stagesFor, type OnboardingStatuses } from "./onboarding";
+import { AFTER_ARRIVAL_STAGES, STAGES, STAGE_BY_KEY, computeReadyToJoin, currentStage, overallStatusLabel, papersApply, papersPending, pendingPapers, stagesFor, type OnboardingStatuses } from "./onboarding";
 
 const base = (over: Partial<OnboardingStatuses> = {}): OnboardingStatuses => ({
   candidateType: "OVERSEAS",
   hireApprovalStatus: "Not Required", interviewStatus: "Not Required", clientApprovalStatus: "Not Required", permitTransferStatus: "Pending",
   offerStatus: "Accepted", wppStatus: "Completed", workPermitPaymentStatus: "Payment Completed", entryPermitStatus: "Received", arrivalStatus: "Arrived UAE",
-  medicalStatus: "Pending", tawjeehStatus: "Pending", iloeStatus: "Pending", contractStatus: "Pending", idVisaStatus: "Pending",
+  medicalStatus: "Pending", tawjeehStatus: "Pending", iloeStatus: "Pending", healthCardStatus: "Pending", eidBiometricsStatus: "Pending", contractStatus: "Pending", idVisaStatus: "Pending",
   ...over,
 });
 
 test("the pipeline ends at arrival; the papers that follow are listed separately", () => {
   assert.deepEqual(stagesFor("OVERSEAS").map((s) => s.key), ["HIRE_APPROVAL", "INTERVIEW", "CLIENT_APPROVAL", "OFFER", "WPP", "WORK_PERMIT_PAYMENT", "ENTRY_PERMIT", "ARRIVAL"]);
-  assert.deepEqual(AFTER_ARRIVAL_STAGES.map((s) => s.key), ["MEDICAL", "TAWJEEH", "ILOE", "CONTRACT", "ID_VISA"]);
+  assert.deepEqual(AFTER_ARRIVAL_STAGES.map((s) => s.key), ["MEDICAL", "TAWJEEH", "ILOE", "HEALTH_CARD", "EID_BIOMETRICS", "ID_VISA", "CONTRACT"]);
   assert.ok(STAGES.every((s) => !AFTER_ARRIVAL_STAGES.some((a) => a.key === s.key)));
 });
 
@@ -44,4 +44,29 @@ test("an inside-UAE candidate is ready when the permit transfer completes, and t
 
 test("every step key can still be looked up, including the post-arrival ones", () => {
   for (const s of [...STAGES, ...AFTER_ARRIVAL_STAGES]) assert.equal(STAGE_BY_KEY[s.key], s);
+});
+
+const here = (over: Partial<OnboardingStatuses> = {}) => base({ arrivalStatus: "Arrived UAE", ...over });
+const cleared = { medicalStatus: "Fit", idVisaStatus: "Completed", contractStatus: "Approved" };
+
+test("arrival papers only matter once the person has arrived or joined", () => {
+  assert.equal(papersApply({ ...base({ arrivalStatus: "Flight Booked" }), joined: false }), false);
+  assert.equal(papersApply({ ...here(), joined: false }), true);
+  assert.equal(papersApply({ ...base({ arrivalStatus: "Flight Booked" }), joined: true }), true);
+});
+
+test("papers are pending until medical is fit, the visa is stamped and the labour card is done", () => {
+  assert.deepEqual(pendingPapers(here()).map((s) => s.key), ["MEDICAL", "ID_VISA", "CONTRACT"]);
+  assert.equal(papersPending({ ...here(), joined: false }), true);
+  assert.deepEqual(pendingPapers(here({ ...cleared, contractStatus: "Submitted" })).map((s) => s.key), ["CONTRACT"]);
+  assert.equal(papersPending({ ...here(cleared), joined: true }), false);
+});
+
+test("an unfit medical keeps papers pending, and the other papers never hold them up", () => {
+  assert.equal(papersPending({ ...here({ ...cleared, medicalStatus: "Unfit" }), joined: true }), true);
+  assert.equal(papersPending({ ...here({ ...cleared, iloeStatus: "Pending", eidBiometricsStatus: "Pending" }), joined: true }), false);
+});
+
+test("a labour card marked Issued counts as done", () => {
+  assert.equal(papersPending({ ...here({ ...cleared, contractStatus: "Issued" }), joined: true }), false);
 });

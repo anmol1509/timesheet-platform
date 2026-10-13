@@ -358,10 +358,6 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
     if (attended.size === 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance" });
   }
 
-  // Workers whose arrival papers aren't done (medical, visa stamping, labour card) are in the run: worth a second look before paying.
-  const paperPending = lines.length ? await prisma.employee.findMany({ where: { id: { in: lines.map((l) => l.employeeId) }, papersPending: true }, select: { name: true } }) : [];
-  if (paperPending.length > 0) issues.push({ level: "warn", text: `${paperPending.length} employee${paperPending.length === 1 ? " is" : "s are"} in this run with arrival papers still pending (medical, visa or labour card): ${names(paperPending)}.`, href: "/employees" });
-
   const zero = lines.filter((l) => num(l.net) <= 0);
   if (zero.length > 0) issues.push({ level: "warn", text: `${zero.length} employee${zero.length === 1 ? " has" : "s have"} zero net pay: ${names(zero.map((l) => l.employee))}.` });
   if (prevRun && prevRun.lines.length > 0) {

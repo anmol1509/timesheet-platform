@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { cn } from "@/lib/cn";
-import { STAGES, currentStage, daysSince, isOverdue } from "@/lib/onboarding";
+import { STAGES, currentStage, daysSince, isOverdue, papersPending } from "@/lib/onboarding";
 import { OnboardingTable } from "./onboarding-table";
 import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
 import { Panel } from "@/components/DashboardPanel";
@@ -26,6 +26,7 @@ export default async function OnboardingPage() {
   const readyCount = active.filter((c) => c.readyToJoin).length;
   const joinedCount = candidates.filter((c) => c.joined).length;
   const overdueCount = active.filter((c) => isOverdue(c, c.updatedAt)).length;
+  const papersCount = candidates.filter((c) => papersPending(c)).length;
 
   const stagePending: Record<string, number> = {};
   for (const stage of STAGES) stagePending[stage.key] = 0;
@@ -51,7 +52,7 @@ export default async function OnboardingPage() {
         </Link>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="card p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Total candidates</p>
           <p className="mt-1 text-2xl font-semibold text-primary">{total}</p>
@@ -67,6 +68,10 @@ export default async function OnboardingPage() {
         <div className="card p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Ready to join</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--success-text,#067647)]">{readyCount}</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">Papers pending</p>
+          <p className={cn("mt-1 text-2xl font-semibold", papersCount > 0 ? "text-[var(--warning-text,#92400e)]" : "text-primary")}>{papersCount}</p>
         </div>
         <div className="card p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Joined</p>

@@ -274,10 +274,6 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       iban: (was?.wpsIban ?? null) !== (data.wpsIban ?? null) ? data.wpsIban : null, excludeId: id,
     });
     const warnings = [...checkEmployee(now, was), ...dups];
-    // A worker whose arrival papers aren't done shouldn't usually start on a project yet.
-    if (before?.papersPending && data.projectId && before.projectId !== data.projectId) {
-      warnings.push("This worker's arrival papers are still pending (medical, visa stamping or labour card). Placing them on a project before these are done can mean fines. Check the Documents tab.");
-    }
     if (warnings.length > 0) return { warnings };
   }
 

@@ -11,7 +11,7 @@ export async function ReadinessCard({ employeeId }: { employeeId: string }) {
     select: {
       payStructure: true, basicSalary: true, flatMonthlyRate: true, hourlyRate: true,
       wpsPaymentMode: true, molPersonCode: true, wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
-      laborCardExpiry: true, emiratesIdExpiry: true, visaExpiry: true, papersPending: true,
+      laborCardExpiry: true, emiratesIdExpiry: true, visaExpiry: true,
       supplier: { select: { name: true, isOwnCompany: true, payType: true } },
     },
   });
@@ -19,7 +19,7 @@ export async function ReadinessCard({ employeeId }: { employeeId: string }) {
   const r = payrollReadiness({
     company: e.supplier, payStructure: e.payStructure, basicSalary: num(e.basicSalary), flatMonthlyRate: num(e.flatMonthlyRate), hourlyRate: num(e.hourlyRate),
     paymentMode: e.wpsPaymentMode, molPersonCode: e.molPersonCode, routingCode: e.wpsRoutingCode, account: e.wpsIban || e.wpsAccountNumber,
-    laborCardExpiry: e.laborCardExpiry, emiratesIdExpiry: e.emiratesIdExpiry, visaExpiry: e.visaExpiry, papersPending: e.papersPending,
+    laborCardExpiry: e.laborCardExpiry, emiratesIdExpiry: e.emiratesIdExpiry, visaExpiry: e.visaExpiry,
   });
   if (!r.applies) return r.note ? <p className="flex items-start gap-2 rounded-md border border-default px-4 py-3 text-sm text-muted"><Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{r.note}</p> : null;
   const problems = r.items.filter((i) => !i.ok);

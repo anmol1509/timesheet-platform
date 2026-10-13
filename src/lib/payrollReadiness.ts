@@ -5,7 +5,6 @@ export type ReadinessFacts = {
   payStructure: string | null; basicSalary: number; flatMonthlyRate: number; hourlyRate: number;
   paymentMode: string | null; molPersonCode: string | null; routingCode: string | null; account: string | null;
   laborCardExpiry: Date | null; emiratesIdExpiry: Date | null; visaExpiry: Date | null;
-  papersPending?: boolean;
 };
 
 export type ReadinessItem = { key: string; label: string; ok: boolean; problem?: string; fix?: string; blocking: boolean };
@@ -29,7 +28,6 @@ export function payrollReadiness(f: ReadinessFacts, now = new Date()): Readiness
     { key: "bank", label: "Bank and WPS details", ok: bankGaps.length === 0, problem: bankGaps.length ? `missing ${bankGaps.join(", ")}` : undefined, fix: "Payroll & WPS tab (or set the payment mode to Cash)", blocking: true },
     { key: "labour", label: "Labour card valid", ok: !expired(f.laborCardExpiry), problem: "labour card has expired", fix: "Documents: renew and update the expiry date", blocking: false },
     { key: "eid", label: "Emirates ID valid", ok: !expired(f.emiratesIdExpiry), problem: "Emirates ID has expired", fix: "Documents: renew and update the expiry date", blocking: false },
-    { key: "papers", label: "Arrival papers complete", ok: !f.papersPending, problem: "medical, visa stamping or labour card still pending", fix: "Documents tab › Arrival papers", blocking: false },
     { key: "visa", label: "Visa valid", ok: !expired(f.visaExpiry), problem: "visa has expired", fix: "Documents: renew and update the expiry date", blocking: false },
   ];
   return { applies: true, ready: items.every((i) => i.ok || !i.blocking), items };
