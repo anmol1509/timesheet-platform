@@ -13,11 +13,12 @@ export async function ReadinessCard({ employeeId }: { employeeId: string }) {
       wpsPaymentMode: true, molPersonCode: true, wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
       laborCardExpiry: true, emiratesIdExpiry: true, visaExpiry: true,
       supplier: { select: { name: true, isOwnCompany: true, payType: true } },
+      sponsorSupplier: { select: { name: true, isOwnCompany: true, payType: true } },
     },
   });
   if (!e) return null;
   const r = payrollReadiness({
-    company: e.supplier, payStructure: e.payStructure, basicSalary: num(e.basicSalary), flatMonthlyRate: num(e.flatMonthlyRate), hourlyRate: num(e.hourlyRate),
+    company: e.supplier?.isOwnCompany && e.sponsorSupplier?.isOwnCompany ? e.sponsorSupplier : e.supplier, payStructure: e.payStructure, basicSalary: num(e.basicSalary), flatMonthlyRate: num(e.flatMonthlyRate), hourlyRate: num(e.hourlyRate),
     paymentMode: e.wpsPaymentMode, molPersonCode: e.molPersonCode, routingCode: e.wpsRoutingCode, account: e.wpsIban || e.wpsAccountNumber,
     laborCardExpiry: e.laborCardExpiry, emiratesIdExpiry: e.emiratesIdExpiry, visaExpiry: e.visaExpiry,
   });

@@ -1,4 +1,5 @@
 import { Banknote } from "lucide-react";
+import { payrollCompanyId, PAYROLL_COMPANY_SELECT } from "@/lib/payrollCompany";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -37,7 +38,7 @@ export default async function PayrollPage() {
     }),
     branchId ? prisma.branch.findUnique({ where: { id: branchId }, include: { wpsPayerBank: true } }) : null,
     branchId ? prisma.supplier.findMany({ where: { branchId, isOwnCompany: true }, select: { id: true, name: true, payType: true, wpsEstablishmentId: true }, orderBy: { name: "asc" } }) : [],
-    branchId ? prisma.employee.findMany({ where: { branchId, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, select: { supplierId: true, payStructure: true, basicSalary: true, flatMonthlyRate: true, hourlyRate: true } }) : [],
+    branchId ? prisma.employee.findMany({ where: { branchId, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, select: { ...PAYROLL_COMPANY_SELECT, payStructure: true, basicSalary: true, flatMonthlyRate: true, hourlyRate: true } }) : [],
     branchId ? prisma.bank.findMany({ where: { branchId, status: "ACTIVE" } }) : [],
   ]);
 
@@ -48,7 +49,7 @@ export default async function PayrollPage() {
 
   // One line of setup per own company: can a run be created and, later, paid by WPS?
   const setup = companies.map((c) => {
-        const emps = ownEmployees.filter((e) => e.supplierId === c.id);
+        const emps = ownEmployees.filter((e) => payrollCompanyId(e) === c.id);
     const ready = emps.filter((e) => !payDataGap(null, { payStructure: e.payStructure, basicSalary: Number(e.basicSalary ?? 0), flatMonthlyRate: Number(e.flatMonthlyRate ?? 0), hourlyRate: Number(e.hourlyRate ?? 0) })).length;
     const bank = usableBanks.find((b) => b.companyId === c.id) ?? (branch?.wpsPayerBank && isUsableBank(branch.wpsPayerBank) && branch.wpsPayerBank.routingCode ? branch.wpsPayerBank : null);
     return { c, total: emps.length, ready, establishment: c.wpsEstablishmentId ?? branch?.wpsEstablishmentId ?? null, bank };

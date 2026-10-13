@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { payrollScopeWhere } from "@/lib/payrollCompany";
 import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
 import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
 
@@ -87,7 +88,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       where: {
         branchId: run.branchId,
         status: { not: "TERMINATED" },
-        supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) },
+        ...payrollScopeWhere(run.companyId),
       },
       select: PAY_EMPLOYEE_SELECT,
     }),
@@ -301,7 +302,7 @@ export async function reverseLoanRepayments(runId: string) {
 export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
   const type = isPayType(run.payType) ? run.payType : null;
   const employees = await prisma.employee.findMany({
-    where: { branchId: run.branchId, status: { not: "TERMINATED" }, supplier: { isOwnCompany: true, ...(run.companyId ? { id: run.companyId } : {}) } },
+    where: { branchId: run.branchId, status: { not: "TERMINATED" }, ...payrollScopeWhere(run.companyId) },
     select: {
       id: true, name: true, active: true, joinDate: true, exitDate: true, supplierId: true, trade: true, position: true, payOverride: true, skills: { select: { rate: true, isActive: true, skill: { select: { name: true } } } }, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true,
       transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true, dailyHours: true, paysOvertime: true, otMultiplier: true, restOtMultiplier: true,
