@@ -51,7 +51,7 @@ export function InvoiceHistoryList({ invoices }: { invoices: InvoiceRow[] }) {
         onChange={(v) => {
           const next = v as "all" | "outstanding";
           setStatus(next);
-          router.replace(next === "all" ? "/invoices/history" : "/invoices/history?status=outstanding");
+          router.replace(next === "all" ? "/invoices/history" : "/invoices/history?status=outstanding", { scroll: false });
         }}
         options={[
           { value: "all", label: `All (${invoices.length})` },

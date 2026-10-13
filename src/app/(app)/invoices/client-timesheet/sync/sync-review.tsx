@@ -67,7 +67,7 @@ export function SyncReview({
     else next.delete(key);
     // Changing the client can strand a project chosen under the previous one.
     if (key === "clientId") next.delete("projectId");
-    router.push(`?${next.toString()}`);
+    router.push(`?${next.toString()}`, { scroll: false });
   }
 
   function apply() {

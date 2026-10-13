@@ -487,7 +487,7 @@ export function EmployeeList({
             onChange={(f) => {
               const next = f as Filter;
               setFilter(next);
-              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`);
+              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`, { scroll: false });
             }}
             options={[
               { value: "all", label: "All" },
@@ -500,7 +500,7 @@ export function EmployeeList({
             onChange={(f) => {
               const next = f as Filter;
               setFilter(next);
-              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`);
+              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`, { scroll: false });
             }}
             options={[
               { value: "all", label: "All Employees" },
@@ -515,7 +515,7 @@ export function EmployeeList({
                 type="button"
                 onClick={() => {
                   setFilter("all");
-                  router.replace("/employees");
+                  router.replace("/employees", { scroll: false });
                 }}
                 aria-label={`Clear ${activeChip} filter`}
                 className="rounded-xs p-0.5 transition hover:bg-white/70"
@@ -542,7 +542,7 @@ export function EmployeeList({
                 size="sm"
                 onClick={() => {
                   setFilter("all");
-                  router.replace("/employees");
+                  router.replace("/employees", { scroll: false });
                 }}
               >
                 Clear filter

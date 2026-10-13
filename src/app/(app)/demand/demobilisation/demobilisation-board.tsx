@@ -94,7 +94,7 @@ export function DemobilisationBoard({
     else next.delete(key);
     if (key === "clientId") next.delete("projectId");
     setPicked(new Set());
-    router.push(`?${next.toString()}`);
+    router.push(`?${next.toString()}`, { scroll: false });
   }
 
   function toggle(id: string) {

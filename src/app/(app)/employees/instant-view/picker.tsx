@@ -49,7 +49,7 @@ export function InstantViewPicker({
                 // visible text isn't wired to the control for a screen reader.
                 aria-label={c.label}
                 checked={category === c.value}
-                onChange={() => router.push(`/employees/instant-view?category=${c.value}`)}
+                onChange={() => router.push(`/employees/instant-view?category=${c.value}`, { scroll: false })}
               />
               {c.label}
             </label>
@@ -63,7 +63,7 @@ export function InstantViewPicker({
           <Select
             value={employeeId}
             onChange={(v) =>
-              router.push(`/employees/instant-view?category=${category}&employeeId=${v}`)
+              router.push(`/employees/instant-view?category=${category}&employeeId=${v}`, { scroll: false })
             }
             placeholder="Search by name or ID…"
             // Names the filter that's hiding people, rather than a bare "No
