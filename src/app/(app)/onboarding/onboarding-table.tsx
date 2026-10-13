@@ -7,7 +7,7 @@ import { Check, LayoutGrid, Minus, Table2, X } from "lucide-react";
 import { type ImportRowResult } from "@/components/CsvImportDialog";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { cn } from "@/lib/cn";
-import { CANDIDATE_TYPES, STAGES, asCandidateType, currentStage, isOverdue, overallStatusLabel, statusKind, type OnboardingStatuses, type StatusKind } from "@/lib/onboarding";
+import { CANDIDATE_TYPES, STAGES, asCandidateType, currentStage, isOverdue, overallStatusLabel, papersApply, papersPending, pendingPapers, statusKind, type OnboardingStatuses, type StatusKind } from "@/lib/onboarding";
 import { bulkImportCandidatesAction } from "./actions";
 import { KanbanBoard } from "./kanban-board";
 
@@ -41,7 +41,7 @@ function StatusIcon({ kind }: { kind: StatusKind }) {
 }
 
 export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
-  const [view, setView] = useState<"active" | "ready" | "overdue" | "joined" | "all">("active");
+  const [view, setView] = useState<"active" | "ready" | "overdue" | "papers" | "joined" | "all">("active");
   const [layout, setLayout] = useState<"table" | "board">("table");
 
   async function handleImport(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
@@ -54,6 +54,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
         if (view === "active") return !c.joined;
         if (view === "ready") return c.readyToJoin && !c.joined;
         if (view === "overdue") return !c.joined && isOverdue(c, c.updatedAt);
+        if (view === "papers") return papersPending(c);
         if (view === "joined") return c.joined;
         return true;
       }),
@@ -64,6 +65,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
     { value: "active", label: "In progress" },
     { value: "ready", label: "Ready to join" },
     { value: "overdue", label: "Overdue" },
+    { value: "papers", label: "Papers pending" },
     { value: "joined", label: "Joined" },
     { value: "all", label: "All" },
   ];
@@ -162,12 +164,26 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
       }),
     ),
     {
+      key: "papers",
+      header: "Arrival papers",
+      sortValue: (c) => (papersPending(c) ? 1 : 0),
+      csvValue: (c) => (!papersApply(c) ? "" : papersPending(c) ? `Pending: ${pendingPapers(c).map((s) => s.short).join(", ")}` : "Complete"),
+      render: (c) =>
+        !papersApply(c) ? (
+          <span className="text-subtle">—</span>
+        ) : papersPending(c) ? (
+          <span className="text-xs font-medium text-[var(--warning-text,#92400e)]" title={`Still needed: ${pendingPapers(c).map((s) => s.label).join(", ")}`}>Pending ({pendingPapers(c).length})</span>
+        ) : (
+          <span className="text-xs text-[var(--success)]">Complete</span>
+        ),
+    },
+    {
       key: "ready",
       header: "Ready",
       align: "right",
       sortValue: (c) => (c.readyToJoin ? 1 : 0),
       csvValue: (c) => (c.readyToJoin ? "Yes" : "No"),
-      render: (c) => (c.readyToJoin && !c.joined ? <Check className="ml-auto h-4 w-4 text-[var(--success)]" /> : <Minus className="ml-auto h-4 w-4 text-subtle" />),
+      render: (c) => (c.readyToJoin && !c.joined ? <Link href={`/onboarding/${c.id}/add-employee`} className="ml-auto inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-[var(--brand-primary)] hover:underline"><Check className="h-4 w-4 text-[var(--success)]" aria-hidden />Add</Link> : <Minus className="ml-auto h-4 w-4 text-subtle" />),
     },
     {
       key: "joined",

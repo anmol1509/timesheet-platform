@@ -53,7 +53,8 @@ export const PAY_EMPLOYEE_SELECT = {
     wpsRoutingCode: true, wpsIban: true, wpsAccountNumber: true,
   } as const;
 
-export type SkippedEmployee = { id: string; name: string; reason: string };
+/** Why someone is not in a run: their pay isn't set up (PAY) or they are marked inactive without a last working day (INACTIVE). */
+export type SkippedEmployee = { id: string; name: string; reason: string; kind: "PAY" | "INACTIVE" };
 
 /**
  * Builds (or rebuilds) the payroll lines for a DRAFT run.
@@ -114,7 +115,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
   const payable = employees.filter((e) => {
     // Someone marked inactive with no last working day can't be paid for a partial month, so they are left out and named.
     if (!e.active && !e.exitDate) {
-      skipped.push({ id: e.id, name: e.name, reason: "marked inactive with no last working day (set it on their record to pay their final month)" });
+      skipped.push({ id: e.id, name: e.name, kind: "INACTIVE", reason: "marked inactive with no last working day (set it on their record to pay their final month)" });
       return false;
     }
     const window = employmentWindow(bounds, e.joinDate, e.exitDate);
@@ -122,7 +123,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     windows.set(e.id, window);
     const pf = payOf(e);
     const gap = payDataGap(type, { payStructure: pf.payStructure, basicSalary: pf.basicSalary, flatMonthlyRate: pf.flatMonthlyRate, hourlyRate: pf.hourlyRate });
-    if (gap) skipped.push({ id: e.id, name: e.name, reason: gap });
+    if (gap) skipped.push({ id: e.id, name: e.name, kind: "PAY", reason: gap });
     return !gap;
   });
   const ids = payable.map((e) => e.id);
@@ -308,12 +309,12 @@ export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
   });
   const payOf = await loadPayOf(run.branchId, employees);
   const bounds = monthBounds(run.month);
-  return employees.flatMap((e) => {
-    if (!e.active && !e.exitDate) return [{ id: e.id, name: e.name, reason: "marked inactive with no last working day (set it on their record to pay their final month)" }];
+  return employees.flatMap((e): SkippedEmployee[] => {
+    if (!e.active && !e.exitDate) return [{ id: e.id, name: e.name, kind: "INACTIVE", reason: "marked inactive with no last working day (set it on their record to pay their final month)" }];
     if (bounds && !employmentWindow(bounds, e.joinDate, e.exitDate)) return [];
     const pf = payOf(e);
     const reason = payDataGap(type, { payStructure: pf.payStructure, basicSalary: pf.basicSalary, flatMonthlyRate: pf.flatMonthlyRate, hourlyRate: pf.hourlyRate });
-    return reason ? [{ id: e.id, name: e.name, reason }] : [];
+    return reason ? [{ id: e.id, name: e.name, kind: "PAY", reason }] : [];
   });
 }
 

@@ -2386,6 +2386,10 @@ model CandidateOnboarding {
   // Inside-UAE candidates only: the permit transfer replaces the entry permit and travel steps.
   permitTransferStatus   String @default("Pending")
 
+  // Arrival papers that were not tracked before: the health insurance card and Emirates ID biometrics.
+  healthCardStatus       String @default("Pending")
+  eidBiometricsStatus    String @default("Pending")
+
   offerStatus             String @default("Pending")
   wppStatus               String @default("Pending")
   workPermitPaymentStatus String @default("Pending")

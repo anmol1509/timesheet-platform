@@ -95,6 +95,7 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
           return (
             <Link
               key={m.key}
+              scroll={false}
               href={href(m.key)}
               aria-current={m.key === active}
               className={cn("card block p-5 transition hover:shadow-md", m.key === active ? "border-brand ring-1 ring-[var(--brand-primary)]" : "hover:border-strong")}
@@ -155,7 +156,7 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
               <h2 className="text-sm font-semibold text-primary">
                 {focus ? `Missing ${label[focus].toLowerCase()}` : `Least complete ${meta.noun}s`} <span className="font-normal text-muted">&middot; {rows.length}{rows.length === 300 ? "+" : ""}</span>
               </h2>
-              {focus && <Link href={href(active)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Show all</Link>}
+              {focus && <Link scroll={false} href={href(active)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Show all</Link>}
             </div>
             {rows.length === 0 ? (
               <p className="rounded-xl border border-dashed border-default px-4 py-8 text-center text-sm text-muted">Nothing missing.</p>

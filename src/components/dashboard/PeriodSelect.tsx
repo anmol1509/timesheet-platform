@@ -28,7 +28,7 @@ export function QuerySelect({
         onChange={(v) => {
           const next = new URLSearchParams(search.toString());
           next.set(param, v);
-          router.replace(`${pathname}?${next.toString()}`);
+          router.replace(`${pathname}?${next.toString()}`, { scroll: false });
         }}
       />
     </div>
@@ -59,7 +59,7 @@ export function PeriodPicker({
   function push(mutate: (q: URLSearchParams) => void) {
     const next = new URLSearchParams(search.toString());
     mutate(next);
-    router.replace(`${pathname}?${next.toString()}`);
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   }
 
   return (

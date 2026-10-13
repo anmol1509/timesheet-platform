@@ -5,6 +5,7 @@ import { looseMatch } from "@/lib/looseName";
 import { WORKER_FIX_FIELDS, checkWorkerFix, dateProblem, workerProblems } from "../workerChecks";
 import type { ApplyCtx, ApplyResult, Fix, Fixable, ImportNote, MappedRow, NewSupplier, RowReport, SupplierDecision } from "../types";
 import { auditor, clean, parseLooseDate } from "./shared";
+import { parsePayCells, parseWorkTerms, payColumns, payFieldsFor } from "@/lib/payFields";
 
 const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber"] as const;
 const DATES: [key: string, label: string][] = [
@@ -194,6 +195,23 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
           if (why) notes.push({ tone: "warn", title: `${label} "${raw}" ${why}`, detail: "That field was skipped. Correct it in the \"Fix before importing\" box, or set it on the worker's page." });
           else data[key] = d;
         }
+      }
+      // Pay: a structure and its rate, both required together. Anyone without payroll access can't set it, so it is left out.
+      const payCells = parsePayCells({ structure: v.payStructure, rate: v.payRate, housing: v.housing, food: v.food, transport: v.transport, other: v.otherAllowance });
+      if (!("skip" in payCells)) {
+        if (!ctx.user.canEditPay) notes.push({ tone: "info", title: "Pay columns were not used", detail: "Setting pay needs payroll access. Everything else on this row was imported." });
+        else if ("error" in payCells) notes.push({ tone: "warn", title: "Pay was not set", detail: `${payCells.error} The rest of the row was imported.` });
+        else {
+          const fields = payFieldsFor(payCells.input);
+          if ("error" in fields) notes.push({ tone: "warn", title: "Pay was not set", detail: `${fields.error} The rest of the row was imported.` });
+          else Object.assign(data, payColumns(fields.fields), { payOverride: true });
+        }
+      }
+      const termCells = parseWorkTerms({ dailyHours: v.dailyHours, overtime: v.overtime, otMultiplier: v.otMultiplier, restOtMultiplier: v.restOtMultiplier, gasWaived: v.gasWaived });
+      if (!("skip" in termCells)) {
+        if (!ctx.user.canEditPay) { if ("skip" in payCells) notes.push({ tone: "info", title: "Pay columns were not used", detail: "Setting pay needs payroll access. Everything else on this row was imported." }); }
+        else if ("error" in termCells) notes.push({ tone: "warn", title: "Daily hours or overtime were not set", detail: `${termCells.error} The rest of the row was imported.` });
+        else Object.assign(data, termCells.terms);
       }
       const supplierName = clean(v.supplier);
       if (supplierName) {

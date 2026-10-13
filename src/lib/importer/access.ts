@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { isAdminRole } from "@/lib/roles";
 
@@ -8,7 +9,7 @@ import { isAdminRole } from "@/lib/roles";
 // belongs to. Anything else is answered as "not found" — a batch id from
 // another company must not even confirm that it exists.
 
-export type Importer = { user: { id: string; name: string }; branchId: string };
+export type Importer = { user: { id: string; name: string; canEditPay?: boolean }; branchId: string };
 
 export async function requireImporter(): Promise<Importer | NextResponse> {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -21,7 +22,8 @@ export async function requireImporter(): Promise<Importer | NextResponse> {
       { status: 400 }
     );
   }
-  return { user: { id: user.id, name: user.name }, branchId };
+  // Whether this person may set pay: the pay columns of a workers sheet are only read for people who can.
+  return { user: { id: user.id, name: user.name, canEditPay: can(subjectOf(user), "payroll", "edit") }, branchId };
 }
 
 export async function loadOwnBatch(id: string, branchId: string) {

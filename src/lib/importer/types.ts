@@ -125,7 +125,7 @@ export type ApplyResult = {
 export type ApplyCtx = {
   db: Db;
   branchId: string;
-  user: { id: string; name: string };
+  user: { id: string; name: string; canEditPay?: boolean };
   /** False during a dry run: audit-log writes go to the real database and would outlive the rollback. */
   audit: boolean;
   progress?: (done: number, total: number) => void | Promise<void>;

@@ -142,7 +142,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
 
       <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Kind of request">
         {tabs.map((t) => (
-          <Link key={t.key || "all"} href={link({ type: t.key })} role="tab" aria-selected={filters.type === t.key}
+          <Link key={t.key || "all"} scroll={false} href={link({ type: t.key })} role="tab" aria-selected={filters.type === t.key}
             className={cn("rounded-full border px-3 py-1 text-sm transition", filters.type === t.key ? "border-[var(--brand-primary)] bg-brand-soft font-medium text-[var(--brand-primary)]" : "border-default text-secondary hover:bg-surface-hover")}>
             {t.label}{t.count > 0 && <span className="tabular ml-1.5 text-xs opacity-70">{t.count}</span>}
           </Link>
@@ -156,7 +156,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
         <NumberInput name="min" defaultValue={filters.min} min={0} placeholder="Min AED" ariaLabel="Amount from" className="w-28" />
         {requesters.length > 0 && <Select name="from" defaultValue={filters.from} options={[{ value: "", label: "Anyone" }, ...requesters.map((r) => ({ value: r, label: r }))]} />}
         <button type="submit" className="btn btn-secondary">Filter</button>
-        {(filters.q || filters.age || filters.min || filters.from) && <Link href={link({ q: "", age: "", min: "", from: "" })} className="text-sm text-muted hover:text-primary">Clear</Link>}
+        {(filters.q || filters.age || filters.min || filters.from) && <Link scroll={false} href={link({ q: "", age: "", min: "", from: "" })} className="text-sm text-muted hover:text-primary">Clear</Link>}
       </form>
 
       {visible.length === 0 ? (

@@ -33,6 +33,8 @@ export type StageKey =
   | "MEDICAL"
   | "TAWJEEH"
   | "ILOE"
+  | "HEALTH_CARD"
+  | "EID_BIOMETRICS"
   | "CONTRACT"
   | "ID_VISA";
 
@@ -55,6 +57,8 @@ export type Stage = {
     | "medicalStatus"
     | "tawjeehStatus"
     | "iloeStatus"
+    | "healthCardStatus"
+    | "eidBiometricsStatus"
     | "contractStatus"
     | "idVisaStatus";
   statuses: { value: string; kind: StatusKind }[];
@@ -62,6 +66,8 @@ export type Stage = {
   types: CandidateType[];
   /** An optional step starts as "Not Required" and counts as done until someone switches it on. */
   optional?: boolean;
+  /** An arrival paper that has to be done before the worker's papers are complete. */
+  gate?: boolean;
   /** Typical turnaround for this stage, in calendar days — a candidate still
    * pending at this stage past this many days shows as overdue on the
    * dashboard. Rough defaults for a UAE manpower operation; not a hard SLA. */
@@ -211,16 +217,18 @@ export const STAGES: Stage[] = [
 ];
 
 /**
- * Steps that now happen once the person is in the country. They are no longer part of the pipeline or of "ready to join";
- * kept so a candidate's earlier progress on them is still shown and can be carried over to the employee's papers.
+ * The arrival papers: steps done once the person is in the country. They are not part of the pipeline or of "ready to join", but
+ * they stay on the candidate (after they have joined too) and are tracked here, so a worker whose medical, visa stamping or labour
+ * card isn't finished shows as "papers pending" in onboarding.
  */
 export const AFTER_ARRIVAL_STAGES: Stage[] = [
   {
     key: "MEDICAL",
-    label: "Medical",
+    label: "Medical Fitness",
     short: "Medical",
     field: "medicalStatus",
     slaDays: 2,
+    gate: true,
     types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
@@ -257,24 +265,38 @@ export const AFTER_ARRIVAL_STAGES: Stage[] = [
     ],
   },
   {
-    key: "CONTRACT",
-    label: "Contract Submission",
-    short: "Contract",
-    field: "contractStatus",
-    slaDays: 2,
+    key: "HEALTH_CARD",
+    label: "Health Insurance Card",
+    short: "Health card",
+    field: "healthCardStatus",
+    slaDays: 7,
+    types: ["OVERSEAS", "INSIDE_UAE"],
+    statuses: [
+      { value: "Not Needed", kind: "done" },
+      { value: "Pending", kind: "pending" },
+      { value: "Applied", kind: "progress" },
+      { value: "Issued", kind: "done" },
+    ],
+  },
+  {
+    key: "EID_BIOMETRICS",
+    label: "Emirates ID Biometrics",
+    short: "EID",
+    field: "eidBiometricsStatus",
+    slaDays: 5,
     types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
-      { value: "Submitted", kind: "progress" },
-      { value: "Approved", kind: "done" },
-      { value: "Rejected", kind: "issue" },
+      { value: "Appointment Booked", kind: "progress" },
+      { value: "Done", kind: "done" },
     ],
   },
   {
     key: "ID_VISA",
-    label: "ID & Visa Stamping",
+    label: "Residence Visa Stamping",
     short: "ID/Visa",
     field: "idVisaStatus",
+    gate: true,
     slaDays: 5,
     types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
@@ -282,6 +304,22 @@ export const AFTER_ARRIVAL_STAGES: Stage[] = [
       { value: "Submitted", kind: "progress" },
       { value: "Under Process", kind: "progress" },
       { value: "Completed", kind: "done" },
+      { value: "Rejected", kind: "issue" },
+    ],
+  },
+  {
+    key: "CONTRACT",
+    label: "Contract & Labour Card",
+    short: "Contract",
+    field: "contractStatus",
+    gate: true,
+    slaDays: 2,
+    types: ["OVERSEAS", "INSIDE_UAE"],
+    statuses: [
+      { value: "Pending", kind: "pending" },
+      { value: "Submitted", kind: "progress" },
+      { value: "Approved", kind: "done" },
+      { value: "Issued", kind: "done" },
       { value: "Rejected", kind: "issue" },
     ],
   },
@@ -343,4 +381,20 @@ export function isOverdue(row: OnboardingStatuses & { joined: boolean }, sinceUp
   const stage = currentStage(row);
   if (!stage) return false;
   return daysSince(sinceUpdatedAt) > stage.slaDays;
+}
+
+
+/** Whether the arrival papers matter yet: once the person has arrived, or has been added as an employee. */
+export function papersApply(row: OnboardingStatuses & { joined: boolean }): boolean {
+  return row.joined || row.arrivalStatus === "Arrived UAE" || stagesFor(row.candidateType).some((s) => s.key === "PERMIT_TRANSFER" && isStageDone(s, row[s.field]));
+}
+
+/** The papers that gate a worker being fully cleared (medical fit, visa stamped, labour card) and aren't done yet. */
+export function pendingPapers(row: OnboardingStatuses): Stage[] {
+  return AFTER_ARRIVAL_STAGES.filter((s) => s.gate && !isStageDone(s, row[s.field]));
+}
+
+/** True when the person is here (or already an employee) but their medical, visa or labour card isn't finished. */
+export function papersPending(row: OnboardingStatuses & { joined: boolean }): boolean {
+  return papersApply(row) && pendingPapers(row).length > 0;
 }

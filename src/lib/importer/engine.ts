@@ -19,7 +19,7 @@ import { applyTimesheets } from "./apply/timesheets";
 const UNDO_DAYS = 30;
 const MAX_REPORT_ROWS = 600;
 
-export type BatchUser = { id: string; name: string };
+export type BatchUser = { id: string; name: string; canEditPay?: boolean };
 
 export type { Analysis, BatchSummary, StoredMapping } from "./wire";
 import type { Analysis, BatchSummary, StoredMapping } from "./wire";

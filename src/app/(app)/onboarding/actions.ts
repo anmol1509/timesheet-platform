@@ -7,8 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { assertContactsValid, contactsError } from "@/lib/validators";
-import { initialsOf, nextEmployeeId } from "@/lib/supplierRequests";
+import { contactsError } from "@/lib/validators";
 import { STAGE_BY_KEY, asCandidateType, computeReadyToJoin, type StageKey } from "@/lib/onboarding";
 
 type State = { error: string | null; ok?: boolean };
@@ -194,95 +193,6 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
 
   revalidatePath(`/onboarding/${id}`);
   revalidatePath("/onboarding");
-  return { error: null, ok: true };
-}
-
-/** Only reachable once every mandatory stage is done — readyToJoin is
- * recomputed server-side on every stage update, so this can't be raced by
- * clicking through a stale page. Creates the real Employee record here
- * (mirrors approveWorkerSubmission()'s ID generation and duplicate check) —
- * this is the one moment a candidate becomes an employee, since everything
- * before this point deliberately isn't one yet. */
-export async function markJoinedAction(_prev: State, formData: FormData): Promise<State> {
-  await requireWrite("onboarding.tracker");
-  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const id = String(formData.get("id") || "");
-  if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return { error: "You can't edit that candidate." };
-
-  const candidate = await prisma.candidateOnboarding.findUnique({ where: { id }, include: { agency: { select: { name: true } } } });
-  if (!candidate) return { error: "Candidate not found." };
-  if (candidate.joined) return { error: "This candidate has already joined." };
-  if (!candidate.readyToJoin) return { error: "This candidate isn't ready to join yet — every stage must be completed first." };
-  if (!candidate.agency) return { error: "Set an agency for this candidate first — it's used to generate their employee ID." };
-  // The Emirates ID is only issued after arrival, so it can't be required to add someone who has just arrived.
-  if (!candidate.passportNumber || !candidate.phone) {
-    return { error: "Add the passport number and phone to the candidate's profile before adding them as an employee." };
-  }
-
-  const dupError = await findDuplicate(candidate.branchId, candidate.passportNumber, candidate.emiratesId, id);
-  if (dupError) return { error: dupError };
-
-  const prefix = initialsOf(candidate.agency.name);
-  if (!prefix) return { error: "Can't build an employee ID prefix from the agency's name." };
-  const joiningDate = dateOrNull(formData.get("joiningDate")) ?? new Date();
-
-  const [taken, medicalExpiry, idVisaExpiry] = await Promise.all([
-    prisma.employee.findMany({ where: { employeeIdNo: { startsWith: prefix } }, select: { employeeIdNo: true } }),
-    prisma.candidateOnboardingHistory.findFirst({ where: { onboardingId: id, stage: "MEDICAL", expiryDate: { not: null } }, orderBy: { updatedAt: "desc" }, select: { expiryDate: true } }),
-    prisma.candidateOnboardingHistory.findFirst({ where: { onboardingId: id, stage: "ID_VISA", expiryDate: { not: null } }, orderBy: { updatedAt: "desc" }, select: { expiryDate: true } }),
-  ]);
-  const employeeIdNo = nextEmployeeId(prefix, taken.map((t) => t.employeeIdNo));
-
-  const employee = await prisma.$transaction(async (tx) => {
-    const e = await tx.employee.create({
-      data: {
-        employeeIdNo,
-        name: candidate.candidateName,
-        branchId: candidate.branchId,
-        supplierId: candidate.agencyId,
-        projectId: candidate.projectId,
-        status: "IDLE",
-        nationality: candidate.nationality,
-        gender: candidate.gender,
-        mobileNumber: candidate.phone,
-        dateOfBirth: candidate.dateOfBirth,
-        joinDate: joiningDate,
-        trade: candidate.trade,
-        position: candidate.trade,
-        bloodGroup: candidate.bloodGroup,
-        passportNumber: candidate.passportNumber,
-        emiratesId: candidate.emiratesId,
-        medicalExpiry: medicalExpiry?.expiryDate ?? null,
-        visaExpiry: idVisaExpiry?.expiryDate ?? null,
-      },
-    });
-    await tx.candidateOnboarding.update({ where: { id }, data: { joined: true, joiningDate, employeeId: e.id } });
-    return e;
-  });
-
-  await logAudit({
-    entityType: "CANDIDATE_ONBOARDING",
-    entityId: id,
-    action: "UPDATE",
-    before: { joined: false },
-    after: { joined: true, joiningDate, employeeId: employee.id },
-    userId: user.id,
-    userName: user.name,
-    branchId: candidate.branchId,
-  });
-  await logAudit({
-    entityType: "EMPLOYEE",
-    entityId: employee.id,
-    action: "CREATE",
-    after: { employeeIdNo, name: candidate.candidateName, source: "Candidate onboarding" },
-    userId: user.id,
-    userName: user.name,
-    branchId: candidate.branchId,
-  });
-
-  revalidatePath(`/onboarding/${id}`);
-  revalidatePath("/onboarding");
-  revalidatePath("/employees");
   return { error: null, ok: true };
 }
 
