@@ -178,7 +178,7 @@ export async function approveRunAction(formData: FormData): Promise<State> {
   if (!run) return { error: "Run not found." };
   if (run.status !== "DRAFT") return { error: "Already approved." };
   if (!run.submittedAt) return { error: "The run must be sent for approval first (Submit for approval on the run)." };
-  if (run.lines.length === 0) return { error: "There are no employees with a pay structure to pay." };
+  if (run.lines.length === 0) return { error: "No one in this run has a pay structure yet. Set their pay in the \"Fix pay setup\" box at the top of this page, and they will join the run." };
 
   // Four-eyes rule: above the branch's threshold, the run's creator can't be
   // the one who approves it.

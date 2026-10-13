@@ -16,6 +16,7 @@ import { DetailView } from "./detail-view";
 import { CorrectionCell } from "./correction-cell";
 import { DaysButton } from "./days-panel";
 import { BankFix } from "./bank-fix";
+import { FixPayPanel, type FixRow } from "./fix-pay-panel";
 import { Hint } from "@/components/Hint";
 import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
 import { buildPayslip } from "@/lib/payslip";
@@ -56,6 +57,18 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   // Employees of this company who are not in the run because they lack the pay details its type needs.
   const skipped = await runSkipped(run);
   const unpaidSetup = skipped.length;
+  // What each skipped worker has now, so the fix panel starts from it instead of a blank form.
+  const skippedEmployees = skipped.length
+    ? await prisma.employee.findMany({ where: { id: { in: skipped.map((s) => s.id) } }, select: { id: true, employeeIdNo: true, trade: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, hourlyRate: true } })
+    : [];
+  const asText = (d: { toString(): string } | null) => (d == null ? "" : String(Number(d.toString())));
+  const fixRows: FixRow[] = skipped.map((s) => {
+    const e = skippedEmployees.find((x) => x.id === s.id);
+    const structure = e?.payStructure ?? "";
+    const rate = structure === "ITEMISED" ? asText(e?.basicSalary ?? null) : structure === "HOURLY" ? asText(e?.hourlyRate ?? null) : asText(e?.flatMonthlyRate ?? null);
+    return { id: s.id, name: s.name, idNo: e?.employeeIdNo ?? "", trade: e?.trade ?? "", reason: s.reason, kind: s.kind, structure, rate, housing: asText(e?.housingAllowance ?? null), food: asText(e?.foodAllowance ?? null), transport: asText(e?.transportAllowance ?? null), other: asText(e?.otherAllowance ?? null) };
+  });
+  const canFixPay = run.status === "DRAFT" && can(subject, "payroll.payroll", "edit");
   const hasHourly = run.lines.some((l) => l.payStructure === "HOURLY");
   const hasBasic = run.lines.length === 0 || run.lines.some((l) => l.payStructure !== "HOURLY");
 
@@ -119,6 +132,8 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
           {dueAt && <> · salaries due {dueAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}{run.status !== "PAID" && due?.overdue && <span className="ml-1 font-medium text-[var(--error)]">({due.daysLate} day{due.daysLate === 1 ? "" : "s"} late)</span>}</>}
         </p>
       </div>
+
+      {run.status === "DRAFT" && fixRows.length > 0 && <FixPayPanel runId={run.id} payType={run.payType} canEdit={canFixPay} rows={fixRows} />}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Total net pay</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">AED {aed(total)}</p></div>
