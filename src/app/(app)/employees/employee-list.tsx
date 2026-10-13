@@ -43,6 +43,8 @@ type EmployeeRow = {
   bedLabel: string | null;
   nextExpiry: { doc: string; days: number } | null;
   docCounts: { valid: number; expiring: number; expired: number };
+  /** Only present for people allowed to see pay. */
+  pay?: { structure: string; rate: number | null; housing: number | null; food: number | null; transport: number | null; other: number | null; dailyHours: number | null; overtime: string; otMultiplier: number | null; restOtMultiplier: number | null; gasWaived: string };
 };
 
 /**
@@ -106,6 +108,20 @@ const STATUS_BADGE: Record<
   valid: { label: "Compliant", color: "green", rank: 3 },
 };
 
+const PAY_IMPORT_COLUMNS = [
+  { key: "payStructure", label: "Pay structure", aliases: ["Salary type", "Pay type", "Structure"] },
+  { key: "payRate", label: "Pay rate", aliases: ["Rate", "Salary", "Basic salary", "Basic", "Monthly rate", "Hourly rate"] },
+  { key: "housing", label: "Housing allowance", aliases: ["Housing"] },
+  { key: "food", label: "Food allowance", aliases: ["Food"] },
+  { key: "transport", label: "Transport allowance", aliases: ["Transport"] },
+  { key: "otherAllowance", label: "Other allowance", aliases: ["Other"] },
+  { key: "dailyHours", label: "Daily hours", aliases: ["Standard hours", "Hours per day", "Working hours"] },
+  { key: "overtime", label: "Overtime", aliases: ["Pays overtime", "OT"] },
+  { key: "otMultiplier", label: "Overtime multiplier", aliases: ["OT multiplier", "OT rate"] },
+  { key: "restOtMultiplier", label: "Rest-day overtime multiplier", aliases: ["Rest day OT"] },
+  { key: "gasWaived", label: "Gas charge waived", aliases: ["Gas waived"] },
+];
+
 const IMPORT_COLUMNS = [
   { key: "employeeIdNo", label: "Employee code", required: true, aliases: ["Employee ID No", "ID No", "ID", "Employee ID", "Emp ID", "Emp code", "Code"] },
   { key: "name", label: "Full name", required: true, aliases: ["Employee", "Employee name", "Name"] },
@@ -123,9 +139,13 @@ export function EmployeeList({
   employees,
   initialFilter,
   registeredId,
+  canViewPay = false,
+  canEditPay = false,
 }: {
   employees: EmployeeRow[];
   initialFilter?: string;
+  canViewPay?: boolean;
+  canEditPay?: boolean;
   /** Set right after a registration, to confirm it and point at the new row. */
   registeredId?: string;
 }) {
@@ -414,6 +434,33 @@ export function EmployeeList({
         </Badge>
       ),
     },
+    // Pay, for people allowed to see it: exported with the sheet, and importable in bulk under the same headings.
+    ...(canViewPay
+      ? ([
+          { key: "payStructure", header: "Pay structure", csvHeader: "Pay structure", get: (e: EmployeeRow) => e.pay?.structure ?? "" },
+          { key: "payRate", header: "Pay rate", csvHeader: "Pay rate", get: (e: EmployeeRow) => e.pay?.rate ?? "" },
+          { key: "payHousing", header: "Housing allowance", csvHeader: "Housing allowance", get: (e: EmployeeRow) => e.pay?.housing ?? "" },
+          { key: "payFood", header: "Food allowance", csvHeader: "Food allowance", get: (e: EmployeeRow) => e.pay?.food ?? "" },
+          { key: "payTransport", header: "Transport allowance", csvHeader: "Transport allowance", get: (e: EmployeeRow) => e.pay?.transport ?? "" },
+          { key: "payOther", header: "Other allowance", csvHeader: "Other allowance", get: (e: EmployeeRow) => e.pay?.other ?? "" },
+          { key: "payDailyHours", header: "Daily hours", csvHeader: "Daily hours", get: (e: EmployeeRow) => e.pay?.dailyHours ?? "" },
+          { key: "payOvertime", header: "Overtime", csvHeader: "Overtime", get: (e: EmployeeRow) => e.pay?.overtime ?? "" },
+          { key: "payOtMultiplier", header: "Overtime multiplier", csvHeader: "Overtime multiplier", get: (e: EmployeeRow) => e.pay?.otMultiplier ?? "" },
+          { key: "payRestOt", header: "Rest-day overtime multiplier", csvHeader: "Rest-day overtime multiplier", get: (e: EmployeeRow) => e.pay?.restOtMultiplier ?? "" },
+          { key: "payGasWaived", header: "Gas charge waived", csvHeader: "Gas charge waived", get: (e: EmployeeRow) => e.pay?.gasWaived ?? "" },
+        ].map(
+          (c): DataTableColumn<EmployeeRow> => ({
+            key: c.key,
+            header: c.header,
+            csvHeader: c.csvHeader,
+            defaultHidden: true,
+            align: c.key === "payStructure" ? undefined : "right",
+            sortValue: (e) => (typeof c.get(e) === "number" ? (c.get(e) as number) : String(c.get(e))),
+            csvValue: (e) => c.get(e),
+            render: (e) => <span className="tabular text-secondary">{c.get(e) === "" ? "—" : typeof c.get(e) === "number" ? (c.get(e) as number).toLocaleString("en-AE") : c.get(e)}</span>,
+          }),
+        ))
+      : []),
   ];
 
   // Supplier/Our Employees already have their own dedicated tab above, so
@@ -448,7 +495,7 @@ export function EmployeeList({
       csvFilename={`employees-${new Date().toISOString().slice(0, 10)}.csv`}
       importConfig={{
         entityLabel: "employees",
-        columns: IMPORT_COLUMNS,
+        columns: canEditPay ? [...IMPORT_COLUMNS, ...PAY_IMPORT_COLUMNS] : IMPORT_COLUMNS,
         importAction: bulkImportEmployeesAction,
         wizardHref: "/import/new/workers",
       }}

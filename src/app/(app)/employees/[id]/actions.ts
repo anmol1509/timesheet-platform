@@ -23,6 +23,7 @@ import {
 import { assertContactsValid } from "@/lib/validators";
 import { checkEmployee } from "@/lib/dataChecks";
 import { employeeDuplicates } from "@/lib/duplicateCheck";
+import { parsePayCells, parseWorkTerms, payColumns, payFieldsFor, payRevision, type WorkTerms } from "@/lib/payFields";
 
 // Every nested mutation (documents, skills, photo) takes an employeeId
 // rather than looking the employee up itself, so this is the one place
@@ -360,7 +361,9 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
 }
 
 export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  // Pay columns are only read from people who may change pay; for anyone else they are ignored.
+  const mayEditPay = can(subjectOf(user), "payroll", "edit");
   const results: { row: number; status: "created" | "updated" | "error"; message?: string }[] = [];
   const canonTrade = branchId ? await loadTradeCanon(prisma, branchId) : (t: string) => t;
 
@@ -401,12 +404,44 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
         emiratesId: cell("Emirates ID"),
         mobileNumber: cell("Mobile number"),
       };
+      // Pay: a structure and its rate, both required together. A row with neither leaves pay alone.
+      const payCells = parsePayCells({ structure: r["Pay structure"], rate: r["Pay rate"], housing: r["Housing allowance"], food: r["Food allowance"], transport: r["Transport allowance"], other: r["Other allowance"] });
+      let payData: ReturnType<typeof payColumns> | null = null;
+      if (mayEditPay) {
+        if ("error" in payCells) { results.push({ row: i + 2, status: "error", message: payCells.error }); continue; }
+        if ("input" in payCells) {
+          const fields = payFieldsFor(payCells.input);
+          if ("error" in fields) { results.push({ row: i + 2, status: "error", message: fields.error }); continue; }
+          payData = payColumns(fields.fields);
+        }
+      }
+      // Working terms: daily hours, overtime and its multiples, gas waived. Blank cells leave the saved values alone.
+      const termCells = parseWorkTerms({ dailyHours: r["Daily hours"], overtime: r["Overtime"], otMultiplier: r["Overtime multiplier"], restOtMultiplier: r["Rest-day overtime multiplier"], gasWaived: r["Gas charge waived"] });
+      let terms: WorkTerms = {};
+      if (mayEditPay) {
+        if ("error" in termCells) { results.push({ row: i + 2, status: "error", message: termCells.error }); continue; }
+        if ("terms" in termCells) terms = termCells.terms;
+      }
+      const hourlyOvertime = payData?.payStructure === "HOURLY" && ("paysOvertime" in terms || "otMultiplier" in terms || "restOtMultiplier" in terms);
+      const payNote = !mayEditPay && (!("skip" in payCells) || !("skip" in termCells)) ? "Pay columns ignored: setting pay needs payroll access." : hourlyOvertime ? "Overtime doesn't apply to hourly pay: every hour is paid at the hourly rate." : undefined;
+      const payWrite = { ...(payData ? { ...payData, payOverride: true } : {}), ...terms };
       if (existing) {
-        await prisma.employee.update({ where: { id: existing.id }, data });
-        results.push({ row: i + 2, status: "updated" });
+        await prisma.employee.update({ where: { id: existing.id }, data: { ...data, ...payWrite } });
+        if (payData) {
+          const revision = payRevision(existing, payData);
+          if (revision) {
+            await prisma.salaryRevision.create({ data: { employeeId: existing.id, branchId: existing.branchId, effectiveFrom: new Date(), reason: "Pay set from a bulk import", before: revision.before, after: revision.after, fixedBefore: revision.fixedBefore, fixedAfter: revision.fixedAfter, createdById: user.id, createdByName: user.name } });
+            await logAudit({ entityType: "EMPLOYEE", entityId: existing.id, action: "UPDATE", before: revision.before, after: revision.after, userId: user.id, userName: user.name, branchId: existing.branchId });
+          }
+        }
+        results.push({ row: i + 2, status: "updated", message: payNote });
       } else {
-        await prisma.employee.create({ data: { employeeIdNo, ...data, branchId } });
-        results.push({ row: i + 2, status: "created" });
+        const created = await prisma.employee.create({ data: { employeeIdNo, ...data, ...payWrite, branchId } });
+        if (payData) {
+          const revision = payRevision({ payStructure: null }, payData);
+          if (revision) await prisma.salaryRevision.create({ data: { employeeId: created.id, branchId, effectiveFrom: new Date(), reason: "Pay set from a bulk import", before: revision.before, after: revision.after, fixedBefore: revision.fixedBefore, fixedAfter: revision.fixedAfter, createdById: user.id, createdByName: user.name } });
+        }
+        results.push({ row: i + 2, status: "created", message: payNote });
       }
     } catch (e) {
       results.push({

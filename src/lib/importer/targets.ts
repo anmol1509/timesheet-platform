@@ -47,6 +47,17 @@ const WORKERS: FieldDef[] = [
   { key: "visaExpiry", label: "Visa expiry", aliases: ["visa expiry", "visa exp", "visa expiry date", "residence expiry"] },
   { key: "laborCardNumber", label: "Labour card number", aliases: ["labour card", "labor card", "labour card no", "labor card no", "work permit", "work permit no", "mol no"] },
   { key: "laborCardExpiry", label: "Labour card expiry", aliases: ["labour card expiry", "labor card expiry", "work permit expiry", "wp expiry"] },
+  { key: "payStructure", label: "Pay structure", aliases: ["pay structure", "salary type", "pay type", "salary structure", "structure"] },
+  { key: "payRate", label: "Pay rate", aliases: ["pay rate", "rate", "salary", "basic salary", "basic", "monthly salary", "monthly rate", "hourly rate", "wage"] },
+  { key: "housing", label: "Housing allowance", aliases: ["housing allowance", "housing", "accommodation allowance"] },
+  { key: "food", label: "Food allowance", aliases: ["food allowance", "food"] },
+  { key: "transport", label: "Transport allowance", aliases: ["transport allowance", "transport", "transportation allowance"] },
+  { key: "otherAllowance", label: "Other allowance", aliases: ["other allowance", "other allowances", "other"] },
+  { key: "dailyHours", label: "Daily hours", aliases: ["daily hours", "standard hours", "hours per day", "working hours", "normal hours"] },
+  { key: "overtime", label: "Overtime", aliases: ["overtime", "pays overtime", "ot", "ot applicable"] },
+  { key: "otMultiplier", label: "Overtime multiplier", aliases: ["overtime multiplier", "ot multiplier", "ot rate", "overtime rate"] },
+  { key: "restOtMultiplier", label: "Rest-day overtime multiplier", aliases: ["rest day overtime multiplier", "rest day ot", "rest day multiplier", "friday ot"] },
+  { key: "gasWaived", label: "Gas charge waived", aliases: ["gas charge waived", "gas waived", "no gas"] },
 ];
 
 const CAMPS: FieldDef[] = [

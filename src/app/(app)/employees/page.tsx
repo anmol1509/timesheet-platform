@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
 import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
@@ -12,6 +13,14 @@ import { BarList } from "@/components/BarList";
 import { Treemap } from "@/components/Treemap";
 import { Panel } from "@/components/DashboardPanel";
 import { EmployeeList } from "./employee-list";
+
+const num = (d: { toString(): string } | null | undefined) => (d == null ? null : Number(d.toString()));
+const STRUCTURE_LABEL: Record<string, string> = { ITEMISED: "Itemised", FLAT: "Flat", HOURLY: "Hourly" };
+/** The pay columns of the sheet: the structure, the one rate that goes with it, and the allowances for itemised pay. */
+function payCells(e: { dailyHours: { toString(): string } | null; paysOvertime: boolean; otMultiplier: { toString(): string } | null; restOtMultiplier: { toString(): string } | null; gasWaived: boolean; payStructure: string | null; basicSalary: { toString(): string } | null; flatMonthlyRate: { toString(): string } | null; hourlyRate: { toString(): string } | null; housingAllowance: { toString(): string } | null; foodAllowance: { toString(): string } | null; transportAllowance: { toString(): string } | null; otherAllowance: { toString(): string } | null }) {
+  const rate = e.payStructure === "ITEMISED" ? num(e.basicSalary) : e.payStructure === "FLAT" ? num(e.flatMonthlyRate) : e.payStructure === "HOURLY" ? num(e.hourlyRate) : null;
+  return { structure: e.payStructure ? (STRUCTURE_LABEL[e.payStructure] ?? e.payStructure) : "", rate, housing: num(e.housingAllowance), food: num(e.foodAllowance), transport: num(e.transportAllowance), other: num(e.otherAllowance), dailyHours: num(e.dailyHours), overtime: e.paysOvertime ? "Yes" : "No", otMultiplier: num(e.otMultiplier), restOtMultiplier: num(e.restOtMultiplier), gasWaived: e.gasWaived ? "Yes" : "No" };
+}
 
 const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 
@@ -21,7 +30,10 @@ export default async function EmployeesPage({
   searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string; trade?: string; nationality?: string }>;
 }) {
   const { filter, supplier: supplierId, sponsor: sponsorId, registered, trade, nationality } = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  // Pay is only shown, exported and imported for people who may see (or edit) payroll.
+  const canViewPay = can(subjectOf(user), "payroll", "view");
+  const canEditPay = can(subjectOf(user), "payroll", "edit");
 
   const [employees, entityFilter] = await Promise.all([
     prisma.employee.findMany({
@@ -106,6 +118,7 @@ export default async function EmployeesPage({
       nextExpiry,
       docCounts,
       complete: isEmployeeComplete(e),
+      ...(canViewPay ? { pay: payCells(e) } : {}),
     };
   });
 
@@ -181,7 +194,7 @@ export default async function EmployeesPage({
         </div>
       )}
 
-      <EmployeeList employees={rows} initialFilter={filter} registeredId={registered} />
+      <EmployeeList employees={rows} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} />
     </div>
   );
 }

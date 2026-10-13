@@ -31,8 +31,8 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { name: "Emaar Properties", code: "CEP", contactPerson: "Sara Ahmed", contactPhone: "+971 4 555 0100", contactEmail: "sara@client.example", trn: "100987654300003", tradeLicenseNumber: "TL-778899", billingAddress: "Downtown Dubai", paymentTerms: "30 days" },
   ],
   WORKERS: [
-    { employeeIdNo: "AN-101", name: "Ravi Kumar", trade: "Carpenter", supplier: "Al Noor Manpower Supply", sponsor: "Al Noor Manpower Supply", nationality: "India", mobileNumber: "+971 50 111 2233", gender: "Male", dateOfBirth: "14/03/1990", joinDate: "01/02/2025", passportNumber: "N1234567", passportExpiry: "20/08/2028", emiratesId: "784-1990-1234567-1", emiratesIdExpiry: "15/06/2027", visaExpiry: "10/12/2026", laborCardNumber: "LC-55123", laborCardExpiry: "10/12/2026" },
-    { employeeIdNo: "AN-102", name: "Ali Khan", trade: "Steel Fixer", supplier: "Al Noor Manpower Supply", sponsor: "", nationality: "Pakistan", mobileNumber: "", gender: "Male", dateOfBirth: "", joinDate: "", passportNumber: "", passportExpiry: "", emiratesId: "", emiratesIdExpiry: "", visaExpiry: "", laborCardNumber: "", laborCardExpiry: "" },
+    { employeeIdNo: "AN-101", name: "Ravi Kumar", trade: "Carpenter", supplier: "Al Noor Manpower Supply", sponsor: "Al Noor Manpower Supply", nationality: "India", mobileNumber: "+971 50 111 2233", gender: "Male", dateOfBirth: "14/03/1990", joinDate: "01/02/2025", passportNumber: "N1234567", passportExpiry: "20/08/2028", emiratesId: "784-1990-1234567-1", emiratesIdExpiry: "15/06/2027", visaExpiry: "10/12/2026", laborCardNumber: "LC-55123", laborCardExpiry: "10/12/2026", payStructure: "Itemised", payRate: "1500", housing: "500", food: "", transport: "200", otherAllowance: "", dailyHours: "8", overtime: "Yes", otMultiplier: "1.25", restOtMultiplier: "1.5", gasWaived: "No" },
+    { employeeIdNo: "AN-102", name: "Ali Khan", trade: "Steel Fixer", supplier: "Al Noor Manpower Supply", sponsor: "", nationality: "Pakistan", mobileNumber: "", gender: "Male", dateOfBirth: "", joinDate: "", passportNumber: "", passportExpiry: "", emiratesId: "", emiratesIdExpiry: "", visaExpiry: "", laborCardNumber: "", laborCardExpiry: "", payStructure: "Hourly", payRate: "15", housing: "", food: "", transport: "", otherAllowance: "", dailyHours: "", overtime: "", otMultiplier: "", restOtMultiplier: "", gasWaived: "" },
   ],
 };
 
@@ -45,6 +45,17 @@ const HELP: Record<string, string> = {
   sponsor: "The visa-holding company, if different. Added automatically if it's new.",
   nationality: "The country (India, Nepal…). \"Indian\" or \"INDIA\" are understood too; regions like \"Asian\" are not.",
   gender: "Male or Female.",
+  payStructure: "Itemised (basic plus allowances), Flat (one monthly figure) or Hourly. Needs a pay rate. Only read if you have payroll access.",
+  payRate: "The basic salary for Itemised, the monthly salary for Flat, or the rate per hour for Hourly. Required with a pay structure; every worker has their own.",
+  dailyHours: "Standard hours in a normal day (1 to 16). Overtime is worked out on hours beyond this. Blank leaves it as it is. Monthly pay only.",
+  overtime: "Yes or No: whether overtime is paid. Monthly pay only; hourly pay has no overtime premium.",
+  otMultiplier: "Overtime rate as a multiple of the normal hourly rate, 1 to 3 (1.25 is usual).",
+  restOtMultiplier: "The same, for work on a rest day, 1 to 3 (1.5 is usual).",
+  gasWaived: "Yes if this worker is not charged the daily gas amount.",
+  housing: "Itemised only. Optional.",
+  food: "Itemised only. Optional.",
+  transport: "Itemised only. Optional.",
+  otherAllowance: "Itemised only. Optional.",
   trade: "e.g. Carpenter, Steel Fixer. Matched to the trades you already have.",
   camp: "The camp's name. Repeat it on every room row; the camp is created once. A row with only a camp name makes an empty camp.",
   campType: "Own, Supplier or Client: who provides the camp. Blank = Own.",
