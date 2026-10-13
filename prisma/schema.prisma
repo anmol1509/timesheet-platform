@@ -2375,6 +2375,17 @@ model CandidateOnboarding {
   gender         String? // "MALE" | "FEMALE"
   bloodGroup     String?
 
+  // OVERSEAS (arrives from abroad: entry permit, travel) or INSIDE_UAE (already in the country: permit transfer).
+  // Decides which steps apply; see lib/onboarding.ts.
+  candidateType String @default("OVERSEAS")
+
+  // Optional steps start "Not Required" and are switched on per candidate by setting a real status.
+  hireApprovalStatus     String @default("Not Required")
+  interviewStatus        String @default("Not Required")
+  clientApprovalStatus   String @default("Not Required")
+  // Inside-UAE candidates only: the permit transfer replaces the entry permit and travel steps.
+  permitTransferStatus   String @default("Pending")
+
   offerStatus             String @default("Pending")
   wppStatus               String @default("Pending")
   workPermitPaymentStatus String @default("Pending")

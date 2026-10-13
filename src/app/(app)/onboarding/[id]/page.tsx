@@ -7,7 +7,7 @@ import { branchWhere } from "@/lib/branch";
 import { isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
-import { STAGES, statusKind, overallStatusLabel } from "@/lib/onboarding";
+import { AFTER_ARRIVAL_STAGES, STAGES, asCandidateType, CANDIDATE_TYPES, stagesFor, statusKind, overallStatusLabel } from "@/lib/onboarding";
 import { CandidateForm } from "../candidate-form";
 import { StageRow } from "../stage-row";
 import { JoinPanel } from "../join-panel";
@@ -51,7 +51,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
     }),
   ]);
   const taskByStage = new Map(tasks.map((t) => [t.stage, { ownerId: t.ownerId, ownerName: t.owner?.name ?? null, dueDate: t.dueDate }]));
-  const attachmentsByStage = new Map(STAGES.map((s) => [s.key, attachments.filter((a) => a.docType === s.key).map((a) => ({ id: a.id, filename: a.filename }))]));
+  const attachmentsByStage = new Map([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.key, attachments.filter((a) => a.docType === s.key).map((a) => ({ id: a.id, filename: a.filename }))]));
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -74,7 +74,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           />
         </div>
         <p className="mt-1 text-sm text-muted">
-          {candidate.trade ?? "No trade set"} · {candidate.agency?.name ?? "No agency"}
+          {CANDIDATE_TYPES.find((t) => t.value === asCandidateType(candidate.candidateType))?.label} · {candidate.trade ?? "No trade set"} · {candidate.agency?.name ?? "No agency"}
           {candidate.project ? ` · ${candidate.project.code} · ${candidate.project.name}` : ""}
           {" · "}
           <span className="font-medium text-secondary">{overallStatusLabel(candidate)}</span>
@@ -90,7 +90,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           <p className="text-sm font-medium text-primary">Onboarding stages</p>
           <p className="text-xs text-muted">Expand a stage to record its status, date, reference and remarks.</p>
         </div>
-        {STAGES.map((stage) => (
+        {stagesFor(candidate.candidateType).map((stage) => (
           <StageRow
             key={stage.key}
             candidateId={candidate.id}
@@ -105,6 +105,26 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
         ))}
       </div>
 
+      <details className="card overflow-hidden" open={AFTER_ARRIVAL_STAGES.some((s) => candidate[s.field] !== "Pending" && statusKind(s, candidate[s.field]) !== "pending")}>
+        <summary className="cursor-pointer border-b border-default px-4 py-3">
+          <span className="text-sm font-medium text-primary">After arrival</span>
+          <span className="ml-2 text-xs text-muted">These papers are done once the person is in the country, so they are no longer needed to be ready to join. They will move to the employee&rsquo;s papers checklist.</span>
+        </summary>
+        {AFTER_ARRIVAL_STAGES.map((stage) => (
+          <StageRow
+            key={stage.key}
+            candidateId={candidate.id}
+            candidateBranchId={candidate.branchId}
+            stage={stage}
+            status={candidate[stage.field]}
+            kind={statusKind(stage, candidate[stage.field])}
+            task={taskByStage.get(stage.key) ?? null}
+            hrUsers={hrUsers}
+            attachments={attachmentsByStage.get(stage.key) ?? []}
+          />
+        ))}
+      </details>
+
       <div>
         <p className="mb-2 text-sm font-medium text-primary">Documents</p>
         <AttachmentUploader
@@ -112,7 +132,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           entityId={candidate.id}
           entityBranchId={candidate.branchId}
           revalidate={`/onboarding/${candidate.id}`}
-          docTypeOptions={[...STAGES.map((s) => ({ value: s.key, label: s.label })), { value: "PASSPORT", label: "Passport copy" }, { value: "OTHER", label: "Other" }]}
+          docTypeOptions={[...[...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => ({ value: s.key, label: s.label })), { value: "PASSPORT", label: "Passport copy" }, { value: "OTHER", label: "Other" }]}
           attachments={attachments.map((a) => ({ ...a, expiryDate: a.expiryDate?.toISOString() ?? null, uploadedAt: a.uploadedAt.toISOString() }))}
         />
       </div>

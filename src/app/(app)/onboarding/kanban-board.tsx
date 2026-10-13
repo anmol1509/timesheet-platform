@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { STAGES, currentStage, daysSince, isOverdue, type StageKey } from "@/lib/onboarding";
+import { STAGES, currentStage, daysSince, isOverdue, type OnboardingStatuses, type StageKey } from "@/lib/onboarding";
 
 type Candidate = {
   id: string;
@@ -15,17 +15,7 @@ type Candidate = {
   joined: boolean;
   updatedAt: Date;
   agency: { name: string } | null;
-  offerStatus: string;
-  wppStatus: string;
-  workPermitPaymentStatus: string;
-  entryPermitStatus: string;
-  arrivalStatus: string;
-  medicalStatus: string;
-  tawjeehStatus: string;
-  iloeStatus: string;
-  contractStatus: string;
-  idVisaStatus: string;
-};
+} & OnboardingStatuses;
 
 type ColumnKey = StageKey | "READY" | "JOINED";
 

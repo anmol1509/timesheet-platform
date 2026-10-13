@@ -8,6 +8,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { TRADES } from "@/lib/trades";
+import { CANDIDATE_TYPES } from "@/lib/onboarding";
 import { ContactPicker, type AgencyContactOption } from "./contact-picker";
 import { AgencyPicker, type AgencyOption } from "./agency-picker";
 import { createCandidateAction, updateCandidateAction } from "./actions";
@@ -36,6 +37,7 @@ type Candidate = {
   projectId: string | null;
   assignedHrId: string | null;
   remarks: string | null;
+  candidateType?: string;
 };
 type State = { error: string | null; ok?: boolean };
 
@@ -96,6 +98,10 @@ export function CandidateForm({
       <section>
         <SectionHead icon={UserRound} title="Profile" />
         <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className={label}>Type of hire</span>
+            <Select name="candidateType" defaultValue={candidate?.candidateType ?? "OVERSEAS"} searchable={false} options={CANDIDATE_TYPES.map((t) => ({ value: t.value, label: `${t.label} — ${t.hint}` }))} />
+          </label>
           <label className="block">
             <span className={label}>Candidate name *</span>
             <input name="candidateName" defaultValue={candidate?.candidateName} required className="input w-full" />
@@ -132,7 +138,7 @@ export function CandidateForm({
       </section>
 
       <section>
-        <SectionHead icon={IdCard} title="Identity documents" hint="required before this candidate can be marked joined" />
+        <SectionHead icon={IdCard} title="Identity documents" hint="the passport number is needed before this candidate can be added as an employee; the Emirates ID can come later" />
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className={label}>Passport number</span>

@@ -7,7 +7,7 @@ import { Check, LayoutGrid, Minus, Table2, X } from "lucide-react";
 import { type ImportRowResult } from "@/components/CsvImportDialog";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { cn } from "@/lib/cn";
-import { STAGES, currentStage, isOverdue, overallStatusLabel, statusKind, type StatusKind } from "@/lib/onboarding";
+import { CANDIDATE_TYPES, STAGES, asCandidateType, currentStage, isOverdue, overallStatusLabel, statusKind, type OnboardingStatuses, type StatusKind } from "@/lib/onboarding";
 import { bulkImportCandidatesAction } from "./actions";
 import { KanbanBoard } from "./kanban-board";
 
@@ -31,17 +31,7 @@ type Candidate = {
   joined: boolean;
   updatedAt: Date;
   agency: { name: string } | null;
-  offerStatus: string;
-  wppStatus: string;
-  workPermitPaymentStatus: string;
-  entryPermitStatus: string;
-  arrivalStatus: string;
-  medicalStatus: string;
-  tawjeehStatus: string;
-  iloeStatus: string;
-  contractStatus: string;
-  idVisaStatus: string;
-};
+} & OnboardingStatuses;
 
 function StatusIcon({ kind }: { kind: StatusKind }) {
   if (kind === "done") return <Check className="h-4 w-4 text-[var(--success)]" aria-label="Completed" />;
@@ -120,6 +110,15 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
       render: (c) => <span className="text-secondary">{c.agency?.name ?? "—"}</span>,
     },
     {
+      key: "type",
+      header: "Type",
+      csvHeader: "Type",
+      defaultHidden: true,
+      sortValue: (c) => c.candidateType,
+      csvValue: (c) => CANDIDATE_TYPES.find((t) => t.value === asCandidateType(c.candidateType))?.label,
+      render: (c) => <span className="text-secondary">{CANDIDATE_TYPES.find((t) => t.value === asCandidateType(c.candidateType))?.label}</span>,
+    },
+    {
       key: "trade",
       header: "Trade",
       csvHeader: "Trade",
@@ -150,11 +149,16 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
         align: "right",
         sortValue: (c) => c[st.field],
         csvValue: (c) => c[st.field],
-        render: (c) => (
-          <span className="inline-flex items-center justify-center" title={`${st.label}: ${c[st.field]}`}>
-            <StatusIcon kind={statusKind(st, c[st.field])} />
-          </span>
-        ),
+        render: (c) =>
+          !st.types.includes(asCandidateType(c.candidateType)) ? (
+            <span className="text-subtle" title={`${st.label}: not part of this candidate's steps`}>n/a</span>
+          ) : st.optional && c[st.field] === "Not Required" ? (
+            <span className="text-subtle" title={`${st.label}: not required`}>·</span>
+          ) : (
+            <span className="inline-flex items-center justify-center" title={`${st.label}: ${c[st.field]}`}>
+              <StatusIcon kind={statusKind(st, c[st.field])} />
+            </span>
+          ),
       }),
     ),
     {
