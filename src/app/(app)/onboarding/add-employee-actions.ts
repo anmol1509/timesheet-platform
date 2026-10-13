@@ -11,6 +11,7 @@ import { refsBelongToBranch } from "@/lib/refScope";
 import { initialsOf, nextEmployeeId } from "@/lib/supplierRequests";
 import { checkEmployee } from "@/lib/dataChecks";
 import { employeeDuplicates } from "@/lib/duplicateCheck";
+import { seedPapersFromCandidate } from "@/lib/papersDb";
 import { employeeDocType, missingEssentials, payFieldsFor, type PayChoice } from "@/lib/onboardingEmployee";
 
 export type AddEmployeeState = { error: string | null; warnings?: string[]; employeeId?: string; copiedFiles?: number };
@@ -115,6 +116,9 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
     await tx.candidateOnboarding.update({ where: { id }, data: { joined: true, joiningDate, employeeId: e.id } });
     return e;
   });
+
+  // What onboarding recorded about the papers after arrival carries over to the worker's arrival papers checklist.
+  await seedPapersFromCandidate(id, employee.id, user.id).catch((e) => console.error("[onboarding] could not carry over the arrival papers:", e instanceof Error ? e.message : e));
 
   // The candidate's files become the worker's documents. A failure here never undoes the hire; the count tells the person how many made it.
   let copiedFiles = 0;

@@ -17,6 +17,7 @@ import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { HistorySection } from "./history-section";
+import { PapersSection } from "./papers-section";
 import { ReadinessCard } from "./readiness-card";
 import { VisaHistorySection } from "./visa-history-section";
 import { SalaryHistorySection, type RevisionRow } from "./salary-history-section";
@@ -162,6 +163,7 @@ export default async function EmployeeDetailPage({
       }
     : null;
 
+  const paperRows = await prisma.employeePaper.findMany({ where: { employeeId: id } });
   const fromCandidate = await prisma.candidateOnboarding.findFirst({ where: { employeeId: id }, select: { id: true, candidateNo: true } });
 
   const revisions = canViewPay ? await prisma.salaryRevision.findMany({ where: { employeeId: id }, orderBy: { effectiveFrom: "desc" }, take: 20 }) : [];
@@ -282,6 +284,11 @@ export default async function EmployeeDetailPage({
       {fromCandidate && (
         <p className="text-sm text-muted">Onboarded as candidate <Link href={`/onboarding/${fromCandidate.id}`} className="text-[var(--brand-primary)] hover:underline">#{String(fromCandidate.candidateNo).padStart(3, "0")}</Link>, with their onboarding steps and files.</p>
       )}
+      {employee.papersPending && (
+        <p className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2.5 text-sm text-primary">
+          <span className="font-medium">Papers pending.</span> Their medical, visa stamping or labour card isn&rsquo;t finished yet. Open the Documents tab to update the arrival papers.
+        </p>
+      )}
       {canViewPay && <ReadinessCard employeeId={employee.id} />}
 
       <EditForm
@@ -375,6 +382,12 @@ export default async function EmployeeDetailPage({
         }
         documentsContent={
           <>
+            <PapersSection
+              employeeId={employee.id}
+              canEdit={can(subjectOf(user), "workforce", "edit")}
+              pendingFlag={employee.papersPending}
+              rows={paperRows.map((r) => ({ item: r.item, status: r.status, statusDate: r.statusDate?.toISOString().slice(0, 10) ?? "", referenceNo: r.referenceNo ?? "", expiryDate: r.expiryDate?.toISOString().slice(0, 10) ?? "", remarks: r.remarks ?? "" }))}
+            />
             <VisaHistorySection
               employeeId={employee.id}
               entries={employee.visaApplications}

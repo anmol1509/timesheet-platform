@@ -194,6 +194,21 @@ export const HELP_GUIDES: HelpGuide[] = [
     pages: ["/onboarding", "/employees"],
   },
   {
+    id: "arrival-papers",
+    title: "Track a worker's arrival papers",
+    keywords: ["arrival papers", "papers pending", "medical", "tawjeeh", "iloe", "visa stamping", "labour card issued", "emirates id biometrics", "health insurance card", "worker papers checklist"],
+    steps: [
+      "Open the worker, then the Documents tab. Arrival papers sits at the top: medical, Tawjeeh, ILOE, health insurance card, Emirates ID biometrics, visa stamping, and contract and labour card.",
+      "If the worker came from onboarding, what was recorded there is already filled in. For anyone else, press Start the checklist.",
+      "Open a paper to set its status, date, reference number and expiry. An expiry also updates the worker's own expiry date, so renewal alerts see it.",
+    ],
+    notes: [
+      "A worker is Papers pending until the medical is Fit, the visa is Stamped and the labour card is Issued. The other papers don't hold it up.",
+      "While papers are pending they can still get a bed and transport. You'll get a warning if you place them on a project, and payroll lists them under Worth checking.",
+    ],
+    pages: ["/employees", "/payroll"],
+  },
+  {
     id: "payroll-adjustments",
     title: "Add a deduction, bonus or recurring item to payroll",
     keywords: ["fine", "bonus", "deduction", "adjustment", "add deduction", "recurring deduction", "standing allowance", "add bonus"],
