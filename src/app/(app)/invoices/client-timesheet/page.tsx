@@ -9,6 +9,8 @@ import { AlertTriangle, FileSearch, Plus } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
 import { Select } from "@/components/ui/Select";
 
+const ALL_CLIENTS = "all";
+
 export default async function ClientTimesheetPage({
   searchParams,
 }: {
@@ -33,16 +35,21 @@ export default async function ClientTimesheetPage({
         orderBy: { name: "asc" },
       })
     : [];
-  const selectedClientId =
-    params.clientId && clients.some((c) => c.id === params.clientId)
+  // "All clients" shows every client's rows for the month in one sheet, with a Client column. Editing works the same,
+  // since every change is made to a single row.
+  const allClients = params.clientId === ALL_CLIENTS && clients.length > 0;
+  const selectedClientId = allClients
+    ? ALL_CLIENTS
+    : params.clientId && clients.some((c) => c.id === params.clientId)
       ? params.clientId
       : clients[0]?.id;
 
   const allEntries =
     selectedMonth && selectedClientId
       ? await prisma.timesheetEntry.findMany({
-          where: { month: selectedMonth, clientId: selectedClientId, ...branchWhere(branchId) },
+          where: { month: selectedMonth, clientId: allClients ? { not: null } : selectedClientId, ...branchWhere(branchId) },
           select: {
+            client: { select: { name: true } },
             id: true,
             employeeIdNo: true,
             employeeName: true,
@@ -54,7 +61,7 @@ export default async function ClientTimesheetPage({
             site: true,
             project: { select: { id: true, code: true, name: true } },
           },
-          orderBy: [{ trade: "asc" }, { employeeName: "asc" }],
+          orderBy: allClients ? [{ client: { name: "asc" } }, { trade: "asc" }, { employeeName: "asc" }] : [{ trade: "asc" }, { employeeName: "asc" }],
         })
       : [];
 
@@ -72,7 +79,7 @@ export default async function ClientTimesheetPage({
 
   const withContext = allEntries.map((e) => {
     const project = e.project ?? projectByEmployee.get(e.employeeIdNo) ?? null;
-    return { ...e, resolvedProject: project };
+    return { ...e, clientName: e.client?.name ?? "", resolvedProject: project };
   });
 
   // Options come from what's actually on this month's rows, so the dropdowns
@@ -154,7 +161,7 @@ export default async function ClientTimesheetPage({
           </label>
           <label className="block min-w-0 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Client</span>
-            <Select name="clientId" defaultValue={selectedClientId} options={[...clients.map((c) => ({ value: c.id, label: c.name }))]} />
+            <Select name="clientId" defaultValue={selectedClientId} options={[...(clients.length > 1 ? [{ value: ALL_CLIENTS, label: "All clients" }] : []), ...clients.map((c) => ({ value: c.id, label: c.name }))]} />
           </label>
           {/* Always shown, even with nothing to offer. Hiding them made the
               filters look missing on a client whose rows carry no project or
@@ -192,7 +199,7 @@ export default async function ClientTimesheetPage({
           </p>
         </div>
       ) : (
-        <ClientTimesheetGrid month={selectedMonth!} entries={entries} />
+        <ClientTimesheetGrid month={selectedMonth!} entries={entries} showClient={allClients} />
       )}
     </div>
   );

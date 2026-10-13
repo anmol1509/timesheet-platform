@@ -25,6 +25,8 @@ type Entry = {
   totalHours: number;
   absentCount: number;
   status: string;
+  /** Set when the sheet shows every client at once. */
+  clientName?: string;
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,7 +46,7 @@ function badgeClass(value: string) {
   return "bg-[var(--success-soft)] text-[var(--success)]"; // numeric hours entered
 }
 
-export function ClientTimesheetGrid({ month, entries }: { month: string; entries: Entry[] }) {
+export function ClientTimesheetGrid({ month, entries, showClient = false }: { month: string; entries: Entry[]; showClient?: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -130,7 +132,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted">{entries.length} employees · {month}</p>
+        <p className="text-xs text-muted">{entries.length} {entries.length === 1 ? "row" : "rows"} · {month}{showClient ? ` · ${new Set(entries.map((e) => e.clientName)).size} clients` : ""}</p>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -192,6 +194,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                 />
               </th>
               <th className="sticky left-0 z-10 bg-surface-subtle px-2 py-2">Employee</th>
+              {showClient && <th className="px-2 py-2">Client</th>}
               <th className="px-2 py-2">Trade</th>
               <th className="px-2 py-2">Status</th>
               <th className="px-2 py-2">Total</th>
@@ -221,6 +224,7 @@ export function ClientTimesheetGrid({ month, entries }: { month: string; entries
                     {e.employeeName}
                     <span className="ml-1 text-subtle">{e.employeeIdNo}</span>
                   </td>
+                  {showClient && <td className="px-2 py-1.5 whitespace-nowrap text-secondary">{e.clientName}</td>}
                   <td className="px-2 py-1.5 text-secondary">{e.trade}</td>
                   <td className="px-2 py-1.5">
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[e.status] || "bg-surface-sunken text-secondary"}`}>
