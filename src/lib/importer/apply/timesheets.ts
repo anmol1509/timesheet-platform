@@ -157,7 +157,7 @@ export async function applyTimesheets(
     notes.push({ tone: "info", title: `${stats.workersLinkedToProject} workers linked to their project`, detail: "From the Project column. A worker already on a project keeps it." });
   }
   if ((stats.payRatesSet ?? 0) > 0) {
-    notes.push({ tone: "info", title: `${stats.payRatesSet} workers given an hourly pay rate`, detail: "From the Pay Rate column, for payroll. A rate already on file is never replaced." });
+    notes.push({ tone: "info", title: `${stats.payRatesSet} workers given a pay rate`, detail: "From the Pay Rate column (read by the Pay Structure column, or as hourly when there is none), for payroll. A rate already on file is never replaced." });
   }
   const months = parsed.months.map((m) => m.month);
   const drafts = await ctx.db.payrollRun.findMany({ where: { branchId: ctx.branchId, month: { in: months }, status: "DRAFT" }, select: { month: true } });

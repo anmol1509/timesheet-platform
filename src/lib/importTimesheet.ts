@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { uniqueClientCode, uniqueSupplierCode } from "@/lib/entityCode";
 import { nameKey } from "@/lib/partyCode";
 import { looseMatch } from "@/lib/looseName";
@@ -135,7 +136,7 @@ export async function importParsedMonths(
     (
       await db.employee.findMany({
         where: { branchId, employeeIdNo: { in: uploadedIds } },
-        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true, projectId: true, hourlyRate: true, payStructure: true },
+        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true, projectId: true, hourlyRate: true, basicSalary: true, flatMonthlyRate: true, payStructure: true },
       })
     ).map((e) => [e.employeeIdNo, e])
   );
@@ -401,12 +402,19 @@ export async function importParsedMonths(
       // Linked to a project means deployed, so a worker the sheet puts on a
       // project is linked to it — but only when they aren't on one already.
       const fillProject = sheetProjectId && !known?.projectId ? { projectId: sheetProjectId } : {};
-      const needsPay = !!entry.payRate && !Number(known?.hourlyRate ?? 0) && !payRateGiven.has(entry.employeeIdNo);
-      // A rate with no pay structure leaves payroll asking for one, so the sheet's rate also marks them Hourly.
-      // A company paid on a monthly basis is left alone: its workers get a salary from their record, not an hourly rate.
-      // That includes a worker whose rate on file is the same figure, so re-uploading repairs earlier imports.
-      const needsStructure = !!entry.payRate && !known?.payStructure && supplier.payType !== "BASIC" && (needsPay || Number(known?.hourlyRate ?? 0) === entry.payRate);
-      const fillPay = { ...(needsPay ? { hourlyRate: entry.payRate } : {}), ...(needsStructure ? { payStructure: "HOURLY" } : {}) };
+      // The sheet's Pay Rate means what the worker's pay structure says: an hourly rate, a basic salary or a flat
+      // monthly rate. The structure on file wins, then the sheet's Pay Structure column, then Hourly. Only empty
+      // figures are filled, so a re-upload never undoes what was set by hand.
+      const sheetStruct = entry.payStructure ?? null;
+      const target = known?.payStructure ?? sheetStruct ?? (entry.payRate ? "HOURLY" : null);
+      const payField = target === "ITEMISED" ? "basicSalary" : target === "FLAT" ? "flatMonthlyRate" : "hourlyRate";
+      const rateApplies = !!entry.payRate && (sheetStruct ? sheetStruct === target : target === "HOURLY");
+      const current = Number(known?.[payField] ?? 0);
+      const needsPay = rateApplies && !current && !payRateGiven.has(entry.employeeIdNo);
+      // A rate with no structure leaves payroll asking for one. A worker whose rate on file already equals the
+      // sheet's gets the structure too, so re-uploading repairs earlier imports.
+      const needsStructure = !known?.payStructure && !!target && rateApplies && (needsPay || current === entry.payRate);
+      const fillPay = { ...(needsPay ? { [payField]: entry.payRate } : {}), ...(needsStructure ? { payStructure: target } : {}) };
       if (sheetProjectId && !known?.projectId) linkedToProject++;
       if (needsPay) { payRatesSet++; payRateGiven.add(entry.employeeIdNo); }
       const employeeRecord = await db.employee.upsert({
@@ -446,8 +454,10 @@ export async function importParsedMonths(
         sponsorSupplierId: known?.sponsorSupplierId ?? sponsorId,
         nationality: known?.nationality ?? nationality ?? null,
         projectId: known?.projectId ?? sheetProjectId,
-        hourlyRate: known?.hourlyRate ?? null,
-        payStructure: known?.payStructure ?? (needsStructure ? "HOURLY" : null),
+        hourlyRate: known?.hourlyRate ?? (needsPay && payField === "hourlyRate" ? new Prisma.Decimal(entry.payRate!) : null),
+        basicSalary: known?.basicSalary ?? (needsPay && payField === "basicSalary" ? new Prisma.Decimal(entry.payRate!) : null),
+        flatMonthlyRate: known?.flatMonthlyRate ?? (needsPay && payField === "flatMonthlyRate" ? new Prisma.Decimal(entry.payRate!) : null),
+        payStructure: known?.payStructure ?? (needsStructure ? target : null),
       });
     }
 

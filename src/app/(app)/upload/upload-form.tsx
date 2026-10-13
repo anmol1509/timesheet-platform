@@ -161,7 +161,7 @@ export function UploadForm() {
               <li>{result.stats.workersLinkedToProject} workers linked to their project</li>
             )}
             {(result.stats.payRatesSet ?? 0) > 0 && (
-              <li>{result.stats.payRatesSet} workers given an hourly pay rate for payroll</li>
+              <li>{result.stats.payRatesSet} workers given a pay rate for payroll</li>
             )}
             {(result.stats.newSuppliers ?? []).some((n) => n.party !== "client") && (
               <li className="text-[var(--warning)]">
