@@ -1,4 +1,6 @@
 import ExcelJS from "exceljs";
+import { parsePayStructure } from "@/lib/payFields";
+import type { PayStructure } from "@/lib/payroll";
 import { NOT_USED } from "@/lib/importer/columnKeys";
 
 const MONTH_NAMES = [
@@ -36,6 +38,8 @@ export type ParsedEntry = {
   projectName?: string | null;
   /** The worker's own hourly pay rate (not the billing Rate), when the sheet has a Pay Rate column. */
   payRate?: number | null;
+  /** "Pay Structure" column: how the Pay Rate is read (hourly rate, basic salary or flat monthly rate). */
+  payStructure?: PayStructure | null;
   trade: string;
   rate: number;
   dailyHours: DailyHourCell[];
@@ -193,6 +197,7 @@ type ColumnMap = {
   site: number | null;
   project: number | null;
   payRate: number | null;
+  payStructure: number | null;
   trade: number | null;
   rate: number | null;
   total: number | null;
@@ -214,6 +219,7 @@ const HEADER_PATTERNS: [keyof ColumnMap, RegExp][] = [
   ["project", /^project(\s*(code|name))?$/i],
   // The worker's own pay per hour, for payroll. Deliberately not "Rate", which is what the client is billed.
   ["payRate", /^(pay\s*rate(\s*\/?\s*(hr|hour))?|hourly\s*pay(\s*rate)?)$/i],
+  ["payStructure", /^(pay\s*structure|salary\s*(type|structure)|pay\s*type)$/i],
   ["trade", /^trade$/i],
   // The billing rate column is labeled "Rate" or "Sale Rate" depending on
   // the sheet. Matched as an exact phrase so it never picks up "Purchase
@@ -245,7 +251,7 @@ const normHeader = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
 function emptyColMap(): ColumnMap {
   return {
-    idNo: null, name: null, supplier: null, sponsor: null, nationality: null, client: null, site: null, project: null, payRate: null,
+    idNo: null, name: null, supplier: null, sponsor: null, nationality: null, client: null, site: null, project: null, payRate: null, payStructure: null,
     trade: null, rate: null, total: null, absentCount: null, absentDeduction: null, invoiceValue: null,
   };
 }
@@ -325,7 +331,7 @@ export async function describeTimesheetWorkbook(buffer: Buffer, overrides: Times
     const colMap = detectColumns(sheet, headerRowNum, overrides);
     const detected: Record<string, string | null> = {};
     const samples: Record<string, string[]> = {};
-    for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "project", "trade", "rate", "payRate", "nationality"] as const) {
+    for (const key of ["idNo", "name", "supplier", "sponsor", "client", "site", "project", "trade", "rate", "payRate", "payStructure", "nationality"] as const) {
       detected[key] = colMap[key] ? cellText(headerRow.getCell(colMap[key]!)) || null : null;
       if (colMap[key]) {
         const vals: string[] = [];
@@ -617,6 +623,7 @@ export async function parseConsolidatedWorkbook(
       const site = colMap.site ? cellText(row.getCell(colMap.site)) || null : null;
       const projectName = colMap.project ? cellText(row.getCell(colMap.project)) || null : null;
       const payRate = colMap.payRate ? cellNumber(row.getCell(colMap.payRate)) : null;
+      const payStructure = colMap.payStructure ? parsePayStructure(cellText(row.getCell(colMap.payStructure))) : null;
       const trade = colMap.trade ? cellText(row.getCell(colMap.trade)) : "";
       const rate = colMap.rate ? cellNumber(row.getCell(colMap.rate)) ?? 0 : 0;
 
@@ -654,6 +661,7 @@ export async function parseConsolidatedWorkbook(
         site,
         projectName,
         payRate: payRate != null && payRate > 0 ? payRate : null,
+        payStructure,
         trade: trade || "(unspecified)",
         rate,
         dailyHours,

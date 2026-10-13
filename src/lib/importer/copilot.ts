@@ -36,7 +36,7 @@ export type CopilotResult = {
 
 const FIELDS: Record<string, string> = {
   idNo: "Employee code", name: "Worker name", supplier: "Supplier", sponsor: "Sponsor", client: "Client", site: "Site",
-  project: "Project", trade: "Trade", rate: "Rate", payRate: "Pay rate (per hour)", nationality: "Nationality",
+  project: "Project", trade: "Trade", rate: "Rate", payStructure: "Pay structure", payRate: "Pay rate", nationality: "Nationality",
 };
 const REQUIRED = ["idNo", "name", "supplier"];
 const CAP = 60;

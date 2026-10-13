@@ -910,7 +910,8 @@ const TS_OPTIONAL: { key: string; label: string }[] = [
   { key: "project", label: "Project" },
   { key: "trade", label: "Trade" },
   { key: "rate", label: "Rate" },
-  { key: "payRate", label: "Pay rate (per hour)" },
+  { key: "payStructure", label: "Pay structure" },
+  { key: "payRate", label: "Pay rate" },
   { key: "nationality", label: "Nationality" },
 ];
 
