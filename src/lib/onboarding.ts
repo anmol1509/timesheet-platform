@@ -14,7 +14,17 @@
 
 export type StatusKind = "pending" | "progress" | "done" | "issue";
 
+export type CandidateType = "OVERSEAS" | "INSIDE_UAE";
+export const CANDIDATE_TYPES: { value: CandidateType; label: string; hint: string }[] = [
+  { value: "OVERSEAS", label: "Overseas hire", hint: "Comes from abroad: entry permit, travel and arrival." },
+  { value: "INSIDE_UAE", label: "Inside-UAE transfer", hint: "Already in the UAE: the permit is transferred, no travel." },
+];
+
 export type StageKey =
+  | "HIRE_APPROVAL"
+  | "INTERVIEW"
+  | "CLIENT_APPROVAL"
+  | "PERMIT_TRANSFER"
   | "OFFER"
   | "WPP"
   | "WORK_PERMIT_PAYMENT"
@@ -33,6 +43,10 @@ export type Stage = {
   short: string;
   /** The CandidateOnboarding column this stage's current status lives in. */
   field:
+    | "hireApprovalStatus"
+    | "interviewStatus"
+    | "clientApprovalStatus"
+    | "permitTransferStatus"
     | "offerStatus"
     | "wppStatus"
     | "workPermitPaymentStatus"
@@ -44,19 +58,75 @@ export type Stage = {
     | "contractStatus"
     | "idVisaStatus";
   statuses: { value: string; kind: StatusKind }[];
+  /** Which kinds of candidate go through this step. */
+  types: CandidateType[];
+  /** An optional step starts as "Not Required" and counts as done until someone switches it on. */
+  optional?: boolean;
   /** Typical turnaround for this stage, in calendar days — a candidate still
    * pending at this stage past this many days shows as overdue on the
    * dashboard. Rough defaults for a UAE manpower operation; not a hard SLA. */
   slaDays: number;
 };
 
+/**
+ * The pipeline a candidate goes through before they are an employee. The papers that follow arrival (medical, Tawjeeh, ILOE,
+ * contract, ID and visa) belong to the employee and are listed in AFTER_ARRIVAL_STAGES.
+ */
 export const STAGES: Stage[] = [
+  {
+    key: "HIRE_APPROVAL",
+    label: "Hire Approval",
+    short: "Approval",
+    field: "hireApprovalStatus",
+    slaDays: 2,
+    types: ["OVERSEAS", "INSIDE_UAE"],
+    optional: true,
+    statuses: [
+      { value: "Not Required", kind: "done" },
+      { value: "Pending", kind: "pending" },
+      { value: "Approved", kind: "done" },
+      { value: "Rejected", kind: "issue" },
+    ],
+  },
+  {
+    key: "INTERVIEW",
+    label: "Interview & Trade Test",
+    short: "Interview",
+    field: "interviewStatus",
+    slaDays: 5,
+    types: ["OVERSEAS", "INSIDE_UAE"],
+    optional: true,
+    statuses: [
+      { value: "Not Required", kind: "done" },
+      { value: "Pending", kind: "pending" },
+      { value: "Scheduled", kind: "progress" },
+      { value: "Passed", kind: "done" },
+      { value: "Failed", kind: "issue" },
+    ],
+  },
+  {
+    key: "CLIENT_APPROVAL",
+    label: "Client Approval",
+    short: "Client",
+    field: "clientApprovalStatus",
+    slaDays: 3,
+    types: ["OVERSEAS", "INSIDE_UAE"],
+    optional: true,
+    statuses: [
+      { value: "Not Required", kind: "done" },
+      { value: "Pending", kind: "pending" },
+      { value: "Sent to Client", kind: "progress" },
+      { value: "Approved", kind: "done" },
+      { value: "Rejected", kind: "issue" },
+    ],
+  },
   {
     key: "OFFER",
     label: "Offer Letter",
     short: "Offer",
     field: "offerStatus",
     slaDays: 2,
+    types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Prepared", kind: "progress" },
@@ -71,6 +141,7 @@ export const STAGES: Stage[] = [
     short: "WPP",
     field: "wppStatus",
     slaDays: 3,
+    types: ["OVERSEAS"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Submitted", kind: "progress" },
@@ -84,6 +155,7 @@ export const STAGES: Stage[] = [
     short: "WP Payment",
     field: "workPermitPaymentStatus",
     slaDays: 2,
+    types: ["OVERSEAS"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Payment Requested", kind: "progress" },
@@ -96,6 +168,7 @@ export const STAGES: Stage[] = [
     short: "Entry Permit",
     field: "entryPermitStatus",
     slaDays: 7,
+    types: ["OVERSEAS"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Applied", kind: "progress" },
@@ -111,6 +184,7 @@ export const STAGES: Stage[] = [
     short: "Arrival",
     field: "arrivalStatus",
     slaDays: 5,
+    types: ["OVERSEAS"],
     statuses: [
       { value: "Travel Pending", kind: "pending" },
       { value: "Flight Booked", kind: "progress" },
@@ -120,11 +194,34 @@ export const STAGES: Stage[] = [
     ],
   },
   {
+    key: "PERMIT_TRANSFER",
+    label: "Permit Transfer",
+    short: "Transfer",
+    field: "permitTransferStatus",
+    slaDays: 7,
+    types: ["INSIDE_UAE"],
+    statuses: [
+      { value: "Pending", kind: "pending" },
+      { value: "Applied", kind: "progress" },
+      { value: "Approved", kind: "progress" },
+      { value: "Completed", kind: "done" },
+      { value: "Rejected", kind: "issue" },
+    ],
+  },
+];
+
+/**
+ * Steps that now happen once the person is in the country. They are no longer part of the pipeline or of "ready to join";
+ * kept so a candidate's earlier progress on them is still shown and can be carried over to the employee's papers.
+ */
+export const AFTER_ARRIVAL_STAGES: Stage[] = [
+  {
     key: "MEDICAL",
     label: "Medical",
     short: "Medical",
     field: "medicalStatus",
     slaDays: 2,
+    types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Appointment Booked", kind: "progress" },
@@ -139,6 +236,7 @@ export const STAGES: Stage[] = [
     short: "Tawjeeh",
     field: "tawjeehStatus",
     slaDays: 2,
+    types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Scheduled", kind: "progress" },
@@ -151,6 +249,7 @@ export const STAGES: Stage[] = [
     short: "ILOE",
     field: "iloeStatus",
     slaDays: 1,
+    types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Applied", kind: "progress" },
@@ -163,6 +262,7 @@ export const STAGES: Stage[] = [
     short: "Contract",
     field: "contractStatus",
     slaDays: 2,
+    types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Submitted", kind: "progress" },
@@ -176,6 +276,7 @@ export const STAGES: Stage[] = [
     short: "ID/Visa",
     field: "idVisaStatus",
     slaDays: 5,
+    types: ["OVERSEAS", "INSIDE_UAE"],
     statuses: [
       { value: "Pending", kind: "pending" },
       { value: "Submitted", kind: "progress" },
@@ -186,10 +287,18 @@ export const STAGES: Stage[] = [
   },
 ];
 
-export const STAGE_BY_KEY: Record<StageKey, Stage> = Object.fromEntries(STAGES.map((s) => [s.key, s])) as Record<StageKey, Stage>;
+export const STAGE_BY_KEY: Record<StageKey, Stage> = Object.fromEntries([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.key, s])) as Record<StageKey, Stage>;
 
 /** The row shape every stage-status field lives on — a subset of CandidateOnboarding. */
-export type OnboardingStatuses = { [K in Stage["field"]]: string };
+export type OnboardingStatuses = { [K in Stage["field"]]: string } & { candidateType?: string | null };
+
+export const asCandidateType = (v: string | null | undefined): CandidateType => (v === "INSIDE_UAE" ? "INSIDE_UAE" : "OVERSEAS");
+
+/** The steps that apply to this kind of candidate, in order. */
+export const stagesFor = (type: string | null | undefined): Stage[] => {
+  const t = asCandidateType(type);
+  return STAGES.filter((s) => s.types.includes(t));
+};
 
 export function statusKind(stage: Stage, status: string): StatusKind {
   return stage.statuses.find((s) => s.value === status)?.kind ?? "progress";
@@ -203,14 +312,14 @@ export function isStageDone(stage: Stage, status: string): boolean {
  * app on every stage update, never entered by hand (see the ERP requirement
  * this mirrors: HR shouldn't be able to fat-finger someone into Ready). */
 export function computeReadyToJoin(row: OnboardingStatuses): boolean {
-  return STAGES.every((stage) => isStageDone(stage, row[stage.field]));
+  return stagesFor(row.candidateType).every((stage) => isStageDone(stage, row[stage.field]));
 }
 
 /** The first stage (in pipeline order) that isn't done yet — "where this
  * candidate is currently stuck" for the dashboard's work queue. Null once
  * every stage is done (i.e. once they're ready to join). */
 export function currentStage(row: OnboardingStatuses): Stage | null {
-  return STAGES.find((stage) => !isStageDone(stage, row[stage.field])) ?? null;
+  return stagesFor(row.candidateType).find((stage) => !isStageDone(stage, row[stage.field])) ?? null;
 }
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;

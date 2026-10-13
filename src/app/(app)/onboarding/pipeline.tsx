@@ -1,6 +1,6 @@
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { STAGES, statusKind, type OnboardingStatuses } from "@/lib/onboarding";
+import { stagesFor, statusKind, type OnboardingStatuses } from "@/lib/onboarding";
 
 /** The whole pipeline at a glance — "Candidate received" through "Joined",
  * each node coloured by its current status. A wide table of accordions
@@ -9,7 +9,10 @@ import { STAGES, statusKind, type OnboardingStatuses } from "@/lib/onboarding";
 export function Pipeline({ row, joined }: { row: OnboardingStatuses; joined: boolean }) {
   const nodes = [
     { label: "Received", kind: "done" as const },
-    ...STAGES.map((stage) => ({ label: stage.short, kind: statusKind(stage, row[stage.field]) })),
+    // Optional steps nobody switched on would only add grey circles, so they stay hidden until used.
+    ...stagesFor(row.candidateType)
+      .filter((stage) => !(stage.optional && row[stage.field] === "Not Required"))
+      .map((stage) => ({ label: stage.short, kind: statusKind(stage, row[stage.field]) })),
     { label: "Joined", kind: joined ? ("done" as const) : ("pending" as const) },
   ];
 

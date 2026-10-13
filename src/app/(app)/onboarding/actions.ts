@@ -9,7 +9,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 import { initialsOf, nextEmployeeId } from "@/lib/supplierRequests";
-import { STAGE_BY_KEY, computeReadyToJoin, type StageKey } from "@/lib/onboarding";
+import { STAGE_BY_KEY, asCandidateType, computeReadyToJoin, type StageKey } from "@/lib/onboarding";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -29,6 +29,7 @@ async function assertOnboardingInBranch(id: string, branchId: string | null, isS
 
 function profileFields(formData: FormData) {
   return {
+    candidateType: asCandidateType(stringOrNull(formData.get("candidateType"))),
     candidateName: stringOrNull(formData.get("candidateName")) ?? "",
     trade: stringOrNull(formData.get("trade")),
     nationality: stringOrNull(formData.get("nationality")),
@@ -120,12 +121,17 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
   const dupError = await findDuplicate(before.branchId, fields.passportNumber, fields.emiratesId, id);
   if (dupError) return { error: dupError };
 
-  await prisma.candidateOnboarding.update({ where: { id }, data: fields });
+  const updatedRow = await prisma.candidateOnboarding.update({ where: { id }, data: fields });
+  // A different kind of hire has different steps, so whether they are ready to join has to be worked out again.
+  if (computeReadyToJoin(updatedRow) !== updatedRow.readyToJoin) {
+    await prisma.candidateOnboarding.update({ where: { id }, data: { readyToJoin: !updatedRow.readyToJoin } });
+  }
   await logAudit({
     entityType: "CANDIDATE_ONBOARDING",
     entityId: id,
     action: "UPDATE",
     before: {
+      candidateType: before.candidateType,
       candidateName: before.candidateName, trade: before.trade, nationality: before.nationality, sponsorCompany: before.sponsorCompany,
       phone: before.phone, email: before.email, passportNumber: before.passportNumber, emiratesId: before.emiratesId, remarks: before.remarks,
     },
@@ -208,8 +214,9 @@ export async function markJoinedAction(_prev: State, formData: FormData): Promis
   if (candidate.joined) return { error: "This candidate has already joined." };
   if (!candidate.readyToJoin) return { error: "This candidate isn't ready to join yet — every stage must be completed first." };
   if (!candidate.agency) return { error: "Set an agency for this candidate first — it's used to generate their employee ID." };
-  if (!candidate.passportNumber || !candidate.emiratesId || !candidate.phone) {
-    return { error: "Add passport number, Emirates ID and phone to the candidate's profile before marking them joined." };
+  // The Emirates ID is only issued after arrival, so it can't be required to add someone who has just arrived.
+  if (!candidate.passportNumber || !candidate.phone) {
+    return { error: "Add the passport number and phone to the candidate's profile before adding them as an employee." };
   }
 
   const dupError = await findDuplicate(candidate.branchId, candidate.passportNumber, candidate.emiratesId, id);

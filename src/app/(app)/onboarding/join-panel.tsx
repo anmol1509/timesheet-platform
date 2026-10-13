@@ -55,7 +55,7 @@ export function JoinPanel({
   if (!candidate.readyToJoin) {
     return (
       <div className="rounded-lg bg-surface-subtle px-4 py-3 text-sm text-muted">
-        Not ready to join yet — every stage below must be completed first.
+        Not ready to join yet — the steps above must be completed first (the papers after arrival are not needed).
       </div>
     );
   }
@@ -63,14 +63,13 @@ export function JoinPanel({
   const missing = [
     !candidate.agencyId && "agency",
     !candidate.passportNumber && "passport number",
-    !candidate.emiratesId && "Emirates ID",
     !candidate.phone && "phone",
   ].filter(Boolean) as string[];
 
   if (missing.length > 0) {
     return (
       <div className="rounded-lg bg-[var(--warning-soft,#fef3c7)] px-4 py-3 text-sm text-[var(--warning-text,#92400e)]">
-        Every stage is complete, but the candidate&rsquo;s profile is missing {missing.join(", ")} — add {missing.length > 1 ? "these" : "it"} below before marking them joined (needed to create their employee record).
+        Every step is complete, but the candidate&rsquo;s profile is missing {missing.join(", ")} — add {missing.length > 1 ? "these" : "it"} below before marking them joined (needed to create their employee record).
       </div>
     );
   }
