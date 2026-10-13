@@ -94,9 +94,12 @@ export async function approveAdvanceAction(formData: FormData): Promise<State> {
   const loan = await loanInBranch(str(formData.get("id")), branchId, isSuperAdmin);
   if (!loan) return { error: "Request not found." };
   if (loan.approvalStatus !== "PENDING" || loan.status !== "ACTIVE") return { error: "That request has already been decided." };
-  if (loan.createdById === user.id && (await anotherApproverExists(loan.branchId, user.id))) return { error: "Someone other than the person who asked for the advance has to approve it." };
+  // Admins may approve their own request (recorded in the audit log); other approvers still need someone else.
+  const isAdmin = user.role === "SUPER_ADMIN" || user.role === "BRANCH_ADMIN";
+  const selfApproved = loan.createdById === user.id;
+  if (selfApproved && !isAdmin && (await anotherApproverExists(loan.branchId, user.id))) return { error: "Someone other than the person who asked for the advance has to approve it." };
   await prisma.employeeLoan.update({ where: { id: loan.id }, data: { approvalStatus: "APPROVED", approvedById: user.id, approvedAt: new Date(), decisionNote: null } });
-  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "UPDATE", before: { approval: "PENDING" }, after: { approval: "APPROVED", ref: advanceRef(loan.refNo), employee: loan.employee.name }, userId: user.id, userName: user.name, branchId: loan.branchId });
+  await logAudit({ entityType: "EMPLOYEE_LOAN", entityId: loan.id, action: "UPDATE", before: { approval: "PENDING" }, after: { approval: "APPROVED", ref: advanceRef(loan.refNo), employee: loan.employee.name, ...(selfApproved ? { approvedOwnRequest: true } : {}) }, userId: user.id, userName: user.name, branchId: loan.branchId });
   await notifyUsers({ userIds: [loan.createdById].filter((id) => id !== user.id), kind: "ADVANCE_DECIDED", title: `Advance approved: ${loan.employee.name}`, body: `${advanceRef(loan.refNo)} was approved by ${user.name}. Record the day it is handed over.`, href: "/payroll/loans" });
   revalidatePath("/payroll/loans");
   revalidatePath("/approvals");
