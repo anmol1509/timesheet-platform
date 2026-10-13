@@ -135,7 +135,7 @@ export async function importParsedMonths(
     (
       await db.employee.findMany({
         where: { branchId, employeeIdNo: { in: uploadedIds } },
-        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true, projectId: true, hourlyRate: true },
+        select: { employeeIdNo: true, sponsorSupplierId: true, nationality: true, projectId: true, hourlyRate: true, payStructure: true },
       })
     ).map((e) => [e.employeeIdNo, e])
   );
@@ -402,7 +402,10 @@ export async function importParsedMonths(
       // project is linked to it — but only when they aren't on one already.
       const fillProject = sheetProjectId && !known?.projectId ? { projectId: sheetProjectId } : {};
       const needsPay = !!entry.payRate && !Number(known?.hourlyRate ?? 0) && !payRateGiven.has(entry.employeeIdNo);
-      const fillPay = needsPay ? { hourlyRate: entry.payRate } : {};
+      // A rate with no pay structure leaves payroll asking for one, so the sheet's rate also marks them Hourly.
+      // That includes a worker whose rate on file is the same figure, so re-uploading repairs earlier imports.
+      const needsStructure = !!entry.payRate && !known?.payStructure && (needsPay || Number(known?.hourlyRate ?? 0) === entry.payRate);
+      const fillPay = { ...(needsPay ? { hourlyRate: entry.payRate } : {}), ...(needsStructure ? { payStructure: "HOURLY" } : {}) };
       if (sheetProjectId && !known?.projectId) linkedToProject++;
       if (needsPay) { payRatesSet++; payRateGiven.add(entry.employeeIdNo); }
       const employeeRecord = await db.employee.upsert({
@@ -443,6 +446,7 @@ export async function importParsedMonths(
         nationality: known?.nationality ?? nationality ?? null,
         projectId: known?.projectId ?? sheetProjectId,
         hourlyRate: known?.hourlyRate ?? null,
+        payStructure: known?.payStructure ?? (needsStructure ? "HOURLY" : null),
       });
     }
 
