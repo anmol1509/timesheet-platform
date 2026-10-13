@@ -177,6 +177,23 @@ export const HELP_GUIDES: HelpGuide[] = [
     pages: ["/employees", "/suppliers", "/clients"],
   },
   {
+    id: "onboarding-add-employee",
+    title: "Add a candidate to employees",
+    keywords: ["add candidate to employee", "add to employees", "candidate to employee", "mark joined", "ready to join", "convert candidate", "candidate joined", "onboarding employee"],
+    steps: [
+      "Open the candidate under Onboarding. When their steps up to arrival are done, the page says Ready to join with an Add to employees button (it is also in the list).",
+      "A review screen opens with everything filled in from the candidate. Check it, fix anything wrong, choose the company, project and trade, and set pay if you have payroll access.",
+      "Only the name, passport number and company are required. The Emirates ID and other papers can be added later.",
+      "Press Add to employees. If something looks like a mistake (a duplicate Emirates ID, passport or mobile, or an odd date) a yellow box asks you to fix it or Add anyway.",
+      "The candidate's files are copied to the worker's documents and the two records link to each other. The next-step buttons open the employee, bed allocation and project placement.",
+    ],
+    notes: [
+      "Someone who hasn't finished their steps can still be added early. Tick the box confirming it, and they will show as joined.",
+      "The papers after arrival (medical, Tawjeeh, ILOE, contract, ID and visa) are not needed to be ready to join.",
+    ],
+    pages: ["/onboarding", "/employees"],
+  },
+  {
     id: "payroll-adjustments",
     title: "Add a deduction, bonus or recurring item to payroll",
     keywords: ["fine", "bonus", "deduction", "adjustment", "add deduction", "recurring deduction", "standing allowance", "add bonus"],

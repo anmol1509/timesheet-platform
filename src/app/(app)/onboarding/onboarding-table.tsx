@@ -167,7 +167,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
       align: "right",
       sortValue: (c) => (c.readyToJoin ? 1 : 0),
       csvValue: (c) => (c.readyToJoin ? "Yes" : "No"),
-      render: (c) => (c.readyToJoin && !c.joined ? <Check className="ml-auto h-4 w-4 text-[var(--success)]" /> : <Minus className="ml-auto h-4 w-4 text-subtle" />),
+      render: (c) => (c.readyToJoin && !c.joined ? <Link href={`/onboarding/${c.id}/add-employee`} className="ml-auto inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-[var(--brand-primary)] hover:underline"><Check className="h-4 w-4 text-[var(--success)]" aria-hidden />Add</Link> : <Minus className="ml-auto h-4 w-4 text-subtle" />),
     },
     {
       key: "joined",

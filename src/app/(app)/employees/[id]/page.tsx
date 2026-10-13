@@ -162,6 +162,8 @@ export default async function EmployeeDetailPage({
       }
     : null;
 
+  const fromCandidate = await prisma.candidateOnboarding.findFirst({ where: { employeeId: id }, select: { id: true, candidateNo: true } });
+
   const revisions = canViewPay ? await prisma.salaryRevision.findMany({ where: { employeeId: id }, orderBy: { effectiveFrom: "desc" }, take: 20 }) : [];
   const closedRuns = revisions.length > 0 ? await prisma.payrollRun.findMany({ where: { branchId: employee.branchId, status: { in: ["APPROVED", "PAID"] }, lines: { some: { employeeId: id } } }, select: { month: true } }) : [];
   const closedMonths = [...new Set(closedRuns.map((r) => r.month))];
@@ -277,6 +279,9 @@ export default async function EmployeeDetailPage({
         documentCount={employee.documents.length}
       />
 
+      {fromCandidate && (
+        <p className="text-sm text-muted">Onboarded as candidate <Link href={`/onboarding/${fromCandidate.id}`} className="text-[var(--brand-primary)] hover:underline">#{String(fromCandidate.candidateNo).padStart(3, "0")}</Link>, with their onboarding steps and files.</p>
+      )}
       {canViewPay && <ReadinessCard employeeId={employee.id} />}
 
       <EditForm
