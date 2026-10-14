@@ -12,6 +12,7 @@ export function ArticleLayout({
   backLabel,
   ctaTitle,
   ctaLead,
+  footer,
   children,
 }: {
   eyebrow: string;
@@ -21,6 +22,8 @@ export function ArticleLayout({
   backLabel: string;
   ctaTitle: string;
   ctaLead: string;
+  /** Related reading etc., shown below the article body. */
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -49,6 +52,8 @@ export function ArticleLayout({
           >
             {children}
           </article>
+
+          {footer && <div style={{ maxWidth: 720, margin: "56px auto 0" }}>{footer}</div>}
 
           <p style={{ maxWidth: 720, margin: "48px auto 0" }}>
             <a href={backHref} className={s.linkish} style={{ fontWeight: 500 }}>

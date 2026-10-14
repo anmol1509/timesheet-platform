@@ -18,22 +18,6 @@ export const metadata: Metadata = finishMetadata({
 export default function Page() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Article",
-            headline: post.title,
-            description: post.description,
-            datePublished: post.date,
-            dateModified: post.date,
-            image: "https://manpowersync.com/brand-assets/og-default.png",
-            mainEntityOfPage: URL,
-            author: { "@type": "Organization", name: "ManpowerSync" },
-          }),
-        }}
-      />
       <PostLayout post={post}>
         <p>
           Overtime is one of the few numbers on a construction payroll run that changes every

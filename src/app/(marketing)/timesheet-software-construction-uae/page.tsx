@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { postsForPillar } from "@/app/(marketing)/blog/clusters";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
@@ -47,6 +48,7 @@ export default function TimesheetSoftwarePage() {
         }}
       />
       <SolutionPage
+        furtherReading={postsForPillar("/timesheet-software-construction-uae").map((p) => ({ href: `/blog/${p.slug}`, title: p.title, body: p.description }))}
         eyebrow="Timesheets & attendance"
         title="Enter hours once. Everything else follows."
         lead={DESCRIPTION}

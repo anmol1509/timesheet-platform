@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { postsForPillar } from "@/app/(marketing)/blog/clusters";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
@@ -45,6 +46,7 @@ export default function CampAccommodationPage() {
         }}
       />
       <SolutionPage
+        furtherReading={postsForPillar("/camp-accommodation-management-software-uae").map((p) => ({ href: `/blog/${p.slug}`, title: p.title, body: p.description }))}
         eyebrow="Accommodation & transport"
         title="Know who sleeps where and who rides which bus."
         lead={DESCRIPTION}
