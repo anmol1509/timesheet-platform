@@ -44,6 +44,8 @@ export type SolutionPageData = {
   /** Optional related-page cards. */
   relatedTitle?: string;
   related?: readonly { href: string; title: string; body: string }[];
+  /** Blog posts that support this page, from the topic clusters (blog/clusters.ts). */
+  furtherReading?: readonly { href: string; title: string; body: string }[];
   faqs?: readonly { q: string; a: string }[];
   ctaTitle: string;
   ctaLead: string;
@@ -102,6 +104,12 @@ export function SolutionPage(data: SolutionPageData) {
       {data.related && data.related.length > 0 && (
         <Section eyebrow="Explore" title={data.relatedTitle ?? "Related"}>
           <LinkCardGrid cards={data.related} columns={data.related.length === 3 ? 3 : 2} />
+        </Section>
+      )}
+
+      {data.furtherReading && data.furtherReading.length > 0 && (
+        <Section eyebrow="Further reading" title="Guides behind this topic.">
+          <LinkCardGrid cards={data.furtherReading} columns={data.furtherReading.length === 3 ? 3 : 2} />
         </Section>
       )}
 

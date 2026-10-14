@@ -7,7 +7,7 @@ import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
 import { aed } from "../calc-ui";
-import s from "../calculator.module.css";
+import p from "@/app/(marketing)/welcome/prose.module.css";
 import { GratuityCalculator } from "./gratuity-calculator";
 
 const tool = TOOLS.find((t) => t.slug === "gratuity-calculator-uae")!;
@@ -67,7 +67,7 @@ export default function GratuityCalculatorPage() {
       </Section>
 
       <Section surface>
-        <div className={s.prose}>
+        <div className={p.prose}>
           <h2>How UAE gratuity is calculated</h2>
           <p>
             Under Article 51 of Federal Decree-Law No. 33 of 2021, an employee who has completed at least

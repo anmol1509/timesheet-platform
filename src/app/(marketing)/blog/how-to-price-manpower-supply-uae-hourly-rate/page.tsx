@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { PostLayout } from "../post-layout";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { POSTS } from "../posts";
 
 const post = POSTS.find((p) => p.slug === "how-to-price-manpower-supply-uae-hourly-rate")!;
@@ -35,30 +36,7 @@ export const metadata: Metadata = finishMetadata({
 export default function Page() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify([
-            {
-              "@context": "https://schema.org",
-              "@type": "Article",
-              headline: post.title,
-              description: post.description,
-              datePublished: post.date,
-              dateModified: post.date,
-              image: "https://manpowersync.com/brand-assets/og-default.png",
-              author: { "@type": "Organization", name: "ManpowerSync" },
-              publisher: { "@type": "Organization", name: "ManpowerSync", url: "https://manpowersync.com" },
-              mainEntityOfPage: URL,
-            },
-            {
-              "@context": "https://schema.org",
-              "@type": "FAQPage",
-              mainEntity: FAQS.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-            },
-          ]),
-        }}
-      />
+      <JsonLd data={faqLd(FAQS)} />
       <PostLayout post={post}>
         <p>
           Most manpower suppliers in the UAE price the same way: take the worker&rsquo;s salary,

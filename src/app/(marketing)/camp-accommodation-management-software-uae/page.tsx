@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { postsForPillar } from "@/app/(marketing)/blog/clusters";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { DEEP_DIVES, FAQS, SITE } from "@/app/(marketing)/welcome/content";
+import { DEEP_DIVES, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "Labour Camp Management Software UAE";
 const DESCRIPTION =
@@ -25,26 +27,18 @@ export const metadata: Metadata = finishMetadata({
 });
 
 const ACCOMMODATION = DEEP_DIVES.find((d) => d.eyebrow === "Accommodation & transport")!;
-const FAQ_SLICE = FAQS.filter((f) => f.q === "How is this different from a general HRMS or ERP?");
+const PAGE_FAQS = [
+  { q: "Can I see which beds are free tonight?", a: "Yes. Camps are managed block by block, room by room and bed by bed, and assigning, moving or freeing a bed updates occupancy immediately." },
+  { q: "Is the history of who stayed where kept?", a: "Every move in and out of a room is recorded against the worker and the bed, so a question about who was where on a given night has an answer." },
+  { q: "How is transport planned?", a: "Routes and vehicles are planned against the sites your crews are deployed to today, with seats and pick-up times per route, rather than a fixed schedule." },
+] as const;
 
 export default function CampAccommodationPage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
+        furtherReading={postsForPillar("/camp-accommodation-management-software-uae").map((p) => ({ href: `/blog/${p.slug}`, title: p.title, body: p.description }))}
         eyebrow="Accommodation & transport"
         title="Know who sleeps where and who rides which bus."
         lead={DESCRIPTION}
@@ -109,7 +103,7 @@ export default function CampAccommodationPage() {
             body: "Where crews get deployed in the first place — which decides whose bed and bus this is.",
           },
         ]}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle={`See your camps and routes on ${SITE.name}.`}
         ctaLead="Bring your current camp and bed list — nothing to re-key before your first month."
       />

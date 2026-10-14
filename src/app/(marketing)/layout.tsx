@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Plus_Jakarta_Sans } from "next/font/google";
-import "../globals.css";
+import "../marketing.css";
 import { FormValidation } from "@/components/FormValidation";
 import { MotionProvider } from "@/components/motion/MotionProvider";
 import { SITE_URL } from "@/lib/seo/site";

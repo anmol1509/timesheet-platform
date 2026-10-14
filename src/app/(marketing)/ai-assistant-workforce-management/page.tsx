@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { DEEP_DIVES, FAQS, SITE } from "@/app/(marketing)/welcome/content";
+import { DEEP_DIVES, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "AI Assistant for Workforce Data (UAE)";
 const DESCRIPTION =
@@ -25,25 +26,16 @@ export const metadata: Metadata = finishMetadata({
 
 const ASSISTANT = DEEP_DIVES.find((d) => d.eyebrow === "Built-in assistant")!;
 const DOCUMENTS = DEEP_DIVES.find((d) => d.eyebrow === "Documents & compliance")!;
-const FAQ_SLICE = FAQS.filter((f) => f.q === "Who can see salary and client data?");
+const PAGE_FAQS = [
+  { q: "What kind of questions can I ask the assistant?", a: "Plain-language questions about your live records, such as which visas expire this month or how many welders are on a given site." },
+  { q: "Can the assistant show salary data to anyone who asks?", a: "No. It answers within whatever the person asking is already allowed to see, so it cannot surface salary, another branch's data or anything outside their role." },
+  { q: "What can it read from uploaded documents?", a: "Upload a passport, visa or Emirates ID and the key fields are extracted onto the employee record, which avoids the retyping that causes WPS rejections." },
+] as const;
 
 export default function AiAssistantPage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
         eyebrow="Built-in assistant"
         title="Ask your data a question. Get the answer, with links."
@@ -115,7 +107,7 @@ export default function AiAssistantPage() {
             body: "The document-expiry problem the assistant and the alerts are built to solve.",
           },
         ]}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle="See the assistant on your own workforce data."
         ctaLead={`It's built into ${SITE.name} from day one — no extra module, no separate subscription.`}
       />

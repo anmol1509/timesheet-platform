@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { postsForPillar } from "@/app/(marketing)/blog/clusters";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { CAPABILITIES, FAQS, STEPS, SITE } from "@/app/(marketing)/welcome/content";
+import { CAPABILITIES, STEPS, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "Construction Timesheet Software UAE";
 const DESCRIPTION =
@@ -25,28 +27,18 @@ export const metadata: Metadata = finishMetadata({
 });
 
 const TIMESHEETS = CAPABILITIES.find((c) => c.title === "Timesheets & attendance")!;
-const FAQ_SLICE = FAQS.filter((f) =>
-  ["Can we bring our existing Excel timesheets?", "How is this different from a general HRMS or ERP?"].includes(f.q)
-);
+const PAGE_FAQS = [
+  { q: "What ways can hours come into the system?", a: "As the consolidated Excel workbook your sites already send, entered manually for a site with no system, or submitted by a subcontractor through their own portal. One system reconciles all three." },
+  { q: "How are overtime and exceptions handled?", a: "They are flagged as hours arrive rather than worked out by hand at month end, and supervisors approve in one queue with every change recorded in the audit log." },
+  { q: "Do approved hours have to be re-entered for payroll and invoices?", a: "No. The same approved hours become client invoices and payroll input, so nothing is retyped between the teams that track attendance and the teams that bill and pay." },
+] as const;
 
 export default function TimesheetSoftwarePage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
+        furtherReading={postsForPillar("/timesheet-software-construction-uae").map((p) => ({ href: `/blog/${p.slug}`, title: p.title, body: p.description }))}
         eyebrow="Timesheets & attendance"
         title="Enter hours once. Everything else follows."
         lead={DESCRIPTION}
@@ -104,7 +96,7 @@ export default function TimesheetSoftwarePage() {
             body: "The same approved hours become VAT-ready client invoices at each client's own agreed rate.",
           },
         ]}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle={`Bring this month's timesheets to ${SITE.name}.`}
         ctaLead="Upload your current workbook as-is — every month tab is detected and reconciled automatically."
       />
