@@ -5,7 +5,7 @@ import { JsonLd, faqLd, webApplicationLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
-import s from "../calculator.module.css";
+import p from "@/app/(marketing)/welcome/prose.module.css";
 import { RateCalculator } from "./rate-calculator";
 
 const tool = TOOLS.find((t) => t.slug === "manpower-hourly-rate-calculator")!;
@@ -58,7 +58,7 @@ export default function HourlyRateCalculatorPage() {
       </Section>
 
       <Section surface>
-        <div className={s.prose}>
+        <div className={p.prose}>
           <h2>How the rate is built</h2>
           <ol>
             <li><strong>Direct cost:</strong> salary and allowances, visa and permit costs spread over their validity, accommodation, transport, food and consumables, and provisions for gratuity, annual leave and the air ticket.</li>

@@ -5,6 +5,7 @@ import { GUIDES } from "./(marketing)/guides/guides-data";
 import { INDUSTRIES_DATA } from "./(marketing)/industries/industries-data";
 import { SOLUTIONS_DATA } from "./(marketing)/solutions/solutions-data";
 import { TOOLS } from "./(marketing)/tools/tools-data";
+import { COMPARISONS } from "./(marketing)/compare/compare-data";
 import { SITE_HOST, isMarketingHost } from "@/lib/seo/site";
 
 const MARKETING_HOST = SITE_HOST;
@@ -14,7 +15,7 @@ const MARKETING_HOST = SITE_HOST;
 const SITE_CONTENT_UPDATED = new Date("2026-10-14");
 
 // Standalone top-level pages with no per-item registry of their own.
-const STATIC_PAGES = ["features", "solutions", "guides", "faq", "pricing", "industries", "tools"];
+const STATIC_PAGES = ["features", "solutions", "guides", "faq", "pricing", "industries", "tools", "compare"];
 const STATIC_PAGE_PRIORITY: Record<string, number> = { features: 0.9, solutions: 0.8, pricing: 0.8 };
 
 /**
@@ -69,6 +70,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...TOOLS.map((tool) => ({
       url: `https://${MARKETING_HOST}/tools/${tool.slug}`,
       lastModified: new Date(tool.updated),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+    ...COMPARISONS.map((c) => ({
+      url: `https://${MARKETING_HOST}/compare/${c.slug}`,
+      lastModified: new Date(c.updated),
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
