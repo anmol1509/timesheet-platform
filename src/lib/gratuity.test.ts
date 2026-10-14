@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gratuity, yearsOfService } from "./gratuity";
+import { gratuity, gratuityBreakdown, yearsOfService } from "./gratuity";
 
 test("nothing is due before one year", () => assert.equal(gratuity(3000, 0.99), 0));
 test("first five years: 21 days of basic per year", () => assert.equal(gratuity(3000, 3), 6300)); // 3 x 21 x 100
@@ -24,4 +24,20 @@ test("a part year is the fraction of that year served", () => {
 
 test("no service before the join date", () => {
   assert.equal(yearsOfService(new Date(Date.UTC(2026, 0, 1)), new Date(Date.UTC(2025, 0, 1))), 0);
+});
+
+test("breakdown itemises the same total gratuity() returns", () => {
+  const b = gratuityBreakdown(3000, 8);
+  assert.equal(b.firstAmount, 10500);
+  assert.equal(b.beyondAmount, 9000);
+  assert.equal(b.total, gratuity(3000, 8));
+  assert.equal(b.capApplied, false);
+});
+
+test("breakdown shows when the two-year cap applies, and nothing under a year", () => {
+  assert.equal(gratuityBreakdown(3000, 30).capApplied, true);
+  assert.equal(gratuityBreakdown(3000, 30).total, 72000);
+  const none = gratuityBreakdown(3000, 0.5);
+  assert.equal(none.eligible, false);
+  assert.equal(none.total, 0);
 });
