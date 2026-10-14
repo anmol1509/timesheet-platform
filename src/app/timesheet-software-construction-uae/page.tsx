@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { CAPABILITIES, FAQS, STEPS, SITE } from "@/app/welcome/content";
 
-const TITLE = "Timesheet Software for Construction & Manpower Teams in the UAE";
+const TITLE = "Construction Timesheet Software UAE";
 const DESCRIPTION =
   "Bring in hours from Excel workbooks, manual entry or supplier submissions, apply overtime and rest-day rules automatically, and send approved hours straight to invoices and payroll.";
 const URL = "https://manpowersync.com/timesheet-software-construction-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const TIMESHEETS = CAPABILITIES.find((c) => c.title === "Timesheets & attendance")!;
 const FAQ_SLICE = FAQS.filter((f) =>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { PostLayout } from "../post-layout";
 import { POSTS } from "../posts";
@@ -6,13 +7,13 @@ import { POSTS } from "../posts";
 const post = POSTS.find((p) => p.slug === "uae-overtime-rules-construction-workers")!;
 const URL = `https://manpowersync.com/blog/${post.slug}`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: post.title,
   description: post.description,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
-};
+});
 
 export default function Page() {
   return (
@@ -26,6 +27,9 @@ export default function Page() {
             headline: post.title,
             description: post.description,
             datePublished: post.date,
+            dateModified: post.date,
+            image: "https://manpowersync.com/brand-assets/og-default.png",
+            mainEntityOfPage: URL,
             author: { "@type": "Organization", name: "ManpowerSync" },
           }),
         }}
@@ -83,6 +87,7 @@ export default function Page() {
           workers with different shift patterns, every single month, without a system that flags
           the exception automatically as hours come in rather than at month-end reconciliation.
         </p>
+        <p>Applying these rules consistently is easier when hours are captured once: see <a href="/timesheet-software-construction-uae">timesheet software for UAE construction and manpower teams</a> and how approved hours flow into <a href="/wps-payroll-software-uae">WPS payroll</a>.</p>
       </PostLayout>
     </ContentShell>
   );

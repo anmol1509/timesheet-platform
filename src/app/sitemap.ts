@@ -4,8 +4,13 @@ import { POSTS } from "./blog/posts";
 import { GUIDES } from "./guides/guides-data";
 import { INDUSTRIES_DATA } from "./industries/industries-data";
 import { SOLUTIONS_DATA } from "./solutions/solutions-data";
+import { SITE_HOST, isMarketingHost } from "@/lib/seo/site";
 
-const MARKETING_HOST = "manpowersync.com";
+const MARKETING_HOST = SITE_HOST;
+
+// Bump when the landing/solution/industry copy changes. A real date (not "now")
+// is what lets Google trust <lastmod> and recrawl only what actually changed.
+const SITE_CONTENT_UPDATED = new Date("2026-10-14");
 
 // Standalone top-level pages with no per-item registry of their own.
 const STATIC_PAGES = ["features", "solutions", "guides", "faq", "pricing", "industries"];
@@ -20,9 +25,9 @@ const STATIC_PAGE_PRIORITY: Record<string, number> = { features: 0.9, solutions:
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const host = (await headers()).get("host");
-  if (host !== MARKETING_HOST) return [];
+  if (!isMarketingHost(host)) return [];
 
-  const now = new Date();
+  const now = SITE_CONTENT_UPDATED;
   return [
     {
       url: `https://${MARKETING_HOST}/`,

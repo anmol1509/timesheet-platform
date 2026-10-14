@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { ChipRow, CtaBand, LinkCardGrid, PageHero, Section, StatsRow, TintCardGrid } from "@/app/welcome/content-blocks";
 import { CAPABILITIES, DEEP_DIVES, FACTS, PORTALS, SITE } from "@/app/welcome/content";
 
-const TITLE = "Features";
+const TITLE = "Manpower ERP Features: Timesheets to WPS";
 const DESCRIPTION = `Everything ${SITE.name} covers for a UAE manpower supplier, in one place: timesheets, payroll, billing, projects, compliance, camps and the built-in assistant.`;
 const URL = "https://manpowersync.com/features";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: ["manpower software features UAE", "workforce management software features", "manpower ERP features"],
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
-};
+});
 
 export default function FeaturesPage() {
   return (

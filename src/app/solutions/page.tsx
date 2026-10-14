@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { CtaBand, LinkCardGrid, PageHero, Section, StatsRow } from "@/app/welcome/content-blocks";
 import { FACTS, SITE } from "@/app/welcome/content";
 import { SOLUTIONS_DATA } from "./solutions-data";
 
-const TITLE = "Solutions";
+const TITLE = "Manpower Supply Software Solutions UAE";
 const DESCRIPTION = `Every part of ${SITE.name}, one page each — timesheets, payroll, billing, mobilisation, camps, portals and the built-in assistant.`;
 const URL = "https://manpowersync.com/solutions";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
-};
+});
 
 export default function SolutionsIndexPage() {
   return (

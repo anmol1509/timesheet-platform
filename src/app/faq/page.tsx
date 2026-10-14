@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { CtaBand, FaqList, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
 import { FAQS, SITE } from "@/app/welcome/content";
 
-const TITLE = "Frequently Asked Questions";
+const TITLE = "Manpower ERP FAQ: Setup, WPS & Pricing";
 const DESCRIPTION = `Common questions about ${SITE.name} — getting started, timesheets, payroll and WPS, security, and how subcontractors fit in.`;
 const URL = "https://manpowersync.com/faq";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
-};
+});
 
 export default function FaqPage() {
   return (

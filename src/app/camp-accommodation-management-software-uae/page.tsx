@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { DEEP_DIVES, FAQS, SITE } from "@/app/welcome/content";
 
-const TITLE = "Camp & Accommodation Management Software for UAE Manpower Suppliers";
+const TITLE = "Labour Camp Management Software UAE";
 const DESCRIPTION =
   "Manage labour camps room by room with live occupancy, check workers in and out, and plan transport routes and vehicles against the sites your crews are working at today.";
 const URL = "https://manpowersync.com/camp-accommodation-management-software-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const ACCOMMODATION = DEEP_DIVES.find((d) => d.eyebrow === "Accommodation & transport")!;
 const FAQ_SLICE = FAQS.filter((f) => f.q === "How is this different from a general HRMS or ERP?");

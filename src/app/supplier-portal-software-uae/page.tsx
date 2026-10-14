@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { PORTALS, FAQS, SITE } from "@/app/welcome/content";
 
-const TITLE = "Subcontractor & Supplier Portal Software for UAE Manpower Suppliers";
+const TITLE = "Subcontractor Portal Software UAE";
 const DESCRIPTION =
   "Give subcontractors their own portal to receive demands, submit workers and timesheets, and track their payments — without another forwarded spreadsheet or follow-up call.";
 const URL = "https://manpowersync.com/supplier-portal-software-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const SUPPLIER_PORTAL = PORTALS.find((p) => p.title === "Supplier portal")!;
 const FAQ_SLICE = FAQS.filter((f) => f.q === "How do subcontractors fit in?");

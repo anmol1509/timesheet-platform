@@ -163,8 +163,8 @@ export function AnimatedWords({
         <span key={i} style={{ display: "inline-block", overflow: "hidden", verticalAlign: "top" }}>
           <m.span
             style={{ display: "inline-block" }}
-            initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            initial={{ y: 14 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.55, ease: EASE_PREMIUM, delay: startDelay + i * stagger }}
           >
             {word}

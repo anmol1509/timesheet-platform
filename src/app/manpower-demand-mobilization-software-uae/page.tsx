@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { CAPABILITIES, SITE } from "@/app/welcome/content";
 
-const TITLE = "Manpower Demand & Mobilization Tracking Software for UAE";
+const TITLE = "Manpower Demand & Mobilisation Software UAE";
 const DESCRIPTION =
   "Track every client request from enquiry and quotation through mobilisation, site arrival and demobilisation — and know exactly who's deployed where, today.";
 const URL = "https://manpowersync.com/manpower-demand-mobilization-software-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const PROJECTS = CAPABILITIES.find((c) => c.title === "Projects, sites & demand")!;
 

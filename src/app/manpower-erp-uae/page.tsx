@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { CAPABILITIES, DEEP_DIVES, FACTS, FAQS, SITE } from "@/app/welcome/content";
 import { SOLUTIONS_DATA } from "@/app/solutions/solutions-data";
 
-const TITLE = "Manpower ERP for UAE Manpower Suppliers";
+const TITLE = "Manpower ERP for UAE Labour Suppliers";
 const DESCRIPTION =
   "A manpower ERP built for UAE labour supply companies: timesheets, WPS payroll, client billing, visa/Emirates ID compliance, camps and transport in one system.";
 const URL = "https://manpowersync.com/manpower-erp-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const FAQ_SLICE = FAQS.slice(0, 4);
 

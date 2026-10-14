@@ -85,7 +85,9 @@ export function AppShell({
           </div>
         )}
 
+        {/* Module names only, so Clarity recordings (masked everywhere else, see app-analytics.tsx) show where people go. */}
         <div
+          data-clarity-unmask="true"
           className={cn(
             "flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-3",
             collapsed ? "px-2" : "px-3"

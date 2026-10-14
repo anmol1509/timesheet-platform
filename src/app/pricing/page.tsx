@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { ChipRow, CtaBand, FaqList, PointGrid, Section } from "@/app/welcome/content-blocks";
 import { PricingPlans } from "./pricing-plans";
 import { SITE } from "@/app/welcome/content";
 
-const TITLE = "Pricing";
-const DESCRIPTION = `${SITE.name} plans start at AED 500 a month (AED 5,500 a year) for up to 200 members. Pro is AED 1,000 a month (AED 11,000 a year) for up to 500 members with a dedicated account manager and the supplier portal. Hosting and database are included, and Custom plans are built around your operation.`;
+const TITLE = "Manpower ERP Pricing from AED 500/mo";
+const DESCRIPTION = `${SITE.name} plans start at AED 500 a month for up to 200 members. Pro is AED 1,000 a month for up to 500 members. Hosting and database included.`;
 const URL = "https://manpowersync.com/pricing";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
-};
+});
 
 const INCLUDED = [
   "Timesheets & attendance",

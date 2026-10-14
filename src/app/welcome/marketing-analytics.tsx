@@ -1,17 +1,19 @@
 import Script from "next/script";
+import { CLARITY_LOADER } from "@/lib/clarity";
 
 /**
- * Google Tag Manager + Microsoft Clarity — marketing-site analytics only,
- * never the authenticated app. Shared by the homepage layout and every
+ * Google Tag Manager + Microsoft Clarity for the marketing site. (The staff
+ * app loads its own, masked Clarity tag — see (app)/app-analytics.tsx — and
+ * never GTM.) Shared by the homepage layout and every
  * root-level content/landing page (via ContentShell), since only the
  * homepage nests under welcome/layout.tsx.
  */
 export function MarketingAnalytics() {
   return (
     <>
-      {/* beforeInteractive so the container (and anything it fires) loads
-          ahead of the rest of the page. */}
-      <Script id="gtm-script" strategy="beforeInteractive">
+      {/* afterInteractive: the tag manager must not compete with hydration and
+          the hero's paint (beforeInteractive is also only valid in a root layout). */}
+      <Script id="gtm-script" strategy="afterInteractive">
         {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
             j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -28,12 +30,8 @@ export function MarketingAnalytics() {
         />
       </noscript>
 
-      <Script id="ms-clarity" strategy="afterInteractive">
-        {`(function(c,l,a,r,i,t,y){
-            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window, document, "clarity", "script", "yox1polsck");`}
+      <Script id="ms-clarity" strategy="lazyOnload">
+        {CLARITY_LOADER}
       </Script>
     </>
   );

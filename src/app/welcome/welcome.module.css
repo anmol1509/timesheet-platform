@@ -1392,8 +1392,8 @@
 }
 .footerGrid {
   display: grid;
-  grid-template-columns: 2fr repeat(4, 1fr);
-  gap: 32px;
+  grid-template-columns: 1.6fr repeat(6, 1fr);
+  gap: 24px;
 }
 .footerBrand {
   display: flex;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { PostLayout } from "../post-layout";
 import { POSTS } from "../posts";
@@ -6,7 +7,7 @@ import { POSTS } from "../posts";
 const post = POSTS.find((p) => p.slug === "visa-emirates-id-expiry-compliance-checklist")!;
 const URL = `https://manpowersync.com/blog/${post.slug}`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: post.title,
   description: post.description,
   alternates: { canonical: URL },
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   // every other page to noindex, so this has to be explicit here.
   robots: { index: true, follow: true },
   openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
-};
+});
 
 export default function Page() {
   return (
@@ -29,6 +30,9 @@ export default function Page() {
             headline: post.title,
             description: post.description,
             datePublished: post.date,
+            dateModified: post.date,
+            image: "https://manpowersync.com/brand-assets/og-default.png",
+            mainEntityOfPage: URL,
             author: { "@type": "Organization", name: "ManpowerSync" },
           }),
         }}
@@ -106,6 +110,7 @@ export default function Page() {
           happening every time, for every worker, without depending on someone remembering. That&rsquo;s
           the part software is good at, and spreadsheets aren&rsquo;t.
         </p>
+        <p>Expiry tracking is built into the <a href="/manpower-erp-uae">manpower ERP</a>. Not sure which document is which? Read <a href="/blog/labour-card-work-permit-visa-difference-uae">labour card vs work permit vs visa</a>.</p>
       </PostLayout>
     </ContentShell>
   );
