@@ -1,8 +1,10 @@
 import Script from "next/script";
+import { CLARITY_LOADER } from "@/lib/clarity";
 
 /**
- * Google Tag Manager + Microsoft Clarity — marketing-site analytics only,
- * never the authenticated app. Shared by the homepage layout and every
+ * Google Tag Manager + Microsoft Clarity for the marketing site. (The staff
+ * app loads its own, masked Clarity tag — see (app)/app-analytics.tsx — and
+ * never GTM.) Shared by the homepage layout and every
  * root-level content/landing page (via ContentShell), since only the
  * homepage nests under welcome/layout.tsx.
  */
@@ -29,11 +31,7 @@ export function MarketingAnalytics() {
       </noscript>
 
       <Script id="ms-clarity" strategy="afterInteractive">
-        {`(function(c,l,a,r,i,t,y){
-            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window, document, "clarity", "script", "yox1polsck");`}
+        {CLARITY_LOADER}
       </Script>
     </>
   );

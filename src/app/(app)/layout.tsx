@@ -6,6 +6,7 @@ import { viewableModules } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { AppShell } from "./app-shell";
+import { AppAnalytics } from "./app-analytics";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
 import { MobileSidebar } from "./mobile-sidebar";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -115,6 +116,7 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
+      <AppAnalytics userId={user.id} role={user.role} />
       <Suspense fallback={null}>
         <ProgressBar />
       </Suspense>
