@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { GuideLayout } from "../guide-layout";
 import { GUIDES } from "../guides-data";
@@ -6,13 +7,13 @@ import { GUIDES } from "../guides-data";
 const guide = GUIDES.find((g) => g.slug === "setting-up-roles-permissions")!;
 const URL = `https://manpowersync.com/guides/${guide.slug}`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: guide.title,
   description: guide.description,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: guide.title, description: guide.description, url: URL, type: "article" },
-};
+});
 
 export default function Page() {
   return (

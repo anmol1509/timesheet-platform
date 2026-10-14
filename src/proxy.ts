@@ -45,14 +45,32 @@ export async function proxy(request: NextRequest) {
 
   // The marketing site runs on its own domain (e.g. www.example.com) while the
   // app keeps its current one. On that domain, / is the landing page, its
-  // content/blog/landing pages are reachable too, and nothing else in the
-  // app is reachable.
+  // content/blog/landing pages and brand images are reachable, and nothing else
+  // in the app is: unknown URLs get a real 404 (not a redirect to the homepage,
+  // which search engines count as a soft 404).
   const marketingHost = process.env.MARKETING_HOST;
-  if (marketingHost && request.headers.get("host") === marketingHost) {
+  const host = request.headers.get("host");
+  if (marketingHost && (host === marketingHost || host === `www.${marketingHost}`)) {
+    // One canonical host: www goes to the apex, permanently.
+    if (host !== marketingHost) {
+      const url = request.nextUrl.clone();
+      url.host = marketingHost;
+      url.port = "";
+      return NextResponse.redirect(url, 308);
+    }
     if (pathname === "/") return NextResponse.rewrite(new URL("/welcome", request.url));
+    // /welcome is the homepage's internal path; "/" is its one public URL.
+    if (pathname === "/welcome") return NextResponse.redirect(new URL("/", request.url), 308);
+    if (isPublicBrandAsset(pathname)) return NextResponse.next();
     const isMarketingContent = MARKETING_CONTENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
     if (isMarketingContent) return NextResponse.next();
-    return NextResponse.redirect(new URL("/", request.url));
+    // Old links to the app's sign-in pages still land somewhere useful.
+    if (pathname === "/login" || pathname.startsWith("/me") || pathname.startsWith("/vendor")) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+      return NextResponse.redirect(appUrl ? new URL(pathname, appUrl) : new URL("/", request.url));
+    }
+    // Rewriting to a path that matches no route renders not-found.tsx with a 404 status.
+    return NextResponse.rewrite(new URL("/_not-found-marketing", request.url));
   }
 
   if (

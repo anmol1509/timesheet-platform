@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { CAPABILITIES, SITE } from "@/app/welcome/content";
 
-const TITLE = "VAT Invoicing & Billing Software for UAE Manpower Suppliers";
+const TITLE = "VAT Invoicing Software for Manpower Supply";
 const DESCRIPTION =
   "Turn approved timesheet hours into VAT-ready client invoices, and keep bills, expenses and payments in one ledger instead of three separate spreadsheets.";
 const URL = "https://manpowersync.com/construction-invoicing-software-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const BILLING = CAPABILITIES.find((c) => c.title === "Billing & finance")!;
 

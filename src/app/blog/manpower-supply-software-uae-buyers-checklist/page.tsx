@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { PostLayout } from "../post-layout";
 import { POSTS } from "../posts";
@@ -23,13 +24,13 @@ const FAQS = [
   }
 ];
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: { absolute: SEO_TITLE },
   description: post.description,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: SEO_TITLE, description: post.description, url: URL, type: "article" },
-};
+});
 
 export default function Page() {
   return (
@@ -44,6 +45,8 @@ export default function Page() {
               headline: post.title,
               description: post.description,
               datePublished: post.date,
+              dateModified: post.date,
+              image: "https://manpowersync.com/brand-assets/og-default.png",
               author: { "@type": "Organization", name: "ManpowerSync" },
               publisher: { "@type": "Organization", name: "ManpowerSync", url: "https://manpowersync.com" },
               mainEntityOfPage: URL,

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { PostLayout } from "../post-layout";
 import { POSTS } from "../posts";
@@ -6,13 +7,13 @@ import { POSTS } from "../posts";
 const post = POSTS.find((p) => p.slug === "labour-card-work-permit-visa-difference-uae")!;
 const URL = `https://manpowersync.com/blog/${post.slug}`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: post.title,
   description: post.description,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
-};
+});
 
 export default function Page() {
   return (
@@ -26,6 +27,9 @@ export default function Page() {
             headline: post.title,
             description: post.description,
             datePublished: post.date,
+            dateModified: post.date,
+            image: "https://manpowersync.com/brand-assets/og-default.png",
+            mainEntityOfPage: URL,
             author: { "@type": "Organization", name: "ManpowerSync" },
           }),
         }}
@@ -79,6 +83,7 @@ export default function Page() {
           problem when something doesn&rsquo;t match, instead of finding out only when a file bounces or
           a fine arrives.
         </p>
+        <p>Once you know which document is which, keep each expiry visible: see our <a href="/blog/visa-emirates-id-expiry-compliance-checklist">visa, Emirates ID and labour card expiry checklist</a> and the <a href="/manpower-erp-uae">manpower ERP</a> that tracks them.</p>
       </PostLayout>
     </ContentShell>
   );

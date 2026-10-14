@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { notFound } from "next/navigation";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
@@ -15,14 +16,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const industry = INDUSTRIES_DATA.find((i) => i.slug === slug);
   if (!industry) return {};
   const url = `https://manpowersync.com/industries/${industry.slug}`;
-  return {
+  return finishMetadata({
     title: industry.title,
     description: industry.description,
     keywords: [...industry.keywords],
     alternates: { canonical: url },
     robots: { index: true, follow: true },
     openGraph: { title: industry.title, description: industry.description, url, type: "article" },
-  };
+  });
 }
 
 const POINT_ICONS: IconName[] = ["hardhat", "wps", "bed"];

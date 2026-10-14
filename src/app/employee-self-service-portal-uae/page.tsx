@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { PORTALS, FAQS, SITE } from "@/app/welcome/content";
 
-const TITLE = "Employee Self-Service Portal for UAE Manpower Suppliers";
+const TITLE = "Employee Self-Service Portal UAE";
 const DESCRIPTION =
   "Workers check their attendance, download payslips and view their own documents from any phone browser — no app to install, no call to HR needed.";
 const URL = "https://manpowersync.com/employee-self-service-portal-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const EMPLOYEE_PORTAL = PORTALS.find((p) => p.title === "Employee self-service")!;
 const FAQ_SLICE = FAQS.filter((f) => f.q === "Do workers need to install an app?");

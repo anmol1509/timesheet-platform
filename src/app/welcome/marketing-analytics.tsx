@@ -11,9 +11,9 @@ import { CLARITY_LOADER } from "@/lib/clarity";
 export function MarketingAnalytics() {
   return (
     <>
-      {/* beforeInteractive so the container (and anything it fires) loads
-          ahead of the rest of the page. */}
-      <Script id="gtm-script" strategy="beforeInteractive">
+      {/* afterInteractive: the tag manager must not compete with hydration and
+          the hero's paint (beforeInteractive is also only valid in a root layout). */}
+      <Script id="gtm-script" strategy="afterInteractive">
         {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
             j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -30,7 +30,7 @@ export function MarketingAnalytics() {
         />
       </noscript>
 
-      <Script id="ms-clarity" strategy="afterInteractive">
+      <Script id="ms-clarity" strategy="lazyOnload">
         {CLARITY_LOADER}
       </Script>
     </>

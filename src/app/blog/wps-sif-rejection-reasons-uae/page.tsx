@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { PostLayout } from "../post-layout";
 import { POSTS } from "../posts";
@@ -6,7 +7,7 @@ import { POSTS } from "../posts";
 const post = POSTS.find((p) => p.slug === "wps-sif-rejection-reasons-uae")!;
 const URL = `https://manpowersync.com/blog/${post.slug}`;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: post.title,
   description: post.description,
   alternates: { canonical: URL },
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   // every other page to noindex, so this has to be explicit here.
   robots: { index: true, follow: true },
   openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
-};
+});
 
 export default function Page() {
   return (
@@ -29,6 +30,9 @@ export default function Page() {
             headline: post.title,
             description: post.description,
             datePublished: post.date,
+            dateModified: post.date,
+            image: "https://manpowersync.com/brand-assets/og-default.png",
+            mainEntityOfPage: URL,
             author: { "@type": "Organization", name: "ManpowerSync" },
           }),
         }}
@@ -90,6 +94,7 @@ export default function Page() {
           before export, removes most of the manual re-entry that causes these mismatches in the
           first place.
         </p>
+        <p>Catching these before upload is what <a href="/wps-payroll-software-uae">WPS payroll software</a> is for; our <a href="/guides/run-payroll-export-wps-file">guide to running payroll and exporting a WPS file</a> walks through it step by step. Related: <a href="/blog/eosb-gratuity-calculation-uae">how end-of-service gratuity is calculated</a>.</p>
       </PostLayout>
     </ContentShell>
   );

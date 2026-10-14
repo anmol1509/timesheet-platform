@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { CAPABILITIES, FAQS, SITE } from "@/app/welcome/content";
 
-const TITLE = "WPS Payroll Software for UAE Manpower Suppliers";
+const TITLE = "WPS Payroll Software for UAE Suppliers";
 const DESCRIPTION =
   "Run payroll for hundreds of workers from approved hours, apply overtime, loans and gratuity automatically, and export a bank-ready WPS SIF file every month.";
 const URL = "https://manpowersync.com/wps-payroll-software-uae";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const PAYROLL = CAPABILITIES.find((c) => c.title === "Payroll & WPS")!;
 const FAQ_SLICE = FAQS.filter((f) =>

@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
 import { SITE } from "@/app/welcome/content";
 import { INDUSTRIES_DATA } from "./industries-data";
 
-const TITLE = "Industries";
+const TITLE = "Workforce Software by Industry (UAE)";
 const DESCRIPTION = `How ${SITE.name} fits the way each kind of manpower and workforce business actually staffs and bills.`;
 const URL = "https://manpowersync.com/industries";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
-};
+});
 
 export default function IndustriesIndexPage() {
   return (

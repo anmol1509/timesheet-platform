@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/welcome/content-blocks";
 import { SITE } from "@/app/welcome/content";
 import { GUIDES } from "./guides-data";
 
-const TITLE = "Guides";
+const TITLE = "Manpower Software How-To Guides";
 const DESCRIPTION = `Step-by-step guides to running ${SITE.name} — importing your workforce, running payroll, and setting up your team.`;
 const URL = "https://manpowersync.com/guides";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "website" },
-};
+});
 
 export default function GuidesIndexPage() {
   return (

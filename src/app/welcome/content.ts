@@ -1,4 +1,6 @@
 // Everything a marketer might change before launch lives here.
+import { INDUSTRIES_DATA } from "@/app/industries/industries-data";
+import { SOLUTIONS_DATA } from "@/app/solutions/solutions-data";
 
 export const SITE = {
   name: "ManpowerSync",
@@ -210,6 +212,8 @@ export const FAQS = [
   },
 ];
 
+// Server-rendered on every page, so this is the sitewide crawlable link block
+// to the solution and industry pages (the header menus only mount on hover).
 export const FOOTER: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Product",
@@ -219,6 +223,14 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "Industries", href: "/industries" },
       { label: "Pricing", href: "/pricing" },
     ],
+  },
+  {
+    title: "Solutions",
+    links: SOLUTIONS_DATA.map((sol) => ({ label: sol.label, href: `/${sol.slug}` })),
+  },
+  {
+    title: "Industries",
+    links: INDUSTRIES_DATA.map((ind) => ({ label: ind.name, href: `/industries/${ind.slug}` })),
   },
   {
     title: "Resources",

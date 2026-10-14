@@ -126,14 +126,11 @@ export function PageHero({
               {eyebrow}
             </Reveal>
           )}
-          <Reveal as="h1" className={s.heroTitle} style={{ fontSize: "clamp(38px, 6vw, 62px)", letterSpacing: "-1.5px" }} y={16}>
+          {/* Plain elements, not <Reveal>: Reveal server-renders opacity:0, which hid the LCP text until hydration. */}
+          <h1 className={s.heroTitle} style={{ fontSize: "clamp(38px, 6vw, 62px)", letterSpacing: "-1.5px" }}>
             {title}
-          </Reveal>
-          {lead && (
-            <Reveal as="p" className={s.heroSub} y={16} delay={0.1}>
-              {lead}
-            </Reveal>
-          )}
+          </h1>
+          {lead && <p className={s.heroSub}>{lead}</p>}
           {cta && (
             <Reveal as="div" className={s.heroCtas} y={16} delay={0.18}>
               <MagneticButton>

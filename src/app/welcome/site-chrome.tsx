@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, m } from "motion/react";
 import { ChevronDown } from "lucide-react";
-import { BRAND_ICON, BRAND_LOGO, BRAND_LOGO_ASPECT } from "@/lib/brand-assets";
 import { BookDemoButton } from "@/components/BookDemoButton";
 import { FOOTER, SITE } from "./content";
 import { ICONS } from "./content-blocks";
@@ -23,12 +22,12 @@ export function Logo({ href }: { href: string }) {
   const height = 44;
   return (
     <a href={href} className={s.logo} aria-label={`${SITE.name} home`}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- small static file, no loader needed */}
       <img
-        src={BRAND_LOGO}
+        src="/brand-assets/logo-header.png"
         alt={SITE.name}
         height={height}
-        width={Math.round(height * BRAND_LOGO_ASPECT)}
+        width={Math.round(height * 5.1502)}
         style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: "100%" }}
       />
     </a>
@@ -42,8 +41,8 @@ export function FooterLogo() {
   const height = 40;
   return (
     <span className={s.footerLogoRow}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
-      <img src={BRAND_ICON} alt="" height={height} width={height} style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: height }} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- small static file, no loader needed */}
+      <img src="/brand-assets/icon-mark.png" alt="" height={height} width={height} style={{ height: "auto", width: "auto", maxHeight: height, maxWidth: height }} />
       <span className={s.footerWordmark}>{SITE.name}</span>
     </span>
   );

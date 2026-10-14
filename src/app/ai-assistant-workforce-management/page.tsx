@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
+import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/welcome/content-shell";
 import { SolutionPage } from "@/app/welcome/solution-page";
 import { DEEP_DIVES, FAQS, SITE } from "@/app/welcome/content";
 
-const TITLE = "AI Assistant for Workforce & Compliance Data (UAE)";
+const TITLE = "AI Assistant for Workforce Data (UAE)";
 const DESCRIPTION =
   "Ask your workforce data a plain-language question and get an answer with a link to the record it came from — permission-aware, so nobody sees more than their role already allows.";
 const URL = "https://manpowersync.com/ai-assistant-workforce-management";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = finishMetadata({
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
-};
+});
 
 const ASSISTANT = DEEP_DIVES.find((d) => d.eyebrow === "Built-in assistant")!;
 const DOCUMENTS = DEEP_DIVES.find((d) => d.eyebrow === "Documents & compliance")!;
