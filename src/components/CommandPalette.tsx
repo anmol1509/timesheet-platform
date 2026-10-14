@@ -15,7 +15,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { EmployeeAvatar } from "@/components/Avatar";
-import { getNavPages } from "@/app/(app)/nav-links";
+import { getNavPages } from "@/app/(platform)/(app)/nav-links";
 import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
 

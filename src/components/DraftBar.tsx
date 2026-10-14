@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, FileClock, RotateCcw, Save, Trash2 } from "lucide-react";
-import { discardDraftAction, loadDraftAction, saveDraftAction } from "@/app/(app)/drafts/actions";
+import { discardDraftAction, loadDraftAction, saveDraftAction } from "@/app/(platform)/(app)/drafts/actions";
 import type { DraftType } from "@/lib/draftTypes";
 
 const AUTOSAVE_MS = 8000;

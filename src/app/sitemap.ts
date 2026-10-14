@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { POSTS } from "./blog/posts";
-import { GUIDES } from "./guides/guides-data";
-import { INDUSTRIES_DATA } from "./industries/industries-data";
-import { SOLUTIONS_DATA } from "./solutions/solutions-data";
+import { POSTS } from "./(marketing)/blog/posts";
+import { GUIDES } from "./(marketing)/guides/guides-data";
+import { INDUSTRIES_DATA } from "./(marketing)/industries/industries-data";
+import { SOLUTIONS_DATA } from "./(marketing)/solutions/solutions-data";
 import { SITE_HOST, isMarketingHost } from "@/lib/seo/site";
 
 const MARKETING_HOST = SITE_HOST;

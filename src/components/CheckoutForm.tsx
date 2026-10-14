@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { cancelScheduledCheckoutAction, checkOutWorkerAction } from "@/app/(app)/accommodation/actions";
+import { cancelScheduledCheckoutAction, checkOutWorkerAction } from "@/app/(platform)/(app)/accommodation/actions";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { CHECKOUT_REASONS, checkoutKind, checkoutProblem, daysBetween, todayKey } from "@/lib/checkoutReasons";
