@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { PORTALS, FAQS, SITE } from "@/app/(marketing)/welcome/content";
+import { PORTALS, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "Subcontractor Portal Software UAE";
 const DESCRIPTION =
@@ -25,25 +26,16 @@ export const metadata: Metadata = finishMetadata({
 });
 
 const SUPPLIER_PORTAL = PORTALS.find((p) => p.title === "Supplier portal")!;
-const FAQ_SLICE = FAQS.filter((f) => f.q === "How do subcontractors fit in?");
+const PAGE_FAQS = [
+  { q: "What can a subcontractor see in the portal?", a: "Only their own demands, workers and payments. They never see your clients, margins or other suppliers, and they sign in separately from your staff." },
+  { q: "How do subcontractors submit their crews' hours?", a: "Through their own portal, into the same approval queue your team approves from, instead of by emailed spreadsheet." },
+  { q: "How does a demand work with a supplier?", a: "A request for a trade goes out, the subcontractor quotes against it and proposes the specific workers they would send, and the whole exchange stays attached to that one demand." },
+] as const;
 
 export default function SupplierPortalPage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
         eyebrow="Supplier portal"
         title="Subcontractor crews, off email and into one system."
@@ -116,7 +108,7 @@ export default function SupplierPortalPage() {
             body: "The staff workspace the supplier portal feeds into — approvals, payroll and billing.",
           },
         ]}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle={`Bring your subcontractors onto ${SITE.name}.`}
         ctaLead="Invite a supplier and they can submit their first crew the same day."
       />

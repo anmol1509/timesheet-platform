@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { postsForPillar } from "@/app/(marketing)/blog/clusters";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { CAPABILITIES, FAQS, SITE } from "@/app/(marketing)/welcome/content";
+import { CAPABILITIES, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "WPS Payroll Software for UAE Suppliers";
 const DESCRIPTION =
@@ -26,27 +27,16 @@ export const metadata: Metadata = finishMetadata({
 });
 
 const PAYROLL = CAPABILITIES.find((c) => c.title === "Payroll & WPS")!;
-const FAQ_SLICE = FAQS.filter((f) =>
-  ["Does payroll produce a WPS file our bank accepts?", "Who can see salary and client data?"].includes(f.q)
-);
+const PAGE_FAQS = [
+  { q: "Where does the WPS file get its bank details?", a: "The salary file is built from each employee's stored bank and routing details and the approved payroll run, so nothing is retyped each month. It can be exported again for a run if you need it." },
+  { q: "Which pay structures does payroll support?", a: "Itemised (basic plus allowances), flat monthly and hourly, with overtime and rest-day premiums applied automatically, plus recurring loan deductions and end-of-service gratuity." },
+  { q: "Can the person who creates a payroll run also approve it?", a: "Above a set approval threshold, no. A four-eyes rule stops a run being approved by the person who created it, and every figure and change is written to the audit log." },
+] as const;
 
 export default function WpsPayrollSoftwarePage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
         furtherReading={postsForPillar("/wps-payroll-software-uae").map((p) => ({ href: `/blog/${p.slug}`, title: p.title, body: p.description }))}
         eyebrow="Payroll & WPS"
@@ -125,7 +115,7 @@ export default function WpsPayrollSoftwarePage() {
             body: "The most common reasons a WPS salary file bounces back, and how to stop them recurring every month.",
           },
         ]}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle={`Run this month's payroll on ${SITE.name}.`}
         ctaLead="Bring your employees' bank details as they stand today — nothing to re-key before your first run."
       />

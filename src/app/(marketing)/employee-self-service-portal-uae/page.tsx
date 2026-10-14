@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { PORTALS, FAQS, SITE } from "@/app/(marketing)/welcome/content";
+import { PORTALS, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "Employee Self-Service Portal UAE";
 const DESCRIPTION =
@@ -24,25 +25,16 @@ export const metadata: Metadata = finishMetadata({
 });
 
 const EMPLOYEE_PORTAL = PORTALS.find((p) => p.title === "Employee self-service")!;
-const FAQ_SLICE = FAQS.filter((f) => f.q === "Do workers need to install an app?");
+const PAGE_FAQS = [
+  { q: "What can a worker see in the portal?", a: "Their own payslips, attendance history and personal documents, including passport, visa, Emirates ID and labour card details with expiry dates." },
+  { q: "Does it work on any phone?", a: "Yes. It runs in any phone browser with no app to install and no minimum phone spec; a worker opens a link and signs in." },
+  { q: "When does a payslip appear?", a: "Each month's payslip can be downloaded the day the payroll run is approved, with the same figures payroll approved." },
+] as const;
 
 export default function EmployeeSelfServicePage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
         eyebrow="Employee self-service"
         title="Every worker's payslip, in their own pocket."
@@ -115,7 +107,7 @@ export default function EmployeeSelfServicePage() {
             body: "The staff workspace behind both portals — approvals, payroll, billing and compliance.",
           },
         ]}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle="Give your workforce their own portal."
         ctaLead={`Workers can sign in and see their first payslip the same day it's run on ${SITE.name}.`}
       />

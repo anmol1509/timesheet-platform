@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { postsForPillar } from "@/app/(marketing)/blog/clusters";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
-import { CAPABILITIES, DEEP_DIVES, FACTS, FAQS, SITE } from "@/app/(marketing)/welcome/content";
+import { CAPABILITIES, DEEP_DIVES, FACTS, SITE } from "@/app/(marketing)/welcome/content";
 import { SOLUTIONS_DATA } from "@/app/(marketing)/solutions/solutions-data";
 
 const TITLE = "Manpower ERP for UAE Labour Suppliers";
@@ -26,25 +27,16 @@ export const metadata: Metadata = finishMetadata({
   openGraph: { title: TITLE, description: DESCRIPTION, url: URL, type: "article" },
 });
 
-const FAQ_SLICE = FAQS.slice(0, 4);
+const PAGE_FAQS = [
+  { q: "What does a manpower ERP include?", a: "Timesheets and attendance, payroll with a WPS export, client billing, projects, sites and demand tracking, documents and compliance, camps and transport, and portals for staff, employees and suppliers, all on one set of records." },
+  { q: "Do we have to re-key our existing data?", a: "No. Employees and sites are imported from your existing sheets, and your current timesheet workbook can be uploaded as it is." },
+  { q: "Who can see salary and client data?", a: "Access is controlled by role and branch, so each person only sees the modules they need, and every create, edit and delete is recorded in the audit log." },
+] as const;
 
 export default function ManpowerErpUaePage() {
   return (
     <ContentShell>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQ_SLICE.map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        }}
-      />
+      <JsonLd data={faqLd(PAGE_FAQS)} />
       <SolutionPage
         furtherReading={postsForPillar("/manpower-erp-uae").map((p) => ({ href: `/blog/${p.slug}`, title: p.title, body: p.description }))}
         eyebrow="Manpower ERP"
@@ -108,7 +100,7 @@ export default function ManpowerErpUaePage() {
           title: s.label,
           body: s.description,
         }))}
-        faqs={FAQ_SLICE}
+        faqs={PAGE_FAQS}
         ctaTitle={`See ${SITE.name} on your own workforce.`}
         ctaLead="Bring your current timesheet workbook — nothing to re-key before your first month."
       />

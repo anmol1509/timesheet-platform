@@ -32,6 +32,7 @@ import { BookDemoButton } from "@/components/BookDemoButton";
 import type { Tint } from "./content";
 import { CountUpInView, MagneticButton, Reveal, RevealGroup, RevealItem } from "./motion";
 import s from "./welcome.module.css";
+import { Breadcrumbs } from "./breadcrumbs";
 
 /** Icons are referenced by name, not by component: these blocks are client
  * components rendered from server pages, and a function reference can't
@@ -121,6 +122,7 @@ export function PageHero({
       <Decorations />
       <div className={s.container}>
         <div className={s.heroInner} style={{ paddingBottom: 96 }}>
+          <Breadcrumbs />
           {eyebrow && (
             <Reveal as="span" className={s.pill} y={10}>
               {eyebrow}

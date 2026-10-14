@@ -5,7 +5,10 @@ import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { SolutionPage } from "@/app/(marketing)/welcome/solution-page";
 import { SITE } from "@/app/(marketing)/welcome/content";
 import type { IconName } from "@/app/(marketing)/welcome/content-blocks";
+import { POSTS } from "@/app/(marketing)/blog/posts";
+import { JsonLd, faqLd } from "@/lib/seo/jsonld";
 import { INDUSTRIES_DATA } from "../industries-data";
+import { INDUSTRY_CONTENT } from "../industries-content";
 
 export function generateStaticParams() {
   return INDUSTRIES_DATA.map((i) => ({ slug: i.slug }));
@@ -32,9 +35,11 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const industry = INDUSTRIES_DATA.find((i) => i.slug === slug);
   if (!industry) notFound();
+  const extra = INDUSTRY_CONTENT[industry.slug];
 
   return (
     <ContentShell>
+      <JsonLd data={faqLd(extra.faqs)} />
       <SolutionPage
         eyebrow={`For ${industry.name}`}
         title={industry.title}
@@ -47,22 +52,35 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
           title: d.title,
           body: d.body,
         }))}
+        cardsEyebrow="Paperwork and compliance"
+        cardsTitle={`What to keep on record in ${industry.name.toLowerCase()}.`}
+        cardsLead={`A typical contract: ${extra.scenario}`}
+        cards={extra.documents.map((d, i) => ({
+          tint: (["sky", "mint", "peach", "lavender"] as const)[i % 4],
+          title: d.title,
+          body: d.body,
+        }))}
         visuals={[
           {
             visual: "timesheet",
             eyebrow: "The daily screen",
             title: "Hours in, approved, and on to payroll and invoices.",
-            body: "Whatever your crews do on site, the office side is the same: hours arrive, exceptions get flagged, a supervisor approves, and the same figures become payroll and the client's invoice.",
+            body: extra.hoursStory,
             points: ["One approval queue", "Straight to payroll", "Straight to invoicing"],
           },
           {
             visual: "documents",
             eyebrow: "Compliance",
             title: "Expiries surface before they become fines.",
-            body: "Visas, Emirates IDs, labour cards, medicals and any site clearance your work needs, tracked on the employee record with alerts well before the date.",
+            body: extra.complianceStory,
             points: ["AI document extraction", "Expiry alerts", "Letters & NOCs"],
           },
         ]}
+        furtherReading={extra.posts.map((slug) => {
+          const post = POSTS.find((p) => p.slug === slug)!;
+          return { href: `/blog/${post.slug}`, title: post.title, body: post.description };
+        })}
+        faqs={extra.faqs}
         relatedTitle="The platform behind it"
         related={[
           {
