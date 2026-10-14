@@ -3,7 +3,7 @@
 import Link from "next/link";
 import * as Popover from "@radix-ui/react-popover";
 import { Bell, ShieldCheck } from "lucide-react";
-import { markNotificationReadAction } from "@/app/(app)/notifications/actions";
+import { markNotificationReadAction } from "@/app/(platform)/(app)/notifications/actions";
 import type { ComplianceAlert } from "@/lib/dashboardAlerts";
 import { cn } from "@/lib/cn";
 

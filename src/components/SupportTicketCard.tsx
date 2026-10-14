@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LifeBuoy, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
-import { submitSupportTicketAction, type SupportTicketState } from "@/app/(app)/support/actions";
+import { submitSupportTicketAction, type SupportTicketState } from "@/app/(platform)/(app)/support/actions";
 
 function SupportTicketForm({ onSent }: { onSent: () => void }) {
   const pathname = usePathname();

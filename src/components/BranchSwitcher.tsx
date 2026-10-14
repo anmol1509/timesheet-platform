@@ -4,8 +4,8 @@ import { CitySelect } from "@/components/ui/CitySelect";
 import { useActionState, useState, useTransition } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Building2, Check, ChevronDown, Plus } from "lucide-react";
-import { setActiveBranchAction } from "@/app/(app)/branch-switcher-actions";
-import { createBranchAction } from "@/app/(app)/settings/actions";
+import { setActiveBranchAction } from "@/app/(platform)/(app)/branch-switcher-actions";
+import { createBranchAction } from "@/app/(platform)/(app)/settings/actions";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
 
