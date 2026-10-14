@@ -160,6 +160,11 @@ export default function Page() {
           paid hours instead of billed hours.
         </p>
 
+        <p>
+          To try your own figures, use the free{" "}
+          <a href="/tools/manpower-hourly-rate-calculator">manpower hourly rate calculator</a>.
+        </p>
+
         <h2>Common pricing mistakes</h2>
         <ul>
           <li>Dividing salary by 30 days and treating that as the cost of a billable day.</li>

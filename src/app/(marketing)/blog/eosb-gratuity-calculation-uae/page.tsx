@@ -87,7 +87,7 @@ export default function Page() {
           allowances for every employee, and tracks join date and any service gaps on the same
           record, turns EOSB from a manual recalculation into a number the system already has.
         </p>
-        <p>Gratuity accrues every month, so it belongs inside payroll rather than in a spreadsheet at exit: see how <a href="/wps-payroll-software-uae">WPS payroll software</a> applies it automatically, and read about <a href="/blog/uae-overtime-rules-construction-workers">UAE overtime rules</a> for the other big pay variable.</p>
+        <p>Want a number now? Use the free <a href="/tools/gratuity-calculator-uae">UAE gratuity calculator</a>. Gratuity accrues every month, so it belongs inside payroll rather than in a spreadsheet at exit: see how <a href="/wps-payroll-software-uae">WPS payroll software</a> applies it automatically, and read about <a href="/blog/uae-overtime-rules-construction-workers">UAE overtime rules</a> for the other big pay variable.</p>
       </PostLayout>
     </ContentShell>
   );

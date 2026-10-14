@@ -69,3 +69,23 @@ export const articleLd = (p: {
   author: { "@id": ORG_ID },
   publisher: { "@id": ORG_ID },
 });
+
+/** A free in-browser tool (calculator). Free, so the offer is price 0. */
+export const webApplicationLd = (p: { path: string; name: string; description: string; category?: string }): Thing => ({
+  "@type": "WebApplication",
+  "@id": `${SITE_URL}${p.path}#tool`,
+  name: p.name,
+  description: p.description,
+  url: `${SITE_URL}${p.path}`,
+  applicationCategory: p.category ?? "BusinessApplication",
+  operatingSystem: "Web",
+  inLanguage: "en-AE",
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "AED" },
+  publisher: { "@id": ORG_ID },
+});
+
+export const faqLd = (items: readonly { q: string; a: string }[]): Thing => ({
+  "@type": "FAQPage",
+  mainEntity: items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+});

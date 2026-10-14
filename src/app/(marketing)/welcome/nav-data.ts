@@ -111,6 +111,7 @@ const RESOURCES: NavEntry = {
         { label: "Guides", href: "/guides", description: "How to run each part of the platform.", icon: "document" },
         { label: "Blog", href: "/blog", description: "UAE payroll, WPS and compliance writing.", icon: "sheet" },
         { label: "FAQ", href: "/faq", description: "Straight answers on setup, data and pricing.", icon: "check" },
+        { label: "Free tools", href: "/tools", description: "Gratuity and hourly-rate calculators.", icon: "wallet" },
       ],
     },
   ],

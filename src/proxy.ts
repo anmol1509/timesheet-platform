@@ -16,6 +16,7 @@ const MARKETING_CONTENT_PATHS = [
   "/solutions",
   "/features",
   "/faq",
+  "/tools",
   "/pricing",
   "/manpower-erp-uae",
   "/wps-payroll-software-uae",

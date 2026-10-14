@@ -238,6 +238,8 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "Guides", href: "/guides" },
       { label: "Blog", href: "/blog" },
       { label: "FAQ", href: "/faq" },
+      { label: "Gratuity calculator", href: "/tools/gratuity-calculator-uae" },
+      { label: "Hourly rate calculator", href: "/tools/manpower-hourly-rate-calculator" },
     ],
   },
   {
