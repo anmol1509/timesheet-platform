@@ -1,0 +1,11 @@
+/* Stylesheet for the public marketing site. The staff app's globals.css compiles Tailwind
+   against the whole repo and adds ~600 lines of app component styles and flag icons, none of
+   which marketing pages use. This one scans only marketing code (plus the few shared
+   components it renders), so the CSS every visitor must download before first paint is
+   a fraction of the size. Tokens and base styles come from the same foundation.css. */
+@import "tailwindcss" source(none);
+@source "./(marketing)";
+@source "../components/BookDemoButton.tsx";
+@source "../components/FormValidation.tsx";
+@source "../components/motion";
+@import "./foundation.css";
