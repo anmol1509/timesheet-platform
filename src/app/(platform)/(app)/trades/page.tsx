@@ -8,7 +8,7 @@ import { createSkillAction } from "./actions";
 import { TradeTable } from "./trade-table";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { BarList } from "@/components/BarList";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 
 export default async function SkillsPage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -108,7 +108,7 @@ export default async function SkillsPage() {
       </form>
 
       {rows.length > 0 && (
-        <Panel title="Top trades by headcount" href="/employees">
+        <Insights id="trades" title="Top trades by headcount">
           <BarList
             tone="brand"
             items={[...rows]
@@ -117,7 +117,7 @@ export default async function SkillsPage() {
               .map((r) => ({ key: r.id, label: r.name, value: r.employeeCount }))}
             emptyLabel="No employees assigned to a trade yet."
           />
-        </Panel>
+        </Insights>
       )}
       <TradeTable trades={rows} />
     </div>

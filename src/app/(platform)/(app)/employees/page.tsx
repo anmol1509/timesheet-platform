@@ -11,7 +11,7 @@ import { isEmployeeComplete } from "@/lib/employeeCompleteness";
 import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
 import { BarList } from "@/components/BarList";
 import { Treemap } from "@/components/Treemap";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 import { EmployeeList } from "./employee-list";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? null : Number(d.toString()));
@@ -168,17 +168,21 @@ export default async function EmployeesPage({
       />
 
       {rows.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Panel title="By trade">
-            <BarList
-              tone="brand"
-              items={topTrades.map(([label, count]) => ({ key: label, label, value: count }))}
-            />
-          </Panel>
-          <Panel title="By nationality">
-            <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count }))} />
-          </Panel>
-        </div>
+        <Insights id="employees" title="Workforce breakdown" hint="Explore trades and nationalities">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-primary">By trade</h3>
+              <BarList
+                tone="brand"
+                items={topTrades.map(([label, count]) => ({ key: label, label, value: count }))}
+              />
+            </div>
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-primary">By nationality</h3>
+              <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count }))} />
+            </div>
+          </div>
+        </Insights>
       )}
 
       {entityFilter && (

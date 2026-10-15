@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { StatTile } from "@/components/StatTile";
 import { BarList } from "@/components/BarList";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 import { EmptyState } from "@/components/EmptyState";
 import { Building2, FileCheck2, DollarSign, Plus } from "lucide-react";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
@@ -93,7 +93,7 @@ export default async function ClientsPage() {
       </div>
 
       {rows.length > 0 && rows.some((r) => r.lpoValue > 0) && (
-        <Panel title="Top clients by active LPO value" href="/finance/bills">
+        <Insights id="clients" title="Top clients by active LPO value">
           <BarList
             tone="info"
             items={[...rows]
@@ -111,7 +111,7 @@ export default async function ClientsPage() {
                 };
               })}
           />
-        </Panel>
+        </Insights>
       )}
 
       {rows.length === 0 ? (

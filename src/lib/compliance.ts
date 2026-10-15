@@ -26,7 +26,7 @@ export const COMPLIANCE_FIELDS = [
 ] as const;
 
 export function complianceRowClass(status: ComplianceStatus): string | undefined {
-  if (status === "expired") return "bg-red-50/60";
-  if (status === "expiring") return "bg-amber-50/60";
+  if (status === "expired") return "bg-error-soft/70";
+  if (status === "expiring") return "bg-warning-soft/70";
   return undefined;
 }

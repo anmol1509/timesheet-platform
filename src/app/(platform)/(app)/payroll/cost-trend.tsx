@@ -13,7 +13,7 @@ export function CostTrend({ runs }: { runs: { month: string; total: number; head
   const perHead = last.headcount > 0 ? last.total / last.headcount : 0;
 
   return (
-    <section className="card p-5">
+    <section>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[13px] font-medium text-muted">Net payroll — {last.month}</p>

@@ -8,7 +8,7 @@ import { branchWhere } from "@/lib/branch";
 import { InvoiceGrid } from "./invoice-grid";
 import { Select } from "@/components/ui/Select";
 import { StatusDonut } from "@/components/Donut";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 
 export default async function InvoicesPage({
   searchParams,
@@ -74,11 +74,11 @@ export default async function InvoicesPage({
       </div>
 
       {invoicesByStatus.length > 0 && (
-        <Panel title="All-time invoices by status" href="/invoices/history">
+        <Insights id="invoices" title="All-time invoices by status">
           <StatusDonut
             items={invoicesByStatus.map((r) => ({ status: r.status, count: r._count._all }))}
           />
-        </Panel>
+        </Insights>
       )}
 
       {clients.length === 0 && (

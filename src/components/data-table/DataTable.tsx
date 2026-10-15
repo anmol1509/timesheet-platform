@@ -181,7 +181,8 @@ export function DataTable<T extends { id: string }>({
 
   const sortedIds = useMemo(() => new Set(sorted.map((r) => r.id)), [sorted]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const anyFilter = query.trim() !== "" || Object.values(filterValues).some(Boolean);
+  const activeFilterCount = Object.values(filterValues).filter(Boolean).length;
+  const anyFilter = query.trim() !== "" || activeFilterCount > 0;
   const treeActive = !!tree && !anyFilter;
 
   // Every row's children, when shown as a tree. A row whose parent isn't in
@@ -568,17 +569,32 @@ export function DataTable<T extends { id: string }>({
                 <tr>
                   <td colSpan={colSpan} className="px-3 py-10 text-center">
                     <p className="text-sm font-medium text-primary">
-                      No rows match &ldquo;{query}&rdquo;
+                      {query.trim() !== "" ? (
+                        <>No rows match &ldquo;{query}&rdquo;</>
+                      ) : (
+                        "No rows match these filters"
+                      )}
+                      {query.trim() !== "" && activeFilterCount > 0 && " with the current filters"}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                      Check the spelling, or try a shorter search.
+                      {query.trim() !== "" && activeFilterCount === 0
+                        ? "Check the spelling, or try a shorter search."
+                        : "Try removing a filter, or widening your search."}
                     </p>
                     <button
                       type="button"
-                      onClick={() => setQuery("")}
+                      onClick={() => {
+                        setQuery("");
+                        setFilterValues({});
+                        setPage(1);
+                      }}
                       className="mt-3 text-xs font-medium text-[var(--brand-primary)] hover:underline"
                     >
-                      Clear search
+                      {query.trim() !== "" && activeFilterCount > 0
+                        ? "Clear search and filters"
+                        : query.trim() !== ""
+                          ? "Clear search"
+                          : "Clear filters"}
                     </button>
                   </td>
                 </tr>

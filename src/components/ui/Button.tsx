@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const VARIANTS = {
@@ -36,6 +37,8 @@ type BaseProps = {
   size?: ButtonSize;
   /** Square icon-only button. Requires an aria-label on the caller. */
   iconOnly?: boolean;
+  /** Shows a spinner and disables the button, keeping its width so the layout doesn't jump. */
+  loading?: boolean;
   className?: string;
   children: React.ReactNode;
 };
@@ -56,6 +59,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     className,
     children,
   } = props;
+  const loading = "loading" in props ? !!props.loading : false;
 
   const classes = cn(
     "inline-flex shrink-0 items-center justify-center rounded-control font-medium whitespace-nowrap transition disabled:pointer-events-none disabled:cursor-not-allowed",
@@ -83,6 +87,7 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
     variant: _variant,
     size: _size,
     iconOnly: _iconOnly,
+    loading: _loading,
     className: _className,
     children: _children,
     href: _href,
@@ -90,8 +95,21 @@ export function Button(props: ButtonAsButton | ButtonAsLink) {
   } = props as ButtonAsButton;
 
   return (
-    <button type={rest.type ?? "button"} {...rest} className={classes}>
-      {children}
+    <button
+      type={rest.type ?? "button"}
+      {...rest}
+      disabled={rest.disabled || loading}
+      aria-busy={loading || undefined}
+      className={cn(classes, loading && "relative")}
+    >
+      {loading ? (
+        <>
+          <span className="invisible inline-flex items-center gap-[inherit]">{children}</span>
+          <Loader2 className="absolute h-4 w-4 animate-spin" aria-hidden />
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

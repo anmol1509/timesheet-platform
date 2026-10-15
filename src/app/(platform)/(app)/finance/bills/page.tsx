@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Insights } from "@/components/ListSummary";
 import { Download } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -99,8 +100,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         ))}
       </div>
       {bills.length > 0 && (
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold text-primary">Bill volume, last 6 months</h2>
+        <Insights id="bills" title="Bill volume, last 6 months">
           <div className="flex h-28 items-end gap-3">
             {months.map((m, i) => {
               const v = volumeByMonth.get(m) ?? 0;
@@ -113,7 +113,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
               );
             })}
           </div>
-        </section>
+        </Insights>
       )}
 
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter">

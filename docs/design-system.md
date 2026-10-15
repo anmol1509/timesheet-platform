@@ -99,6 +99,14 @@ import/export, pagination), `FormSaveBar` (sticky save footer — **only
 shows when the form is actually dirty/pending/saved/errored**, since
 Phase 5; don't reintroduce an always-visible save bar).
 
+## List pages: KPI cards and insights
+
+Lists keep their KPI cards (`EmployeeKpiCards` is the model: icon, label, share chip, big
+number, one line of context). Charts that belong to a list go in `Insights`
+(`src/components/ListSummary.tsx`), a closed-by-default disclosure placed **above** the
+table, so they don't push the list down. Its open/closed state is remembered per browser
+(`useViewerPref`).
+
 ## Dark mode
 
 Any component built purely from semantic tokens (the whole primitive

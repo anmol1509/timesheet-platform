@@ -43,6 +43,7 @@ export function Select({
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
   const value = isControlled ? controlledValue : internalValue;
   const [open, setOpen] = useState(false);
+  const [invalid, setInvalid] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   useFormReset(triggerRef, () => {
     if (!isControlled) setInternalValue(defaultValue ?? "");
@@ -51,6 +52,7 @@ export function Select({
   const selected = options.find((o) => o.value === value);
 
   function handleSelect(v: string) {
+    setInvalid(false);
     if (!isControlled) setInternalValue(v);
     onChange?.(v);
     setOpen(false);
@@ -58,12 +60,35 @@ export function Select({
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      {name && <input type="hidden" name={name} value={value} required={required} />}
+      {name &&
+        (required ? (
+          // `required` is ignored on a hidden input, so a required Select used to submit
+          // empty. A visually hidden text input carries the value instead (it must not be
+          // readOnly either, which also opts out of validation), and on a failed check
+          // sends focus to the visible trigger.
+          <input
+            name={name}
+            value={value}
+            onChange={() => {}}
+            required
+            tabIndex={-1}
+            aria-hidden
+            onInvalid={() => {
+              setInvalid(true);
+              // The browser focuses this hidden input after the event; move focus on to the visible control.
+              setTimeout(() => triggerRef.current?.focus(), 0);
+            }}
+            className="sr-only"
+          />
+        ) : (
+          <input type="hidden" name={name} value={value} />
+        ))}
       <Popover.Trigger asChild disabled={disabled}>
         <button
           ref={triggerRef}
           type="button"
           disabled={disabled}
+          aria-invalid={invalid && !value ? true : undefined}
           className={cn(
             "input flex w-full items-center justify-between gap-2 text-left data-[state=open]:border-[var(--brand-primary)]",
             triggerClassName
