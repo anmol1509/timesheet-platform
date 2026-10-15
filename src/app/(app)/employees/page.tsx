@@ -8,8 +8,10 @@ import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { branchWhere } from "@/lib/branch";
 import { isEmployeeComplete } from "@/lib/employeeCompleteness";
+import { EmployeeKpiCards } from "@/components/EmployeeKpiCards";
 import { BarList } from "@/components/BarList";
 import { Treemap } from "@/components/Treemap";
+import { Insights } from "@/components/ListSummary";
 import { EmployeeList } from "./employee-list";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? null : Number(d.toString()));
@@ -120,6 +122,10 @@ export default async function EmployeesPage({
     };
   });
 
+  const onWorkCount = rows.filter((r) => r.onWork).length;
+  const benchCount = rows.length - onWorkCount;
+  const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
+
   const byTrade = new Map<string, number>();
   const byNationality = new Map<string, number>();
   for (const r of rows) {
@@ -132,10 +138,10 @@ export default async function EmployeesPage({
   const nationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <PageHeader
         title="Employees"
-        description="Workers on record, with compliance status and current deployment."
+        description="Workers on record, with compliance status and current deployment. New employees are created automatically when their ID appears in a timesheet upload."
         meta={
           <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
             {employees.length}
@@ -154,26 +160,15 @@ export default async function EmployeesPage({
         }
       />
 
-      {entityFilter && (
-        <div className="flex items-center gap-1.5 self-start rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
-          {entityFilter.label}: {entityFilter.name}
-          <Link
-            href="/employees"
-            className="rounded-xs p-0.5 transition hover:bg-white/70"
-            aria-label="Clear filter"
-          >
-            <X className="h-3 w-3" />
-          </Link>
-        </div>
-      )}
+      <EmployeeKpiCards
+        total={rows.length}
+        onWork={onWorkCount}
+        bench={benchCount}
+        complianceIssues={complianceIssuesCount}
+      />
 
-      <EmployeeList
-        employees={rows}
-        initialFilter={filter}
-        registeredId={registered}
-        canViewPay={canViewPay}
-        canEditPay={canEditPay}
-        insights={
+      {rows.length > 0 && (
+        <Insights id="employees" title="Workforce breakdown" hint="Explore trades and nationalities">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
               <h3 className="mb-3 text-sm font-semibold text-primary">By trade</h3>
@@ -187,8 +182,23 @@ export default async function EmployeesPage({
               <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count }))} />
             </div>
           </div>
-        }
-      />
+        </Insights>
+      )}
+
+      {entityFilter && (
+        <div className="flex items-center gap-1.5 self-start rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
+          {entityFilter.label}: {entityFilter.name}
+          <Link
+            href="/employees"
+            className="rounded-xs p-0.5 transition hover:bg-white/70"
+            aria-label="Clear filter"
+          >
+            <X className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
+      <EmployeeList employees={rows} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} />
     </div>
   );
 }
