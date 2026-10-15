@@ -152,9 +152,9 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
       <form method="get" action="/approvals" className="flex flex-wrap items-center gap-2">
         {filters.type && <input type="hidden" name="type" value={filters.type} />}
         <input name="q" defaultValue={filters.q} placeholder="Search supplier, person, amount…" aria-label="Search" className="input w-full max-w-xs" />
-        <Select name="age" defaultValue={filters.age} searchable={false} options={[{ value: "", label: "Any wait" }, { value: "3", label: "3+ days" }, { value: "7", label: "7+ days" }, { value: "14", label: "14+ days" }, { value: "30", label: "30+ days" }]} />
-        <NumberInput name="min" defaultValue={filters.min} min={0} placeholder="Min AED" ariaLabel="Amount from" className="w-28" />
-        {requesters.length > 0 && <Select name="from" defaultValue={filters.from} options={[{ value: "", label: "Anyone" }, ...requesters.map((r) => ({ value: r, label: r }))]} />}
+        <div className="w-36"><Select name="age" defaultValue={filters.age} searchable={false} options={[{ value: "", label: "Any wait" }, { value: "3", label: "3+ days" }, { value: "7", label: "7+ days" }, { value: "14", label: "14+ days" }, { value: "30", label: "30+ days" }]} /></div>
+        <NumberInput name="min" defaultValue={filters.min} min={0} placeholder="Min AED" ariaLabel="Amount from" className="w-40" />
+        {requesters.length > 0 && <div className="w-44"><Select name="from" defaultValue={filters.from} options={[{ value: "", label: "Anyone" }, ...requesters.map((r) => ({ value: r, label: r }))]} /></div>}
         <button type="submit" className="btn btn-secondary">Filter</button>
         {(filters.q || filters.age || filters.min || filters.from) && <Link scroll={false} href={link({ q: "", age: "", min: "", from: "" })} className="text-sm text-muted hover:text-primary">Clear</Link>}
       </form>
