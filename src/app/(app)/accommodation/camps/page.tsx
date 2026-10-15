@@ -7,6 +7,7 @@ import { deleteCampAction } from "../actions";
 import { CampView } from "./camp-view";
 import { AddCampForm } from "./add-camp-form";
 import { OccupancyRing } from "@/components/OccupancyRing";
+import { Insights } from "@/components/ListSummary";
 import { DeleteButton } from "@/components/DeleteButton";
 import { InlineEditRow } from "@/components/InlineEditRow";
 import { Select } from "@/components/ui/Select";
@@ -140,10 +141,9 @@ export default async function CampsPage({
       </div>
 
       {totalBeds > 0 && (
-        <div className="card relative overflow-hidden p-5">
-          <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-[var(--brand-primary)]/5" />
+        <Insights id="camps" title="Occupancy">
           <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
-        </div>
+        </Insights>
       )}
 
       {camps.length > 0 && (

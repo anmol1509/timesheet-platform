@@ -11,7 +11,7 @@ import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
 import { BarList, type BarListTone } from "@/components/BarList";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 import { daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { AddVehicleDialog } from "./add-vehicle-dialog";
@@ -102,12 +102,12 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
       </div>
 
       {utilization.length > 0 && (
-        <Panel title="Seat utilization by vehicle">
+        <Insights id="transport" title="Seat utilization by vehicle">
           <BarList
             showShare={false}
             items={utilization.map((v) => ({ key: v.id, label: v.label, value: v.pct, valueLabel: `${v.pct}%`, tone: v.tone }))}
           />
-        </Panel>
+        </Insights>
       )}
 
       {vehicles.length === 0 ? (

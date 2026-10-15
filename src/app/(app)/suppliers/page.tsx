@@ -4,7 +4,7 @@ import { Truck, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { BarList } from "@/components/BarList";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 import { prisma } from "@/lib/db";
 import { billTotals } from "@/lib/payables";
 import { complianceStatus } from "@/lib/compliance";
@@ -133,7 +133,7 @@ export default async function SuppliersPage({
       )}
 
       {rows.length > 0 && rows.some((r) => r.employeeCount > 0) && (
-        <Panel title="Top suppliers by workforce">
+        <Insights id="suppliers" title="Top suppliers by workforce">
           <BarList
             tone="info"
             items={[...rows]
@@ -142,7 +142,7 @@ export default async function SuppliersPage({
               .slice(0, 5)
               .map((r) => ({ key: r.id, label: r.isOwnCompany ? `${r.name} (own company)` : r.name, value: r.employeeCount, href: `/suppliers/${r.id}` }))}
           />
-        </Panel>
+        </Insights>
       )}
 
       {rows.length === 0 ? (

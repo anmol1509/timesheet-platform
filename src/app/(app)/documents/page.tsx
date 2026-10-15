@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { StatTile } from "@/components/StatTile";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 import { Heatmap } from "@/components/Heatmap";
 import { PageHeader, CountPill } from "@/components/PageHeader";
 import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
@@ -110,9 +110,9 @@ export default async function DocumentsPage() {
       </div>
 
       {documents.length > 0 && (
-        <Panel title="Documents by type and status">
+        <Insights id="documents" title="Documents by type and status">
           <Heatmap rows={typeOrder.map(prettyType)} cols={[...STATUS_COLS]} matrix={typeStatusMatrix} />
-        </Panel>
+        </Insights>
       )}
 
       <DocumentBrowser documents={rows} employees={employees} />

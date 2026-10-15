@@ -9,6 +9,7 @@ import { can } from "@/lib/permissions";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { CreateRunForm } from "./create-run-form";
 import { CostTrend } from "./cost-trend";
+import { Insights } from "@/components/ListSummary";
 import { isUsableBank } from "@/lib/bankStatus";
 import { payDataGap } from "@/lib/payroll";
 import { ApprovalRuleForm } from "./approval-rule";
@@ -124,7 +125,7 @@ export default async function PayrollPage() {
         <details className="card"><summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-primary">Payroll settings</summary><div className="divide-y divide-[var(--border)] border-t border-default"><ApprovalRuleForm current={branch?.payrollApprovalThreshold ? Number(branch.payrollApprovalThreshold) : null} /><DueDaysForm current={branch?.payrollDueDays ?? null} /></div></details>
       )}
 
-      {runs.length >= 2 && <CostTrend runs={runs.map((r) => ({ month: r.month, total: r.lines.reduce((s, l) => s + Number(l.net), 0), headcount: r.lines.length }))} />}
+      {runs.length >= 2 && <Insights id="payroll" title="Payroll cost trend" hint="Net pay by month"><CostTrend runs={runs.map((r) => ({ month: r.month, total: r.lines.reduce((s, l) => s + Number(l.net), 0), headcount: r.lines.length }))} /></Insights>}
 
       {runs.length === 0 ? (
         <div className="card p-10 text-center text-sm text-muted">No payroll runs yet. Choose a company and month above and press “Start payroll run”.</div>

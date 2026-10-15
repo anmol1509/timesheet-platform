@@ -3,6 +3,7 @@ import { CheckCheck } from "lucide-react";
 import { PageHeader, CountPill } from "@/components/PageHeader";
 import { APPROVAL_KINDS, allowedKinds, countByKind, filterApprovals, loadApprovals, type ApprovalKind } from "@/lib/approvals";
 import { AgingHistogram } from "@/components/AgingHistogram";
+import { Insights } from "@/components/ListSummary";
 import { ApprovalsBoard, type BoardItem } from "./approvals-board";
 
 export const metadata = { title: "Approvals" };
@@ -43,10 +44,9 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
       ) : (
         <>
           {all.length > 0 && (
-            <section className="card p-5">
-              <h2 className="mb-3 text-sm font-semibold text-primary">How long items have been waiting</h2>
+            <Insights id="approvals" title="How long items have been waiting">
               <AgingHistogram ageDays={all.map((i) => Math.floor((now.getTime() - i.at.getTime()) / 86_400_000))} />
-            </section>
+            </Insights>
           )}
           <ApprovalsBoard
             items={items}

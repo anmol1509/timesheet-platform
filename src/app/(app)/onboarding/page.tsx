@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { STAGES, currentStage, daysSince, isOverdue, papersPending } from "@/lib/onboarding";
 import { OnboardingTable } from "./onboarding-table";
 import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
-import { Panel } from "@/components/DashboardPanel";
+import { Insights } from "@/components/ListSummary";
 
 export const metadata = { title: "Candidate onboarding" };
 
@@ -79,12 +79,12 @@ export default async function OnboardingPage() {
         </div>
       </div>
 
-      <Panel title="Pending by stage">
+      <Insights id="onboarding" title="Pending by stage">
         <DeploymentPipelineFunnel
           href="/onboarding"
           stages={STAGES.map((stage) => ({ key: stage.key, label: stage.label, count: stagePending[stage.key] }))}
         />
-      </Panel>
+      </Insights>
 
       {workQueue.length > 0 && (
         <div className="card overflow-x-auto">
