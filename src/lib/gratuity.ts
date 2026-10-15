@@ -30,3 +30,26 @@ export function gratuity(basicMonthly: number, years: number): number {
   const raw = first * 21 * day + beyond * 30 * day;
   return round2(Math.min(raw, basicMonthly * 24));
 }
+
+/** The same calculation as gratuity(), itemised for the public calculator page. */
+export function gratuityBreakdown(basicMonthly: number, years: number) {
+  const total = gratuity(basicMonthly, years);
+  const day = basicMonthly > 0 ? basicMonthly / 30 : 0;
+  const eligible = years >= 1 && basicMonthly > 0;
+  const firstYears = eligible ? Math.min(years, 5) : 0;
+  const beyondYears = eligible ? Math.max(0, years - 5) : 0;
+  const cap = round2(basicMonthly * 24);
+  const uncapped = round2(firstYears * 21 * day + beyondYears * 30 * day);
+  return {
+    eligible,
+    dailyBasic: round2(day),
+    firstYears,
+    firstAmount: round2(firstYears * 21 * day),
+    beyondYears,
+    beyondAmount: round2(beyondYears * 30 * day),
+    uncapped,
+    cap,
+    capApplied: eligible && uncapped > cap,
+    total,
+  };
+}

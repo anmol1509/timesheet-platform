@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Settings2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Switch } from "@/components/ui/Switch";
-import { saveModuleSectionsAction } from "@/app/(app)/dashboards/section-actions";
+import { saveModuleSectionsAction } from "@/app/(platform)/(app)/dashboards/section-actions";
 
 /** Customize for a module dashboard: switch its sections on or off. Saved to the person's account. */
 export function CustomizeSections({

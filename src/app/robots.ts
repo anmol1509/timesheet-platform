@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { SITE_URL, isMarketingHost } from "@/lib/seo/site";
 
-const MARKETING_HOST = "manpowersync.com";
 
 /**
  * The app domain (login.manpowersync.com) is a private, auth-gated system —
@@ -10,7 +10,7 @@ const MARKETING_HOST = "manpowersync.com";
  */
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const host = (await headers()).get("host");
-  if (host !== MARKETING_HOST) {
+  if (!isMarketingHost(host)) {
     return { rules: { userAgent: "*", disallow: "/" } };
   }
   return {
@@ -19,6 +19,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       allow: "/",
       disallow: ["/api/", "/login", "/me", "/vendor"],
     },
-    sitemap: `https://${MARKETING_HOST}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

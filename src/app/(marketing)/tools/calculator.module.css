@@ -1,0 +1,125 @@
+/* Calculator layout. Colours come from the marketing .page tokens (--ink, --slate, --primary…). */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.panel {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 24px;
+}
+.result {
+  background: var(--surface-soft);
+}
+.panelTitle {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.panelHint {
+  margin: 0 0 18px;
+  font-size: 14px;
+  color: var(--steel);
+}
+.fields {
+  display: grid;
+  gap: 14px;
+}
+.fieldPair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .fieldPair {
+    grid-template-columns: 1fr;
+  }
+}
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--charcoal);
+}
+.field small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--steel);
+}
+.input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px; /* 16px stops iOS zooming into the field */
+  color: var(--ink);
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+}
+.input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+.big {
+  margin: 4px 0 2px;
+  font-size: clamp(34px, 5vw, 46px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--ink);
+}
+.bigLabel {
+  margin: 0;
+  font-size: 14px;
+  color: var(--slate);
+}
+.rows {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  font-size: 15px;
+  color: var(--slate);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.row strong {
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rowTotal {
+  color: var(--ink);
+  font-weight: 600;
+}
+.note {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--steel);
+}
+.warn {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--charcoal);
+  background: var(--tint-yellow);
+  border-radius: 10px;
+}

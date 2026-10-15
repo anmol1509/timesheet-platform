@@ -21,10 +21,10 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { getNavPages } from "@/app/(app)/nav-links";
+import { getNavPages } from "@/app/(platform)/(app)/nav-links";
 import { cn } from "@/lib/cn";
 import { SPRING } from "@/lib/motion";
-import { submitSupportTicketAction } from "@/app/(app)/support/actions";
+import { submitSupportTicketAction } from "@/app/(platform)/(app)/support/actions";
 import { LANGUAGE_OPTIONS, isAssistantLang, stringsFor, type AssistantLang } from "@/lib/assistantI18n";
 
 type Link = { href: string; label: string; group: string };

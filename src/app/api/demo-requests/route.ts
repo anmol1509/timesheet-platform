@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/notifications/email";
-import { SITE } from "@/app/welcome/content";
+import { SITE } from "@/app/(marketing)/welcome/content";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

@@ -1,14 +1,21 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { POSTS } from "./blog/posts";
-import { GUIDES } from "./guides/guides-data";
-import { INDUSTRIES_DATA } from "./industries/industries-data";
-import { SOLUTIONS_DATA } from "./solutions/solutions-data";
+import { POSTS } from "./(marketing)/blog/posts";
+import { GUIDES } from "./(marketing)/guides/guides-data";
+import { INDUSTRIES_DATA } from "./(marketing)/industries/industries-data";
+import { SOLUTIONS_DATA } from "./(marketing)/solutions/solutions-data";
+import { TOOLS } from "./(marketing)/tools/tools-data";
+import { COMPARISONS } from "./(marketing)/compare/compare-data";
+import { SITE_HOST, isMarketingHost } from "@/lib/seo/site";
 
-const MARKETING_HOST = "manpowersync.com";
+const MARKETING_HOST = SITE_HOST;
+
+// Bump when the landing/solution/industry copy changes. A real date (not "now")
+// is what lets Google trust <lastmod> and recrawl only what actually changed.
+const SITE_CONTENT_UPDATED = new Date("2026-10-14");
 
 // Standalone top-level pages with no per-item registry of their own.
-const STATIC_PAGES = ["features", "solutions", "guides", "faq", "pricing", "industries"];
+const STATIC_PAGES = ["features", "solutions", "guides", "faq", "pricing", "industries", "tools", "compare"];
 const STATIC_PAGE_PRIORITY: Record<string, number> = { features: 0.9, solutions: 0.8, pricing: 0.8 };
 
 /**
@@ -20,9 +27,9 @@ const STATIC_PAGE_PRIORITY: Record<string, number> = { features: 0.9, solutions:
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const host = (await headers()).get("host");
-  if (host !== MARKETING_HOST) return [];
+  if (!isMarketingHost(host)) return [];
 
-  const now = new Date();
+  const now = SITE_CONTENT_UPDATED;
   return [
     {
       url: `https://${MARKETING_HOST}/`,
@@ -56,9 +63,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     ...POSTS.map((post) => ({
       url: `https://${MARKETING_HOST}/blog/${post.slug}`,
-      lastModified: new Date(post.date),
+      lastModified: new Date(post.updated ?? post.date),
       changeFrequency: "monthly" as const,
       priority: 0.6,
+    })),
+    ...TOOLS.map((tool) => ({
+      url: `https://${MARKETING_HOST}/tools/${tool.slug}`,
+      lastModified: new Date(tool.updated),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+    ...COMPARISONS.map((c) => ({
+      url: `https://${MARKETING_HOST}/compare/${c.slug}`,
+      lastModified: new Date(c.updated),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     })),
     ...GUIDES.map((guide) => ({
       url: `https://${MARKETING_HOST}/guides/${guide.slug}`,
