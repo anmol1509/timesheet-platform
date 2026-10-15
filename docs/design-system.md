@@ -99,6 +99,17 @@ import/export, pagination), `FormSaveBar` (sticky save footer — **only
 shows when the form is actually dirty/pending/saved/errored**, since
 Phase 5; don't reintroduce an always-visible save bar).
 
+## List pages: summary strip and insights
+
+`SummaryStrip` (`src/components/ListSummary.tsx`) replaces tall KPI tiles above a list.
+Each item is both a figure and a quick filter (`active` / `onSelect`), so the counts
+aren't repeated in a separate chip row. Expanded it renders ~60px cards on wide screens;
+collapsed (and always on narrow screens) it becomes a row of chips with the same counts.
+The choice is remembered per browser (`useViewerPref`). `Insights` is a closed-by-default
+disclosure for charts, placed **below** the table. Hide the strip entirely while a
+module is empty. First used on Employees; roll out to the other list pages the same way.
+Don't confuse it with `KpiStrip`, which is the card grid used by the module dashboards.
+
 ## Dark mode
 
 Any component built purely from semantic tokens (the whole primitive

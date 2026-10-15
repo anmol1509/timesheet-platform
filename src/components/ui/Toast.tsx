@@ -51,7 +51,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         // Polite: announced after the user's current utterance, not barged in.
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed right-4 bottom-4 z-[100] flex w-full max-w-sm flex-col gap-2"
+        className="pointer-events-none fixed right-4 bottom-20 z-[100] sm:right-6 sm:bottom-24 flex w-full max-w-sm flex-col gap-2"
       >
         {toasts.map((t) => (
           <ToastCard key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />

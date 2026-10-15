@@ -744,8 +744,8 @@ buttons (`rounded-lg border border-[var(--success-border)] …`).
 - Make `<Button>` render the `.btn` classes, so there's one source of truth and the CSS
   stays the definition for legacy markup.
 - Add `successOutline` and `dangerOutline` variants plus `loading`.
-- Add an ESLint `no-restricted-syntax` rule flagging `className` strings that contain
-  `rounded-lg border border-[var(--(success|error)-border)]`, to stop new copies.
+- Add an ESLint `no-restricted-syntax` rule that flags `className` strings combining
+  `rounded-lg` with a hand-written success or error border colour, to stop new copies.
 
 ### DS2. One status registry
 

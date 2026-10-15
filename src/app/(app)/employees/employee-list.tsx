@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, BedDouble, Check, CircleX, Pencil, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { Nationality } from "@/components/Nationality";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/Button";
-import { SegmentedControl } from "@/components/ui/RadioGroup";
-import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
+import { SummaryStrip, Insights, type SummaryItem } from "@/components/ListSummary";
+import { DataTable, type DataTableColumn, type DataTableFilter } from "@/components/data-table/DataTable";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { bulkImportEmployeesAction } from "./[id]/actions";
 import { DeleteEmployeesButton } from "./delete-employees-button";
@@ -72,26 +72,35 @@ type Filter =
   | "all"
   | "on-work"
   | "bench"
+  | "compliance"
   | "site-staff"
   | "staff"
-  | "supplier-labour"
-  | "our-workers"
   | "idle"
   | "vacation"
   | "incomplete";
 
+// Filters the summary strip doesn't cover. They arrive from dashboard links, so
+// they show as a clearable chip instead.
 const CATEGORY_FILTER_LABEL: Partial<Record<Filter, string>> = {
   "site-staff": "Site Staff",
   staff: "Staff",
-  "supplier-labour": "Supplier Workers",
-  "our-workers": "Our Workers",
   idle: "Idle",
   vacation: "On Vacation",
   incomplete: "Incomplete",
 };
 
-const SEGMENTED_VALUES: Filter[] = ["all", "on-work", "bench"];
-const OWNERSHIP_SEGMENTED_VALUES: Filter[] = ["all", "supplier-labour", "our-workers"];
+type Ownership = "supplier-labour" | "our-workers";
+const OWNERSHIP_VALUES: Ownership[] = ["supplier-labour", "our-workers"];
+
+function ownershipOf(e: Pick<EmployeeRow, "companyDisplayName" | "isOwnCompanySupplier">): Ownership | "" {
+  if (e.isOwnCompanySupplier) return "our-workers";
+  return e.companyDisplayName ? "supplier-labour" : "";
+}
+
+const distinct = (values: (string | null | undefined)[]) =>
+  [...new Set(values.filter((v): v is string => !!v && v.trim() !== ""))]
+    .sort((a, b) => a.localeCompare(b))
+    .map((v) => ({ value: v, label: v }));
 
 const CATEGORY_LABEL: Record<EmployeeRow["category"], string> = {
   SITE_STAFF: "Site Staff",
@@ -141,8 +150,11 @@ export function EmployeeList({
   registeredId,
   canViewPay = false,
   canEditPay = false,
+  insights,
 }: {
   employees: EmployeeRow[];
+  /** Charts for the closed "Insights" panel below the table. */
+  insights?: React.ReactNode;
   initialFilter?: string;
   canViewPay?: boolean;
   canEditPay?: boolean;
@@ -153,14 +165,14 @@ export function EmployeeList({
   const validFilters: Filter[] = [
     "on-work",
     "bench",
+    "compliance",
     "site-staff",
     "staff",
-    "supplier-labour",
-    "our-workers",
     "idle",
     "vacation",
     "incomplete",
   ];
+  const initialOwnership = OWNERSHIP_VALUES.find((o) => o === initialFilter);
   const [filter, setFilter] = useState<Filter>(
     validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
   );
@@ -179,10 +191,8 @@ export function EmployeeList({
         return employees.filter((e) => !e.companyDisplayName && e.category === "SITE_STAFF");
       case "staff":
         return employees.filter((e) => !e.companyDisplayName && e.category === "STAFF");
-      case "supplier-labour":
-        return employees.filter((e) => !!e.companyDisplayName && !e.isOwnCompanySupplier);
-      case "our-workers":
-        return employees.filter((e) => e.isOwnCompanySupplier);
+      case "compliance":
+        return employees.filter((e) => e.worstStatus === "expired" || e.worstStatus === "expiring");
       case "idle":
         // Same rule as the dashboard: active, not on leave, not linked to a project.
         return employees.filter((e) => !e.onWork && e.status !== "ON_VACATION" && e.status !== "TERMINATED");
@@ -200,6 +210,8 @@ export function EmployeeList({
       key: "employeeIdNo",
       header: "Employee code",
       csvHeader: "Employee code",
+      // The Employee cell already shows the code under the name.
+      defaultHidden: true,
       sortValue: (e) => e.employeeIdNo,
       csvValue: (e) => e.employeeIdNo,
       render: (e) => (
@@ -296,11 +308,20 @@ export function EmployeeList({
       header: "Company",
       sortValue: (e) => e.companyDisplayName,
       csvValue: (e) => e.companyDisplayName,
-      render: (e) => e.companyDisplayName || <span className="text-subtle">—</span>,
+      render: (e) =>
+        e.companyDisplayName ? (
+          <span className="block">
+            {e.companyDisplayName}
+            {e.companyCode && <span className="tabular block text-[11.5px] text-subtle">{e.companyCode}</span>}
+          </span>
+        ) : (
+          <span className="text-subtle">—</span>
+        ),
     },
     {
       key: "companyCode",
       header: "Company code",
+      defaultHidden: true,
       sortValue: (e) => e.companyCode,
       csvValue: (e) => e.companyCode,
       render: (e) => <span className="tabular text-xs text-muted">{e.companyCode || "—"}</span>,
@@ -463,13 +484,51 @@ export function EmployeeList({
       : []),
   ];
 
-  // Supplier/Our Employees already have their own dedicated tab above, so
-  // they don't also need the clearable chip the other dashboard-linked
-  // filters (site-staff, idle, vacation, incomplete) show.
-  const activeChip = OWNERSHIP_SEGMENTED_VALUES.includes(filter) ? undefined : CATEGORY_FILTER_LABEL[filter];
+  // The summary strip already shows All / On work / Bench / Compliance, so only
+  // the dashboard-linked filters it doesn't cover get a clearable chip.
+  const activeChip = CATEGORY_FILTER_LABEL[filter];
+
+  function selectFilter(next: Filter) {
+    setFilter(next);
+    router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`, { scroll: false });
+  }
+
+  const onWorkCount = employees.filter((e) => e.onWork).length;
+  const complianceCount = employees.filter((e) => e.worstStatus === "expired" || e.worstStatus === "expiring").length;
+  const share = (n: number) => (employees.length > 0 ? Math.round((n / employees.length) * 100) : 0);
+  const summary: SummaryItem[] = [
+    { key: "all", label: "Total employees", value: employees.length, icon: Users },
+    { key: "on-work", label: "On work", value: onWorkCount, icon: UserCheck, share: share(onWorkCount) },
+    { key: "bench", label: "On bench", value: employees.length - onWorkCount, icon: BedDouble, share: share(employees.length - onWorkCount) },
+    { key: "compliance", label: "Compliance issues", value: complianceCount, icon: AlertTriangle, tone: "danger", share: share(complianceCount) },
+  ];
+
+  const tableFilters: DataTableFilter<EmployeeRow>[] = [
+    {
+      key: "ownership",
+      label: "All employees",
+      options: [
+        { value: "supplier-labour", label: "Supplier employees" },
+        { value: "our-workers", label: "Our employees" },
+      ],
+      get: ownershipOf,
+    },
+    { key: "trade", label: "All trades", options: distinct(employees.map((e) => (e.category === "STAFF" ? e.position : e.trade))), get: (e) => (e.category === "STAFF" ? e.position : e.trade) },
+    { key: "nationality", label: "All nationalities", options: distinct(employees.map((e) => e.nationality)), get: (e) => e.nationality },
+    { key: "company", label: "All companies", options: distinct(employees.map((e) => e.companyDisplayName)), get: (e) => e.companyDisplayName },
+  ];
 
   return (
-    <>
+    <div className="space-y-4">
+    {employees.length > 0 && (
+      <SummaryStrip
+        id="employees"
+        items={summary}
+        active={filter === "on-work" || filter === "bench" || filter === "compliance" ? filter : "all"}
+        onSelect={(key) => selectFilter(key as Filter)}
+        label="Filter employees"
+      />
+    )}
     {registered && (
       <p className="mb-3 flex items-center gap-2 rounded-control border border-[var(--success-border)] bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">
         <Check className="h-4 w-4 shrink-0" aria-hidden />
@@ -492,6 +551,8 @@ export function EmployeeList({
       searchable
       searchPlaceholder="Filter by name, ID, trade…"
       pageSize={PAGE_SIZE}
+      filters={tableFilters}
+      initialFilters={initialOwnership ? { ownership: initialOwnership } : undefined}
       csvFilename={`employees-${new Date().toISOString().slice(0, 10)}.csv`}
       importConfig={{
         entityLabel: "employees",
@@ -529,32 +590,6 @@ export function EmployeeList({
       )}
       toolbarExtra={
         <>
-          <SegmentedControl
-            value={SEGMENTED_VALUES.includes(filter) ? filter : "all"}
-            onChange={(f) => {
-              const next = f as Filter;
-              setFilter(next);
-              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`, { scroll: false });
-            }}
-            options={[
-              { value: "all", label: "All" },
-              { value: "on-work", label: "On work" },
-              { value: "bench", label: "Bench" },
-            ]}
-          />
-          <SegmentedControl
-            value={OWNERSHIP_SEGMENTED_VALUES.includes(filter) ? filter : "all"}
-            onChange={(f) => {
-              const next = f as Filter;
-              setFilter(next);
-              router.replace(next === "all" ? "/employees" : `/employees?filter=${next}`, { scroll: false });
-            }}
-            options={[
-              { value: "all", label: "All Employees" },
-              { value: "supplier-labour", label: "Supplier Employees" },
-              { value: "our-workers", label: "Our Employees" },
-            ]}
-          />
           {activeChip && (
             <span className="inline-flex items-center gap-1 rounded-control bg-brand-soft py-1 pr-1 pl-2.5 text-xs font-medium text-[var(--brand-primary)]">
               {activeChip}
@@ -576,14 +611,14 @@ export function EmployeeList({
       emptyState={
         <EmptyState
           icon={Users}
-          title={activeChip ? `No ${activeChip.toLowerCase()} employees` : "No employees yet"}
+          title={filter !== "all" ? "No employees match this filter" : "No employees yet"}
           description={
-            activeChip
+            filter !== "all"
               ? "Nothing matches this filter right now. Clear it to see the full roster."
               : "Add your first worker to start tracking compliance documents, project deployment, and timesheets. Employees are also created automatically when their ID appears in a timesheet upload."
           }
           action={
-            activeChip ? (
+            filter !== "all" ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -602,7 +637,7 @@ export function EmployeeList({
             )
           }
           secondaryAction={
-            !activeChip && (
+            filter === "all" && (
               <Button href="/upload" variant="secondary" size="sm">
                 Upload a timesheet
               </Button>
@@ -611,6 +646,11 @@ export function EmployeeList({
         />
       }
     />
-    </>
+    {insights && employees.length > 0 && (
+      <Insights id="employees" title="Insights" hint="By trade and nationality">
+        {insights}
+      </Insights>
+    )}
+    </div>
   );
 }
