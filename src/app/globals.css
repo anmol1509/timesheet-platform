@@ -605,7 +605,7 @@ main .card > div > table > thead > tr:first-child > th:last-child {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(60rem 40rem at -8% -10%, rgb(124 92 255 / 0.30), transparent 60%),
+    radial-gradient(64rem 46rem at -8% -10%, rgb(124 92 255 / 0.38), transparent 62%),
     radial-gradient(48rem 36rem at 105% 0%, rgb(56 189 248 / 0.24), transparent 60%),
     radial-gradient(52rem 40rem at 20% 115%, rgb(244 114 182 / 0.20), transparent 60%);
 }
