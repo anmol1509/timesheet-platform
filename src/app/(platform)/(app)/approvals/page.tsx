@@ -1,6 +1,5 @@
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { CheckCheck } from "lucide-react";
-import { PageHeader, CountPill } from "@/components/PageHeader";
 import { APPROVAL_KINDS, allowedKinds, countByKind, filterApprovals, loadApprovals, type ApprovalKind } from "@/lib/approvals";
 import { AgingHistogram } from "@/components/AgingHistogram";
 import { Insights } from "@/components/ListSummary";
@@ -29,16 +28,36 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
   const shown = filterApprovals(all, { type, q: q.q, olderThanDays: num(q.age), minAmount: num(q.min), requester: q.from }, now);
 
   const items: BoardItem[] = shown.map((i) => ({ ...i, at: i.at.toISOString(), ageDays: Math.floor((now.getTime() - i.at.getTime()) / 86_400_000) }));
+  const value = all.reduce((n, i) => n + (i.amount ?? 0), 0);
+  const overdue = all.filter((i) => now.getTime() - i.at.getTime() >= 7 * 86_400_000).length;
   const oldest = all[0] ? Math.floor((now.getTime() - all[0].at.getTime()) / 86_400_000) : 0;
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Approvals"
-        icon={CheckCheck}
-        meta={all.length > 0 ? <CountPill>{all.length}</CountPill> : undefined}
-        description={all.length === 0 ? "Nothing is waiting for a decision." : `${all.length} waiting for a decision${oldest >= 7 ? ` · the oldest has waited ${oldest} days` : ""}. Decide here, or open an item to see it in full.`}
-      />
+      <header className="relative overflow-hidden rounded-[var(--radius-overlay,20px)] px-5 py-5 text-white sm:px-7 sm:py-6" style={{ background: "linear-gradient(135deg,#43359f 0%,#5b49d8 55%,#7a4fe3 100%)" }}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15"><CheckCheck className="h-5 w-5" aria-hidden /></span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight">Approvals</h1>
+            <p className="text-sm text-white/80">{all.length === 0 ? "Nothing is waiting for a decision." : "Decide here, or open an item to see it in full."}</p>
+          </div>
+        </div>
+        {all.length > 0 && (
+          <dl className="mt-4 flex flex-wrap gap-2">
+            {[
+              { l: "Waiting", v: String(all.length) },
+              { l: "Value", v: value > 0 ? `AED ${value.toLocaleString("en-AE", { maximumFractionDigits: 0 })}` : "—" },
+              { l: "Longest wait", v: oldest <= 0 ? "today" : `${oldest} day${oldest === 1 ? "" : "s"}` },
+              { l: "Overdue (7d+)", v: String(overdue), warn: overdue > 0 },
+            ].map((c) => (
+              <div key={c.l} className={`flex items-baseline gap-2 rounded-full border px-3 py-1 ${c.warn ? "border-amber-200/60 bg-amber-300/25" : "border-white/20 bg-white/10"}`}>
+                <dt className="text-xs text-white/75">{c.l}</dt>
+                <dd className="tabular text-sm font-semibold">{c.v}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </header>
       {kinds.length === 0 ? (
         <div className="empty-state"><p className="text-sm text-muted">Your role doesn&apos;t include approving anything. If you should, ask an admin to add approval permissions to your role.</p></div>
       ) : (

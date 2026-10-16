@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { AnimatePresence, m } from "motion/react";
 import { useRouter } from "next/navigation";
-import { Banknote, CalendarCheck, Check, CheckCheck, ChevronRight, Clock, ExternalLink, FileSpreadsheet, Hourglass, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X } from "lucide-react";
+import { Banknote, CalendarCheck, Check, CheckCheck, ExternalLink, FileSpreadsheet, Inbox, ListChecks, Receipt, UserPlus, UserRoundPen, Wallet, Truck, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Badge, type BadgeColor } from "@/components/Badge";
@@ -44,11 +44,8 @@ function KindIcon({ kind, size = "sm" }: { kind: string; size?: "sm" | "lg" }) {
   );
 }
 function AgePill({ days }: { days: number }) {
-  return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold", days >= 14 ? "bg-[var(--error-soft)] text-[var(--error)]" : days >= 7 ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-surface-sunken text-muted")}>
-      <Clock className="h-3 w-3" aria-hidden />{age(days)}
-    </span>
-  );
+  const [label, cls] = days >= 14 ? ["Overdue", "bg-[var(--error-soft)] text-[var(--error)]"] : days >= 7 ? ["Due soon", "bg-[var(--warning-soft)] text-[var(--warning)]"] : days >= 3 ? ["Waiting", "bg-[var(--info-soft)] text-[var(--info)]"] : ["New", "bg-surface-sunken text-muted"];
+  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold", cls)}>{label}</span>;
 }
 
 const TONE: Record<Chip["tone"], BadgeColor> = { warning: "amber", danger: "red", success: "green", info: "blue", neutral: "slate" };
@@ -91,8 +88,6 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
 
   const visible = items.filter((i) => !done.has(i.key));
   const active = visible.find((i) => i.key === activeKey) ?? visible[0] ?? null;
-  const total = visible.reduce((n, i) => n + (i.amount ?? 0), 0);
-  const oldest = visible.reduce((n, i) => Math.max(n, i.ageDays), 0);
   // Bulk approval is offered only for items that need no confirmation dialog.
   const bulkable = visible.filter((i) => checked.has(i.key) && !i.confirmApprove);
 
@@ -123,23 +118,6 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
 
   return (
     <div className="space-y-4" onKeyDown={(e) => { const t = e.target as HTMLElement; if (["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName)) return; if (e.key === "j") move(1); if (e.key === "k") move(-1); }}>
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {[
-          { l: "Waiting for a decision", v: String(visible.length), sub: filters.type || filters.q ? "in this view" : "across all modules", icon: Inbox, tint: "bg-brand-soft text-[var(--brand-primary)]" },
-          { l: "Value waiting", v: total > 0 ? `AED ${total.toLocaleString("en-AE", { maximumFractionDigits: 0 })}` : "—", sub: "expenses, bills and payroll", icon: Banknote, tint: "bg-[var(--success-soft)] text-[var(--success)]" },
-          { l: "Longest wait", v: visible.length ? age(oldest) : "—", sub: oldest >= 7 ? "needs attention" : "within target", warn: oldest >= 7, icon: Hourglass, tint: oldest >= 7 ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-surface-sunken text-muted" },
-        ].map((t) => (
-          <div key={t.l} className="card flex items-center gap-3 px-3 py-3 sm:px-4 sm:py-4">
-            <span className={cn("hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:flex", t.tint)}><t.icon className="h-5 w-5" aria-hidden /></span>
-            <div className="min-w-0">
-              <p className="truncate text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
-              <p className={cn("tabular mt-0.5 truncate text-base font-semibold tracking-tight sm:text-2xl", t.warn ? "text-[var(--warning)]" : "text-primary")}>{t.v}</p>
-              <p className="hidden truncate text-xs text-subtle sm:block">{t.sub}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
       <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Kind of request">
         {tabs.map((t) => (
           <Link key={t.key || "all"} scroll={false} href={link({ type: t.key })} role="tab" aria-selected={filters.type === t.key}
@@ -191,18 +169,17 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
                     <button type="button" onClick={() => setActiveKey(i.key)} aria-current={isActive} className="flex min-w-0 flex-1 items-start gap-3 text-left">
                       <KindIcon kind={i.kind} />
                       <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-[10.5px] font-semibold tracking-[0.05em] text-muted uppercase">{KIND_LABEL[i.kind]}</span>
-                        <AgePill days={i.ageDays} />
-                      </span>
-                      <span className="mt-0.5 block truncate text-sm font-semibold text-primary">{i.title}</span>
-                      <span className="flex items-center justify-between gap-2 text-xs text-muted">
-                        <span className="truncate">{i.requester ?? i.subtitle}</span>
-                        {i.amount !== null && <span className="tabular shrink-0 font-semibold text-secondary">AED {aed(i.amount)}</span>}
-                      </span>
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm font-semibold text-primary">{i.title}</span>
+                          {i.amount !== null && <span className="tabular shrink-0 text-sm font-semibold text-primary">AED {aed(i.amount)}</span>}
+                        </span>
+                        <span className="mt-0.5 flex items-center justify-between gap-2 text-xs text-muted">
+                          <span className="truncate">{KIND_LABEL[i.kind]} · {i.requester ?? i.subtitle} · {age(i.ageDays)}</span>
+                          <AgePill days={i.ageDays} />
+                        </span>
                       </span>
                     </button>
-                    <ChevronRight className={cn("mt-1 hidden h-4 w-4 shrink-0 lg:block", isActive ? "text-[var(--brand-primary)]" : "text-subtle")} aria-hidden />
+                    
                   </m.li>
                 );
               })}
@@ -237,23 +214,43 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
                 <div><dt className="text-xs text-muted">Amount</dt><dd className="tabular text-sm font-semibold text-primary">{active.amount !== null ? `AED ${aed(active.amount)}` : "—"}</dd></div>
               </dl>
 
+              <ol className="mt-5 flex items-center text-xs" aria-label="Progress">
+                {["Submitted", "Your decision", "Done"].map((s, n) => (
+                  <li key={s} className={cn("flex items-center gap-2", n < 2 && "flex-1")}>
+                    <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold", n === 0 ? "bg-[var(--success)] text-white" : n === 1 ? "bg-[var(--brand-primary)] text-white" : "bg-surface-sunken text-muted")}>{n === 0 ? <Check className="h-3 w-3" aria-hidden /> : n + 1}</span>
+                    <span className={cn(n === 1 ? "font-semibold text-primary" : "text-muted")}>{s}</span>
+                    {n < 2 && <span className={cn("h-px flex-1", n === 0 ? "bg-[var(--success)]" : "bg-[var(--border)]")} aria-hidden />}
+                  </li>
+                ))}
+              </ol>
+
               {active.chips.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-5">
                   <p className="mb-1.5 text-xs font-medium text-muted">Things to check</p>
-                  <div className="flex flex-wrap gap-1.5">{active.chips.map((c) => <Badge key={c.text} color={TONE[c.tone]} dot>{c.text}</Badge>)}</div>
+                  <ul className="divide-y divide-[var(--border)] rounded-card border border-default">
+                    {active.chips.map((c) => (
+                      <li key={c.text} className="flex items-center justify-between gap-3 px-3 py-2 text-sm text-secondary">
+                        <span>{c.text}</span>
+                        <Badge color={TONE[c.tone]} dot>{c.tone === "danger" ? "Check" : c.tone === "warning" ? "Review" : c.tone === "success" ? "OK" : "Info"}</Badge>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {errors[active.key] && <p role="alert" className="mt-3 text-sm text-[var(--error)]">{errors[active.key]}</p>}
 
-              <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-default pt-4">
-                <button type="button" className="btn btn-primary gap-1.5" disabled={pending}
-                  onClick={() => { const i = active; if (i.confirmApprove && !confirm(i.kind === "CHANGE" ? "Bank details decide where payments go. Have you confirmed this change with the supplier?" : i.kind === "PAYROLL" ? `Approve this payroll of AED ${aed(i.amount ?? 0)}?` : `Approve all ${i.ids?.length ?? 1} timesheet rows?`)) return; decide(i, "APPROVE"); }}>
-                  <Check className="h-4 w-4" aria-hidden />Approve
-                </button>
-                <button type="button" className="btn btn-secondary gap-1.5" disabled={pending} onClick={() => { setNote(""); setRejectError(null); setRejecting(active); }}>
-                  <X className="h-4 w-4" aria-hidden />{active.kind === "PAYROLL" ? "Send back" : "Reject"}
-                </button>
-                <Link href={active.href} className="btn btn-secondary ml-auto gap-1.5"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Open full record</Link>
+              <div className="-mx-5 -mb-5 mt-6 rounded-b-card border-t border-default bg-brand-soft px-5 py-4">
+                <p className="text-xs text-secondary"><span className="font-semibold text-primary">What happens next: </span>{active.kind === "PAYROLL" ? "Approving releases this payroll for payment; sending it back returns it to the preparer." : "Approving records your decision straight away; rejecting sends your reason to the requester."}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn btn-secondary gap-1.5" disabled={pending} onClick={() => { setNote(""); setRejectError(null); setRejecting(active); }}>
+                    <X className="h-4 w-4" aria-hidden />{active.kind === "PAYROLL" ? "Send back" : "Reject"}
+                  </button>
+                  <Link href={active.href} className="btn btn-secondary gap-1.5"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Open full record</Link>
+                  <button type="button" className="btn btn-primary ml-auto gap-1.5" disabled={pending}
+                    onClick={() => { const i = active; if (i.confirmApprove && !confirm(i.kind === "CHANGE" ? "Bank details decide where payments go. Have you confirmed this change with the supplier?" : i.kind === "PAYROLL" ? `Approve this payroll of AED ${aed(i.amount ?? 0)}?` : `Approve all ${i.ids?.length ?? 1} timesheet rows?`)) return; decide(i, "APPROVE"); }}>
+                    <Check className="h-4 w-4" aria-hidden />Approve
+                  </button>
+                </div>
               </div>
               <p className="mt-3 text-[11px] text-subtle">Tip: press J / K to move through the queue.</p>
             </section>
