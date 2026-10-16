@@ -5,8 +5,9 @@ import Link from "next/link";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { Menu, X } from "lucide-react";
 import { NavLinks } from "./nav-links";
-import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
-import { SupportTicketCard } from "@/components/SupportTicketCard";
+import { BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
+import { SidebarHelp } from "@/components/SidebarHelp";
+import { ScrollFade } from "@/components/ScrollFade";
 
 export function MobileSidebar({
   isAdmin,
@@ -50,25 +51,19 @@ export function MobileSidebar({
             </RadixDialog.Close>
           </div>
           <div className="shrink-0 px-3 pb-2">
-            <BranchCard brand={brand} isAdmin={isAdmin} onNavigate={() => setOpen(false)} />
+            <BranchCard brand={brand} isAdmin={isAdmin} onNavigate={() => setOpen(false)} compact />
           </div>
           {/* Only actual navigation (an <a> click) closes the drawer — group-expand toggles are buttons and must not. */}
-          <div
-            className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
+          <ScrollFade
+            className="overflow-y-auto overscroll-contain px-3 py-3"
             onClick={(e) => {
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
             <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} badges={badges} />
-          </div>
-          <div className="shrink-0 space-y-2 border-t border-default p-3">
-            <div onClick={() => setOpen(false)}>
-              <AskAiCard />
-            </div>
-            {/* No close-on-click here: it opens its own dialog inside this
-                drawer's React tree, which the drawer closing would unmount
-                mid-open. */}
-            <SupportTicketCard />
+          </ScrollFade>
+          <div className="shrink-0 border-t border-default p-3">
+            <SidebarHelp onAssistant={() => setOpen(false)} />
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

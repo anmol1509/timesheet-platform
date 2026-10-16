@@ -41,8 +41,13 @@ export function ShortcutsSheet() {
       e.preventDefault();
       setOpen((v) => !v);
     }
+    const onOpen = () => setOpen(true);
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    window.addEventListener("open-shortcuts", onOpen);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("open-shortcuts", onOpen);
+    };
   }, []);
 
   return (

@@ -40,7 +40,7 @@ function SupportTicketForm({ onSent }: { onSent: () => void }) {
 }
 
 /** Sidebar footer shortcut to email support directly — for a platform bug or question, not the AI assistant (see AskAiCard). */
-export function SupportTicketCard() {
+export function SupportTicketCard({ compact = false }: { compact?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -53,6 +53,16 @@ export function SupportTicketCard() {
       }}
     >
       <DialogTrigger asChild>
+        {compact ? (
+          <button
+            type="button"
+            aria-label="Report an issue"
+            title="Report an issue"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--glass-line)] bg-surface/55 text-muted transition hover:bg-surface/90 hover:text-primary"
+          >
+            <LifeBuoy className="h-4 w-4" aria-hidden />
+          </button>
+        ) : (
         <button
           type="button"
           className="group flex w-full items-center gap-3 rounded-xl border border-default bg-surface px-3 py-2.5 text-left transition hover:bg-surface-hover"
@@ -65,6 +75,7 @@ export function SupportTicketCard() {
             <span className="block truncate text-[13px] font-semibold text-secondary">Report an issue</span>
           </span>
         </button>
+        )}
       </DialogTrigger>
       <DialogContent title="Report an issue" description="Tell us what's not working — this goes straight to our support team.">
         {sent ? (

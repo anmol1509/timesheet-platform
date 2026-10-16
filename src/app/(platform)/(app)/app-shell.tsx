@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
-import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
-import { SupportTicketCard } from "@/components/SupportTicketCard";
+import { BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
+import { SidebarHelp } from "@/components/SidebarHelp";
+import { ScrollFade } from "@/components/ScrollFade";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
@@ -53,10 +54,10 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-canvas lg:flex">
+    <div className="app-aurora relative min-h-screen bg-canvas lg:flex">
       <aside
         className={cn(
-          "hidden shrink-0 flex-col border-r border-default bg-surface transition-[width] duration-200 lg:fixed lg:inset-y-0 lg:flex",
+          "glass hidden shrink-0 flex-col overflow-hidden rounded-[22px] transition-[width] duration-200 lg:fixed lg:top-3 lg:bottom-3 lg:left-3 lg:flex",
           collapsed ? "w-16" : "w-64"
         )}
       >
@@ -80,26 +81,25 @@ export function AppShell({
         </div>
 
         {!collapsed && (
-          <div className="shrink-0 px-3 pb-2">
-            <BranchCard brand={brand} isAdmin={isAdmin} />
+          <div className="shrink-0 px-3 pb-1">
+            <BranchCard brand={brand} isAdmin={isAdmin} compact />
           </div>
         )}
 
         {/* Module names only, so Clarity recordings (masked everywhere else, see app-analytics.tsx) show where people go. */}
-        <div
+        <ScrollFade
           data-clarity-unmask="true"
           className={cn(
-            "flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-3",
+            "overflow-x-hidden overflow-y-auto overscroll-contain py-2",
             collapsed ? "px-2" : "px-3"
           )}
         >
           <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} badges={badges} />
-        </div>
+        </ScrollFade>
 
         {!collapsed && (
-          <div className="shrink-0 space-y-2 border-t border-default p-3">
-            <AskAiCard />
-            <SupportTicketCard />
+          <div className="shrink-0 border-t border-default p-3">
+            <SidebarHelp />
           </div>
         )}
 
@@ -126,7 +126,7 @@ export function AppShell({
           // below its content's min-content width, so a wide table pushed the
           // whole page sideways instead of scrolling inside its own card.
           "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-200",
-          collapsed ? "lg:pl-16" : "lg:pl-64"
+          collapsed ? "lg:pl-[5.5rem]" : "lg:pl-[17.5rem]"
         )}
       >
         {header}

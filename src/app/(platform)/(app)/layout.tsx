@@ -87,7 +87,7 @@ export default async function AppLayout({
   };
 
   const header = (
-    <header className="sticky top-0 z-30 border-b border-default bg-surface/90 backdrop-blur-md supports-[backdrop-filter]:bg-surface/75">
+    <header className="sticky top-0 z-30 border-b border-default/70 bg-surface/55 backdrop-blur-xl backdrop-saturate-150">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} badges={badges} />
         <div className="min-w-0 flex-1 lg:max-w-xl">

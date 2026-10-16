@@ -42,6 +42,7 @@ const ACTIONS: { href: string; label: string; hint?: string }[] = [
   { href: "/employees/new", label: "Add employee" },
   { href: "/demand/new", label: "Raise demand" },
   { href: "/accommodation/checkin", label: "Check in an employee" },
+  { href: "/onboarding/new", label: "Add candidate" },
   { href: "/invoices/client-timesheet/new", label: "New timesheet entry" },
   { href: "/invoices", label: "Generate an invoice" },
   { href: "/operations/nocs/new", label: "Issue a NOC" },
