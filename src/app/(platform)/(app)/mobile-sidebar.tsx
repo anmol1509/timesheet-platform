@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { NavLinks } from "./nav-links";
 import { BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
 import { SidebarHelp } from "@/components/SidebarHelp";
+import { ScrollFade } from "@/components/ScrollFade";
 
 export function MobileSidebar({
   isAdmin,
@@ -53,14 +54,14 @@ export function MobileSidebar({
             <BranchCard brand={brand} isAdmin={isAdmin} onNavigate={() => setOpen(false)} compact />
           </div>
           {/* Only actual navigation (an <a> click) closes the drawer — group-expand toggles are buttons and must not. */}
-          <div
-            className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
+          <ScrollFade
+            className="overflow-y-auto overscroll-contain px-3 py-3"
             onClick={(e) => {
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
             <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} badges={badges} />
-          </div>
+          </ScrollFade>
           <div className="shrink-0 border-t border-default p-3">
             <SidebarHelp onAssistant={() => setOpen(false)} />
           </div>

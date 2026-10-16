@@ -574,7 +574,7 @@ export function NavLinks({
     <nav aria-label="Main" className={cn("flex flex-col gap-px", collapsed && "items-center")}>
       {!collapsed && pins.length > 0 && (
         <div className="contents">
-          <p className="px-2.5 pt-1.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase">Pinned</p>
+          <p className="px-2.5 pt-1.5 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">Pinned</p>
           {pins.map((href) => renderLeaf(itemByHref.get(href)!, 0, "pin-", { rail: false, pin: false }))}
         </div>
       )}
@@ -584,7 +584,7 @@ export function NavLinks({
           <p
             key={`cat-${entry.category}`}
             className={cn(
-              "px-2.5 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase",
+              "px-2.5 pt-3 pb-1 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase",
               i === 0 && "pt-1.5"
             )}
           >

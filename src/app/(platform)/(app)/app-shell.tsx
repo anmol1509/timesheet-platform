@@ -5,6 +5,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
 import { BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
 import { SidebarHelp } from "@/components/SidebarHelp";
+import { ScrollFade } from "@/components/ScrollFade";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
@@ -87,15 +88,15 @@ export function AppShell({
         )}
 
         {/* Module names only, so Clarity recordings (masked everywhere else, see app-analytics.tsx) show where people go. */}
-        <div
+        <ScrollFade
           data-clarity-unmask="true"
           className={cn(
-            "flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-2",
+            "overflow-x-hidden overflow-y-auto overscroll-contain py-2",
             collapsed ? "px-2" : "px-3"
           )}
         >
           <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} badges={badges} />
-        </div>
+        </ScrollFade>
 
         {!collapsed && (
           <div className="shrink-0 border-t border-default p-3">
