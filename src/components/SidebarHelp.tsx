@@ -21,7 +21,7 @@ export function SidebarHelp({ onAssistant }: { onAssistant?: () => void }) {
         aria-label="Keyboard shortcuts"
         title="Keyboard shortcuts (?)"
         onClick={() => window.dispatchEvent(new Event("open-shortcuts"))}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-default bg-surface text-muted transition hover:bg-surface-hover hover:text-primary"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--glass-line)] bg-surface/55 text-muted transition hover:bg-surface/90 hover:text-primary"
       >
         <Keyboard className="h-4 w-4" aria-hidden />
       </button>

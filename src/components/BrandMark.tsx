@@ -77,7 +77,7 @@ export function BranchCard({ brand, isAdmin = false, onNavigate, compact = false
     </>
   );
   const className = compact
-    ? "flex items-center gap-2.5 rounded-lg border border-default bg-surface px-2 py-1.5"
+    ? "flex items-center gap-2.5 rounded-xl border border-[color:var(--glass-line)] bg-surface/55 px-2 py-1.5 shadow-[inset_0_1px_0_var(--glass-highlight)]"
     : "flex items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-2.5 py-2";
   return isAdmin ? (
     <Link href="/settings/company" onClick={onNavigate} className={cn(className, "transition hover:bg-surface-hover")}>

@@ -54,10 +54,10 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-canvas lg:flex">
+    <div className="app-aurora relative min-h-screen bg-canvas lg:flex">
       <aside
         className={cn(
-          "hidden shrink-0 flex-col border-r border-default bg-surface transition-[width] duration-200 lg:fixed lg:inset-y-0 lg:flex",
+          "glass hidden shrink-0 flex-col overflow-hidden rounded-[22px] transition-[width] duration-200 lg:fixed lg:top-3 lg:bottom-3 lg:left-3 lg:flex",
           collapsed ? "w-16" : "w-64"
         )}
       >
@@ -126,7 +126,7 @@ export function AppShell({
           // below its content's min-content width, so a wide table pushed the
           // whole page sideways instead of scrolling inside its own card.
           "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-200",
-          collapsed ? "lg:pl-16" : "lg:pl-64"
+          collapsed ? "lg:pl-[5.5rem]" : "lg:pl-[17.5rem]"
         )}
       >
         {header}

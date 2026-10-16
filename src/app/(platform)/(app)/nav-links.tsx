@@ -349,8 +349,8 @@ function groupContainsActive(activeHref: string | null, children: Item[]) {
 const ROW =
   "group/row relative flex items-center rounded-[10px] text-[13.5px] transition-colors";
 const ACTIVE =
-  "bg-brand-soft font-semibold text-[var(--brand-primary)] shadow-[inset_0_0_0_1px_var(--brand-primary-border)]";
-const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
+  "glass-pill font-semibold text-[var(--brand-primary)]";
+const INACTIVE = "text-secondary hover:bg-[color-mix(in_srgb,var(--surface)_55%,transparent)] hover:text-primary";
 
 /* ---- Per-browser sidebar preferences (open group, pinned pages) -------------
  * Read through useSyncExternalStore so the server render and first client
