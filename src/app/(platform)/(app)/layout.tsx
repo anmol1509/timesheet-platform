@@ -86,9 +86,11 @@ export default async function AppLayout({
     city: activeBranch?.emirate ?? null,
   };
 
+  // A floating glass bar to match the sidebar: same corner radius, same 12px gutters, tops aligned. On wide
+  // screens the page already reserves the sidebar's width, so only the right and top gutters are added.
   const header = (
-    <header className="sticky top-0 z-30 border-b border-default/70 bg-surface/55 backdrop-blur-xl backdrop-saturate-150">
-      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+    <header className="glass sticky top-3 z-30 mx-3 mt-3 rounded-[22px] lg:ml-0">
+      <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-5">
         <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} badges={badges} />
         <div className="min-w-0 flex-1 lg:max-w-xl">
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
