@@ -371,7 +371,7 @@ function TriggerButton({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label="Open command palette (⌘K)"
-      className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-3 text-sm text-subtle shadow-xs transition hover:border-strong hover:bg-surface hover:text-muted"
+      className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-default bg-surface/60 px-3 text-sm text-subtle shadow-xs transition hover:border-strong hover:bg-surface hover:text-muted"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden />
       <span className="flex-1 truncate text-left">Search employees, projects, documents, invoices…</span>
