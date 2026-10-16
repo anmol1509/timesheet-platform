@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserPlus, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
@@ -124,6 +124,8 @@ export default async function EmployeesPage({
 
   const onWorkCount = rows.filter((r) => r.onWork).length;
   const benchCount = rows.length - onWorkCount;
+  const expiredCount = rows.filter((r) => r.worstStatus === "expired").length;
+  const expiringCount = rows.filter((r) => r.worstStatus === "expiring").length;
   const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
 
   const byTrade = new Map<string, number>();
@@ -159,6 +161,24 @@ export default async function EmployeesPage({
           </>
         }
       />
+
+      {expiredCount + expiringCount > 0 && (
+        <Link
+          href="/employees/renewals"
+          className={`flex items-center gap-3 rounded-card border px-4 py-3 text-sm transition hover:brightness-[0.98] ${expiredCount > 0 ? "border-[var(--error-border)] bg-[var(--error-soft)]" : "border-[var(--warning-border)] bg-[var(--warning-soft)]"}`}
+        >
+          <AlertTriangle className={`h-4 w-4 shrink-0 ${expiredCount > 0 ? "text-[var(--error)]" : "text-[var(--warning)]"}`} aria-hidden />
+          <span className="min-w-0 flex-1 text-primary">
+            <span className="font-semibold">
+              {expiredCount > 0 && `${expiredCount} ${expiredCount === 1 ? "person has" : "people have"} an expired document`}
+              {expiredCount > 0 && expiringCount > 0 && " · "}
+              {expiringCount > 0 && `${expiringCount} expiring soon`}
+            </span>
+            <span className="text-secondary"> — renew them before they affect payroll or deployment.</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-1 font-medium text-primary">Review renewals<ArrowRight className="h-3.5 w-3.5" aria-hidden /></span>
+        </Link>
+      )}
 
       <EmployeeKpiCards
         total={rows.length}
