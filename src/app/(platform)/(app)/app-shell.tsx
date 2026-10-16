@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NavLinks } from "./nav-links";
-import { AskAiCard, BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
-import { SupportTicketCard } from "@/components/SupportTicketCard";
+import { BranchCard, BrandMark, type Brand } from "@/components/BrandMark";
+import { SidebarHelp } from "@/components/SidebarHelp";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SectionTabs } from "@/components/SectionTabs";
 import { SIDEBAR_COOKIE } from "./sidebar-preference";
@@ -79,9 +79,10 @@ export function AppShell({
           )}
         </div>
 
-        {!collapsed && (
-          <div className="shrink-0 px-3 pb-2">
-            <BranchCard brand={brand} isAdmin={isAdmin} />
+        {/* A super admin already has the branch switcher in the header, so the card would only repeat it. */}
+        {!collapsed && !isSuperAdmin && (
+          <div className="shrink-0 px-3 pb-1">
+            <BranchCard brand={brand} isAdmin={isAdmin} compact />
           </div>
         )}
 
@@ -89,7 +90,7 @@ export function AppShell({
         <div
           data-clarity-unmask="true"
           className={cn(
-            "flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-3",
+            "flex-1 overflow-x-hidden overflow-y-auto overscroll-contain py-2",
             collapsed ? "px-2" : "px-3"
           )}
         >
@@ -97,9 +98,8 @@ export function AppShell({
         </div>
 
         {!collapsed && (
-          <div className="shrink-0 space-y-2 border-t border-default p-3">
-            <AskAiCard />
-            <SupportTicketCard />
+          <div className="shrink-0 border-t border-default p-3">
+            <SidebarHelp />
           </div>
         )}
 

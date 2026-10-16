@@ -119,6 +119,13 @@ const NAV: Entry[] = [
       { href: "/letter-templates", label: "Templates", icon: FileStack },
     ],
   },
+  // A candidate becomes a worker, so onboarding sits with the people it leads to. "Add candidate" is a
+  // button on the tracker (and in the command palette), not a page of its own in the menu.
+  {
+    type: "link",
+    item: { href: "/onboarding", label: "Onboarding", icon: UserCheck },
+    category: "People",
+  },
   // Operations: demand, the projects it serves, and the camps and transport behind it.
   {
     type: "group",
@@ -126,8 +133,7 @@ const NAV: Entry[] = [
     icon: ListChecks,
     category: "Operations",
     children: [
-      { href: "/demand/new", label: "Create Demand", icon: FilePlus2 },
-      { href: "/demand", label: "View Demands", icon: ListChecks, exact: true },
+      { href: "/demand", label: "Demands", icon: ListChecks, exact: true },
       // One row for the mobilise → arrive → demobilise cycle; the three stages
       // are tabs (see SECTION_TABS), so the sidebar doesn't list each one.
       {
@@ -156,7 +162,7 @@ const NAV: Entry[] = [
     category: "Operations",
     children: [
       { href: "/accommodation/camps", label: "Camps", icon: BedDouble },
-      { href: "/accommodation/checkin", label: "Create Check-In", icon: FilePlus2 },
+      { href: "/accommodation/checkin", label: "Check-In", icon: FilePlus2 },
       { href: "/accommodation/bed-allocation", label: "Bed Allocation", icon: ListChecks },
       // Vehicles and Routes are tabs of this one row.
       { href: "/transport", label: "Transport", icon: Bus },
@@ -227,17 +233,6 @@ const NAV: Entry[] = [
     children: [
       { href: "/trades", label: "Trades", icon: Wrench },
       { href: "/banks", label: "Banks", icon: Wallet },
-    ],
-  },
-  // Onboarding is still being worked on, so it sits at the very bottom of the list, out of the way.
-  {
-    type: "group",
-    label: "Onboarding",
-    icon: UserCheck,
-    category: "Setup",
-    children: [
-      { href: "/onboarding", label: "Candidate Tracker", icon: ListChecks, exact: true },
-      { href: "/onboarding/new", label: "Add Candidate", icon: FilePlus2 },
     ],
   },
 ];
@@ -361,7 +356,7 @@ const INACTIVE = "text-secondary hover:bg-surface-hover hover:text-primary";
  * Read through useSyncExternalStore so the server render and first client
  * render agree (both see "nothing saved") and the saved value then arrives
  * without an effect pushing state around. */
-const OPEN_KEY = "nav.openGroup";
+const OPEN_KEY = "nav.openGroups";
 const PINS_KEY = "nav.pins";
 const MAX_PINS = 6;
 const PREFS_EVENT = "nav-prefs";
@@ -388,6 +383,14 @@ function writePref(key: string, value: string) {
     /* private mode: the choice just isn't remembered */
   }
   window.dispatchEvent(new Event(PREFS_EVENT));
+}
+function parseList(raw: string | null): Set<string> {
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    return new Set(Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : []);
+  } catch {
+    return new Set();
+  }
 }
 function usePref(key: string) {
   return useSyncExternalStore(subscribePrefs, () => readPref(key), () => null);
@@ -424,31 +427,37 @@ export function NavLinks({
     : entries;
   const activeHref = resolveActiveHref(pathname, navCandidates);
 
-  // One group open at a time. What is open comes from, in order: a choice made
-  // on this page (cleared by navigating), the group holding the current page,
-  // then the group that was open last time. Navigating into a group (via
-  // search or a deep link) therefore reveals it with no effect syncing state.
-  const [choice, setChoice] = useState<{ path: string; group: string | null } | null>(null);
-  const rememberedRaw = usePref(OPEN_KEY);
-  const remembered = rememberedRaw || null;
+  // Any number of groups can be open. What is open comes from the groups this browser last left open, plus
+  // the group holding the current page (so a deep link or a search result reveals where you are). Collapsing
+  // the current page's group sticks until you navigate somewhere else.
+  const openRaw = usePref(OPEN_KEY);
+  const openSet = useMemo(() => parseList(openRaw), [openRaw]);
+  const [collapsedHere, setCollapsedHere] = useState<{ path: string; group: string } | null>(null);
   let activeGroup: string | null = null;
   for (const e of entries) if (e.type === "group" && groupContainsActive(activeHref, e.children)) activeGroup = e.label;
-  const chosen = choice && choice.path === pathname ? choice : null;
-  const openLabel = chosen ? chosen.group : (activeGroup ?? remembered);
 
-  // Remember the group you were last working in, for the next visit.
+  // Remember the group you are working in, for the next visit.
   useEffect(() => {
-    if (activeGroup) writePref(OPEN_KEY, activeGroup);
+    if (!activeGroup) return;
+    const saved = parseList(readPref(OPEN_KEY));
+    if (!saved.has(activeGroup)) writePref(OPEN_KEY, JSON.stringify([...saved, activeGroup]));
   }, [activeGroup]);
 
   function isOpen(label: string) {
-    return openLabel === label;
+    if (openSet.has(label)) return true;
+    return label === activeGroup && !(collapsedHere?.path === pathname && collapsedHere.group === label);
   }
 
   function toggle(label: string) {
-    const next = openLabel === label ? null : label;
-    setChoice({ path: pathname, group: next });
-    writePref(OPEN_KEY, next ?? "");
+    const next = new Set(openSet);
+    if (isOpen(label)) {
+      next.delete(label);
+      if (label === activeGroup) setCollapsedHere({ path: pathname, group: label });
+    } else {
+      next.add(label);
+      if (collapsedHere?.group === label) setCollapsedHere(null);
+    }
+    writePref(OPEN_KEY, JSON.stringify([...next]));
   }
 
   // Pinned pages: a short list kept at the top, saved in this browser. Only pages
@@ -483,7 +492,8 @@ export function NavLinks({
 
   function renderLeaf(item: Item, depth: 0 | 1, keyPrefix = "", opts: { rail?: boolean; pin?: boolean } = {}) {
     const { rail = true, pin = true } = opts;
-    const active = item.href === activeHref;
+    // A pinned shortcut repeats a page that is also listed in its group; only the group row shows as current.
+    const active = item.href === activeHref && keyPrefix !== "pin-";
     const Icon = item.icon;
 
     if (collapsed) {
@@ -515,7 +525,7 @@ export function NavLinks({
           aria-current={active ? "page" : undefined}
           className={cn(
             ROW,
-            depth === 0 ? "gap-3 px-2.5 py-2" : "gap-2.5 px-2.5 py-1.5 text-[13px]",
+            depth === 0 ? "gap-3 px-2.5 py-1" : "gap-2.5 px-2.5 py-1 text-[13px]",
             active ? ACTIVE : INACTIVE
           )}
         >
@@ -546,6 +556,8 @@ export function NavLinks({
             type="button"
             onClick={() => togglePin(item.href)}
             disabled={!canPin}
+            // Out of the tab order except on the page you are on, so it no longer doubles the stops to reach the content.
+            tabIndex={active ? 0 : -1}
             aria-label={isPinned ? `Unpin ${item.label}` : `Pin ${item.label}`}
             aria-pressed={isPinned}
             title={isPinned ? "Unpin" : canPin ? "Pin to the top" : `You can pin up to ${MAX_PINS} pages`}
@@ -559,7 +571,7 @@ export function NavLinks({
   }
 
   return (
-    <nav className={cn("flex flex-col gap-0.5", collapsed && "items-center")}>
+    <nav aria-label="Main" className={cn("flex flex-col gap-px", collapsed && "items-center")}>
       {!collapsed && pins.length > 0 && (
         <div className="contents">
           <p className="px-2.5 pt-1.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase">Pinned</p>
@@ -572,7 +584,7 @@ export function NavLinks({
           <p
             key={`cat-${entry.category}`}
             className={cn(
-              "px-2.5 pt-5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase",
+              "px-2.5 pt-3 pb-1 text-[10.5px] font-semibold tracking-[0.08em] text-subtle uppercase",
               i === 0 && "pt-1.5"
             )}
           >
@@ -661,7 +673,7 @@ export function NavLinks({
               aria-expanded={open}
               className={cn(
                 ROW,
-                "w-full gap-3 px-2.5 py-2",
+                "w-full gap-3 px-2.5 py-1",
                 hasActiveChild
                   ? "font-semibold text-primary hover:bg-surface-hover"
                   : "text-secondary hover:bg-surface-hover hover:text-primary"
