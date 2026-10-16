@@ -80,8 +80,7 @@ export function AppShell({
           )}
         </div>
 
-        {/* A super admin already has the branch switcher in the header, so the card would only repeat it. */}
-        {!collapsed && !isSuperAdmin && (
+        {!collapsed && (
           <div className="shrink-0 px-3 pb-1">
             <BranchCard brand={brand} isAdmin={isAdmin} compact />
           </div>

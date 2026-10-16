@@ -49,13 +49,15 @@ export function BranchCard({ brand, isAdmin = false, onNavigate, compact = false
     <>
       {brand.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded, served by our own route
-        <img src={brand.logoUrl} alt="" className="h-5 w-5 shrink-0 rounded-md bg-surface object-contain" />
+        <img src={brand.logoUrl} alt="" className="h-7 w-7 shrink-0 rounded-md bg-surface object-contain" />
       ) : (
-        <Building2 className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[image:var(--brand-gradient)] text-white shadow-xs">
+          <Building2 className="h-3.5 w-3.5" aria-hidden />
+        </span>
       )}
-      <span className="min-w-0 flex-1 truncate text-[12.5px]">
-        <span className="font-semibold text-primary">{brand.name}</span>
-        {brand.city && <span className="text-subtle"> · {brand.city}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[12.5px] leading-4 font-semibold text-primary">{brand.name}</span>
+        <span className="block truncate text-[11px] leading-4 text-subtle">{brand.city || "Manpower ERP"}</span>
       </span>
     </>
   ) : (
@@ -75,7 +77,7 @@ export function BranchCard({ brand, isAdmin = false, onNavigate, compact = false
     </>
   );
   const className = compact
-    ? "flex items-center gap-2 rounded-lg border border-default bg-surface px-2.5 py-1.5"
+    ? "flex items-center gap-2.5 rounded-lg border border-default bg-surface px-2 py-1.5"
     : "flex items-center gap-2.5 rounded-xl border border-default bg-surface-subtle px-2.5 py-2";
   return isAdmin ? (
     <Link href="/settings/company" onClick={onNavigate} className={cn(className, "transition hover:bg-surface-hover")}>
