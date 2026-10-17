@@ -6,6 +6,7 @@ import { BedDouble, Download, Home, Percent, Building2, Upload } from "lucide-re
 import { deleteCampAction } from "../actions";
 import { CampView } from "./camp-view";
 import { AddCampForm } from "./add-camp-form";
+import { WaitingBanner } from "./waiting-banner";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { Insights } from "@/components/ListSummary";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -15,7 +16,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { dayKey } from "@/lib/checkoutReasons";
-import { can } from "@/lib/permissions";
+import { can, canWrite } from "@/lib/permissions";
 import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
@@ -66,6 +67,17 @@ export default async function CampsPage({
   const vacantBeds = totalBeds - occupiedBeds;
   const occupancyPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
+  // Checked in to an own camp, no bed yet: how many, and in which camp.
+  const waitingRows = await prisma.campCheckIn.groupBy({
+    by: ["campId"],
+    where: { status: "CHECKED_IN", bedId: null, camp: { ownerType: "OWN", ...branchWhere(branchId) } },
+    _count: { _all: true },
+  });
+  const waitingByCamp = Object.fromEntries(waitingRows.map((w) => [w.campId, w._count._all]));
+  const waitingTotal = waitingRows.reduce((n, w) => n + w._count._all, 0);
+  const vacantFor = (id: string) => camps.find((c) => c.id === id)?.rooms.flatMap((r) => r.beds).filter((b) => !b.employeeId).length ?? 0;
+  const waitingNeed = waitingRows.every((w) => vacantFor(w.campId) >= w._count._all);
+
   const selectedCamp =
     camps.find((c) => c.id === params.campId) || camps[0] || null;
 
@@ -104,7 +116,7 @@ export default async function CampsPage({
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {params.error && (
         <p className="rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">
           {params.error}
@@ -113,14 +125,13 @@ export default async function CampsPage({
 
       <PageHeader
         title="Camps"
-        description="Manage camps, rooms and beds. Move employees in with Create Check-In and Bed Allocation."
+        description="Manage camps, rooms and beds. Move employees in with Check-In and Bed Allocation."
         actions={
-          (canExport || canImport) ? (
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
               {canImport && <Link href="/import/new/camps" className="btn btn-secondary btn-sm flex gap-1.5"><Upload className="h-3.5 w-3.5" aria-hidden /> Import</Link>}
               {canExport && camps.length > 0 && <a href="/api/accommodation/camps/export" className="btn btn-secondary btn-sm flex gap-1.5"><Download className="h-3.5 w-3.5" aria-hidden /> Export</a>}
+              <AddCampForm primary />
             </div>
-          ) : undefined
         }
         meta={
           <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
@@ -140,6 +151,8 @@ export default async function CampsPage({
         />
       </div>
 
+      <WaitingBanner waiting={waitingTotal} enough={waitingNeed} canAssign={canWrite(subjectOf(user), "facilities.bed-allocation")} />
+
       {totalBeds > 0 && (
         <Insights id="camps" title="Occupancy">
           <OccupancyRing occupied={occupiedBeds} vacant={vacantBeds} pct={occupancyPct} />
@@ -147,7 +160,7 @@ export default async function CampsPage({
       )}
 
       {camps.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {camps.map((c) => {
               const beds = c.rooms.flatMap((r) => r.beds);
@@ -175,6 +188,7 @@ export default async function CampsPage({
                   <span className="tabular text-xs opacity-70">
                     {occ}/{beds.length}
                   </span>
+                  {waitingByCamp[c.id] > 0 && <span className="rounded-full bg-[var(--warning-soft)] px-1.5 text-[10px] font-semibold text-[var(--warning)]">{waitingByCamp[c.id]} waiting</span>}
                 </Link>
               );
             })}
@@ -209,7 +223,7 @@ export default async function CampsPage({
 
       {selectedCamp ? (
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-primary">
+          <h2 className="mb-4 text-sm font-semibold text-primary">
             {selectedCamp.name} — All Rooms
           </h2>
           <CampView
@@ -236,7 +250,13 @@ export default async function CampsPage({
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AddCampForm />
+        {camps.length === 0 && (
+          <div className="card flex flex-col items-start gap-3 p-6">
+            <h3 className="text-sm font-semibold text-primary">Add your first camp</h3>
+            <p className="text-sm text-muted">Name it and say how many rooms and beds it has.</p>
+            <AddCampForm />
+          </div>
+        )}
 
         {selectedCamp && (
           <form

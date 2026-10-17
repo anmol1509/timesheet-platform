@@ -3,7 +3,8 @@
 import { settleDueCheckouts } from "@/lib/accommodationCheckout";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
+import { canWrite } from "@/lib/permissions";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -57,20 +58,34 @@ async function resolveExternalCamp(
 }
 
 /**
- * Stage 1 of the two-stage check-in flow: places each selected employee into
- * a camp (no room/bed yet — that's Bed Allocation). Produces a CampCheckIn
- * per employee with a printable checkInNo, and returns the ids so the caller
- * can immediately open the check-in slip PDF.
+ * The day a check-in is recorded for: today unless a date is given, and never a future one. Backdating is for
+ * someone who was missed, so a date is accepted back as far as needed; a date one day ahead is tolerated because
+ * the browser's "today" can be a day ahead of the server's in the Gulf.
  */
-export async function createCheckInAction(
+function checkInMoment(formData: FormData): { date: Date } | { error: string } {
+  const raw = String(formData.get("checkInDate") || "").trim();
+  if (!raw) return { date: new Date() };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(new Date(raw).getTime())) return { error: "Enter a valid check-in date." };
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 86_400_000).toISOString().slice(0, 10);
+  if (raw > tomorrow) return { error: "The check-in date can't be in the future." };
+  return { date: raw === now.toISOString().slice(0, 10) ? now : new Date(raw) };
+}
+
+type CreatedCheckIn = { checkInId: string; employeeId: string; employeeName: string };
+
+/** Places each selected employee into a camp and returns the new check-ins in the order they were selected. */
+async function createCheckIns(
   formData: FormData
-): Promise<{ ids: string[] } | { error: string }> {
+): Promise<{ created: CreatedCheckIn[]; camp: { id: string; name: string; branchId: string | null }; campType: string; date: Date; user: { id: string; name: string }; subject: ReturnType<typeof subjectOf>; branchId: string | null } | { error: string }> {
   await requireWrite("facilities.checkin");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const campType = ["SUPPLIER", "CLIENT"].includes(String(formData.get("campType"))) ? String(formData.get("campType")) : "OWN";
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
   if (employeeIds.length === 0) return { error: "Select at least one employee." };
+  const moment = checkInMoment(formData);
+  if ("error" in moment) return { error: moment.error };
 
   // Own camps are picked from the list. Supplier and client camps aren't managed here (no rooms or beds),
   // so they are recorded by name against the supplier or client, and reused next time.
@@ -92,7 +107,7 @@ export async function createCheckInAction(
     select: { id: true, name: true, branchId: true, bed: { select: { id: true } } },
   });
 
-  const ids: string[] = [];
+  const created: CreatedCheckIn[] = [];
   for (const employeeId of employeeIds) {
     const employee = employees.find((e) => e.id === employeeId);
     if (!employee || isOutsideBranch(employee.branchId, branchId, isSuperAdmin)) continue;
@@ -106,26 +121,150 @@ export async function createCheckInAction(
     });
     if (alreadyOpen) continue;
 
-    const created = await prisma.campCheckIn.create({
-      data: { employeeId, campId, branchId: employee.branchId },
+    const row = await prisma.campCheckIn.create({
+      data: { employeeId, campId, branchId: employee.branchId, checkInDate: moment.date },
     });
-    ids.push(created.id);
+    created.push({ checkInId: row.id, employeeId, employeeName: employee.name });
 
     await logAudit({
       entityType: "CAMP_CHECK_IN",
-      entityId: created.id,
+      entityId: row.id,
       action: "CREATE",
-      after: { employeeId, employeeName: employee.name, campId, campName: camp.name, checkInNo: created.checkInNo },
+      after: { employeeId, employeeName: employee.name, campId, campName: camp.name, checkInNo: row.checkInNo, checkInDate: moment.date },
       userId: user.id,
       userName: user.name,
       branchId: employee.branchId,
     });
   }
 
-  if (ids.length === 0) return { error: "None of the selected employees could be checked in." };
+  if (created.length === 0) return { error: "None of the selected employees could be checked in." };
+  return { created, camp: { ...camp, branchId: campBranchId }, campType, date: moment.date, user, subject: subjectOf(user), branchId };
+}
+
+/**
+ * Stage 1 of the two-stage check-in flow: places each selected employee into
+ * a camp (no room/bed yet — that's Bed Allocation). Produces a CampCheckIn
+ * per employee with a printable checkInNo, and returns the ids so the caller
+ * can immediately open the check-in slip PDF.
+ */
+export async function createCheckInAction(
+  formData: FormData
+): Promise<{ ids: string[] } | { error: string }> {
+  const r = await createCheckIns(formData);
+  if ("error" in r) return r;
+  revalidateAccommodation();
+  return { ids: r.created.map((c) => c.checkInId) };
+}
+
+export type CheckInAndAssignResult = { ids: string[]; assigned: { employeeName: string; bedLabel: string }[]; waiting: number };
+
+/**
+ * Check-in and bed in one step, for an own camp. The workers are checked in as above; when beds are wanted each
+ * gets the bed chosen for them (field `bedId:<employeeId>`), and anyone without a valid choice takes the next
+ * vacant bed in order, room by room. If there are fewer vacant beds than workers the rest stay checked in and
+ * waiting for Bed Allocation. Needs the Bed Allocation permission to place beds; without it people are only
+ * checked in.
+ */
+export async function checkInAndAssignAction(formData: FormData): Promise<CheckInAndAssignResult | { error: string }> {
+  const r = await createCheckIns(formData);
+  if ("error" in r) return r;
+  const { created, camp, campType, date, user, subject, branchId } = r;
+  const assigned: { employeeName: string; bedLabel: string }[] = [];
+
+  const wantsBeds = formData.get("assignBeds") === "1" && campType === "OWN" && canWrite(subject, "facilities.bed-allocation");
+  if (wantsBeds) {
+    await settleDueCheckouts(branchId, user);
+    const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+    const vacant = (await prisma.bed.findMany({ where: { employeeId: null, room: { campId: camp.id } }, include: { room: { select: { name: true } } } })).sort(
+      (a, b) => natural(a.room.name, b.room.name) || natural(a.label, b.label)
+    );
+    const used = new Set<string>();
+    const nextFree = () => vacant.find((b) => !used.has(b.id));
+    for (const c of created) {
+      const wanted = String(formData.get(`bedId:${c.employeeId}`) || "");
+      const bed = vacant.find((b) => b.id === wanted && !used.has(b.id)) ?? nextFree();
+      if (!bed) break;
+      used.add(bed.id);
+      try {
+        await prisma.$transaction(async (tx) => {
+          const fresh = await tx.bed.findUnique({ where: { id: bed.id }, select: { employeeId: true } });
+          if (fresh?.employeeId) throw new Error("taken");
+          await tx.bed.update({ where: { id: bed.id }, data: { employeeId: c.employeeId } });
+          await tx.accommodationHistory.create({ data: { employeeId: c.employeeId, campName: camp.name, roomName: bed.room.name, bedLabel: bed.label, checkInDate: date } });
+          await tx.campCheckIn.update({ where: { id: c.checkInId }, data: { bedId: bed.id, status: "BED_ALLOCATED" } });
+        });
+      } catch {
+        continue; // someone else took the bed a moment ago: they stay checked in, waiting for a bed
+      }
+      assigned.push({ employeeName: c.employeeName, bedLabel: `${bed.room.name} · ${bed.label}` });
+      await logAudit({
+        entityType: "ACCOMMODATION",
+        entityId: bed.id,
+        action: "UPDATE",
+        after: { employeeId: c.employeeId, campName: camp.name, roomName: bed.room.name, bedLabel: bed.label, checkInDate: date },
+        userId: user.id,
+        userName: user.name,
+        branchId,
+      });
+    }
+  }
 
   revalidateAccommodation();
-  return { ids };
+  for (const c of created) revalidatePath(`/employees/${c.employeeId}`);
+  return { ids: created.map((c) => c.checkInId), assigned, waiting: created.length - assigned.length };
+}
+
+/**
+ * Gives every worker who is checked in to an own camp but has no bed the next vacant bed in that
+ * camp, in the order they were checked in. Optionally limited to one camp.
+ */
+export async function autoAssignWaitingAction(campId?: string): Promise<{ assigned: number; waiting: number } | { error: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const subject = subjectOf(user);
+  if (!canWrite(subject, "facilities.bed-allocation")) return { error: "You don't have permission to allocate beds." };
+  await settleDueCheckouts(branchId, user);
+  const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+  const waitingRows = await prisma.campCheckIn.findMany({
+    where: { status: "CHECKED_IN", bedId: null, camp: { ownerType: "OWN", ...(campId ? { id: campId } : {}) } },
+    include: { camp: { select: { id: true, name: true, branchId: true } }, employee: { select: { id: true, name: true, branchId: true } } },
+    orderBy: { checkInDate: "asc" },
+  });
+  const rows = waitingRows.filter((c) => !isOutsideBranch(c.camp.branchId, branchId, isSuperAdmin));
+  const vacantByCamp = new Map<string, Awaited<ReturnType<typeof prisma.bed.findMany<{ include: { room: { select: { name: true } } } }>>>>();
+  let assigned = 0;
+  for (const c of rows) {
+    if (!vacantByCamp.has(c.camp.id)) {
+      const beds = await prisma.bed.findMany({ where: { employeeId: null, room: { campId: c.camp.id } }, include: { room: { select: { name: true } } } });
+      vacantByCamp.set(c.camp.id, beds.sort((a, b) => natural(a.room.name, b.room.name) || natural(a.label, b.label)));
+    }
+    const bed = vacantByCamp.get(c.camp.id)!.shift();
+    if (!bed) continue;
+    try {
+      await prisma.$transaction(async (tx) => {
+        const fresh = await tx.bed.findUnique({ where: { id: bed.id }, select: { employeeId: true } });
+        const already = await tx.bed.findFirst({ where: { employeeId: c.employeeId }, select: { id: true } });
+        if (fresh?.employeeId || already) throw new Error("taken");
+        await tx.bed.update({ where: { id: bed.id }, data: { employeeId: c.employeeId } });
+        await tx.accommodationHistory.create({ data: { employeeId: c.employeeId, campName: c.camp.name, roomName: bed.room.name, bedLabel: bed.label, checkInDate: c.checkInDate } });
+        await tx.campCheckIn.update({ where: { id: c.id }, data: { bedId: bed.id, status: "BED_ALLOCATED" } });
+      });
+    } catch {
+      continue;
+    }
+    assigned++;
+    await logAudit({
+      entityType: "ACCOMMODATION",
+      entityId: bed.id,
+      action: "UPDATE",
+      after: { employeeId: c.employeeId, campName: c.camp.name, roomName: bed.room.name, bedLabel: bed.label },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+    revalidatePath(`/employees/${c.employeeId}`);
+  }
+  revalidateAccommodation();
+  return { assigned, waiting: rows.length - assigned };
 }
 
 // Moves an employee to a different camp before a bed has been picked. If a

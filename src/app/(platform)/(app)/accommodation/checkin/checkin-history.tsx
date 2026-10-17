@@ -42,7 +42,11 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
   const [campId, setCampId] = useState(camps[0]?.id ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const campRows = useMemo(() => rows.filter((r) => r.campId === campId), [rows, campId]);
+  const [query, setQuery] = useState("");
+  const campRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter((r) => r.campId === campId && (!q || `${r.employeeName} ${r.employeeIdNo} CHK-${String(r.checkInNo).padStart(5, "0")}`.toLowerCase().includes(q)));
+  }, [rows, campId, query]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -83,7 +87,8 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
         </Button>
       </div>
 
-      <label className="block max-w-xs">
+      <div className="flex flex-wrap items-end gap-3">
+      <label className="block w-full max-w-xs">
         <span className="mb-1 block text-xs font-medium text-muted">Camp</span>
         <Select
           value={campId}
@@ -95,6 +100,8 @@ export function CheckInHistory({ rows, camps }: { rows: HistoryRow[]; camps: { i
           options={camps.map((c) => ({ value: c.id, label: c.name }))}
         />
       </label>
+      <input value={query} onChange={(e) => { setQuery(e.target.value); setSelected(new Set()); }} placeholder="Search name, ID or CHK number…" aria-label="Search check-ins" className="input w-full max-w-xs" />
+      </div>
 
       {campId && (
         <div className="rounded-card border border-default">

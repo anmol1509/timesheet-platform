@@ -4,7 +4,9 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { PageHeader } from "@/components/PageHeader";
 import { StatTile } from "@/components/StatTile";
-import { Users, LogIn, Clock } from "lucide-react";
+import { Insights } from "@/components/ListSummary";
+import { complianceStatus } from "@/lib/compliance";
+import { Users, Clock, BedDouble } from "lucide-react";
 import { CheckInTable } from "./checkin-table";
 import { CheckInHistory } from "./checkin-history";
 
@@ -25,6 +27,7 @@ export default async function CheckInPage() {
         employeeIdNo: true,
         nationality: true,
         photoMimeType: true,
+        visaExpiry: true,
         supplier: { select: { name: true, code: true } },
         supplierId: true,
         project: { select: { code: true, name: true, clientId: true, client: { select: { name: true } } } },
@@ -35,7 +38,7 @@ export default async function CheckInPage() {
       where: branchWhere(branchId),
       include: {
         owningSupplier: { select: { name: true } },
-        rooms: { select: { beds: { select: { employeeId: true } } } },
+        rooms: { select: { name: true, beds: { select: { id: true, label: true, employeeId: true } } } },
       },
       orderBy: { name: "asc" },
     }),
@@ -72,6 +75,7 @@ export default async function CheckInPage() {
       checkInId: openCheckIn?.id ?? null,
       campName: openCheckIn?.camp.name ?? null,
       campId: openCheckIn?.campId ?? null,
+      visaStatus: complianceStatus(e.visaExpiry),
     };
   });
 
@@ -79,10 +83,17 @@ export default async function CheckInPage() {
     .filter((c) => c.ownerType === "OWN")
     .map((c) => {
       const beds = c.rooms.flatMap((r) => r.beds);
-      return { id: c.id, name: c.name, ownerType: c.ownerType, supplierName: null as string | null, roomCount: c.rooms.length, vacantBeds: beds.filter((b) => !b.employeeId).length, totalBeds: beds.length };
+      // Vacant beds in the order a check-in fills them: room by room.
+      const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+      const vacant = c.rooms
+        .flatMap((r) => r.beds.filter((b) => !b.employeeId).map((b) => ({ id: b.id, room: r.name, label: b.label })))
+        .sort((a, b) => natural(a.room, b.room) || natural(a.label, b.label));
+      return { id: c.id, name: c.name, ownerType: c.ownerType, supplierName: null as string | null, roomCount: c.rooms.length, vacantBeds: vacant.length, totalBeds: beds.length, vacant };
     });
   const notCheckedIn = rows.filter((r) => !r.checkInId).length;
   const awaitingBed = rows.filter((r) => r.checkInId && r.campKind === "OWN").length;
+  const vacantTotal = campOptions.reduce((n, c) => n + c.vacantBeds, 0);
+  const bedsTotal = campOptions.reduce((n, c) => n + c.totalBeds, 0);
 
   const history = await prisma.campCheckIn.findMany({
     where: branchId ? { employee: { branchId } } : {},
@@ -115,29 +126,31 @@ export default async function CheckInPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Create Check-In"
-        description="Registered employees with no bed allocated yet. Check them into a camp, then allocate a bed under Bed Allocation."
+        title="Check-In"
+        description="Move workers into a camp and give them a bed in one go."
         meta={
           <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
-            {rows.length}
+            {notCheckedIn + awaitingBed} waiting
           </span>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile label="Without a Bed" value={rows.length} icon={Users} />
-        <StatTile label="Not Checked In" value={notCheckedIn} icon={LogIn} />
+        <StatTile label="Not checked in" value={notCheckedIn} icon={Users} />
+        <StatTile label="Waiting for a bed" value={awaitingBed} icon={Clock} tone={awaitingBed > 0 ? "warning" : "default"} />
         <StatTile
-          label="Awaiting Bed"
-          value={awaitingBed}
-          icon={Clock}
-          tone={awaitingBed > 0 ? "warning" : "default"}
+          label="Vacant beds"
+          value={<>{vacantTotal} <span className="text-base font-normal text-muted">of {bedsTotal}</span></>}
+          icon={BedDouble}
+          hint={campOptions.map((c) => `${c.name.split(" — ")[0]} ${c.vacantBeds}`).join(" · ") || undefined}
         />
       </div>
 
       <CheckInTable rows={rows} camps={campOptions} suppliers={suppliers} clients={clients} />
 
-      <CheckInHistory rows={historyRows} camps={campOptions.map((c) => ({ id: c.id, name: c.name }))} />
+      <Insights id="checkin-history" title="Past check-ins" hint="Search them, and reprint a check-in slip">
+        <CheckInHistory rows={historyRows} camps={campOptions.map((c) => ({ id: c.id, name: c.name }))} />
+      </Insights>
     </div>
   );
 }
