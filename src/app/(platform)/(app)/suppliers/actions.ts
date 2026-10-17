@@ -9,6 +9,8 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { isAcceptedUploadType } from "@/lib/uploads";
 import { deleteImage, storeImage } from "@/lib/storedImage";
 import { matchTrade } from "@/lib/trades";
 import { checkPartner } from "@/lib/dataChecks";
@@ -560,25 +562,93 @@ export async function createEmployeesFromInsuranceAction(
  * page can show who is covered. Matching is by name (the certificate has nothing else), only among workers already
  * under this supplier; nothing is created or changed except the coverage link.
  */
-export async function linkWorkmenCompCoverageAction(supplierId: string, names: string[]): Promise<{ linked: number }> {
+const WC_TYPES = ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"];
+
+/** A supplier's workmen compensation certificate, with the same checks every document upload gets. */
+async function ownCertificate(supplierId: string, attachmentId: string) {
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const cert = await prisma.attachment.findUnique({ where: { id: attachmentId }, select: { id: true, entityType: true, entityId: true, docType: true, branchId: true } });
+  if (!cert || cert.entityType !== "SUPPLIER" || cert.entityId !== supplierId || !WC_TYPES.includes(cert.docType) || isOutsideBranch(cert.branchId, branchId, isSuperAdmin)) return null;
+  return cert;
+}
+
+/**
+ * Files one workmen compensation certificate against a supplier and returns its id, so the workers named on it
+ * can be linked to exactly this certificate. A supplier can hold several: each covers its own workers.
+ */
+export async function uploadWorkmenCompAction(formData: FormData): Promise<{ id?: string; error?: string }> {
+  await requireWrite("partners.suppliers");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplierId = String(formData.get("supplierId") || "");
+  const file = formData.get("file");
+  const expiryRaw = String(formData.get("expiryDate") || "").trim();
+  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "That supplier belongs to another branch." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+  if (!isAcceptedUploadType(file.type)) return { error: "Upload a PDF or a photo of the certificate." };
+  const expiryDate = expiryRaw && !Number.isNaN(new Date(expiryRaw).getTime()) ? new Date(expiryRaw) : null;
+  const created = await prisma.attachment.create({
+    data: { entityType: "SUPPLIER", entityId: supplierId, docType: "WORKMEN_COMPENSATION_INSURANCE", filename: file.name, fileData: Buffer.from(await file.arrayBuffer()), mimeType: file.type, expiryDate, branchId: supplier.branchId, uploadedById: user.id },
+    select: { id: true },
+  });
+  await logAudit({ entityType: "SUPPLIER", entityId: supplierId, action: "UPDATE", after: { workmenCompUploaded: file.name }, userId: user.id, userName: user.name, branchId: supplier.branchId });
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/documents");
+  return { id: created.id };
+}
+
+/**
+ * Records that the workers named on a certificate are covered by it. With `attachmentId` it is that certificate
+ * (so several uploaded together each keep their own workers); without, the supplier's newest. Returns how many
+ * workers were linked and which names matched nobody on the supplier's roster.
+ */
+export async function linkWorkmenCompCoverageAction(supplierId: string, names: string[], attachmentId?: string): Promise<{ linked: number; unmatched: string[] }> {
   await requireWrite("partners.suppliers");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
-  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { linked: 0 };
-  const certificate = await prisma.attachment.findFirst({
-    where: { entityType: "SUPPLIER", entityId: supplierId, docType: { in: ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"] } },
-    orderBy: { uploadedAt: "desc" },
-    select: { id: true },
-  });
-  if (!certificate) return { linked: 0 };
-  const wanted = new Set(names.map((n) => nameKey(n)).filter(Boolean));
-  if (wanted.size === 0) return { linked: 0 };
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { linked: 0, unmatched: [] };
+  const certificate = attachmentId
+    ? await ownCertificate(supplierId, attachmentId)
+    : await prisma.attachment.findFirst({ where: { entityType: "SUPPLIER", entityId: supplierId, docType: { in: WC_TYPES } }, orderBy: { uploadedAt: "desc" }, select: { id: true } });
+  if (!certificate) return { linked: 0, unmatched: [] };
+  const named = names.map((n) => ({ raw: n.trim(), key: nameKey(n) })).filter((n) => n.key);
+  if (named.length === 0) return { linked: 0, unmatched: [] };
+  const wanted = new Set(named.map((n) => n.key));
   const workers = await prisma.employee.findMany({ where: { supplierId }, select: { id: true, name: true } });
-  const ids = workers.filter((w) => wanted.has(nameKey(w.name))).map((w) => w.id);
-  if (ids.length === 0) return { linked: 0 };
-  await prisma.employee.updateMany({ where: { id: { in: ids } }, data: { wcAttachmentId: certificate.id } });
+  const found = workers.filter((w) => wanted.has(nameKey(w.name)));
+  const foundKeys = new Set(found.map((w) => nameKey(w.name)));
+  const unmatched = [...new Set(named.filter((n) => !foundKeys.has(n.key)).map((n) => n.raw))];
+  if (found.length > 0) await prisma.employee.updateMany({ where: { id: { in: found.map((w) => w.id) } }, data: { wcAttachmentId: certificate.id } });
   revalidatePath("/documents");
-  return { linked: ids.length };
+  revalidatePath(`/suppliers/${supplierId}`);
+  return { linked: found.length, unmatched };
+}
+
+/** Sets or clears the expiry date of one workmen compensation certificate. */
+export async function setWorkmenCompExpiryAction(supplierId: string, attachmentId: string, date: string | null): Promise<{ error?: string }> {
+  await requireWrite("partners.suppliers");
+  if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
+  const d = date ? new Date(date) : null;
+  if (date && (Number.isNaN(d!.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(date))) return { error: "That date isn't valid." };
+  await prisma.attachment.update({ where: { id: attachmentId }, data: { expiryDate: d } });
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/documents");
+  return {};
+}
+
+/** Removes one certificate; the workers it covered are no longer recorded as covered by anything. */
+export async function deleteWorkmenCompAction(supplierId: string, attachmentId: string): Promise<{ error?: string }> {
+  await requireWrite("partners.suppliers");
+  const cert = await ownCertificate(supplierId, attachmentId);
+  if (!cert) return { error: "Certificate not found." };
+  await prisma.$transaction([
+    prisma.employee.updateMany({ where: { wcAttachmentId: attachmentId }, data: { wcAttachmentId: null } }),
+    prisma.attachment.delete({ where: { id: attachmentId } }),
+  ]);
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/documents");
+  return {};
 }
 
 export type InsuredNameMatch = {

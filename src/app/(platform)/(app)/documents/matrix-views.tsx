@@ -14,7 +14,7 @@ import { ScanUpload } from "@/app/(platform)/(app)/employees/scan-upload";
 import { cn } from "@/lib/cn";
 import { deleteDocumentsAction } from "./actions";
 import { Preview, typeLabel, type DocRow } from "./document-browser";
-import { MATRIX_LABEL, MATRIX_TYPES, badness, buildCells, completeCount, employeePrintIds, policyCell, type Cell, type CellState, type MatrixEmployee, type MatrixType, type Policy, type PrintKind } from "./matrix";
+import { MATRIX_LABEL, MATRIX_TYPES, badness, buildCells, completeCount, employeePrintIds, policiesBySupplier, supplierWcCell, type Cell, type CellState, type MatrixEmployee, type MatrixType, type Policy, type PrintKind } from "./matrix";
 import type { CompanyAttachment, CompanySupplier } from "./company-docs";
 import { PrintDialog } from "./print-dialog";
 import { printDocuments } from "./print-docs";
@@ -47,13 +47,14 @@ function CellBox({ cell, label, onClick }: { cell: Cell; label: string; onClick?
   return onClick ? <button type="button" aria-label={`${label}: ${cell.label}, ${cell.sub}`} onClick={onClick} className={cls}>{inner}</button> : <span className={cls} aria-label={`${label}: ${cell.label}, ${cell.sub}`}>{inner}</span>;
 }
 
-export function MatrixViews({ view, documents, employees, policies, companySuppliers, companyAttachments, suppliers, projects }: {
+export function MatrixViews({ view, documents, employees, policies, companySuppliers, companyAttachments, certsInUse, suppliers, projects }: {
   view: View;
   documents: DocRow[];
   employees: (MatrixEmployee & { projectName: string | null })[];
   policies: Policy[];
   companySuppliers: CompanySupplier[];
   companyAttachments: CompanyAttachment[];
+  certsInUse: string[];
   suppliers: { id: string; name: string }[];
   projects: { id: string; name: string }[];
 }) {
@@ -81,7 +82,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
   const persist = (next: SavedView[]) => { setSaved(next); try { localStorage.setItem(STORE, JSON.stringify(next)); } catch { /* ignore */ } };
 
   const { cells, coverageKnown } = useMemo(() => buildCells(employees, documents, policies, now), [employees, documents, policies, now]);
-  const policyBy = useMemo(() => new Map(policies.map((p) => [p.supplierId, p])), [policies]);
+  const policiesBy = useMemo(() => policiesBySupplier(policies), [policies]);
 
   const base = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -115,13 +116,13 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
   const allRowsOn = rows.length > 0 && rows.every((e) => selected.has(e.id));
   const someRowsOn = rows.some((e) => selected.has(e.id));
   const toggleRow = (id: string) => setSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const printCount = (kinds: string[]) => { const r = employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells, employees, policies); return { printing: r.ids.length, missing: r.missing }; };
+  const printCount = (kinds: string[]) => { const r = employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells); return { printing: r.ids.length, missing: r.missing }; };
   const printOptions = [...MATRIX_TYPES, "WC" as const].map((t) => {
-    const have = t === "WC" ? chosen.filter((e) => e.supplierId && policyBy.get(e.supplierId)?.attachmentId).length : chosen.filter((e) => cells.get(e.id)![t].docId).length;
-    return { key: t as string, label: t === "WC" ? "Workmen comp certificate" : MATRIX_LABEL[t], have, of: chosen.length, note: t === "WC" ? "one per supplier" : undefined };
+    const have = t === "WC" ? chosen.filter((e) => cells.get(e.id)!.WC.attachmentId).length : chosen.filter((e) => cells.get(e.id)![t].docId).length;
+    return { key: t as string, label: t === "WC" ? "Workmen comp certificate" : MATRIX_LABEL[t], have, of: chosen.length, note: t === "WC" ? "each worker's own certificate" : undefined };
   });
 
-  type Group = { id: string; name: string; workers: typeof base; counts: Record<MatrixType, Record<CellState, number>>; complete: number; policy: Policy | undefined };
+  type Group = { id: string; name: string; workers: typeof base; counts: Record<MatrixType, Record<CellState, number>>; complete: number; wc: { cell: Cell; policies: number } };
   const groups = useMemo<Group[]>(() => {
     const by = new Map<string, typeof base>();
     for (const e of base) by.set(e.supplierId ?? "none", [...(by.get(e.supplierId ?? "none") ?? []), e]);
@@ -133,9 +134,9 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
         for (const t of MATRIX_TYPES) counts[t][row[t].state]++;
         complete += completeCount(row);
       }
-      return { id, name: workers[0].supplierName ?? "No supplier", workers, counts, complete, policy: policyBy.get(id) };
+      return { id, name: workers[0].supplierName ?? "No supplier", workers, counts, complete, wc: supplierWcCell(workers.map((w) => cells.get(w.id)!.WC), policiesBy.get(id) ?? [], now) };
     });
-  }, [base, cells, policyBy]);
+  }, [base, cells, policiesBy, now]);
   const groupMatches = (g: Group, c: Chip) => c === "all" || (c === "expired" && MATRIX_TYPES.some((t) => g.counts[t].expired > 0)) || (c === "expiring" && MATRIX_TYPES.some((t) => g.counts[t].expiring > 0)) || (c === "missing" && MATRIX_TYPES.some((t) => g.counts[t].missing > 0)) || (c === "complete" && g.complete === g.workers.length * 5);
   const pct = (g: Group) => (g.workers.length ? g.complete / (g.workers.length * 5) : 1);
   const shownGroups = groups.filter((g) => groupMatches(g, chip)).sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : pct(a) - pct(b) || a.name.localeCompare(b.name)));
@@ -162,7 +163,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
     const head = [...MATRIX_TYPES.map((t) => MATRIX_LABEL[t]), "Workmen comp"].map((h) => `<th>${h}</th>`).join("");
     const body = shownGroups.map((g) => {
       const cols = MATRIX_TYPES.map((t) => { const c = g.counts[t]; return `<td>${c.valid + c.expiring}/${g.workers.length} ok${c.expired ? `<br><b style="color:#b91c1c">${c.expired} expired</b>` : ""}${c.missing ? `<br>${c.missing} missing` : ""}</td>`; }).join("");
-      const wc = g.policy ? `${g.policy.expiryDate ? new Date(g.policy.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "No expiry"}` : "No policy";
+      const wc = g.wc.policies === 0 ? "No policy" : `${g.wc.cell.label}${g.wc.policies > 1 ? ` · ${g.wc.policies} policies` : ` · ${g.wc.cell.sub}`}`;
       return `<tr><td><b>${esc(g.name)}</b><br><small>${g.workers.length} workers · ${Math.round(pct(g) * 100)}% complete</small></td>${cols}<td>${esc(wc)}</td></tr>`;
     }).join("");
     w.document.write(`<!doctype html><title>Documents by supplier</title><style>body{font:13px system-ui,sans-serif;margin:24px;color:#111}h1{font-size:18px;margin:0 0 4px}p{margin:0 0 14px;color:#555}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;color:#666}small{color:#777}</style><h1>Documents by supplier</h1><p>${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p><table><thead><tr><th>Supplier</th>${head}</tr></thead><tbody>${body}</tbody></table>`);
@@ -209,7 +210,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
     return (
       <div className="space-y-3">
         {subToggle}
-        <SupplierDocsView suppliers={companySuppliers} attachments={companyAttachments} />
+        <SupplierDocsView suppliers={companySuppliers} attachments={companyAttachments} certsInUse={certsInUse} />
       </div>
     );
   }
@@ -275,8 +276,8 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
                       ))}
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         {g.id === "none" ? <span className="text-xs text-subtle">—</span> : (() => {
-                          const cell = policyCell(g.policy, now);
-                          return <Link href={`/suppliers/${g.id}`} className="inline-block"><CellBox cell={cell} label={`${g.name} workmen compensation`} /><span className="mt-1 block text-[10px] text-muted">{coverageKnown.has(g.id) ? `${covered} of ${g.workers.length} named` : g.policy ? "list not read" : ""}</span></Link>;
+                          const cell = g.wc.cell;
+                          return <Link href={`/suppliers/${g.id}`} className="inline-block"><CellBox cell={cell} label={`${g.name} workmen compensation`} /><span className="mt-1 block text-[10px] text-muted">{coverageKnown.has(g.id) ? `${covered} of ${g.workers.length} named` : g.wc.policies > 0 ? "list not read" : ""}</span></Link>;
                         })()}
                       </td>
                       <td className="px-4 py-3 text-right"><b className="text-primary">{Math.round(pct(g) * 100)}%</b><span className="block text-[10px] text-muted">complete</span></td>
@@ -317,7 +318,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
         subject={`${chosen.length} ${chosen.length === 1 ? "employee" : "employees"}`}
         options={printOptions}
         count={printCount}
-        onPrint={(kinds) => printDocuments(employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells, employees, policies).ids)}
+        onPrint={(kinds) => printDocuments(employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells).ids)}
       />
 
       <Dialog.Root open={!!current} onOpenChange={(o) => !o && setOpenDoc(null)}>
