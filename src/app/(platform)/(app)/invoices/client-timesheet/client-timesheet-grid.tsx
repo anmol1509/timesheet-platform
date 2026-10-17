@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
   UNDER_REVIEW: "bg-[var(--warning-soft)] text-[var(--warning)]",
   CLIENT_APPROVED: "bg-[var(--success-soft)] text-[var(--success)]",
   REJECTED: "bg-[var(--error-soft)] text-[var(--error)]",
-  LOCKED: "bg-slate-800 text-white",
+  LOCKED: "bg-[var(--text-primary)] text-[var(--surface)]",
 };
 
 function badgeClass(value: string) {
@@ -52,6 +52,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [edited, setEdited] = useState<Record<string, DailyHourCell[]>>({});
   const [showBatch, setShowBatch] = useState(false);
+  const [statusResult, setStatusResult] = useState<string | null>(null);
 
   const parsed = useMemo(() => {
     const map: Record<string, DailyHourCell[]> = {};
@@ -90,23 +91,82 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
     });
   }
 
-  function saveRow(entryId: string) {
-    const days = edited[entryId];
-    if (!days) return;
-    const formData = new FormData();
-    formData.append("entryId", entryId);
-    formData.append("days", JSON.stringify(days));
+  const dirtyIds = Object.keys(edited);
+
+  function saveAll() {
+    const ids = Object.keys(edited);
+    if (ids.length === 0) return;
     startTransition(async () => {
-      await updateDailyHoursAction(formData);
-      setEdited((prev) => {
-        const next = { ...prev };
-        delete next[entryId];
-        return next;
-      });
+      let failed = 0;
+      for (const id of ids) {
+        const formData = new FormData();
+        formData.append("entryId", id);
+        formData.append("days", JSON.stringify(edited[id]));
+        try {
+          await updateDailyHoursAction(formData);
+          setEdited((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        } catch {
+          failed++;
+        }
+      }
+      setStatusResult(failed ? `${failed} of ${ids.length} rows didn't save. Try again.` : `Saved ${ids.length} ${ids.length === 1 ? "row" : "rows"}.`);
     });
   }
 
-  const [statusResult, setStatusResult] = useState<string | null>(null);
+  // Unsaved edits are guarded against closing the tab, and ⌘S / Ctrl+S saves them all.
+  useEffect(() => {
+    if (dirtyIds.length === 0) return;
+    const warn = (ev: BeforeUnloadEvent) => ev.preventDefault();
+    const onKey = (ev: KeyboardEvent) => {
+      if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "s") {
+        ev.preventDefault();
+        saveAll();
+      }
+    };
+    window.addEventListener("beforeunload", warn);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      window.removeEventListener("keydown", onKey);
+    };
+    // saveAll reads the latest edits through closure; re-bind whenever they change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edited, pending]);
+
+  /** Hours as typed: numbers add up, A / OFF / blanks count as nothing. */
+  function liveTotal(entryId: string) {
+    return (edited[entryId] ?? parsed[entryId] ?? []).reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+  }
+
+  function moveFocus(ev: React.KeyboardEvent<HTMLInputElement>, row: number, col: number) {
+    const move = ({ ArrowUp: [-1, 0], ArrowDown: [1, 0], Enter: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] } as Record<string, number[]>)[ev.key];
+    if (!move) return;
+    const input = ev.currentTarget;
+    // Left / right only jump cells once the caret is at that edge of the text.
+    if (ev.key === "ArrowLeft" && input.selectionStart !== 0) return;
+    if (ev.key === "ArrowRight" && input.selectionEnd !== input.value.length) return;
+    ev.preventDefault();
+    const next = input.closest("table")?.querySelector<HTMLInputElement>(`input[data-r="${row + move[0]}"][data-c="${col + move[1]}"]:not(:disabled)`);
+    next?.focus();
+    next?.select();
+  }
+
+  // Pasting a block from Excel fills the cells from the one you are in, down and to the right.
+  function pasteBlock(ev: React.ClipboardEvent<HTMLInputElement>, row: number, col: number) {
+    const lines = ev.clipboardData.getData("text").replace(/\r/g, "").replace(/\n+$/, "").split("\n").map((l) => l.split("\t"));
+    if (lines.length === 1 && lines[0].length === 1) return;
+    ev.preventDefault();
+    lines.forEach((cells, dr) =>
+      cells.forEach((v, dc) => {
+        const target = entries[row + dr];
+        if (target && target.status !== "LOCKED" && col + dc < dayCount) editCell(target.id, col + dc, v.trim());
+      })
+    );
+  }
 
   function deleteRow(entryId: string) {
     const formData = new FormData();
@@ -133,6 +193,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-muted">{entries.length} {entries.length === 1 ? "row" : "rows"} · {month}{showClient ? ` · ${new Set(entries.map((e) => e.clientName)).size} clients` : ""}</p>
+        {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -167,6 +228,7 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
             Edit Common Details ({selected.size})
           </button>
         </div>
+        )}
       </div>
       {statusResult && <p className="text-xs text-muted">{statusResult}</p>}
 
@@ -187,7 +249,8 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
             <tr>
               <th className="w-8 px-2 py-2">
                 <Checkbox
-                  checked={selected.size === entries.length}
+                  ariaLabel="Select all rows"
+                  checked={entries.length > 0 && selected.size === entries.length}
                   onCheckedChange={() =>
                     setSelected(selected.size === entries.length ? new Set() : new Set(entries.map((e) => e.id)))
                   }
@@ -212,13 +275,13 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
-            {entries.map((e) => {
+            {entries.map((e, rowIndex) => {
               const hasEdits = !!edited[e.id];
               const locked = e.status === "LOCKED";
               return (
                 <tr key={e.id}>
                   <td className="px-2 py-1.5">
-                    <Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggle(e.id)} />
+                    <Checkbox ariaLabel={`Select ${e.employeeName}`} checked={selected.has(e.id)} onCheckedChange={() => toggle(e.id)} />
                   </td>
                   <td className="sticky left-0 z-[5] bg-surface px-2 py-1.5 whitespace-nowrap text-primary">
                     {e.employeeName}
@@ -231,12 +294,17 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
                       {e.status.replace("_", " ")}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 font-medium text-primary">{e.totalHours}</td>
+                  <td className={`tabular px-2 py-1.5 font-medium ${hasEdits ? "text-[var(--brand-primary)]" : "text-primary"}`}>{hasEdits ? liveTotal(e.id) : e.totalHours}</td>
                   {Array.from({ length: dayCount }).map((_, i) => (
                     <td key={i} className="px-0.5 py-1">
                       <input
+                        data-r={rowIndex}
+                        data-c={i}
                         value={cellValue(e.id, i)}
                         onChange={(ev) => editCell(e.id, i, ev.target.value)}
+                        onKeyDown={(ev) => moveFocus(ev, rowIndex, i)}
+                        onPaste={(ev) => pasteBlock(ev, rowIndex, i)}
+                        onFocus={(ev) => ev.currentTarget.select()}
                         disabled={locked}
                         aria-label={`${e.employeeName}, ${dayHeaders[i]?.label ?? `day ${i + 1}`}`}
                         className={`w-11 rounded px-1 py-1 text-center transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-1 disabled:opacity-50 ${badgeClass(cellValue(e.id, i))}`}
@@ -244,16 +312,6 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
                     </td>
                   ))}
                   <td className="px-2 py-1.5 whitespace-nowrap">
-                    {hasEdits && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => saveRow(e.id)}
-                        className="mr-2 rounded-lg bg-[var(--brand-primary)] px-2 py-1 text-[10px] font-medium text-white hover:bg-[var(--brand-primary-hover)] disabled:opacity-60"
-                      >
-                        Save
-                      </button>
-                    )}
                     {!locked && (
                       <ConfirmDialog
                         title="Delete this row?"
@@ -280,6 +338,16 @@ export function ClientTimesheetGrid({ month, entries, showClient = false }: { mo
           </tbody>
         </table>
       </div>
+
+      {dirtyIds.length > 0 && (
+        <div className="sticky bottom-4 z-30 flex justify-center">
+          <div className="flex items-center gap-3 rounded-2xl bg-[#1e1b3a] py-2.5 pr-2.5 pl-4 text-sm text-white shadow-modal">
+            <span><b>{dirtyIds.length} {dirtyIds.length === 1 ? "row" : "rows"} changed</b><span className="ml-2 hidden text-white/70 sm:inline">⌘S to save</span></span>
+            <button type="button" onClick={() => setEdited({})} disabled={pending} className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-medium hover:bg-white/10 disabled:opacity-50">Discard</button>
+            <button type="button" onClick={saveAll} disabled={pending} className="btn btn-primary">{pending ? "Saving…" : `Save ${dirtyIds.length} ${dirtyIds.length === 1 ? "row" : "rows"}`}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
