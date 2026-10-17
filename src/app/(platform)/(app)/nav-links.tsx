@@ -49,7 +49,9 @@ import {
   HeartPulse,
   FileOutput,
   Pin,
-  PinOff, KeyRound } from "lucide-react";
+  PinOff, KeyRound,
+  TrendingUp,
+} from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
@@ -209,6 +211,7 @@ const NAV: Entry[] = [
     icon: BadgeDollarSign,
     category: "Commercial",
     children: [
+      { href: "/sales", label: "Pipeline", icon: TrendingUp, exact: true },
       { href: "/sales/enquiries", label: "Enquiries", icon: FileQuestion },
       { href: "/sales/quotations", label: "Quotations", icon: FileSignature },
     ],

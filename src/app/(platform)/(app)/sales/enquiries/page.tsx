@@ -123,7 +123,7 @@ export default async function EnquiriesPage({
               {enquiries.map((e) => (
                 <tr key={e.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-primary">ENQ-{e.enquiryNo}</div>
+                    <Link href={`/sales/enquiries/${e.id}`} className="font-medium text-primary hover:underline">ENQ-{e.enquiryNo}</Link>
                     <div className="text-xs text-muted">{fmtDate(e.createdAt)}</div>
                   </td>
                   <td className="px-4 py-3">

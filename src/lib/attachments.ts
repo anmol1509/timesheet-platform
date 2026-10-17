@@ -15,6 +15,8 @@ const ATTACHABLE: Record<string, (id: string) => Promise<{ branchId: string | nu
   SUPPLIER: (id) => prisma.supplier.findUnique({ where: { id }, select: { branchId: true } }),
   SUPPLIER_BILL: (id) => prisma.supplierBill.findUnique({ where: { id }, select: { branchId: true } }),
   EXPENSE: (id) => prisma.expense.findUnique({ where: { id }, select: { branchId: true } }),
+  QUOTATION: (id) => prisma.quotation.findUnique({ where: { id }, select: { branchId: true } }),
+  ENQUIRY: (id) => prisma.enquiry.findUnique({ where: { id }, select: { branchId: true } }),
   CANDIDATE_ONBOARDING: (id) => prisma.candidateOnboarding.findUnique({ where: { id }, select: { branchId: true } }),
 };
 

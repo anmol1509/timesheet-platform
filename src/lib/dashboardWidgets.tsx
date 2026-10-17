@@ -341,7 +341,8 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
       if (o.sales) {
         const s = o.sales;
         cards.push(
-          <MiniCard key="sales" title="Sales" icon={FileText} href="/sales" linkLabel="Open sales" lines={[
+          <MiniCard key="sales" title="Sales" icon={FileText} href="/sales" linkLabel="Pipeline" lines={[
+            { label: "Follow-ups due", value: s.followUpsDue, warn: s.followUpsDue > 0 },
             { label: "Open enquiries", value: s.openEnquiries },
             { label: "Quotations sent or negotiating", value: s.sentQuotes },
             { label: "Quotations still in draft", value: s.draftQuotes },
@@ -607,6 +608,9 @@ export function buildTodo(d: DashboardData): TodoItem[] {
     out.push({ rank: 90, key: "lpo", tone: "amber", icon: ClipboardList, title: `${plural(d.lpoAlerts.length, "LPO alert")}`, sub: d.lpoAlerts.slice(0, 2).map((x) => `${x.lpoNumber} — ${x.projectName}`).join(", "), href: "/projects", action: "Review" });
   }
   const o = d.operations;
+  if (o?.sales && o.sales.followUpsDue > 0) {
+    out.push({ rank: 45, key: "sales-follow", tone: "amber", icon: ClipboardList, title: `${plural(o.sales.followUpsDue, "sales follow-up")} due`, sub: "Calls and quotations to chase today or overdue", href: "/sales", action: "Open pipeline" });
+  }
   if (o?.transport && o.transport.expired > 0) {
     out.push({ rank: 25, key: "vehicles", tone: "red", icon: Truck, title: `${plural(o.transport.expired, "vehicle")} with expired papers`, sub: "Registration or insurance has lapsed", href: "/transport", action: "Review" });
   }
