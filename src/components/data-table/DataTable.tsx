@@ -11,6 +11,7 @@ import {
   Download,
   Search,
   X,
+  PanelRightOpen,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { m } from "motion/react";
@@ -300,7 +301,7 @@ export function DataTable<T extends { id: string }>({
     !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0 || !!filters?.length;
   const cellY = density === "compact" ? "py-2" : "py-3";
   const colSpan =
-    visibleColumns.length + (selectable ? 1 : 0) + (renderRowActions ? 1 : 0);
+    visibleColumns.length + (selectable ? 1 : 0) + (onRowClick ? 1 : 0) + (renderRowActions ? 1 : 0);
 
   const toolbarButton =
     "inline-flex h-9 items-center gap-1.5 rounded-control border border-strong bg-surface px-3 text-[13px] font-medium text-secondary shadow-xs transition hover:border-[#c3c8d4] hover:bg-surface-hover hover:text-primary";
@@ -504,6 +505,11 @@ export function DataTable<T extends { id: string }>({
                     />
                   </th>
                 )}
+                {onRowClick && (
+                  <th scope="col" className="w-9 px-1 py-2.5">
+                    <span className="sr-only">Quick view</span>
+                  </th>
+                )}
                 {visibleColumns.map((c) => {
                   const sortable = !!c.sortValue;
                   const active = sort?.key === c.key;
@@ -606,29 +612,20 @@ export function DataTable<T extends { id: string }>({
                 <tr
                   key={row.id}
                   className={cn(
-                    "transition-colors",
+                    "group/row transition-colors",
                     getRowClassName?.(row),
                     (rowHref || onRowClick) && "cursor-pointer",
                     selected.has(row.id)
                       ? "bg-brand-soft"
                       : "hover:bg-surface-subtle"
                   )}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  onKeyDown={
-                    onRowClick
-                      ? (e) => {
-                          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-                            e.preventDefault();
-                            onRowClick(row, sorted);
-                          }
-                        }
-                      : undefined
-                  }
                   onClick={
                     rowHref || onRowClick
                       ? (e) => {
                           const target = e.target as HTMLElement;
                           if (target.closest("a,button,input,label")) return;
+                          // Someone selecting text to copy it is not asking to open the row.
+                          if (window.getSelection()?.toString()) return;
                           if (rowHref) router.push(rowHref(row));
                           else onRowClick?.(row, sorted);
                         }
@@ -642,6 +639,19 @@ export function DataTable<T extends { id: string }>({
                         onCheckedChange={() => toggle(row.id)}
                         ariaLabel={rowLabel(row)}
                       />
+                    </td>
+                  )}
+                  {onRowClick && (
+                    <td className={cn("w-9 px-1", cellY)}>
+                      <button
+                        type="button"
+                        onClick={() => onRowClick(row, sorted)}
+                        title="Quick view"
+                        aria-label={`Quick view: ${rowLabel(row)}`}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-subtle transition hover:bg-brand-soft hover:text-[var(--brand-primary)] group-hover/row:text-[var(--brand-primary)] focus-visible:text-[var(--brand-primary)]"
+                      >
+                        <PanelRightOpen className="h-4 w-4" aria-hidden />
+                      </button>
                     </td>
                   )}
                   {visibleColumns.map((c) => (

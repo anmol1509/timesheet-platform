@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
@@ -166,6 +168,11 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
         rows={requests}
         columns={columns}
         onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
+        renderRowActions={(r) => (
+          <Link href={`/demand/${r.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> Open
+          </Link>
+        )}
         csvFilename={`demand-requests-${new Date().toISOString().slice(0, 10)}.csv`}
       />
       {drawer && (

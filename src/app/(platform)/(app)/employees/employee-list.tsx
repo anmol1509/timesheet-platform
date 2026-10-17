@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BadgeCheck, Check, CircleX, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { Nationality } from "@/components/Nationality";
@@ -521,7 +521,7 @@ export function EmployeeList({
             href={`/employees/${e.id}`}
             className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
           >
-            <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> Open
           </Link>
           <DeleteEmployeesButton ids={[e.id]} label={e.name} />
         </div>

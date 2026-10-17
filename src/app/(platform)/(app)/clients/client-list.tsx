@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -224,7 +224,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
       renderRowActions={(c) => (
         <div className="flex items-center justify-end gap-3">
           <Link href={`/clients/${c.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
-            <Pencil className="h-3.5 w-3.5" /> Edit
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> Open
           </Link>
           <DeleteButton
             action={deleteClientAction}

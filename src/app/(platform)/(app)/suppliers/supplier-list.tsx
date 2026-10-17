@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { BadgeCheck, ChevronRight, Pencil } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -314,7 +314,7 @@ export function SupplierList({
           {/* Every company insures its own people, so a subsidiary gets its own panel, not the parent's. */}
           <SupplierEmployeePanel supplierId={row.id} supplierName={row.name} supplierBranchId={row.branchId} wizardData={wizardData} />
           <Link href={`/suppliers/${row.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
-            <Pencil className="h-3.5 w-3.5" /> Edit
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> Open
           </Link>
           <DeleteButton
             action={deleteSupplierAction}
