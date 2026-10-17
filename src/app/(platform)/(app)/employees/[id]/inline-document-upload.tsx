@@ -33,7 +33,6 @@ export function InlineDocumentUpload({
   expiryFieldName,
   enableExtraction = true,
   onExtracted,
-  onChanged,
 }: {
   employeeId: string;
   type: string;
@@ -48,8 +47,6 @@ export function InlineDocumentUpload({
   // is expected to write the values straight into its own editable inputs
   // (see edit-form.tsx for PASSPORT/EMIRATES_ID/LABOR_CARD).
   onExtracted?: (fields: ExtractedDocumentFields) => void;
-  /** Called once a file has been added or removed, so a panel showing the list can reload it. */
-  onChanged?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -71,7 +68,6 @@ export function InlineDocumentUpload({
     startTransition(async () => {
       await deleteDocumentAction(formData);
       setRemovingId(null);
-      onChanged?.();
     });
   }
 
@@ -99,9 +95,8 @@ export function InlineDocumentUpload({
     formData.append("type", type);
     formData.append("expiryDate", expiryDate);
     formData.append("file", file);
-    startTransition(async () => {
-      await uploadDocumentAction(formData);
-      onChanged?.();
+    startTransition(() => {
+      uploadDocumentAction(formData);
     });
 
     if (enableExtraction && (file.type.startsWith("image/") || file.type === "application/pdf")) {
