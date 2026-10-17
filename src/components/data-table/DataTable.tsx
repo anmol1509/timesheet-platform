@@ -301,7 +301,7 @@ export function DataTable<T extends { id: string }>({
     !!importConfig || !!csvFilename || searchable || !!toolbarExtra || hideable.length > 0 || !!filters?.length;
   const cellY = density === "compact" ? "py-2" : "py-3";
   const colSpan =
-    visibleColumns.length + (selectable ? 1 : 0) + (onRowClick ? 1 : 0) + (renderRowActions ? 1 : 0);
+    visibleColumns.length + (selectable ? 1 : 0) + (renderRowActions ? 1 : 0);
 
   const toolbarButton =
     "inline-flex h-9 items-center gap-1.5 rounded-control border border-strong bg-surface px-3 text-[13px] font-medium text-secondary shadow-xs transition hover:border-[#c3c8d4] hover:bg-surface-hover hover:text-primary";
@@ -505,11 +505,6 @@ export function DataTable<T extends { id: string }>({
                     />
                   </th>
                 )}
-                {onRowClick && (
-                  <th scope="col" className="w-9 px-1 py-2.5">
-                    <span className="sr-only">Quick view</span>
-                  </th>
-                )}
                 {visibleColumns.map((c) => {
                   const sortable = !!c.sortValue;
                   const active = sort?.key === c.key;
@@ -641,29 +636,29 @@ export function DataTable<T extends { id: string }>({
                       />
                     </td>
                   )}
-                  {onRowClick && (
-                    <td className={cn("w-9 px-1", cellY)}>
-                      <button
-                        type="button"
-                        onClick={() => onRowClick(row, sorted)}
-                        title="Quick view"
-                        aria-label={`Quick view: ${rowLabel(row)}`}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-subtle transition hover:bg-brand-soft hover:text-[var(--brand-primary)] group-hover/row:text-[var(--brand-primary)] focus-visible:text-[var(--brand-primary)]"
-                      >
-                        <PanelRightOpen className="h-4 w-4" aria-hidden />
-                      </button>
-                    </td>
-                  )}
-                  {visibleColumns.map((c) => (
+                  {visibleColumns.map((c, ci) => (
                     <td
                       key={c.key}
                       className={cn(
                         "px-3 text-secondary",
                         cellY,
                         c.align === "right" && "tabular text-right",
-                        !c.wrap && "whitespace-nowrap"
+                        !c.wrap && "whitespace-nowrap",
+                        ci === 0 && onRowClick && "relative"
                       )}
                     >
+                      {ci === 0 && onRowClick && (
+                        // Takes no room of its own: it appears on the row's first cell when the row is hovered or focused.
+                        <button
+                          type="button"
+                          onClick={() => onRowClick(row, sorted)}
+                          title="Quick view"
+                          aria-label={`Quick view: ${rowLabel(row)}`}
+                          className="absolute top-1/2 right-1 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-default bg-surface text-subtle opacity-0 shadow-xs transition hover:text-[var(--brand-primary)] focus-visible:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100"
+                        >
+                          <PanelRightOpen className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      )}
                       {c.render(row, tree ? { depth: treeActive && tree.parentId(row) && sortedIds.has(tree.parentId(row)!) ? 1 : 0, childCount: treeActive ? (childMap.get(row.id)?.length ?? 0) : 0, expanded: expandedIds.has(row.id), toggle: () => setExpandedIds((prev) => { const next = new Set(prev); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next; }) } : undefined)}
                     </td>
                   ))}
