@@ -122,14 +122,56 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
   const clear = () => { setTier("all"); setQuery(""); setDocs([]); setSuppliers([]); setProjects([]); setKind(""); };
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Due within">
-        <button type="button" aria-pressed={tier === "all"} onClick={() => setTier("all")} className={cn("rounded-full border px-3 py-1 text-xs font-medium", tier === "all" ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover")}>All {items.length}</button>
-        {TIERS.map((t) => (
-          <button key={t.key} type="button" aria-pressed={tier === t.key} onClick={() => setTier(tier === t.key ? "all" : t.key)} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium", tier === t.key ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover")}>
-            <span className={cn("h-2 w-2 rounded-full", t.bar)} aria-hidden />{t.key === "expired" ? "Expired" : t.label.replace("Due in ", "")} · {counts[t.key]}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {TIERS.map((t) => {
+          const active = tier === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTier(active ? "all" : t.key)}
+              aria-pressed={active}
+              className={cn(
+                "group rounded-card border p-4 text-left shadow-card transition hover:-translate-y-px hover:shadow-md",
+                t.card,
+                active && "ring-2 ring-[var(--brand-primary)] ring-offset-2 ring-offset-[var(--canvas)]"
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={cn("flex h-8 w-8 items-center justify-center rounded-[10px]", t.chip)}>
+                  <t.icon className="h-4 w-4" aria-hidden />
+                </span>
+                <ChevronRight className="h-4 w-4 text-subtle opacity-0 transition group-hover:opacity-100" aria-hidden />
+              </div>
+              <p className="tabular mt-3 text-[28px] leading-8 font-semibold tracking-tight text-primary">{counts[t.key]}</p>
+              <p className="mt-1 text-[13px] font-medium text-secondary">{t.label}</p>
+            </button>
+          );
+        })}
       </div>
+
+      {items.length > 0 && (
+        <div className="card p-4">
+          <p className="mb-2.5 text-xs font-medium text-muted">Composition — {items.length} renewals due within 90 days</p>
+          <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-sunken">
+            {TIERS.map((t) =>
+              counts[t.key] > 0 ? (
+                <span
+                  key={t.key}
+                  title={`${t.label}: ${counts[t.key]}`}
+                  className={cn("h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-500", t.bar)}
+                  style={{ width: `${(counts[t.key] / items.length) * 100}%` }}
+                />
+              ) : null
+            )}
+          </div>
+        </div>
+      )}
+
+      {items.length > 0 && (
+        <TimelineStrip items={rows} onSelect={setSelected} />
+      )}
+
       <div className="card overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-default p-3">
           <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
@@ -224,8 +266,6 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
           </div>
         )}
       </div>
-
-      {rows.length > 0 && <TimelineStrip items={rows} onSelect={setSelected} />}
 
       <SlideOver
         open={!!selected}
