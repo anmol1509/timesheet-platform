@@ -18,6 +18,7 @@ import { EmployeeWizard } from "@/app/(platform)/(app)/employees/new/wizard";
 import {
   getSupplierPanelAction,
   matchInsuredNamesAction,
+  linkWorkmenCompCoverageAction,
   type InsuredNameMatch,
   type SupplierPanel,
 } from "./actions";
@@ -140,6 +141,8 @@ export function SupplierEmployeePanel({
         supplierId,
         found.map((r) => r.name ?? "")
       );
+      // Workers already under this supplier and named on the certificate are now recorded as covered.
+      await linkWorkmenCompCoverageAction(supplierId, found.map((r) => r.name ?? ""));
       setRows(
         found.map((r, i) => ({
           ...r,

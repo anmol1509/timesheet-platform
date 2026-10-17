@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { uploadAttachmentAction } from "@/lib/attachments";
-import { createEmployeesFromInsuranceAction } from "../actions";
+import { createEmployeesFromInsuranceAction, linkWorkmenCompCoverageAction } from "../actions";
 import type { ExtractedEmployeesResult } from "@/app/api/documents/extract-employees/route";
 
 type RowState = {
@@ -117,6 +117,8 @@ export function WorkmenCompImport({
         parts.push(...res.errors.map((e) => `Row ${e.row}: ${e.message}`));
       }
       setResult(parts.join(" "));
+      // Everyone named on the certificate, new or already here, is recorded as covered by it.
+      await linkWorkmenCompCoverageAction(supplierId, rows.map((r) => r.name));
       if (res.created > 0) {
         setRows((prev) => prev.filter((r) => !payload.some((p) => p.employeeIdNo === r.employeeIdNo)));
       }

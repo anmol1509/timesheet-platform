@@ -20,7 +20,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { cn } from "@/lib/cn";
 import { deleteDocumentsAction } from "./actions";
 
-type DocRow = {
+export type DocRow = {
   id: string;
   filename: string;
   type: string;
@@ -54,12 +54,12 @@ const STATUS_BADGE = {
 };
 
 const DOC_TYPES = ["PASSPORT", "VISA", "LABOR_CARD", "MEDICAL", "EMIRATES_ID", "OTHER"];
-const typeLabel = (t: string) => t.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bId\b/, "ID");
+export const typeLabel = (t: string) => t.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bId\b/, "ID");
 
-const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+export const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
 /** "Expired 25 days ago", "In 5 days", "In 14 months". */
-function relative(iso: string | null, now: number) {
+export function relative(iso: string | null, now: number) {
   if (!iso) return "";
   const days = Math.round((new Date(iso).getTime() - now) / DAY);
   const n = Math.abs(days);
@@ -346,7 +346,7 @@ function RowMenu({ label, onPreview, href, onPrint, onDelete, confirm }: { label
   );
 }
 
-function Preview({ now, doc, index, total, onPrev, onNext, onPrint, onDelete, onRenewed }: { now: number; doc: DocRow; index: number; total: number; onPrev?: () => void; onNext?: () => void; onPrint: () => void; onDelete: () => void; onRenewed: () => void }) {
+export function Preview({ now, doc, index, total, onPrev, onNext, onPrint, onDelete, onRenewed }: { now: number; doc: DocRow; index: number; total: number; onPrev?: () => void; onNext?: () => void; onPrint: () => void; onDelete: () => void; onRenewed: () => void }) {
   const badge = STATUS_BADGE[doc.status];
   const [renew, setRenew] = useState(false);
   const isPdf = doc.mimeType === "application/pdf";

@@ -555,6 +555,32 @@ export async function createEmployeesFromInsuranceAction(
   return { created, requested: rows.length, errors };
 }
 
+/**
+ * Records which of a supplier's workers are named on its latest workmen compensation certificate, so the Documents
+ * page can show who is covered. Matching is by name (the certificate has nothing else), only among workers already
+ * under this supplier; nothing is created or changed except the coverage link.
+ */
+export async function linkWorkmenCompCoverageAction(supplierId: string, names: string[]): Promise<{ linked: number }> {
+  await requireWrite("partners.suppliers");
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { linked: 0 };
+  const certificate = await prisma.attachment.findFirst({
+    where: { entityType: "SUPPLIER", entityId: supplierId, docType: { in: ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"] } },
+    orderBy: { uploadedAt: "desc" },
+    select: { id: true },
+  });
+  if (!certificate) return { linked: 0 };
+  const wanted = new Set(names.map((n) => nameKey(n)).filter(Boolean));
+  if (wanted.size === 0) return { linked: 0 };
+  const workers = await prisma.employee.findMany({ where: { supplierId }, select: { id: true, name: true } });
+  const ids = workers.filter((w) => wanted.has(nameKey(w.name))).map((w) => w.id);
+  if (ids.length === 0) return { linked: 0 };
+  await prisma.employee.updateMany({ where: { id: { in: ids } }, data: { wcAttachmentId: certificate.id } });
+  revalidatePath("/documents");
+  return { linked: ids.length };
+}
+
 export type InsuredNameMatch = {
   /** The name exactly as printed on the certificate. */
   name: string;

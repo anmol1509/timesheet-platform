@@ -8,7 +8,7 @@ import { Heatmap } from "@/components/Heatmap";
 import { PageHeader, CountPill } from "@/components/PageHeader";
 import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
-import { DocumentBrowser } from "./document-browser";
+import { DocumentsView } from "./documents-view";
 
 const STATUS_COLS = ["Valid", "Expiring", "Expired", "No expiry"] as const;
 const STATUS_KEY: Record<(typeof STATUS_COLS)[number], ReturnType<typeof complianceStatus>> = {
@@ -29,7 +29,7 @@ export default async function DocumentsPage() {
   // shows.
   const { user, branchId } = await requireUserWithBranch();
 
-  const [documents, employees] = await Promise.all([
+  const [documents, employees, activeEmployees, certificates] = await Promise.all([
     prisma.document.findMany({
       where: { employee: branchWhere(branchId) },
       select: {
@@ -50,11 +50,44 @@ export default async function DocumentsPage() {
       select: { id: true, name: true, employeeIdNo: true },
       orderBy: { name: "asc" },
     }),
+    // Everyone currently on the books, for the By employee and By supplier views (a worker with no documents still shows).
+    prisma.employee.findMany({
+      where: { ...branchWhere(branchId), active: true },
+      select: { id: true, name: true, employeeIdNo: true, photoMimeType: true, supplierId: true, supplier: { select: { name: true } }, projectId: true, project: { select: { code: true, name: true } }, wcAttachmentId: true },
+      orderBy: { name: "asc" },
+    }),
+    // Workmen compensation certificates are supplier documents, not worker ones.
+    prisma.attachment.findMany({
+      where: { entityType: "SUPPLIER", docType: { in: ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"] }, ...(branchId ? { branchId } : {}) },
+      select: { id: true, entityId: true, expiryDate: true, uploadedAt: true },
+    }),
   ]);
-  const suppliers = [...new Map(documents.filter((d) => d.employee.supplierId).map((d) => [d.employee.supplierId!, d.employee.supplier!.name])).entries()]
+
+  // One current policy per supplier: the one that runs longest.
+  const policyFor = new Map<string, { expiryDate: Date | null; uploadedAt: Date }>();
+  const certIdsBySupplier = new Map<string, Set<string>>();
+  for (const c of certificates) {
+    certIdsBySupplier.set(c.entityId, (certIdsBySupplier.get(c.entityId) ?? new Set()).add(c.id));
+    const cur = policyFor.get(c.entityId);
+    const rank = (x: { expiryDate: Date | null; uploadedAt: Date }) => (x.expiryDate ? x.expiryDate.getTime() : x.uploadedAt.getTime() - 1e13);
+    if (!cur || rank(c) > rank(cur)) policyFor.set(c.entityId, { expiryDate: c.expiryDate, uploadedAt: c.uploadedAt });
+  }
+  const policies = [...policyFor.entries()].map(([supplierId, p]) => ({ supplierId, expiryDate: p.expiryDate ? p.expiryDate.toISOString().slice(0, 10) : null }));
+  const matrixEmployees = activeEmployees.map((e) => ({
+    id: e.id,
+    name: e.name,
+    employeeIdNo: e.employeeIdNo,
+    hasPhoto: !!e.photoMimeType,
+    supplierId: e.supplierId,
+    supplierName: e.supplier?.name ?? null,
+    projectId: e.projectId,
+    projectName: e.project ? `${e.project.code} — ${e.project.name}` : null,
+    wcCovered: !!(e.supplierId && e.wcAttachmentId && certIdsBySupplier.get(e.supplierId)?.has(e.wcAttachmentId)),
+  }));
+  const suppliers = [...new Map([...documents.filter((d) => d.employee.supplierId).map((d) => [d.employee.supplierId!, d.employee.supplier!.name] as [string, string]), ...activeEmployees.filter((e) => e.supplierId).map((e) => [e.supplierId!, e.supplier!.name] as [string, string])]).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const projects = [...new Map(documents.filter((d) => d.employee.projectId).map((d) => [d.employee.projectId!, `${d.employee.project!.code} — ${d.employee.project!.name}`])).entries()]
+  const projects = [...new Map([...documents.filter((d) => d.employee.projectId).map((d) => [d.employee.projectId!, `${d.employee.project!.code} — ${d.employee.project!.name}`] as [string, string]), ...activeEmployees.filter((e) => e.projectId).map((e) => [e.projectId!, `${e.project!.code} — ${e.project!.name}`] as [string, string])]).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -112,7 +145,7 @@ export default async function DocumentsPage() {
         </Insights>
       )}
 
-      <DocumentBrowser documents={rows} employees={employees} suppliers={suppliers} projects={projects} canBulkImport={isAdminRole(user.role)} />
+      <DocumentsView documents={rows} employees={employees} matrixEmployees={matrixEmployees} policies={policies} suppliers={suppliers} projects={projects} canBulkImport={isAdminRole(user.role)} />
     </div>
   );
 }
