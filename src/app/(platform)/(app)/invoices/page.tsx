@@ -1,4 +1,4 @@
-import { Receipt } from "lucide-react";
+import { Receipt, ReceiptText, Hourglass, FileCheck2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -6,7 +6,8 @@ import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { InvoiceGrid } from "./invoice-grid";
-import { Select } from "@/components/ui/Select";
+import { MonthPicker } from "./invoice-filters";
+import { StatTile } from "@/components/StatTile";
 import { StatusDonut } from "@/components/Donut";
 import { Insights } from "@/components/ListSummary";
 
@@ -29,7 +30,7 @@ export default async function InvoicesPage({
     ? params.month
     : months[0];
 
-  const [clients, invoicesByStatus] = await Promise.all([
+  const [clients, invoicesByStatus, monthInvoices, unpaid] = await Promise.all([
     selectedMonth
       ? prisma.client.findMany({
           where: {
@@ -44,33 +45,49 @@ export default async function InvoicesPage({
         })
       : Promise.resolve([]),
     prisma.clientInvoice.groupBy({ by: ["status"], where: branchWhere(branchId), _count: { _all: true } }),
+    selectedMonth ? prisma.clientInvoice.findMany({ where: { ...branchWhere(branchId), month: selectedMonth }, select: { clientId: true, totalAmount: true } }) : Promise.resolve([]),
+    prisma.clientInvoice.aggregate({ where: { ...branchWhere(branchId), status: { not: "PAID" } }, _sum: { totalAmount: true }, _count: { _all: true } }),
   ]);
+  const invoicedClients = new Set(monthInvoices.map((i) => i.clientId));
+  const rows = clients.map((c) => {
+    const tradeRateMap = Object.fromEntries(c.tradeRates.map((r) => [r.trade, r.rate]));
+    const fallbackRate = c.hourlyRate ?? c.basicRate ?? null;
+    const totalHours = c.entries.reduce((sum, e) => sum + e.totalHours, 0);
+    const cost = c.entries.reduce((sum, e) => sum + e.totalHours * e.rate, 0);
+    let amount = 0;
+    const unratedTrades = new Set<string>();
+    for (const e of c.entries) {
+      const rate = tradeRateMap[e.trade] ?? fallbackRate;
+      if (rate == null) unratedTrades.add(e.trade);
+      amount += e.totalHours * (rate ?? 0);
+    }
+    return { id: c.id, name: c.name, employeeCount: c.entries.length, totalHours, billRateSet: unratedTrades.size === 0, unratedTrades: [...unratedTrades], amount, margin: amount - cost, invoiced: invoicedClients.has(c.id) };
+  });
+  const ready = rows.filter((r) => r.billRateSet && !r.invoiced);
+  const readyAmount = ready.reduce((n, r) => n + r.amount, 0);
+  const blocked = rows.filter((r) => !r.billRateSet && !r.invoiced);
+  const invoicedTotal = monthInvoices.reduce((n, i) => n + i.totalAmount, 0);
+  const aed = (n: number) => `AED ${Math.round(n).toLocaleString("en-AE")}`;
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader
-          title="Invoices"
-          icon={Receipt}
-          description={<>Pick a month, then review and generate a client invoice.</>}
-        />
-        <div className="flex items-center gap-3">
-          {months.length > 0 && (
-            <form className="flex items-center gap-2">
-              <label htmlFor="month" className="text-sm text-muted">
-                Month
-              </label>
-              <Select name="month" defaultValue={selectedMonth} options={[...months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))]} />
-              <NativeSubmit />
-            </form>
-          )}
-          <Link
-            href="/invoices/history"
-            className="text-sm font-medium text-[var(--brand-primary)] hover:underline"
-          >
-            History →
-          </Link>
-        </div>
+      <PageHeader
+        title="Invoices"
+        icon={Receipt}
+        description={<>Pick a month, then review and generate a client invoice.</>}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            {months.length > 0 && <MonthPicker value={selectedMonth ?? ""} months={months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))} />}
+            <Link href="/invoices/history" className="btn btn-secondary btn-sm">History</Link>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="Ready to invoice" value={aed(readyAmount)} icon={ReceiptText} hint={`${ready.length} client${ready.length === 1 ? "" : "s"}`} />
+        <StatTile label="Blocked: no rate" value={blocked.length} icon={Hourglass} tone={blocked.length > 0 ? "warning" : "default"} hint={blocked.length > 0 ? "set the client's rate to bill them" : "none"} />
+        <StatTile label="Invoiced this month" value={aed(invoicedTotal)} icon={FileCheck2} hint={`${monthInvoices.length} invoice${monthInvoices.length === 1 ? "" : "s"}`} />
+        <StatTile label="Unpaid, all time" value={aed(unpaid._sum.totalAmount ?? 0)} icon={Wallet} hint={`${unpaid._count._all} invoice${unpaid._count._all === 1 ? "" : "s"}`} />
       </div>
 
       {invoicesByStatus.length > 0 && (
@@ -81,56 +98,18 @@ export default async function InvoicesPage({
         </Insights>
       )}
 
-      {clients.length === 0 && (
-        <div className="empty-state">
-          <p className="text-sm text-muted">
-            No billable timesheet entries yet. Entries need a client assigned
-            during upload or manual entry to appear here.
+      {rows.length === 0 && (
+        <div className="empty-state flex flex-col items-center gap-3 py-10">
+          <p className="max-w-md text-center text-sm text-muted">
+            Nothing billable for this month yet. Timesheet entries need a client and client approval before they show here.
           </p>
+          <div className="flex gap-2">
+            <Link href="/invoices/client-timesheet" className="btn btn-primary btn-sm">Open Client Timesheet</Link>
+          </div>
         </div>
       )}
 
-      {clients.length > 0 && (
-        <InvoiceGrid
-          month={selectedMonth!}
-          clients={clients.map((c) => {
-            const tradeRateMap = Object.fromEntries(
-              c.tradeRates.map((r) => [r.trade, r.rate])
-            );
-            const fallbackRate = c.hourlyRate ?? c.basicRate ?? null;
-            const totalHours = c.entries.reduce((sum, e) => sum + e.totalHours, 0);
-            const cost = c.entries.reduce((sum, e) => sum + e.totalHours * e.rate, 0);
-            let amount = 0;
-            const unratedTrades = new Set<string>();
-            for (const e of c.entries) {
-              const rate = tradeRateMap[e.trade] ?? fallbackRate;
-              if (rate == null) unratedTrades.add(e.trade);
-              amount += e.totalHours * (rate ?? 0);
-            }
-            return {
-              id: c.id,
-              name: c.name,
-              employeeCount: c.entries.length,
-              totalHours,
-              billRateSet: unratedTrades.size === 0,
-              unratedTrades: [...unratedTrades],
-              amount,
-              margin: amount - cost,
-            };
-          })}
-        />
-      )}
+      {rows.length > 0 && <InvoiceGrid month={selectedMonth!} clients={rows} />}
     </div>
-  );
-}
-
-function NativeSubmit() {
-  return (
-    <button
-      type="submit"
-      className="btn btn-primary btn-sm"
-    >
-      Go
-    </button>
   );
 }
