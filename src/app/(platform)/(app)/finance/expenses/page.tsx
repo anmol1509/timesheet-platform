@@ -59,7 +59,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <PageHeader
           title="Expenses"
           icon={Wallet}
-          description={<>Costs submitted for approval. Approved expenses feed the finance overview.</>}
+          description={<>Costs submitted for approval. Approved expenses feed Budgets & trends.</>}
         />
         {can(subject, "finance.expenses", "export") && <a href={`/api/finance/export?type=expenses${status ? `&status=${status}` : ""}`} className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
       </div>

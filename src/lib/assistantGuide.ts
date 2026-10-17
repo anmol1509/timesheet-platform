@@ -53,7 +53,7 @@ export const HINTS: Record<string, string> = {
   "/invoices/history": "Previously generated invoices",
   "/payroll": "Payroll runs: salaries, deductions, WPS export",
   "/payroll/loans": "Advances and loans: request, approval, the day it was given, how it is deducted month by month, receipts and each employee's statement",
-  "/finance": "Finance overview",
+  "/finance": "Finance: budgets and trends",
   "/finance/expenses": "Record and review expenses",
   "/finance/bills": "Supplier bills and payments",
   "/settings": "Account and system settings",
