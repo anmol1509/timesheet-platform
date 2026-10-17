@@ -10,6 +10,8 @@
  *
  * Read-only by default. Pass APPLY=1 to write.
  *   APPLY=1 npx tsx prisma/scripts/seed-demo-data.ts
+ * On a fresh local database (the committed manifest belongs to the shared one), keep your own:
+ *   DEMO_MANIFEST=.demo-manifest.local.json APPLY=1 npx tsx prisma/scripts/seed-demo-data.ts
  *   REMOVE=1 APPLY=1 npx tsx prisma/scripts/seed-demo-data.ts
  */
 import "dotenv/config";
@@ -21,7 +23,9 @@ import { PrismaClient } from "../../src/generated/prisma/client";
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 const APPLY = process.env.APPLY === "1";
 const REMOVE = process.env.REMOVE === "1";
-const MANIFEST = path.join(__dirname, "demo-data-manifest.json");
+// The committed manifest lists the rows already seeded into the shared environment, so a run refuses to start while it
+// exists. A fresh local database can point DEMO_MANIFEST at a throwaway file instead, leaving the committed one alone.
+const MANIFEST = process.env.DEMO_MANIFEST ? path.resolve(process.env.DEMO_MANIFEST) : path.join(__dirname, "demo-data-manifest.json");
 
 type Manifest = Record<string, string[]>;
 const made: Manifest = {};
@@ -71,7 +75,7 @@ const TRADES = ["Helper", "Mason", "Steel Fixer", "Shuttering Carpenter", "Scaff
 
 async function main() {
   if (REMOVE) return remove();
-  if (fs.existsSync(MANIFEST)) throw new Error("A demo-data manifest already exists — run REMOVE=1 first.");
+  if (fs.existsSync(MANIFEST)) throw new Error(`A demo-data manifest already exists at ${MANIFEST} — run REMOVE=1 first, or set DEMO_MANIFEST to a different file for a fresh database.`);
 
   const branch = await prisma.branch.findUnique({ where: { code: "MAIN" } });
   if (!branch) throw new Error("MAIN branch not found.");

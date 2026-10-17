@@ -20,6 +20,20 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Local database
+
+Set `DATABASE_URL` (Postgres) and `SESSION_SECRET`, then build the database from the migrations, never with `prisma db push`:
+
+```bash
+npx prisma migrate deploy        # creates every table and the MAIN branch
+npm run seed                     # super admin demo@manpowersync.com / changeme123
+# optional showcase data (clients, workers, demands, camps, expenses, ...)
+DEMO_MANIFEST=.demo-manifest.local.json APPLY=1 npx tsx prisma/scripts/seed-demo-data.ts
+```
+
+`DEMO_MANIFEST` keeps your run's record of seeded rows in its own file; the committed
+`prisma/scripts/demo-data-manifest.json` belongs to the shared environment and makes the seeder refuse to run.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

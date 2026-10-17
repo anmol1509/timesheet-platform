@@ -54,3 +54,6 @@ skills-lock.json
 
 # static export of the landing page (scripts/export-landing.mjs)
 /.landing-dist
+
+# local demo-data manifest (see prisma/scripts/seed-demo-data.ts)
+.demo-manifest.local.json

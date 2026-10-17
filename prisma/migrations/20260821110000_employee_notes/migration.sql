@@ -5,7 +5,7 @@
 -- AlterTable
 ALTER TABLE "Document" ADD COLUMN     "noteId" TEXT;
 -- AlterTable
-ALTER TABLE "Employee" DROP COLUMN "historyRemarks";
+ALTER TABLE "Employee" DROP COLUMN IF EXISTS "historyRemarks";
 -- CreateTable
 CREATE TABLE "EmployeeNote" (
     "id" TEXT NOT NULL,
