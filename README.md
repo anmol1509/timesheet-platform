@@ -34,6 +34,16 @@ DEMO_MANIFEST=.demo-manifest.local.json APPLY=1 npx tsx prisma/scripts/seed-demo
 `DEMO_MANIFEST` keeps your run's record of seeded rows in its own file; the committed
 `prisma/scripts/demo-data-manifest.json` belongs to the shared environment and makes the seeder refuse to run.
 
+## Migrations on deploy
+
+`npm run build` first runs `scripts/migrate-on-deploy.mjs`, which applies any pending migrations with `prisma migrate deploy`.
+
+- It runs on **production** deploys only (`VERCEL_ENV=production`). Preview builds skip it, so a pull request never touches the live database.
+- It uses `POSTGRES_URL_NON_POOLING` when set (migrations need a direct connection), otherwise `DATABASE_URL`.
+- If a migration fails, the build stops: the previous deployment stays live and the failed migration is rolled back.
+- Write migrations to be safe for the old code too (add columns and tables; drop things in a later release), because the old version serves traffic while the new one builds.
+- Locally, `RUN_MIGRATIONS=1 node scripts/migrate-on-deploy.mjs` runs it against `DATABASE_URL`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
