@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
@@ -11,6 +11,7 @@ import { DataTable, type DataTableColumn } from "@/components/data-table/DataTab
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { bulkImportClientsAction, deleteClientAction } from "./actions";
 import { DeleteClientsButton } from "./delete-clients-button";
+import { ClientDrawer, type ClientPerson } from "./client-drawer";
 
 type ClientRow = {
   id: string;
@@ -49,6 +50,9 @@ function fmtDate(d: string | null) {
 const LICENCE_LABEL: Record<ComplianceStatus, string> = { valid: "Valid", expiring: "Expiring soon", expired: "Expired", not_set: "Not recorded" };
 
 export function ClientList({ clients }: { clients: ClientRow[] }) {
+  // The quick view steps through the rows as they were filtered and sorted when it opened.
+  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(null);
+  const people = useMemo(() => new Map<string, ClientPerson>(clients.map((c) => [c.id, { id: c.id, name: c.name, projects: c.projects, openDemands: c.openDemands, lpoValue: c.lpoValue, lpoBilled: c.lpoBilled }])), [clients]);
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
 
@@ -75,9 +79,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
       searchValue: (c) => `${c.name} ${c.code ?? ""} ${c.contactPerson ?? ""}`,
       csvValue: (c) => c.name,
       render: (c) => (
-        <Link href={`/clients/${c.id}`} className="font-medium text-primary hover:underline">
-          {c.name}
-        </Link>
+        <span className="font-medium text-primary hover:underline">{c.name}</span>
       ),
     },
     {
@@ -199,7 +201,9 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
   ];
 
   return (
+    <>
     <DataTable
+      onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
       rows={clients}
       columns={columns}
       selectable
@@ -230,5 +234,9 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
         </div>
       )}
     />
+    {drawer && (
+      <ClientDrawer id={drawer.id} order={drawer.order} people={people} onNavigate={(id) => setDrawer({ id, order: drawer.order })} onClose={() => setDrawer(null)} />
+    )}
+    </>
   );
 }

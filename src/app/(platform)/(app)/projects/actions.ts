@@ -16,6 +16,7 @@ import { nameKey } from "@/lib/partyCode";
 import { findClientByName } from "@/lib/entityCode";
 import { parseLooseDate } from "@/lib/looseDate";
 import type { ImportRowResult } from "@/components/import/report";
+import { readPeople } from "@/lib/projectPeople";
 
 // Every nested mutation (documents, trade rates, holidays, contacts,
 // inventory) takes a projectId rather than looking the project up itself,
@@ -34,36 +35,6 @@ function dateOrNull(value: FormDataEntryValue | null) {
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
   return s || null;
-}
-
-// A named person on a project needs a reachable phone number. Anything without
-// a name is stored blank, so clearing the name clears the contact too.
-const PEOPLE = [
-  { key: "manager", label: "Project manager" },
-  { key: "projectCoordinator", label: "Project coordinator" },
-  { key: "salesExecutive", label: "Sales executive" },
-] as const;
-
-type PeopleResult = { error: string; data?: undefined } | { error?: undefined; data: Record<string, string | null> };
-
-function readPeople(formData: FormData, keys: readonly string[]): PeopleResult {
-  const data: Record<string, string | null> = {};
-  for (const p of PEOPLE) {
-    if (!keys.includes(p.key)) continue;
-    const name = stringOrNull(formData.get(p.key));
-    const phone = name ? stringOrNull(formData.get(`${p.key}Phone`)) : null;
-    const email = name ? stringOrNull(formData.get(`${p.key}Email`)) : null;
-    if (name && (!phone || phone.replace(/\D/g, "").length < 7)) {
-      return { error: `Add a phone number for the ${p.label.toLowerCase()}.` };
-    }
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-      return { error: `The ${p.label.toLowerCase()}'s email address isn't valid.` };
-    }
-    data[p.key] = name;
-    data[`${p.key}Phone`] = phone;
-    data[`${p.key}Email`] = email;
-  }
-  return { data };
 }
 
 function numberOrNull(value: FormDataEntryValue | null) {

@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { ProgressBar } from "@/components/ProgressBar";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
+import { DemandDrawer, type DemandPerson } from "./demand-drawer";
 
 type Row = {
   id: string;
@@ -36,15 +37,16 @@ const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
 const PRIORITY_COLOR: Record<string, "red" | "amber" | "slate"> = { High: "red", Medium: "amber", Low: "slate" };
 
 export function DemandRequestList({ requests }: { requests: Row[] }) {
+  // The quick view steps through the rows as they were filtered and sorted when it opened.
+  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(null);
+  const people = useMemo(() => new Map<string, DemandPerson>(requests.map((r) => [r.id, { id: r.id, requestNo: r.requestNo, clientName: r.clientName, projectName: r.projectName }])), [requests]);
   const columns: DataTableColumn<Row>[] = [
     {
       key: "requestNo",
       header: "Request",
       render: (r) => (
         <div className="flex flex-col gap-0.5">
-          <Link href={`/demand/${r.id}`} className="font-medium text-primary hover:underline">
-            #{r.requestNo}
-          </Link>
+          <span className="font-medium text-primary hover:underline">#{r.requestNo}</span>
           <span className="text-xs text-muted">{r.requestType}</span>
         </div>
       ),
@@ -159,11 +161,16 @@ export function DemandRequestList({ requests }: { requests: Row[] }) {
   ];
 
   return (
-    <DataTable
-      rows={requests}
-      columns={columns}
-      rowHref={(r) => `/demand/${r.id}`}
-      csvFilename={`demand-requests-${new Date().toISOString().slice(0, 10)}.csv`}
-    />
+    <>
+      <DataTable
+        rows={requests}
+        columns={columns}
+        onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
+        csvFilename={`demand-requests-${new Date().toISOString().slice(0, 10)}.csv`}
+      />
+      {drawer && (
+        <DemandDrawer id={drawer.id} order={drawer.order} people={people} onNavigate={(id) => setDrawer({ id, order: drawer.order })} onClose={() => setDrawer(null)} />
+      )}
+    </>
   );
 }

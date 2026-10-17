@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Loader2, ScanLine } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { useState } from "react";
+import { ScanDrop } from "@/components/quick-view/ScanDrop";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { shrinkImage } from "@/lib/compressImage";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
@@ -45,11 +44,8 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
   compact?: boolean;
   onDone: (outcome: ScanOutcome) => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [over, setOver] = useState(false);
-  const busy = status !== null;
 
   async function run(picked: File[]) {
     if (picked.length === 0) return;
@@ -114,29 +110,9 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
       setError("That didn't upload. Please try again.");
     } finally {
       setStatus(null);
-      if (input.current) input.current.value = "";
     }
     if (out.files > 0) onDone(out);
   }
 
-  return (
-    <div>
-      <label
-        onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => { e.preventDefault(); setOver(false); if (!busy) void run([...e.dataTransfer.files].slice(0, multiple ? 8 : 1)); }}
-        className={cn("flex cursor-pointer items-center gap-3 rounded-[14px] border border-dashed px-3 text-sm transition", compact ? "py-2.5" : "py-4", over ? "border-[var(--brand-primary)] bg-brand-soft" : "border-[var(--border-strong,var(--border))] hover:bg-surface-hover", busy && "pointer-events-none opacity-80")}
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-[var(--brand-primary)]">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ScanLine className="h-4 w-4" aria-hidden />}
-        </span>
-        <span className="min-w-0">
-          <span className="block font-medium text-primary">{busy ? status : (title ?? "Scan or upload")}</span>
-          {!busy && <span className="block text-xs text-muted">{hint ?? "Drop a file or click. Details are read and filled in for you."}</span>}
-        </span>
-        <input ref={input} type="file" className="sr-only" accept="image/*,application/pdf" multiple={multiple} disabled={busy} onChange={(e) => void run([...(e.target.files ?? [])])} />
-      </label>
-      {error && <p role="alert" className="mt-1 text-xs text-[var(--error)]">{error}</p>}
-    </div>
-  );
+  return <ScanDrop title={title} hint={hint} compact={compact} multiple={multiple} status={status} error={error} onFiles={(f) => void run(f)} />;
 }

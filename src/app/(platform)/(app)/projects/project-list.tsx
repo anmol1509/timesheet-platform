@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { FolderKanban } from "lucide-react";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
@@ -9,6 +10,7 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { bulkImportProjectsAction, deleteProjectAction } from "./actions";
+import { ProjectDrawer, type ProjectRowInfo } from "./project-drawer";
 
 type ProjectRow = {
   id: string;
@@ -92,6 +94,9 @@ const IMPORT_COLUMNS = [
 const STATUS_OPTIONS = ["ACTIVE", "PLANNING", "ON_HOLD", "COMPLETED"].map((v) => ({ value: v, label: v.replace("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase()) }));
 
 export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; emptyState?: React.ReactNode }) {
+  // The quick view steps through the rows as they were filtered and sorted when it opened.
+  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(null);
+  const people = useMemo(() => new Map<string, ProjectRowInfo>(projects.map((p) => [p.id, { id: p.id, code: p.code, name: p.name, deployed: p.deployed, required: p.required, sites: p.sites, openDemands: p.openDemands, lpoValue: p.lpoValue, lpoBilled: p.lpoBilled }])), [projects]);
   const clientOptions = [...new Set(projects.map((p) => p.clientName))].sort().map((v) => ({ value: v, label: v }));
   const columns: DataTableColumn<ProjectRow>[] = [
     {
@@ -103,7 +108,7 @@ export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; 
       csvHeader: "Project name",
       csvValue: (p) => p.name,
       render: (p) => (
-        <Link href={`/projects/${p.id}`} className="group flex items-center gap-3">
+        <div className="group flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-violet-100 text-violet-600">
             <FolderKanban className="h-4 w-4" aria-hidden />
           </span>
@@ -111,7 +116,7 @@ export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; 
             <span className="block truncate font-medium text-primary group-hover:underline">{p.name}</span>
             <span className="block max-w-[16rem] truncate text-xs text-subtle">{p.clientName}{p.description ? ` · ${p.description}` : ""}</span>
           </span>
-        </Link>
+        </div>
       ),
     },
     {
@@ -289,7 +294,9 @@ export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; 
   ];
 
   return (
+    <>
     <DataTable
+      onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
       rows={projects}
       emptyState={emptyState}
       columns={columns}
@@ -319,5 +326,9 @@ export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; 
         </div>
       )}
     />
+    {drawer && (
+      <ProjectDrawer id={drawer.id} order={drawer.order} people={people} onNavigate={(id) => setDrawer({ id, order: drawer.order })} onClose={() => setDrawer(null)} />
+    )}
+    </>
   );
 }
