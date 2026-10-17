@@ -27,9 +27,9 @@ const STATUS_RANK = { expired: 0, expiring: 1, not_set: 2, valid: 3 } as const;
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string; trade?: string; nationality?: string }>;
+  searchParams: Promise<{ filter?: string; supplier?: string; sponsor?: string; registered?: string; trade?: string; nationality?: string; open?: string; tab?: string; renew?: string }>;
 }) {
-  const { filter, supplier: supplierId, sponsor: sponsorId, registered, trade, nationality } = await searchParams;
+  const { filter, supplier: supplierId, sponsor: sponsorId, registered, trade, nationality, open: openId, tab: openTab, renew: openRenew } = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
   // Pay is only shown, exported and imported for people who may see (or edit) payroll.
   const canViewPay = can(subjectOf(user), "payroll", "view");
@@ -218,7 +218,7 @@ export default async function EmployeesPage({
         </div>
       )}
 
-      <EmployeeList employees={rows} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} />
+      <EmployeeList key={openId ?? "list"} employees={rows} initialFilter={filter} registeredId={registered} canViewPay={canViewPay} canEditPay={canEditPay} initialOpen={openId ? { id: openId, tab: openTab, renew: openRenew } : undefined} />
     </div>
   );
 }

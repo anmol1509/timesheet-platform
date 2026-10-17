@@ -190,11 +190,11 @@ function docState(iso: string | null): { tone: "ok" | "warn" | "err" | "mute"; t
   return { tone: "ok", text: "Valid", days };
 }
 
-export function EmployeeDrawer({ id, order, people, onNavigate, onClose }: { id: string; order: string[]; people: Map<string, DrawerPerson>; onNavigate: (id: string) => void; onClose: () => void }) {
+export function EmployeeDrawer({ id, order, people, onNavigate, onClose, initialTab, initialDoc }: { id: string; order: string[]; people: Map<string, DrawerPerson>; onNavigate: (id: string) => void; onClose: () => void; initialTab?: string; initialDoc?: string }) {
   const router = useRouter();
   const [state, setState] = useState<{ id: string; data: QuickView | null } | null>(null);
-  const [tab, setTab] = useState<TabId>("overview");
-  const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabId>(initialTab === "documents" || initialTab === "missing" ? initialTab : "overview");
+  const [openDoc, setOpenDoc] = useState<string | null>(initialDoc && DOCS.some((x) => x.field === initialDoc) ? initialDoc : null);
   const [scanState, setScanState] = useState<{ id: string; outcome: ScanOutcome } | null>(null);
   const [wizard, setWizard] = useState<{ id: string; total: number } | null>(null);
   const [undo, setUndo] = useState<{ field: string; label: string; previous: string | null } | null>(null);
