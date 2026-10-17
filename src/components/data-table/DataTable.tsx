@@ -83,6 +83,7 @@ export function DataTable<T extends { id: string }>({
   rows,
   columns,
   rowHref,
+  onRowClick,
   getRowClassName,
   selectable = false,
   csvFilename,
@@ -103,6 +104,8 @@ export function DataTable<T extends { id: string }>({
   rows: T[];
   columns: DataTableColumn<T>[];
   rowHref?: (row: T) => string;
+  /** Opens something for the row (a quick-view panel) instead of navigating. Gets the rows as currently filtered and sorted, so the panel can step through them. */
+  onRowClick?: (row: T, ordered: T[]) => void;
   getRowClassName?: (row: T) => string | undefined;
   selectable?: boolean;
   csvFilename?: string;
@@ -605,17 +608,29 @@ export function DataTable<T extends { id: string }>({
                   className={cn(
                     "transition-colors",
                     getRowClassName?.(row),
-                    rowHref && "cursor-pointer",
+                    (rowHref || onRowClick) && "cursor-pointer",
                     selected.has(row.id)
                       ? "bg-brand-soft"
                       : "hover:bg-surface-subtle"
                   )}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                            e.preventDefault();
+                            onRowClick(row, sorted);
+                          }
+                        }
+                      : undefined
+                  }
                   onClick={
-                    rowHref
+                    rowHref || onRowClick
                       ? (e) => {
                           const target = e.target as HTMLElement;
                           if (target.closest("a,button,input,label")) return;
-                          router.push(rowHref(row));
+                          if (rowHref) router.push(rowHref(row));
+                          else onRowClick?.(row, sorted);
                         }
                       : undefined
                   }

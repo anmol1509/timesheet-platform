@@ -672,3 +672,19 @@ main .card > div > table > thead > tr:first-child > th:last-child {
 @supports not (backdrop-filter: blur(1px)) {
   .glass { background: var(--surface); }
 }
+
+/* Slide-over panel (employee quick view): enters from the right. */
+@keyframes drawer-in {
+  from { transform: translateX(28px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes drawer-out {
+  from { transform: none; opacity: 1; }
+  to { transform: translateX(28px); opacity: 0; }
+}
+.rx-drawer[data-state="open"] { animation: drawer-in var(--duration) var(--ease); }
+.rx-drawer[data-state="closed"] { animation: drawer-out var(--duration-fast) var(--ease) forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .rx-drawer[data-state="open"],
+  .rx-drawer[data-state="closed"] { animation: none; }
+}
