@@ -139,12 +139,15 @@ const IMPORT_COLUMNS = [
 export function EmployeeList({
   employees,
   initialFilter,
+  initialOpen,
   registeredId,
   canViewPay = false,
   canEditPay = false,
 }: {
   employees: EmployeeRow[];
   initialFilter?: string;
+  /** Opens the quick view on load (from a link such as a notification): which person, and optionally the tab and the document to renew. */
+  initialOpen?: { id: string; tab?: string; renew?: string };
   canViewPay?: boolean;
   canEditPay?: boolean;
   /** Set right after a registration, to confirm it and point at the new row. */
@@ -152,7 +155,9 @@ export function EmployeeList({
 }) {
   const router = useRouter();
   // The quick view steps through the rows as they were filtered and sorted when it opened.
-  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(null);
+  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(() =>
+    initialOpen && employees.some((e) => e.id === initialOpen.id) ? { id: initialOpen.id, order: employees.map((e) => e.id) } : null
+  );
   const people = useMemo(() => new Map<string, DrawerPerson>(employees.map((e) => [e.id, { id: e.id, name: e.name, complete: e.complete }])), [employees]);
   const validFilters: Filter[] = [
     "on-work",
@@ -622,7 +627,9 @@ export function EmployeeList({
         order={drawer.order}
         people={people}
         onNavigate={(id) => setDrawer({ id, order: drawer.order })}
-        onClose={() => setDrawer(null)}
+        initialTab={initialOpen?.id === drawer.id ? initialOpen.tab : undefined}
+        initialDoc={initialOpen?.id === drawer.id ? initialOpen.renew : undefined}
+        onClose={() => { setDrawer(null); if (initialOpen) window.history.replaceState(null, "", "/employees"); }}
       />
     )}
     </>

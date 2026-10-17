@@ -101,7 +101,7 @@ export default async function AppLayout({
               <BranchSwitcher branches={branches.filter((b) => b.isActive)} activeBranchId={branchId} />
             </div>
           )}
-          <NotificationsMenu alerts={alerts} inbox={inbox} unreadCount={unreadCount} />
+          <NotificationsMenu alerts={alerts} inbox={inbox} unreadCount={unreadCount} pendingApprovals={pendingApprovals} />
           <span className="mx-0.5 hidden h-5 w-px bg-[var(--border)] sm:block" aria-hidden />
           <UserMenu
             name={user.name}
