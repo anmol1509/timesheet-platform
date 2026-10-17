@@ -9,11 +9,16 @@ import { ChevronDown, ChevronRight, Printer, Search, Star, X } from "lucide-reac
 import { EmployeeAvatar } from "@/components/Avatar";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { ScanUpload } from "@/app/(platform)/(app)/employees/scan-upload";
 import { cn } from "@/lib/cn";
 import { deleteDocumentsAction } from "./actions";
 import { Preview, typeLabel, type DocRow } from "./document-browser";
-import { MATRIX_LABEL, MATRIX_TYPES, badness, buildCells, completeCount, policyCell, type Cell, type CellState, type MatrixEmployee, type MatrixType, type Policy } from "./matrix";
+import { MATRIX_LABEL, MATRIX_TYPES, badness, buildCells, completeCount, employeePrintIds, policyCell, type Cell, type CellState, type MatrixEmployee, type MatrixType, type Policy, type PrintKind } from "./matrix";
+import type { CompanyAttachment, CompanySupplier } from "./company-docs";
+import { PrintDialog } from "./print-dialog";
+import { printDocuments } from "./print-docs";
+import { SupplierDocsView } from "./supplier-docs-view";
 
 type View = "employee" | "supplier";
 type Chip = "all" | "expired" | "expiring" | "missing" | "complete";
@@ -42,11 +47,13 @@ function CellBox({ cell, label, onClick }: { cell: Cell; label: string; onClick?
   return onClick ? <button type="button" aria-label={`${label}: ${cell.label}, ${cell.sub}`} onClick={onClick} className={cls}>{inner}</button> : <span className={cls} aria-label={`${label}: ${cell.label}, ${cell.sub}`}>{inner}</span>;
 }
 
-export function MatrixViews({ view, documents, employees, policies, suppliers, projects }: {
+export function MatrixViews({ view, documents, employees, policies, companySuppliers, companyAttachments, suppliers, projects }: {
   view: View;
   documents: DocRow[];
   employees: (MatrixEmployee & { projectName: string | null })[];
   policies: Policy[];
+  companySuppliers: CompanySupplier[];
+  companyAttachments: CompanyAttachment[];
   suppliers: { id: string; name: string }[];
   projects: { id: string; name: string }[];
 }) {
@@ -64,6 +71,9 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
   const [uploadFor, setUploadFor] = useState<{ employee: MatrixEmployee; type: MatrixType } | null>(null);
   const [saved, setSaved] = useState<SavedView[]>([]);
   const [applied, setApplied] = useState<SavedView | null>(null);
+  const [sub, setSub] = useState<"company" | "workers">("company");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     try { setSaved(JSON.parse(localStorage.getItem(STORE) || "[]")); } catch { /* private window: no saved views */ }
@@ -100,6 +110,16 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
     return [...list].sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : badness(cells.get(b.id)!) - badness(cells.get(a.id)!) || a.name.localeCompare(b.name)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, chip, sort, cells]);
+
+  const chosen = rows.filter((e) => selected.has(e.id));
+  const allRowsOn = rows.length > 0 && rows.every((e) => selected.has(e.id));
+  const someRowsOn = rows.some((e) => selected.has(e.id));
+  const toggleRow = (id: string) => setSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const printCount = (kinds: string[]) => { const r = employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells, employees, policies); return { printing: r.ids.length, missing: r.missing }; };
+  const printOptions = [...MATRIX_TYPES, "WC" as const].map((t) => {
+    const have = t === "WC" ? chosen.filter((e) => e.supplierId && policyBy.get(e.supplierId)?.attachmentId).length : chosen.filter((e) => cells.get(e.id)![t].docId).length;
+    return { key: t as string, label: t === "WC" ? "Workmen comp certificate" : MATRIX_LABEL[t], have, of: chosen.length, note: t === "WC" ? "one per supplier" : undefined };
+  });
 
   type Group = { id: string; name: string; workers: typeof base; counts: Record<MatrixType, Record<CellState, number>>; complete: number; policy: Policy | undefined };
   const groups = useMemo<Group[]>(() => {
@@ -154,10 +174,11 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
     : [["all", "All suppliers"], ["expired", "With expired"], ["missing", "With missing"], ["complete", "All complete"]];
   const chipCount = (c: Chip) => (view === "employee" ? countFor(c) : groups.filter((g) => groupMatches(g, c)).length);
 
-  const Worker = ({ e, indent }: { e: (typeof base)[number]; indent?: boolean }) => {
+  const Worker = ({ e, indent, selectable }: { e: (typeof base)[number]; indent?: boolean; selectable?: boolean }) => {
     const row = cells.get(e.id)!;
     return (
-      <tr className="border-t border-default">
+      <tr className={cn("border-t border-default", selectable && selected.has(e.id) && "bg-brand-soft")}>
+        {selectable && <td className="w-10 px-4 py-2.5"><Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleRow(e.id)} ariaLabel={`Select ${e.name}`} /></td>}
         <td className={cn("px-4 py-2.5", indent && "pl-11")}>
           <span className="flex items-center gap-2.5">
             <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="sm" />
@@ -171,14 +192,31 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
       </tr>
     );
   };
-  const thead = (first: string) => (
+  const thead = (first: string, selectAll?: boolean) => (
     <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
-      <tr><th className="px-4 py-3">{first}</th>{[...MATRIX_TYPES, "WC" as const].map((t) => <th key={t} className="px-2 py-3">{MATRIX_LABEL[t]}</th>)}<th className="px-4 py-3 text-right">{view === "employee" ? "Complete" : "Overall"}</th></tr>
+      <tr>{selectAll && <th className="w-10 px-4 py-3"><Checkbox checked={allRowsOn} indeterminate={!allRowsOn && someRowsOn} onCheckedChange={(on) => setSelected(on ? new Set(rows.map((e) => e.id)) : new Set())} ariaLabel="Select everyone shown" /></th>}<th className="px-4 py-3">{first}</th>{[...MATRIX_TYPES, "WC" as const].map((t) => <th key={t} className="px-2 py-3">{MATRIX_LABEL[t]}</th>)}<th className="px-4 py-3 text-right">{view === "employee" ? "Complete" : "Overall"}</th></tr>
     </thead>
   );
 
+  const subToggle = view === "supplier" && (
+    <div className="inline-flex overflow-hidden rounded-control border border-default" role="group" aria-label="What to show for each supplier">
+      {([["company", "Company documents"], ["workers", "Workers' documents"]] as const).map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={sub === key} onClick={() => setSub(key)} className={cn("px-3.5 py-1.5 text-xs font-medium transition", sub === key ? "bg-brand-soft text-[var(--brand-primary)]" : "bg-surface text-secondary hover:bg-surface-hover")}>{label}</button>
+      ))}
+    </div>
+  );
+  if (view === "supplier" && sub === "company") {
+    return (
+      <div className="space-y-3">
+        {subToggle}
+        <SupplierDocsView suppliers={companySuppliers} attachments={companyAttachments} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      {subToggle}
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative min-w-[14rem] flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
@@ -195,14 +233,15 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
         ))}
         <span className="flex-1" />
         <div className="w-44"><Select value={sort} onChange={(v) => setSort(v as Sort)} searchable={false} options={[{ value: "worst", label: view === "employee" ? "Worst first" : "Least complete first" }, { value: "name", label: "Name A–Z" }]} /></div>
+        {view === "employee" && <button type="button" onClick={() => setPrinting(true)} disabled={chosen.length === 0} title={chosen.length === 0 ? "Tick the workers to print first" : undefined} className="btn btn-secondary gap-1.5"><Printer className="h-4 w-4" aria-hidden />Print…</button>}
         {view === "supplier" && <button type="button" onClick={printSupplierReport} className="btn btn-secondary gap-1.5"><Printer className="h-4 w-4" aria-hidden />Print supplier report</button>}
       </div>
 
       {view === "employee" && (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[60rem] text-sm">
-            {thead("Employee")}
-            <tbody>{rows.slice(0, 100).map((e) => <Worker key={e.id} e={e} />)}</tbody>
+            {thead("Employee", true)}
+            <tbody>{rows.slice(0, 100).map((e) => <Worker key={e.id} e={e} selectable />)}</tbody>
           </table>
           {rows.length === 0 && <p className="px-4 py-10 text-center text-sm text-muted">Nobody matches.</p>}
           {rows.length > 100 && <p className="border-t border-default px-4 py-2.5 text-xs text-muted">Showing the first 100 of {rows.length}. Narrow it with the filters.</p>}
@@ -261,6 +300,25 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
       <p className="text-xs text-muted">
         {view === "employee" ? "Click a coloured box to open that document. Click a dashed box to upload the missing one. Workmen comp opens the supplier's policy." : "Each bar shows a supplier's workers for one document: valid, expiring, expired, missing. Click a supplier to open its workers; click a bar to list only the ones to fix."}
       </p>
+
+      {view === "employee" && chosen.length > 0 && (
+        <div className="sticky bottom-4 z-20 flex justify-center">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-[#1e1b3a] py-2.5 pr-2.5 pl-4 text-sm text-white shadow-modal">
+            <b className="mr-1">{chosen.length} selected</b>
+            <button type="button" onClick={() => setPrinting(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-xs font-medium hover:bg-white/10"><Printer className="h-3.5 w-3.5" aria-hidden />Print…</button>
+            <button type="button" onClick={() => setSelected(new Set())} className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/70 hover:text-white">Clear</button>
+          </div>
+        </div>
+      )}
+      <PrintDialog
+        open={printing && view === "employee"}
+        onOpenChange={setPrinting}
+        title="Print documents"
+        subject={`${chosen.length} ${chosen.length === 1 ? "employee" : "employees"}`}
+        options={printOptions}
+        count={printCount}
+        onPrint={(kinds) => printDocuments(employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells, employees, policies).ids)}
+      />
 
       <Dialog.Root open={!!current} onOpenChange={(o) => !o && setOpenDoc(null)}>
         <Dialog.Portal>
