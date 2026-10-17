@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { BadgeCheck, ChevronRight, Pencil } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { cn } from "@/lib/cn";
@@ -9,6 +10,7 @@ import { SupplierEmployeePanel } from "./supplier-employee-panel";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { complianceRowClass, type ComplianceStatus } from "@/lib/compliance";
 import { bulkImportSuppliersAction, deleteSupplierAction } from "./actions";
+import { SupplierDrawer, type SupplierPerson } from "./supplier-drawer";
 
 type SupplierRow = {
   id: string;
@@ -69,6 +71,9 @@ export function SupplierList({
   /** Passed through to the registration dialog opened from a scanned name. */
   wizardData: React.ComponentProps<typeof SupplierEmployeePanel>["wizardData"];
 }) {
+  // The quick view steps through the rows as they were filtered and sorted when it opened.
+  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(null);
+  const people = useMemo(() => new Map<string, SupplierPerson>(suppliers.map((s) => [s.id, { id: s.id, name: s.name, employeeCount: s.employeeCount, billBalance: s.billBalance, billOverdue: s.billOverdue, parentName: s.parentName }])), [suppliers]);
   const categoryOptions = [...new Set(suppliers.map((s) => s.category).filter((c): c is string => !!c))].sort().map((v) => ({ value: v, label: v }));
 
   // The first columns are named exactly as the import expects, so an exported
@@ -101,9 +106,7 @@ export function SupplierList({
               ) : (
                 <span className="w-[18px]" />
               )}
-              <Link href={`/suppliers/${row.id}`} className="hover:underline">
-                {row.name}
-              </Link>
+              <span className="hover:underline">{row.name}</span>
               {row.isOwnCompany && (
                 <span title="Own company">
                   <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[var(--brand-primary)]" aria-label="Own company" />
@@ -285,7 +288,9 @@ export function SupplierList({
   ];
 
   return (
+    <>
     <DataTable
+      onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
       rows={suppliers}
       columns={columns}
       tree={{ parentId: (s) => s.parentId }}
@@ -319,5 +324,9 @@ export function SupplierList({
         </div>
       )}
     />
+    {drawer && (
+      <SupplierDrawer id={drawer.id} order={drawer.order} people={people} onNavigate={(id) => setDrawer({ id, order: drawer.order })} onClose={() => setDrawer(null)} />
+    )}
+    </>
   );
 }

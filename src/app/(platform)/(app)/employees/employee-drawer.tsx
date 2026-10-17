@@ -1,16 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import * as RadixDialog from "@radix-ui/react-dialog";
-import { ArrowRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileWarning, X } from "lucide-react";
+import { FileWarning } from "lucide-react";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { CountrySelect } from "@/components/ui/CountrySelect";
 import { Select } from "@/components/ui/Select";
-import { MaskedInput } from "@/components/ui/MaskedInput";
-import { PhoneField } from "@/components/ui/PhoneField";
 import { complianceStatus, daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { Slider } from "@/components/ui/Slider";
@@ -18,14 +13,16 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { TRADES } from "@/lib/trades";
 import { DEFAULT_SKILL_LEVEL, SKILL_LEVEL_MAX, SKILL_LEVEL_MIN, SKILL_LEVEL_STEP, skillLevelLabel } from "@/lib/skillLevel";
 import { addSkillAction, removeSkillAction } from "./[id]/actions";
-import { loadQuickViewAction, saveEmployeeFieldAction, setEmployeeTradeAction, type QuickView, type SaveResult } from "./quick-view";
+import { loadQuickViewAction, saveEmployeeFieldAction, setEmployeeTradeAction, type QuickView } from "./quick-view";
+import { DrawerFrame } from "@/components/quick-view/DrawerFrame";
+import { ScanSummary } from "@/components/quick-view/ScanSummary";
+import { ChoiceField, ClickToEdit, Notice, Pill, ReadOnly, Row, TextEditor, useFieldFlow, type Kind, type SaveResult } from "@/components/quick-view/fields";
 import { ScanUpload, type ScanOutcome } from "./scan-upload";
 import { BLOOD_GROUPS } from "./quick-view-fields";
 
 export type DrawerPerson = { id: string; name: string; complete: boolean };
 
 type TabId = "overview" | "documents" | "missing";
-type Kind = "text" | "phone" | "passport" | "eid";
 type Save = (field: string, value: string | null, label: string, confirm?: boolean) => Promise<SaveResult>;
 
 const STATUS_PILL: Record<string, string> = { ACTIVE: "Active", IDLE: "On bench", UNDER_MOBILISATION: "Mobilising", ON_SITE: "On site", ON_VACATION: "On leave", TERMINATED: "Terminated" };
@@ -63,122 +60,6 @@ function applyField(d: QuickView, field: string, value: string | null): QuickVie
   if (field in d.expiry) return { ...d, expiry: { ...d.expiry, [field]: value } };
   if (field === "projectId") return { ...d, projectId: value, projectName: d.projects.find((p) => p.id === value)?.name ?? null };
   return { ...d, [field]: value };
-}
-
-/** Runs a save, holding on to the busy flag and any message that needs the person's attention. */
-function useFieldFlow(onSave: (value: string | null, confirm?: boolean) => Promise<SaveResult>) {
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ error?: string; warnings?: string[]; value?: string | null } | null>(null);
-  async function run(value: string | null, confirm = false) {
-    setBusy(true);
-    setMsg(null);
-    try {
-      const r = await onSave(value, confirm);
-      if (r.ok) return true;
-      setMsg({ error: r.error, warnings: r.warnings, value });
-      return false;
-    } catch {
-      setMsg({ error: "That didn't save. Please try again." });
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-  return { busy, msg, run, clear: () => setMsg(null) };
-}
-
-function Notice({ msg, onConfirm, onDismiss }: { msg: { error?: string; warnings?: string[] } | null; onConfirm: () => void; onDismiss: () => void }) {
-  if (!msg) return null;
-  if (msg.error) return <p role="alert" className="mt-1 text-xs text-[var(--error)]">{msg.error}</p>;
-  if (!msg.warnings?.length) return null;
-  return (
-    <div role="alert" className="mt-1.5 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-2 text-xs text-primary">
-      <ul className="list-disc space-y-0.5 pl-4">{msg.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
-      <div className="mt-1.5 flex gap-3 font-medium">
-        <button type="button" className="text-[var(--brand-primary)] hover:underline" onClick={onConfirm}>Save anyway</button>
-        <button type="button" className="text-secondary hover:underline" onClick={onDismiss}>Change it</button>
-      </div>
-    </div>
-  );
-}
-
-function TextEditor({ kind, value, onChange, autoFocus }: { kind: Kind; value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
-  if (kind === "phone") return <PhoneField value={value} onChange={onChange} />;
-  if (kind === "passport" || kind === "eid") return <MaskedInput kind={kind} value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} className="input w-full" />;
-  return <input value={value} onChange={(e) => onChange(e.target.value)} autoFocus={autoFocus} className="input w-full" />;
-}
-
-/** A value that turns into an input when clicked: Enter saves, Esc cancels. */
-function ClickToEdit({ label, value, kind = "text", placeholder = "Add", onSave }: { label: string; value: string | null; kind?: Kind; placeholder?: string; onSave: (v: string | null, confirm?: boolean) => Promise<SaveResult> }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const flow = useFieldFlow(onSave);
-  // The panel's own Esc handler stands down while a field is open; this closes the field instead.
-  useEffect(() => {
-    if (!editing) return;
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setEditing(false); flow.clear(); } };
-    document.addEventListener("keydown", esc, true);
-    return () => document.removeEventListener("keydown", esc, true);
-  }, [editing, flow]);
-  async function commit(confirm = false) {
-    if (draft.trim() === (value ?? "")) return setEditing(false);
-    if (await flow.run(draft.trim() || null, confirm)) setEditing(false);
-  }
-  if (!editing) {
-    return (
-      <button type="button" aria-label={`Edit ${label}`} onClick={() => { setDraft(value ?? ""); setEditing(true); }} className="-ml-2 max-w-full truncate rounded-lg border border-transparent px-2 py-1 text-left font-medium text-primary hover:border-default hover:bg-surface-hover">
-        {value || <span className="font-normal text-subtle">{placeholder}</span>}
-      </button>
-    );
-  }
-  return (
-    <form data-editing onSubmit={(e) => { e.preventDefault(); void commit(); }} >
-      <div className="flex items-center gap-1.5">
-        <div className="min-w-0 flex-1"><TextEditor kind={kind} value={draft} onChange={setDraft} autoFocus /></div>
-        <button type="submit" disabled={flow.busy} aria-label={`Save ${label}`} className="btn btn-primary btn-sm px-2"><Check className="h-3.5 w-3.5" aria-hidden /></button>
-        <button type="button" aria-label="Cancel" onClick={() => { setEditing(false); flow.clear(); }} className="btn btn-secondary btn-sm px-2"><X className="h-3.5 w-3.5" aria-hidden /></button>
-      </div>
-      <p className="mt-0.5 text-[10.5px] text-subtle">Enter to save · Esc to cancel</p>
-      <Notice msg={flow.msg} onConfirm={() => void commit(true)} onDismiss={flow.clear} />
-    </form>
-  );
-}
-
-/** Dropdowns, countries and dates save the moment a choice is made. */
-function ChoiceField({ kind, value, options, onSave, placeholder }: { kind: "select" | "country" | "date" | "project"; value: string | null; options?: { value: string; label: string }[]; onSave: (v: string | null, confirm?: boolean) => Promise<SaveResult>; placeholder?: string }) {
-  const flow = useFieldFlow(onSave);
-  const change = (v: string) => { if (v !== (value ?? "")) void flow.run(v || null); };
-  return (
-    <div className="min-w-0">
-      {kind === "country" && <CountrySelect value={value ?? ""} onChange={change} />}
-      {(kind === "select" || kind === "project") && <Select value={value ?? ""} onChange={change} options={[{ value: "", label: placeholder ?? "Not set" }, ...(options ?? [])]} searchable={kind === "project"} placeholder={placeholder ?? "Not set"} />}
-      {kind === "date" && <DatePicker value={value ?? ""} onChange={change} fromYear={1940} toYear={new Date().getFullYear() + 12} />}
-      <Notice msg={flow.msg} onConfirm={() => void flow.run(flow.msg?.value ?? null, true)} onDismiss={flow.clear} />
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 border-b border-default px-3 py-2 text-sm last:border-b-0">
-      <dt className="pt-1.5 text-muted">{label}</dt>
-      <dd className="min-w-0">{children}</dd>
-    </div>
-  );
-}
-
-function ReadOnly({ value, href }: { value: string | null; href: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2 py-1">
-      <span className={cn("truncate font-medium", value ? "text-primary" : "text-subtle")}>{value ?? "Not set"}</span>
-      <Link href={href} className="shrink-0 text-xs text-[var(--brand-primary)] hover:underline">Change in profile</Link>
-    </div>
-  );
-}
-
-function Pill({ tone, children }: { tone: "ok" | "warn" | "err" | "mute"; children: React.ReactNode }) {
-  const c = { ok: "bg-[var(--success-soft)] text-[var(--success)]", warn: "bg-[var(--warning-soft)] text-[var(--warning)]", err: "bg-[var(--error-soft)] text-[var(--error)]", mute: "bg-surface-sunken text-muted" }[tone];
-  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold", c)}>{children}</span>;
 }
 
 function docState(iso: string | null): { tone: "ok" | "warn" | "err" | "mute"; text: string; days: number | null } {
@@ -270,214 +151,137 @@ export function EmployeeDrawer({ id, order, people, onNavigate, onClose, initial
   ];
 
   return (
-    <RadixDialog.Root open onOpenChange={(o) => !o && onClose()}>
-      <RadixDialog.Portal>
-        <RadixDialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/30" />
-        <RadixDialog.Content
-          aria-describedby={undefined}
-          // Esc cancels a field being edited before it closes the panel.
-          onEscapeKeyDown={(e) => { if (document.querySelector("[data-editing]")) e.preventDefault(); }}
-          onKeyDown={(e) => {
-            const t = e.target as HTMLElement;
-            if (t.closest("input,textarea,select,[role=combobox],[contenteditable=true]")) return;
-            if (e.key === "j") go(1);
-            if (e.key === "k") go(-1);
-          }}
-          className="rx-drawer fixed top-3 right-3 bottom-3 z-50 flex w-[440px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[22px] border border-default bg-surface shadow-modal outline-none"
-        >
-          <header className="bg-[linear-gradient(135deg,#43359f_0%,#5b49d8_55%,#7a4fe3_100%)] px-5 pt-3.5 text-white">
-            <div className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5">
-                <button type="button" onClick={() => go(-1)} disabled={order.length < 2} aria-label="Previous person" className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-40"><ChevronLeft className="h-4 w-4" aria-hidden /></button>
-                <button type="button" onClick={() => go(1)} disabled={order.length < 2} aria-label="Next person" className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-40"><ChevronRight className="h-4 w-4" aria-hidden /></button>
-                {index >= 0 && <span className="ml-1 text-white/75">{index + 1} of {order.length}</span>}
-              </span>
-              <span className="flex items-center gap-2.5">
-                <Link href={profileHref} className="flex items-center gap-1 font-medium text-white/90 hover:text-white">Open full profile<ExternalLink className="h-3 w-3" aria-hidden /></Link>
-                <RadixDialog.Close aria-label="Close" className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 hover:bg-white/25"><X className="h-4 w-4" aria-hidden /></RadixDialog.Close>
-              </span>
-            </div>
-            <div className="mt-3 flex items-center gap-3">
-              {data && <EmployeeAvatar employeeId={data.id} name={data.name} hasPhoto={data.hasPhoto} size="lg" />}
-              <div className="min-w-0 flex-1">
-                <RadixDialog.Title className="truncate text-lg font-semibold tracking-tight">{data ? data.name : "Loading…"}</RadixDialog.Title>
-                {data && <p className="truncate text-xs text-white/80">{data.category === "STAFF" ? (data.position ?? "Staff") : (data.trade ?? "Site staff")} · {data.employeeIdNo}{data.nationality ? ` · ${data.nationality}` : ""}</p>}
-              </div>
-              {data && <span className="shrink-0 rounded-full bg-white/20 px-2.5 py-0.5 text-[10.5px] font-semibold">{badge}</span>}
-            </div>
-            <div role="tablist" aria-label="Employee sections" className="mt-3 flex gap-0.5">
-              {tabs.map((t) => (
-                <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
-                  className={cn("flex items-center gap-1.5 rounded-t-[10px] px-3 py-2 text-sm font-medium", tab === t.id ? "bg-surface text-[var(--brand-primary)]" : "text-white/75 hover:text-white")}>
-                  {t.label}
-                  {!!t.count && <span className="rounded-full bg-[#fde68a] px-1.5 text-[10px] font-bold text-[#78350f]">{t.count}</span>}
-                </button>
-              ))}
-            </div>
-          </header>
+    <DrawerFrame
+      index={index}
+      total={order.length}
+      onStep={go}
+      fullHref={profileHref}
+      avatar={data ? <EmployeeAvatar employeeId={data.id} name={data.name} hasPhoto={data.hasPhoto} size="lg" /> : undefined}
+      title={data ? data.name : "Loading…"}
+      subtitle={data ? `${data.category === "STAFF" ? (data.position ?? "Staff") : (data.trade ?? "Site staff")} · ${data.employeeIdNo}${data.nationality ? ` · ${data.nationality}` : ""}` : undefined}
+      badge={data ? badge : undefined}
+      tabs={tabs}
+      tab={tab}
+      onTab={(t) => setTab(t as TabId)}
+      undo={undo ? { label: undo.label, onUndo: () => void doUndo() } : null}
+      footerHint={tab === "missing" ? `${withGaps.length} ${withGaps.length === 1 ? "person has" : "people have"} gaps` : undefined}
+      nextLabel={tab === "missing" ? "Next with gaps" : "Next person"}
+      onNext={tab === "missing" ? nextGap : () => go(1)}
+      nextDisabled={tab === "missing" ? withGaps.filter((x) => x !== id).length === 0 : order.length < 2}
+      onClose={onClose}
+    >
+        {data === undefined && <div className="space-y-3" aria-busy="true">{[0, 1, 2, 3].map((n) => <div key={n} className="h-10 animate-pulse rounded-xl bg-surface-sunken" />)}</div>}
+        {data === null && <p className="py-10 text-center text-sm text-muted">This employee couldn&apos;t be found.</p>}
+        {data && !data.canEdit && <p className="mb-3 rounded-lg bg-surface-sunken px-3 py-2 text-xs text-muted">You can view this person but not edit them.</p>}
 
-          <div className="flex-1 overflow-y-auto px-5 py-4" role="tabpanel">
-            {data === undefined && <div className="space-y-3" aria-busy="true">{[0, 1, 2, 3].map((n) => <div key={n} className="h-10 animate-pulse rounded-xl bg-surface-sunken" />)}</div>}
-            {data === null && <p className="py-10 text-center text-sm text-muted">This employee couldn&apos;t be found.</p>}
-            {data && !data.canEdit && <p className="mb-3 rounded-lg bg-surface-sunken px-3 py-2 text-xs text-muted">You can view this person but not edit them.</p>}
-
-            {data && tab === "overview" && (
-              <div className="space-y-4">
-                {urgent && (
-                  <div className={cn("flex items-center gap-3 rounded-[14px] border px-3 py-2.5 text-sm", urgent.st.tone === "err" ? "border-[var(--error-border)] bg-[var(--error-soft)]" : "border-[var(--warning-border)] bg-[var(--warning-soft)]")}>
-                    <span className="flex-1 text-primary"><b>{urgent.label} {urgent.st.text.toLowerCase()}.</b></span>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={() => { setTab("documents"); setOpenDoc(urgent.field); }}>Renew</button>
-                  </div>
-                )}
-                <fieldset disabled={!data.canEdit} className="min-w-0">
-                  <h3 className="mb-2 text-xs font-semibold text-primary">Key details <span className="font-normal text-muted">· click a value to edit</span></h3>
-                  <dl className="rounded-[14px] border border-default">
-                    {data.category === "SITE_STAFF" ? (
-                      <>
-                        <Row label="Project"><ChoiceField kind="project" value={data.projectId} options={data.projects.map((p) => ({ value: p.id, label: p.name }))} onSave={bound("projectId", "Project")} placeholder="No project" /></Row>
-                        <Row label="Trade"><TradeEditor data={data} reload={reload} /></Row>
-                        <Row label="Camp / bed"><ReadOnly value={data.camp} href={profileHref} /></Row>
-                      </>
-                    ) : (
-                      <>
-                        <Row label="Position"><ClickToEdit label="position" value={data.position} onSave={bound("position", "Position")} /></Row>
-                        <Row label="Department"><ClickToEdit label="department" value={data.department} onSave={bound("department", "Department")} /></Row>
-                      </>
-                    )}
-                    <Row label="Mobile"><ClickToEdit label="mobile number" kind="phone" value={data.mobileNumber} onSave={bound("mobileNumber", "Mobile")} /></Row>
-                    <Row label="Nationality"><ChoiceField kind="country" value={data.nationality} onSave={bound("nationality", "Nationality")} /></Row>
-                  </dl>
-                  <details className="mt-3 group">
-                    <summary className="cursor-pointer text-xs font-semibold text-primary select-none">More details</summary>
-                    <dl className="mt-2 rounded-[14px] border border-default">
-                      <Row label="Name"><ClickToEdit label="name" value={data.name} onSave={bound("name", "Name")} /></Row>
-                      <Row label="Date of birth"><ChoiceField kind="date" value={data.dateOfBirth} onSave={bound("dateOfBirth", "Date of birth")} /></Row>
-                      <Row label="Gender"><ChoiceField kind="select" value={data.gender} options={[{ value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }]} onSave={bound("gender", "Gender")} /></Row>
-                      <Row label="Blood group"><ChoiceField kind="select" value={data.bloodGroup} options={BLOOD_GROUPS.map((b) => ({ value: b, label: b }))} onSave={bound("bloodGroup", "Blood group")} /></Row>
-                      <Row label="Join date"><ChoiceField kind="date" value={data.joinDate} onSave={bound("joinDate", "Join date")} /></Row>
-                      <Row label="Passport no."><ClickToEdit label="passport number" kind="passport" value={data.passportNumber} onSave={bound("passportNumber", "Passport number")} /></Row>
-                      <Row label="Emirates ID"><ClickToEdit label="Emirates ID" kind="eid" value={data.emiratesId} onSave={bound("emiratesId", "Emirates ID")} /></Row>
-                      <Row label="Labour card no."><ClickToEdit label="labour card number" value={data.laborCardNumber} onSave={bound("laborCardNumber", "Labour card number")} /></Row>
-                      <Row label="Personal no."><ClickToEdit label="labour card personal number" value={data.laborCardPersonalNo} onSave={bound("laborCardPersonalNo", "Personal number")} /></Row>
-                      <Row label="Visa file no."><ClickToEdit label="visa file number" value={data.visaNumber} onSave={bound("visaNumber", "Visa file number")} /></Row>
-                      <Row label="Unified no."><ClickToEdit label="unified number" value={data.unifiedNo} onSave={bound("unifiedNo", "Unified number")} /></Row>
-                    </dl>
-                  </details>
-                </fieldset>
+        {data && tab === "overview" && (
+          <div className="space-y-4">
+            {urgent && (
+              <div className={cn("flex items-center gap-3 rounded-[14px] border px-3 py-2.5 text-sm", urgent.st.tone === "err" ? "border-[var(--error-border)] bg-[var(--error-soft)]" : "border-[var(--warning-border)] bg-[var(--warning-soft)]")}>
+                <span className="flex-1 text-primary"><b>{urgent.label} {urgent.st.text.toLowerCase()}.</b></span>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => { setTab("documents"); setOpenDoc(urgent.field); }}>Renew</button>
               </div>
             )}
-
-            {data && tab === "documents" && (
-              <fieldset disabled={!data.canEdit} className="min-w-0 space-y-3">
-                {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
-                {wizardOn ? (
-                  <DocWizard data={data} total={wizardOn.total} hasPhoto={data.hasPhoto} onScanDone={onScanDone} save={save} onClose={() => setWizard(null)} />
+            <fieldset disabled={!data.canEdit} className="min-w-0">
+              <h3 className="mb-2 text-xs font-semibold text-primary">Key details <span className="font-normal text-muted">· click a value to edit</span></h3>
+              <dl className="rounded-[14px] border border-default">
+                {data.category === "SITE_STAFF" ? (
+                  <>
+                    <Row label="Project"><ChoiceField kind="project" value={data.projectId} options={data.projects.map((p) => ({ value: p.id, label: p.name }))} onSave={bound("projectId", "Project")} placeholder="No project" /></Row>
+                    <Row label="Trade"><TradeEditor data={data} reload={reload} /></Row>
+                    <Row label="Camp / bed"><ReadOnly value={data.camp} href={profileHref} /></Row>
+                  </>
                 ) : (
                   <>
-                    {missingDocs.length >= 2 && (
-                      <div className="rounded-[14px] border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3">
-                        <p className="flex items-center gap-2 text-sm font-semibold text-primary"><FileWarning className="h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />{missingDocs.length} documents haven&apos;t been added</p>
-                        <p className="mt-0.5 text-xs text-secondary">{missingDocs.map((d) => d.label).join(", ")}. Add them together or one at a time, and the details are read for you.</p>
-                        <button type="button" className="btn btn-primary btn-sm mt-2.5" onClick={() => setWizard({ id, total: missingDocs.length })}>Add them step by step</button>
-                      </div>
-                    )}
-                    <ul className="rounded-[14px] border border-default">
-                      {DOCS.map((d) => {
-                        const st = docState(data.expiry[d.field]);
-                        const files = data.docs.filter((x) => x.type === d.type).length;
-                        const isOpen = openDoc === d.field;
-                        return (
-                          <li key={d.field} className="border-b border-default last:border-b-0">
-                            <div className="flex items-center gap-3 px-3 py-2.5 text-sm">
-                              <div className="min-w-0 flex-1"><p className="font-medium text-primary">{d.label}</p><p className="text-xs text-muted">{fmtDate(data.expiry[d.field])}{files > 0 && ` · ${files} file${files === 1 ? "" : "s"}`}</p></div>
-                              <Pill tone={st.tone}>{st.text}</Pill>
-                              <button type="button" aria-expanded={isOpen} onClick={() => setOpenDoc(isOpen ? null : d.field)} className="btn btn-secondary btn-sm">{data.expiry[d.field] || files > 0 ? "Renew" : "Add"}</button>
-                            </div>
-                            {isOpen && <RenewPanel employeeId={id} doc={d} current={data.expiry[d.field]} hasPhoto={data.hasPhoto} onSave={(v) => save(d.field, v, `${d.label} expiry`)} onScanDone={onScanDone} onDone={() => setOpenDoc(null)} />}
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <Row label="Position"><ClickToEdit label="position" value={data.position} onSave={bound("position", "Position")} /></Row>
+                    <Row label="Department"><ClickToEdit label="department" value={data.department} onSave={bound("department", "Department")} /></Row>
                   </>
                 )}
-              </fieldset>
-            )}
-
-            {data && tab === "missing" && (
-              <fieldset disabled={!data.canEdit} className="min-w-0 space-y-3">
-                <div className="flex items-center gap-3 rounded-[14px] border border-default bg-brand-soft px-3 py-2.5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--brand-primary) 0 ${pct}%, var(--border) ${pct}% 100%)` }}>
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-[11px] font-bold">{pct}%</span>
-                  </div>
-                  <p className="text-sm"><b>{gaps.length - open.length} of {gaps.length} profile items done.</b><br /><span className="text-xs text-muted">{open.length ? "Scan first; type only what is left." : "Nothing is missing."}</span></p>
-                </div>
-                {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
-                {open.some((g) => SCANNABLE_GAPS.has(g.key)) && (
-                  <ScanUpload employeeId={id} docType="COMBINED" multiple hasPhoto={data.hasPhoto} title="Scan the documents" hint="Passport, Emirates ID, labour card, visa. Drop them together and the details are filled in." onDone={onScanDone} />
-                )}
-                {open.some((g) => g.key !== "scan") && (
-                  <div className="rounded-[14px] border border-default">
-                    {open.filter((g) => g.key !== "scan").map((g) => <GapRow key={g.key} gap={g} data={data} save={save} />)}
-                  </div>
-                )}
-                {gaps.some((g) => g.done) && (
-                  <div>
-                    <h3 className="mb-2 text-xs font-semibold text-primary">Already done</h3>
-                    <p className="rounded-[14px] border border-default px-3 py-2.5 text-sm text-muted">{gaps.filter((g) => g.done).map((g) => `✓ ${g.label}`).join(" · ")}</p>
-                  </div>
-                )}
-              </fieldset>
-            )}
+                <Row label="Mobile"><ClickToEdit label="mobile number" kind="phone" value={data.mobileNumber} onSave={bound("mobileNumber", "Mobile")} /></Row>
+                <Row label="Nationality"><ChoiceField kind="country" value={data.nationality} onSave={bound("nationality", "Nationality")} /></Row>
+              </dl>
+              <details className="mt-3 group">
+                <summary className="cursor-pointer text-xs font-semibold text-primary select-none">More details</summary>
+                <dl className="mt-2 rounded-[14px] border border-default">
+                  <Row label="Name"><ClickToEdit label="name" value={data.name} onSave={bound("name", "Name")} /></Row>
+                  <Row label="Date of birth"><ChoiceField kind="date" value={data.dateOfBirth} onSave={bound("dateOfBirth", "Date of birth")} /></Row>
+                  <Row label="Gender"><ChoiceField kind="select" value={data.gender} options={[{ value: "MALE", label: "Male" }, { value: "FEMALE", label: "Female" }]} onSave={bound("gender", "Gender")} /></Row>
+                  <Row label="Blood group"><ChoiceField kind="select" value={data.bloodGroup} options={BLOOD_GROUPS.map((b) => ({ value: b, label: b }))} onSave={bound("bloodGroup", "Blood group")} /></Row>
+                  <Row label="Join date"><ChoiceField kind="date" value={data.joinDate} onSave={bound("joinDate", "Join date")} /></Row>
+                  <Row label="Passport no."><ClickToEdit label="passport number" kind="passport" value={data.passportNumber} onSave={bound("passportNumber", "Passport number")} /></Row>
+                  <Row label="Emirates ID"><ClickToEdit label="Emirates ID" kind="eid" value={data.emiratesId} onSave={bound("emiratesId", "Emirates ID")} /></Row>
+                  <Row label="Labour card no."><ClickToEdit label="labour card number" value={data.laborCardNumber} onSave={bound("laborCardNumber", "Labour card number")} /></Row>
+                  <Row label="Personal no."><ClickToEdit label="labour card personal number" value={data.laborCardPersonalNo} onSave={bound("laborCardPersonalNo", "Personal number")} /></Row>
+                  <Row label="Visa file no."><ClickToEdit label="visa file number" value={data.visaNumber} onSave={bound("visaNumber", "Visa file number")} /></Row>
+                  <Row label="Unified no."><ClickToEdit label="unified number" value={data.unifiedNo} onSave={bound("unifiedNo", "Unified number")} /></Row>
+                </dl>
+              </details>
+            </fieldset>
           </div>
+        )}
 
-          {undo && (
-            <div role="status" className="mx-5 mb-2 flex items-center justify-between rounded-xl bg-[#1e1b3a] px-3.5 py-2.5 text-sm font-medium text-white">
-              <span className="flex items-center gap-2"><Check className="h-4 w-4" aria-hidden />Saved · {undo.label} updated</span>
-              <button type="button" onClick={() => void doUndo()} className="font-semibold text-[#c4b8ff] hover:underline">Undo</button>
-            </div>
-          )}
-
-          <footer className="flex items-center justify-between gap-3 border-t border-default px-5 py-3">
-            <span className="text-xs text-muted">{tab === "missing" ? `${withGaps.length} ${withGaps.length === 1 ? "person has" : "people have"} gaps` : "Esc to close · J / K to move"}</span>
-            {tab === "missing" ? (
-              <button type="button" className="btn btn-primary gap-1.5" onClick={nextGap} disabled={withGaps.filter((x) => x !== id).length === 0}>Next with gaps<ArrowRight className="h-4 w-4" aria-hidden /></button>
+        {data && tab === "documents" && (
+          <fieldset disabled={!data.canEdit} className="min-w-0 space-y-3">
+            {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
+            {wizardOn ? (
+              <DocWizard data={data} total={wizardOn.total} hasPhoto={data.hasPhoto} onScanDone={onScanDone} save={save} onClose={() => setWizard(null)} />
             ) : (
-              <button type="button" className="btn btn-primary gap-1.5" onClick={() => go(1)} disabled={order.length < 2}>Next person<ArrowRight className="h-4 w-4" aria-hidden /></button>
+              <>
+                {missingDocs.length >= 2 && (
+                  <div className="rounded-[14px] border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-primary"><FileWarning className="h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />{missingDocs.length} documents haven&apos;t been added</p>
+                    <p className="mt-0.5 text-xs text-secondary">{missingDocs.map((d) => d.label).join(", ")}. Add them together or one at a time, and the details are read for you.</p>
+                    <button type="button" className="btn btn-primary btn-sm mt-2.5" onClick={() => setWizard({ id, total: missingDocs.length })}>Add them step by step</button>
+                  </div>
+                )}
+                <ul className="rounded-[14px] border border-default">
+                  {DOCS.map((d) => {
+                    const st = docState(data.expiry[d.field]);
+                    const files = data.docs.filter((x) => x.type === d.type).length;
+                    const isOpen = openDoc === d.field;
+                    return (
+                      <li key={d.field} className="border-b border-default last:border-b-0">
+                        <div className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div className="min-w-0 flex-1"><p className="font-medium text-primary">{d.label}</p><p className="text-xs text-muted">{fmtDate(data.expiry[d.field])}{files > 0 && ` · ${files} file${files === 1 ? "" : "s"}`}</p></div>
+                          <Pill tone={st.tone}>{st.text}</Pill>
+                          <button type="button" aria-expanded={isOpen} onClick={() => setOpenDoc(isOpen ? null : d.field)} className="btn btn-secondary btn-sm">{data.expiry[d.field] || files > 0 ? "Renew" : "Add"}</button>
+                        </div>
+                        {isOpen && <RenewPanel employeeId={id} doc={d} current={data.expiry[d.field]} hasPhoto={data.hasPhoto} onSave={(v) => save(d.field, v, `${d.label} expiry`)} onScanDone={onScanDone} onDone={() => setOpenDoc(null)} />}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
-          </footer>
-        </RadixDialog.Content>
-      </RadixDialog.Portal>
-    </RadixDialog.Root>
-  );
-}
+          </fieldset>
+        )}
 
-function ScanSummary({ outcome, onUse, onDismiss }: { outcome: ScanOutcome; onUse: (c: ScanOutcome["conflicts"][number]) => void; onDismiss: () => void }) {
-  const nothing = outcome.applied.length === 0 && outcome.conflicts.length === 0 && !outcome.photo;
-  return (
-    <div role="status" className="rounded-[14px] border border-default bg-surface-subtle p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold text-primary">
-          {outcome.applied.length > 0 ? `Read ${outcome.files} file${outcome.files === 1 ? "" : "s"} and added ${outcome.applied.length} detail${outcome.applied.length === 1 ? "" : "s"}` : nothing ? "Nothing new to add" : `Read ${outcome.files} file${outcome.files === 1 ? "" : "s"}`}
-        </p>
-        <button type="button" onClick={onDismiss} aria-label="Dismiss" className="shrink-0 text-subtle hover:text-primary"><X className="h-4 w-4" aria-hidden /></button>
-      </div>
-      {outcome.applied.length > 0 && (
-        <ul className="mt-1.5 flex flex-wrap gap-1.5">
-          {outcome.applied.map((a) => <li key={a.key} className="rounded-full bg-[var(--success-soft)] px-2 py-0.5 text-xs text-[var(--success)]">✓ {a.label}</li>)}
-          {outcome.photo && <li className="rounded-full bg-[var(--success-soft)] px-2 py-0.5 text-xs text-[var(--success)]">✓ Photo</li>}
-        </ul>
-      )}
-      {nothing && outcome.unread === 0 && <p className="mt-1 text-xs text-muted">What the scan shows is already on the profile.</p>}
-      {outcome.unread > 0 && (
-        <p className="mt-1.5 text-xs text-[var(--warning)]">{outcome.unread === 1 ? "A file was saved but its details couldn't be read" : `${outcome.unread} files were saved but their details couldn't be read`}{outcome.reason ? ` (${outcome.reason})` : ""}. Enter the details by hand.</p>
-      )}
-      {outcome.conflicts.map((c) => (
-        <div key={c.key} className="mt-2 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-2 text-xs">
-          <p className="text-primary"><b>{c.label}</b>: the profile has <b>{c.current}</b>, the scan says <b>{c.scan}</b>.</p>
-          <button type="button" onClick={() => onUse(c)} className="mt-1 font-semibold text-[var(--brand-primary)] hover:underline">Use the scan value</button>
-        </div>
-      ))}
-    </div>
+        {data && tab === "missing" && (
+          <fieldset disabled={!data.canEdit} className="min-w-0 space-y-3">
+            <div className="flex items-center gap-3 rounded-[14px] border border-default bg-brand-soft px-3 py-2.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(var(--brand-primary) 0 ${pct}%, var(--border) ${pct}% 100%)` }}>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-[11px] font-bold">{pct}%</span>
+              </div>
+              <p className="text-sm"><b>{gaps.length - open.length} of {gaps.length} profile items done.</b><br /><span className="text-xs text-muted">{open.length ? "Scan first; type only what is left." : "Nothing is missing."}</span></p>
+            </div>
+            {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
+            {open.some((g) => SCANNABLE_GAPS.has(g.key)) && (
+              <ScanUpload employeeId={id} docType="COMBINED" multiple hasPhoto={data.hasPhoto} title="Scan the documents" hint="Passport, Emirates ID, labour card, visa. Drop them together and the details are filled in." onDone={onScanDone} />
+            )}
+            {open.some((g) => g.key !== "scan") && (
+              <div className="rounded-[14px] border border-default">
+                {open.filter((g) => g.key !== "scan").map((g) => <GapRow key={g.key} gap={g} data={data} save={save} />)}
+              </div>
+            )}
+            {gaps.some((g) => g.done) && (
+              <div>
+                <h3 className="mb-2 text-xs font-semibold text-primary">Already done</h3>
+                <p className="rounded-[14px] border border-default px-3 py-2.5 text-sm text-muted">{gaps.filter((g) => g.done).map((g) => `✓ ${g.label}`).join(" · ")}</p>
+              </div>
+            )}
+          </fieldset>
+        )}
+    </DrawerFrame>
   );
 }
 
