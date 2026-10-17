@@ -238,7 +238,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className="px-2 py-3 text-right">Deduction</th>
                 <th className="px-2 py-3 text-right">Advance</th>
                 <th className="px-2 py-3 text-right">Adjustment</th>
-                {draft && <th className="px-2 py-3"><span className="sr-only">Save</span></th>}
+                {draft && <th className="relative px-2 py-3"><span className="sr-only">Save</span></th>}
                 <th className="px-3 py-3 text-right">Net pay<Hint term="NET_PAY" /></th>
                 <th className="px-3 py-3">Bank<Hint term="WPS" /></th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
