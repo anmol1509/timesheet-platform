@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { r2 } from "@/lib/books/postings";
 import { aed, fmtDate, getBooksContext } from "../../../books-data";
 import { PartyOpening } from "./party-opening";
+import { PartyEntry } from "./party-entry";
+import { iso } from "../../../books-data";
 
 export const metadata = { title: "Ledger" };
 
@@ -32,10 +34,12 @@ export default async function PartyLedgerPage({ params }: { params: Promise<{ ty
   }
   const run = rows.at(-1)?.balance ?? 0;
   const opening = rows.filter((r) => r.opening).reduce((n, r) => n + r.charge - r.payment, 0);
-  const word = type === "CLIENT" ? { charge: "Invoiced", pay: "Received", owes: "owes you" } : { charge: "Billed", pay: "Paid", owes: "you owe" };
+  const moneyAccounts = ctx.canWrite ? (await prisma.account.findMany({ where: { branchId, type: "ASSET", isActive: true, OR: [{ tag: { in: ["BANK", "CASH"] } }, { name: { contains: "bank", mode: "insensitive" } }] }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true } })).map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` })) : [];
+  const word = type === "CLIENT" ? { charge: "Invoiced", pay: "Received / credited", owes: "owes you" } : { charge: "Billed", pay: "Paid / debited", owes: "you owe" };
   return (
     <div className="space-y-5">
       <PageHeader title={party.name} icon={Users} breadcrumbs={[{ label: "Finance", href: "/finance/books" }, { label: "Books", href: "/finance/books" }, { label: "Parties", href: `/finance/books/parties?type=${type}` }, { label: party.name }]} description={`${type === "CLIENT" ? "Client" : "Supplier"} · ${run === 0 ? "nothing outstanding" : `${aed(Math.abs(run))} ${run > 0 ? word.owes : "paid in advance"}`}`} />
+      {ctx.canWrite && <PartyEntry type={type} partyId={id} moneyAccounts={moneyAccounts} minDate={iso(ctx.branch.booksOpeningDate!)} />}
       <PartyOpening type={type} partyId={id} amount={opening} openingDate={fmtDate(ctx.branch.booksOpeningDate!)} canWrite={ctx.canWrite} />
       {rows.length === 0 ? <p className="text-sm text-muted">No entries for this {type === "CLIENT" ? "client" : "supplier"} yet.</p> : (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">

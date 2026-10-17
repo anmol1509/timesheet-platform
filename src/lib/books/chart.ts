@@ -66,6 +66,8 @@ export function expenseTagFor(category: string): string {
 
 export const VOUCHER_PREFIX: Record<string, string> = {
   JOURNAL: "JV",
+  CREDIT_NOTE: "CN",
+  DEBIT_NOTE: "DN",
   OPENING: "OB",
   SALES: "SI",
   RECEIPT: "RC",
