@@ -154,8 +154,8 @@ async function buildTimesheetTemplate(wb: ExcelJS.Workbook, when: Date): Promise
   ex.addRow([...lead, ...Array.from({ length: days }, (_, d) => d + 1), ...trailing]).font = { bold: true };
   const sample = (n: number, id: string, name: string, nat: string, sponsor: string, supplier: string, client: string, site: string, project: string, trade: string, rate: number, pay: number, day: (d: number) => string | number) => ex.addRow([n, id, name, nat, sponsor, supplier, client, site, project, trade, rate, pay, "", ...Array.from({ length: days }, (_, d) => day(d + 1)), "", "", ""]);
   const weekday = (d: number) => new Date(Date.UTC(year, month, d)).getUTCDay();
-  sample(1, "EMP-001", "Ravi Kumar", "India", "", "Your Company", "Client A", "Tower 1", "PRJ-001", "Carpenter", 12, 8, (d) => (weekday(d) === 5 ? "OFF" : d === 10 ? "A" : 10));
-  sample(2, "EMP-002", "Sunil Thapa", "Nepal", "", "Your Company", "Client A", "Tower 1", "PRJ-001", "Painter", 11, 7.5, (d) => (weekday(d) === 5 ? "OFF" : d === 4 ? "L" : d === 20 ? "H" : 9));
+  sample(1, "EMP-001", "Ravi Kumar", "India", "", "Your Company", "Client A", "Tower 1", "PRJ-001", "Carpenter", 12, 8, (d) => (weekday(d) === 0 ? "OFF" : d === 10 ? "A" : 10));
+  sample(2, "EMP-002", "Sunil Thapa", "Nepal", "", "Your Company", "Client A", "Tower 1", "PRJ-001", "Painter", 11, 7.5, (d) => (weekday(d) === 0 ? "OFF" : d === 4 ? "L" : d === 20 ? "H" : 9));
   ex.getColumn(3).width = 22; ex.getColumn(6).width = 20;
   ex.properties.tabColor = { argb: "FF9CA3AF" };
 

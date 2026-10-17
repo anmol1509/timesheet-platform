@@ -8,7 +8,7 @@ import { loadTradeCanon } from "@/lib/canon";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction, absenceRuleOf } from "@/lib/deductions";
 import type { Db, NewSupplier, SupplierDecision } from "@/lib/importer/types";
-import { newAttendanceStats, writeAttendanceFromEntry } from "@/lib/importer/attendance";
+import { cellToAttendance, newAttendanceStats, writeAttendanceFromEntry } from "@/lib/importer/attendance";
 
 export type ImportStats = {
   monthsProcessed: { month: string; monthLabel: string; entries: number }[];
@@ -43,7 +43,14 @@ export type ImportStats = {
   nearMatches?: { from: string; to: string }[];
   /** Workers linked to a project from the sheet's Project column. */
   workersLinkedToProject?: number;
+  /** Projects whose weekly off was changed to the day the sheet marks OFF, so the sheet and the project agree. */
+  weeklyOffSynced?: { project: string; from: number[]; to: number[] }[];
 };
+
+/** A weekday counts as a project's weekly off when at least this share of the worked-or-marked days that fall on it are OFF… */
+const OFF_SHARE = 0.5;
+/** …across at least this many marked days, so one stray OFF cell can't move a project's off day. */
+const OFF_MIN_DAYS = 4;
 
 function normalizeKey(name: string) {
   // Case, dots and spacing differ between sheets ("Cont." / "cont"); they are one company.
@@ -69,6 +76,8 @@ export async function importParsedMonths(
 ): Promise<ImportStats> {
   const db = opts.db ?? prisma;
   const attendance = newAttendanceStats();
+  // Per project and weekday: how many marked days the sheet has, and how many of them are OFF.
+  const offTally = new Map<string, { off: number[]; total: number[] }>();
   const totalEntries = months.reduce((n, m) => n + m.entries.length, 0);
   let processed = 0;
   let skippedNationality = 0;
@@ -441,6 +450,19 @@ export async function importParsedMonths(
           ...fillPay,
         },
       });
+      const tallyProject = entryProjectId ?? known?.projectId ?? employeeRecord.projectId ?? null;
+      if (tallyProject) {
+        const t = offTally.get(tallyProject) ?? { off: Array(7).fill(0), total: Array(7).fill(0) };
+        for (const cell of entry.dailyHours) {
+          if (!cell.date || !cell.value.trim()) continue;
+          const day = new Date(`${cell.date}T00:00:00Z`).getUTCDay();
+          if (Number.isNaN(day)) continue;
+          t.total[day]++;
+          const as = cellToAttendance(cell.value);
+          if (as && as !== "unknown" && as.status === "OFF") t.off[day]++;
+        }
+        offTally.set(tallyProject, t);
+      }
       if (opts.userId) {
         await writeAttendanceFromEntry(
           db,
@@ -476,6 +498,19 @@ export async function importParsedMonths(
       monthLabel: month.monthLabel,
       entries: month.entries.length,
     });
+  }
+
+  // The sheet's OFF days and the project's weekly off must be the same days, or the project's own day
+  // would count as a second off day each week (and be paid at the rest-day rate).
+  for (const [pid, t] of offTally) {
+    const detected = [0, 1, 2, 3, 4, 5, 6].filter((d) => t.total[d] >= OFF_MIN_DAYS && t.off[d] / t.total[d] >= OFF_SHARE);
+    if (detected.length === 0) continue;
+    const project = await db.project.findUnique({ where: { id: pid }, select: { name: true, weeklyOffDays: true } });
+    if (!project) continue;
+    const current = [...project.weeklyOffDays].sort();
+    if (current.length === detected.length && current.every((d, i) => d === detected[i])) continue;
+    await db.project.update({ where: { id: pid }, data: { weeklyOffDays: detected } });
+    (stats.weeklyOffSynced ??= []).push({ project: project.name, from: current, to: detected });
   }
 
   // Place each sponsor under the main supplier it works for most, when that is

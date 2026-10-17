@@ -156,6 +156,14 @@ export async function applyTimesheets(
   if ((stats.workersLinkedToProject ?? 0) > 0) {
     notes.push({ tone: "info", title: `${stats.workersLinkedToProject} workers linked to their project`, detail: "From the Project column. A worker already on a project keeps it." });
   }
+  if ((stats.weeklyOffSynced ?? []).length > 0) {
+    const DAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    notes.push({
+      tone: "info",
+      title: `Weekly off updated on ${stats.weeklyOffSynced!.length} project${stats.weeklyOffSynced!.length === 1 ? "" : "s"} to match the sheet`,
+      detail: stats.weeklyOffSynced!.slice(0, 5).map((w) => `${w.project}: ${w.from.map((d) => DAY[d]).join(", ") || "none"} → ${w.to.map((d) => DAY[d]).join(", ")}`).join("; ") + ". The days the sheet marks OFF are now the project's weekly off, so no day is counted off twice. Change it on the project if that is wrong.",
+    });
+  }
   if ((stats.payRatesSet ?? 0) > 0) {
     notes.push({ tone: "info", title: `${stats.payRatesSet} workers given a pay rate`, detail: "From the Pay Rate column (read by the Pay Structure column, or as hourly when there is none), for payroll. A rate already on file is never replaced." });
   }
