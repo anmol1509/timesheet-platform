@@ -5,8 +5,7 @@ import { branchWhere } from "@/lib/branch";
 import { AGEING_BUCKETS, ageingBucket, billTotals } from "@/lib/payables";
 import { budgetStatus, pettyCashBalance } from "@/lib/financeRules";
 import { PageHeader } from "@/components/PageHeader";
-import { StatTile } from "@/components/StatTile";
-import { Landmark, Hourglass, ReceiptText, ClipboardCheck, TriangleAlert } from "lucide-react";
+import { Landmark } from "lucide-react";
 
 const AGE_COLOR = ["var(--success)", "#f59e0b", "var(--error)", "#b91c1c", "#7f1d1d"];
 
@@ -29,7 +28,7 @@ function Ageing({ values, total }: { values: number[]; total: number }) {
   );
 }
 
-export const metadata = { title: "Finance" };
+export const metadata = { title: "Budgets & trends" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default async function FinancePage() {
@@ -37,18 +36,15 @@ export default async function FinancePage() {
   const today = new Date();
   const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
   const sixMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 5, 1));
-  const [bills, monthExpenses, pending, recent, budgets, topUps, cashRows, owedBack, billsToApprove, recentInvoices, unpaidInvoices] = await Promise.all([
+  const [bills, monthExpenses, recent, budgets, topUps, cashRows, owedBack, recentInvoices] = await Promise.all([
     prisma.supplierBill.findMany({ where: { ...branchWhere(branchId), approvalStatus: "APPROVED" }, include: { supplier: { select: { name: true } }, payments: { select: { amount: true } } } }),
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", date: { gte: monthStart } }, select: { category: true, amount: true, vatAmount: true } }),
-    prisma.expense.count({ where: { ...branchWhere(branchId), status: "PENDING" } }),
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", date: { gte: sixMonthsAgo } }, select: { date: true, amount: true, vatAmount: true, projectId: true, project: { select: { name: true } } } }),
     prisma.expenseBudget.findMany({ where: branchWhere(branchId), orderBy: { category: "asc" } }),
     prisma.pettyCashTopUp.findMany({ where: branchWhere(branchId), select: { amount: true } }),
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", paymentMethod: "CASH" }, select: { amount: true, vatAmount: true } }),
     prisma.expense.findMany({ where: { ...branchWhere(branchId), status: "APPROVED", outOfPocket: true, reimbursedAt: null }, select: { amount: true, vatAmount: true } }),
-    prisma.supplierBill.count({ where: { ...branchWhere(branchId), approvalStatus: "PENDING" } }),
     prisma.clientInvoice.findMany({ where: { ...branchWhere(branchId), issueDate: { gte: sixMonthsAgo } }, select: { issueDate: true, totalAmount: true } }),
-    prisma.clientInvoice.findMany({ where: { ...branchWhere(branchId), status: { not: "PAID" }, dueDate: { not: null } }, select: { totalAmount: true, dueDate: true } }),
   ]);
 
   const buckets = AGEING_BUCKETS.map(() => 0);
@@ -85,50 +81,20 @@ export default async function FinancePage() {
   const trendMax = Math.max(1, ...spendByMonth.values(), ...revenueByMonth.values());
   const projectSpend = [...spendByProject.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-  const receivableBuckets = AGEING_BUCKETS.map(() => 0);
-  let totalReceivable = 0;
-  for (const inv of unpaidInvoices) {
-    totalReceivable += inv.totalAmount;
-    receivableBuckets[ageingBucket(inv.dueDate!, today)] += inv.totalAmount;
-  }
   const budgetRows = budgets.map((b) => ({ category: b.category, limit: Number(b.monthlyLimit), spent: byCategory.get(b.category) ?? 0 })).map((b) => ({ ...b, ...budgetStatus(b.spent, b.limit) }));
   const petty = pettyCashBalance(topUps.map((t) => Number(t.amount)), cashRows.map((e) => Number(e.amount) + Number(e.vatAmount)));
-  const overdueTotal = buckets.slice(1).reduce((n, v) => n + v, 0);
-  const overdueBills = bills.filter((b) => { const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) }))); return t.balance > 0 && ageingBucket(b.dueDate, today) > 0; }).length;
   const owedToStaff = owedBack.reduce((s, e) => s + Number(e.amount) + Number(e.vatAmount), 0);
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Finance" icon={Landmark} description="Money in, money out, and what needs your attention." />
-      {(overdueTotal > 0 || billsToApprove + pending > 0) && (
-        <div role="status" className="flex flex-wrap items-center gap-3 rounded-card border border-[var(--warning-border,var(--border))] bg-[var(--warning-soft)] px-4 py-3 text-sm">
-          <TriangleAlert className="h-5 w-5 shrink-0 text-[var(--warning)]" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold text-primary">{overdueTotal > 0 ? `AED ${aed(overdueTotal)} is overdue to suppliers` : "Waiting for your approval"}</p>
-            <p className="text-muted">{[overdueTotal > 0 ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"} overdue` : null, billsToApprove > 0 ? `${billsToApprove} bill${billsToApprove === 1 ? "" : "s"}` : null, pending > 0 ? `${pending} expense${pending === 1 ? "" : "s"}` : null].filter(Boolean).join(" · ")}{billsToApprove + pending > 0 ? " waiting for approval" : ""}</p>
-          </div>
-          {overdueTotal > 0 && <Link href="/finance/bills?view=OVERDUE" className="btn btn-secondary btn-sm">Review bills</Link>}
-          {billsToApprove + pending > 0 && <Link href="/approvals" className="btn btn-primary btn-sm">Approve now</Link>}
+      <PageHeader title="Budgets & trends" icon={Landmark} description="Spend against budget, where the money went, and what is owed to suppliers. Overdue items and approvals are on the Dashboard." />
+      <section className="card p-5">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold text-primary">Payables ageing <span className="font-normal text-muted">· owed to suppliers: AED {aed(outstanding)}</span></h2>
+          <Link href="/finance/bills?view=OPEN" className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Open bills</Link>
         </div>
-      )}
-      <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile href="/finance/bills?view=OPEN" label="Owed to suppliers" value={`AED ${aed(outstanding)}`} icon={Landmark} />
-        <StatTile href="/finance/bills?view=OVERDUE" label="Overdue" value={`AED ${aed(overdueTotal)}`} icon={Hourglass} tone={overdueTotal > 0 ? "warning" : "default"} hint={overdueTotal > 0 ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"}` : "nothing overdue"} />
-        <StatTile href="/invoices/history" label="Owed by clients" value={`AED ${aed(totalReceivable)}`} icon={ReceiptText} hint={totalReceivable === 0 ? "nothing outstanding" : undefined} />
-        <StatTile href="/finance/bills?view=REVIEW" label="Approvals waiting" value={billsToApprove + pending} icon={ClipboardCheck} tone={billsToApprove + pending > 0 ? "warning" : "default"} hint={`${billsToApprove} bill${billsToApprove === 1 ? "" : "s"} · ${pending} expense${pending === 1 ? "" : "s"}`} />
-      </div>
-      <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold text-primary">Payables ageing <span className="font-normal text-muted">· owed to suppliers</span></h2>
-          {outstanding === 0 ? <p className="text-sm text-muted">Nothing owed to suppliers.</p> : <Ageing values={buckets} total={outstanding} />}
-        </section>
-        <section className="card p-5">
-          <h2 className="mb-3 text-sm font-semibold text-primary">Receivables ageing <span className="font-normal text-muted">· owed by clients</span></h2>
-          {totalReceivable === 0 ? <p className="text-sm text-muted">Nothing outstanding from clients.</p> : (
-            <Ageing values={receivableBuckets} total={totalReceivable} />
-          )}
-        </section>
-      </div>
+        {outstanding === 0 ? <p className="text-sm text-muted">Nothing owed to suppliers.</p> : <Ageing values={buckets} total={outstanding} />}
+      </section>
       <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold text-primary">Biggest balances</h2>

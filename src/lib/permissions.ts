@@ -104,9 +104,10 @@ const DEFS: ModuleDef[] = [
     description: "Expenses, supplier bills and payments",
     actions: WITH_APPROVE,
     pages: [
-      { key: "overview", label: "Overview", paths: ["/finance", "/api/finance"] },
+      { key: "overview", label: "Budgets & trends", paths: ["/finance", "/api/finance"] },
       { key: "bills", label: "Supplier Bills", paths: ["/finance/bills"] },
       { key: "expenses", label: "Expenses", paths: ["/finance/expenses"] },
+      { key: "books", label: "Books", paths: ["/finance/books", "/api/books"] },
     ],
   },
   {

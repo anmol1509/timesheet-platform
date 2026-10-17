@@ -111,6 +111,14 @@ model Branch {
   // Quotation defaults: { daysPerMonth, hoursPerDay, units: [{ key, label, perMonth }], costDefaults: {...}, targetProfit }.
   quoteSettings      Json?
   quotationTemplates QuotationTemplate[]
+
+  // Books: the date the ledger starts (earlier history lives as opening balances), the date up to which
+  // entries are locked, and when automatic postings were last brought up to date.
+  booksOpeningDate DateTime?      @db.Date
+  booksLockedUntil DateTime?      @db.Date
+  booksSyncedAt    DateTime?
+  accounts         Account[]
+  journalEntries   JournalEntry[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -2831,4 +2839,78 @@ model QuotationTemplate {
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
+}
+
+/// One account in the chart of accounts. `tag` marks the accounts the system posts to automatically.
+model Account {
+  id        String   @id @default(cuid())
+  code      String
+  name      String
+  type      String // ASSET | LIABILITY | EQUITY | INCOME | EXPENSE
+  tag       String?
+  isSystem  Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  branch   Branch        @relation(fields: [branchId], references: [id])
+  branchId String
+  lines    JournalLine[]
+
+  @@unique([branchId, code])
+  @@index([branchId, type])
+}
+
+/// A balanced set of lines on one date. Entries made by the system carry a `sourceKey` and are rebuilt when
+/// their source changes; vouchers typed by people have none and are only ever voided, never edited away.
+model JournalEntry {
+  id            String   @id @default(cuid())
+  number        String
+  date          DateTime @db.Date
+  type          String // JOURNAL | OPENING | SALES | RECEIPT | BILL | PAYMENT | EXPENSE | PAYROLL | TRANSFER
+  narration     String
+  status        String   @default("POSTED") // POSTED | VOID
+  voidReason    String?
+  sourceKey     String?
+  sourceHash    String?
+  createdAt     DateTime @default(now())
+  createdById   String?
+  createdByName String?
+
+  branch   Branch        @relation(fields: [branchId], references: [id])
+  branchId String
+  lines    JournalLine[]
+
+  @@unique([branchId, number])
+  @@unique([branchId, sourceKey])
+  @@index([branchId, date])
+}
+
+model JournalLine {
+  id          String  @id @default(cuid())
+  debit       Decimal @default(0) @db.Decimal(14, 2)
+  credit      Decimal @default(0) @db.Decimal(14, 2)
+  description String?
+  // Who it is for (a client, supplier or employee), and which project it belongs to, so ledgers and
+  // profit can be cut by party and by project.
+  partyType   String?
+  partyId     String?
+  projectId   String?
+
+  entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId   String
+  account   Account      @relation(fields: [accountId], references: [id])
+  accountId String
+
+  @@index([accountId])
+  @@index([entryId])
+  @@index([partyType, partyId])
+}
+
+/// Running numbers for vouchers, one per prefix per branch (JV-0001, RCT-0001, ...).
+model BookSequence {
+  branchId String
+  prefix   String
+  next     Int    @default(1)
+
+  @@id([branchId, prefix])
 }

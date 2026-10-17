@@ -44,6 +44,13 @@ export const SECTION_TABS: SectionTab[][] = [
       match: (p) => under("/finance/bills/ageing")(p) || under("/finance/bills/statement")(p),
     },
   ],
+  // The books: day book, chart of accounts, trial balance and set-up
+  [
+    { href: "/finance/books", label: "Day book", match: (p) => p === "/finance/books" },
+    { href: "/finance/books/accounts", label: "Accounts", match: (p) => under("/finance/books/accounts")(p) || under("/finance/books/ledger")(p) },
+    { href: "/finance/books/reports", label: "Reports", match: under("/finance/books/reports") },
+    { href: "/finance/books/setup", label: "Set-up & import", match: under("/finance/books/setup") },
+  ],
   // Payroll
   [
     {
