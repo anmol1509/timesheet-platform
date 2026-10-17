@@ -19,7 +19,7 @@ export type MatrixEmployee = {
   /** Named on a workmen compensation certificate of their supplier. */
   wcCovered: boolean;
 };
-export type Policy = { supplierId: string; expiryDate: string | null };
+export type Policy = { supplierId: string; expiryDate: string | null; /** The certificate file itself, so it can be printed. */ attachmentId?: string };
 
 const DAY = 86_400_000;
 
@@ -80,4 +80,44 @@ export function policyCell(policy: Policy | undefined, now: number): Cell {
   if (!policy) return { state: "missing", label: LABEL.missing, sub: "No policy" };
   const state = stateOf(policy.expiryDate, now);
   return { state, label: LABEL[state], sub: span(policy.expiryDate, now) };
+}
+
+/** Every document kind a worker's print can include: the five they hold, plus their supplier's workmen compensation certificate. */
+export const PRINT_KINDS = [...MATRIX_TYPES, "WC"] as const;
+export type PrintKind = (typeof PRINT_KINDS)[number];
+
+/**
+ * The document ids to print for chosen workers and kinds, worker by worker in the order given. A supplier's workmen
+ * compensation certificate covers all its workers, so it prints once per supplier. `missing` counts what isn't on file.
+ */
+export function employeePrintIds(
+  employeeIds: string[],
+  kinds: PrintKind[],
+  cells: Map<string, Record<MatrixType | "WC", Cell>>,
+  employees: { id: string; supplierId: string | null }[],
+  policies: Policy[],
+) {
+  const ids: string[] = [];
+  let missing = 0;
+  for (const id of employeeIds) {
+    const row = cells.get(id);
+    if (!row) continue;
+    for (const t of MATRIX_TYPES) {
+      if (!kinds.includes(t)) continue;
+      if (row[t].docId) ids.push(row[t].docId as string);
+      else missing++;
+    }
+  }
+  if (kinds.includes("WC")) {
+    const supplierOf = new Map(employees.map((e) => [e.id, e.supplierId]));
+    const policyBy = new Map(policies.map((p) => [p.supplierId, p]));
+    const seen = new Set<string>();
+    for (const id of employeeIds) {
+      const sid = supplierOf.get(id);
+      const att = sid ? policyBy.get(sid)?.attachmentId : undefined;
+      if (!att) { missing++; continue; }
+      if (!seen.has(att)) { seen.add(att); ids.push(`att:${att}`); }
+    }
+  }
+  return { ids, missing };
 }
