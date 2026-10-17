@@ -18,7 +18,7 @@ import { getApprovalsSummary, getAttendanceToday, getDemandFill, getMoneySnapsho
 import { can } from "@/lib/permissions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { DASHBOARD_WIDGETS, mergeWidgetOrder, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
+import { buildTodo, DASHBOARD_SECTIONS, DASHBOARD_WIDGETS, mergeWidgetOrder, orderedVisibleWidgets, type DashboardData } from "@/lib/dashboardWidgets";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { CustomizeDashboardButton } from "./customize-dashboard";
@@ -117,16 +117,16 @@ export default async function DashboardPage() {
   const subject = subjectOf(user);
   const off = new Set(preference?.hiddenWidgets ?? []);
   const wantsToday = !off.has("today");
-  const wantsMoneyDemand = !off.has("money-demand");
+  const wantsMoney = !off.has("money-demand");
   const canInvoices = can(subject, "billing", "view");
   const canBills = can(subject, "finance", "view");
   const approvalScope = { branchId, isSuperAdmin: user.role === "SUPER_ADMIN", subject, role: user.role };
   const [approvalsSummary, attendanceToday, payrollStatus, money, demandFill] = await Promise.all([
     wantsToday ? getApprovalsSummary(approvalScope).catch(() => null) : null,
     wantsToday && can(subject, "timesheets", "view") ? getAttendanceToday(branchId).catch(() => null) : null,
-    wantsToday && can(subject, "payroll", "view") ? getPayrollStatus(branchId).then((p) => ({ run: p })).catch(() => null) : null,
-    wantsMoneyDemand && (canInvoices || canBills) ? getMoneySnapshot(branchId, { invoices: canInvoices, bills: canBills }).catch(() => null) : null,
-    wantsMoneyDemand && can(subject, "demand", "view") ? getDemandFill(branchId).catch(() => null) : null,
+    (wantsToday || wantsMoney) && can(subject, "payroll", "view") ? getPayrollStatus(branchId).then((p) => ({ run: p })).catch(() => null) : null,
+    (wantsToday || wantsMoney) && (canInvoices || canBills) ? getMoneySnapshot(branchId, { invoices: canInvoices, bills: canBills }).catch(() => null) : null,
+    wantsToday && can(subject, "demand", "view") ? getDemandFill(branchId).catch(() => null) : null,
   ]);
 
   // Headcount at the end of each of the last six months (records only ever
@@ -214,6 +214,7 @@ export default async function DashboardPage() {
     activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees, required: p.noOfEmployeesRequired })),
   };
 
+  const todoCount = buildTodo(data).length;
   const hiddenWidgets = preference?.hiddenWidgets ?? [];
   const fullOrder = mergeWidgetOrder(preference?.widgetOrder ?? []);
   const visibleWidgets = orderedVisibleWidgets(hiddenWidgets, fullOrder);
@@ -224,7 +225,7 @@ export default async function DashboardPage() {
         title={`${greeting()}, ${firstName}`}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>Here&apos;s what needs your attention today.</span>
+            <span>{todoCount === 0 ? "Nothing is waiting for you today." : <><strong className="font-semibold text-[var(--error)]">{todoCount} thing{todoCount === 1 ? "" : "s"}</strong> need{todoCount === 1 ? "s" : ""} you today.</>}</span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-default bg-surface px-2.5 py-0.5 text-xs font-medium text-secondary shadow-xs">
               <CalendarDays className="h-3.5 w-3.5 text-subtle" aria-hidden />
               {new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Dubai" }).format(new Date())}
@@ -268,9 +269,17 @@ export default async function DashboardPage() {
       <DashboardTabs />
 
       <Stagger className="space-y-5">
-        {visibleWidgets.map((widget) => (
-          <StaggerItem key={widget.id}>{widget.render(data)}</StaggerItem>
-        ))}
+        {DASHBOARD_SECTIONS.map((section) => {
+          // A widget stays in its section; the saved order only sets the order within it.
+          const rendered = visibleWidgets.filter((w) => w.section === section.id).map((w) => ({ id: w.id, node: w.render(data) })).filter((w) => w.node);
+          if (rendered.length === 0) return null;
+          return (
+            <StaggerItem key={section.id} className="space-y-4">
+              {section.label && <h2 className="pt-2 text-xs font-semibold tracking-wider text-muted uppercase">{section.label}</h2>}
+              {rendered.map((w) => <div key={w.id}>{w.node}</div>)}
+            </StaggerItem>
+          );
+        })}
       </Stagger>
     </div>
   );

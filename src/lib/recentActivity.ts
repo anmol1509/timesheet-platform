@@ -9,9 +9,12 @@ export type RecentActivityRow = {
   createdAt: Date;
 };
 
+/** Bookkeeping rows that would crowd out the events people care about. */
+const NOISY = ["EMPLOYEE_INVENTORY_ASSIGNMENT", "INVENTORY_ITEM", "INVENTORY_VARIANT", "ATTENDANCE_CORRECTION"];
+
 export async function getRecentActivity(branchId: string | null, take = 6): Promise<RecentActivityRow[]> {
   return prisma.auditLog.findMany({
-    where: branchWhere(branchId),
+    where: { ...branchWhere(branchId), entityType: { notIn: NOISY } },
     orderBy: { createdAt: "desc" },
     take,
     select: { id: true, entityType: true, action: true, userName: true, createdAt: true },
