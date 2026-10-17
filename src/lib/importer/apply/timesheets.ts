@@ -2,7 +2,7 @@ import { computeImportWarnings, parseConsolidatedWorkbook, type TimesheetOverrid
 import { applyFixes, collectFixables } from "../fixes";
 import { importParsedMonths } from "@/lib/importTimesheet";
 import { nameKey } from "@/lib/partyCode";
-import type { ApplyCtx, ApplyResult, Fix, ImportNote, RowReport, SupplierDecision } from "../types";
+import type { ApplyCtx, ApplyResult, BreakdownClient, BreakdownPerson, Fix, ImportNote, RowReport, SupplierDecision } from "../types";
 
 /** Import a consolidated timesheet workbook: suppliers, sponsors, clients,
  * workers, the monthly timesheet rows, and the days as attendance. */
@@ -32,6 +32,7 @@ export async function applyTimesheets(
   // Workers the sheet gives no usable ID for carry a placeholder id made from their name. Where exactly one
   // existing worker in this branch has that name, the sheet's row is theirs: use their real ID rather than
   // creating a second record. Two with the same name are left alone and reported, never guessed.
+  const matchedIds = new Set<string>();
   let matchedByName = 0;
   let ambiguousByName: string[] = [];
   let placeholderIds = 0;
@@ -45,6 +46,7 @@ export async function applyTimesheets(
       const hits = byName.get(nameKey(e.employeeName)) ?? [];
       if (hits.length === 1) {
         e.employeeIdNo = hits[0];
+        matchedIds.add(hits[0]);
         matchedByName++;
       } else {
         placeholderIds++;
@@ -61,6 +63,9 @@ export async function applyTimesheets(
       notes: [{ tone: "warn", title: "No timesheet months found", detail: "Expected sheets named like \"Aug 26\" or \"MAY-25\", with an \"EMPLOYEE NAME\" (or \"NAME\") column." }],
     };
   }
+
+  // Clients already on record, to tell the new ones from the existing ones in the review.
+  const clientsBefore = new Set((await ctx.db.client.findMany({ where: { branchId: ctx.branchId }, select: { name: true } })).map((c) => nameKey(c.name)));
 
   const upload = await ctx.db.upload.create({
     data: { filename: file.filename, fileData: new Uint8Array(file.buffer), uploadedById: ctx.user.id, branchId: ctx.branchId },
@@ -180,9 +185,67 @@ export async function applyTimesheets(
     notes.push({ tone: "info", title: `${stats.rowsSkipped - stats.skippedRowDetails.length} rows left unchanged`, detail: "Timesheets that are already locked (invoiced) are never overwritten." });
   }
 
+  // The file by client: who is in it, for which months, and what is new.
+  const MAX_PEOPLE = 40;
+  const byClient = new Map<string, { months: Map<string, { label: string; ids: Set<string> }>; people: Map<string, BreakdownPerson> }>();
+  // What the person decided for a client name shapes what the review shows: "use existing" files its rows under that client.
+  const clientRows = await ctx.db.client.findMany({ where: { branchId: ctx.branchId }, select: { id: true, name: true } });
+  const clientNameById = new Map(clientRows.map((c) => [c.id, c.name]));
+  const decidedFrom = new Map<string, string>();
+  const resolveClient = (raw: string | null | undefined) => {
+    const sheet = raw?.trim();
+    if (!sheet) return "No client named";
+    if (clientsBefore.has(nameKey(sheet))) return sheet;
+    const d = supplierDecisions[`client:${nameKey(sheet)}`];
+    if (d?.action === "existing") {
+      const to = clientNameById.get(d.supplierId);
+      if (to) { decidedFrom.set(nameKey(to), sheet); return to; }
+    }
+    if (d?.action === "add" && d.name?.trim()) return d.name.replace(/\s+/g, " ").trim();
+    if (d?.action === "ignore") return "No client named";
+    return sheet;
+  };
+  for (const m of parsed.months) {
+    for (const e of m.entries) {
+      const client = resolveClient(e.clientName);
+      const group = byClient.get(client) ?? { months: new Map(), people: new Map() };
+      const month = group.months.get(m.month) ?? { label: m.monthLabel, ids: new Set<string>() };
+      month.ids.add(e.employeeIdNo);
+      group.months.set(m.month, month);
+      let days = 0;
+      let hours = 0;
+      for (const d of e.dailyHours) {
+        const n = Number(d.value);
+        if (Number.isFinite(n) && n > 0) { days++; hours += n; }
+      }
+      const person = group.people.get(e.employeeIdNo) ?? { name: e.employeeName, idNo: e.employeeIdNo, trade: e.trade, days: 0, hours: 0, ...(matchedIds.has(e.employeeIdNo) ? { note: "Matched by name" } : {}) };
+      person.days += days;
+      person.hours += hours;
+      group.people.set(e.employeeIdNo, person);
+      byClient.set(client, group);
+    }
+  }
+  // A name the person pointed at an existing client ("use existing") counts as matched, like a near spelling.
+  const nearFrom = new Map<string, string>([...decidedFrom.entries(), ...Object.entries(aliases).map(([from, to]) => [nameKey(to), from] as [string, string]), ...(stats.nearMatches ?? []).map((n) => [nameKey(n.to), n.from] as [string, string])]);
+  const breakdownClients: BreakdownClient[] = [...byClient.entries()]
+    .map(([name, g]) => {
+      const people = [...g.people.values()].sort((a, b) => a.name.localeCompare(b.name));
+      const from = nearFrom.get(nameKey(name));
+      return {
+        name,
+        isNew: name !== "No client named" && !clientsBefore.has(nameKey(name)),
+        ...(from && nameKey(from) !== nameKey(name) ? { matchedFrom: from } : {}),
+        workers: people.length,
+        months: [...g.months.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([month, v]) => ({ month, label: v.label, workers: v.ids.size })),
+        people: people.slice(0, MAX_PEOPLE).map((p) => ({ ...p, hours: Math.round(p.hours * 10) / 10 })),
+        hiddenPeople: Math.max(0, people.length - MAX_PEOPLE),
+      };
+    })
+    .sort((a, b) => b.workers - a.workers);
   return {
     rows,
     notes,
+    breakdown: { clients: breakdownClients, workers: new Set(parsed.months.flatMap((m) => m.entries.map((e) => e.employeeIdNo))).size, months: parsed.months.length },
     fixables: collectFixables(parsed.months),
     newSuppliers: stats.newSuppliers,
     existingSuppliers: stats.existingSuppliers,

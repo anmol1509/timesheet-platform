@@ -1,7 +1,7 @@
 // Shapes that travel between the import API and its screens. Types only, so a
 // client component can import them without pulling in server code.
 import type { TimesheetOverrides, TimesheetSheetInfo } from "@/lib/parseTimesheet";
-import type { DeploymentRow, Fix, Fixable, ImportKind, Mapping, NewSupplier, RowReport, ImportNote, SupplierDecision, WorkerChoice, PlacementIssue, PlacementRow } from "./types";
+import type { DeploymentRow, Fix, Fixable, ImportKind, Mapping, NewSupplier, RowReport, ImportNote, SupplierDecision, WorkerChoice, PlacementIssue, PlacementRow, ImportBreakdown } from "./types";
 import type { SheetInfo } from "./sheet";
 
 export type StoredMapping = Mapping & {
@@ -45,6 +45,7 @@ export type BatchSummary = {
   deployments?: DeploymentRow[];
   placementIssues?: PlacementIssue[];
   placements?: PlacementRow[];
+  breakdown?: ImportBreakdown;
   undo?: { restored: number; removed: number; kept: number };
 };
 

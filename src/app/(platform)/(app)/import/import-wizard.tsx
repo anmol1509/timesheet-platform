@@ -15,6 +15,7 @@ import { COUNTRIES } from "@/lib/countries";
 import { TARGETS } from "@/lib/importer/targets";
 import type { Fix, Fixable, ImportKind, NewSupplier, SupplierDecision, WorkerChoice } from "@/lib/importer/types";
 import { PlacementTable, WorkerMatchPanel } from "./worker-match-panel";
+import { ImportBreakdownView } from "./import-breakdown";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
@@ -472,6 +473,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
             />
           )}
           <ReportView tiles={tilesFor(kind, summary.counts)} rows={summary.rows} notes={summary.notes} truncated={summary.truncated} />
+          {(summary.breakdown?.clients.length ?? 0) > 0 && <ImportBreakdownView breakdown={summary.breakdown!} />}
           {(summary.deployments?.length ?? 0) > 0 && <DeploymentTable rows={summary.deployments!} />}
           {(summary.placements?.length ?? 0) > 0 && <PlacementTable rows={summary.placements!} />}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-default pt-4">
