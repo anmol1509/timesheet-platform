@@ -1,21 +1,18 @@
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Bus, CalendarClock, Download, Phone, Route as RouteIcon, ShieldAlert, Upload, Users } from "lucide-react";
+import { Bus, Download, Route as RouteIcon, ShieldAlert, Upload, Users } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canWrite } from "@/lib/permissions";
 import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
-import { Badge } from "@/components/Badge";
-import { ProgressBar } from "@/components/ProgressBar";
-import { DeleteButton } from "@/components/DeleteButton";
 import { BarList, type BarListTone } from "@/components/BarList";
 import { Insights } from "@/components/ListSummary";
 import { daysUntil } from "@/lib/compliance";
 import { cn } from "@/lib/cn";
 import { AddVehicleDialog } from "./add-vehicle-dialog";
-import { deleteVehicleAction } from "./actions";
+import { VehicleBrowser } from "./vehicle-browser";
 
 const STATUS: Record<string, { label: string; color: "green" | "amber" | "slate" }> = {
   ACTIVE: { label: "In service", color: "green" },
@@ -23,19 +20,12 @@ const STATUS: Record<string, { label: string; color: "green" | "amber" | "slate"
   INACTIVE: { label: "Out of service", color: "slate" },
 };
 
-/** Days until a document lapses, as a chip: red when expired, amber inside 30 days, quiet otherwise. */
-function DocChip({ label, date }: { label: string; date: Date | null }) {
-  if (!date) return <span className="text-[11px] text-subtle">{label}: not set</span>;
-  const d = daysUntil(date);
-  const tone = d < 0 ? "text-[var(--error)] font-medium" : d <= 30 ? "text-[var(--warning)] font-medium" : "text-muted";
-  return <span className={cn("text-[11px]", tone)}>{label}: {d < 0 ? `expired ${-d}d ago` : `${d}d left`}</span>;
-}
-
 export default async function TransportPage({ searchParams }: { searchParams: Promise<{ error?: string; status?: string }> }) {
   const { error, status: statusFilter } = await searchParams;
   const { user, branchId } = await requireUserWithBranch();
   const canExport = can(subjectOf(user), "facilities.transport", "export");
   const canImport = isAdminRole(user.role);
+  const canEditVehicles = canWrite(subjectOf(user), "facilities.transport");
   const vehicles = await prisma.vehicle.findMany({
     where: branchWhere(branchId),
     include: {
@@ -50,7 +40,6 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
   const docsDue = vehicles.filter((v) => [v.registrationExpiry, v.insuranceExpiry].some((d) => d && daysUntil(d) <= 30)).length;
   const seats = vehicles.reduce((n, v) => n + (v.capacity ?? 0), 0);
   const riders = vehicles.reduce((n, v) => n + v._count.employees, 0);
-  const shown = statusFilter && STATUS[statusFilter] ? vehicles.filter((v) => v.status === statusFilter) : vehicles;
 
   const utilization = vehicles
     .filter((v) => v.capacity)
@@ -114,75 +103,24 @@ export default async function TransportPage({ searchParams }: { searchParams: Pr
         <EmptyState icon={Bus} title="No vehicles yet" description="Vehicles carry workers between the camp and site. Add one to record its plate, capacity and driver, then build pickup routes around it." />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter by status">
-            {[{ key: "", label: "All", n: vehicles.length }, ...Object.entries(STATUS).map(([k, v]) => ({ key: k, label: v.label, n: vehicles.filter((x) => x.status === k).length }))].map((t) => (
-              <Link key={t.key || "all"} href={t.key ? `/transport?status=${t.key}` : "/transport"} role="tab" aria-selected={(statusFilter ?? "") === t.key}
-                className={cn("rounded-full border px-3 py-1 text-sm transition", (statusFilter ?? "") === t.key ? "border-[var(--brand-primary)] bg-brand-soft font-medium text-[var(--brand-primary)]" : "border-default text-secondary hover:bg-surface-hover")}>
-                {t.label}<span className="tabular ml-1.5 text-xs opacity-70">{t.n}</span>
-              </Link>
-            ))}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {shown.map((v) => {
-              const st = STATUS[v.status] ?? { label: v.status, color: "slate" as const };
-              return (
-                <article key={v.id} className="card flex flex-col gap-3 p-4">
-                  <header className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <Link href={`/transport/${v.id}`} className="tabular block truncate text-base font-semibold text-primary hover:underline">{v.plateNumber}</Link>
-                      <p className="text-xs text-muted">{v.type || "Type not set"}{v.capacity ? ` · ${v.capacity} seats` : ""}</p>
-                    </div>
-                    <Badge color={st.color} dot>{st.label}</Badge>
-                  </header>
-
-                  <div className="text-sm">
-                    <p className="text-xs text-muted">Driver</p>
-                    {v.driverName ? (
-                      <p className="flex flex-wrap items-center gap-x-2 text-primary">
-                        {v.driverName}
-                        {v.driverPhone && <a href={`tel:${v.driverPhone}`} className="tabular inline-flex items-center gap-1 text-xs text-[var(--brand-primary)] hover:underline"><Phone className="h-3 w-3" aria-hidden />{v.driverPhone}</a>}
-                      </p>
-                    ) : (
-                      <p className="text-muted">No driver assigned</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <p className="mb-1 text-xs text-muted">Roster</p>
-                    {v.capacity ? <ProgressBar value={v._count.employees} total={v.capacity} label={`${v._count.employees} / ${v.capacity}`} tone={v._count.employees > v.capacity ? "error" : undefined} /> : <p className="tabular text-sm text-secondary">{v._count.employees} riders</p>}
-                  </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    <DocChip label="Registration" date={v.registrationExpiry} />
-                    <DocChip label="Insurance" date={v.insuranceExpiry} />
-                  </div>
-
-                  <div className="flex-1 border-t border-default pt-2 text-xs text-muted">
-                    {v.routes.length > 0 ? (
-                      <ul className="space-y-1">
-                        {v.routes.slice(0, 2).map((r) => (
-                          <li key={r.id} className="flex items-center gap-1.5">
-                            <CalendarClock className="h-3 w-3 shrink-0 text-subtle" aria-hidden />
-                            <Link href={`/transport/routes/${r.id}`} className="truncate text-secondary hover:underline">{r.name}</Link>
-                            {r.stops[0]?.pickupTime && <span className="tabular ml-auto shrink-0">{r.stops[0].pickupTime}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p>No routes yet.</p>
-                    )}
-                    {v.projects.length > 0 && <p className="mt-1.5 truncate">Serves {v.projects.map((p) => p.project.name).join(", ")}</p>}
-                  </div>
-
-                  <footer className="flex items-center justify-between">
-                    <Link href={`/transport/${v.id}`} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Open vehicle →</Link>
-                    <DeleteButton action={deleteVehicleAction} hiddenFields={{ vehicleId: v.id }} confirmMessage={`Delete vehicle "${v.plateNumber}"?${v._count.employees > 0 ? ` ${v._count.employees} employee(s) will be unassigned.` : ""}`} />
-                  </footer>
-                </article>
-              );
-            })}
-          </div>
+          <VehicleBrowser
+            canEdit={canEditVehicles}
+            initialStatus={statusFilter && STATUS[statusFilter] ? statusFilter : ""}
+            vehicles={vehicles.map((v) => ({
+              id: v.id,
+              plateNumber: v.plateNumber,
+              type: v.type,
+              capacity: v.capacity,
+              status: v.status,
+              driverName: v.driverName,
+              driverPhone: v.driverPhone,
+              riders: v._count.employees,
+              registrationExpiry: v.registrationExpiry ? v.registrationExpiry.toISOString().slice(0, 10) : null,
+              insuranceExpiry: v.insuranceExpiry ? v.insuranceExpiry.toISOString().slice(0, 10) : null,
+              routes: v.routes.map((r) => ({ id: r.id, name: r.name, time: r.stops[0]?.pickupTime ?? null })),
+              projects: v.projects.map((p) => p.project.name),
+            }))}
+          />
 
           {runs.length > 0 && (
             <section className="card overflow-hidden" aria-label="Pickup timetable">
