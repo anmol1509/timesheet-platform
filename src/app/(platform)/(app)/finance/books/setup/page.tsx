@@ -6,7 +6,7 @@ import { SetupCard } from "../setup-card";
 import { ImportWizard } from "./import-wizard";
 import { LockControl, OpeningBalancesEditor, RefreshControl } from "./controls";
 
-export const metadata = { title: "Books set-up" };
+export const metadata = { title: "Accounting settings" };
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -20,7 +20,7 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
 
 export default async function SetupPage() {
   const ctx = await getBooksContext();
-  const header = <PageHeader title="Set-up & import" icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/books" }, { label: "Books", href: "/finance/books" }, { label: "Set-up" }]} description="Bring balances over from Tally, Excel, Zoho Books or QuickBooks, and close finished periods." />;
+  const header = <PageHeader title="Settings" icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Settings" }]} description="Bring balances over from Tally, Excel, Zoho Books or QuickBooks, and close finished periods." />;
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header}<SetupCard isAdmin={ctx.isAdmin} /></div>;
   const branchId = ctx.branch.id;
   const open = iso(ctx.branch.booksOpeningDate!);
@@ -37,9 +37,26 @@ export default async function SetupPage() {
   const net = (id: string) => { const v = byAcc.get(id); return v ? Math.round((v.debit - v.credit) * 100) / 100 : 0; };
   // Opening balance equity is the balancing figure, so it is not typed in.
   const editable = accounts.filter((a) => a.tag !== "OPENING_EQUITY").map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: net(a.id) > 0 ? net(a.id) : 0, credit: net(a.id) < 0 ? -net(a.id) : 0 }));
+  const steps = [
+    { n: 1, title: "Start date", note: `${open} ✓`, state: "done" },
+    { n: 2, title: "Bring your balances", note: "Import from Tally, Excel, Zoho or QuickBooks", state: opening ? "done" : "now" },
+    { n: 3, title: "Review & go live", note: "Check the tie-out, then lock the opening", state: opening ? "now" : "next" },
+  ] as const;
   return (
     <div className="space-y-5">
       {header}
+      {!opening && (
+        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-5" aria-label="Get started">
+          <div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold text-primary">Get started</h2><p className="mt-0.5 text-xs text-muted">Shown until your opening balances are in.</p></div><span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">Step 2 of 3</span></div>
+          <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+            {steps.map((s) => (
+              <li key={s.n} className={`rounded-xl border p-3 text-sm ${s.state === "done" ? "border-emerald-200" : s.state === "now" ? "border-accent" : "border-border"}`}>
+                <p className="font-semibold text-primary">{s.n} · {s.title}</p><p className="text-xs text-muted">{s.note}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       {ctx.canWrite && (
         <Card title="Import from another system" hint="Upload the trial balance you exported. Each ledger is matched to an account here, or a new one is created. Check the tie-out before importing.">
           <ImportWizard chart={accounts.map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, tag: a.tag }))} openingDate={open} />

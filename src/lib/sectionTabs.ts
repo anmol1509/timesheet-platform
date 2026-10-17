@@ -44,14 +44,12 @@ export const SECTION_TABS: SectionTab[][] = [
       match: (p) => under("/finance/bills/ageing")(p) || under("/finance/bills/statement")(p),
     },
   ],
-  // The books: day book, chart of accounts, trial balance and set-up
+  // Accounting: transactions, bank, reports and settings
   [
-    { href: "/finance/books", label: "Day book", match: (p) => p === "/finance/books" },
-    { href: "/finance/books/accounts", label: "Accounts", match: (p) => under("/finance/books/accounts")(p) || under("/finance/books/ledger")(p) },
-    { href: "/finance/books/parties", label: "Parties", match: under("/finance/books/parties") },
+    { href: "/finance/books", label: "Transactions", match: (p) => p === "/finance/books" || under("/finance/books/parties")(p) },
     { href: "/finance/books/bank", label: "Bank", match: under("/finance/books/bank") },
-    { href: "/finance/books/reports", label: "Reports", match: under("/finance/books/reports") },
-    { href: "/finance/books/setup", label: "Set-up & import", match: under("/finance/books/setup") },
+    { href: "/finance/books/reports", label: "Reports", match: (p) => under("/finance/books/reports")(p) || under("/finance/books/accounts")(p) || under("/finance/books/ledger")(p) },
+    { href: "/finance/books/setup", label: "Settings", match: under("/finance/books/setup") },
   ],
   // Payroll
   [
