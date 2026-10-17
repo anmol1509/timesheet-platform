@@ -54,7 +54,7 @@ export function VoucherDialog({ accounts, minDate, label = "New voucher" }: { ac
               <button type="button" aria-label={`Remove line ${i + 1}`} disabled={lines.length <= 2} onClick={() => setLines((cur) => cur.filter((_, j) => j !== i))} className="rounded-md p-1.5 text-muted hover:bg-surface-hover disabled:opacity-30"><X className="h-4 w-4" aria-hidden /></button>
             </div>
           ))}
-          <button type="button" onClick={() => setLines((c) => [...c, blank()])} className="text-sm font-medium text-accent hover:underline">+ Add a line</button>
+          <button type="button" onClick={() => setLines((c) => [...c, blank()])} className="text-sm font-medium text-brand hover:underline">+ Add a line</button>
         </div>
         <div className="mt-4 flex items-center justify-between rounded-lg bg-[var(--surface-sunken)] px-3 py-2 text-sm">
           <span className="text-muted">Debit <span className="tabular font-medium text-primary">{aed(debit)}</span> · Credit <span className="tabular font-medium text-primary">{aed(credit)}</span></span>

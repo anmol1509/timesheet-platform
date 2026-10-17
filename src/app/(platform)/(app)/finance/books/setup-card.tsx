@@ -12,7 +12,7 @@ export function SetupCard({ isAdmin }: { isAdmin: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
-    <div className="mx-auto max-w-xl rounded-[var(--radius-card)] border border-border bg-surface p-8 text-center">
+    <div className="mx-auto max-w-xl rounded-[var(--radius-card)] border border-default bg-surface p-8 text-center">
       <BookOpen className="mx-auto h-8 w-8 text-muted" aria-hidden />
       <h2 className="mt-3 text-lg font-semibold text-primary">Start your accounting</h2>
       <p className="mt-1 text-sm text-muted">

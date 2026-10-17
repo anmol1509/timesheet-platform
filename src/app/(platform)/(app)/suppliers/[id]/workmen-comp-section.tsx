@@ -83,7 +83,7 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: {
       </p>
 
       {policies.length > 0 && (
-        <ul className="divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <ul className="divide-y divide-default overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           {policies.map((p) => {
             const st = status(p.expiryDate);
             return (
@@ -101,7 +101,7 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: {
                       aria-label={`Expiry date of ${p.filename}`}
                       defaultValue={dayOf(p.expiryDate)}
                       onBlur={(e) => { if (e.target.value !== dayOf(p.expiryDate)) run(() => setWorkmenCompExpiryAction(supplierId, p.id, e.target.value || null)); }}
-                      className="h-8 rounded-[var(--radius-control)] border border-border bg-surface px-2 text-xs"
+                      className="h-8 rounded-[var(--radius-control)] border border-default bg-surface px-2 text-xs"
                     />
                     <button
                       type="button"
@@ -124,7 +124,7 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: {
           onDragOver={(e) => { e.preventDefault(); setOver(true); }}
           onDragLeave={() => setOver(false)}
           onDrop={(e) => { e.preventDefault(); setOver(false); void addFiles([...e.dataTransfer.files]); }}
-          className={cn("flex flex-col items-center gap-2 rounded-[var(--radius-card)] border border-dashed px-4 py-6 text-center", over ? "border-accent bg-accent-soft" : "border-border")}
+          className={cn("flex flex-col items-center gap-2 rounded-[var(--radius-card)] border border-dashed px-4 py-6 text-center", over ? "border-brand bg-brand-soft" : "border-default")}
         >
           <Upload className="h-5 w-5 text-muted" aria-hidden />
           <p className="text-sm text-secondary">Drop one or several certificates here</p>

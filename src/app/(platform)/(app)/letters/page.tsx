@@ -1,6 +1,6 @@
-import { FileSignature, Hash, CalendarDays, FileStack } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
-import { StatTile } from "@/components/StatTile";
+import Link from "next/link";
+import { FileSignature } from "lucide-react";
+import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -9,6 +9,9 @@ import { askLabels, templateHtml, tokensIn } from "@/lib/letterHtml";
 import { formatLetterDate } from "@/lib/letterLayout";
 import { SALARY_KEYS, refLabel } from "@/lib/employeeLetter";
 import { IssueLetter } from "./issue-letter";
+import { IssuedList, type IssuedRow } from "./issued-list";
+import { AddDefaultsButton } from "../letter-templates/gallery";
+import { LETTER_PRESETS } from "@/lib/letterPresets";
 
 export const metadata = { title: "Employee letters" };
 
@@ -17,7 +20,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
-  const [templates, employees, issued, nocs, branch, totalIssued, issuedThisMonth, byTitle] = await Promise.all([
+  const [templates, employees, issued, nocs, branch, totalIssued, issuedThisMonth, byTitle, byTemplate] = await Promise.all([
     prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: { name: "asc" } }),
     prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
@@ -26,28 +29,35 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
     prisma.issuedLetter.count({ where: branchWhere(branchId) }),
     prisma.issuedLetter.count({ where: { ...branchWhere(branchId), createdAt: { gte: monthStart } } }),
     prisma.issuedLetter.groupBy({ by: ["title"], where: branchWhere(branchId), _count: { _all: true }, orderBy: { _count: { title: "desc" } }, take: 1 }),
+    prisma.issuedLetter.groupBy({ by: ["templateId"], where: { ...branchWhere(branchId), templateId: { not: null } }, _count: { _all: true } }),
   ]);
   // Employee letters and NOCs in one list, newest first.
-  const history = [
+  const history: IssuedRow[] = [
     ...issued.map((l) => ({ key: `l-${l.id}`, kind: "Letter" as const, ref: refLabel(l.refNo), who: l.employee.name, whoSub: l.employee.employeeIdNo, title: l.title, at: l.createdAt, by: l.issuedBy.name, href: `/api/letters/${l.id}/pdf` })),
     ...nocs.map((n) => ({ key: `n-${n.id}`, kind: "NOC" as const, ref: `NOC-${n.docNo}`, who: n.demandRequest.client.name, whoSub: `${n.demandRequest.project.name} · ${n._count.employees} worker${n._count.employees === 1 ? "" : "s"}`, title: n.template.title || n.template.name, at: n.createdAt, by: n.requestedBy?.name ?? "—", href: `/api/nocs/${n.id}?letterhead=1` })),
-  ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 60);
+  ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 60).map((h) => ({ ...h, at: formatLetterDate(h.at) }));
   const mostRequested = byTitle[0]?.title ?? "—";
+  // The letters used most come first as shortcuts; unused templates fill the row up to four.
+  const usage = new Map(byTemplate.map((u) => [u.templateId, u._count._all]));
+  const COMMON = ["salary certificate", "experience certificate", "employment certificate", "warning letter"];
+  const rank = (name: string) => { const i = COMMON.indexOf(name.toLowerCase()); return i < 0 ? COMMON.length : i; };
+  const popular = [...templates].sort((a, b) => (usage.get(b.id) ?? 0) - (usage.get(a.id) ?? 0) || rank(a.name) - rank(b.name) || a.name.localeCompare(b.name)).slice(0, 4).map((t) => ({ id: t.id, name: t.name, count: usage.get(t.id) ?? 0 }));
+  const employeePresets = LETTER_PRESETS.filter((p) => p.audience === "EMPLOYEE");
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Letters"
+      <HeroHeader
         icon={FileSignature}
-        description={<>Employee letters (salary certificates, experience letters, warnings and more) made from your templates, for the employees of your own company. NOCs for clients are made from a demand's documents and listed here too. Edit the wording under Administration → Letter Templates.</>}
+        title="Letters"
+        subtitle="Salary certificates, experience letters, warnings and more, on your letterhead."
+        pills={[
+          { label: "Issued this month", value: String(issuedThisMonth) },
+          { label: "All time", value: String(totalIssued) },
+          { label: "Templates", value: String(templates.length) },
+          { label: "Most requested", value: mostRequested },
+        ]}
+        actions={<Link href="/operations/nocs/new" className={heroButton()}>New NOC</Link>}
       />
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Letters issued" value={totalIssued} icon={FileStack} hint="all time" />
-        <StatTile label="Issued this month" value={issuedThisMonth} icon={CalendarDays} hint="since the 1st" />
-        <StatTile label="Templates available" value={templates.length} icon={Hash} />
-        <StatTile label="Most requested" value={mostRequested} icon={FileSignature} />
-      </div>
 
       {!branchId ? (
         <p className="text-sm text-muted">Pick a branch from the switcher to make letters.</p>
@@ -68,6 +78,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
             bottomMm: branch?.letterheadBottomMm ?? 35,
           }}
           employees={employees.map((e) => ({ id: e.id, name: e.name, idNo: e.employeeIdNo, trade: e.trade }))}
+          popular={popular}
           templates={templates.map((t) => {
             const html = templateHtml(t);
             return { id: t.id, name: t.name, asks: askLabels(html), usesSalary: tokensIn(html).some((k) => SALARY_KEYS.includes(k)) };
@@ -75,31 +86,17 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
         />
       )}
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-primary">Recently issued</h2>
-        {history.length === 0 ? (
-          <div className="card p-8 text-center text-sm text-muted">Nothing issued yet.</div>
-        ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
-                <tr><th className="px-4 py-3">Ref</th><th className="px-4 py-3">For</th><th className="px-4 py-3">Letter</th><th className="px-4 py-3">Issued</th><th className="px-4 py-3" /></tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border)]">
-                {history.map((h) => (
-                  <tr key={h.key}>
-                    <td className="px-4 py-3 font-medium whitespace-nowrap text-primary">{h.ref}</td>
-                    <td className="px-4 py-3"><p className="text-primary">{h.who}</p><p className="text-xs text-muted">{h.whoSub}</p></td>
-                    <td className="px-4 py-3 text-secondary"><span className={`mr-2 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${h.kind === "NOC" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-surface-sunken text-secondary"}`}>{h.kind}</span>{h.title}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-secondary">{formatLetterDate(h.at)}<p className="text-xs text-muted">by {h.by}</p></td>
-                    <td className="px-4 py-3 text-right"><a href={h.href} target="_blank" rel="noreferrer" className="btn btn-secondary">PDF</a></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {branchId && templates.length === 0 && (
+        <section className="card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-base font-semibold text-primary">Start with the ready-made set</h2><p className="mt-1 text-sm text-muted">{employeePresets.length} employee letters with the right fields already in place. Change any of them afterwards under Templates.</p></div>
+            <AddDefaultsButton primary label={`Add all ${LETTER_PRESETS.length}`} />
           </div>
-        )}
-      </section>
+          <ul className="mt-4 grid gap-1.5 text-sm text-secondary sm:grid-cols-2 lg:grid-cols-3">{employeePresets.map((p) => <li key={p.key}>{p.name}</li>)}</ul>
+        </section>
+      )}
+
+      <IssuedList rows={history} />
     </div>
   );
 }

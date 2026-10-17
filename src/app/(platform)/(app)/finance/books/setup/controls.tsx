@@ -22,10 +22,10 @@ export function OpeningBalancesEditor({ rows, canEdit, openingDate }: { rows: Ro
   const diff = Math.round((debit - credit) * 100) / 100;
   return (
     <div className="space-y-3">
-      <div className="max-h-96 overflow-auto rounded-[var(--radius-card)] border border-border">
+      <div className="max-h-96 overflow-auto rounded-[var(--radius-card)] border border-default">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-[var(--surface-sunken)] text-left text-xs text-muted"><tr><th className="px-3 py-2 font-medium">Account</th><th className="w-32 px-3 py-2 text-right font-medium">Debit</th><th className="w-32 px-3 py-2 text-right font-medium">Credit</th></tr></thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-default">
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="px-3 py-1.5"><span className="mr-2 font-mono text-xs text-muted">{r.code}</span>{r.name}</td>

@@ -36,17 +36,17 @@ export default async function PartiesPage({ searchParams }: { searchParams: Prom
       {header}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1.5" role="group" aria-label="Ledger type">
-          {(["CLIENT", "SUPPLIER"] as const).map((t) => <Link key={t} href={`/finance/books/parties?type=${t}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${type === t ? "border-accent bg-accent-soft text-accent" : "border-border text-secondary hover:bg-surface-hover"}`}>{t === "CLIENT" ? "Clients" : "Suppliers"}</Link>)}
+          {(["CLIENT", "SUPPLIER"] as const).map((t) => <Link key={t} href={`/finance/books/parties?type=${t}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${type === t ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{t === "CLIENT" ? "Clients" : "Suppliers"}</Link>)}
         </div>
         <Link href={`/finance/books/parties${sp.all === "1" ? `?type=${type}` : qs({ all: "1" })}`} className="text-xs text-muted hover:underline">{sp.all === "1" ? "Only those with a balance" : "Include settled"}</Link>
         <form className="ml-auto"><input type="hidden" name="type" value={type} /><input name="q" defaultValue={sp.q ?? ""} placeholder="Search" aria-label="Search" className="input h-8 w-52 text-sm" /></form>
       </div>
-      <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4 text-sm">
+      <div className="rounded-[var(--radius-card)] border border-default bg-surface p-4 text-sm">
         <span className="text-muted">{control?.name ?? tag} in total </span><span className="tabular font-semibold text-primary">{aed(total)}</span>
         {unassigned !== 0 && <span className="ml-3 text-warning">{aed(Math.abs(unassigned))} {unassigned > 0 ? "not assigned to anyone yet (opening balance)" : "assigned beyond the account total"}</span>}
       </div>
       {rows.length === 0 ? <p className="text-sm text-muted">Nothing owed.</p> : (
-        <ul className="divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface text-sm">
+        <ul className="divide-y divide-default overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface text-sm">
           {rows.map((p) => <li key={p.id}><Link href={`/finance/books/parties/${type}/${p.id}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-surface-hover"><span className="truncate text-primary">{p.name}</span><span className={`tabular ${p.balance < 0 ? "text-warning" : ""}`}>{aed(p.balance)}</span></Link></li>)}
         </ul>
       )}

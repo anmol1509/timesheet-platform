@@ -27,10 +27,10 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
     <div className="space-y-5">
       <PageHeader title={`${account.code} · ${account.name}`} icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Chart of accounts", href: "/finance/books/reports?view=accounts" }, { label: account.name }]} description={`Balance ${aed(closing)}`} />
       {rows.length === 0 ? <p className="text-sm text-muted">Nothing has been posted to this account yet.</p> : (
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <div className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-sunken)] text-left text-xs text-muted"><tr><th className="px-4 py-2 font-medium">Date</th><th className="px-4 py-2 font-medium">No.</th><th className="px-4 py-2 font-medium">Narration</th><th className="px-4 py-2 text-right font-medium">Debit</th><th className="px-4 py-2 text-right font-medium">Credit</th><th className="px-4 py-2 text-right font-medium">Balance</th></tr></thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-default">
               {rows.map((r, i) => (
                 <tr key={i}>
                   <td className="whitespace-nowrap px-4 py-2">{fmtDate(r.date)}</td>

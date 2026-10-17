@@ -80,9 +80,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       </div>
 
       {(unmatched > 0 || canLock) && (
-        <div className="divide-y divide-border overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface text-sm">
+        <div className="divide-y divide-default overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface text-sm">
           {unmatched > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{unmatched} bank {unmatched === 1 ? "line is" : "lines are"} waiting to be matched</b></span><Link href="/finance/books/bank" className="rounded-lg border border-border px-3 py-1 text-xs font-medium text-primary hover:bg-surface-hover">Review</Link></div>
+            <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{unmatched} bank {unmatched === 1 ? "line is" : "lines are"} waiting to be matched</b></span><Link href="/finance/books/bank" className="rounded-lg border border-default px-3 py-1 text-xs font-medium text-primary hover:bg-surface-hover">Review</Link></div>
           )}
           {canLock && (
             <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-indigo-500" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{lockCandidate.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })} is ready to lock</b><span className="text-muted"> · it ended over 30 days ago</span></span><LockNow date={iso(lockCandidate)} /></div>
@@ -93,7 +93,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <form className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Type">
           {TYPES.map((t) => (
-            <Link key={t.k} href={`/finance/books${t.k || q ? `?${new URLSearchParams({ ...(t.k ? { type: t.k } : {}), ...(q ? { q } : {}) })}` : ""}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${type === t.k ? "border-accent bg-accent-soft text-accent" : "border-border text-secondary hover:bg-surface-hover"}`}>{t.l}</Link>
+            <Link key={t.k} href={`/finance/books${t.k || q ? `?${new URLSearchParams({ ...(t.k ? { type: t.k } : {}), ...(q ? { q } : {}) })}` : ""}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${type === t.k ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{t.l}</Link>
           ))}
         </div>
         {type && <input type="hidden" name="type" value={type} />}
@@ -103,12 +103,12 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       {rows.length === 0 ? (
         <EmptyState title="Nothing here yet" description="Transactions appear as invoices, bills, payments and expenses are recorded, or when you add an entry." />
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <div className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-sunken)] text-left text-xs text-muted">
               <tr><th className="px-4 py-2 font-medium">Date</th><th className="px-4 py-2 font-medium">What happened</th><th className="px-4 py-2 font-medium">Type</th><th className="px-4 py-2 text-right font-medium">Money in</th><th className="px-4 py-2 text-right font-medium">Money out</th><th className="w-12" /></tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-default">
               {rows.map(({ e, flow }) => {
                 const void_ = e.status === "VOID";
                 const money = (d: "in" | "out") => (flow.direction === d ? <span className={`tabular ${d === "in" ? "text-success" : "text-error"} ${flow.cash ? "" : "opacity-55"}`}>{aed(flow.amount)}</span> : null);
@@ -142,7 +142,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
               })}
             </tbody>
           </table>
-          <p className="border-t border-border px-4 py-2 text-xs text-muted">Faded amounts haven&apos;t moved any cash yet (an invoice or bill not yet paid). Select a line to see the debit and credit behind it.{entries.length === 200 ? " Showing the latest 200." : ""}</p>
+          <p className="border-t border-default px-4 py-2 text-xs text-muted">Faded amounts haven&apos;t moved any cash yet (an invoice or bill not yet paid). Select a line to see the debit and credit behind it.{entries.length === 200 ? " Showing the latest 200." : ""}</p>
         </div>
       )}
     </div>

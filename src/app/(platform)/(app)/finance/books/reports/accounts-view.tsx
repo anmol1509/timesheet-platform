@@ -19,9 +19,9 @@ export async function AccountsView({ branchId, canWrite, showHidden }: { branchI
         if (list.length === 0) return null;
         const total = list.reduce((s, a) => s + normalBalance(a), 0);
         return (
-          <section key={t} className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+          <section key={t} className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
             <div className="flex items-center justify-between bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary"><span>{TYPE_LABEL[t]}</span><span className="tabular">{aed(total)}</span></div>
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-default">
               {list.map((a) => (
                 <li key={a.id} className={`flex items-center gap-3 px-4 py-2 text-sm ${a.isActive ? "" : "opacity-50"}`}>
                   <span className="w-14 shrink-0 font-mono text-xs text-muted">{a.code}</span>

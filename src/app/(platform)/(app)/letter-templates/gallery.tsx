@@ -43,11 +43,11 @@ export function NewTemplateButton({ variant = "primary" }: { variant?: "primary"
   );
 }
 
-export function AddDefaultsButton() {
+export function AddDefaultsButton({ label = "Add ready-made templates", primary }: { label?: string; primary?: boolean }) {
   const [pending, start] = useTransition();
   return (
-    <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => start(async () => { await addMissingDefaultsAction(); })}>
-      <Sparkles className="h-4 w-4" aria-hidden /> {pending ? "Adding…" : "Add ready-made templates"}
+    <button type="button" className={primary ? "btn btn-primary" : "btn btn-secondary"} disabled={pending} onClick={() => start(async () => { await addMissingDefaultsAction(); })}>
+      <Sparkles className="h-4 w-4" aria-hidden /> {pending ? "Adding…" : label}
     </button>
   );
 }

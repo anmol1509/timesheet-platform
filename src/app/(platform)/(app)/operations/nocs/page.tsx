@@ -1,8 +1,7 @@
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import Link from "next/link";
-import { FileText, Plus, Users, CalendarClock, CheckCircle2 } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
-import { StatTile } from "@/components/StatTile";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -27,41 +26,24 @@ export default async function NocsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageHeader
-          title="NOCs"
-          icon={FileText}
-          description={<>No-objection and mobilization letters generated from Demand Requests.</>}
-        />
-        <Link
-          href="/operations/nocs/new"
-          className="btn btn-primary"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-
-          New NOC
-        </Link>
-      </div>
-
-      {nocs.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatTile label="Total NOCs" value={nocs.length} icon={FileText} />
-          <StatTile
-            label="Pending"
-            value={nocs.filter((n) => n.status !== "Mobilization Complete").length}
-            icon={CalendarClock}
-            tone={nocs.some((n) => n.status !== "Mobilization Complete") ? "warning" : "default"}
-          />
-          <StatTile label="Mobilization complete" value={nocs.filter((n) => n.status === "Mobilization Complete").length} icon={CheckCircle2} />
-          <StatTile label="Workers covered" value={nocs.reduce((n, x) => n + x._count.employees, 0)} icon={Users} />
-        </div>
-      )}
+      <HeroHeader
+        icon={FileText}
+        title="NOCs"
+        subtitle="No-objection and mobilization letters, made from a client's demand request."
+        pills={nocs.length === 0 ? [] : [
+          { label: "Total", value: String(nocs.length) },
+          { label: "Pending", value: String(nocs.filter((n) => n.status !== "Mobilization Complete").length), warn: nocs.filter((n) => n.status !== "Mobilization Complete").length > 0 },
+          { label: "Mobilization complete", value: String(nocs.filter((n) => n.status === "Mobilization Complete").length) },
+          { label: "Workers covered", value: String(nocs.reduce((n, x) => n + x._count.employees, 0)) },
+        ]}
+        actions={<Link href="/operations/nocs/new" className={heroButton(true)}><Plus className="h-4 w-4" aria-hidden /> New NOC</Link>}
+      />
 
       {nocs.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="No NOCs yet"
-          description="Generate No Objection Certificates and other letters for employees from your saved letter templates."
+          description="A NOC is made from a client's demand request: pick the demand, the workers and the wording, and the letter is numbered and saved here."
           action={
             <Link href="/operations/nocs/new" className="btn btn-primary btn-sm">New NOC</Link>
           }

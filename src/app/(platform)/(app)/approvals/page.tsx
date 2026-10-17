@@ -1,6 +1,7 @@
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { CheckCheck } from "lucide-react";
 import { APPROVAL_KINDS, allowedKinds, countByKind, filterApprovals, loadApprovals, type ApprovalKind } from "@/lib/approvals";
+import { HeroHeader } from "@/components/HeroHeader";
 import { AgingHistogram } from "@/components/AgingHistogram";
 import { Insights } from "@/components/ListSummary";
 import { ApprovalsBoard, type BoardItem } from "./approvals-board";
@@ -34,30 +35,17 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-5">
-      <header className="relative overflow-hidden rounded-[var(--radius-overlay,20px)] px-5 py-5 text-white sm:px-7 sm:py-6" style={{ background: "linear-gradient(135deg,#43359f 0%,#5b49d8 55%,#7a4fe3 100%)" }}>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15"><CheckCheck className="h-5 w-5" aria-hidden /></span>
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight">Approvals</h1>
-            <p className="text-sm text-white/80">{all.length === 0 ? "Nothing is waiting for a decision." : "Decide here, or open an item to see it in full."}</p>
-          </div>
-        </div>
-        {all.length > 0 && (
-          <dl className="mt-4 flex flex-wrap gap-2">
-            {[
-              { l: "Waiting", v: String(all.length) },
-              { l: "Value", v: value > 0 ? `AED ${value.toLocaleString("en-AE", { maximumFractionDigits: 0 })}` : "—" },
-              { l: "Longest wait", v: oldest <= 0 ? "today" : `${oldest} day${oldest === 1 ? "" : "s"}` },
-              { l: "Overdue (7d+)", v: String(overdue), warn: overdue > 0 },
-            ].map((c) => (
-              <div key={c.l} className={`flex items-baseline gap-2 rounded-full border px-3 py-1 ${c.warn ? "border-amber-200/60 bg-amber-300/25" : "border-white/20 bg-white/10"}`}>
-                <dt className="text-xs text-white/75">{c.l}</dt>
-                <dd className="tabular text-sm font-semibold">{c.v}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </header>
+      <HeroHeader
+        icon={CheckCheck}
+        title="Approvals"
+        subtitle={all.length === 0 ? "Nothing is waiting for a decision." : "Decide here, or open an item to see it in full."}
+        pills={all.length === 0 ? [] : [
+          { label: "Waiting", value: String(all.length) },
+          { label: "Value", value: value > 0 ? `AED ${value.toLocaleString("en-AE", { maximumFractionDigits: 0 })}` : "—" },
+          { label: "Longest wait", value: oldest <= 0 ? "today" : `${oldest} day${oldest === 1 ? "" : "s"}` },
+          { label: "Overdue (7d+)", value: String(overdue), warn: overdue > 0 },
+        ]}
+      />
       {kinds.length === 0 ? (
         <div className="empty-state"><p className="text-sm text-muted">Your role doesn&apos;t include approving anything. If you should, ask an admin to add approval permissions to your role.</p></div>
       ) : (
