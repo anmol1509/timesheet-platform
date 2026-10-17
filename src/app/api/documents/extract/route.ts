@@ -120,7 +120,7 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
           type: "string" as const,
           description: "IDENTITY NUMBER — the residency file number, e.g. 301/2026/2/82612",
         },
-        unifiedNo: { type: "string" as const, description: "UNIFIED NO" },
+        unifiedNo: { type: "string" as const, description: "The number printed next to the label UNIFIED NO on this form; empty if it is not printed" },
         establishment: {
           type: "string" as const,
           description: "Establishment under 'Submitted By', in English",
@@ -177,7 +177,7 @@ const COMBINED_SCHEMA = {
       type: "string" as const,
       description: "Sponsor named on the visa or residency issuance page, in English",
     },
-    unifiedNo: { type: "string" as const, description: "UNIFIED NO / U.I.D." },
+    unifiedNo: { type: "string" as const, description: "The number printed next to the label UNIFIED NO / U.I.D. on a visa page or an ICP residency / registration form. NEVER the number under the chip of an Emirates ID card (that is the card number). Empty if no such label is printed." },
     mobileNumber: { type: "string" as const, description: "Phone number as printed" },
     photoPage: {
       type: "string" as const,
@@ -216,7 +216,7 @@ const COMBINED_SCHEMA = {
 };
 
 const COMBINED_PROMPT =
-  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. In photoPage, give the 1-based page number of any page that is mostly a portrait headshot of the worker, so it can be used as their profile picture; leave it empty if no page is a standalone photograph. Return an empty string for anything you cannot read with confidence — never guess.";
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. In photoPage, give the 1-based page number of any page that is mostly a portrait headshot of the worker, so it can be used as their profile picture; leave it empty if no page is a standalone photograph. The Unified number (UID) is only the number printed beside a UNIFIED NO / U.I.D. label on a visa page or an ICP form. The number printed below the chip on the front of an Emirates ID card is the card number, not the UID: leave unifiedNo empty unless a UNIFIED NO / U.I.D. label is printed. Return an empty string for anything you cannot read with confidence — never guess.";
 
 export type ExtractedDocumentFields = {
   name?: string | null;
@@ -252,8 +252,13 @@ export type ExtractedDocumentFields = {
  * this catches, whichever model is behind DOCUMENT_MODEL.
  */
 function withConsistentDocumentsFound(
-  parsed: ExtractedDocumentFields
+  parsed: ExtractedDocumentFields,
+  docType?: string
 ): ExtractedDocumentFields {
+  // The Unified number is printed on a visa page or an ICP form. An Emirates ID card only has a card number under
+  // the chip, which is easy to mistake for it, so a UID is kept only when one of those documents was read.
+  const printsUid = docType === "VISA" || docType === "RESIDENCY_ISSUANCE" || !!parsed.documentsFound?.some((t) => t === "VISA" || t === "RESIDENCY_ISSUANCE");
+  if (parsed.unifiedNo && !printsUid) parsed = { ...parsed, unifiedNo: "" };
   if (!parsed.documentsFound?.length) return parsed;
 
   const evidence: Record<string, string | null | undefined> = {
@@ -355,7 +360,7 @@ export async function POST(request: Request) {
     }
 
     const parsed = JSON.parse(textBlock.text) as ExtractedDocumentFields;
-    return NextResponse.json(withConsistentDocumentsFound(parsed));
+    return NextResponse.json(withConsistentDocumentsFound(parsed, docType));
   } catch (e) {
     // Map provider failures onto something a user can act on, and keep the raw
     // SDK message in the server log rather than putting it on screen.

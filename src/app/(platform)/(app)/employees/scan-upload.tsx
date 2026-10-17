@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ScanDrop } from "@/components/quick-view/ScanDrop";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { shrinkImage } from "@/lib/compressImage";
@@ -46,13 +46,17 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
 }) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
 
   async function run(picked: File[]) {
     if (picked.length === 0) return;
     setError(null);
+    const ac = new AbortController();
+    abort.current = ac;
     const out: ScanOutcome = { applied: [], conflicts: [], files: 0, unread: 0, reason: null, photo: false };
     try {
       for (const [n, raw] of picked.entries()) {
+        if (ac.signal.aborted) break;
         setStatus(picked.length > 1 ? `Reading ${n + 1} of ${picked.length}…` : "Reading the document…");
         const file = await shrinkImage(raw);
         if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`); continue; }
@@ -62,7 +66,8 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
           const body = new FormData();
           body.append("file", file);
           body.append("docType", docType);
-          const res = await fetch("/api/documents/extract", { method: "POST", body }).catch(() => null);
+          const res = await fetch("/api/documents/extract", { method: "POST", body, signal: ac.signal }).catch(() => null);
+          if (ac.signal.aborted) break;
           const payload = res ? await res.json().catch(() => null) : null;
           if (res?.ok && payload) fields = payload as ExtractedDocumentFields;
           else { out.unread++; out.reason = (payload && typeof payload.error === "string" && payload.error) || "The document couldn't be read."; }
@@ -111,8 +116,9 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
     } finally {
       setStatus(null);
     }
+    if (ac.signal.aborted) setError(out.files > 0 ? `Stopped. ${out.files} ${out.files === 1 ? "file was" : "files were"} already saved.` : "Cancelled. Nothing was saved.");
     if (out.files > 0) onDone(out);
   }
 
-  return <ScanDrop title={title} hint={hint} compact={compact} multiple={multiple} status={status} error={error} onFiles={(f) => void run(f)} />;
+  return <ScanDrop title={title} hint={hint} compact={compact} multiple={multiple} status={status} error={error} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />;
 }

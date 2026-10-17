@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DrawerFrame } from "@/components/quick-view/DrawerFrame";
 import { ScanDrop } from "@/components/quick-view/ScanDrop";
@@ -270,13 +270,17 @@ function GapRow({ gap, save }: { gap: CompanyGap; save: Save }) {
 function CompanyScan({ adapter, id, onDone, title, hint }: { adapter: CompanyAdapter; id: string; onDone: (o: CompanyScanOutcome) => void; title: string; hint: string }) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const abort = useRef<AbortController | null>(null);
 
   async function run(files: File[]) {
     if (files.length === 0) return;
     setError(null);
+    const ac = new AbortController();
+    abort.current = ac;
     const out: CompanyScanOutcome = { applied: [], conflicts: [], files: 0, unread: 0, reason: null };
     try {
       for (const [n, raw] of files.entries()) {
+        if (ac.signal.aborted) break;
         setStatus(files.length > 1 ? `Reading ${n + 1} of ${files.length}…` : "Reading the document…");
         const file = await shrinkImage(raw);
         if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`); continue; }
@@ -284,7 +288,8 @@ function CompanyScan({ adapter, id, onDone, title, hint }: { adapter: CompanyAda
         if (file.type.startsWith("image/") || file.type === "application/pdf") {
           const body = new FormData();
           body.append("file", file);
-          const res = await fetch("/api/documents/extract-company", { method: "POST", body }).catch(() => null);
+          const res = await fetch("/api/documents/extract-company", { method: "POST", body, signal: ac.signal }).catch(() => null);
+          if (ac.signal.aborted) break;
           const payload = res ? await res.json().catch(() => null) : null;
           if (res?.ok && payload) fields = payload as ExtractedCompanyFields;
           else { out.unread++; out.reason = (payload && typeof payload.error === "string" && payload.error) || "The document couldn't be read."; }
@@ -308,8 +313,9 @@ function CompanyScan({ adapter, id, onDone, title, hint }: { adapter: CompanyAda
     } finally {
       setStatus(null);
     }
+    if (ac.signal.aborted) setError(out.files > 0 ? `Stopped. ${out.files} ${out.files === 1 ? "file was" : "files were"} already saved.` : "Cancelled. Nothing was saved.");
     if (out.files > 0) onDone(out);
   }
 
-  return <ScanDrop title={title} hint={hint} compact multiple status={status} error={error} onFiles={(f) => void run(f)} />;
+  return <ScanDrop title={title} hint={hint} compact multiple status={status} error={error} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />;
 }
