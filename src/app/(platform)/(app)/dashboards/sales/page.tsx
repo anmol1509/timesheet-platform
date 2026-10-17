@@ -14,6 +14,8 @@ import { Panel } from "@/components/DashboardPanel";
 import { StatusDonut, CategoryDonut } from "@/components/Donut";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
 export default async function SalesDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
@@ -68,6 +70,10 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
       ? Math.round((convertedCount / totalQuotations) * 100)
       : 0;
 
+  const attention: AttentionItem[] = [];
+  if (expiringSoon.length > 0) attention.push({ key: "exp", tone: "amber", icon: WarnIcon, title: `${expiringSoon.length} quotation${expiringSoon.length === 1 ? "" : "s"} about to lapse`, sub: expiringSoon.slice(0, 2).map((q) => `${q.quotationNumber} — ${q.client.name}`).join(", "), href: "/sales/quotations", action: "Follow up" });
+  if (openEnquiries > 0) attention.push({ key: "enq", tone: "blue", icon: ListIcon, title: `${openEnquiries} enquir${openEnquiries === 1 ? "y" : "ies"} awaiting a quote`, sub: "Still open", href: "/sales/enquiries", action: "Quote" });
+
   const hiddenSections = await getHiddenSections(user.id, "sales");
 
   return (
@@ -96,9 +102,9 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
           },
           {
             label: "Converted",
-            value: convertedCount,
+            value: conversionPct,
             suffix: "%",
-            sub: `${conversionPct}% conversion`,
+            sub: `${convertedCount} of ${totalQuotations} quotations`,
             href: "/sales/quotations",
             meter: conversionPct,
           },
@@ -114,6 +120,8 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

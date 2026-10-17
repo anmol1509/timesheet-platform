@@ -15,6 +15,8 @@ import { StatusDonut } from "@/components/Donut";
 import { BarList } from "@/components/BarList";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
 export default async function BillingDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
@@ -69,6 +71,12 @@ export default async function BillingDashboardPage({ searchParams }: { searchPar
   const overdueCount =
     statusBreakdown.find((s) => s.status === "OVERDUE")?._count._all ?? 0;
 
+  const attention: AttentionItem[] = [];
+  const overdueSum = overdueInvoices.reduce((n, i) => n + (i.totalAmount ?? 0), 0);
+  if (overdueCount > 0) attention.push({ key: "overdue", tone: "red", icon: WarnIcon, title: `${overdueCount} invoice${overdueCount === 1 ? "" : "s"} overdue`, sub: `AED ${Math.round(overdueSum).toLocaleString()}${overdueInvoices.length < overdueCount ? "+" : ""} past due`, href: "/invoices/history", action: "Chase", tag: "Overdue" });
+  const unpaid = outstanding._sum.totalAmount ?? 0;
+  if (unpaid > 0) attention.push({ key: "unpaid", tone: "blue", icon: ListIcon, title: `AED ${Math.round(unpaid).toLocaleString()} unpaid in this period`, sub: "Invoices issued but not settled", href: "/invoices/history", action: "Open" });
+
   const hiddenSections = await getHiddenSections(user.id, "billing");
 
   return (
@@ -111,6 +119,8 @@ export default async function BillingDashboardPage({ searchParams }: { searchPar
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

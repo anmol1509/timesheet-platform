@@ -16,6 +16,8 @@ import { StatusDonut } from "@/components/Donut";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon } from "lucide-react";
 
 export default async function BusinessPartnersDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
@@ -68,6 +70,10 @@ export default async function BusinessPartnersDashboardPage() {
     }),
   ]);
 
+  const attention: AttentionItem[] = [];
+  if (pendingTotal > 0) attention.push({ key: "pending", tone: "amber", icon: WarnIcon, title: `${pendingTotal} supplier${pendingTotal === 1 ? "" : "s"} awaiting approval`, sub: pendingSuppliers.slice(0, 3).map((s) => s.name).join(", "), href: "/suppliers", action: "Review" });
+  if (blacklistedCount > 0) attention.push({ key: "black", tone: "blue", icon: WarnIcon, title: `${blacklistedCount} blacklisted supplier${blacklistedCount === 1 ? "" : "s"}`, sub: "Blocked from new work", href: "/suppliers", action: "Open" });
+
   const hiddenSections = await getHiddenSections(user.id, "business-partners");
 
   return (
@@ -110,6 +116,8 @@ export default async function BusinessPartnersDashboardPage() {
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

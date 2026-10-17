@@ -15,6 +15,8 @@ import { Badge } from "@/components/Badge";
 import { getLpoAlerts } from "@/lib/lpoAlerts";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
 export default async function ProjectsDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
@@ -41,6 +43,11 @@ export default async function ProjectsDashboardPage() {
 
   const expiringLpos = lpoAlerts.filter((a) => a.kind === "EXPIRING");
   const lowBalanceLpos = lpoAlerts.filter((a) => a.kind === "LOW_BALANCE");
+
+  const attention: AttentionItem[] = [];
+  if (expiringLpos.length > 0) attention.push({ key: "lpo-exp", tone: "red", icon: WarnIcon, title: `${expiringLpos.length} LPO${expiringLpos.length === 1 ? "" : "s"} expiring or expired`, sub: expiringLpos.slice(0, 2).map((a) => `${a.lpoNumber} — ${a.projectName}`).join(", "), href: "/projects", action: "Review" });
+  if (lowBalanceLpos.length > 0) attention.push({ key: "lpo-low", tone: "amber", icon: WarnIcon, title: `${lowBalanceLpos.length} LPO${lowBalanceLpos.length === 1 ? "" : "s"} with low balance`, sub: lowBalanceLpos.slice(0, 2).map((a) => `${a.lpoNumber} — ${a.projectName}`).join(", "), href: "/projects", action: "Review" });
+  if (onHoldCount > 0) attention.push({ key: "hold", tone: "blue", icon: ListIcon, title: `${onHoldCount} project${onHoldCount === 1 ? "" : "s"} on hold`, sub: "Paused, no new work is booked", href: "/projects", action: "Open" });
 
   const hiddenSections = await getHiddenSections(user.id, "projects");
 
@@ -86,6 +93,8 @@ export default async function ProjectsDashboardPage() {
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

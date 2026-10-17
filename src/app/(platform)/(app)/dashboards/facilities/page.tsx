@@ -13,6 +13,8 @@ import { Panel } from "@/components/DashboardPanel";
 import { StatusDonut } from "@/components/Donut";
 import { OccupancyRing } from "@/components/OccupancyRing";
 import { BarList, type BarListTone } from "@/components/BarList";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon, BedDouble as BedIcon } from "lucide-react";
 
 export default async function FacilitiesDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
@@ -46,6 +48,13 @@ export default async function FacilitiesDashboardPage() {
   const occupancyPct =
     totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
   const totalVehicles = vehicles.reduce((sum, v) => sum + v._count._all, 0);
+
+  const attention: AttentionItem[] = [];
+  const fullCamps = campOccupancy.filter((c) => c.pct >= 90);
+  const lapsedVehicles = await prisma.vehicle.count({ where: { ...branchWhere(branchId), status: { not: "INACTIVE" }, OR: [{ registrationExpiry: { lt: new Date() } }, { insuranceExpiry: { lt: new Date() } }] } });
+  if (lapsedVehicles > 0) attention.push({ key: "veh", tone: "red", icon: WarnIcon, title: `${lapsedVehicles} vehicle${lapsedVehicles === 1 ? "" : "s"} with expired papers`, sub: "Registration or insurance has lapsed", href: "/transport", action: "Review", tag: "Expired" });
+  if (awaitingBed > 0) attention.push({ key: "bed", tone: "amber", icon: BedIcon, title: `${awaitingBed} worker${awaitingBed === 1 ? "" : "s"} waiting for a bed`, sub: "Checked in, no bed yet", href: "/accommodation/bed-allocation", action: "Assign beds" });
+  if (fullCamps.length > 0) attention.push({ key: "full", tone: "amber", icon: BedIcon, title: `${fullCamps.length} camp${fullCamps.length === 1 ? " is" : "s are"} almost full`, sub: fullCamps.map((c) => `${c.name} ${c.pct}%`).join(", "), href: "/accommodation/camps", action: "Open camps" });
 
   const hiddenSections = await getHiddenSections(user.id, "facilities");
 
@@ -90,6 +99,8 @@ export default async function FacilitiesDashboardPage() {
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

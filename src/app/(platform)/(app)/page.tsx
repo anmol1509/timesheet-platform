@@ -14,7 +14,7 @@ import { getEntityCounts } from "@/lib/entityCounts";
 import { getDeploymentPipeline } from "@/lib/deploymentPipeline";
 import { getRecentActivity } from "@/lib/recentActivity";
 import { resolvePeriod } from "@/lib/dashboardPeriod";
-import { getApprovalsSummary, getAttendanceToday, getDemandFill, getMoneySnapshot, getPayrollStatus } from "@/lib/dashboardExtras";
+import { getApprovalsSummary, getAttendanceToday, getDemandFill, getMoneySnapshot, getOperationsSnapshot, getPayrollStatus } from "@/lib/dashboardExtras";
 import { can } from "@/lib/permissions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -121,12 +121,22 @@ export default async function DashboardPage() {
   const canInvoices = can(subject, "billing", "view");
   const canBills = can(subject, "finance", "view");
   const approvalScope = { branchId, isSuperAdmin: user.role === "SUPER_ADMIN", subject, role: user.role };
-  const [approvalsSummary, attendanceToday, payrollStatus, money, demandFill] = await Promise.all([
+  const [approvalsSummary, attendanceToday, payrollStatus, money, demandFill, operations] = await Promise.all([
     wantsToday ? getApprovalsSummary(approvalScope).catch(() => null) : null,
     wantsToday && can(subject, "timesheets", "view") ? getAttendanceToday(branchId).catch(() => null) : null,
     (wantsToday || wantsMoney) && can(subject, "payroll", "view") ? getPayrollStatus(branchId).then((p) => ({ run: p })).catch(() => null) : null,
     (wantsToday || wantsMoney) && (canInvoices || canBills) ? getMoneySnapshot(branchId, { invoices: canInvoices, bills: canBills }).catch(() => null) : null,
     wantsToday && can(subject, "demand", "view") ? getDemandFill(branchId).catch(() => null) : null,
+    !off.has("today") || !off.has("business")
+      ? getOperationsSnapshot(branchId, user.id, {
+          sales: can(subject, "sales", "view"),
+          onboarding: can(subject, "onboarding", "view"),
+          employees: can(subject, "workforce.employees", "view"),
+          transport: can(subject, "facilities.transport", "view"),
+          inventory: can(subject, "facilities.inventory", "view"),
+          camps: can(subject, "facilities.camps", "view"),
+        }).catch(() => null)
+      : null,
   ]);
 
   // Headcount at the end of each of the last six months (records only ever
@@ -211,6 +221,7 @@ export default async function DashboardPage() {
     payrollStatus,
     money,
     demandFill,
+    operations,
     activeProjects: activeProjects.map((p) => ({ id: p.id, name: p.name, code: p.code, clientName: p.client.name, workers: p._count.employees, required: p.noOfEmployeesRequired })),
   };
 

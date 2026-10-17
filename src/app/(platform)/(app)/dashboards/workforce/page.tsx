@@ -20,6 +20,8 @@ import { branchWhere } from "@/lib/branch";
 import { BarList } from "@/components/BarList";
 import { Treemap } from "@/components/Treemap";
 import { AlertTriangle, Globe2, HardHat, Users } from "lucide-react";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
 export default async function WorkforceDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
@@ -63,6 +65,12 @@ export default async function WorkforceDashboardPage() {
 
   const benchCount = employeeCount - onWorkCount;
   const expiredCount = alerts.filter((a) => a.days < 0).length;
+
+  const attention: AttentionItem[] = [];
+  if (expiredCount > 0) attention.push({ key: "expired", tone: "red", icon: WarnIcon, title: `${expiredCount} document${expiredCount === 1 ? "" : "s"} expired`, sub: "Renew before the worker's next deployment", href: "/employees/renewals", action: "Review", tag: "Expired" });
+  const expiringCount = alerts.length - expiredCount;
+  if (expiringCount > 0) attention.push({ key: "expiring", tone: "amber", icon: WarnIcon, title: `${expiringCount} document${expiringCount === 1 ? "" : "s"} expiring within 30 days`, sub: "Start the renewals now", href: "/employees/renewals", action: "Review" });
+  if (benchCount > 0) attention.push({ key: "bench", tone: "blue", icon: ListIcon, title: `${benchCount} worker${benchCount === 1 ? "" : "s"} on the bench`, sub: "Not linked to a project", href: "/employees?filter=bench", action: "View bench" });
 
   const hiddenSections = await getHiddenSections(user.id, "workforce");
 
@@ -109,6 +117,8 @@ export default async function WorkforceDashboardPage() {
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="runway" hidden={hiddenSections}>
       <Panel

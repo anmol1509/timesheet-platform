@@ -11,8 +11,10 @@ import {
   ClipboardList,
   FolderKanban,
   Users,
+  Truck,
+  Package,
 } from "lucide-react";
-import type { ApprovalsSummary, AttendanceToday, DemandFill, MoneySnapshot, PayrollStatus } from "@/lib/dashboardExtras";
+import type { ApprovalsSummary, AttendanceToday, DemandFill, MoneySnapshot, OperationsSnapshot, PayrollStatus } from "@/lib/dashboardExtras";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
 import { DashboardKpiCards } from "@/components/DashboardKpiCards";
 import { Badge } from "@/components/Badge";
@@ -41,6 +43,7 @@ import type { EntityCounts } from "@/lib/entityCounts";
 import type { DeploymentStage } from "@/lib/deploymentPipeline";
 import type { RecentActivityRow } from "@/lib/recentActivity";
 import { cn } from "@/lib/cn";
+import { AttentionRow, type AttentionItem as ActionItem } from "@/components/dashboard/AttentionList";
 
 function formatMonthLabel(month: string) {
   const [y, m] = month.split("-");
@@ -94,6 +97,7 @@ export type DashboardData = {
   payrollStatus: { run: PayrollStatus } | null;
   money: MoneySnapshot | null;
   demandFill: DemandFill | null;
+  operations: OperationsSnapshot | null;
   activeProjects: { id: string; name: string; code: string; clientName: string; workers: number; required: number | null }[];
 };
 
@@ -103,6 +107,7 @@ export const DASHBOARD_SECTIONS = [
   { id: "people", label: "People & deployment" },
   { id: "hours", label: "Hours & timesheets" },
   { id: "money", label: "Money" },
+  { id: "business", label: "Sales, hiring & facilities" },
   { id: "compliance", label: "Compliance" },
   { id: "more", label: "More" },
 ] as const;
@@ -164,11 +169,11 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
               </div>
             ) : (
               <>
-                <ul className="divide-y divide-[var(--border)]">{shown.map((t) => <TodoRow key={t.key} item={t} />)}</ul>
+                <ul className="divide-y divide-[var(--border)]">{shown.map((t) => <AttentionRow key={t.key} item={t} />)}</ul>
                 {rest.length > 0 && (
                   <details className="group border-t border-default">
                     <summary className="cursor-pointer px-5 py-3 text-sm font-medium text-[var(--brand-primary)] hover:underline group-open:hidden">Show {rest.length} more</summary>
-                    <ul className="divide-y divide-[var(--border)]">{rest.map((t) => <TodoRow key={t.key} item={t} />)}</ul>
+                    <ul className="divide-y divide-[var(--border)]">{rest.map((t) => <AttentionRow key={t.key} item={t} />)}</ul>
                   </details>
                 )}
               </>
@@ -324,6 +329,66 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
         <TimesheetPipelineChart pipeline={d.timesheetPipeline} />
       </Panel>
     ),
+  },
+  {
+    id: "business",
+    section: "business",
+    label: "Sales, Onboarding, Applications, Transport, Inventory",
+    render: (d) => {
+      const o = d.operations;
+      if (!o) return null;
+      const cards: React.ReactNode[] = [];
+      if (o.sales) {
+        const s = o.sales;
+        cards.push(
+          <MiniCard key="sales" title="Sales" icon={FileText} href="/sales" linkLabel="Open sales" lines={[
+            { label: "Open enquiries", value: s.openEnquiries },
+            { label: "Quotations sent or negotiating", value: s.sentQuotes },
+            { label: "Quotations still in draft", value: s.draftQuotes },
+            { label: "Quotations expiring this week", value: s.expiringQuotes, warn: s.expiringQuotes > 0 },
+          ]} />,
+        );
+      }
+      if (o.onboarding) {
+        cards.push(
+          <MiniCard key="onb" title="Onboarding" icon={UserPlus} href="/onboarding" linkLabel="Candidate tracker" lines={[
+            { label: "Candidates in progress", value: o.onboarding.inProgress },
+            { label: "Ready to join", value: o.onboarding.readyToJoin, good: o.onboarding.readyToJoin > 0 },
+          ]} />,
+        );
+      }
+      if (o.applications) {
+        cards.push(
+          <MiniCard key="apps" title="Visa & labour cards" icon={ClipboardList} href="/employees/renewals" linkLabel="Renewals" lines={[
+            { label: "Visa applications in progress", value: o.applications.visa },
+            { label: "Labour card applications in progress", value: o.applications.labourCard },
+          ]} />,
+        );
+      }
+      if (o.transport) {
+        const t = o.transport;
+        cards.push(
+          <MiniCard key="transport" title="Transport" icon={Truck} href="/transport" linkLabel="Vehicles" lines={[
+            { label: "Active vehicles", value: t.vehicles },
+            { label: "Registration or insurance expired", value: t.expired, bad: t.expired > 0 },
+            { label: "Expiring in 30 days", value: t.expiringSoon, warn: t.expiringSoon > 0 },
+            { label: "In maintenance", value: t.inMaintenance },
+          ]} />,
+        );
+      }
+      if (o.inventory) {
+        const i = o.inventory;
+        cards.push(
+          <MiniCard key="inv" title="Inventory" icon={Package} href="/inventory" linkLabel="Stock" lines={[
+            { label: "Sizes out of stock", value: i.out, bad: i.out > 0 },
+            { label: "Sizes running low", value: i.low, warn: i.low > 0 },
+            { label: "Items held by workers", value: i.itemsHeld },
+          ]} />,
+        );
+      }
+      if (cards.length === 0) return null;
+      return <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{cards}</div>;
+    },
   },
   {
     id: "compliance-runway",
@@ -496,7 +561,7 @@ function Stat({ label, value, sub, tone, href }: { label: string; value: string;
   );
 }
 
-type TodoItem = { key: string; tone: "red" | "amber" | "blue"; icon: React.ComponentType<{ className?: string }>; title: string; sub: string; href: string; action: string; tag?: string };
+type TodoItem = ActionItem;
 
 /** Everything waiting on this person, most urgent first. Shared with the page so the greeting can count it. */
 export function buildTodo(d: DashboardData): TodoItem[] {
@@ -541,28 +606,23 @@ export function buildTodo(d: DashboardData): TodoItem[] {
   if (d.lpoAlerts.length > 0) {
     out.push({ rank: 90, key: "lpo", tone: "amber", icon: ClipboardList, title: `${plural(d.lpoAlerts.length, "LPO alert")}`, sub: d.lpoAlerts.slice(0, 2).map((x) => `${x.lpoNumber} — ${x.projectName}`).join(", "), href: "/projects", action: "Review" });
   }
+  const o = d.operations;
+  if (o?.transport && o.transport.expired > 0) {
+    out.push({ rank: 25, key: "vehicles", tone: "red", icon: Truck, title: `${plural(o.transport.expired, "vehicle")} with expired papers`, sub: "Registration or insurance has lapsed", href: "/transport", action: "Review" });
+  }
+  if (o?.waitingForBed) {
+    out.push({ rank: 35, key: "beds", tone: "amber", icon: BedDouble, title: `${plural(o.waitingForBed, "worker")} waiting for a bed`, sub: "Checked in, no bed yet", href: "/accommodation/camps", action: "Assign beds" });
+  }
+  if (o?.onboarding && o.onboarding.readyToJoin > 0) {
+    out.push({ rank: 55, key: "ready", tone: "blue", icon: UserPlus, title: `${plural(o.onboarding.readyToJoin, "candidate")} ready to join`, sub: "Onboarding is complete", href: "/onboarding", action: "Open tracker" });
+  }
+  if (o?.inventory && o.inventory.out > 0) {
+    out.push({ rank: 75, key: "stock-out", tone: "amber", icon: Package, title: `${plural(o.inventory.out, "size")} out of stock`, sub: `${o.inventory.low} more running low`, href: "/inventory", action: "Review" });
+  }
+  if (o && o.drafts > 0) {
+    out.push({ rank: 85, key: "drafts", tone: "blue", icon: FileText, title: `${plural(o.drafts, "unfinished draft")}`, sub: "Forms you started and haven't submitted", href: "/drafts", action: "Finish" });
+  }
   return out.sort((x, y) => x.rank - y.rank);
-}
-
-const TODO_TONE = { red: "bg-[var(--error-soft)] text-[var(--error)]", amber: "bg-[var(--warning-soft)] text-[var(--warning)]", blue: "bg-[var(--info-soft)] text-[var(--info)]" } as const;
-
-function TodoRow({ item }: { item: TodoItem }) {
-  const Icon = item.icon;
-  return (
-    <li className="flex items-center gap-3 px-5 py-3">
-      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", TODO_TONE[item.tone])}>
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-primary">{item.title}</span>
-          {item.tag && <Badge color={item.tone === "red" ? "red" : "amber"}>{item.tag}</Badge>}
-        </span>
-        <span className="block truncate text-xs text-muted">{item.sub}</span>
-      </span>
-      <Link href={item.href} className="btn btn-secondary btn-sm shrink-0">{item.action}</Link>
-    </li>
-  );
 }
 
 function DemandPanel({ f }: { f: DemandFill }) {
@@ -622,6 +682,21 @@ function PayrollPanel({ p }: { p: { run: PayrollStatus } }) {
           {!p.run.hasCurrentMonth && <p className="text-xs text-muted">No run yet for this month.</p>}
         </div>
       )}
+    </Panel>
+  );
+}
+
+function MiniCard({ title, icon, href, linkLabel, lines }: { title: string; icon: React.ComponentType<{ className?: string }>; href: string; linkLabel: string; lines: { label: string; value: number; warn?: boolean; bad?: boolean; good?: boolean }[] }) {
+  return (
+    <Panel title={title} icon={icon} href={href} linkLabel={linkLabel}>
+      <ul className="space-y-1">
+        {lines.map((l) => (
+          <li key={l.label} className="flex items-center justify-between py-1 text-sm">
+            <span className="text-muted">{l.label}</span>
+            <span className={cn("tabular font-semibold", l.bad ? "text-[var(--error)]" : l.warn ? "text-[var(--warning)]" : l.good ? "text-[var(--success)]" : "text-primary")}>{l.value}</span>
+          </li>
+        ))}
+      </ul>
     </Panel>
   );
 }
