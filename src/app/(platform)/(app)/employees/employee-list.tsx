@@ -16,6 +16,7 @@ import { bulkImportEmployeesAction } from "./[id]/actions";
 import { DeleteEmployeesButton } from "./delete-employees-button";
 import { DeactivateEmployeesButton } from "./deactivate-employees-button";
 import { cn } from "@/lib/cn";
+import { EmployeeDrawer, type DrawerPerson } from "./employee-drawer";
 
 const PAGE_SIZE = 25;
 
@@ -150,6 +151,9 @@ export function EmployeeList({
   registeredId?: string;
 }) {
   const router = useRouter();
+  // The quick view steps through the rows as they were filtered and sorted when it opened.
+  const [drawer, setDrawer] = useState<{ id: string; order: string[] } | null>(null);
+  const people = useMemo(() => new Map<string, DrawerPerson>(employees.map((e) => [e.id, { id: e.id, name: e.name, complete: e.complete }])), [employees]);
   const validFilters: Filter[] = [
     "on-work",
     "bench",
@@ -214,7 +218,7 @@ export function EmployeeList({
       sortValue: (e) => e.name,
       csvValue: (e) => e.name,
       render: (e) => (
-        <Link href={`/employees/${e.id}`} className="group/name flex items-center gap-3">
+        <div className="group/name flex items-center gap-3">
           <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="md" />
           <span className="min-w-0">
             <span className="flex items-center gap-1 truncate font-medium text-primary group-hover/name:underline">
@@ -229,7 +233,7 @@ export function EmployeeList({
               {CATEGORY_LABEL[e.category]} · <span className="tabular">{e.employeeIdNo}</span>
             </span>
           </span>
-        </Link>
+        </div>
       ),
     },
     {
@@ -488,6 +492,7 @@ export function EmployeeList({
     <DataTable
       rows={rows}
       columns={columns}
+      onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
       selectable
       searchable
       searchPlaceholder="Filter by name, ID, trade…"
@@ -611,6 +616,15 @@ export function EmployeeList({
         />
       }
     />
+    {drawer && (
+      <EmployeeDrawer
+        id={drawer.id}
+        order={drawer.order}
+        people={people}
+        onNavigate={(id) => setDrawer({ id, order: drawer.order })}
+        onClose={() => setDrawer(null)}
+      />
+    )}
     </>
   );
 }

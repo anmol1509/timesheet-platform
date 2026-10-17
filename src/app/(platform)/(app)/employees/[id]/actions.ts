@@ -13,7 +13,7 @@ import { subjectOf } from "@/lib/auth";
 import { PAY_STRUCTURES } from "@/lib/payroll";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
-import { releaseFromMobilisation } from "@/lib/employeeStageTransitions";
+import { recordProjectChange } from "@/lib/employeeAssignment";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import {
   isAcceptedPhotoType,
@@ -301,39 +301,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     }
   }
 
-  // Taking the project away ends the placement, so the mobilisation stage and
-  // its dates end with it — same rule the demand screen applies when a worker
-  // is unallocated, so the two routes can't leave the roster disagreeing.
-  if (before && before.projectId && !data.projectId) {
-    await releaseFromMobilisation([id]);
-  }
-
-  if (before && before.projectId !== data.projectId) {
-    const openHistory = await prisma.employeeAssignmentHistory.findFirst({
-      where: { employeeId: id, demobilizedDate: null },
-      orderBy: { mobilizedDate: "desc" },
-    });
-    if (openHistory) {
-      await prisma.employeeAssignmentHistory.update({
-        where: { id: openHistory.id },
-        data: { demobilizedDate: new Date() },
-      });
-    }
-    if (data.projectId) {
-      const [project, branch] = await Promise.all([
-        prisma.project.findUnique({ where: { id: data.projectId }, select: { name: true } }),
-        before.branchId ? prisma.branch.findUnique({ where: { id: before.branchId }, select: { name: true } }) : null,
-      ]);
-      await prisma.employeeAssignmentHistory.create({
-        data: {
-          employeeId: id,
-          projectId: data.projectId,
-          projectName: project?.name ?? null,
-          branchName: branch?.name ?? null,
-        },
-      });
-    }
-  }
+  if (before) await recordProjectChange(before, data.projectId);
 
   await logAudit({
     entityType: "EMPLOYEE",
