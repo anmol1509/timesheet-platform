@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Insights } from "@/components/ListSummary";
 import { Download } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -8,6 +7,7 @@ import { can } from "@/lib/permissions";
 import { billStatus, billTotals } from "@/lib/payables";
 import { billVariance } from "@/lib/financeRules";
 import { BillsBoard, type BillRow } from "./bills-board";
+import { SummaryStrip, type SummaryCell } from "@/components/SummaryStrip";
 
 export const metadata = { title: "Supplier bills" };
 const FILTERS = [
@@ -77,11 +77,11 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
   }
   const volumeMax = Math.max(1, ...volumeByMonth.values());
 
-  const strip = [
-    { l: "Outstanding", v: money(outstanding), sub: `${live.filter((r) => r.balance > 0).length} open bills` },
-    { l: "Overdue", v: money(overdue), sub: `${overdueRows.length} bill${overdueRows.length === 1 ? "" : "s"}`, tone: overdueRows.length ? "text-[var(--error)]" : "" },
-    { l: "Due in 7 days", v: money(dueSoon.reduce((n, r) => n + r.balance, 0)), sub: `${dueSoon.length} bill${dueSoon.length === 1 ? "" : "s"}` },
-    { l: "Awaiting approval", v: money(awaiting), sub: `${reviewCount} bill${reviewCount === 1 ? "" : "s"}`, tone: reviewCount ? "text-[var(--warning)]" : "" },
+  const strip: SummaryCell[] = [
+    { label: "Outstanding", value: money(outstanding), sub: `${live.filter((r) => r.balance > 0).length} open bills` },
+    { label: "Overdue", value: money(overdue), sub: `${overdueRows.length} bill${overdueRows.length === 1 ? "" : "s"}`, tone: overdueRows.length ? "danger" : "default" },
+    { label: "Due in 7 days", value: money(dueSoon.reduce((n, r) => n + r.balance, 0)), sub: `${dueSoon.length} bill${dueSoon.length === 1 ? "" : "s"}` },
+    { label: "Awaiting approval", value: money(awaiting), sub: `${reviewCount} bill${reviewCount === 1 ? "" : "s"}`, tone: reviewCount ? "warning" : "default" },
   ];
 
   return (
@@ -90,15 +90,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         <div><h1 className="text-xl font-semibold tracking-tight text-primary">Supplier bills</h1><p className="mt-1 text-sm text-muted">Bills are approved before they can be paid. Suppliers with portal access can see their own bills.</p></div>
         {can(subject, "finance.bills", "export") && <a href="/api/finance/export?type=bills" className="btn btn-secondary"><Download className="h-4 w-4" aria-hidden /> CSV</a>}
       </div>
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-        {strip.map((t) => (
-          <div key={t.l} className="card px-3 py-2.5 sm:px-4 sm:py-3">
-            <p className="text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
-            <p className={`tabular mt-0.5 truncate text-base font-semibold tracking-tight sm:text-xl ${t.tone || "text-primary"}`}>{t.v}</p>
-            <p className="text-xs text-subtle">{t.sub}</p>
-          </div>
-        ))}
-      </div>
+      <SummaryStrip cells={strip} />
       {bills.length > 0 && (
         <Insights id="bills" title="Bill volume, last 6 months">
           <div className="flex h-28 items-end gap-3">
@@ -116,15 +108,9 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         </Insights>
       )}
 
-      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter">
-        {FILTERS.map((f) => (
-          <Link key={f.k || "all"} href={f.k ? `/finance/bills?view=${f.k}` : "/finance/bills"} role="tab" aria-selected={view === f.k}
-            className={view === f.k ? "rounded-md bg-brand-soft px-3 py-1.5 text-sm font-medium text-[var(--brand-primary)]" : "rounded-md px-3 py-1.5 text-sm text-secondary hover:bg-surface-hover"}>
-            {f.l}{f.k === "REVIEW" && reviewCount > 0 && <span className="ml-1.5 rounded-full bg-[var(--warning-soft)] px-1.5 text-xs text-[var(--warning)]">{reviewCount}</span>}
-          </Link>
-        ))}
-      </div>
       <BillsBoard
+        view={view}
+        filters={FILTERS.map((f) => ({ ...f, count: f.k === "REVIEW" ? reviewCount : undefined }))}
         rows={shown}
         suppliers={suppliers}
         canCreate={can(subject, "finance.bills", "create")}
