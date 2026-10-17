@@ -1,0 +1,212 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/db";
+import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { ACCOUNT_TYPES } from "@/lib/books/chart";
+import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
+import { isLocked } from "@/lib/books/ledger";
+import { r2, totals, utcDay } from "@/lib/books/postings";
+
+type Result = { error?: string };
+const refresh = () => {
+  revalidatePath("/finance/books", "layout");
+};
+
+const parseDay = (s: string): Date | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(`${s}T00:00:00.000Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+async function branchState(branchId: string) {
+  return prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
+}
+
+/** Starts the books on an opening date: creates the chart of accounts and brings the ledger up to date from there. */
+export async function setupBooksAction(openingDate: string): Promise<Result> {
+  await requireAdmin();
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const date = parseDay(openingDate);
+  if (!date) return { error: "Choose the date your books start from." };
+  const existing = await branchState(branchId);
+  if (existing?.booksOpeningDate) return { error: "The books are already set up." };
+  await ensureChart(branchId);
+  await prisma.branch.update({ where: { id: branchId }, data: { booksOpeningDate: date } });
+  const result = await syncPostings(branchId);
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "CREATE", after: { openingDate, posted: result.created }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return {};
+}
+
+export type VoucherInput = { date: string; narration: string; lines: { accountId: string; debit: number; credit: number; description?: string }[] };
+
+/** A manual journal voucher. Must balance, sit after the opening date and outside any locked period. */
+export async function createVoucherAction(input: VoucherInput): Promise<Result & { number?: string }> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const date = parseDay(input.date);
+  if (!date) return { error: "Choose a date." };
+  const narration = input.narration.trim();
+  if (!narration) return { error: "Say what the voucher is for." };
+  const lines = input.lines.filter((l) => (l.debit || 0) > 0 || (l.credit || 0) > 0).map((l) => ({ ...l, debit: r2(Number(l.debit) || 0), credit: r2(Number(l.credit) || 0) }));
+  if (lines.length < 2) return { error: "A voucher needs at least two lines." };
+  if (lines.some((l) => l.debit < 0 || l.credit < 0 || (l.debit > 0 && l.credit > 0))) return { error: "Each line is either a debit or a credit, not both." };
+  const t = totals(lines);
+  if (!t.balanced) return { error: `Debits (${t.debit.toFixed(2)}) and credits (${t.credit.toFixed(2)}) must be equal.` };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  if (date.getTime() < utcDay(state.booksOpeningDate).getTime()) return { error: "That is before your books start. Earlier figures belong in the opening balances." };
+  if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "That period is locked." };
+  const accounts = await prisma.account.findMany({ where: { branchId, id: { in: [...new Set(lines.map((l) => l.accountId))] }, isActive: true }, select: { id: true } });
+  if (accounts.length !== new Set(lines.map((l) => l.accountId)).size) return { error: "One of the accounts isn't available." };
+
+  const [number] = await reserveNumbers(branchId, "JV", 1);
+  const entry = await prisma.journalEntry.create({
+    data: {
+      branchId, number, date, type: "JOURNAL", narration, createdById: user.id, createdByName: user.name,
+      lines: { create: lines.map((l) => ({ accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description?.trim() || null })) },
+    },
+  });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, date: input.date, narration, total: t.debit }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { number };
+}
+
+/** Voids a manual voucher (it stays on record, out of the balances). System entries follow their source and cannot be voided. */
+export async function voidVoucherAction(id: string, reason: string): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const why = reason.trim();
+  if (!why) return { error: "Say why it is being voided." };
+  const entry = await prisma.journalEntry.findUnique({ where: { id }, select: { branchId: true, sourceKey: true, status: true, date: true, number: true, type: true } });
+  if (!entry || entry.branchId !== branchId) return { error: "Voucher not found." };
+  if (entry.sourceKey) return { error: "This was posted automatically. Change the invoice, bill or payment it came from instead." };
+  if (entry.status === "VOID") return { error: "Already voided." };
+  const state = await branchState(branchId);
+  if (isLocked(utcDay(entry.date), state?.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "That period is locked." };
+  await prisma.journalEntry.update({ where: { id }, data: { status: "VOID", voidReason: why } });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: id, action: "UPDATE", before: { status: "POSTED" }, after: { status: "VOID", reason: why }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return {};
+}
+
+/** Adds an account, or renames/re-types one. System accounts keep their type and role. */
+export async function saveAccountAction(input: { id?: string; code: string; name: string; type: string }): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const code = input.code.trim();
+  const name = input.name.trim();
+  if (!/^[0-9A-Za-z.\-]{1,12}$/.test(code)) return { error: "Give the account a short code (letters, numbers, - or .)." };
+  if (!name) return { error: "Give the account a name." };
+  if (!(ACCOUNT_TYPES as readonly string[]).includes(input.type)) return { error: "Choose a type." };
+  const clash = await prisma.account.findFirst({ where: { branchId, code, ...(input.id ? { NOT: { id: input.id } } : {}) }, select: { id: true } });
+  if (clash) return { error: `Code ${code} is already used.` };
+  if (input.id) {
+    const cur = await prisma.account.findUnique({ where: { id: input.id } });
+    if (!cur || cur.branchId !== branchId) return { error: "Account not found." };
+    if (cur.isSystem && cur.type !== input.type) return { error: "This account is used for automatic postings, so its type can't change." };
+    if (cur.type !== input.type) {
+      const used = await prisma.journalLine.count({ where: { accountId: cur.id } });
+      if (used > 0) return { error: "This account already has postings, so its type can't change." };
+    }
+    await prisma.account.update({ where: { id: cur.id }, data: { code, name, type: input.type } });
+    await logAudit({ entityType: "ACCOUNT", entityId: cur.id, action: "UPDATE", before: { code: cur.code, name: cur.name, type: cur.type }, after: { code, name, type: input.type }, userId: user.id, userName: user.name, branchId });
+  } else {
+    const created = await prisma.account.create({ data: { branchId, code, name, type: input.type } });
+    await logAudit({ entityType: "ACCOUNT", entityId: created.id, action: "CREATE", after: { code, name, type: input.type }, userId: user.id, userName: user.name, branchId });
+  }
+  refresh();
+  return {};
+}
+
+/** Hides an account that is no longer used. It must be empty, and system accounts stay. */
+export async function setAccountActiveAction(id: string, active: boolean): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const acc = await prisma.account.findUnique({ where: { id } });
+  if (!acc || acc.branchId !== branchId) return { error: "Account not found." };
+  if (!active) {
+    if (acc.isSystem) return { error: "The system posts to this account, so it can't be hidden." };
+    const s = await prisma.journalLine.aggregate({ where: { accountId: id, entry: { status: "POSTED" } }, _sum: { debit: true, credit: true } });
+    if (r2(Number(s._sum.debit ?? 0) - Number(s._sum.credit ?? 0)) !== 0) return { error: "This account still has a balance." };
+  }
+  await prisma.account.update({ where: { id }, data: { isActive: active } });
+  await logAudit({ entityType: "ACCOUNT", entityId: id, action: "UPDATE", before: { isActive: acc.isActive }, after: { isActive: active }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return {};
+}
+
+/** Locks every entry on or before a date, or unlocks with an empty date. Admin only. */
+export async function lockBooksAction(date: string | null): Promise<Result> {
+  await requireAdmin();
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const d = date ? parseDay(date) : null;
+  if (date && !d) return { error: "That date isn't valid." };
+  const before = await branchState(branchId);
+  if (!before?.booksOpeningDate) return { error: "Set up the books first." };
+  await prisma.branch.update({ where: { id: branchId }, data: { booksLockedUntil: d } });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", before: { lockedUntil: before.booksLockedUntil }, after: { lockedUntil: d }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return {};
+}
+
+/**
+ * Saves the opening balances as one entry on the opening date. Anything that doesn't balance is put to Opening
+ * balance equity, so the books always open balanced. Replaces the earlier opening entry.
+ */
+export async function saveOpeningBalancesAction(rows: { accountId: string; debit: number; credit: number }[]): Promise<Result & { plug?: number }> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  const date = utcDay(state.booksOpeningDate);
+  if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "The opening date is in a locked period." };
+  const lines = rows.map((r) => ({ accountId: r.accountId, debit: r2(Number(r.debit) || 0), credit: r2(Number(r.credit) || 0) })).filter((r) => r.debit > 0 || r.credit > 0);
+  if (lines.some((l) => l.debit > 0 && l.credit > 0)) return { error: "Each account takes a debit or a credit, not both." };
+  const equity = await prisma.account.findFirst({ where: { branchId, tag: "OPENING_EQUITY" }, select: { id: true } });
+  if (!equity) return { error: "The Opening balance equity account is missing." };
+  const ids = [...new Set(lines.map((l) => l.accountId))];
+  const ok = await prisma.account.count({ where: { branchId, id: { in: ids } } });
+  if (ok !== ids.length) return { error: "One of the accounts isn't available." };
+  const t = totals(lines);
+  const plug = r2(t.debit - t.credit);
+  const all = plug === 0 ? lines : [...lines, plug > 0 ? { accountId: equity.id, debit: 0, credit: plug } : { accountId: equity.id, debit: -plug, credit: 0 }];
+
+  const existing = await prisma.journalEntry.findFirst({ where: { branchId, sourceKey: "opening" }, select: { id: true } });
+  await prisma.$transaction(async (tx) => {
+    if (existing) await tx.journalLine.deleteMany({ where: { entryId: existing.id } });
+    if (all.length === 0) {
+      if (existing) await tx.journalEntry.delete({ where: { id: existing.id } });
+      return;
+    }
+    if (existing) {
+      await tx.journalEntry.update({ where: { id: existing.id }, data: { date, narration: "Opening balances", status: "POSTED" } });
+      await tx.journalLine.createMany({ data: all.map((l) => ({ entryId: existing.id, ...l })) });
+    } else {
+      const [number] = await reserveNumbers(branchId, "OB", 1);
+      await tx.journalEntry.create({ data: { branchId, number, date, type: "OPENING", narration: "Opening balances", sourceKey: "opening", createdById: user.id, createdByName: user.name, lines: { create: all } } });
+    }
+  });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { openingBalances: all.length, plug }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { plug };
+}
+
+/** Brings automatic postings up to date right now. */
+export async function refreshPostingsAction(): Promise<Result & { created?: number; updated?: number; removed?: number; unmapped?: string[] }> {
+  await requireWrite("finance.books");
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const r = await syncPostings(branchId);
+  refresh();
+  return { created: r.created, updated: r.updated, removed: r.removed, unmapped: r.unmapped };
+}

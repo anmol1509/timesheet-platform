@@ -10,7 +10,7 @@
     "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "migrate:deploy": "prisma migrate deploy",
-    "test": "tsx --test src/lib/*.test.ts"
+    "test": "tsx --test src/lib/*.test.ts src/lib/books/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
