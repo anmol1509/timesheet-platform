@@ -7,13 +7,13 @@ import { cn } from "@/lib/cn";
 export type SetupStep = { key: string; title: string; why: string; done: boolean; detail?: string; href?: string; action?: string; hint?: GlossaryKey };
 
 /** First-time setup, in order: what payroll needs before the first run works, with the next undone step highlighted. */
-export function PayrollSetup({ steps }: { steps: SetupStep[] }) {
+export function PayrollSetup({ steps, bare }: { steps: SetupStep[]; bare?: boolean }) {
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;
   const next = steps.find((s) => !s.done)!;
   return (
-    <section className="card p-5" aria-label="Payroll setup">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section className={bare ? "" : "card p-5"} aria-label="Payroll setup">
+      <div className={cn("flex flex-wrap items-center justify-between gap-2", bare && "hidden")}>
         <div>
           <h2 className="text-sm font-semibold text-primary">Set up payroll</h2>
           <p className="text-xs text-muted">{done} of {steps.length} steps done. Do them in order; each takes a minute or two.</p>

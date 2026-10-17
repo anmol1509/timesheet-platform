@@ -4,6 +4,30 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { AGEING_BUCKETS, ageingBucket, billTotals } from "@/lib/payables";
 import { budgetStatus, pettyCashBalance } from "@/lib/financeRules";
+import { PageHeader } from "@/components/PageHeader";
+import { StatTile } from "@/components/StatTile";
+import { Landmark, Hourglass, ReceiptText, ClipboardCheck, TriangleAlert } from "lucide-react";
+
+const AGE_COLOR = ["var(--success)", "#f59e0b", "var(--error)", "#b91c1c", "#7f1d1d"];
+
+/** One bar for the whole balance, split by how late it is, with the amount under each bucket. */
+function Ageing({ values, total }: { values: number[]; total: number }) {
+  return (
+    <div>
+      <div className="mb-4 flex h-3.5 overflow-hidden rounded-full bg-[var(--surface-sunken)]" role="img" aria-label="Balance by how late it is">
+        {values.map((v, i) => v > 0 && <span key={AGEING_BUCKETS[i]} style={{ width: `${(v / total) * 100}%`, background: AGE_COLOR[i] ?? AGE_COLOR[4] }} />)}
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 xl:grid-cols-5">
+        {AGEING_BUCKETS.map((label, i) => (
+          <div key={label} className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-xs text-muted"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: values[i] > 0 ? (AGE_COLOR[i] ?? AGE_COLOR[4]) : "var(--border)" }} /><span className="truncate">{label}</span></dt>
+            <dd className="tabular mt-0.5 truncate text-base font-semibold text-primary">{aed(values[i]).replace(/\.00$/, "")}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
 
 export const metadata = { title: "Finance" };
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -69,34 +93,39 @@ export default async function FinancePage() {
   }
   const budgetRows = budgets.map((b) => ({ category: b.category, limit: Number(b.monthlyLimit), spent: byCategory.get(b.category) ?? 0 })).map((b) => ({ ...b, ...budgetStatus(b.spent, b.limit) }));
   const petty = pettyCashBalance(topUps.map((t) => Number(t.amount)), cashRows.map((e) => Number(e.amount) + Number(e.vatAmount)));
+  const overdueTotal = buckets.slice(1).reduce((n, v) => n + v, 0);
+  const overdueBills = bills.filter((b) => { const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) }))); return t.balance > 0 && ageingBucket(b.dueDate, today) > 0; }).length;
   const owedToStaff = owedBack.reduce((s, e) => s + Number(e.amount) + Number(e.vatAmount), 0);
 
   return (
     <div className="space-y-5">
-      <div><h1 className="text-xl font-semibold tracking-tight text-primary">Finance</h1><p className="mt-1 text-sm text-muted">Payables and spend at a glance.</p></div>
+      <PageHeader title="Finance" icon={Landmark} description="Money in, money out, and what needs your attention." />
+      {(overdueTotal > 0 || billsToApprove + pending > 0) && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-card border border-[var(--warning-border,var(--border))] bg-[var(--warning-soft)] px-4 py-3 text-sm">
+          <TriangleAlert className="h-5 w-5 shrink-0 text-[var(--warning)]" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-primary">{overdueTotal > 0 ? `AED ${aed(overdueTotal)} is overdue to suppliers` : "Waiting for your approval"}</p>
+            <p className="text-muted">{[overdueTotal > 0 ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"} overdue` : null, billsToApprove > 0 ? `${billsToApprove} bill${billsToApprove === 1 ? "" : "s"}` : null, pending > 0 ? `${pending} expense${pending === 1 ? "" : "s"}` : null].filter(Boolean).join(" · ")}{billsToApprove + pending > 0 ? " waiting for approval" : ""}</p>
+          </div>
+          {overdueTotal > 0 && <Link href="/finance/bills?view=OVERDUE" className="btn btn-secondary btn-sm">Review bills</Link>}
+          {billsToApprove + pending > 0 && <Link href="/approvals" className="btn btn-primary btn-sm">Approve now</Link>}
+        </div>
+      )}
       <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/finance/bills?view=OPEN" className="card block p-4 hover:border-[var(--brand-primary)]"><p className="text-xs font-medium tracking-wide text-muted uppercase">Owed to suppliers</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">AED {aed(outstanding)}</p></Link>
-        <Link href="/finance/bills?view=OVERDUE" className="card block p-4 hover:border-[var(--brand-primary)]"><p className="text-xs font-medium tracking-wide text-muted uppercase">Overdue</p><p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--error)]">AED {aed(buckets.slice(1).reduce((s, n) => s + n, 0))}</p></Link>
-        <Link href="/finance/bills?view=REVIEW" className="card block p-4 hover:border-[var(--brand-primary)]"><p className="text-xs font-medium tracking-wide text-muted uppercase">Bills awaiting approval</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{billsToApprove}</p></Link>
-        <Link href="/finance/expenses?status=PENDING" className="card block p-4 hover:border-[var(--brand-primary)]"><p className="text-xs font-medium tracking-wide text-muted uppercase">Expenses awaiting approval</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{pending}</p></Link>
+        <StatTile href="/finance/bills?view=OPEN" label="Owed to suppliers" value={`AED ${aed(outstanding)}`} icon={Landmark} />
+        <StatTile href="/finance/bills?view=OVERDUE" label="Overdue" value={`AED ${aed(overdueTotal)}`} icon={Hourglass} tone={overdueTotal > 0 ? "warning" : "default"} hint={overdueTotal > 0 ? `${overdueBills} bill${overdueBills === 1 ? "" : "s"}` : "nothing overdue"} />
+        <StatTile href="/invoices/history" label="Owed by clients" value={`AED ${aed(totalReceivable)}`} icon={ReceiptText} hint={totalReceivable === 0 ? "nothing outstanding" : undefined} />
+        <StatTile href="/finance/bills?view=REVIEW" label="Approvals waiting" value={billsToApprove + pending} icon={ClipboardCheck} tone={billsToApprove + pending > 0 ? "warning" : "default"} hint={`${billsToApprove} bill${billsToApprove === 1 ? "" : "s"} · ${pending} expense${pending === 1 ? "" : "s"}`} />
       </div>
       <div className="grid gap-4 [&>*]:min-w-0 lg:grid-cols-2">
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold text-primary">Payables ageing <span className="font-normal text-muted">· owed to suppliers</span></h2>
-          <div className="grid gap-3 [&>*]:min-w-0 sm:grid-cols-5">
-            {AGEING_BUCKETS.map((label, i) => (
-              <div key={label}><p className="text-xs text-muted">{label}</p><p className={i >= 3 && buckets[i] > 0 ? "mt-0.5 text-lg font-semibold tabular-nums text-[var(--error)]" : "mt-0.5 text-lg font-semibold tabular-nums text-primary"}>{aed(buckets[i])}</p></div>
-            ))}
-          </div>
+          {outstanding === 0 ? <p className="text-sm text-muted">Nothing owed to suppliers.</p> : <Ageing values={buckets} total={outstanding} />}
         </section>
         <section className="card p-5">
           <h2 className="mb-3 text-sm font-semibold text-primary">Receivables ageing <span className="font-normal text-muted">· owed by clients</span></h2>
           {totalReceivable === 0 ? <p className="text-sm text-muted">Nothing outstanding from clients.</p> : (
-            <div className="grid gap-3 [&>*]:min-w-0 sm:grid-cols-5">
-              {AGEING_BUCKETS.map((label, i) => (
-                <div key={label}><p className="text-xs text-muted">{label}</p><p className={i >= 3 && receivableBuckets[i] > 0 ? "mt-0.5 text-lg font-semibold tabular-nums text-[var(--error)]" : "mt-0.5 text-lg font-semibold tabular-nums text-primary"}>{aed(receivableBuckets[i])}</p></div>
-              ))}
-            </div>
+            <Ageing values={receivableBuckets} total={totalReceivable} />
           )}
         </section>
       </div>
