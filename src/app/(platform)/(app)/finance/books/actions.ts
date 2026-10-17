@@ -210,3 +210,55 @@ export async function refreshPostingsAction(): Promise<Result & { created?: numb
   refresh();
   return { created: r.created, updated: r.updated, removed: r.removed, unmapped: r.unmapped };
 }
+
+export type ImportRow = { accountId?: string; newCode?: string; newName?: string; newType?: string; debit: number; credit: number };
+
+/**
+ * Brings opening balances in from another system's trial balance. Rows pointing at an existing account use it;
+ * the rest create a new account first. Replaces the earlier opening entry, and any difference is parked in
+ * Opening balance equity so the books still balance (the wizard shows it before this runs).
+ */
+export async function importOpeningBalancesAction(rows: ImportRow[]): Promise<Result & { plug?: number; created?: number }> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  const existing = await prisma.account.findMany({ where: { branchId }, select: { id: true, code: true } });
+  const usedCodes = new Set(existing.map((a) => a.code));
+  const byAccount = new Map<string, { debit: number; credit: number }>();
+  let created = 0;
+  for (const r of rows) {
+    if (!(r.debit > 0 || r.credit > 0)) continue;
+    let id = r.accountId;
+    if (id) {
+      if (!existing.some((a) => a.id === id)) return { error: "One of the accounts isn't available." };
+    } else {
+      const name = r.newName?.trim();
+      if (!name || !r.newType || !(ACCOUNT_TYPES as readonly string[]).includes(r.newType)) return { error: `Choose where “${name || "a row"}” goes.` };
+      // New accounts take the next free code in their type's range, unless the source gave a free one.
+      let code = r.newCode?.trim() && /^[0-9A-Za-z.\-]{1,12}$/.test(r.newCode.trim()) && !usedCodes.has(r.newCode.trim()) ? r.newCode.trim() : "";
+      if (!code) {
+        const base = { ASSET: 1800, LIABILITY: 2600, EQUITY: 3300, INCOME: 4300, EXPENSE: 5800 }[r.newType as "ASSET"];
+        let n = base;
+        while (usedCodes.has(String(n))) n++;
+        code = String(n);
+      }
+      const acc = await prisma.account.create({ data: { branchId, code, name, type: r.newType } });
+      usedCodes.add(code);
+      existing.push({ id: acc.id, code });
+      id = acc.id;
+      created++;
+    }
+    const cur = byAccount.get(id) ?? { debit: 0, credit: 0 };
+    byAccount.set(id, { debit: cur.debit + r.debit, credit: cur.credit + r.credit });
+  }
+  const merged = [...byAccount.entries()].map(([accountId, v]) => {
+    const net = r2(v.debit - v.credit);
+    return { accountId, debit: net > 0 ? net : 0, credit: net < 0 ? -net : 0 };
+  });
+  const saved = await saveOpeningBalancesAction(merged);
+  if (saved.error) return saved;
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { imported: merged.length, newAccounts: created }, userId: user.id, userName: user.name, branchId });
+  return { plug: saved.plug, created };
+}

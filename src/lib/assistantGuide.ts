@@ -56,6 +56,7 @@ export const HINTS: Record<string, string> = {
   "/finance": "Finance: budgets and trends",
   "/finance/expenses": "Record and review expenses",
   "/finance/bills": "Supplier bills and payments",
+  "/finance/books": "Books: day book, accounts, trial balance, vouchers",
   "/settings": "Account and system settings",
   "/settings/company": "Company profile, branding, branches",
   "/settings/team": "Users, invitations and access",

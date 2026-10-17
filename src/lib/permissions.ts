@@ -107,6 +107,7 @@ const DEFS: ModuleDef[] = [
       { key: "overview", label: "Budgets & trends", paths: ["/finance", "/api/finance"] },
       { key: "bills", label: "Supplier Bills", paths: ["/finance/bills"] },
       { key: "expenses", label: "Expenses", paths: ["/finance/expenses"] },
+      { key: "books", label: "Books", paths: ["/finance/books", "/api/books"] },
     ],
   },
   {
