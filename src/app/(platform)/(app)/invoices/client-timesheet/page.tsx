@@ -2,12 +2,13 @@ import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
+import { TimesheetFilters } from "./timesheet-filters";
 import { requireUserWithBranch } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
 import { AlertTriangle, FileSearch, Plus } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
-import { Select } from "@/components/ui/Select";
 
 const ALL_CLIENTS = "all";
 
@@ -17,7 +18,8 @@ export default async function ClientTimesheetPage({
   searchParams: Promise<{ month?: string; clientId?: string; project?: string; site?: string }>;
 }) {
   const params = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canImport = isAdminRole(user.role);
 
   const monthRows = await prisma.timesheetEntry.findMany({
     where: { clientId: { not: null }, ...branchWhere(branchId) },
@@ -136,6 +138,11 @@ export default async function ClientTimesheetPage({
           description={<>Review and edit a month&rsquo;s day-by-day hours before invoicing.</>}
         />
         <div className="flex items-center gap-2">
+          {canImport && (
+            <Link href="/import/new/timesheets" className="btn btn-secondary">
+              Import
+            </Link>
+          )}
           <Link
             href="/invoices/client-timesheet/daily"
             className="btn btn-secondary"
@@ -154,33 +161,16 @@ export default async function ClientTimesheetPage({
       </div>
 
       {months.length > 0 && (
-        <form className="card flex flex-wrap items-end gap-3 p-4 [&_label]:min-w-0">
-          <label className="block min-w-0 max-w-full">
-            <span className="mb-1 block text-xs font-medium text-muted">Month</span>
-            <Select name="month" defaultValue={selectedMonth} options={[...months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))]} />
-          </label>
-          <label className="block min-w-0 max-w-full">
-            <span className="mb-1 block text-xs font-medium text-muted">Client</span>
-            <Select name="clientId" defaultValue={selectedClientId} options={[...(clients.length > 1 ? [{ value: ALL_CLIENTS, label: "All clients" }] : []), ...clients.map((c) => ({ value: c.id, label: c.name }))]} />
-          </label>
-          {/* Always shown, even with nothing to offer. Hiding them made the
-              filters look missing on a client whose rows carry no project or
-              site — the control should say why it's empty, not disappear. */}
-          <label className="block min-w-0 max-w-full">
-            <span className="mb-1 block text-xs font-medium text-muted">Project</span>
-<Select name="project" defaultValue={selectedProject} disabled={projectOptions.length === 0} options={[{ value: "", label: projectOptions.length === 0 ? "None recorded" : "All projects" }, ...projectOptions.map(([id, label]) => ({ value: id, label }))]} />
-          </label>
-          <label className="block min-w-0 max-w-full">
-            <span className="mb-1 block text-xs font-medium text-muted">Site</span>
-            <Select name="site" defaultValue={selectedSite} disabled={siteOptions.length === 0} options={[{ value: "", label: siteOptions.length === 0 ? "None recorded" : "All sites" }, ...siteOptions.map((site) => ({ value: site, label: site }))]} />
-          </label>
-          <button
-            type="submit"
-            className="btn btn-primary"
-          >
-            Go
-          </button>
-        </form>
+        <TimesheetFilters
+          month={selectedMonth ?? ""}
+          clientId={allClients ? ALL_CLIENTS : (selectedClientId ?? "")}
+          project={selectedProject ?? ""}
+          site={selectedSite ?? ""}
+          months={months.map((m) => ({ value: m, label: monthLabelFromKey(m) }))}
+          clients={[...(clients.length > 1 ? [{ value: ALL_CLIENTS, label: "All clients" }] : []), ...clients.map((c) => ({ value: c.id, label: c.name }))]}
+          projects={[{ value: "", label: projectOptions.length === 0 ? "None recorded" : "All projects" }, ...projectOptions.map(([id, label]) => ({ value: id, label }))]}
+          sites={[{ value: "", label: siteOptions.length === 0 ? "None recorded" : "All sites" }, ...siteOptions.map((site) => ({ value: site, label: site }))]}
+        />
       )}
 
       {allEntries.length > 0 && projectOptions.length === 0 && siteOptions.length === 0 && (
@@ -191,12 +181,18 @@ export default async function ClientTimesheetPage({
       )}
 
       {entries.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state flex flex-col items-center gap-3 py-10">
           <p className="text-sm text-muted">
             {allEntries.length > 0
               ? "No entries match those filters — clear the project or site to see the rest."
               : "No billable timesheet entries for this client/month."}
           </p>
+          {allEntries.length === 0 && (
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href="/invoices/client-timesheet/new" className="btn btn-primary btn-sm">New entry</Link>
+              {canImport && <Link href="/import/new/timesheets" className="btn btn-secondary btn-sm">Import timesheets</Link>}
+            </div>
+          )}
         </div>
       ) : (
         <ClientTimesheetGrid month={selectedMonth!} entries={entries} showClient={allClients} />

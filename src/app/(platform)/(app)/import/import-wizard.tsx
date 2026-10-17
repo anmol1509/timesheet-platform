@@ -145,14 +145,15 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     }
   }, []);
 
-  function upload(file: File) {
+  function upload(picked: File | File[]) {
+    const files = Array.isArray(picked) ? picked : [picked];
     void wrap(async () => {
       const form = new FormData();
-      form.set("file", file);
+      for (const f of files) form.append("file", f);
       form.set("kind", kind);
       const res = await call<{ batchId: string; analysis: Analysis }>("/api/import", { method: "POST", body: form });
       setBatchId(res.batchId);
-      setFilename(file.name);
+      setFilename(files.length > 1 ? `${files.length} files: ${files.map((f) => f.name).join(", ")}` : files[0].name);
       setSummary(null);
       setPreviewedKey(null);
       setOverrides({});
@@ -317,20 +318,20 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f) upload(f); }}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); const fs = [...(e.dataTransfer.files ?? [])]; if (fs.length) upload(kind === "TIMESHEETS" ? fs : fs.slice(0, 1)); }}
           className={cn("card flex flex-col items-center justify-center gap-3 border-2 border-dashed px-6 py-14 text-center transition", dragging && "border-[var(--brand-primary)] bg-brand-soft")}
         >
           {busy ? <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-primary)]" aria-hidden /> : <UploadCloud className="h-8 w-8 text-[var(--brand-primary)]" aria-hidden />}
-          <p className="text-sm font-medium text-primary">{busy ? "Reading your file…" : `Drop your ${target.label.toLowerCase()} file here`}</p>
+          <p className="text-sm font-medium text-primary">{busy ? "Reading your file…" : `Drop your ${target.label.toLowerCase()} ${kind === "TIMESHEETS" ? "files" : "file"} here`}</p>
           <p className="max-w-md text-xs text-muted">
             {kind === "TIMESHEETS"
-              ? "An Excel (.xlsx) timesheet with a tab per month. Suppliers, sponsors, clients, workers, hours and attendance are all read from it."
+              ? "An Excel (.xlsx) timesheet with a tab per month. Drop one file for everyone, or one per client: several files are read together. Suppliers, sponsors, clients, workers, hours and attendance are all read from them."
               : "An Excel (.xlsx) or CSV file with a header row. Your column names don't have to match ours — you'll confirm the matches next."}
           </p>
           {/* A real <label> around the input: the browser opens the picker itself, with no script click in between. */}
           <label className={cn("btn btn-primary cursor-pointer", busy && "pointer-events-none opacity-60")}>
-            Choose a file
-            <input ref={dropRef} type="file" disabled={busy} accept={kind === "TIMESHEETS" ? ".xlsx" : ".xlsx,.csv"} className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }} />
+            {kind === "TIMESHEETS" ? "Choose files" : "Choose a file"}
+            <input ref={dropRef} type="file" multiple={kind === "TIMESHEETS"} disabled={busy} accept={kind === "TIMESHEETS" ? ".xlsx" : ".xlsx,.csv"} className="sr-only" onChange={(e) => { const fs = [...(e.target.files ?? [])]; if (fs.length) upload(fs); e.target.value = ""; }} />
           </label>
           <a href={`/api/import/template/${kind.toLowerCase()}`} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
             Download a blank {target.label.toLowerCase()} template
