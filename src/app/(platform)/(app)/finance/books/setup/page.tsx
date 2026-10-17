@@ -47,10 +47,10 @@ export default async function SetupPage() {
       {header}
       {!opening && (
         <section className="rounded-[var(--radius-card)] border border-default bg-surface p-5" aria-label="Get started">
-          <div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold text-primary">Get started</h2><p className="mt-0.5 text-xs text-muted">Shown until your opening balances are in.</p></div><span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">Step 2 of 3</span></div>
+          <div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold text-primary">Get started</h2><p className="mt-0.5 text-xs text-muted">Shown until your opening balances are in.</p></div><span className="rounded-full bg-info-soft px-2.5 py-0.5 text-[11px] font-semibold text-info">Step 2 of 3</span></div>
           <ol className="mt-4 grid gap-3 sm:grid-cols-3">
             {steps.map((s) => (
-              <li key={s.n} className={`rounded-xl border p-3 text-sm ${s.state === "done" ? "border-emerald-200" : s.state === "now" ? "border-brand" : "border-default"}`}>
+              <li key={s.n} className={`rounded-xl border p-3 text-sm ${s.state === "done" ? "border-[var(--success-border,var(--success))]" : s.state === "now" ? "border-brand" : "border-default"}`}>
                 <p className="font-semibold text-primary">{s.n} · {s.title}</p><p className="text-xs text-muted">{s.note}</p>
               </li>
             ))}

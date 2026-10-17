@@ -166,7 +166,7 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
         <div className="card p-10 text-center text-sm text-muted">No expenses match.</div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[42rem] text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Expense</th><th className="px-4 py-3 text-right">Amount</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" /></tr>
             </thead>

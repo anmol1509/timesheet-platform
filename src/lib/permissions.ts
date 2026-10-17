@@ -323,12 +323,16 @@ export const ROLE_PRESETS: { name: string; description: string; permissions: str
   },
   {
     name: "Accountant",
-    description: "Billing and timesheets, with export; read-only partners.",
+    description: "Billing, finance and accounting, and timesheets, with export; read-only partners.",
     permissions: [
       "billing:view",
       "billing:create",
       "billing:edit",
       "billing:export",
+      "finance:view",
+      "finance:create",
+      "finance:edit",
+      "finance:export",
       "timesheets:view",
       "timesheets:export",
       "partners:view",

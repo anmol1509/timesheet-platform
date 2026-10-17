@@ -15,7 +15,7 @@ type View = (typeof VIEWS)[number]["k"];
 
 function Block({ title, rows, total, totalLabel }: { title: string; rows: { key: string; label: string; value: number }[]; total: number; totalLabel: string }) {
   return (
-    <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
+    <section className="overflow-x-auto rounded-[var(--radius-card)] border border-default bg-surface">
       <h3 className="bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary">{title}</h3>
       <table className="w-full text-sm"><tbody className="divide-y divide-default">
         {rows.map((r) => <tr key={r.key}><td className="px-4 py-1.5 text-secondary">{r.label}</td><td className="tabular px-4 py-1.5 text-right">{aed(r.value)}</td></tr>)}
@@ -90,7 +90,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   } else {
     const tb = trialBalance(cumulative);
     body = (
-      <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
+      <section className="overflow-x-auto rounded-[var(--radius-card)] border border-default bg-surface">
         <h3 className="flex items-center justify-between bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary"><span>Trial balance as of {fmtDate(asOf)}</span><span className={tb.balanced ? "text-success" : "text-error"}>{tb.balanced ? "Balanced" : "Out of balance"}</span></h3>
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-muted"><tr><th className="px-4 py-2 font-medium">Account</th><th className="px-4 py-2 text-right font-medium">Debit</th><th className="px-4 py-2 text-right font-medium">Credit</th></tr></thead>

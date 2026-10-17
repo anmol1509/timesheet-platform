@@ -20,7 +20,7 @@ const TYPES = [
   { k: "EXPENSE", l: "Expenses" }, { k: "PAYROLL", l: "Payroll" }, { k: "CREDIT_NOTE", l: "Credit notes" }, { k: "JOURNAL", l: "Vouchers" },
 ];
 const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note" };
-const TYPE_TONE: Record<string, string> = { SALES: "bg-blue-50 text-blue-700", RECEIPT: "bg-emerald-50 text-emerald-700", PAYMENT: "bg-amber-50 text-amber-800", BILL: "bg-amber-50 text-amber-800", EXPENSE: "bg-amber-50 text-amber-800", PAYROLL: "bg-amber-50 text-amber-800", CREDIT_NOTE: "bg-rose-50 text-rose-700", DEBIT_NOTE: "bg-rose-50 text-rose-700", JOURNAL: "bg-violet-50 text-violet-700" };
+const TYPE_TONE: Record<string, string> = { SALES: "bg-info-soft text-info", RECEIPT: "bg-success-soft text-success", PAYMENT: "bg-warning-soft text-warning", BILL: "bg-warning-soft text-warning", EXPENSE: "bg-warning-soft text-warning", PAYROLL: "bg-warning-soft text-warning", CREDIT_NOTE: "bg-error-soft text-error", DEBIT_NOTE: "bg-error-soft text-error", JOURNAL: "bg-brand-soft text-brand" };
 const isMoney = (a: { type: string; tag: string | null; name: string }) => a.type === "ASSET" && (a.tag === "CASH" || a.tag === "BANK" || /bank|cash/i.test(a.name));
 
 export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ type?: string; q?: string }> }) {
@@ -82,10 +82,10 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       {(unmatched > 0 || canLock) && (
         <div className="divide-y divide-default overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface text-sm">
           {unmatched > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{unmatched} bank {unmatched === 1 ? "line is" : "lines are"} waiting to be matched</b></span><Link href="/finance/books/bank" className="rounded-lg border border-default px-3 py-1 text-xs font-medium text-primary hover:bg-surface-hover">Review</Link></div>
+            <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-[var(--warning)]" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{unmatched} bank {unmatched === 1 ? "line is" : "lines are"} waiting to be matched</b></span><Link href="/finance/books/bank" className="rounded-lg border border-default px-3 py-1 text-xs font-medium text-primary hover:bg-surface-hover">Review</Link></div>
           )}
           {canLock && (
-            <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-indigo-500" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{lockCandidate.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })} is ready to lock</b><span className="text-muted"> · it ended over 30 days ago</span></span><LockNow date={iso(lockCandidate)} /></div>
+            <div className="flex items-center gap-3 px-4 py-3"><span className="h-2 w-2 shrink-0 rounded-full bg-[var(--brand-primary)]" aria-hidden /><span className="flex-1"><b className="font-semibold text-primary">{lockCandidate.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" })} is ready to lock</b><span className="text-muted"> · it ended over 30 days ago</span></span><LockNow date={iso(lockCandidate)} /></div>
           )}
         </div>
       )}
@@ -103,8 +103,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       {rows.length === 0 ? (
         <EmptyState title="Nothing here yet" description="Transactions appear as invoices, bills, payments and expenses are recorded, or when you add an entry." />
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-[var(--radius-card)] border border-default bg-surface">
+          <table className="w-full min-w-[40rem] text-sm">
             <thead className="bg-[var(--surface-sunken)] text-left text-xs text-muted">
               <tr><th className="px-4 py-2 font-medium">Date</th><th className="px-4 py-2 font-medium">What happened</th><th className="px-4 py-2 font-medium">Type</th><th className="px-4 py-2 text-right font-medium">Money in</th><th className="px-4 py-2 text-right font-medium">Money out</th><th className="w-12" /></tr>
             </thead>
@@ -133,7 +133,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                         </table>
                       </details>
                     </td>
-                    <td className="px-4 py-2.5 align-top"><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${TYPE_TONE[e.type] ?? "bg-slate-100 text-slate-600"}`}>{TYPE_LABEL[e.type] ?? e.type}</span></td>
+                    <td className="px-4 py-2.5 align-top"><span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${TYPE_TONE[e.type] ?? "bg-surface-sunken text-muted"}`}>{TYPE_LABEL[e.type] ?? e.type}</span></td>
                     <td className="px-4 py-2.5 text-right align-top">{money("in")}</td>
                     <td className="px-4 py-2.5 text-right align-top">{money("out")}</td>
                     <td className="px-2 py-2.5 text-right align-top">{!e.sourceKey && !void_ && ctx.canWrite ? <VoidButton id={e.id} number={e.number} /> : null}</td>
