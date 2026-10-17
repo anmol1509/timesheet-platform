@@ -17,6 +17,7 @@ import { PortalAccessCard } from "./portal-access";
 import { isOutsideBranch } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { SupplierTabs } from "./supplier-tabs";
+import { WorkmenCompSection } from "./workmen-comp-section";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
 
@@ -55,7 +56,8 @@ export default async function SupplierDetailPage({
   const root = supplier.parent ?? { id: supplier.id, name: supplier.name };
   const siblings = supplier.parent ? supplier.parent.subsidiaries : supplier.subsidiaries;
 
-  const [attachments, parentOptions] = await Promise.all([
+  const WC_TYPES = ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"];
+  const [attachments, parentOptions, coveredBy, workerCount] = await Promise.all([
     prisma.attachment.findMany({
       where: { entityType: "SUPPLIER", entityId: supplier.id },
       orderBy: { uploadedAt: "desc" },
@@ -66,7 +68,12 @@ export default async function SupplierDetailPage({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.employee.groupBy({ by: ["wcAttachmentId"], where: { supplierId: supplier.id, wcAttachmentId: { not: null } }, _count: true }),
+    prisma.employee.count({ where: { supplierId: supplier.id, active: true } }),
   ]);
+  const wcPolicies = attachments
+    .filter((a) => WC_TYPES.includes(a.docType))
+    .map((a) => ({ id: a.id, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, covered: coveredBy.find((c) => c.wcAttachmentId === a.id)?._count ?? 0 }));
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -156,6 +163,10 @@ export default async function SupplierDetailPage({
             content: (
               <div className="space-y-6">
                 <section>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">Workmen compensation</h2>
+                  <WorkmenCompSection supplierId={supplier.id} policies={wcPolicies} workers={workerCount} canEdit={can(subjectOf(user), "partners.suppliers", "edit")} />
+                </section>
+                <section>
                   <h2 className="mb-3 text-sm font-semibold text-primary">Documents</h2>
                   <p className="mb-3 text-sm text-muted">
                     Trade licence and MOHRE permit first — those decide whether this
@@ -170,7 +181,6 @@ export default async function SupplierDetailPage({
                       { value: "LETTERHEAD", label: "Letterhead (blank, for letters)" },
                       { value: "TRADE_LICENSE", label: "Trade Licence" },
                       { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
-                      { value: "WORKMEN_COMPENSATION_INSURANCE", label: "Workmen Compensation Insurance" },
                       { value: "ESTABLISHMENT_CARD", label: "MOHRE Establishment Card" },
                       { value: "EJARI_TENANCY", label: "Ejari / Tenancy Contract" },
                       { value: "CHAMBER_OF_COMMERCE", label: "Chamber of Commerce Certificate" },
@@ -178,7 +188,7 @@ export default async function SupplierDetailPage({
                       { value: "CONTRACT", label: "Contract" },
                       { value: "OTHER", label: "Other" },
                     ]}
-                    attachments={attachments.map((a) => ({
+                    attachments={attachments.filter((a) => !WC_TYPES.includes(a.docType)).map((a) => ({
                       id: a.id,
                       docType: a.docType,
                       filename: a.filename,

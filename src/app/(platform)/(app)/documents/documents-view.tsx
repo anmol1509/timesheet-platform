@@ -11,13 +11,14 @@ import type { CompanyAttachment, CompanySupplier } from "./company-docs";
 type View = "list" | "employee" | "supplier";
 
 /** List, one row per worker, or one row per supplier: the same documents, three ways in. */
-export function DocumentsView({ documents, employees, matrixEmployees, policies, companySuppliers, companyAttachments, suppliers, projects, canBulkImport }: {
+export function DocumentsView({ documents, employees, matrixEmployees, policies, companySuppliers, companyAttachments, certsInUse, suppliers, projects, canBulkImport }: {
   documents: DocRow[];
   employees: { id: string; name: string; employeeIdNo: string }[];
   matrixEmployees: (MatrixEmployee & { projectName: string | null })[];
   policies: Policy[];
   companySuppliers: CompanySupplier[];
   companyAttachments: CompanyAttachment[];
+  certsInUse: string[];
   suppliers: { id: string; name: string }[];
   projects: { id: string; name: string }[];
   canBulkImport: boolean;
@@ -35,7 +36,7 @@ export function DocumentsView({ documents, employees, matrixEmployees, policies,
       {view === "list" ? (
         <DocumentBrowser documents={documents} employees={employees} suppliers={suppliers} projects={projects} canBulkImport={canBulkImport} />
       ) : (
-        <MatrixViews key={view} view={view} documents={documents} employees={matrixEmployees} policies={policies} companySuppliers={companySuppliers} companyAttachments={companyAttachments} suppliers={suppliers} projects={projects} />
+        <MatrixViews key={view} view={view} documents={documents} employees={matrixEmployees} policies={policies} companySuppliers={companySuppliers} companyAttachments={companyAttachments} certsInUse={certsInUse} suppliers={suppliers} projects={projects} />
       )}
     </div>
   );

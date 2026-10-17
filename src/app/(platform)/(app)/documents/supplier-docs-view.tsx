@@ -25,13 +25,15 @@ function Box({ cell, label, supplierId }: { cell: CompanyCell; label: string; su
   const inner = (<><span className="block text-[11px] font-semibold">{cell.label}</span><span className="block text-[10px] opacity-80">{cell.sub}</span></>);
   const cls = cn("inline-flex min-w-[5rem] flex-col items-center rounded-[10px] border px-2 py-1 leading-tight", TONE[cell.state]);
   // A document on file opens in a new tab; a missing one opens the supplier, where it can be added.
+  // Several policies: the supplier page lists each one with the workers it covers.
+  if ((cell.policies ?? 0) > 1) return <Link href={`/suppliers/${supplierId}#workmen-comp`} aria-label={`${label}: ${cell.sub}, ${cell.label}. Open the supplier to see each policy`} className={cn(cls, "hover:brightness-95")}>{inner}</Link>;
   if (cell.attachmentId) return <a href={`/api/attachments/${cell.attachmentId}`} target="_blank" rel="noreferrer" aria-label={`${label}: ${cell.label}, ${cell.sub}`} className={cn(cls, "cursor-pointer hover:brightness-95")}>{inner}</a>;
   if (cell.state === "na") return <span aria-label={`${label}: not needed`} className={cls}>{inner}</span>;
   return <Link href={`/suppliers/${supplierId}`} aria-label={`${label}: ${cell.label}. Open the supplier to add it`} className={cn(cls, "hover:brightness-95")}>{inner}</Link>;
 }
 
 /** One row per supplier company with its own documents: trade licence, VAT certificate, workmen comp and the rest. */
-export function SupplierDocsView({ suppliers, attachments }: { suppliers: CompanySupplier[]; attachments: CompanyAttachment[] }) {
+export function SupplierDocsView({ suppliers, attachments, certsInUse }: { suppliers: CompanySupplier[]; attachments: CompanyAttachment[]; certsInUse: string[] }) {
   const [now] = useState(() => Date.now());
   const [query, setQuery] = useState("");
   const [chip, setChip] = useState<Chip>("all");
@@ -39,7 +41,7 @@ export function SupplierDocsView({ suppliers, attachments }: { suppliers: Compan
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [printing, setPrinting] = useState(false);
 
-  const cells = useMemo(() => buildCompanyCells(suppliers, attachments, now), [suppliers, attachments, now]);
+  const cells = useMemo(() => buildCompanyCells(suppliers, attachments, now, new Set(certsInUse)), [suppliers, attachments, now, certsInUse]);
   const states = (id: string) => COMPANY_TYPES.map((t) => cells.get(id)![t.key].state);
   const matches = (id: string, c: Chip) => {
     const s = states(id);

@@ -14,18 +14,23 @@ export const COMPANY_LABEL = Object.fromEntries(COMPANY_TYPES.map((t) => [t.key,
 export const COMPANY_DOC_TYPES: string[] = COMPANY_TYPES.flatMap((t) => [...t.types]);
 
 export type CompanyState = CellState | "na";
-export type CompanyCell = { state: CompanyState; label: string; sub: string; attachmentId?: string };
+export type CompanyCell = { state: CompanyState; label: string; sub: string; attachmentId?: string; /** Workmen comp: every current certificate, when a supplier holds more than one. */ attachmentIds?: string[]; policies?: number };
 export type CompanySupplier = { id: string; name: string; trn: string | null; tradeLicenseExpiry: string | null };
 export type CompanyAttachment = { id: string; supplierId: string; docType: string; expiryDate: string | null; uploadedAt: string };
 
+const WORSE: Record<CellState, number> = { expired: 4, missing: 3, notlisted: 3, expiring: 2, valid: 1 };
 const LABEL: Record<CompanyState, string> = { valid: "Valid", expiring: "Expiring", expired: "Expired", missing: "Missing", notlisted: "Not listed", na: "Not needed" };
 
 /**
  * One cell per supplier and document. The current document is the one that runs longest, since a renewal replaces an
  * old one. A supplier with no VAT number is not expected to hold a VAT certificate (unless it has uploaded one), so
  * that cell reads "Not needed" instead of "Missing".
+ *
+ * Workmen comp is the exception: a supplier can hold several certificates, each naming its own workers. The ones
+ * `inUse` (named by at least one worker) all count; the worst sets the colour and the cell says how many there are.
+ * With none in use, the longest-running stands for the supplier.
  */
-export function buildCompanyCells(suppliers: CompanySupplier[], attachments: CompanyAttachment[], now: number) {
+export function buildCompanyCells(suppliers: CompanySupplier[], attachments: CompanyAttachment[], now: number, inUse: ReadonlySet<string> = new Set()) {
   const best = new Map<string, CompanyAttachment>();
   const rank = (a: CompanyAttachment) => (a.expiryDate ? new Date(a.expiryDate).getTime() : new Date(a.uploadedAt).getTime() - 1e13);
   for (const a of attachments) {
@@ -35,10 +40,23 @@ export function buildCompanyCells(suppliers: CompanySupplier[], attachments: Com
     const cur = best.get(k);
     if (!cur || rank(a) > rank(cur)) best.set(k, a);
   }
+  const wcAll = new Map<string, CompanyAttachment[]>();
+  for (const a of attachments) if ((COMPANY_TYPES[2].types as readonly string[]).includes(a.docType)) wcAll.set(a.supplierId, [...(wcAll.get(a.supplierId) ?? []), a]);
   const cells = new Map<string, Record<CompanyKey, CompanyCell>>();
   for (const s of suppliers) {
     const row = {} as Record<CompanyKey, CompanyCell>;
     for (const t of COMPANY_TYPES) {
+      if (t.key === "WC") {
+        const all = wcAll.get(s.id) ?? [];
+        const used = all.filter((a) => inUse.has(a.id));
+        const pool = used.length > 0 ? used : all.length > 0 ? [best.get(`${s.id}|WC`) as CompanyAttachment] : [];
+        if (pool.length === 0) { row.WC = { state: "missing", label: LABEL.missing, sub: "—" }; continue; }
+        const states = pool.map((a) => stateOf(a.expiryDate, now));
+        const worstIdx = states.reduce((w, st, i) => (WORSE[st] > WORSE[states[w]] ? i : w), 0);
+        const state = states[worstIdx];
+        row.WC = { state, label: LABEL[state], sub: pool.length > 1 ? `${pool.length} policies` : span(pool[0].expiryDate, now), attachmentId: pool[worstIdx].id, attachmentIds: pool.map((a) => a.id), policies: pool.length };
+        continue;
+      }
       const a = best.get(`${s.id}|${t.key}`);
       // The trade licence date on the supplier record counts when the file itself has none.
       const expiry = a ? a.expiryDate ?? (t.key === "TRADE_LICENSE" ? s.tradeLicenseExpiry : null) : null;
@@ -77,7 +95,8 @@ export function companyPrintIds(supplierIds: string[], keys: CompanyKey[], cells
     for (const t of COMPANY_TYPES) {
       if (!keys.includes(t.key)) continue;
       const c = row[t.key];
-      if (c.attachmentId) ids.push(`att:${c.attachmentId}`);
+      if (c.attachmentIds?.length) for (const id of c.attachmentIds) ids.push(`att:${id}`);
+      else if (c.attachmentId) ids.push(`att:${c.attachmentId}`);
       else if (c.state !== "na") missing++;
     }
   }

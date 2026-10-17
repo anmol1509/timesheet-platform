@@ -52,3 +52,20 @@ test("print list: chosen kinds only, in column order, counting what is missing",
   assert.deepEqual(companyPrintIds(["a"], ["WC"], cells).ids, ["att:aw"]);
   assert.ok(companyBadness(cells.get("b")!) > companyBadness(cells.get("a")!) - 1);
 });
+
+test("several workmen comp policies: the worst sets the colour, all in use print, the count shows", () => {
+  const atts = [
+    { id: "w1", supplierId: "a", docType: "WORKMEN_COMPENSATION", expiryDate: day(200), uploadedAt: day(-1) },
+    { id: "w2", supplierId: "a", docType: "WORKMEN_COMPENSATION_INSURANCE", expiryDate: day(-5), uploadedAt: day(-1) },
+    { id: "w3", supplierId: "a", docType: "WORKMEN_COMPENSATION", expiryDate: day(-300), uploadedAt: day(-1) }, // replaced, no worker on it
+  ];
+  const cells = buildCompanyCells([sup("a", "1")], atts, NOW, new Set(["w1", "w2"]));
+  const wc = cells.get("a")!.WC;
+  assert.equal(wc.state, "expired");
+  assert.equal(wc.sub, "2 policies");
+  assert.deepEqual(companyPrintIds(["a"], ["WC"], cells).ids, ["att:w1", "att:w2"]);
+  // Nobody linked yet: the longest-running stands for the supplier.
+  const solo = buildCompanyCells([sup("a", "1")], atts, NOW).get("a")!.WC;
+  assert.equal(solo.state, "valid");
+  assert.equal(solo.policies, 1);
+});
