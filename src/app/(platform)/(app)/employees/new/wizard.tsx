@@ -332,11 +332,27 @@ export function EmployeeWizard({
     return filled.length;
   }
 
+  /** Reads still in flight, so "Cancel reading" can stop them. */
+  const reads = useRef(new Set<AbortController>());
+  function cancelReading() {
+    for (const ac of reads.current) ac.abort();
+    reads.current.clear();
+    setPackStatus({ kind: "idle" });
+    setDocStatus({});
+  }
+
   async function extract(file: File, docType: string) {
     const body = new FormData();
     body.append("file", file);
     body.append("docType", docType);
-    const res = await fetch("/api/documents/extract", { method: "POST", body });
+    const ac = new AbortController();
+    reads.current.add(ac);
+    let res: Response;
+    try {
+      res = await fetch("/api/documents/extract", { method: "POST", body, signal: ac.signal });
+    } finally {
+      reads.current.delete(ac);
+    }
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       throw new Error(
@@ -444,6 +460,7 @@ export function EmployeeWizard({
             : `Read ${readable.length} file${readable.length === 1 ? "" : "s"} — nothing new to add.`,
       });
     } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return; // cancelled: the status was already cleared
       setPackStatus({
         kind: "error",
         message: e instanceof Error ? e.message : "Couldn't read these documents.",
@@ -468,6 +485,7 @@ export function EmployeeWizard({
         },
       }));
     } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
       setDocStatus((s) => ({
         ...s,
         [slot]: {
@@ -1275,7 +1293,7 @@ export function EmployeeWizard({
                 className="input w-full"
               />
             </Field>
-            <Field label="Unified number">
+            <Field label="Unified number (optional)">
               <input
                 value={fields.unifiedNo}
                 onChange={(e) => set("unifiedNo", e.target.value)}
@@ -1724,6 +1742,8 @@ export function EmployeeWizard({
             {pending ? "Registering…" : "Register employee"}
           </button>
         ) : (
+          <>
+          {reading && <button type="button" onClick={cancelReading} className="btn btn-secondary">Cancel reading</button>}
           <button
             type="button"
             onClick={() => goTo(step + 1)}
@@ -1739,6 +1759,7 @@ export function EmployeeWizard({
               "Next"
             )}
           </button>
+          </>
         )}
       </div>
     </form>

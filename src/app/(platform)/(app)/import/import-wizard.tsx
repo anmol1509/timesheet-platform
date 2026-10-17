@@ -139,11 +139,15 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
     try {
       await fn();
     } catch (e) {
+      // Cancelling the upload is not an error.
+      if (e instanceof Error && e.name === "AbortError") return;
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
   }, []);
+  /** Lets "Cancel" stop an upload that is still being read. */
+  const uploadAbort = useRef<AbortController | null>(null);
 
   function upload(picked: File | File[]) {
     const files = Array.isArray(picked) ? picked : [picked];
@@ -151,7 +155,9 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
       const form = new FormData();
       for (const f of files) form.append("file", f);
       form.set("kind", kind);
-      const res = await call<{ batchId: string; analysis: Analysis }>("/api/import", { method: "POST", body: form });
+      const ac = new AbortController();
+      uploadAbort.current = ac;
+      const res = await call<{ batchId: string; analysis: Analysis }>("/api/import", { method: "POST", body: form, signal: ac.signal });
       setBatchId(res.batchId);
       setFilename(files.length > 1 ? `${files.length} files: ${files.map((f) => f.name).join(", ")}` : files[0].name);
       setSummary(null);
@@ -322,14 +328,15 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           className={cn("card flex flex-col items-center justify-center gap-3 border-2 border-dashed px-6 py-14 text-center transition", dragging && "border-[var(--brand-primary)] bg-brand-soft")}
         >
           {busy ? <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-primary)]" aria-hidden /> : <UploadCloud className="h-8 w-8 text-[var(--brand-primary)]" aria-hidden />}
-          <p className="text-sm font-medium text-primary">{busy ? "Reading your file…" : `Drop your ${target.label.toLowerCase()} ${kind === "TIMESHEETS" ? "files" : "file"} here`}</p>
+          <p className="text-sm font-medium text-primary">{busy ? (kind === "TIMESHEETS" ? "Reading your files…" : "Reading your file…") : `Drop your ${target.label.toLowerCase()} ${kind === "TIMESHEETS" ? "files" : "file"} here`}</p>
           <p className="max-w-md text-xs text-muted">
             {kind === "TIMESHEETS"
               ? "An Excel (.xlsx) timesheet with a tab per month. Drop one file for everyone, or one per client: several files are read together. Suppliers, sponsors, clients, workers, hours and attendance are all read from them."
               : "An Excel (.xlsx) or CSV file with a header row. Your column names don't have to match ours — you'll confirm the matches next."}
           </p>
+          {busy && <button type="button" onClick={() => uploadAbort.current?.abort()} className="btn btn-secondary">Cancel</button>}
           {/* A real <label> around the input: the browser opens the picker itself, with no script click in between. */}
-          <label className={cn("btn btn-primary cursor-pointer", busy && "pointer-events-none opacity-60")}>
+          <label className={cn("btn btn-primary cursor-pointer", busy && "hidden")}>
             {kind === "TIMESHEETS" ? "Choose files" : "Choose a file"}
             <input ref={dropRef} type="file" multiple={kind === "TIMESHEETS"} disabled={busy} accept={kind === "TIMESHEETS" ? ".xlsx" : ".xlsx,.csv"} className="sr-only" onChange={(e) => { const fs = [...(e.target.files ?? [])]; if (fs.length) upload(fs); e.target.value = ""; }} />
           </label>

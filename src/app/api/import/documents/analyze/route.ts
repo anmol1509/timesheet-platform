@@ -51,7 +51,7 @@ const READ_FIELD_HELP: Record<string, string> = {
   laborCardNumber: "MOHRE work permit / labour card number.",
   laborCardPersonalNo: "MOHRE personal number.",
   visaNumber: "Residency / visa file number (e.g. 301/2026/2/82612).",
-  unifiedNo: "Unified number (UID).",
+  unifiedNo: "Unified number (UID): only the number beside a UNIFIED NO / U.I.D. label on a visa or ICP residency form. Never the number under the chip of an Emirates ID.",
   mobileNumber: "Phone number as printed.",
   sponsorName: "Sponsor or employer / establishment named on the document, in English.",
   tradeLicenseNumber: "Trade licence number, only on a licence page.",
@@ -115,6 +115,8 @@ export async function POST(request: Request) {
       const fields: Record<string, string> = {};
       for (const k of READ_FIELDS[audience].text) { const v = String((r as Record<string, unknown> | undefined)?.[k] ?? "").trim().slice(0, 120); if (v) fields[k] = v; }
       for (const k of READ_FIELDS[audience].dates) { const v = (r as Record<string, unknown> | undefined)?.[k]; if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) fields[k] = v; }
+      // Only a visa page or an ICP form prints a Unified number; the number under an Emirates ID's chip is its card number.
+      if (fields.unifiedNo && type !== "VISA" && type !== "RESIDENCY_ISSUANCE") delete fields.unifiedNo;
       return {
         fields, ref: p.ref!, type, continuation: !!r?.continuation, blank: !!r?.blank,
         holder: String(r?.holder ?? "").slice(0, 120), idNumber: String(r?.idNumber ?? "").slice(0, 60), expiry,

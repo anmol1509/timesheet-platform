@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { StatTile } from "@/components/StatTile";
 import { Insights } from "@/components/ListSummary";
@@ -26,7 +27,7 @@ export default async function DocumentsPage() {
   // which also dragged each file's `fileData` bytes across just to render a
   // filename. Scoped to the caller's branch, and selecting only what the table
   // shows.
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
 
   const [documents, employees] = await Promise.all([
     prisma.document.findMany({
@@ -36,9 +37,10 @@ export default async function DocumentsPage() {
         filename: true,
         type: true,
         employeeId: true,
+        mimeType: true,
         uploadedAt: true,
         expiryDate: true,
-        employee: { select: { name: true, employeeIdNo: true, photoMimeType: true } },
+        employee: { select: { name: true, employeeIdNo: true, photoMimeType: true, supplierId: true, supplier: { select: { name: true } }, projectId: true, project: { select: { code: true, name: true } } } },
         uploadedBy: { select: { name: true } },
       },
       orderBy: { uploadedAt: "desc" },
@@ -49,12 +51,17 @@ export default async function DocumentsPage() {
       orderBy: { name: "asc" },
     }),
   ]);
+  const suppliers = [...new Map(documents.filter((d) => d.employee.supplierId).map((d) => [d.employee.supplierId!, d.employee.supplier!.name])).entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const projects = [...new Map(documents.filter((d) => d.employee.projectId).map((d) => [d.employee.projectId!, `${d.employee.project!.code} — ${d.employee.project!.name}`])).entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const statuses = documents.map((d) => complianceStatus(d.expiryDate));
   const validCount = statuses.filter((s) => s === "valid").length;
-  const expiringCount = statuses.filter(
-    (s) => s === "expiring" || s === "expired"
-  ).length;
+  const expiringCount = statuses.filter((s) => s === "expiring").length;
+  const expiredCount = statuses.filter((s) => s === "expired").length;
 
   const byType = new Map<string, number>();
   for (const d of documents) byType.set(d.type, (byType.get(d.type) ?? 0) + 1);
@@ -71,6 +78,11 @@ export default async function DocumentsPage() {
     employeeName: d.employee.name,
     employeeIdNo: d.employee.employeeIdNo,
     employeeHasPhoto: !!d.employee.photoMimeType,
+    mimeType: d.mimeType,
+    supplierId: d.employee.supplierId,
+    supplierName: d.employee.supplier?.name ?? null,
+    projectId: d.employee.projectId,
+    projectName: d.employee.project ? `${d.employee.project.code} — ${d.employee.project.name}` : null,
     uploadedByName: d.uploadedBy.name,
     uploadedAt: d.uploadedAt.toISOString(),
     expiryDate: d.expiryDate ? d.expiryDate.toISOString() : null,
@@ -87,26 +99,11 @@ export default async function DocumentsPage() {
         description="Every employee document on file, with its expiry status."
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile
-          href="/documents?tab=all"
-          label="Total Documents"
-          value={documents.length}
-          icon={FileText}
-        />
-        <StatTile
-          href="/documents?tab=valid"
-          label="Valid Documents"
-          value={validCount}
-          icon={CheckCircle2}
-        />
-        <StatTile
-          href="/documents?tab=expiring"
-          label="Expiring / Expired"
-          value={expiringCount}
-          icon={AlertTriangle}
-          tone={expiringCount > 0 ? "warning" : "default"}
-        />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile href="/documents?tab=all" label="All Documents" value={documents.length} icon={FileText} />
+        <StatTile href="/documents?tab=valid" label="Valid" value={validCount} icon={CheckCircle2} />
+        <StatTile href="/documents?tab=expiring" label="Expiring Soon" value={expiringCount} icon={AlertTriangle} tone={expiringCount > 0 ? "warning" : "default"} />
+        <StatTile href="/documents?tab=expired" label="Expired" value={expiredCount} icon={AlertTriangle} tone={expiredCount > 0 ? "warning" : "default"} />
       </div>
 
       {documents.length > 0 && (
@@ -115,7 +112,7 @@ export default async function DocumentsPage() {
         </Insights>
       )}
 
-      <DocumentBrowser documents={rows} employees={employees} />
+      <DocumentBrowser documents={rows} employees={employees} suppliers={suppliers} projects={projects} canBulkImport={isAdminRole(user.role)} />
     </div>
   );
 }
