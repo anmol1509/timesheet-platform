@@ -7,21 +7,24 @@ import { convertQuotationToProjectAction } from "../actions";
 export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
   const [pending, startTransition] = useTransition();
   const [createLpos, setCreateLpos] = useState(true);
+  const [createDemand, setCreateDemand] = useState(true);
 
   function submit() {
     const formData = new FormData();
     formData.append("quotationId", quotationId);
     if (createLpos) formData.append("createLpos", "on");
+    if (createDemand) formData.append("createDemand", "on");
     startTransition(() => convertQuotationToProjectAction(formData));
   }
 
   return (
     <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] p-5">
-      <h2 className="mb-2 text-sm font-semibold text-primary">Convert to Project</h2>
+      <h2 className="mb-2 text-sm font-semibold text-primary">Accepted — create the project</h2>
       <p className="mb-3 text-sm text-secondary">
-        Creates a Project for this client and marks the quotation as converted.
+        One step: creates the project for this client, marks the quotation as converted, and (if ticked) raises the demand.
       </p>
-      <div className="mb-3">
+      <div className="mb-3 space-y-2">
+        <Checkbox checked={createDemand} onCheckedChange={setCreateDemand} label="Also raise the labour demand for these workers (trades and quantities from the lines)" />
         <Checkbox
           checked={createLpos}
           onCheckedChange={setCreateLpos}
@@ -34,7 +37,7 @@ export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
         onClick={submit}
         className="btn btn-primary"
       >
-        {pending ? "Converting…" : "Convert to Project"}
+        {pending ? "Creating…" : "Create project"}
       </button>
     </div>
   );

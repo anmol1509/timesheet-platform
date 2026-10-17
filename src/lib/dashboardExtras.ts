@@ -213,7 +213,7 @@ export async function getApprovalsSummary(scope: ApprovalScope): Promise<Approva
 
 export type OperationsSnapshot = {
   /** Each block is null when the person may not open that module. */
-  sales: { openEnquiries: number; draftQuotes: number; sentQuotes: number; expiringQuotes: number } | null;
+  sales: { openEnquiries: number; draftQuotes: number; sentQuotes: number; expiringQuotes: number; followUpsDue: number } | null;
   onboarding: { inProgress: number; readyToJoin: number } | null;
   applications: { visa: number; labourCard: number } | null;
   transport: { vehicles: number; inMaintenance: number; expired: number; expiringSoon: number } | null;
@@ -234,6 +234,7 @@ export async function getOperationsSnapshot(
   const now = new Date();
   const in7 = new Date(now.getTime() + 7 * 864e5);
   const in30 = new Date(now.getTime() + 30 * 864e5);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
   const latestPerEmployee = (rows: { employeeId: string; stage: string }[]) => {
     const seen = new Set<string>();
     let n = 0;
@@ -251,7 +252,9 @@ export async function getOperationsSnapshot(
           prisma.quotation.count({ where: { ...bw, status: "DRAFT" } }),
           prisma.quotation.count({ where: { ...bw, status: { in: ["SENT", "NEGOTIATION"] } } }),
           prisma.quotation.count({ where: { ...bw, status: { in: ["SENT", "NEGOTIATION"] }, validUntil: { gte: now, lte: in7 } } }),
-        ]).then(([openEnquiries, draftQuotes, sentQuotes, expiringQuotes]) => ({ openEnquiries, draftQuotes, sentQuotes, expiringQuotes }))
+          prisma.quotation.count({ where: { ...bw, status: { in: ["DRAFT", "SENT", "NEGOTIATION", "APPROVED"] }, nextFollowUpAt: { lte: endOfToday } } }),
+          prisma.enquiry.count({ where: { ...bw, status: { in: ["Open", "Quoted"] }, nextFollowUpAt: { lte: endOfToday } } }),
+        ]).then(([openEnquiries, draftQuotes, sentQuotes, expiringQuotes, fq, fe]) => ({ openEnquiries, draftQuotes, sentQuotes, expiringQuotes, followUpsDue: fq + fe }))
       : null,
     allow.onboarding
       ? Promise.all([

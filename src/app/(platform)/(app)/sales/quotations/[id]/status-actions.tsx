@@ -3,21 +3,14 @@
 import { useTransition } from "react";
 import { updateQuotationStatusAction } from "../actions";
 
-const TRANSITIONS: Record<string, { to: string; label: string; tone: "primary" | "danger" }[]> = {
-  DRAFT: [{ to: "SENT", label: "Mark as Sent", tone: "primary" }],
+const TRANSITIONS: Record<string, { to: string; label: string; tone: "primary" | "secondary" }[]> = {
+  // Sending a draft is done from the Send dialog; losing a deal from the Lost button (it asks why).
   SENT: [
-    { to: "NEGOTIATION", label: "Move to Negotiation", tone: "primary" },
-    { to: "APPROVED", label: "Approve", tone: "primary" },
-    { to: "REJECTED", label: "Reject", tone: "danger" },
+    { to: "NEGOTIATION", label: "They want to negotiate", tone: "secondary" },
+    { to: "APPROVED", label: "Client approved", tone: "primary" },
   ],
-  NEGOTIATION: [
-    { to: "APPROVED", label: "Approve", tone: "primary" },
-    { to: "REJECTED", label: "Reject", tone: "danger" },
-  ],
-  APPROVED: [
-    { to: "ACCEPTED", label: "Client Accepted", tone: "primary" },
-    { to: "REJECTED", label: "Reject", tone: "danger" },
-  ],
+  NEGOTIATION: [{ to: "APPROVED", label: "Client approved", tone: "primary" }],
+  APPROVED: [{ to: "ACCEPTED", label: "Client accepted", tone: "primary" }],
 };
 
 export function QuotationStatusActions({ quotationId, status }: { quotationId: string; status: string }) {
@@ -41,8 +34,8 @@ export function QuotationStatusActions({ quotationId, status }: { quotationId: s
           disabled={pending}
           onClick={() => transition(opt.to)}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${
-            opt.tone === "danger"
-              ? "border border-[var(--error-border)] text-[var(--error)] hover:bg-[var(--error-soft)]"
+            opt.tone === "secondary"
+              ? "border border-strong text-secondary hover:bg-surface-hover"
               : "bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-hover)]"
           }`}
         >

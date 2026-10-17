@@ -107,6 +107,10 @@ model Branch {
   quotations           Quotation[]
   candidateOnboardings CandidateOnboarding[]
   timesheetTemplates   TimesheetTemplate[]
+
+  // Quotation defaults: { daysPerMonth, hoursPerDay, units: [{ key, label, perMonth }], costDefaults: {...}, targetProfit }.
+  quoteSettings      Json?
+  quotationTemplates QuotationTemplate[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -530,6 +534,8 @@ model ClientContact {
 
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId String
+
+  quotations Quotation[]
 }
 
 // One row per employee, per month, per supplier — upserted on re-upload so
@@ -1060,19 +1066,19 @@ model Lpo {
 // rewire in this pass; a later phase can add a reconcile step once this
 // module has run in production long enough to trust its data.
 model Attendance {
-  id           String    @id @default(cuid())
-  date         DateTime
-  status       String    @default("PRESENT") // "PRESENT" | "ABSENT" | "LEAVE" | "SICK_LEAVE" | "IDLE" | "HOLIDAY" | "OFF"
-  normalHours  Float?
-  otHours      Float?
-  locked       Boolean   @default(false)
+  id             String    @id @default(cuid())
+  date           DateTime
+  status         String    @default("PRESENT") // "PRESENT" | "ABSENT" | "LEAVE" | "SICK_LEAVE" | "IDLE" | "HOLIDAY" | "OFF"
+  normalHours    Float?
+  otHours        Float?
+  locked         Boolean   @default(false)
   // null = follow the company's short-hours rule; true/false = counted / not counted for this day.
   countShortfall Boolean?
-  markedById   String
-  approvedById String?
-  approvedAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  markedById     String
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId String
@@ -1130,6 +1136,10 @@ model Enquiry {
   requestedById String?
 
   quotations Quotation[]
+
+  nextFollowUpAt DateTime?
+  lostReason     String?
+  activities     SalesActivity[]
 }
 
 // A formal quotation with trade/quantity/rate line items, moving through
@@ -1162,6 +1172,21 @@ model Quotation {
   createdById String
 
   lines QuotationLine[]
+
+  // Sales workflow. `version` counts revisions (earlier versions are kept in QuotationRevision);
+  // `showCost` turns on the private cost and profit view; `adjustments` holds the optional taxes,
+  // discounts and charges as [{ kind: "TAX"|"DISCOUNT"|"CHARGE", name, mode: "PERCENT"|"FIXED", value }].
+  version        Int                 @default(1)
+  sentAt         DateTime?
+  nextFollowUpAt DateTime?
+  lostReason     String?
+  currency       String              @default("AED")
+  showCost       Boolean             @default(false)
+  adjustments    Json?
+  contact        ClientContact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  contactId      String?
+  revisions      QuotationRevision[]
+  activities     SalesActivity[]
 }
 
 model QuotationLine {
@@ -1175,6 +1200,17 @@ model QuotationLine {
 
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   quotationId String
+
+  // How the price is quoted: per MONTH (default), DAY, HOUR or a CUSTOM unit named by the user.
+  // `unitsPerMonth` converts one unit to a month so mixed lines compare (month = 1).
+  unit           String  @default("MONTH")
+  unitLabel      String?
+  unitsPerMonth  Float   @default(1)
+  durationMonths Float?
+  hoursPerDay    Float?
+  // Private: what one worker costs us per month, and the parts it was built from [{ label, amount }].
+  costPerMonth   Float?
+  costBreakdown  Json?
 }
 
 // A physical location under a Project — one Project can have multiple Sites
@@ -1800,41 +1836,41 @@ model PayrollLine {
   otHours         Float  @default(0)
   restHours       Float  @default(0) // hours worked on a weekly off day / holiday
 
-  basic           Decimal   @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
-  allowances      Decimal   @default(0) @db.Decimal(12, 2)
-  overtimePay     Decimal   @default(0) @db.Decimal(12, 2)
-  deductions      Decimal   @default(0) @db.Decimal(12, 2) // absence + unpaid leave
-  adjustment      Decimal   @default(0) @db.Decimal(12, 2) // manual +/-
-  adjustmentNote  String?
-  otherEarnings   Decimal   @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
-  otherDeductions Decimal   @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
+  basic              Decimal   @default(0) @db.Decimal(12, 2) // basic (itemised) or flat rate
+  allowances         Decimal   @default(0) @db.Decimal(12, 2)
+  overtimePay        Decimal   @default(0) @db.Decimal(12, 2)
+  deductions         Decimal   @default(0) @db.Decimal(12, 2) // absence + unpaid leave
+  adjustment         Decimal   @default(0) @db.Decimal(12, 2) // manual +/-
+  adjustmentNote     String?
+  otherEarnings      Decimal   @default(0) @db.Decimal(12, 2) // recurring earnings (PayrollAdjustment)
+  otherDeductions    Decimal   @default(0) @db.Decimal(12, 2) // recurring deductions (PayrollAdjustment)
   // Typed in on the run. A deduction is a one-off amount taken off pay (a fine,
   // damage...); the advance is money already given that is recovered this
   // month. Each carries its own note. Both reduce net pay.
-  manualDeduction Decimal   @default(0) @db.Decimal(12, 2)
-  deductionNote   String?
-  advanceNote     String?
-  advanceManual   Boolean   @default(false) // true once someone has typed the advance, so a recalculation keeps it
-  idleDays        Int       @default(0)
-  sickDays        Int       @default(0)
-  gasCharge       Decimal   @default(0) @db.Decimal(12, 2)
-  shortfallHours      Float     @default(0) // hours short on present working days that were counted
-  shortfallDeduction  Decimal   @default(0) @db.Decimal(12, 2)
-  timesheetHours  Float     @default(0) // hours taken from the timesheet (hourly companies)
+  manualDeduction    Decimal   @default(0) @db.Decimal(12, 2)
+  deductionNote      String?
+  advanceNote        String?
+  advanceManual      Boolean   @default(false) // true once someone has typed the advance, so a recalculation keeps it
+  idleDays           Int       @default(0)
+  sickDays           Int       @default(0)
+  gasCharge          Decimal   @default(0) @db.Decimal(12, 2)
+  shortfallHours     Float     @default(0) // hours short on present working days that were counted
+  shortfallDeduction Decimal   @default(0) @db.Decimal(12, 2)
+  timesheetHours     Float     @default(0) // hours taken from the timesheet (hourly companies)
   // A joiner or leaver is on the payroll for part of the month. null = the whole month.
-  employedDays    Int?
-  periodStart     DateTime?
-  periodEnd       DateTime?
+  employedDays       Int?
+  periodStart        DateTime?
+  periodEnd          DateTime?
   // Each standing earning and deduction on this line, as it was when the run was calculated.
-  items           Json?
-  loanDeduction   Decimal   @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
+  items              Json?
+  loanDeduction      Decimal   @default(0) @db.Decimal(12, 2) // instalments of active loans/advances
   // Where the worker was assigned when the run was calculated, so cost-by-project
   // stays true after they move. Plain id, not a relation: history outlives the project row.
-  projectId       String?
+  projectId          String?
   // Bank reconciliation once the WPS file has been sent.
-  paymentStatus   String    @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
-  paymentNote     String?
-  net             Decimal   @default(0) @db.Decimal(12, 2)
+  paymentStatus      String    @default("PENDING") // "PENDING" | "PAID" | "REJECTED" | "RESUBMIT"
+  paymentNote        String?
+  net                Decimal   @default(0) @db.Decimal(12, 2)
 
   // Bank snapshot for the WPS file.
   paymentMode String?
@@ -2381,15 +2417,15 @@ model CandidateOnboarding {
   candidateType String @default("OVERSEAS")
 
   // Optional steps start "Not Required" and are switched on per candidate by setting a real status.
-  hireApprovalStatus     String @default("Not Required")
-  interviewStatus        String @default("Not Required")
-  clientApprovalStatus   String @default("Not Required")
+  hireApprovalStatus   String @default("Not Required")
+  interviewStatus      String @default("Not Required")
+  clientApprovalStatus String @default("Not Required")
   // Inside-UAE candidates only: the permit transfer replaces the entry permit and travel steps.
-  permitTransferStatus   String @default("Pending")
+  permitTransferStatus String @default("Pending")
 
   // Arrival papers that were not tracked before: the health insurance card and Emirates ID biometrics.
-  healthCardStatus       String @default("Pending")
-  eidBiometricsStatus    String @default("Pending")
+  healthCardStatus    String @default("Pending")
+  eidBiometricsStatus String @default("Pending")
 
   offerStatus             String @default("Pending")
   wppStatus               String @default("Pending")
@@ -2749,4 +2785,50 @@ model AssistantFeedback {
 
   @@index([branchId, createdAt])
   @@index([reviewed, createdAt])
+}
+
+/// A quotation as it stood before a revision, so earlier versions can be read and compared.
+model QuotationRevision {
+  id            String   @id @default(cuid())
+  version       Int
+  snapshot      Json
+  note          String?
+  createdAt     DateTime @default(now())
+  createdByName String?
+
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId String
+
+  @@unique([quotationId, version])
+}
+
+/// Notes, calls, sends, revisions and status changes on an enquiry or quotation.
+model SalesActivity {
+  id        String   @id @default(cuid())
+  kind      String // NOTE | CALL | SENT | REVISION | STATUS | CREATED | FOLLOWUP | LOST
+  body      String
+  userId    String?
+  userName  String?
+  createdAt DateTime @default(now())
+
+  quotation   Quotation? @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId String?
+  enquiry     Enquiry?   @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  enquiryId   String?
+  branchId    String?
+
+  @@index([quotationId, createdAt])
+  @@index([enquiryId, createdAt])
+}
+
+/// A reusable cover text for quotations: an opening and closing paragraph around the line table.
+model QuotationTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  intro     String
+  closing   String?
+  createdAt DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
 }
