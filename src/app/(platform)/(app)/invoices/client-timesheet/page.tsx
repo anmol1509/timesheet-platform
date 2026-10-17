@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { TimesheetFilters } from "./timesheet-filters";
 import { requireUserWithBranch } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
 import { AlertTriangle, FileSearch, Plus } from "lucide-react";
@@ -17,7 +18,8 @@ export default async function ClientTimesheetPage({
   searchParams: Promise<{ month?: string; clientId?: string; project?: string; site?: string }>;
 }) {
   const params = await searchParams;
-  const { branchId } = await requireUserWithBranch();
+  const { user, branchId } = await requireUserWithBranch();
+  const canImport = isAdminRole(user.role);
 
   const monthRows = await prisma.timesheetEntry.findMany({
     where: { clientId: { not: null }, ...branchWhere(branchId) },
@@ -136,6 +138,11 @@ export default async function ClientTimesheetPage({
           description={<>Review and edit a month&rsquo;s day-by-day hours before invoicing.</>}
         />
         <div className="flex items-center gap-2">
+          {canImport && (
+            <Link href="/import/new/timesheets" className="btn btn-secondary">
+              Import
+            </Link>
+          )}
           <Link
             href="/invoices/client-timesheet/daily"
             className="btn btn-secondary"
@@ -183,7 +190,7 @@ export default async function ClientTimesheetPage({
           {allEntries.length === 0 && (
             <div className="flex flex-wrap justify-center gap-2">
               <Link href="/invoices/client-timesheet/new" className="btn btn-primary btn-sm">New entry</Link>
-              <Link href="/invoices/client-timesheet/sync" className="btn btn-secondary btn-sm">Import timesheets</Link>
+              {canImport && <Link href="/import/new/timesheets" className="btn btn-secondary btn-sm">Import timesheets</Link>}
             </div>
           )}
         </div>
