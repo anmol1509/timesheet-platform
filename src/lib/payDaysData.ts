@@ -86,7 +86,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   const shortRule = { mode: (isShortfallMode(e.supplier?.shortfallMode) ? e.supplier!.shortfallMode : "OFF") as ShortfallMode, halfDayUnder: e.supplier ? num(e.supplier.shortfallHalfDayUnder) : 4 };
   const { rows, totals } = buildDays({
     from: iso(window.from), to: iso(window.to), days, hasTimesheet: !!entry,
-    pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [5] },
+    pattern: { dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] },
     hourly, hourlyRate: pf.hourlyRate, fixedPaid: hourly ? 0 : round2(num(line.basic) + num(line.allowances)),
     paysOvertime: hourly ? false : pf.paysOvertime, otMultiplier: pf.otMultiplier, restMultiplier: pf.otMultiplier, otHourlyBase: basic / 30 / dailyHours,
     absence: { freeDays: e.supplier?.absentFreeDays ?? 2, perDay: e.supplier ? num(e.supplier.absentDeductionPerDay) : 30, dailyRate: monthlyFixed / 30 },

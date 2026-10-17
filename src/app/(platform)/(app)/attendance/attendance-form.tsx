@@ -11,7 +11,6 @@ import {
   sitesForScope,
   type StatusFilter,
 } from "@/lib/attendanceFilters";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
@@ -38,10 +37,81 @@ type EmployeeOption = {
   clientId: string | null;
   projectName: string;
   siteId: string | null;
+  /** Days of the week (0 = Sunday) this worker's project is off. */
+  weeklyOffDays: number[];
 };
 type ExistingRow = { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean };
 
 const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "SICK_LEAVE", "IDLE", "HOLIDAY", "OFF"];
+
+/** The four marks that cover almost every worker on almost every day. Idle, Holiday and Off live under "more". */
+const QUICK: { key: string; status: string; label: string; on: string }[] = [
+  { key: "P", status: "PRESENT", label: "Present", on: "bg-[var(--success)] text-white" },
+  { key: "A", status: "ABSENT", label: "Absent", on: "bg-[var(--error)] text-white" },
+  { key: "L", status: "LEAVE", label: "Leave", on: "bg-[var(--warning)] text-white" },
+  { key: "S", status: "SICK_LEAVE", label: "Sick", on: "bg-[var(--brand-primary)] text-white" },
+];
+const MORE: Record<string, string> = { IDLE: "Idle", HOLIDAY: "Holiday", OFF: "Weekly off" };
+
+/**
+ * One tap marks a worker. Tapping the mark they already have clears it, and
+ * the letters P A L S work while focus is on the row.
+ */
+function StatusButtons({ value, disabled, name, onChange }: { value: string | null; disabled: boolean; name: string; onChange: (status: string | null) => void }) {
+  return (
+    <div
+      role="group"
+      aria-label={`Attendance for ${name}`}
+      className="flex items-center gap-1.5"
+      onKeyDown={(ev) => {
+        const hit = QUICK.find((q) => q.key.toLowerCase() === ev.key.toLowerCase());
+        if (hit && !disabled && !ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+          ev.preventDefault();
+          onChange(value === hit.status ? null : hit.status);
+        }
+      }}
+    >
+      <div className="inline-flex overflow-hidden rounded-control border border-default">
+        {QUICK.map((q) => (
+          <button
+            key={q.key}
+            type="button"
+            disabled={disabled}
+            aria-pressed={value === q.status}
+            aria-label={q.label}
+            title={q.label}
+            onClick={() => onChange(value === q.status ? null : q.status)}
+            className={cn(
+              "w-8 border-r border-default py-1.5 text-xs font-semibold transition last:border-r-0 disabled:cursor-not-allowed disabled:opacity-50",
+              value === q.status ? q.on : "bg-surface text-muted hover:bg-surface-hover"
+            )}
+          >
+            {q.key}
+          </button>
+        ))}
+      </div>
+      <select
+        aria-label={`More marks for ${name}`}
+        disabled={disabled}
+        value={value && MORE[value] ? value : ""}
+        onChange={(ev) => onChange(ev.target.value || null)}
+        className={cn("input h-8 w-[6.75rem] px-1.5 py-0 text-xs", value && MORE[value] && "font-semibold text-primary")}
+      >
+        <option value="">More…</option>
+        {Object.entries(MORE).map(([v, l]) => (
+          <option key={v} value={v}>{l}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+const SUMMARY: { label: string; statuses: string[]; tone: string }[] = [
+  { label: "Present", statuses: ["PRESENT"], tone: "text-[var(--success)]" },
+  { label: "Absent", statuses: ["ABSENT"], tone: "text-[var(--error)]" },
+  { label: "Leave / sick", statuses: ["LEAVE", "SICK_LEAVE"], tone: "text-[var(--warning)]" },
+  { label: "Idle / holiday / off", statuses: ["IDLE", "HOLIDAY", "OFF"], tone: "text-secondary" },
+];
 
 /**
  * A standard site day. Pre-filled for active workers so marking a day is a
@@ -49,6 +119,14 @@ const STATUS_OPTIONS = ["PRESENT", "ABSENT", "LEAVE", "SICK_LEAVE", "IDLE", "HOL
  * against every name.
  */
 const DEFAULT_DAY_HOURS = "10";
+
+const KEY: { code: string; name: string; text: string }[] = [
+  { code: "P", name: "Present", text: `Worked. ${DEFAULT_DAY_HOURS} normal hours are filled in; change them or add OT.` },
+  { code: "A", name: "Absent", text: "Didn't come, no permission. Unpaid." },
+  { code: "L", name: "Leave", text: "Approved leave, such as annual leave." },
+  { code: "S", name: "Sick", text: "Sick leave." },
+  { code: "More", name: "Idle · Holiday · Weekly off", text: "Idle: on site with no work. Holiday and weekly off are set for the whole day above." },
+];
 
 
 export function AttendanceForm({
@@ -85,6 +163,8 @@ export function AttendanceForm({
   // isn't ticked: the roster lists everyone on the books, and defaulting the
   // whole list to Present marks idle workers as having worked a full day.
   const [marked, setMarked] = useState<Record<string, boolean>>({});
+  /** Workers pre-set to Off because the day is their project's weekly off. */
+  const [autoOff, setAutoOff] = useState<Record<string, boolean>>({});
   const [correctionFor, setCorrectionFor] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   // Bumped after a mark is deleted, to re-pull the day from the server.
@@ -144,10 +224,24 @@ export function AttendanceForm({
         nextNormal[employeeId] = row.normalHours != null ? String(row.normalHours) : "";
         nextOt[employeeId] = row.otHours != null ? String(row.otHours) : "";
       }
+      // The project's weekly off is filled in for anyone with nothing recorded yet; a tap changes it.
+      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+      const nextAuto: Record<string, boolean> = {};
+      const nextMarked: Record<string, boolean> = {};
+      for (const e of employees) {
+        if (res.rows[e.id] || !e.siteArrivalDate || date < e.siteArrivalDate || !e.weeklyOffDays.includes(weekday)) continue;
+        nextStatuses[e.id] = "OFF";
+        nextMarked[e.id] = true;
+        nextAuto[e.id] = true;
+      }
       setStatuses(nextStatuses);
       setNormalHours(nextNormal);
       setOtHours(nextOt);
+      setAutoOff(nextAuto);
+      setMarked(nextMarked);
     });
+    // `employees` is stable for the page's life; the day or a reload is what re-reads it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, reloadKey]);
 
   // Clears a saved mark outright, for a day recorded against the wrong worker
@@ -189,12 +283,6 @@ export function AttendanceForm({
     return !!e.siteArrivalDate && date >= e.siteArrivalDate;
   }
 
-  function toggleMarked(employeeId: string) {
-    const employee = employees.find((e) => e.id === employeeId);
-    if (employee && !isMarked(employeeId) && !isEligible(employee)) return;
-    setMarked((prev) => ({ ...prev, [employeeId]: !isMarked(employeeId) }));
-  }
-
   /**
    * What goes in the hours box: whatever was typed, then whatever is already
    * saved, then a standard day for an active worker who is present.
@@ -225,6 +313,37 @@ export function AttendanceForm({
     setMarked((prev) => {
       const next = { ...prev };
       for (const r of rows) if (!isLocked(r.id)) next[r.id] = true;
+      return next;
+    });
+  }
+
+  /** One tap on a row: that status, recorded; or null to leave the worker out of today's record. */
+  function setMark(employeeId: string, status: string | null) {
+    if (status) setStatuses((prev) => ({ ...prev, [employeeId]: status }));
+    setMarked((prev) => ({ ...prev, [employeeId]: !!status }));
+  }
+
+  /** A public holiday or weekly off applies to everyone, so it is set once for the whole list in view. */
+  function markDay(status: "HOLIDAY" | "OFF") {
+    const eligibleRows = rows.filter((r) => !isLocked(r.id) && (isMarked(r.id) || isEligible(r)));
+    setStatuses((prev) => {
+      const next = { ...prev };
+      for (const r of eligibleRows) next[r.id] = status;
+      return next;
+    });
+    setMarked((prev) => {
+      const next = { ...prev };
+      for (const r of eligibleRows) next[r.id] = true;
+      return next;
+    });
+    setNormalHours((prev) => {
+      const next = { ...prev };
+      for (const r of eligibleRows) next[r.id] = "";
+      return next;
+    });
+    setOtHours((prev) => {
+      const next = { ...prev };
+      for (const r of eligibleRows) next[r.id] = "";
       return next;
     });
   }
@@ -381,28 +500,43 @@ export function AttendanceForm({
         </div>
       </div>
 
+      {rows.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {SUMMARY.map((t) => (
+            <div key={t.label} className="card px-4 py-3">
+              <p className="text-xs text-muted">{t.label}</p>
+              <p className={cn("tabular text-2xl font-semibold", t.tone)}>
+                {rows.filter((r) => isMarked(r.id) && t.statuses.includes(statusFor(r.id))).length}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {rows.length > 0 && !allLocked && (
+        <div className="card flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+          <span>Is {date} a <b>public holiday</b> or a <b>weekly off</b>?</span>
+          <button type="button" onClick={() => markDay("HOLIDAY")} className="btn btn-secondary btn-sm">Mark day as Holiday</button>
+          <button type="button" onClick={() => markDay("OFF")} className="btn btn-secondary btn-sm">Mark day as Weekly off</button>
+          <span className="text-xs text-muted">
+            Applies to the {rows.length} {rows.length === 1 ? "worker" : "workers"} shown{clientId || projectId || siteId || supplierIds.length > 0 ? "" : ". Weekly off differs by client? Filter to that client first."}
+          </span>
+        </div>
+      )}
+
       <div className="card p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-primary">Employees</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-sm font-semibold text-primary">Employees</h2>
+            <span className="text-xs text-muted">
+              {rows.filter((r) => isMarked(r.id)).length} of {rows.length} marked
+            </span>
+          </div>
           {rows.length > 0 && !allLocked && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted">
-                {rows.filter((r) => isMarked(r.id)).length} of {rows.length} to record
-              </span>
-              <button
-                type="button"
-                onClick={markAllPresent}
-                className="btn btn-secondary btn-sm"
-              >
-                Mark all Present
-              </button>
-              <button
-                type="button"
-                onClick={clearAllMarks}
-                className="btn btn-secondary btn-sm"
-              >
-                Clear
-              </button>
+              <span className="hidden text-xs text-muted sm:inline">Keys: P A L S</span>
+              <button type="button" onClick={markAllPresent} className="btn btn-secondary btn-sm">Mark all Present</button>
+              <button type="button" onClick={clearAllMarks} className="btn btn-secondary btn-sm">Clear</button>
             </div>
           )}
         </div>
@@ -418,12 +552,11 @@ export function AttendanceForm({
             <table className="w-full text-sm">
               <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
                 <tr>
-                  <th className="w-10 px-2 py-2">Record</th>
                   <th className="px-2 py-2">Employee</th>
                   <th className="px-2 py-2">Trade</th>
                   <th className="px-2 py-2">Status</th>
-                  <th className="px-2 py-2">Normal hrs</th>
-                  <th className="px-2 py-2">OT hrs</th>
+                  <th className="px-2 py-2">Hours</th>
+                  <th className="px-2 py-2">OT</th>
                   <th className="px-2 py-2" />
                 </tr>
               </thead>
@@ -433,36 +566,24 @@ export function AttendanceForm({
                   const on = isMarked(e.id);
                   const eligible = on || isEligible(e);
                   return (
-                    <tr key={e.id} className={cn(!on && !locked && "opacity-55")}>
-                      <td className="px-2 py-2">
-                        <Checkbox
-                          checked={on}
-                          disabled={locked || !eligible}
-                          onCheckedChange={() => toggleMarked(e.id)}
-                          aria-label={`Record attendance for ${e.name}`}
-                        />
-                      </td>
+                    <tr key={e.id} className={cn(!on && !locked && "opacity-70")}>
                       <td className="px-2 py-2 text-primary">
                         <span className="inline-flex items-center gap-2 align-middle">
                           <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="xs" />
                           <span>{e.name} <span className="text-subtle">{e.employeeIdNo}</span></span>
                         </span>
+                        {autoOff[e.id] && statusFor(e.id) === "OFF" && (
+                          <span className="ml-1.5 text-xs text-muted" title={e.projectName ? `Weekly off for ${e.projectName}` : "No project, so Sunday"}>weekly off</span>
+                        )}
                         {!eligible && (
-                          <span
-                            className="ml-1.5 text-xs text-[var(--warning)]"
-                            title={
-                              e.siteArrivalDate
-                                ? `Site arrival confirmed ${e.siteArrivalDate} — can't mark attendance before that`
-                                : "Site arrival not confirmed yet"
-                            }
-                          >
-                            (not yet arrived)
+                          <span className="ml-1.5 text-xs text-[var(--warning)]">
+                            not yet arrived{e.siteArrivalDate ? ` (from ${e.siteArrivalDate})` : ""}
                           </span>
                         )}
                       </td>
                       <td className="px-2 py-2 text-secondary">{e.trade || "—"}</td>
                       <td className="px-2 py-2">
-                        <Select value={statusFor(e.id)} onChange={(v) => setStatuses((prev) => ({ ...prev, [e.id]: v }))} disabled={locked || !on} options={[...STATUS_OPTIONS.map((s) => ({ value: s, label: s }))]} />
+                        <StatusButtons name={e.name} value={on ? statusFor(e.id) : null} disabled={locked || !eligible} onChange={(v) => setMark(e.id, v)} />
                       </td>
                       <td className="px-2 py-2">
                         <input
@@ -525,26 +646,35 @@ export function AttendanceForm({
         )}
       </div>
 
-      {result && <p className="text-sm text-secondary">{result}</p>}
+      {result && <p role="status" className="text-sm text-secondary">{result}</p>}
+
+      <div className="card grid gap-3 p-4 text-xs sm:grid-cols-5">
+        {KEY.map((k) => (
+          <div key={k.code}>
+            <p className="font-semibold text-primary"><span className="mr-1.5 inline-block min-w-5 rounded bg-surface-sunken px-1.5 py-0.5 text-center">{k.code}</span>{k.name}</p>
+            <p className="mt-1 text-muted">{k.text}</p>
+          </div>
+        ))}
+      </div>
 
       {!allLocked && (
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={pending || rows.length === 0}
-            className="btn btn-primary"
-          >
-            {pending ? "Saving…" : "Save Attendance"}
-          </button>
-          <button
-            type="button"
-            onClick={handleApproveDay}
-            disabled={pending || !projectId || rows.length === 0}
-            className="rounded-lg border border-[var(--success-border)] px-4 py-2 text-sm font-medium text-[var(--success)] hover:bg-[var(--success-soft)] disabled:opacity-50"
-          >
-            Submit day for approval (lock)
-          </button>
+        <div className="sticky bottom-4 z-20 flex justify-center">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-[#1e1b3a] py-2.5 pr-2.5 pl-4 text-sm text-white shadow-modal">
+            <span><b>{rows.filter((r) => isMarked(r.id) && !isLocked(r.id)).length} to save</b></span>
+            <button type="button" onClick={handleSave} disabled={pending || rows.length === 0} className="rounded-lg border border-white/30 px-3 py-1.5 text-xs font-medium hover:bg-white/10 disabled:opacity-50">
+              {pending ? "Saving…" : "Save"}
+            </button>
+            {!projectId && <span className="hidden text-xs text-white/70 md:inline">Pick a project to submit its day</span>}
+            <button
+              type="button"
+              onClick={handleApproveDay}
+              disabled={pending || !projectId || rows.length === 0}
+              title={projectId ? undefined : "Choose a project above to submit its day"}
+              className="btn btn-primary"
+            >
+              Submit day (lock)
+            </button>
+          </div>
         </div>
       )}
 

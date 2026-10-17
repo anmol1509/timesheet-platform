@@ -7,6 +7,7 @@ import { AttendanceForm } from "./attendance-form";
 import { AttendanceCalendar } from "./attendance-calendar";
 import { getAttendanceMonth } from "@/lib/attendanceMonth";
 import { CorrectionRequests } from "./correction-requests";
+import { DayStrip } from "./day-strip";
 
 export default async function AttendancePage({
   searchParams,
@@ -20,7 +21,9 @@ export default async function AttendancePage({
   const month = /^\d{4}-\d{2}$/.test(monthParam ?? "")
     ? monthParam!
     : `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
-  const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam ?? "") ? dateParam! : null;
+  const todayKey = today.toISOString().slice(0, 10);
+  // Opens on today. Browsing another month in the calendar (month in the link, no day) leaves the day unpicked.
+  const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(dateParam ?? "") ? dateParam! : monthParam ? null : todayKey;
 
   const [suppliers, clients, employees, projects, sites, monthDays, pendingCorrections] =
     await Promise.all([
@@ -52,7 +55,7 @@ export default async function AttendancePage({
         supplier: { select: { name: true } },
         projectId: true,
         siteId: true,
-        project: { select: { id: true, name: true, code: true, clientId: true } },
+        project: { select: { id: true, name: true, code: true, clientId: true, weeklyOffDays: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -81,10 +84,21 @@ export default async function AttendancePage({
       <PageHeader
         title="Daily Attendance"
         icon={Clock}
-        description={<>Mark Present/Absent/Leave/Holiday/Off per employee per day, then submit the day for approval to lock it.</>}
+        description={<>Mark who worked, then submit the day for approval to lock it.</>}
       />
 
-      <AttendanceCalendar month={month} days={monthDays} selectedDate={selectedDate} />
+      {selectedDate && <DayStrip date={selectedDate} today={todayKey} />}
+
+      <details open={!selectedDate} className="group card">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-primary">
+          Month view
+          <span className="text-xs font-normal text-muted group-open:hidden">Show calendar</span>
+          <span className="hidden text-xs font-normal text-muted group-open:inline">Hide</span>
+        </summary>
+        <div className="px-1 pb-1">
+          <AttendanceCalendar month={month} days={monthDays} selectedDate={selectedDate} />
+        </div>
+      </details>
 
       {selectedDate ? (
         <AttendanceForm
@@ -115,6 +129,8 @@ export default async function AttendancePage({
             clientId: e.project?.clientId ?? null,
             projectName: e.project ? `${e.project.code} — ${e.project.name}` : "",
             siteId: e.siteId,
+            // The project decides the weekly off; a worker with no project is off on Sunday.
+            weeklyOffDays: e.project?.weeklyOffDays ?? [0],
           }))}
         />
       ) : (

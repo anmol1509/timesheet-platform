@@ -144,7 +144,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     : [];
   const sheetHours = new Map(sheetRows.map((r) => [r.employeeIdNo, r._sum.totalHours ?? 0]));
 
-  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: payOf(e).dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [5] }]));
+  const patterns = new Map(payable.map((e) => [e.id, { dailyHours: payOf(e).dailyHours, weeklyOffDays: e.project?.weeklyOffDays ?? [0] }]));
   const att = new Map<string, { absent: number; idle: number; sick: number; ot: number; normal: number; rest: number; shorts: { worked: number; override: boolean | null }[] }>();
   for (const a of attendance) {
     const w = windows.get(a.employeeId);
@@ -153,11 +153,11 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     if (a.status === "ABSENT") row.absent += 1;
     else if (a.status === "IDLE") row.idle += 1;
     else if (a.status === "SICK_LEAVE") row.sick += 1;
-    const split = splitDayHours(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [5] });
+    const split = splitDayHours(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [0] });
     row.ot += split.ot;
     row.normal += split.normal;
     row.rest += split.rest;
-    const shortWorked = shortDayWorked(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [5] });
+    const shortWorked = shortDayWorked(a, patterns.get(a.employeeId) ?? { dailyHours: 8, weeklyOffDays: [0] });
     if (shortWorked !== null) row.shorts.push({ worked: shortWorked, override: a.countShortfall });
     att.set(a.employeeId, row);
   }
