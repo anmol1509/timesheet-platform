@@ -1,5 +1,5 @@
 import { Building } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import Link from "next/link";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -38,10 +38,17 @@ export default async function CompanyProfilePage({
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Company profile"
+      <HeroHeader
         icon={Building}
-        description={<>Your company&apos;s name and logo. They appear in the sidebar and on generated timesheets and invoices.</>}
+        title="Company profile"
+        subtitle="Your name, logo and letterhead. They appear in the sidebar and on every timesheet, invoice and letter."
+        pills={[
+          { label: "Company", value: branch.name },
+          { label: "TRN", value: branch.trn ? "Set" : "Missing", warn: !branch.trn },
+          { label: "Address", value: branch.address ? "Set" : "Missing", warn: !branch.address },
+          { label: "Logo", value: branch.logoId ? "Uploaded" : "None" },
+          { label: "Bank accounts", value: String(banks.length), warn: banks.length === 0 },
+        ]}
       />
 
       {isSuperAdmin && branches.length > 1 && (

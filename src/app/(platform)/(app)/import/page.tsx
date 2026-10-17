@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FileStack, Briefcase, Building2, Bus, CalendarClock, HardHat, Home, Truck, type LucideIcon } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -48,10 +48,16 @@ export default async function ImportHubPage() {
   const sample = branchId ? await sampleState(branchId) : { loaded: false };
 
   return (
-    <div className="max-w-5xl space-y-8">
-      <PageHeader
+    <div className="space-y-8">
+      <HeroHeader
+        icon={FileStack}
         title="Import data"
-        description="Bring in what you already have. Nothing is saved until you've seen what will happen, and every import can be undone."
+        subtitle="Bring in what you already have. Nothing is saved until you've seen what will happen, and every import can be undone."
+        pills={[
+          { label: "Imports done", value: String(batches.filter((b) => b.status === "DONE").length) },
+          { label: "Can still undo", value: String(batches.filter((b) => b.status === "DONE" && b.undoUntil && b.undoUntil > new Date()).length) },
+          { label: "Stopped", value: String(batches.filter((b) => b.status === "FAILED").length), warn: batches.some((b) => b.status === "FAILED") },
+        ]}
       />
       {isSuperAdmin && !branchId && (
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">

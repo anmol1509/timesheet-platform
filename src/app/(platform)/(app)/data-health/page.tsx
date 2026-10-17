@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HeartPulse } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isAdminRole } from "@/lib/roles";
@@ -62,8 +62,8 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
 
   if (!branchId) {
     return (
-      <div className="max-w-4xl space-y-4">
-        <PageHeader title="Data health" icon={HeartPulse} />
+      <div className="space-y-4">
+        <HeroHeader icon={HeartPulse} title="Data health" subtitle="How complete your records are in each module, and what's missing for whom." />
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
           Pick a specific branch from the switcher (top right) to see how complete its records are.
         </p>
@@ -81,12 +81,12 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
   const href = (m: string, missing?: string) => `/data-health?module=${m}${missing ? `&missing=${missing}` : ""}`;
 
   return (
-    <div className="max-w-5xl space-y-6">
-      <PageHeader
-        title="Data health"
+    <div className="space-y-6">
+      <HeroHeader
         icon={HeartPulse}
-        breadcrumbs={[{ label: "Administration" }, { label: "Data health" }]}
-        description="How complete your records are in each module, and what's missing for whom. Pick a module to see the gaps."
+        title="Data health"
+        subtitle="How complete your records are in each module, and what's missing for whom. Pick a module to see the gaps."
+        pills={HEALTH_MODULES.map((m) => ({ label: m.label, value: health[m.key].total ? `${health[m.key].overall}%` : "—", warn: health[m.key].total > 0 && health[m.key].overall < 50 }))}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
