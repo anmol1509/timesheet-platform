@@ -107,7 +107,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
             {popular.map((p) => (
               <button key={p.id} type="button" onClick={() => { setTemplateId(p.id); setInputs({}); setPreview(null); }} aria-pressed={templateId === p.id}
                 className={`flex items-center gap-3 rounded-[var(--radius-card)] border px-4 py-3 text-left transition ${templateId === p.id ? "border-[var(--brand-primary)] bg-brand-soft" : "border-default bg-surface hover:border-strong hover:bg-surface-hover"}`}>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-white/70 text-sm font-semibold text-[var(--brand-primary)] shadow-sm" aria-hidden>{p.name.slice(0, 1)}</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-surface-sunken text-sm font-semibold text-[var(--brand-primary)]" aria-hidden>{p.name.slice(0, 1)}</span>
                 <span className="min-w-0"><span className="block truncate text-sm font-semibold text-primary">{p.name}</span><span className="block text-xs text-muted">{p.count > 0 ? `${p.count} issued` : "Not used yet"}</span></span>
               </button>
             ))}

@@ -16,11 +16,11 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
         const inner = (
           <>
             <p className="text-[12.5px] text-muted">{c.label}</p>
-            <p className={cn("tabular mt-0.5 truncate text-2xl font-semibold tracking-tight", TONE[c.tone ?? "default"])}>{c.value}</p>
+            <p className={cn("tabular mt-0.5 text-xl font-semibold tracking-tight sm:text-2xl lg:truncate", TONE[c.tone ?? "default"])}>{c.value}</p>
             {c.sub && <p className="text-xs text-subtle">{c.sub}</p>}
           </>
         );
-        const cls = cn("px-5 py-3.5", i >= 2 && "border-t border-default lg:border-t-0", i % 2 === 1 && "border-l border-default lg:border-l-0");
+        const cls = cn("min-w-0 px-4 py-3.5 sm:px-5", i >= 2 && "border-t border-default lg:border-t-0", i % 2 === 1 && "border-l border-default lg:border-l-0");
         return c.href ? <Link key={c.label} href={c.href} className={cn(cls, "hover:bg-surface-hover")}>{inner}</Link> : <div key={c.label} className={cls}>{inner}</div>;
       })}
     </div>

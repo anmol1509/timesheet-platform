@@ -225,7 +225,7 @@ export function BillsBoard({ rows, suppliers, canCreate, canPay, canDelete, filt
       {error && <p role="alert" className={errCls}>{error}</p>}
       {list.length === 0 ? <div className="card p-10 text-center text-sm text-muted">No bills here.</div> : (
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[42rem] text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>{canPay && <th className="w-10 px-4 py-3" />}<th className="px-4 py-3">Supplier / bill</th><th className="px-3 py-3">Due</th><th className="px-3 py-3 text-right">Total</th><th className="px-3 py-3 text-right">Balance</th><th className="px-3 py-3">Status</th><th className="px-3 py-3" /></tr>
             </thead>

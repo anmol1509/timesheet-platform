@@ -25,7 +25,7 @@ export function IssuedList({ rows }: { rows: IssuedRow[] }) {
         <div className="card p-8 text-center text-sm text-muted">{rows.length === 0 ? "Nothing issued yet. The first letter you issue appears here." : "No letters match."}</div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[42rem] text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr><th className="px-4 py-3">Ref</th><th className="px-4 py-3">For</th><th className="px-4 py-3">Letter</th><th className="px-4 py-3">Issued</th><th className="px-4 py-3" /></tr>
             </thead>
