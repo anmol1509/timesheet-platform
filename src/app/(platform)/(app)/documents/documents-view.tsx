@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { DocumentBrowser, type DocRow } from "./document-browser";
@@ -26,8 +26,24 @@ export function DocumentsView({ documents, employees, matrixEmployees, policies,
   const params = useSearchParams();
   const v = params.get("view");
   const [view, setView] = useState<View>(v === "employee" || v === "supplier" ? v : "list");
+  // A click in the chart above shows the list, filtered, and scrolls to it. If another view is open the list has to
+  // mount first, so the request is sent once more after it has.
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const scroll = () => document.getElementById("document-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (viewRef.current !== "list") {
+        setView("list");
+        const detail = (e as CustomEvent).detail;
+        setTimeout(() => { window.dispatchEvent(new CustomEvent("documents:filter", { detail })); scroll(); }, 80);
+      } else setTimeout(scroll, 30);
+    };
+    window.addEventListener("documents:filter", on);
+    return () => window.removeEventListener("documents:filter", on);
+  }, []);
   return (
-    <div className="space-y-4">
+    <div id="document-list" className="scroll-mt-24 space-y-4">
       <div className="inline-flex overflow-hidden rounded-control border border-default" role="group" aria-label="View">
         {([["list", "List"], ["employee", "By employee"], ["supplier", "By supplier"]] as const).map(([key, label]) => (
           <button key={key} type="button" aria-pressed={view === key} onClick={() => setView(key)} className={cn("px-4 py-1.5 text-sm font-medium transition", view === key ? "bg-[var(--brand-primary)] text-white" : "bg-surface text-secondary hover:bg-surface-hover")}>{label}</button>
