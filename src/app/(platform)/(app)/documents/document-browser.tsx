@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -97,6 +97,16 @@ export function DocumentBrowser({ documents, employees, suppliers, projects, can
   const [openId, setOpenId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // The chart above the list asks for a type and/or status.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ type: string; tab: Tab }>).detail;
+      setType(d.type); setTab(d.tab); setPage(1); setSelected(new Set());
+    };
+    window.addEventListener("documents:filter", on);
+    return () => window.removeEventListener("documents:filter", on);
+  }, []);
 
   const filteredEmployee = employees.find((e) => e.id === employeeFilter) || null;
   const reset = () => setPage(1);

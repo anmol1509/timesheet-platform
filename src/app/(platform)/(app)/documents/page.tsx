@@ -4,23 +4,16 @@ import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
 import { StatTile } from "@/components/StatTile";
 import { Insights } from "@/components/ListSummary";
-import { Heatmap } from "@/components/Heatmap";
+import { TypeStatusBars, type TypeStatusRow } from "./type-status-bars";
 import { PageHeader, CountPill } from "@/components/PageHeader";
 import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
 import { DocumentsView } from "./documents-view";
 import { COMPANY_DOC_TYPES } from "./company-docs";
 
-const STATUS_COLS = ["Valid", "Expiring", "Expired", "No expiry"] as const;
-const STATUS_KEY: Record<(typeof STATUS_COLS)[number], ReturnType<typeof complianceStatus>> = {
-  Valid: "valid",
-  Expiring: "expiring",
-  Expired: "expired",
-  "No expiry": "not_set",
-};
 
 function prettyType(type: string) {
-  return type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bId\b/, "ID");
 }
 
 export default async function DocumentsPage() {
@@ -101,12 +94,15 @@ export default async function DocumentsPage() {
   const expiringCount = statuses.filter((s) => s === "expiring").length;
   const expiredCount = statuses.filter((s) => s === "expired").length;
 
-  const byType = new Map<string, number>();
-  for (const d of documents) byType.set(d.type, (byType.get(d.type) ?? 0) + 1);
-  const typeOrder = [...byType.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
-  const typeStatusMatrix = typeOrder.map((type) =>
-    STATUS_COLS.map((col) => documents.filter((d) => d.type === type && complianceStatus(d.expiryDate) === STATUS_KEY[col]).length)
-  );
+  const byType = new Map<string, TypeStatusRow>();
+  for (const d of documents) {
+    const r = byType.get(d.type) ?? { type: d.type, label: prettyType(d.type), valid: 0, expiring: 0, expired: 0, noExpiry: 0 };
+    const st = complianceStatus(d.expiryDate);
+    if (st === "valid") r.valid++; else if (st === "expiring") r.expiring++; else if (st === "expired") r.expired++; else r.noExpiry++;
+    byType.set(d.type, r);
+  }
+  // Types with something expired come first, then those expiring, then the biggest.
+  const typeRows = [...byType.values()].sort((a, b) => b.expired - a.expired || b.expiring - a.expiring || b.valid + b.expiring + b.expired + b.noExpiry - (a.valid + a.expiring + a.expired + a.noExpiry));
 
   const rows = documents.map((d) => ({
     id: d.id,
@@ -146,7 +142,7 @@ export default async function DocumentsPage() {
 
       {documents.length > 0 && (
         <Insights id="documents" title="Documents by type and status">
-          <Heatmap rows={typeOrder.map(prettyType)} cols={[...STATUS_COLS]} matrix={typeStatusMatrix} />
+          <TypeStatusBars rows={typeRows} />
         </Insights>
       )}
 
