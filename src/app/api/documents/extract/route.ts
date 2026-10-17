@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
+import { reconcilePassport } from "@/lib/passportMrz";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
@@ -44,13 +45,15 @@ const DOC_TYPE_CONFIG: Record<string, { schema: object; prompt: string }> = {
         dateOfBirth: { type: "string" as const, description: "ISO 8601 date, e.g. 1990-05-14" },
         nationality: { type: "string" as const },
         passportNumber: { type: "string" as const },
-        passportExpiry: { type: "string" as const, description: "ISO 8601 date of expiry" },
+        passportExpiry: { type: "string" as const, description: "ISO 8601 date from the field labelled Date of expiry / Date d'expiration — NOT the date of issue" },
+        passportIssueDate: { type: "string" as const, description: "ISO 8601 date from the field labelled Date of issue / Date de délivrance" },
+        mrzLine2: { type: "string" as const, description: "The second (bottom) line of the machine-readable zone, copied character by character, 44 characters" },
       },
-      required: ["name", "dateOfBirth", "nationality", "passportNumber", "passportExpiry"],
+      required: ["name", "dateOfBirth", "nationality", "passportNumber", "passportExpiry", "passportIssueDate", "mrzLine2"],
       additionalProperties: false,
     },
     prompt:
-      "This is a passport's bio-data page for a construction-industry worker. Extract the full name, date of birth, nationality, passport number, and passport expiry date exactly as printed. Return an empty string for any field you cannot read with confidence — do not guess.",
+      "This is a passport's bio-data page for a construction-industry worker. Extract the full name, date of birth, nationality, passport number, issue date and expiry date exactly as printed. Issue and expiry sit next to each other under their labels and are ten years apart on most passports (five on some): the expiry date is the LATER one, so check which label each date is under. Also copy the second line of the machine-readable zone at the bottom exactly (it repeats the passport number, birth date and expiry date). Return an empty string for any field you cannot read with confidence — do not guess.",
   },
   EMIRATES_ID: {
     schema: {
@@ -156,7 +159,9 @@ const COMBINED_SCHEMA = {
     nationality: { type: "string" as const },
     gender: { type: "string" as const, description: "MALE or FEMALE" },
     passportNumber: { type: "string" as const },
-    passportExpiry: { type: "string" as const, description: "ISO 8601 date" },
+    passportExpiry: { type: "string" as const, description: "ISO 8601 date from the field labelled Date of expiry on the passport — NOT the date of issue" },
+    passportIssueDate: { type: "string" as const, description: "ISO 8601 date from the field labelled Date of issue on the passport; empty if no passport" },
+    mrzLine2: { type: "string" as const, description: "Second (bottom) line of the passport machine-readable zone, copied exactly; empty if none" },
     emiratesId: { type: "string" as const, description: "15-digit UAE Emirates ID, digits and hyphens as printed" },
     emiratesIdExpiry: { type: "string" as const, description: "ISO 8601 date" },
     laborCardNumber: { type: "string" as const, description: "MOHRE work permit number" },
@@ -197,6 +202,8 @@ const COMBINED_SCHEMA = {
     "gender",
     "passportNumber",
     "passportExpiry",
+    "passportIssueDate",
+    "mrzLine2",
     "emiratesId",
     "emiratesIdExpiry",
     "laborCardNumber",
@@ -216,12 +223,14 @@ const COMBINED_SCHEMA = {
 };
 
 const COMBINED_PROMPT =
-  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. In photoPage, give the 1-based page number of any page that is mostly a portrait headshot of the worker, so it can be used as their profile picture; leave it empty if no page is a standalone photograph. The Unified number (UID) is only the number printed beside a UNIFIED NO / U.I.D. label on a visa page or an ICP form. The number printed below the chip on the front of an Emirates ID card is the card number, not the UID: leave unifiedNo empty unless a UNIFIED NO / U.I.D. label is printed. Return an empty string for anything you cannot read with confidence — never guess.";
+  "This file is a document pack for a construction-industry worker in the UAE. It may contain any combination of a passport bio-data page, an Emirates ID card, a MOHRE labour card / work permit, a visa page, an ICP 'Residency and Identity Issuance' notice and a photograph, across one or more pages. Extract every field you can read across ALL pages. Dates must be ISO 8601 (YYYY-MM-DD) — convert formats like 19/Apr/2028 to 2028-04-19. Prefer the passport spelling of the name. On a passport, the issue and expiry dates sit side by side under their labels; the expiry date is the later one (usually ten years after issue), so check which label each date is under, and copy the bottom machine-readable line into mrzLine2. In documentsFound, list only the document types you actually saw, using PASSPORT, EMIRATES_ID, LABOR_CARD, VISA, RESIDENCY_ISSUANCE or PHOTO. Be strict about LABOR_CARD: it is a separate MOHRE work permit document carrying its own work permit number. The reverse of an Emirates ID card also prints an occupation and employer — that is still EMIRATES_ID, not a labour card. Only report LABOR_CARD when you can actually read a work permit number on a MOHRE document. Copy names and employer names in full, including trailing words like CONT, CONTRACTING, LLC or TECH, and preserve the exact capitalisation printed. An ICP 'Registration ID Card Form' (Emirates ID application receipt) is issued before the Emirates ID card exists, so a pack normally holds one or the other: report RESIDENCY_ISSUANCE for it, take its IDENTITY NUMBER as visaNumber, and only set emiratesId when a 15-digit identity number is actually printed somewhere. In photoPage, give the 1-based page number of any page that is mostly a portrait headshot of the worker, so it can be used as their profile picture; leave it empty if no page is a standalone photograph. The Unified number (UID) is only the number printed beside a UNIFIED NO / U.I.D. label on a visa page or an ICP form. The number printed below the chip on the front of an Emirates ID card is the card number, not the UID: leave unifiedNo empty unless a UNIFIED NO / U.I.D. label is printed. Return an empty string for anything you cannot read with confidence — never guess.";
 
 export type ExtractedDocumentFields = {
   name?: string | null;
   passportNumber?: string | null;
   passportExpiry?: string | null;
+  passportIssueDate?: string | null;
+  mrzLine2?: string | null;
   emiratesId?: string | null;
   emiratesIdExpiry?: string | null;
   laborCardNumber?: string | null;
@@ -360,7 +369,8 @@ export async function POST(request: Request) {
     }
 
     const parsed = JSON.parse(textBlock.text) as ExtractedDocumentFields;
-    return NextResponse.json(withConsistentDocumentsFound(parsed, docType));
+    const settled = parsed.passportNumber || parsed.passportExpiry || parsed.mrzLine2 ? reconcilePassport(parsed) : parsed;
+    return NextResponse.json(withConsistentDocumentsFound(settled, docType));
   } catch (e) {
     // Map provider failures onto something a user can act on, and keep the raw
     // SDK message in the server log rather than putting it on screen.
