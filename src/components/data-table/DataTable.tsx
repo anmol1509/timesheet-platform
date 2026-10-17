@@ -11,7 +11,6 @@ import {
   Download,
   Search,
   X,
-  PanelRightOpen,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { m } from "motion/react";
@@ -607,13 +606,26 @@ export function DataTable<T extends { id: string }>({
                 <tr
                   key={row.id}
                   className={cn(
-                    "group/row transition-colors",
+                    "transition-colors",
+                    onRowClick && "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--brand-primary)]",
                     getRowClassName?.(row),
                     (rowHref || onRowClick) && "cursor-pointer",
                     selected.has(row.id)
                       ? "bg-brand-soft"
                       : "hover:bg-surface-subtle"
                   )}
+                  // Keyboard users reach a quick view through the row itself: Tab to it, Enter or Space opens.
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                            e.preventDefault();
+                            onRowClick(row, sorted);
+                          }
+                        }
+                      : undefined
+                  }
                   onClick={
                     rowHref || onRowClick
                       ? (e) => {
@@ -636,29 +648,16 @@ export function DataTable<T extends { id: string }>({
                       />
                     </td>
                   )}
-                  {visibleColumns.map((c, ci) => (
+                  {visibleColumns.map((c) => (
                     <td
                       key={c.key}
                       className={cn(
                         "px-3 text-secondary",
                         cellY,
                         c.align === "right" && "tabular text-right",
-                        !c.wrap && "whitespace-nowrap",
-                        ci === 0 && onRowClick && "relative"
+                        !c.wrap && "whitespace-nowrap"
                       )}
                     >
-                      {ci === 0 && onRowClick && (
-                        // Takes no room of its own: it appears on the row's first cell when the row is hovered or focused.
-                        <button
-                          type="button"
-                          onClick={() => onRowClick(row, sorted)}
-                          title="Quick view"
-                          aria-label={`Quick view: ${rowLabel(row)}`}
-                          className="absolute top-1/2 right-1 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md border border-default bg-surface text-subtle opacity-0 shadow-xs transition hover:text-[var(--brand-primary)] focus-visible:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100"
-                        >
-                          <PanelRightOpen className="h-3.5 w-3.5" aria-hidden />
-                        </button>
-                      )}
                       {c.render(row, tree ? { depth: treeActive && tree.parentId(row) && sortedIds.has(tree.parentId(row)!) ? 1 : 0, childCount: treeActive ? (childMap.get(row.id)?.length ?? 0) : 0, expanded: expandedIds.has(row.id), toggle: () => setExpandedIds((prev) => { const next = new Set(prev); if (next.has(row.id)) next.delete(row.id); else next.add(row.id); return next; }) } : undefined)}
                     </td>
                   ))}
