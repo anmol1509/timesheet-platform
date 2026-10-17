@@ -17,6 +17,7 @@ import { PortalAccessCard } from "./portal-access";
 import { isOutsideBranch } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { SupplierTabs } from "./supplier-tabs";
+import { PartyStatement, canSeeStatement } from "../../finance/books/parties/statement";
 import { WorkmenCompSection } from "./workmen-comp-section";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
@@ -74,6 +75,8 @@ export default async function SupplierDetailPage({
   const wcPolicies = attachments
     .filter((a) => WC_TYPES.includes(a.docType))
     .map((a) => ({ id: a.id, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, covered: coveredBy.find((c) => c.wcAttachmentId === a.id)?._count ?? 0 }));
+
+  const showStatement = await canSeeStatement();
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -315,6 +318,7 @@ export default async function SupplierDetailPage({
               />
             ),
           },
+          ...(showStatement ? [{ id: "statement", label: "Statement", content: <PartyStatement type="SUPPLIER" id={supplier.id} /> }] : []),
         ]}
       />
     </div>

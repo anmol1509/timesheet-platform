@@ -7,13 +7,13 @@ import { r2 } from "@/lib/books/postings";
 import { aed, getBooksContext } from "../books-data";
 import { SetupCard } from "../setup-card";
 
-export const metadata = { title: "Client & supplier ledgers" };
+export const metadata = { title: "Who owes what" };
 
 export default async function PartiesPage({ searchParams }: { searchParams: Promise<{ type?: string; all?: string; q?: string }> }) {
   const ctx = await getBooksContext();
   const sp = await searchParams;
   const type = sp.type === "SUPPLIER" ? "SUPPLIER" : "CLIENT";
-  const header = <PageHeader title="Client & supplier ledgers" icon={Users} breadcrumbs={[{ label: "Finance", href: "/finance/books" }, { label: "Books", href: "/finance/books" }, { label: "Parties" }]} description="What each client owes you and what you owe each supplier, line by line from the books." />;
+  const header = <PageHeader title="Who owes what" icon={Users} breadcrumbs={[{ label: "Finance", href: "/finance/books" }, { label: "Accounting", href: "/finance/books" }, { label: "Who owes what" }]} description="What each client owes you and what you owe each supplier. Select one for the statement." />;
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header}<SetupCard isAdmin={ctx.isAdmin} /></div>;
   const branchId = ctx.branch.id;
   const tag = type === "CLIENT" ? "RECEIVABLE" : "PAYABLE";
@@ -42,7 +42,7 @@ export default async function PartiesPage({ searchParams }: { searchParams: Prom
         <form className="ml-auto"><input type="hidden" name="type" value={type} /><input name="q" defaultValue={sp.q ?? ""} placeholder="Search" aria-label="Search" className="input h-8 w-52 text-sm" /></form>
       </div>
       <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4 text-sm">
-        <span className="text-muted">{control?.name ?? tag} in the books </span><span className="tabular font-semibold text-primary">{aed(total)}</span>
+        <span className="text-muted">{control?.name ?? tag} in total </span><span className="tabular font-semibold text-primary">{aed(total)}</span>
         {unassigned !== 0 && <span className="ml-3 text-warning">{aed(Math.abs(unassigned))} {unassigned > 0 ? "not assigned to anyone yet (opening balance)" : "assigned beyond the account total"}</span>}
       </div>
       {rows.length === 0 ? <p className="text-sm text-muted">Nothing owed.</p> : (

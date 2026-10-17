@@ -202,7 +202,7 @@ const NAV: Entry[] = [
       { href: "/payroll", label: "Payroll", icon: Banknote },
       { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
       { href: "/finance/expenses", label: "Expenses", icon: Wallet },
-      { href: "/finance/books", label: "Books", icon: BookOpen },
+      { href: "/finance/books", label: "Accounting", icon: BookOpen },
       { href: "/finance", label: "Budgets & trends", icon: Landmark, exact: true },
     ],
   },

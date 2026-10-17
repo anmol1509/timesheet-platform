@@ -25,7 +25,7 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
   const closing = rows.length ? rows[rows.length - 1].balance * sign : 0;
   return (
     <div className="space-y-5">
-      <PageHeader title={`${account.code} · ${account.name}`} icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Books", href: "/finance/books" }, { label: "Accounts", href: "/finance/books/accounts" }, { label: account.name }]} description={`Balance ${aed(closing)}`} />
+      <PageHeader title={`${account.code} · ${account.name}`} icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Chart of accounts", href: "/finance/books/reports?view=accounts" }, { label: account.name }]} description={`Balance ${aed(closing)}`} />
       {rows.length === 0 ? <p className="text-sm text-muted">Nothing has been posted to this account yet.</p> : (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
           <table className="w-full text-sm">
@@ -45,7 +45,7 @@ export default async function LedgerPage({ params }: { params: Promise<{ id: str
           </table>
         </div>
       )}
-      <Link href="/finance/books/accounts" className="text-sm text-muted hover:underline">← All accounts</Link>
+      <Link href="/finance/books/reports?view=accounts" className="text-sm text-muted hover:underline">← Chart of accounts</Link>
     </div>
   );
 }

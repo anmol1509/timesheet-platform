@@ -12,7 +12,7 @@ export const metadata = { title: "Bank reconciliation" };
 
 export default async function BankPage({ searchParams }: { searchParams: Promise<{ account?: string }> }) {
   const ctx = await getBooksContext();
-  const header = (right?: React.ReactNode) => <PageHeader title="Bank reconciliation" icon={Landmark} breadcrumbs={[{ label: "Finance", href: "/finance/books" }, { label: "Books", href: "/finance/books" }, { label: "Bank" }]} description="Upload the bank's statement and tick it off against the books." actions={right} />;
+  const header = (right?: React.ReactNode) => <PageHeader title="Bank" icon={Landmark} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Bank" }]} description="Upload the bank's statement and tick it off against the books." actions={right} />;
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header()}<SetupCard isAdmin={ctx.isAdmin} /></div>;
   const branchId = ctx.branch.id;
   const sp = await searchParams;

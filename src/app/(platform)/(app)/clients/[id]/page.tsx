@@ -10,6 +10,8 @@ import { ClientDocuments } from "./client-documents";
 import { deleteClientAction } from "../actions";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
+import { SupplierTabs as PageTabs } from "../../suppliers/[id]/supplier-tabs";
+import { PartyStatement, canSeeStatement } from "../../finance/books/parties/statement";
 
 function toDateInput(d: Date | null) {
   if (!d) return "";
@@ -37,38 +39,9 @@ export default async function ClientDetailPage({
   });
   if (!client || isOutsideBranch(client.branchId, branchId, isSuperAdmin)) notFound();
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/clients" className="text-sm text-muted hover:underline">
-          ← Clients
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl tracking-tight text-primary font-semibold">
-              {client.name}
-            </h1>
-            <Badge color={client.status === "ACTIVE" ? "green" : "slate"}>
-              {client.status}
-            </Badge>
-          </div>
-          <DeleteButton
-            action={deleteClientAction}
-            hiddenFields={{ clientId: client.id }}
-            confirmMessage={`Delete ${client.name}? This only works if no timesheet rows or projects are linked to it.`}
-            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
-          />
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          {client.code || "No code assigned"}
-        </p>
-        {error && (
-          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
-            {error}
-          </p>
-        )}
-      </div>
-
+  const showStatement = await canSeeStatement();
+  const details = (
+    <>
       {/* Documents lead here as they do in the add-employee wizard: a trade
           licence carries an expiry that stops work, and it used to sit below a
           49-field form where nobody scrolled to it. */}
@@ -148,6 +121,51 @@ export default async function ClientDetailPage({
           </div>
         )}
       </section>
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link href="/clients" className="text-sm text-muted hover:underline">
+          ← Clients
+        </Link>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl tracking-tight text-primary font-semibold">
+              {client.name}
+            </h1>
+            <Badge color={client.status === "ACTIVE" ? "green" : "slate"}>
+              {client.status}
+            </Badge>
+          </div>
+          <DeleteButton
+            action={deleteClientAction}
+            hiddenFields={{ clientId: client.id }}
+            confirmMessage={`Delete ${client.name}? This only works if no timesheet rows or projects are linked to it.`}
+            className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]"
+          />
+        </div>
+        <p className="mt-1 text-sm text-muted">
+          {client.code || "No code assigned"}
+        </p>
+        {error && (
+          <p className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">
+            {error}
+          </p>
+        )}
+      </div>
+
+      {showStatement ? (
+        <PageTabs
+          tabs={[
+            { id: "details", label: "Details", content: <div className="space-y-6">{details}</div> },
+            { id: "statement", label: "Statement", content: <PartyStatement type="CLIENT" id={client.id} /> },
+          ]}
+        />
+      ) : (
+        details
+      )}
     </div>
   );
 }
