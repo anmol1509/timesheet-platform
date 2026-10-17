@@ -89,6 +89,8 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
   const [projects, setProjects] = useState<string[]>(list("project"));
   const [kind, setKind] = useState<"" | "employee" | "supplier">(params.get("who") === "employee" || params.get("who") === "supplier" ? (params.get("who") as "employee" | "supplier") : "");
   const [sort, setSort] = useState<"soonest" | "name" | "document">((["soonest", "name", "document"].includes(params.get("sort") ?? "") ? params.get("sort") : "soonest") as "soonest" | "name" | "document");
+  const wp = params.get("week");
+  const [week, setWeek] = useState<WeekKey | null>(wp === "overdue" ? "overdue" : wp !== null && /^\d+$/.test(wp) && Number(wp) < WEEKS ? Number(wp) : null);
   const [selected, setSelected] = useState<RenewalItem | null>(null);
   const NONE = "__none";
   useEffect(() => {
@@ -100,12 +102,14 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
     if (projects.length) q.set("project", projects.join("|"));
     if (kind) q.set("who", kind);
     if (sort !== "soonest") q.set("sort", sort);
+    if (week !== null) q.set("week", String(week));
     window.history.replaceState(null, "", q.size ? `?${q}` : window.location.pathname);
-  }, [tier, query, docs, suppliers, projects, kind, sort]);
+  }, [tier, query, docs, suppliers, projects, kind, sort, week]);
   const docOptions = useMemo(() => [...new Set(items.map((i) => i.document))].sort().map((d) => ({ value: d, label: d })), [items]);
   const supplierOptions = useMemo(() => [...new Set(items.map((i) => i.supplier).filter((x): x is string => !!x))].sort().map((d) => ({ value: d, label: d })), [items]);
   const projectOptions = useMemo(() => [{ value: NONE, label: "Not deployed" }, ...[...new Set(items.map((i) => i.project).filter((x): x is string => !!x))].sort().map((d) => ({ value: d, label: d }))], [items]);
-  const rows = useMemo(() => {
+  // Everything the filters allow, before the week is chosen: the chart reads this so it stays a way to move between weeks.
+  const rowsNoWeek = useMemo(() => {
     const q = query.trim().toLowerCase();
     const out = items.filter(
       (i) =>
@@ -118,8 +122,9 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
     );
     return sort === "soonest" ? out : [...out].sort((a, b) => (sort === "name" ? a.subjectName.localeCompare(b.subjectName) : a.document.localeCompare(b.document) || a.days - b.days));
   }, [items, tier, query, docs, suppliers, projects, kind, sort]);
-  const filtersActive = tier !== "all" || !!query || docs.length > 0 || suppliers.length > 0 || projects.length > 0 || !!kind;
-  const clear = () => { setTier("all"); setQuery(""); setDocs([]); setSuppliers([]); setProjects([]); setKind(""); };
+  const rows = useMemo(() => (week === null ? rowsNoWeek : rowsNoWeek.filter((i) => weekOf(i.days) === week)), [rowsNoWeek, week]);
+  const filtersActive = week !== null || tier !== "all" || !!query || docs.length > 0 || suppliers.length > 0 || projects.length > 0 || !!kind;
+  const clear = () => { setWeek(null); setTier("all"); setQuery(""); setDocs([]); setSuppliers([]); setProjects([]); setKind(""); };
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -169,7 +174,7 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
       )}
 
       {items.length > 0 && (
-        <TimelineStrip items={rows} onSelect={setSelected} />
+        <ExpiryChart items={rowsNoWeek} week={week} onWeek={setWeek} onSelect={setSelected} />
       )}
 
       <div className="card overflow-hidden">
@@ -341,46 +346,109 @@ function DetailRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ c
   );
 }
 
+const WEEKS = 13;
+type WeekKey = "overdue" | number;
+const weekOf = (days: number): WeekKey | null => (days < 0 ? "overdue" : days < WEEKS * 7 ? Math.floor(days / 7) : null);
+// The urgency colour of a week is that of its last day (the same cut-offs as the tier cards).
+const weekTier = (w: WeekKey): RenewalTier => { if (w === "overdue") return "expired"; const d = w * 7 + 6; return d <= 7 ? "urgent" : d <= 30 ? "soon" : d <= 60 ? "planned" : "horizon"; };
+
+/** "17–23 Oct" for the week that starts `w` weeks from today. */
+function weekRange(w: number) {
+  const start = new Date(); start.setDate(start.getDate() + w * 7);
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const f = (d: Date, month: boolean) => d.toLocaleDateString("en-GB", month ? { day: "numeric", month: "short" } : { day: "numeric" });
+  return start.getMonth() === end.getMonth() ? `${f(start, false)}–${f(end, true)}` : `${f(start, true)} – ${f(end, true)}`;
+}
+
 /**
- * The next 90 days as one strip: each item is a dot placed by its expiry, so
- * clusters (a batch of visas all lapsing the same fortnight) are visible at a
- * glance. Overdue items pile up at the left edge.
+ * The next 90 days, two ways. By week: a bar per week (overdue on its own at the left) that filters the list when
+ * clicked. By document: one lane per document type with a dot for each renewal, so clusters stay readable. Both
+ * follow the other filters, so they always describe what the list could show.
  */
-function TimelineStrip({ items, onSelect }: { items: RenewalItem[]; onSelect: (i: RenewalItem) => void }) {
-  const marks = [0, 7, 30, 60, 90];
+function ExpiryChart({ items, week, onWeek, onSelect }: { items: RenewalItem[]; week: WeekKey | null; onWeek: (w: WeekKey | null) => void; onSelect: (i: RenewalItem) => void }) {
+  const [view, setView] = useState<"week" | "doc">("week");
+  const buckets = useMemo(() => {
+    const out: { key: WeekKey; label: string; hint: string; items: RenewalItem[] }[] = [{ key: "overdue", label: "Overdue", hint: "Already expired", items: [] }];
+    for (let w = 0; w < WEEKS; w++) out.push({ key: w, label: w === 0 ? "This week" : w === 1 ? "Next week" : `+${w}w`, hint: weekRange(w), items: [] });
+    for (const i of items) { const k = weekOf(i.days); if (k !== null) out.find((b) => b.key === k)!.items.push(i); }
+    return out;
+  }, [items]);
+  const max = Math.max(1, ...buckets.map((b) => b.items.length));
+  const lanes = useMemo(() => [...new Set(items.map((i) => i.document))].sort().map((d) => ({ doc: d, items: items.filter((i) => i.document === d) })), [items]);
   return (
     <section className="card p-4 sm:p-5" aria-label="Expiry timeline">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-primary">Expiry timeline</h2>
-        <span className="text-xs text-muted">Today → 90 days</span>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-sm font-semibold text-primary">Expiry timeline</h2>
+          <span className="text-xs text-muted">{view === "week" ? "Renewals per week, next 90 days" : "One lane per document type"}</span>
+        </div>
+        <div className="inline-flex overflow-hidden rounded-[10px] border border-default" role="group" aria-label="Timeline view">
+          {([["week", "By week"], ["doc", "By document"]] as const).map(([k, l]) => (
+            <button key={k} type="button" aria-pressed={view === k} onClick={() => setView(k)} className={cn("px-3 py-1 text-xs", view === k ? "bg-brand-soft font-semibold text-brand" : "text-secondary hover:bg-surface-hover")}>{l}</button>
+          ))}
+        </div>
       </div>
-      <div className="relative h-14">
-        <div className="absolute inset-x-0 top-6 h-1.5 rounded-full bg-gradient-to-r from-[var(--error)] via-[#f59e0b] to-[var(--border-strong)] opacity-30" />
-        {marks.map((d) => (
-          <div key={d} className="absolute top-0 flex h-full -translate-x-1/2 flex-col items-center" style={{ left: `${(d / 90) * 100}%` }}>
-            <span className="h-3.5 w-px bg-[var(--border-strong)]" />
-            <span className="mt-auto text-[10.5px] text-subtle">{d === 0 ? "Today" : `${d}d`}</span>
+      {view === "week" ? (
+        <div>
+          <div className="flex h-28 items-end gap-1.5 sm:gap-2">
+            {buckets.map((b) => {
+              const n = b.items.length;
+              const t = TIER_BY_KEY.get(weekTier(b.key))!;
+              const on = week === b.key;
+              return (
+                <button key={String(b.key)} type="button" disabled={n === 0} onClick={() => onWeek(on ? null : b.key)} aria-pressed={on} aria-label={`${b.label}: ${n} renewal${n === 1 ? "" : "s"}`} title={`${b.hint} · ${n}`}
+                  className={cn("group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1 rounded-md px-0.5 disabled:cursor-default", on && "bg-brand-soft")}>
+                  <span className={cn("tabular text-[11px]", n ? "text-secondary" : "invisible")}>{n}</span>
+                  <span className={cn("w-full max-w-11 rounded-t-md rounded-b-sm transition group-enabled:group-hover:opacity-80", n ? t.bar : "bg-surface-sunken")} style={{ height: n ? `${Math.max(12, (n / max) * 72)}px` : "3px" }} />
+                </button>
+              );
+            })}
           </div>
-        ))}
-        {items.map((item, i) => {
-          const t = TIER_BY_KEY.get(item.tier)!;
-          const left = (Math.max(0, Math.min(90, item.days)) / 90) * 100;
-          return (
-            <button
-              key={`${item.kind}-${item.subjectId}-${item.document}-${i}`}
-              type="button"
-              onClick={() => onSelect(item)}
-              title={`${item.subjectName} — ${item.document} · ${runwayLabel(item.days)}`}
-              aria-label={`${item.subjectName}, ${item.document}, ${runwayLabel(item.days)}`}
-              className={cn(
-                "absolute top-[18px] h-3.5 w-3.5 -translate-x-1/2 rounded-full ring-2 ring-[var(--surface)] transition hover:scale-150",
-                t.bar
-              )}
-              style={{ left: `${left}%`, marginTop: `${(i % 3) * -3}px` }}
-            />
-          );
-        })}
-      </div>
+          <div className="mt-1.5 flex gap-1.5 sm:gap-2">
+            {buckets.map((b) => (
+              <span key={String(b.key)} className={cn("min-w-0 flex-1 text-center text-[10.5px] sm:truncate", b.key === "overdue" ? "font-semibold text-[var(--error)]" : "text-subtle", b.key !== "overdue" && b.key % 4 !== 0 && "max-sm:invisible")}>{b.label}</span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="mb-1 grid grid-cols-[6.5rem_1fr_1.5rem] gap-3 text-[11px] text-subtle sm:grid-cols-[8rem_1fr_1.5rem]">
+            <span />
+            <div className="relative h-4">
+              {[[-30, "30d overdue"], [0, "Today"], [30, "30d"], [60, "60d"], [90, "90d"]].map(([d, l]) => (
+                <span key={String(l)} className={cn("absolute -translate-x-1/2 whitespace-nowrap", d === 0 && "font-semibold text-secondary", d === -30 && "translate-x-0", d === 90 && "-translate-x-full")} style={{ left: `${((Number(d) + 30) / 120) * 100}%` }}>{l}</span>
+              ))}
+            </div>
+            <span />
+          </div>
+          {lanes.map((l) => {
+            // Renewals on the same day sit side by side instead of on top of each other.
+            const sameDay = new Map<number, number>();
+            return (
+              <div key={l.doc} className="grid grid-cols-[6.5rem_1fr_1.5rem] items-center gap-3 border-t border-default py-2 sm:grid-cols-[8rem_1fr_1.5rem]">
+                <span className="truncate text-sm text-secondary">{l.doc}</span>
+                <div className="relative h-5 rounded-lg bg-gradient-to-r from-[var(--error-soft)] from-0% via-[var(--warning-soft)] via-35% to-[var(--surface-sunken)]">
+                  <span aria-hidden className="absolute top-0 bottom-0 w-px bg-[var(--border-strong)]" style={{ left: `${(30 / 120) * 100}%` }} />
+                  {l.items.map((item, i) => {
+                    const t = TIER_BY_KEY.get(item.tier)!;
+                    const d = Math.max(-30, Math.min(90, item.days));
+                    const k = sameDay.get(d) ?? 0;
+                    sameDay.set(d, k + 1);
+                    return (
+                      <button key={`${item.kind}-${item.subjectId}-${i}`} type="button" onClick={() => onSelect(item)} title={`${item.subjectName}: ${runwayLabel(item.days)}`} aria-label={`${item.subjectName}, ${item.document}, ${runwayLabel(item.days)}`}
+                        className={cn("absolute top-1 h-3 w-3 -translate-x-1/2 rounded-full ring-2 ring-[var(--surface)] transition hover:z-10 hover:scale-150", t.bar)} style={{ left: `calc(${((d + 30) / 120) * 100}% + ${k * 9}px)` }} />
+                    );
+                  })}
+                </div>
+                <span className="tabular text-right text-sm font-semibold text-primary">{l.items.length}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {week !== null && view === "week" && (
+        <p className="mt-3 text-xs text-muted">Showing {week === "overdue" ? "overdue renewals" : `${buckets.find((b) => b.key === week)?.hint}`} in the list below. <button type="button" className="font-medium text-brand hover:underline" onClick={() => onWeek(null)}>Show all weeks</button></p>
+      )}
     </section>
   );
 }
