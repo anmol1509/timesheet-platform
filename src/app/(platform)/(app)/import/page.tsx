@@ -46,6 +46,17 @@ export default async function ImportHubPage() {
     : [];
 
   const sample = branchId ? await sampleState(branchId) : { loaded: false };
+  const bw = branchId ? { branchId } : {};
+  const [nWorkers, nSuppliers, nClients, nCamps, nVehicles] = await Promise.all([
+    prisma.employee.count({ where: bw }),
+    prisma.supplier.count({ where: bw }),
+    prisma.client.count({ where: bw }),
+    prisma.camp.count({ where: bw }),
+    prisma.vehicle.count({ where: bw }),
+  ]);
+  const held: Partial<Record<ImportKind, number>> = { WORKERS: nWorkers, SUPPLIERS: nSuppliers, CLIENTS: nClients, CAMPS: nCamps, VEHICLES: nVehicles };
+  const lastOf = (kind: string) => batches.find((b) => b.kind === kind && (b.status === "DONE" || b.status === "UNDONE"));
+  const lastImport = batches.find((b) => b.status === "DONE");
 
   return (
     <div className="space-y-8">
@@ -54,9 +65,11 @@ export default async function ImportHubPage() {
         title="Import data"
         subtitle="Bring in what you already have. Nothing is saved until you've seen what will happen, and every import can be undone."
         pills={[
-          { label: "Imports done", value: String(batches.filter((b) => b.status === "DONE").length) },
-          { label: "Can still undo", value: String(batches.filter((b) => b.status === "DONE" && b.undoUntil && b.undoUntil > new Date()).length) },
-          { label: "Stopped", value: String(batches.filter((b) => b.status === "FAILED").length), warn: batches.some((b) => b.status === "FAILED") },
+          { label: "Workers", value: String(nWorkers) },
+          { label: "Suppliers", value: String(nSuppliers) },
+          { label: "Clients", value: String(nClients) },
+          { label: "Last import", value: lastImport ? lastImport.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "None yet" },
+          ...(batches.some((b) => b.status === "FAILED") ? [{ label: "Stopped", value: String(batches.filter((b) => b.status === "FAILED").length), warn: true }] : []),
         ]}
       />
       {isSuperAdmin && !branchId && (
@@ -64,8 +77,6 @@ export default async function ImportHubPage() {
           You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the switcher (top right) before importing.
         </p>
       )}
-
-      {branchId && <GetStarted branchId={branchId} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {CARDS.map((c) => (
@@ -77,7 +88,13 @@ export default async function ImportHubPage() {
               <p className="text-base font-semibold text-primary">{TARGETS[c.kind].label}</p>
             </div>
             <p className="text-sm text-secondary">{c.blurb}</p>
-            <p className="mt-auto text-xs text-muted">{c.hint} &middot; <span className="font-medium text-[var(--brand-primary)] group-hover:underline">Start</span></p>
+            <p className="mt-auto flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+              <span>
+                {held[c.kind] !== undefined && <><span className="tabular font-medium text-primary">{held[c.kind]}</span> on record{lastOf(c.kind) ? ` · last imported ${lastOf(c.kind)!.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}</>}
+                {held[c.kind] === undefined && c.hint}
+              </span>
+              <span className="font-medium text-[var(--brand-primary)] group-hover:underline">Start import →</span>
+            </p>
           </Link>
         ))}
       </div>
@@ -90,6 +107,8 @@ export default async function ImportHubPage() {
           <p className="mt-1 text-xs text-muted">PDF or images &middot; <span className="font-medium text-[var(--brand-primary)] group-hover:underline">Start</span></p>
         </div>
       </Link>
+
+      {branchId && <GetStarted branchId={branchId} />}
 
       {branchId && <SampleCard loaded={sample.loaded} />}
 

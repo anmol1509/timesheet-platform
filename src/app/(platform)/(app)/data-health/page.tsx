@@ -89,6 +89,23 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
         pills={HEALTH_MODULES.map((m) => ({ label: m.label, value: health[m.key].total ? `${health[m.key].overall}%` : "—", warn: health[m.key].total > 0 && health[m.key].overall < 50 }))}
       />
 
+      {(() => {
+        const gaps = all
+          .flatMap((x) => x.fields.map((f) => ({ module: x.module, f, missing: x.total - f.have })))
+          .filter((g) => g.missing > 0)
+          .sort((a, b) => b.missing - a.missing)[0];
+        if (!gaps) return (
+          <p className="rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] px-4 py-3 text-sm text-[var(--success)]">Every tracked field is filled in. Nothing to fix.</p>
+        );
+        const gm = HEALTH_MODULES.find((m) => m.key === gaps.module)!;
+        return (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm">
+            <p className="text-primary"><span className="font-semibold">Biggest gap:</span> {gaps.f.label.toLowerCase()} is missing for <span className="tabular font-semibold">{gaps.missing}</span> {gm.noun}{gaps.missing === 1 ? "" : "s"}. <span className="text-muted">{gaps.f.why}</span></p>
+            <Link scroll={false} href={href(gaps.module, gaps.f.key)} className="btn btn-secondary btn-sm">See who</Link>
+          </div>
+        );
+      })()}
+
       <div className="grid gap-4 md:grid-cols-3">
         {HEALTH_MODULES.map((m) => {
           const x = health[m.key];
