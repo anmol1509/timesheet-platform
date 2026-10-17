@@ -16,12 +16,12 @@ function build(count: number, bunks: number, singles: number, previous: RoomDraf
 }
 
 /** "+ Add camp": a name and how it is laid out; rooms are created with it. */
-export function AddCampForm() {
+export function AddCampForm({ primary }: { primary?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button type="button" className="btn btn-secondary btn-sm shrink-0 gap-1.5 rounded-full">
+        <button type="button" className={cn("btn btn-sm shrink-0 gap-1.5", primary ? "btn-primary" : "btn-secondary")}>
           <Plus className="h-3.5 w-3.5" aria-hidden />
           Add camp
         </button>

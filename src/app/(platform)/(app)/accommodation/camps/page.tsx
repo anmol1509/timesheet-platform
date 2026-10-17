@@ -127,12 +127,11 @@ export default async function CampsPage({
         title="Camps"
         description="Manage camps, rooms and beds. Move employees in with Check-In and Bed Allocation."
         actions={
-          (canExport || canImport) ? (
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
               {canImport && <Link href="/import/new/camps" className="btn btn-secondary btn-sm flex gap-1.5"><Upload className="h-3.5 w-3.5" aria-hidden /> Import</Link>}
               {canExport && camps.length > 0 && <a href="/api/accommodation/camps/export" className="btn btn-secondary btn-sm flex gap-1.5"><Download className="h-3.5 w-3.5" aria-hidden /> Export</a>}
+              <AddCampForm primary />
             </div>
-          ) : undefined
         }
         meta={
           <span className="tabular rounded-md bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-secondary">
@@ -162,7 +161,7 @@ export default async function CampsPage({
 
       {camps.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {camps.map((c) => {
               const beds = c.rooms.flatMap((r) => r.beds);
               const occ = beds.filter((b) => b.employeeId).length;
@@ -193,7 +192,6 @@ export default async function CampsPage({
                 </Link>
               );
             })}
-            <AddCampForm />
           </div>
 
           {selectedCamp && (
