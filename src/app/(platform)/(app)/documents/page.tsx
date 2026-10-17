@@ -9,6 +9,7 @@ import { PageHeader, CountPill } from "@/components/PageHeader";
 import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
 import { DocumentsView } from "./documents-view";
+import { COMPANY_DOC_TYPES } from "./company-docs";
 
 const STATUS_COLS = ["Valid", "Expiring", "Expired", "No expiry"] as const;
 const STATUS_KEY: Record<(typeof STATUS_COLS)[number], ReturnType<typeof complianceStatus>> = {
@@ -29,7 +30,7 @@ export default async function DocumentsPage() {
   // shows.
   const { user, branchId } = await requireUserWithBranch();
 
-  const [documents, employees, activeEmployees, certificates] = await Promise.all([
+  const [documents, employees, activeEmployees, certificates, companySuppliers, companyAttachments] = await Promise.all([
     prisma.document.findMany({
       where: { employee: branchWhere(branchId) },
       select: {
@@ -61,18 +62,21 @@ export default async function DocumentsPage() {
       where: { entityType: "SUPPLIER", docType: { in: ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"] }, ...(branchId ? { branchId } : {}) },
       select: { id: true, entityId: true, expiryDate: true, uploadedAt: true },
     }),
+    // The supplier companies themselves, with their own documents (trade licence, VAT certificate, workmen comp...).
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true, trn: true, tradeLicenseExpiry: true }, orderBy: { name: "asc" } }),
+    prisma.attachment.findMany({
+      where: { entityType: "SUPPLIER", docType: { in: COMPANY_DOC_TYPES }, ...(branchId ? { branchId } : {}) },
+      select: { id: true, entityId: true, docType: true, expiryDate: true, uploadedAt: true },
+    }),
   ]);
 
-  // One current policy per supplier: the one that runs longest.
-  const policyFor = new Map<string, { expiryDate: Date | null; uploadedAt: Date }>();
+  // Every certificate, since a supplier can hold several (each covering its own workers).
   const certIdsBySupplier = new Map<string, Set<string>>();
-  for (const c of certificates) {
-    certIdsBySupplier.set(c.entityId, (certIdsBySupplier.get(c.entityId) ?? new Set()).add(c.id));
-    const cur = policyFor.get(c.entityId);
-    const rank = (x: { expiryDate: Date | null; uploadedAt: Date }) => (x.expiryDate ? x.expiryDate.getTime() : x.uploadedAt.getTime() - 1e13);
-    if (!cur || rank(c) > rank(cur)) policyFor.set(c.entityId, { expiryDate: c.expiryDate, uploadedAt: c.uploadedAt });
-  }
-  const policies = [...policyFor.entries()].map(([supplierId, p]) => ({ supplierId, expiryDate: p.expiryDate ? p.expiryDate.toISOString().slice(0, 10) : null }));
+  for (const c of certificates) certIdsBySupplier.set(c.entityId, (certIdsBySupplier.get(c.entityId) ?? new Set()).add(c.id));
+  const policies = certificates.map((c) => ({ supplierId: c.entityId, expiryDate: c.expiryDate ? c.expiryDate.toISOString().slice(0, 10) : null, attachmentId: c.id }));
+  const certsInUse = [...new Set(activeEmployees.map((e) => e.wcAttachmentId).filter((x): x is string => !!x))];
+  const companyRows = companySuppliers.map((s) => ({ id: s.id, name: s.name, trn: s.trn, tradeLicenseExpiry: s.tradeLicenseExpiry ? s.tradeLicenseExpiry.toISOString().slice(0, 10) : null }));
+  const companyDocs = companyAttachments.map((a) => ({ id: a.id, supplierId: a.entityId, docType: a.docType, expiryDate: a.expiryDate ? a.expiryDate.toISOString().slice(0, 10) : null, uploadedAt: a.uploadedAt.toISOString() }));
   const matrixEmployees = activeEmployees.map((e) => ({
     id: e.id,
     name: e.name,
@@ -83,6 +87,7 @@ export default async function DocumentsPage() {
     projectId: e.projectId,
     projectName: e.project ? `${e.project.code} — ${e.project.name}` : null,
     wcCovered: !!(e.supplierId && e.wcAttachmentId && certIdsBySupplier.get(e.supplierId)?.has(e.wcAttachmentId)),
+    wcAttachmentId: e.wcAttachmentId,
   }));
   const suppliers = [...new Map([...documents.filter((d) => d.employee.supplierId).map((d) => [d.employee.supplierId!, d.employee.supplier!.name] as [string, string]), ...activeEmployees.filter((e) => e.supplierId).map((e) => [e.supplierId!, e.supplier!.name] as [string, string])]).entries()]
     .map(([id, name]) => ({ id, name }))
@@ -145,7 +150,7 @@ export default async function DocumentsPage() {
         </Insights>
       )}
 
-      <DocumentsView documents={rows} employees={employees} matrixEmployees={matrixEmployees} policies={policies} suppliers={suppliers} projects={projects} canBulkImport={isAdminRole(user.role)} />
+      <DocumentsView documents={rows} employees={employees} matrixEmployees={matrixEmployees} policies={policies} companySuppliers={companyRows} companyAttachments={companyDocs} certsInUse={certsInUse} suppliers={suppliers} projects={projects} canBulkImport={isAdminRole(user.role)} />
     </div>
   );
 }

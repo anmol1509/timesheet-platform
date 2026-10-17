@@ -9,11 +9,16 @@ import { ChevronDown, ChevronRight, Printer, Search, Star, X } from "lucide-reac
 import { EmployeeAvatar } from "@/components/Avatar";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { ScanUpload } from "@/app/(platform)/(app)/employees/scan-upload";
 import { cn } from "@/lib/cn";
 import { deleteDocumentsAction } from "./actions";
 import { Preview, typeLabel, type DocRow } from "./document-browser";
-import { MATRIX_LABEL, MATRIX_TYPES, badness, buildCells, completeCount, policyCell, type Cell, type CellState, type MatrixEmployee, type MatrixType, type Policy } from "./matrix";
+import { MATRIX_LABEL, MATRIX_TYPES, badness, buildCells, completeCount, employeePrintIds, policiesBySupplier, supplierWcCell, type Cell, type CellState, type MatrixEmployee, type MatrixType, type Policy, type PrintKind } from "./matrix";
+import type { CompanyAttachment, CompanySupplier } from "./company-docs";
+import { PrintDialog } from "./print-dialog";
+import { printDocuments } from "./print-docs";
+import { SupplierDocsView } from "./supplier-docs-view";
 
 type View = "employee" | "supplier";
 type Chip = "all" | "expired" | "expiring" | "missing" | "complete";
@@ -42,11 +47,14 @@ function CellBox({ cell, label, onClick }: { cell: Cell; label: string; onClick?
   return onClick ? <button type="button" aria-label={`${label}: ${cell.label}, ${cell.sub}`} onClick={onClick} className={cls}>{inner}</button> : <span className={cls} aria-label={`${label}: ${cell.label}, ${cell.sub}`}>{inner}</span>;
 }
 
-export function MatrixViews({ view, documents, employees, policies, suppliers, projects }: {
+export function MatrixViews({ view, documents, employees, policies, companySuppliers, companyAttachments, certsInUse, suppliers, projects }: {
   view: View;
   documents: DocRow[];
   employees: (MatrixEmployee & { projectName: string | null })[];
   policies: Policy[];
+  companySuppliers: CompanySupplier[];
+  companyAttachments: CompanyAttachment[];
+  certsInUse: string[];
   suppliers: { id: string; name: string }[];
   projects: { id: string; name: string }[];
 }) {
@@ -64,6 +72,9 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
   const [uploadFor, setUploadFor] = useState<{ employee: MatrixEmployee; type: MatrixType } | null>(null);
   const [saved, setSaved] = useState<SavedView[]>([]);
   const [applied, setApplied] = useState<SavedView | null>(null);
+  const [sub, setSub] = useState<"company" | "workers">("company");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     try { setSaved(JSON.parse(localStorage.getItem(STORE) || "[]")); } catch { /* private window: no saved views */ }
@@ -71,7 +82,7 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
   const persist = (next: SavedView[]) => { setSaved(next); try { localStorage.setItem(STORE, JSON.stringify(next)); } catch { /* ignore */ } };
 
   const { cells, coverageKnown } = useMemo(() => buildCells(employees, documents, policies, now), [employees, documents, policies, now]);
-  const policyBy = useMemo(() => new Map(policies.map((p) => [p.supplierId, p])), [policies]);
+  const policiesBy = useMemo(() => policiesBySupplier(policies), [policies]);
 
   const base = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -101,7 +112,17 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base, chip, sort, cells]);
 
-  type Group = { id: string; name: string; workers: typeof base; counts: Record<MatrixType, Record<CellState, number>>; complete: number; policy: Policy | undefined };
+  const chosen = rows.filter((e) => selected.has(e.id));
+  const allRowsOn = rows.length > 0 && rows.every((e) => selected.has(e.id));
+  const someRowsOn = rows.some((e) => selected.has(e.id));
+  const toggleRow = (id: string) => setSelected((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const printCount = (kinds: string[]) => { const r = employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells); return { printing: r.ids.length, missing: r.missing }; };
+  const printOptions = [...MATRIX_TYPES, "WC" as const].map((t) => {
+    const have = t === "WC" ? chosen.filter((e) => cells.get(e.id)!.WC.attachmentId).length : chosen.filter((e) => cells.get(e.id)![t].docId).length;
+    return { key: t as string, label: t === "WC" ? "Workmen comp certificate" : MATRIX_LABEL[t], have, of: chosen.length, note: t === "WC" ? "each worker's own certificate" : undefined };
+  });
+
+  type Group = { id: string; name: string; workers: typeof base; counts: Record<MatrixType, Record<CellState, number>>; complete: number; wc: { cell: Cell; policies: number } };
   const groups = useMemo<Group[]>(() => {
     const by = new Map<string, typeof base>();
     for (const e of base) by.set(e.supplierId ?? "none", [...(by.get(e.supplierId ?? "none") ?? []), e]);
@@ -113,9 +134,9 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
         for (const t of MATRIX_TYPES) counts[t][row[t].state]++;
         complete += completeCount(row);
       }
-      return { id, name: workers[0].supplierName ?? "No supplier", workers, counts, complete, policy: policyBy.get(id) };
+      return { id, name: workers[0].supplierName ?? "No supplier", workers, counts, complete, wc: supplierWcCell(workers.map((w) => cells.get(w.id)!.WC), policiesBy.get(id) ?? [], now) };
     });
-  }, [base, cells, policyBy]);
+  }, [base, cells, policiesBy, now]);
   const groupMatches = (g: Group, c: Chip) => c === "all" || (c === "expired" && MATRIX_TYPES.some((t) => g.counts[t].expired > 0)) || (c === "expiring" && MATRIX_TYPES.some((t) => g.counts[t].expiring > 0)) || (c === "missing" && MATRIX_TYPES.some((t) => g.counts[t].missing > 0)) || (c === "complete" && g.complete === g.workers.length * 5);
   const pct = (g: Group) => (g.workers.length ? g.complete / (g.workers.length * 5) : 1);
   const shownGroups = groups.filter((g) => groupMatches(g, chip)).sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : pct(a) - pct(b) || a.name.localeCompare(b.name)));
@@ -142,7 +163,7 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
     const head = [...MATRIX_TYPES.map((t) => MATRIX_LABEL[t]), "Workmen comp"].map((h) => `<th>${h}</th>`).join("");
     const body = shownGroups.map((g) => {
       const cols = MATRIX_TYPES.map((t) => { const c = g.counts[t]; return `<td>${c.valid + c.expiring}/${g.workers.length} ok${c.expired ? `<br><b style="color:#b91c1c">${c.expired} expired</b>` : ""}${c.missing ? `<br>${c.missing} missing` : ""}</td>`; }).join("");
-      const wc = g.policy ? `${g.policy.expiryDate ? new Date(g.policy.expiryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "No expiry"}` : "No policy";
+      const wc = g.wc.policies === 0 ? "No policy" : `${g.wc.cell.label}${g.wc.policies > 1 ? ` · ${g.wc.policies} policies` : ` · ${g.wc.cell.sub}`}`;
       return `<tr><td><b>${esc(g.name)}</b><br><small>${g.workers.length} workers · ${Math.round(pct(g) * 100)}% complete</small></td>${cols}<td>${esc(wc)}</td></tr>`;
     }).join("");
     w.document.write(`<!doctype html><title>Documents by supplier</title><style>body{font:13px system-ui,sans-serif;margin:24px;color:#111}h1{font-size:18px;margin:0 0 4px}p{margin:0 0 14px;color:#555}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{font-size:11px;text-transform:uppercase;color:#666}small{color:#777}</style><h1>Documents by supplier</h1><p>${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p><table><thead><tr><th>Supplier</th>${head}</tr></thead><tbody>${body}</tbody></table>`);
@@ -154,10 +175,11 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
     : [["all", "All suppliers"], ["expired", "With expired"], ["missing", "With missing"], ["complete", "All complete"]];
   const chipCount = (c: Chip) => (view === "employee" ? countFor(c) : groups.filter((g) => groupMatches(g, c)).length);
 
-  const Worker = ({ e, indent }: { e: (typeof base)[number]; indent?: boolean }) => {
+  const Worker = ({ e, indent, selectable }: { e: (typeof base)[number]; indent?: boolean; selectable?: boolean }) => {
     const row = cells.get(e.id)!;
     return (
-      <tr className="border-t border-default">
+      <tr className={cn("border-t border-default", selectable && selected.has(e.id) && "bg-brand-soft")}>
+        {selectable && <td className="w-10 px-4 py-2.5"><Checkbox checked={selected.has(e.id)} onCheckedChange={() => toggleRow(e.id)} ariaLabel={`Select ${e.name}`} /></td>}
         <td className={cn("px-4 py-2.5", indent && "pl-11")}>
           <span className="flex items-center gap-2.5">
             <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="sm" />
@@ -171,14 +193,31 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
       </tr>
     );
   };
-  const thead = (first: string) => (
+  const thead = (first: string, selectAll?: boolean) => (
     <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
-      <tr><th className="px-4 py-3">{first}</th>{[...MATRIX_TYPES, "WC" as const].map((t) => <th key={t} className="px-2 py-3">{MATRIX_LABEL[t]}</th>)}<th className="px-4 py-3 text-right">{view === "employee" ? "Complete" : "Overall"}</th></tr>
+      <tr>{selectAll && <th className="w-10 px-4 py-3"><Checkbox checked={allRowsOn} indeterminate={!allRowsOn && someRowsOn} onCheckedChange={(on) => setSelected(on ? new Set(rows.map((e) => e.id)) : new Set())} ariaLabel="Select everyone shown" /></th>}<th className="px-4 py-3">{first}</th>{[...MATRIX_TYPES, "WC" as const].map((t) => <th key={t} className="px-2 py-3">{MATRIX_LABEL[t]}</th>)}<th className="px-4 py-3 text-right">{view === "employee" ? "Complete" : "Overall"}</th></tr>
     </thead>
   );
 
+  const subToggle = view === "supplier" && (
+    <div className="inline-flex overflow-hidden rounded-control border border-default" role="group" aria-label="What to show for each supplier">
+      {([["company", "Company documents"], ["workers", "Workers' documents"]] as const).map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={sub === key} onClick={() => setSub(key)} className={cn("px-3.5 py-1.5 text-xs font-medium transition", sub === key ? "bg-brand-soft text-[var(--brand-primary)]" : "bg-surface text-secondary hover:bg-surface-hover")}>{label}</button>
+      ))}
+    </div>
+  );
+  if (view === "supplier" && sub === "company") {
+    return (
+      <div className="space-y-3">
+        {subToggle}
+        <SupplierDocsView suppliers={companySuppliers} attachments={companyAttachments} certsInUse={certsInUse} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      {subToggle}
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative min-w-[14rem] flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
@@ -195,14 +234,15 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
         ))}
         <span className="flex-1" />
         <div className="w-44"><Select value={sort} onChange={(v) => setSort(v as Sort)} searchable={false} options={[{ value: "worst", label: view === "employee" ? "Worst first" : "Least complete first" }, { value: "name", label: "Name A–Z" }]} /></div>
+        {view === "employee" && <button type="button" onClick={() => setPrinting(true)} disabled={chosen.length === 0} title={chosen.length === 0 ? "Tick the workers to print first" : undefined} className="btn btn-secondary gap-1.5"><Printer className="h-4 w-4" aria-hidden />Print…</button>}
         {view === "supplier" && <button type="button" onClick={printSupplierReport} className="btn btn-secondary gap-1.5"><Printer className="h-4 w-4" aria-hidden />Print supplier report</button>}
       </div>
 
       {view === "employee" && (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[60rem] text-sm">
-            {thead("Employee")}
-            <tbody>{rows.slice(0, 100).map((e) => <Worker key={e.id} e={e} />)}</tbody>
+            {thead("Employee", true)}
+            <tbody>{rows.slice(0, 100).map((e) => <Worker key={e.id} e={e} selectable />)}</tbody>
           </table>
           {rows.length === 0 && <p className="px-4 py-10 text-center text-sm text-muted">Nobody matches.</p>}
           {rows.length > 100 && <p className="border-t border-default px-4 py-2.5 text-xs text-muted">Showing the first 100 of {rows.length}. Narrow it with the filters.</p>}
@@ -236,8 +276,8 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
                       ))}
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         {g.id === "none" ? <span className="text-xs text-subtle">—</span> : (() => {
-                          const cell = policyCell(g.policy, now);
-                          return <Link href={`/suppliers/${g.id}`} className="inline-block"><CellBox cell={cell} label={`${g.name} workmen compensation`} /><span className="mt-1 block text-[10px] text-muted">{coverageKnown.has(g.id) ? `${covered} of ${g.workers.length} named` : g.policy ? "list not read" : ""}</span></Link>;
+                          const cell = g.wc.cell;
+                          return <Link href={`/suppliers/${g.id}`} className="inline-block"><CellBox cell={cell} label={`${g.name} workmen compensation`} /><span className="mt-1 block text-[10px] text-muted">{coverageKnown.has(g.id) ? `${covered} of ${g.workers.length} named` : g.wc.policies > 0 ? "list not read" : ""}</span></Link>;
                         })()}
                       </td>
                       <td className="px-4 py-3 text-right"><b className="text-primary">{Math.round(pct(g) * 100)}%</b><span className="block text-[10px] text-muted">complete</span></td>
@@ -261,6 +301,25 @@ export function MatrixViews({ view, documents, employees, policies, suppliers, p
       <p className="text-xs text-muted">
         {view === "employee" ? "Click a coloured box to open that document. Click a dashed box to upload the missing one. Workmen comp opens the supplier's policy." : "Each bar shows a supplier's workers for one document: valid, expiring, expired, missing. Click a supplier to open its workers; click a bar to list only the ones to fix."}
       </p>
+
+      {view === "employee" && chosen.length > 0 && (
+        <div className="sticky bottom-4 z-20 flex justify-center">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-[#1e1b3a] py-2.5 pr-2.5 pl-4 text-sm text-white shadow-modal">
+            <b className="mr-1">{chosen.length} selected</b>
+            <button type="button" onClick={() => setPrinting(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 px-3 py-1.5 text-xs font-medium hover:bg-white/10"><Printer className="h-3.5 w-3.5" aria-hidden />Print…</button>
+            <button type="button" onClick={() => setSelected(new Set())} className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/70 hover:text-white">Clear</button>
+          </div>
+        </div>
+      )}
+      <PrintDialog
+        open={printing && view === "employee"}
+        onOpenChange={setPrinting}
+        title="Print documents"
+        subject={`${chosen.length} ${chosen.length === 1 ? "employee" : "employees"}`}
+        options={printOptions}
+        count={printCount}
+        onPrint={(kinds) => printDocuments(employeePrintIds(chosen.map((e) => e.id), kinds as PrintKind[], cells).ids)}
+      />
 
       <Dialog.Root open={!!current} onOpenChange={(o) => !o && setOpenDoc(null)}>
         <Dialog.Portal>
