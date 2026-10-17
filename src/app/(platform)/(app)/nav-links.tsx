@@ -196,12 +196,12 @@ const NAV: Entry[] = [
     icon: Landmark,
     category: "Time & Billing",
     children: [
-      { href: "/finance", label: "Overview", icon: Landmark, exact: true },
       // Invoice history is a tab of Invoices.
       { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/payroll", label: "Payroll", icon: Banknote },
       { href: "/finance/bills", label: "Supplier Bills", icon: FileText },
       { href: "/finance/expenses", label: "Expenses", icon: Wallet },
+      { href: "/finance", label: "Budgets & trends", icon: Landmark, exact: true },
     ],
   },
   // Commercial: who you sell to and buy from.
