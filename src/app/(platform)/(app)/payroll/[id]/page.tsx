@@ -13,7 +13,6 @@ import { LineAdjustCells, RunControls } from "./run-controls";
 import { PaymentCell } from "./payment-cell";
 import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
-import { CorrectionCell } from "./correction-cell";
 import { DaysButton } from "./days-panel";
 import { BankFix } from "./bank-fix";
 import { FixPayPanel, type FixRow } from "./fix-pay-panel";
@@ -255,7 +254,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 });
                 const editable = draft && !run.submittedAt && can(subject, "payroll.payroll", "edit");
                 return (
-                  <tr key={l.employeeId} className="align-top">
+                  <tr key={l.employeeId} className="align-top" data-name={`${l.employee.name} ${l.employee.employeeIdNo}`.toLowerCase()} data-bank={isCashMode(l.paymentMode) ? "cash" : gaps.length === 0 ? "ok" : "fix"} data-pay={l.paymentStatus}>
                     <td className="min-w-[13rem] px-3 py-3">
                       <div className="flex items-center gap-3">
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
@@ -298,8 +297,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     {!draft && (
                       <td className="px-3 py-3">
-                        <PaymentCell lineId={l.id} status={l.paymentStatus} note={l.paymentNote ?? ""} editable={can(subject, "payroll.payroll", "approve")} />
-                        {can(subject, "payroll.payroll", "edit") && <div className="mt-2"><CorrectionCell lineId={l.id} nextMonth={nextMonth} /></div>}
+                        <PaymentCell lineId={l.id} status={l.paymentStatus} note={l.paymentNote ?? ""} editable={can(subject, "payroll.payroll", "approve")} canCorrect={can(subject, "payroll.payroll", "edit")} nextMonth={nextMonth} />
                       </td>
                     )}
                   </tr>
