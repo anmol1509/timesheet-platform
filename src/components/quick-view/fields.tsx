@@ -100,12 +100,15 @@ export function ClickToEdit({ label, value, kind = "text", placeholder = "Add", 
 /** Dropdowns, countries and dates save the moment a choice is made. */
 export function ChoiceField({ kind, value, options, onSave, placeholder }: { kind: "select" | "country" | "date" | "project"; value: string | null; options?: { value: string; label: string }[]; onSave: (v: string | null, confirm?: boolean) => Promise<SaveResult>; placeholder?: string }) {
   const flow = useFieldFlow(onSave);
-  const change = (v: string) => { if (v !== (value ?? "")) void flow.run(v || null); };
+  // A date typed over an existing one passes through half-typed states: an empty box, or a year like 0002. Neither
+  // is saved; clearing a date is done on the full page. The picker restarts when the saved value changes from
+  // outside (a scan, an undo), so it shows what is actually stored.
+  const change = (v: string) => { if (kind === "date" && !v) return; if (v !== (value ?? "")) void flow.run(v || null); };
   return (
     <div className="min-w-0">
       {kind === "country" && <CountrySelect value={value ?? ""} onChange={change} />}
       {(kind === "select" || kind === "project") && <Select value={value ?? ""} onChange={change} options={[{ value: "", label: placeholder ?? "Not set" }, ...(options ?? [])]} searchable={kind === "project"} placeholder={placeholder ?? "Not set"} />}
-      {kind === "date" && <DatePicker value={value ?? ""} onChange={change} fromYear={1940} toYear={new Date().getFullYear() + 12} />}
+      {kind === "date" && <DatePicker key={value ?? ""} value={value ?? ""} onChange={change} fromYear={1940} toYear={new Date().getFullYear() + 12} min="1900-01-01" max={`${new Date().getFullYear() + 30}-12-31`} />}
       <Notice msg={flow.msg} onConfirm={() => void flow.run(flow.msg?.value ?? null, true)} onDismiss={flow.clear} />
     </div>
   );

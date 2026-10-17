@@ -9,8 +9,8 @@ import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 import { checkPartner } from "@/lib/dataChecks";
 import { partnerDuplicates } from "@/lib/duplicateCheck";
-import { normalizePhone } from "@/lib/phone";
 import { formatMasked } from "@/lib/idFormats";
+import { planCompanyScan } from "@/lib/companyScan";
 import type { ExtractedCompanyFields } from "@/app/api/documents/extract-company/route";
 
 /**
@@ -129,27 +129,6 @@ export type SupplierScanResult = {
   conflicts: { key: string; label: string; current: string; scan: string }[];
 };
 
-type Spec = { key: keyof ExtractedCompanyFields & string; column: string; label: string; kind: "text" | "trn" | "date" | "phone" | "email"; renewable?: boolean };
-const SPECS: Spec[] = [
-  { key: "tradeLicenseNumber", column: "tradeLicenseNumber", label: "Trade licence number", kind: "text" },
-  { key: "tradeLicenseExpiry", column: "tradeLicenseExpiry", label: "Trade licence expiry", kind: "date", renewable: true },
-  { key: "trn", column: "trn", label: "TRN", kind: "trn" },
-  { key: "mohrePermitNumber", column: "mohrePermitNumber", label: "MOHRE permit number", kind: "text" },
-  { key: "emirate", column: "emirate", label: "Emirate", kind: "text" },
-  { key: "phone", column: "contactPhone", label: "Contact phone", kind: "phone" },
-  { key: "email", column: "contactEmail", label: "Contact email", kind: "email" },
-];
-
-function read(kind: Spec["kind"], raw: unknown): string | null {
-  const t = typeof raw === "string" ? raw.trim() : "";
-  if (!t) return null;
-  if (kind === "date") return /^\d{4}-\d{2}-\d{2}$/.test(t) && !Number.isNaN(new Date(t).getTime()) ? t : null;
-  if (kind === "trn") return t.replace(/\D/g, "").length === 15 ? formatMasked("trn", t) : null;
-  if (kind === "phone") return normalizePhone(t);
-  if (kind === "email") return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t) ? t : null;
-  return t;
-}
-
 /**
  * Puts what a scanned company document says onto the supplier. Empty fields are filled, a later licence expiry
  * replaces an older one, and anything else that disagrees with the record comes back as a conflict to choose
@@ -161,31 +140,7 @@ export async function applySupplierScanAction(input: { id: string; fields: Extra
   const before = await prisma.supplier.findUnique({ where: { id: input.id } });
   if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That supplier isn't in this branch." };
 
-  const result: SupplierScanResult = { applied: [], conflicts: [] };
-  const data: Record<string, unknown> = {};
-  const was: Record<string, unknown> = {};
-  for (const spec of SPECS) {
-    if (spec.key === "tradeLicenseExpiry" && input.fields.docType && input.fields.docType !== "TRADE_LICENSE") continue;
-    const scan = read(spec.kind, input.fields[spec.key]);
-    if (!scan) continue;
-    const cur = (before as Record<string, unknown>)[spec.column];
-    const current = cur instanceof Date ? iso(cur) : ((cur as string | null) ?? null);
-    if (!current) {
-      data[spec.column] = spec.kind === "date" ? new Date(scan) : scan;
-      was[spec.column] = cur ?? null;
-      result.applied.push({ key: spec.column, label: spec.label, value: scan });
-    } else if (current === scan || current.replace(/\W/g, "").toUpperCase() === scan.replace(/\W/g, "").toUpperCase()) {
-      continue;
-    } else if (spec.renewable) {
-      if (scan > current) {
-        data[spec.column] = new Date(scan);
-        was[spec.column] = cur;
-        result.applied.push({ key: spec.column, label: spec.label, value: scan });
-      }
-    } else {
-      result.conflicts.push({ key: spec.column, label: spec.label, current, scan });
-    }
-  }
+  const { result, data, was } = planCompanyScan(before as Record<string, unknown>, input.fields, []);
   if (result.applied.length === 0) return result;
 
   await prisma.supplier.update({ where: { id: input.id }, data });
