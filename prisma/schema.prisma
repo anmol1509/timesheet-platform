@@ -2852,9 +2852,10 @@ model Account {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  branch   Branch        @relation(fields: [branchId], references: [id])
-  branchId String
-  lines    JournalLine[]
+  branch         Branch              @relation(fields: [branchId], references: [id])
+  branchId       String
+  lines          JournalLine[]
+  statementLines BankStatementLine[]
 
   @@unique([branchId, code])
   @@index([branchId, type])
@@ -2876,9 +2877,10 @@ model JournalEntry {
   createdById   String?
   createdByName String?
 
-  branch   Branch        @relation(fields: [branchId], references: [id])
-  branchId String
-  lines    JournalLine[]
+  branch                Branch              @relation(fields: [branchId], references: [id])
+  branchId              String
+  lines                 JournalLine[]
+  matchedStatementLines BankStatementLine[]
 
   @@unique([branchId, number])
   @@unique([branchId, sourceKey])
@@ -2913,4 +2915,29 @@ model BookSequence {
   next     Int    @default(1)
 
   @@id([branchId, prefix])
+}
+
+/// One line of a bank statement uploaded for reconciliation. `amount` is signed from our side: money in is positive.
+/// It is matched to a ledger entry (one entry, one statement line) once the bank and the books agree on it.
+model BankStatementLine {
+  id            String    @id @default(cuid())
+  branchId      String
+  date          DateTime  @db.Date
+  description   String
+  reference     String?
+  amount        Decimal   @db.Decimal(14, 2)
+  balance       Decimal?  @db.Decimal(14, 2)
+  importHash    String
+  matchedAt     DateTime?
+  matchedByName String?
+  createdAt     DateTime  @default(now())
+
+  account   Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId String
+  entry     JournalEntry? @relation(fields: [entryId], references: [id], onDelete: SetNull)
+  entryId   String?
+
+  @@unique([accountId, importHash])
+  @@index([accountId, date])
+  @@index([entryId])
 }
