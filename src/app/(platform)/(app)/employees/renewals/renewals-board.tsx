@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertOctagon,
   AlertTriangle,
@@ -22,6 +23,7 @@ import { EmployeeAvatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlideOver } from "@/components/motion";
 import { Select } from "@/components/ui/Select";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { cn } from "@/lib/cn";
 import type { RenewalItem, RenewalTier } from "@/lib/renewals";
 
@@ -77,136 +79,77 @@ function SubjectAvatar({ item, size = "md" }: { item: RenewalItem; size?: "md" |
 }
 
 export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts: Record<RenewalTier, number> }) {
-  const [tier, setTier] = useState<RenewalTier | "all">("all");
-  const [query, setQuery] = useState("");
-  const [docType, setDocType] = useState("");
-  const [kind, setKind] = useState<"" | "employee" | "supplier">("");
+  // The filters live in the address, so a filtered list can be shared or reloaded.
+  const params = useSearchParams();
+  const list = (k: string) => (params.get(k) ?? "").split("|").filter(Boolean);
+  const [tier, setTier] = useState<RenewalTier | "all">((TIERS.some((t) => t.key === params.get("tier")) ? params.get("tier") : "all") as RenewalTier | "all");
+  const [query, setQuery] = useState(params.get("q") ?? "");
+  const [docs, setDocs] = useState<string[]>(list("doc"));
+  const [suppliers, setSuppliers] = useState<string[]>(list("supplier"));
+  const [projects, setProjects] = useState<string[]>(list("project"));
+  const [kind, setKind] = useState<"" | "employee" | "supplier">(params.get("who") === "employee" || params.get("who") === "supplier" ? (params.get("who") as "employee" | "supplier") : "");
+  const [sort, setSort] = useState<"soonest" | "name" | "document">((["soonest", "name", "document"].includes(params.get("sort") ?? "") ? params.get("sort") : "soonest") as "soonest" | "name" | "document");
   const [selected, setSelected] = useState<RenewalItem | null>(null);
-
-  const docTypes = useMemo(() => [...new Set(items.map((i) => i.document))].sort(), [items]);
-
+  const NONE = "__none";
+  useEffect(() => {
+    const q = new URLSearchParams();
+    if (tier !== "all") q.set("tier", tier);
+    if (query) q.set("q", query);
+    if (docs.length) q.set("doc", docs.join("|"));
+    if (suppliers.length) q.set("supplier", suppliers.join("|"));
+    if (projects.length) q.set("project", projects.join("|"));
+    if (kind) q.set("who", kind);
+    if (sort !== "soonest") q.set("sort", sort);
+    window.history.replaceState(null, "", q.size ? `?${q}` : window.location.pathname);
+  }, [tier, query, docs, suppliers, projects, kind, sort]);
+  const docOptions = useMemo(() => [...new Set(items.map((i) => i.document))].sort().map((d) => ({ value: d, label: d })), [items]);
+  const supplierOptions = useMemo(() => [...new Set(items.map((i) => i.supplier).filter((x): x is string => !!x))].sort().map((d) => ({ value: d, label: d })), [items]);
+  const projectOptions = useMemo(() => [{ value: NONE, label: "Not deployed" }, ...[...new Set(items.map((i) => i.project).filter((x): x is string => !!x))].sort().map((d) => ({ value: d, label: d }))], [items]);
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter(
+    const out = items.filter(
       (i) =>
         (tier === "all" || i.tier === tier) &&
-        (!docType || i.document === docType) &&
+        (docs.length === 0 || docs.includes(i.document)) &&
+        (suppliers.length === 0 || (i.supplier !== null && suppliers.includes(i.supplier))) &&
+        (projects.length === 0 || (i.project === null ? projects.includes(NONE) : projects.includes(i.project))) &&
         (!kind || i.kind === kind) &&
-        (!q ||
-          [i.subjectName, i.subjectRef, i.document, i.project, i.supplier]
-            .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(q)))
+        (!q || [i.subjectName, i.subjectRef, i.document, i.project, i.supplier].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)))
     );
-  }, [items, tier, query, docType, kind]);
-
-  const filtersActive = tier !== "all" || !!query || !!docType || !!kind;
-
+    return sort === "soonest" ? out : [...out].sort((a, b) => (sort === "name" ? a.subjectName.localeCompare(b.subjectName) : a.document.localeCompare(b.document) || a.days - b.days));
+  }, [items, tier, query, docs, suppliers, projects, kind, sort]);
+  const filtersActive = tier !== "all" || !!query || docs.length > 0 || suppliers.length > 0 || projects.length > 0 || !!kind;
+  const clear = () => { setTier("all"); setQuery(""); setDocs([]); setSuppliers([]); setProjects([]); setKind(""); };
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {TIERS.map((t) => {
-          const active = tier === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTier(active ? "all" : t.key)}
-              aria-pressed={active}
-              className={cn(
-                "group rounded-card border p-4 text-left shadow-card transition hover:-translate-y-px hover:shadow-md",
-                t.card,
-                active && "ring-2 ring-[var(--brand-primary)] ring-offset-2 ring-offset-[var(--canvas)]"
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className={cn("flex h-8 w-8 items-center justify-center rounded-[10px]", t.chip)}>
-                  <t.icon className="h-4 w-4" aria-hidden />
-                </span>
-                <ChevronRight className="h-4 w-4 text-subtle opacity-0 transition group-hover:opacity-100" aria-hidden />
-              </div>
-              <p className="tabular mt-3 text-[28px] leading-8 font-semibold tracking-tight text-primary">{counts[t.key]}</p>
-              <p className="mt-1 text-[13px] font-medium text-secondary">{t.label}</p>
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Due within">
+        <button type="button" aria-pressed={tier === "all"} onClick={() => setTier("all")} className={cn("rounded-full border px-3 py-1 text-xs font-medium", tier === "all" ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover")}>All {items.length}</button>
+        {TIERS.map((t) => (
+          <button key={t.key} type="button" aria-pressed={tier === t.key} onClick={() => setTier(tier === t.key ? "all" : t.key)} className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium", tier === t.key ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover")}>
+            <span className={cn("h-2 w-2 rounded-full", t.bar)} aria-hidden />{t.key === "expired" ? "Expired" : t.label.replace("Due in ", "")} · {counts[t.key]}
+          </button>
+        ))}
       </div>
-
-      {items.length > 0 && (
-        <div className="card p-4">
-          <p className="mb-2.5 text-xs font-medium text-muted">Composition — {items.length} renewals due within 90 days</p>
-          <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-sunken">
-            {TIERS.map((t) =>
-              counts[t.key] > 0 ? (
-                <span
-                  key={t.key}
-                  title={`${t.label}: ${counts[t.key]}`}
-                  className={cn("h-full first:rounded-l-full last:rounded-r-full transition-[width] duration-500", t.bar)}
-                  style={{ width: `${(counts[t.key] / items.length) * 100}%` }}
-                />
-              ) : null
-            )}
-          </div>
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <TimelineStrip items={items} onSelect={setSelected} />
-      )}
-
       <div className="card overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-default p-3">
-          <div className="relative min-w-[12rem] flex-1 sm:max-w-sm">
+          <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, ID, project, supplier…"
-              aria-label="Search renewals"
-              className="input h-9 w-full py-0 pl-9 text-sm"
-            />
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or ID" aria-label="Search renewals" className="input h-9 w-full py-0 pl-9 text-sm" />
           </div>
-          <div className="w-44">
-            <Select
-              value={docType}
-              onChange={setDocType}
-              searchable={false}
-              placeholder="All documents"
-              options={[{ value: "", label: "All documents" }, ...docTypes.map((d) => ({ value: d, label: d }))]}
-            />
+          <div className="w-44"><MultiSelect values={docs} onChange={setDocs} options={docOptions} placeholder="All documents" noun="documents" /></div>
+          <div className="w-44"><MultiSelect values={suppliers} onChange={setSuppliers} options={supplierOptions} placeholder="All suppliers" noun="suppliers" /></div>
+          <div className="w-44"><MultiSelect values={projects} onChange={setProjects} options={projectOptions} placeholder="All projects" noun="projects" /></div>
+          <div className="w-36">
+            <Select value={kind} onChange={(v) => setKind(v as typeof kind)} searchable={false} placeholder="Everyone" options={[{ value: "", label: "Everyone" }, { value: "employee", label: "Employees" }, { value: "supplier", label: "Suppliers" }]} />
           </div>
           <div className="w-40">
-            <Select
-              value={kind}
-              onChange={(v) => setKind(v as typeof kind)}
-              searchable={false}
-              placeholder="Everyone"
-              options={[
-                { value: "", label: "Everyone" },
-                { value: "employee", label: "Employees" },
-                { value: "supplier", label: "Suppliers" },
-              ]}
-            />
+            <Select value={sort} onChange={(v) => setSort(v as typeof sort)} searchable={false} options={[{ value: "soonest", label: "Soonest first" }, { value: "name", label: "Name A–Z" }, { value: "document", label: "By document" }]} />
           </div>
           {filtersActive && (
-            <button
-              type="button"
-              onClick={() => {
-                setTier("all");
-                setQuery("");
-                setDocType("");
-                setKind("");
-              }}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden /> Clear filters
-            </button>
+            <button type="button" onClick={clear} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><X className="h-3.5 w-3.5" aria-hidden /> Clear filters</button>
           )}
-          <span className="tabular ml-auto text-xs text-muted">
-            {rows.length} of {items.length}
-          </span>
+          <span className="tabular ml-auto text-xs text-muted">{rows.length} of {items.length}</span>
         </div>
-
         {rows.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-14 text-center">
             <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--success-soft)] text-[var(--success)]">
@@ -231,7 +174,7 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
                   <th className="px-4">Expires</th>
                   <th className="w-56 px-4">Runway</th>
                   <th className="px-4">Deployment</th>
-                  <th className="px-4"><span className="sr-only">Open</span></th>
+                  <th className="relative px-4"><span className="sr-only">Open</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -281,6 +224,8 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
           </div>
         )}
       </div>
+
+      {rows.length > 0 && <TimelineStrip items={rows} onSelect={setSelected} />}
 
       <SlideOver
         open={!!selected}
