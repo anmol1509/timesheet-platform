@@ -14,7 +14,9 @@ export type EmployeeOption = { id: string; name: string; idNo: string; trade: st
 
 export type BranchDefaults = { signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; letterheadUrl: string | null; topMm: number; bottomMm: number };
 
-export function IssueLetter({ employees, templates, companyName, today, canIssue, defaults, initialEmployeeId, preferTemplate }: { initialEmployeeId?: string; preferTemplate?: string; employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
+export type PopularTemplate = { id: string; name: string; count: number };
+
+export function IssueLetter({ employees, templates, popular, companyName, today, canIssue, defaults, initialEmployeeId, preferTemplate }: { popular: PopularTemplate[]; initialEmployeeId?: string; preferTemplate?: string; employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
   // Printing choices. All optional; signature and stamp start off so nothing is signed or stamped by accident.
   const [signatoryName, setSignatoryName] = useState(defaults.signatoryName);
   const [signatoryTitle, setSignatoryTitle] = useState(defaults.signatoryTitle);
@@ -86,87 +88,113 @@ export function IssueLetter({ employees, templates, companyName, today, canIssue
     });
   }
 
-  if (templates.length === 0) {
-    return <div className="card p-8 text-center text-sm text-muted">No employee letter templates yet. Add the ready-made ones under Administration → Letter Templates.</div>;
-  }
+  if (templates.length === 0) return null;
+
+  const cardCls = "rounded-[var(--radius-card)] border border-default bg-surface";
+  const toggle = (label: string, on: boolean, available: boolean, set: (v: boolean) => void, missing: string) => (
+    <label className={`flex items-center justify-between gap-2 text-sm ${available ? "cursor-pointer text-primary" : "text-subtle"}`}>
+      <span className="flex items-center gap-2"><input type="checkbox" checked={on} disabled={!available} onChange={(e) => set(e.target.checked)} />{label}</span>
+      {!available && <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] font-medium text-muted" title={`Add one under ${issuer.where}`}>{missing}</span>}
+    </label>
+  );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-      <div className="card space-y-4 self-start p-4">
+    <div className="space-y-5">
+      {popular.length > 0 && (
+        <section aria-label="Quick start">
+          <p className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Quick start</p>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {popular.map((p) => (
+              <button key={p.id} type="button" onClick={() => { setTemplateId(p.id); setInputs({}); setPreview(null); }} aria-pressed={templateId === p.id}
+                className={`flex items-center gap-3 rounded-[var(--radius-card)] border px-4 py-3 text-left transition ${templateId === p.id ? "border-[var(--brand-primary)] bg-brand-soft" : "border-default bg-surface hover:border-strong hover:bg-surface-hover"}`}>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-white/70 text-sm font-semibold text-[var(--brand-primary)] shadow-sm" aria-hidden>{p.name.slice(0, 1)}</span>
+                <span className="min-w-0"><span className="block truncate text-sm font-semibold text-primary">{p.name}</span><span className="block text-xs text-muted">{p.count > 0 ? `${p.count} issued` : "Not used yet"}</span></span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className={`${cardCls} grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3`}>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Employee</span>
+          <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Employee</span>
           <Select value={employeeId} onChange={(v) => { setEmployeeId(v); setPreview(null); setAllowEmpty(false); }} placeholder="Choose an employee…" searchPlaceholder="Search name or ID…" options={employees.map((e) => ({ value: e.id, label: `${e.name} · ${e.idNo}` }))} />
         </label>
-        {issuers.length > 1 && (
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">Letterhead of</span>
-            <Select value={issuerKey} onChange={(v) => { const o = issuers.find((x) => x.key === v); if (o) chooseIssuer(o); }} searchable={false} options={issuers.map((o) => ({ value: o.key, label: o.label }))} triggerClassName="w-full" />
-          </label>
-        )}
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Letter</span>
-          <Select value={templateId} onChange={(v) => { setTemplateId(v); setInputs({}); setPreview(null); }} options={[...templates.map((t) => ({ value: t.id, label: t.name }))]} triggerClassName="w-full" />
+          <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Letter</span>
+          <Select value={templateId} onChange={(v) => { setTemplateId(v); setInputs({}); setPreview(null); }} options={templates.map((t) => ({ value: t.id, label: t.name }))} triggerClassName="w-full" />
         </label>
         {template?.asks.map((label) => (
           <label key={label} className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">{label}</span>
             {isDateAsk(label)
               ? <DatePicker value={letterDateToIso(inputs[label] ?? "")} onChange={(iso) => setInputs((prev) => ({ ...prev, [label]: isoToLetterDate(iso) }))} ariaLabel={label} className="w-full" />
               : <input value={inputs[label] ?? ""} onChange={(e) => setInputs((prev) => ({ ...prev, [label]: e.target.value }))} className="input w-full" />}
           </label>
         ))}
-        {template?.usesSalary && <p className="text-xs text-muted">This letter states the employee&apos;s salary from their Payroll &amp; WPS tab.</p>}
+        {template?.usesSalary && <p className="self-end text-xs text-muted sm:col-span-2 lg:col-span-3">This letter states the employee&apos;s salary from their Payroll &amp; WPS tab.</p>}
+      </section>
 
-        <fieldset className="space-y-3 border-t border-default pt-4">
-          <legend className="-mb-1 text-xs font-semibold tracking-wide text-muted uppercase">Signature &amp; printing <span className="font-normal normal-case">(optional)</span></legend>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">Signed by</span>
-            <input value={signatoryName} onChange={(e) => setSignatoryName(e.target.value)} placeholder="Authorised Signatory" className="input w-full" />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted">Title</span>
-            <input value={signatoryTitle} onChange={(e) => setSignatoryTitle(e.target.value)} placeholder="e.g. General Manager" className="input w-full" />
-          </label>
-          <label className={`flex items-start gap-2 text-sm ${issuer.signatureUrl ? "text-secondary" : "text-subtle"}`}>
-            <input type="checkbox" checked={showSignature} disabled={!issuer.signatureUrl} onChange={(e) => setShowSignature(e.target.checked)} className="mt-0.5" />
-            <span>Add signature image{!issuer.signatureUrl && <span className="block text-xs text-muted">No signature uploaded for {issuer.name}. Add one under {issuer.where}.</span>}</span>
-          </label>
-          <label className={`flex items-start gap-2 text-sm ${issuer.stampUrl ? "text-secondary" : "text-subtle"}`}>
-            <input type="checkbox" checked={showStamp} disabled={!issuer.stampUrl} onChange={(e) => setShowStamp(e.target.checked)} className="mt-0.5" />
-            <span>Add company stamp{!issuer.stampUrl && <span className="block text-xs text-muted">No stamp uploaded for {issuer.name}. Add one under {issuer.where}.</span>}</span>
-          </label>
-          <div className="space-y-1.5 text-sm text-secondary">
-            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints the header (name, address, contact) of {issuer.name}.</span></span></label>
-            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={onLetterhead} onChange={() => setOnLetterhead(true)} className="mt-0.5" /><span>On letterhead<span className="block text-xs text-muted">{issuer.letterheadKind === "image" ? `Uses the uploaded letterhead of ${issuer.name} as the page background.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the issued PDF, not in this preview.` : `No letterhead is uploaded for ${issuer.name} (add one under ${issuer.where}). Leaves the header and footer space clear for pre-printed paper.`}</span></span></label>
+      <div className="grid gap-5 lg:grid-cols-[18.5rem_minmax(0,1fr)]">
+        <aside className={`${cardCls} space-y-4 self-start p-4`}>
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold tracking-wide text-muted uppercase">Print on</span>
+            <div className="inline-flex overflow-hidden rounded-[10px] border border-default" role="group" aria-label="Paper">
+              {[["Plain paper", false], ["Letterhead", true]].map(([l, v]) => (
+                <button key={String(l)} type="button" aria-pressed={onLetterhead === v} onClick={() => setOnLetterhead(v as boolean)} className={`px-3 py-1.5 text-sm ${onLetterhead === v ? "bg-brand-soft font-semibold text-[var(--brand-primary)]" : "text-secondary hover:bg-surface-hover"}`}>{l as string}</button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted">{onLetterhead ? (issuer.letterheadKind === "image" ? `Uses the letterhead of ${issuer.name}.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the issued PDF, not in this preview.` : `No letterhead uploaded for ${issuer.name}: the header and footer space is left clear for pre-printed paper.`) : `Prints the header of ${issuer.name}.`}</p>
           </div>
-        </fieldset>
-        {emptyFields.length > 0 && (
-          <div className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3 text-xs text-secondary">
-            <p className="font-medium text-primary">Missing on this employee&apos;s record: {emptyFields.join(", ")}</p>
-            <p className="mt-0.5">The letter would print a gap. Add it on their employee page, or:</p>
-            <label className="mt-1.5 flex items-center gap-2"><input type="checkbox" checked={allowEmpty} onChange={(e) => setAllowEmpty(e.target.checked)} /> Issue anyway</label>
-          </div>
-        )}
-        {canIssue ? (
-          <button type="button" className="btn btn-primary w-full" disabled={!ready || issuing} onClick={issue}>
-            <FileDown className="h-4 w-4" aria-hidden /> {issuing ? "Issuing…" : "Issue letter & open PDF"}
-          </button>
-        ) : (
-          <p className="text-xs text-muted">You can preview letters but not issue them.</p>
-        )}
-        {shown?.missing && shown.missing.length > 0 && <p className="text-xs text-muted">Fill in: {shown.missing.join(", ")}</p>}
-        {(error || shown?.error) && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error ?? shown?.error}</p>}
-        <p className="text-xs text-muted">Issuing numbers the letter, stores its exact wording, and records who issued it.</p>
-      </div>
-
-      <div className="min-w-0">
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}</div>
-        <div className="rounded-lg bg-surface-sunken p-4">
-          {shown?.html ? (
-            <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
-          ) : (
-            <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
+          {issuers.length > 1 && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Letterhead of</span>
+              <Select value={issuerKey} onChange={(v) => { const o = issuers.find((x) => x.key === v); if (o) chooseIssuer(o); }} searchable={false} options={issuers.map((o) => ({ value: o.key, label: o.label }))} triggerClassName="w-full" />
+            </label>
           )}
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Signed by</span>
+            <input value={signatoryName} onChange={(e) => setSignatoryName(e.target.value)} placeholder="Authorised Signatory" className="input w-full" />
+            <input value={signatoryTitle} onChange={(e) => setSignatoryTitle(e.target.value)} placeholder="Title, e.g. General Manager" aria-label="Title" className="input mt-2 w-full" />
+          </label>
+          <div className="space-y-2">
+            {toggle("Signature", showSignature, !!issuer.signatureUrl, setShowSignature, "Not uploaded")}
+            {toggle("Company stamp", showStamp, !!issuer.stampUrl, setShowStamp, "Not uploaded")}
+          </div>
+          <p className="text-xs text-muted">Signature and stamp are added only when ticked.</p>
+        </aside>
+
+        <div className="min-w-0 space-y-3">
+          <div className="max-h-[72vh] overflow-y-auto rounded-[var(--radius-card)] bg-surface-sunken p-4">
+            <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}</div>
+            {shown?.html ? (
+              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
+            ) : (
+              <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
+            )}
+          </div>
+          <div className={`${cardCls} sticky bottom-3 z-10 space-y-2 p-3 shadow-lg`}>
+            {emptyFields.length > 0 && (
+              <div className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">
+                <p><span className="font-semibold text-primary">{emptyFields.length} {emptyFields.length === 1 ? "detail is" : "details are"} missing on this employee&apos;s record</span> and would print as a gap. Add {emptyFields.length === 1 ? "it" : "them"} on their page, or issue anyway.</p>
+                <details className="mt-1"><summary className="cursor-pointer text-muted hover:underline">Which ones</summary><p className="mt-1">{emptyFields.join(", ")}</p></details>
+                <label className="mt-1.5 flex items-center gap-2 font-medium text-primary"><input type="checkbox" checked={allowEmpty} onChange={(e) => setAllowEmpty(e.target.checked)} /> Issue anyway</label>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="min-w-0 flex-1 text-sm text-secondary">
+                {!employeeId ? "Choose an employee to start." : shown?.missing && shown.missing.length > 0 ? `Fill in: ${shown.missing.join(", ")}` : ready ? <><b className="font-semibold text-primary">Ready to issue.</b> <span className="text-muted">Numbers the letter, saves its exact wording and records who issued it.</span></> : "Preparing the letter…"}
+              </p>
+              {canIssue ? (
+                <button type="button" className="btn btn-primary" disabled={!ready || issuing} onClick={issue}>
+                  <FileDown className="h-4 w-4" aria-hidden /> {issuing ? "Issuing…" : "Issue letter & open PDF"}
+                </button>
+              ) : (
+                <p className="text-xs text-muted">You can preview letters but not issue them.</p>
+              )}
+            </div>
+            {(error || shown?.error) && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error ?? shown?.error}</p>}
+          </div>
         </div>
       </div>
     </div>

@@ -5,6 +5,8 @@ import { branchWhere } from "@/lib/branch";
 import { LETTER_PRESETS, presetByKey, presetHtml } from "@/lib/letterPresets";
 import { htmlToText, templateHtml } from "@/lib/letterHtml";
 import { Badge } from "@/components/Badge";
+import { Copy } from "lucide-react";
+import { HeroHeader } from "@/components/HeroHeader";
 import { AddDefaultsButton, NewTemplateButton } from "./gallery";
 
 export const metadata = { title: "Letter templates" };
@@ -37,16 +39,23 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0 flex-1 basis-80">
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Letter templates</h1>
-          <p className="mt-1 text-sm text-muted">The wording of your client letters (NOCs, mobilization, undertakings) and letters about your employees (salary certificates, experience letters, warnings). Pick a ready-made one, format it like an email with a live preview, and it&apos;s used the next time a letter is made.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {branchId && templates.length > 0 && missingDefaults && <AddDefaultsButton />}
-          {branchId && <NewTemplateButton />}
-        </div>
-      </div>
+      <HeroHeader
+        icon={Copy}
+        title="Letter templates"
+        subtitle="The wording behind every letter. Edit it like an email, with a live preview."
+        pills={templates.length === 0 ? [] : [
+          { label: "Templates", value: String(templates.length) },
+          { label: "Employee letters", value: String(counts.get("employee") ?? 0) },
+          { label: "Client letters", value: String(templates.length - (counts.get("employee") ?? 0)) },
+          ...(missingDefaults ? [{ label: "Ready-made not added", value: String(LETTER_PRESETS.filter((p) => !haveKeys.has(p.key)).length), warn: true }] : []),
+        ]}
+        actions={branchId ? (
+          <>
+            {templates.length > 0 && missingDefaults && <AddDefaultsButton />}
+            <NewTemplateButton />
+          </>
+        ) : undefined}
+      />
       {error && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{error}</p>}
 
       {branchId && templates.length > 0 && (
@@ -69,9 +78,14 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
         <p className="text-sm text-muted">Pick a branch from the switcher to manage its templates.</p>
       ) : templates.length === 0 ? (
         <section className="card p-6">
-          <h2 className="text-sm font-semibold text-primary">Start with a ready-made template</h2>
-          <p className="mt-1 text-sm text-muted">Each one is a sensible first draft with the right fields already in place.</p>
-          <div className="mt-4 flex flex-wrap gap-2"><AddDefaultsButton /><NewTemplateButton variant="secondary" /></div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-base font-semibold text-primary">Start with the ready-made set</h2><p className="mt-1 text-sm text-muted">{LETTER_PRESETS.length} templates with the right fields already in place. Change any of them afterwards.</p></div>
+            <div className="flex gap-2"><AddDefaultsButton primary label={`Add all ${LETTER_PRESETS.length}`} /><NewTemplateButton variant="secondary" /></div>
+          </div>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div><p className="text-xs font-semibold tracking-wide text-muted uppercase">Employee letters · {LETTER_PRESETS.filter((p) => p.audience === "EMPLOYEE").length}</p><ul className="mt-2 space-y-1 text-sm text-secondary">{LETTER_PRESETS.filter((p) => p.audience === "EMPLOYEE").map((p) => <li key={p.key}>{p.name}</li>)}</ul></div>
+            <div><p className="text-xs font-semibold tracking-wide text-muted uppercase">Client letters · {LETTER_PRESETS.filter((p) => p.audience !== "EMPLOYEE").length}</p><ul className="mt-2 space-y-1 text-sm text-secondary">{LETTER_PRESETS.filter((p) => p.audience !== "EMPLOYEE").map((p) => <li key={p.key}>{p.name}</li>)}</ul></div>
+          </div>
         </section>
       ) : (
         shown.length === 0 ? (

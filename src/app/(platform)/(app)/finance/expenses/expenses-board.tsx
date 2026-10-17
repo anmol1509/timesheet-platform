@@ -150,7 +150,7 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
           {filters.map((f) => (
             <Link key={f.k || "all"} href={f.k ? `/finance/expenses?status=${f.k}` : "/finance/expenses"} role="tab" aria-selected={status === f.k}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${status === f.k ? "border-accent bg-accent-soft text-accent" : "border-border text-secondary hover:bg-surface-hover"}`}>{f.l}{f.count ? ` · ${f.count}` : ""}</Link>
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${status === f.k ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{f.l}{f.count ? ` · ${f.count}` : ""}</Link>
           ))}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">

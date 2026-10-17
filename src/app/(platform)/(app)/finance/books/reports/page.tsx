@@ -15,9 +15,9 @@ type View = (typeof VIEWS)[number]["k"];
 
 function Block({ title, rows, total, totalLabel }: { title: string; rows: { key: string; label: string; value: number }[]; total: number; totalLabel: string }) {
   return (
-    <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+    <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
       <h3 className="bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary">{title}</h3>
-      <table className="w-full text-sm"><tbody className="divide-y divide-border">
+      <table className="w-full text-sm"><tbody className="divide-y divide-default">
         {rows.map((r) => <tr key={r.key}><td className="px-4 py-1.5 text-secondary">{r.label}</td><td className="tabular px-4 py-1.5 text-right">{aed(r.value)}</td></tr>)}
         <tr className="font-semibold"><td className="px-4 py-2">{totalLabel}</td><td className="tabular px-4 py-2 text-right">{aed(total)}</td></tr>
       </tbody></table>
@@ -33,7 +33,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const view: View = VIEWS.some((v) => v.k === sp.view) ? (sp.view as View) : "pnl";
   const switcher = (
     <div className="flex flex-wrap gap-1.5" role="group" aria-label="Report">
-      {VIEWS.map((v) => <Link key={v.k} href={`/finance/books/reports?view=${v.k}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${view === v.k ? "border-accent bg-accent-soft text-accent" : "border-border text-secondary hover:bg-surface-hover"}`}>{v.l}</Link>)}
+      {VIEWS.map((v) => <Link key={v.k} href={`/finance/books/reports?view=${v.k}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${view === v.k ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{v.l}</Link>)}
     </div>
   );
   if (view === "accounts") return <div className="space-y-5">{header}{switcher}<AccountsView branchId={ctx.branch.id} canWrite={ctx.canWrite} showHidden={sp.hidden === "1"} /></div>;
@@ -50,7 +50,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <input type="hidden" name="view" value={view} />
       {ranged && <label className="text-muted">From<input type="date" name="from" defaultValue={iso(from)} min={iso(open)} className="input mt-1 block h-9" /></label>}
       <label className="text-muted">{ranged ? "To" : "As of"}<input type="date" name="asof" defaultValue={iso(asOf)} className="input mt-1 block h-9" /></label>
-      <button className="h-9 rounded-lg border border-border px-3 font-medium text-primary hover:bg-surface-hover">Update</button>
+      <button className="h-9 rounded-lg border border-default px-3 font-medium text-primary hover:bg-surface-hover">Update</button>
     </form>
   );
 
@@ -65,7 +65,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <Block title={`Income, ${fmtDate(from)} – ${fmtDate(asOf)}`} rows={income.map((a) => ({ key: a.id, label: a.name, value: normalBalance(a) }))} total={income.reduce((s, a) => s + normalBalance(a), 0)} totalLabel="Total income" />
           <Block title="Costs" rows={expense.map((a) => ({ key: a.id, label: a.name, value: normalBalance(a) }))} total={expense.reduce((s, a) => s + normalBalance(a), 0)} totalLabel="Total costs" />
         </div>
-        <div className={`flex justify-between rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3 text-sm font-semibold ${profit < 0 ? "text-error" : "text-success"}`}><span>{profit < 0 ? "Loss" : "Profit"}</span><span className="tabular">{aed(profit)}</span></div>
+        <div className={`flex justify-between rounded-[var(--radius-card)] border border-default bg-surface px-4 py-3 text-sm font-semibold ${profit < 0 ? "text-error" : "text-success"}`}><span>{profit < 0 ? "Loss" : "Profit"}</span><span className="tabular">{aed(profit)}</span></div>
       </div>
     );
   } else if (view === "balance") {
@@ -90,11 +90,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   } else {
     const tb = trialBalance(cumulative);
     body = (
-      <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+      <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
         <h3 className="flex items-center justify-between bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary"><span>Trial balance as of {fmtDate(asOf)}</span><span className={tb.balanced ? "text-success" : "text-error"}>{tb.balanced ? "Balanced" : "Out of balance"}</span></h3>
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-muted"><tr><th className="px-4 py-2 font-medium">Account</th><th className="px-4 py-2 text-right font-medium">Debit</th><th className="px-4 py-2 text-right font-medium">Credit</th></tr></thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-default">
             {tb.rows.map((r) => <tr key={r.id}><td className="px-4 py-1.5"><span className="mr-2 font-mono text-xs text-muted">{r.code}</span>{r.name}</td><td className="tabular px-4 py-1.5 text-right">{r.debitBalance ? aed(r.debitBalance) : ""}</td><td className="tabular px-4 py-1.5 text-right">{r.creditBalance ? aed(r.creditBalance) : ""}</td></tr>)}
             <tr className="font-semibold"><td className="px-4 py-2">Total</td><td className="tabular px-4 py-2 text-right">{aed(tb.debit)}</td><td className="tabular px-4 py-2 text-right">{aed(tb.credit)}</td></tr>
           </tbody>

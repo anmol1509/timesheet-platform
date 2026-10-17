@@ -39,7 +39,7 @@ export function PartyEntry({ type, partyId, moneyAccounts, minDate }: { type: "C
             <label className="block text-sm font-medium text-primary">Date<div className="mt-1"><DatePicker value={date} onChange={setDate} ariaLabel="Date" min={minDate} /></div></label>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-sm font-medium text-primary">{note ? "Amount before VAT" : "Amount"}<Input className="mt-1 text-right" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></label>
-              {note && <label className="text-sm font-medium text-primary">VAT<Input className="mt-1 text-right" inputMode="decimal" value={vat} onChange={(e) => setVat(e.target.value)} placeholder="0.00" /><button type="button" className="mt-1 text-xs font-medium text-accent hover:underline" onClick={() => setVat((Math.round(num(amount) * 5) / 100).toFixed(2))}>5% of the amount</button></label>}
+              {note && <label className="text-sm font-medium text-primary">VAT<Input className="mt-1 text-right" inputMode="decimal" value={vat} onChange={(e) => setVat(e.target.value)} placeholder="0.00" /><button type="button" className="mt-1 text-xs font-medium text-brand hover:underline" onClick={() => setVat((Math.round(num(amount) * 5) / 100).toFixed(2))}>5% of the amount</button></label>}
             </div>
             {!note && (
               <label className="block text-sm font-medium text-primary">{client ? "Paid in to" : "Paid from"}

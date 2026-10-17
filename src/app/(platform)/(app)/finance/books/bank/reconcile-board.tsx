@@ -55,9 +55,9 @@ export function ReconcileBoard({ accountId, accountName, canWrite, ledgerBalance
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4"><p className="text-xs text-muted">Books say</p><p className="tabular mt-1 text-xl font-semibold text-primary">{aed(ledgerBalance)}</p></div>
-        <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4"><p className="text-xs text-muted">Bank says{statementBalanceDate ? ` (${day(statementBalanceDate)})` : ""}</p><p className="tabular mt-1 text-xl font-semibold text-primary">{statementBalance === null ? "—" : aed(statementBalance)}</p></div>
-        <div className="rounded-[var(--radius-card)] border border-border bg-surface p-4"><p className="text-xs text-muted">Still to match</p><p className={`mt-1 text-xl font-semibold ${reconciled ? "text-success" : "text-primary"}`}>{reconciled ? "All matched" : `${statement.length - matched.length} bank · ${unmatchedLedger.length} books`}</p></div>
+        <div className="rounded-[var(--radius-card)] border border-default bg-surface p-4"><p className="text-xs text-muted">Books say</p><p className="tabular mt-1 text-xl font-semibold text-primary">{aed(ledgerBalance)}</p></div>
+        <div className="rounded-[var(--radius-card)] border border-default bg-surface p-4"><p className="text-xs text-muted">Bank says{statementBalanceDate ? ` (${day(statementBalanceDate)})` : ""}</p><p className="tabular mt-1 text-xl font-semibold text-primary">{statementBalance === null ? "—" : aed(statementBalance)}</p></div>
+        <div className="rounded-[var(--radius-card)] border border-default bg-surface p-4"><p className="text-xs text-muted">Still to match</p><p className={`mt-1 text-xl font-semibold ${reconciled ? "text-success" : "text-primary"}`}>{reconciled ? "All matched" : `${statement.length - matched.length} bank · ${unmatchedLedger.length} books`}</p></div>
       </div>
 
       {canWrite && (
@@ -70,12 +70,12 @@ export function ReconcileBoard({ accountId, accountName, canWrite, ledgerBalance
       )}
       {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
 
-      {statement.length === 0 && <p className="rounded-[var(--radius-card)] border border-dashed border-border p-8 text-center text-sm text-muted">Upload your bank statement to start. Lines in the bank and in the books with the same amount and date are paired for you.</p>}
+      {statement.length === 0 && <p className="rounded-[var(--radius-card)] border border-dashed border-default p-8 text-center text-sm text-muted">Upload your bank statement to start. Lines in the bank and in the books with the same amount and date are paired for you.</p>}
 
       {suggestions.length > 0 && (
-        <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           <div className="flex items-center justify-between bg-[var(--surface-sunken)] px-4 py-2"><h2 className="text-sm font-semibold text-primary">Suggested matches ({suggestions.length})</h2>{canWrite && <Button type="button" size="sm" disabled={pending} onClick={() => run(async () => { const r = await acceptMatchesAction(suggestions.map((s) => ({ statementId: s.statementId, entryId: s.entryId }))); return r.error ? r : (setMsg({ ok: true, text: `Matched ${r.matched}.` }), {}); })}><Check className="h-4 w-4" aria-hidden />Accept all</Button>}</div>
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-default text-sm">
             {suggestions.map((s) => {
               const a = stmtById.get(s.statementId)!, b = ledgerById.get(s.entryId)!;
               return (
@@ -91,9 +91,9 @@ export function ReconcileBoard({ accountId, accountName, canWrite, ledgerBalance
       )}
 
       {needsEntry.length > 0 && (
-        <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           <h2 className="bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary">In the bank, not in the books ({needsEntry.length})</h2>
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-default text-sm">
             {needsEntry.map((s) => {
               const options = unmatchedLedger.filter((l) => Math.round(l.amount * 100) === Math.round(s.amount * 100));
               return (
@@ -114,20 +114,20 @@ export function ReconcileBoard({ accountId, accountName, canWrite, ledgerBalance
       )}
 
       {unclearedBooks.length > 0 && statement.length > 0 && (
-        <section className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <section className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           <h2 className="bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary">In the books, not on the statement ({unclearedBooks.length})</h2>
           <p className="px-4 pt-2 text-xs text-muted">Usually cheques not yet cashed or deposits still on their way. They clear when a later statement shows them.</p>
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-default text-sm">
             {unclearedBooks.map((l) => <li key={l.entryId} className="flex items-center gap-3 px-4 py-2"><div className="min-w-0 flex-1"><p className="truncate text-primary">{l.narration}</p><p className="text-xs text-muted">{day(l.date)} · {l.number}</p></div><Amount n={l.amount} /></li>)}
           </ul>
         </section>
       )}
 
       {matched.length > 0 && (
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface">
+        <section className="rounded-[var(--radius-card)] border border-default bg-surface">
           <button type="button" onClick={() => setShowMatched((v) => !v)} className="flex w-full items-center justify-between px-4 py-2 text-sm font-semibold text-primary" aria-expanded={showMatched}>Matched ({matched.length})<span className="text-xs font-normal text-muted">{showMatched ? "Hide" : "Show"}</span></button>
           {showMatched && (
-            <ul className="divide-y divide-border border-t border-border text-sm">
+            <ul className="divide-y divide-default border-t border-default text-sm">
               {matched.map((s) => <li key={s.id} className="flex items-center gap-3 px-4 py-2"><div className="min-w-0 flex-1"><p className="truncate text-primary">{s.description}</p><p className="truncate text-xs text-muted">{day(s.date)} → {s.entry?.number} {s.entry?.narration}</p></div><Amount n={s.amount} />{canWrite && <button type="button" onClick={() => run(() => unmatchStatementLineAction(s.id))} className="text-xs text-muted hover:text-error">Unmatch</button>}</li>)}
             </ul>
           )}

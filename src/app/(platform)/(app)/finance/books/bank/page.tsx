@@ -56,7 +56,7 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
     <div className="space-y-5">
       {header(
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Bank account">
-          {money.map((a) => <Link key={a.id} href={`/finance/books/bank?account=${a.id}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${a.id === current.id ? "border-accent bg-accent-soft text-accent" : "border-border text-secondary hover:bg-surface-hover"}`}>{a.name}</Link>)}
+          {money.map((a) => <Link key={a.id} href={`/finance/books/bank?account=${a.id}`} className={`rounded-full border px-3 py-1 text-xs font-medium ${a.id === current.id ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{a.name}</Link>)}
         </div>,
       )}
       <ReconcileBoard

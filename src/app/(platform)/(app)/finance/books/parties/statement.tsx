@@ -23,7 +23,7 @@ export async function PartyStatement({ type, id }: { type: "CLIENT" | "SUPPLIER"
   if (!branchId || !can(subject, "finance.books", "view")) return null;
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true } });
   if (!branch?.booksOpeningDate) {
-    return <p className="rounded-[var(--radius-card)] border border-dashed border-border p-6 text-sm text-muted">Accounting isn&apos;t set up yet. <Link href="/finance/books" className="text-accent hover:underline">Start it</Link> to see statements here.</p>;
+    return <p className="rounded-[var(--radius-card)] border border-dashed border-default p-6 text-sm text-muted">Accounting isn&apos;t set up yet. <Link href="/finance/books" className="text-brand hover:underline">Start it</Link> to see statements here.</p>;
   }
   const writable = canWrite(subject, "finance.books");
   const tag = type === "CLIENT" ? "RECEIVABLE" : "PAYABLE";
@@ -51,10 +51,10 @@ export async function PartyStatement({ type, id }: { type: "CLIENT" | "SUPPLIER"
       </div>
       <PartyOpening type={type} partyId={id} amount={opening} openingDate={fmtDate(branch.booksOpeningDate)} canWrite={writable} />
       {rows.length === 0 ? <p className="text-sm text-muted">No entries for this {type === "CLIENT" ? "client" : "supplier"} yet.</p> : (
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface">
+        <div className="overflow-hidden rounded-[var(--radius-card)] border border-default bg-surface">
           <table className="w-full text-sm">
             <thead className="bg-[var(--surface-sunken)] text-left text-xs text-muted"><tr><th className="px-4 py-2 font-medium">Date</th><th className="px-4 py-2 font-medium">No.</th><th className="px-4 py-2 font-medium">Detail</th><th className="px-4 py-2 text-right font-medium">{word.charge}</th><th className="px-4 py-2 text-right font-medium">{word.pay}</th><th className="px-4 py-2 text-right font-medium">Balance</th></tr></thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-default">
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="whitespace-nowrap px-4 py-2">{fmtDate(r.date)}</td>
