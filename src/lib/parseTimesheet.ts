@@ -148,7 +148,8 @@ function parseMonthFromSheetName(
   if (Number.isNaN(year)) return null;
   if (year < 100) year += 2000;
   const mm = String(monIdx + 1).padStart(2, "0");
-  return { month: `${year}-${mm}`, monthLabel: name.trim() };
+  // A tab that was renamed "SEP-26 (2)" to sit beside another file's "SEP-26" is still the same month.
+  return { month: `${year}-${mm}`, monthLabel: name.trim().replace(/\s*\(\d+\)$/, "") };
 }
 
 function cellText(cell: ExcelJS.Cell | undefined): string {
