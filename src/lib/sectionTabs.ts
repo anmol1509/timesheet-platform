@@ -51,6 +51,11 @@ export const SECTION_TABS: SectionTab[][] = [
     { href: "/finance/books/reports", label: "Reports", match: (p) => under("/finance/books/reports")(p) || under("/finance/books/accounts")(p) || under("/finance/books/ledger")(p) },
     { href: "/finance/books/setup", label: "Settings", match: under("/finance/books/setup") },
   ],
+  // Expenses and the budgets they are held to
+  [
+    { href: "/finance/expenses", label: "Expenses", match: (p) => under("/finance/expenses")(p) && !under("/finance/expenses/budgets")(p) },
+    { href: "/finance/expenses/budgets", label: "Budgets & petty cash", match: under("/finance/expenses/budgets") },
+  ],
   // Payroll
   [
     {

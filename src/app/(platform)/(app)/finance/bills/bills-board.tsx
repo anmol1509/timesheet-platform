@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { CreditCard, Eye, Layers, Plus, Trash2 } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
+import { RowMenu } from "@/components/ui/RowMenu";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { AttachmentUploader, type AttachmentRow } from "@/components/AttachmentUploader";
@@ -159,20 +160,37 @@ function CreditForm({ bill }: { bill: BillRow }) {
   );
 }
 
+const day = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+/** "44 days overdue" / "due in 6 days": how far the due date is from today, for bills that still owe money. */
+function dueNote(iso: string) {
+  const days = Math.round((new Date(`${iso}T00:00:00Z`).getTime() - new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z").getTime()) / 86_400_000);
+  if (days < 0) return { text: `${-days} ${-days === 1 ? "day" : "days"} overdue`, tone: "text-[var(--error)]" };
+  if (days === 0) return { text: "due today", tone: "text-[var(--warning)]" };
+  return { text: `due in ${days} ${days === 1 ? "day" : "days"}`, tone: days <= 7 ? "text-[var(--warning)]" : "text-subtle" };
+}
+
 const VARIANCE_TEXT = { MATCH: "The bill matches the timesheet", OVER: "The bill is more than the timesheet says we owe", UNDER: "The bill is less than the timesheet says we owe", NO_REFERENCE: "There is no timesheet to compare with" } as const;
 
-export function BillsBoard({ rows, suppliers, canCreate, canPay, canDelete }: { rows: BillRow[]; suppliers: { id: string; name: string }[]; canCreate: boolean; canPay: boolean; canDelete: boolean }) {
+export function BillsBoard({ rows, suppliers, canCreate, canPay, canDelete, filters, view }: { rows: BillRow[]; suppliers: { id: string; name: string }[]; canCreate: boolean; canPay: boolean; canDelete: boolean; filters: { k: string; l: string; count?: number }[]; view: string }) {
   const [adding, setAdding] = useState(false);
   const [paying, setPaying] = useState<BillRow | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   const [batching, setBatching] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState("");
+  const [noSheetOnly, setNoSheetOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const viewingRow = viewing ? rows.find((r) => r.id === viewing) ?? null : null;
   const payable = (b: BillRow) => b.balance > 0 && b.approval === "APPROVED";
   const selectedRows = rows.filter((r) => selected.has(r.id) && payable(r));
   const toggle = (id: string) => setSelected((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  const awaitingSheet = (b: BillRow) => !b.variance && !!b.periodMonth && b.approval !== "REJECTED" && b.balance > 0;
+  const noSheetCount = rows.filter(awaitingSheet).length;
+  const q = query.trim().toLowerCase();
+  const list = rows.filter((b) => (!supplierFilter || b.supplierId === supplierFilter) && (!q || b.billNo.toLowerCase().includes(q) || b.supplier.toLowerCase().includes(q)) && (!noSheetOnly || awaitingSheet(b)));
 
   const run = (fn: (fd: FormData) => Promise<State>, fields: Record<string, string>, after?: () => void) =>
     start(async () => {
@@ -185,57 +203,72 @@ export function BillsBoard({ rows, suppliers, canCreate, canPay, canDelete }: { 
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted">
-          {selectedRows.length > 0 && <span><span className="font-medium text-primary">{selectedRows.length}</span> selected · AED <span className="tabular font-medium text-primary">{aed(selectedRows.reduce((s, b) => s + b.balance, 0))}</span></span>}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter">
+          {filters.map((f) => (
+            <Link key={f.k || "all"} href={f.k ? `/finance/bills?view=${f.k}` : "/finance/bills"} role="tab" aria-selected={view === f.k}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${view === f.k ? "border-accent bg-accent-soft text-accent" : "border-border text-secondary hover:bg-surface-hover"}`}>{f.l}{f.count ? ` · ${f.count}` : ""}</Link>
+          ))}
         </div>
-        <div className="flex gap-2">
-          {canPay && selectedRows.length > 0 && <button type="button" className="btn btn-secondary" onClick={() => setBatching(true)}><Layers className="h-4 w-4" aria-hidden /> Pay selected</button>}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="w-48"><Select value={supplierFilter} onChange={setSupplierFilter} searchable options={[{ value: "", label: "All suppliers" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]} /></div>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search bill number" aria-label="Search bills" className="input h-9 w-48 text-sm" />
           {canCreate && <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}><Plus className="h-4 w-4" aria-hidden /> Add bill</button>}
         </div>
       </div>
+      {noSheetCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2.5 text-sm text-[var(--warning)]">
+          <span><b className="font-semibold">{noSheetCount} {noSheetCount === 1 ? "bill has" : "bills have"} no timesheet to compare against.</b> Check the hours before paying labour supply.</span>
+          <button type="button" onClick={() => setNoSheetOnly((v) => !v)} className="font-semibold hover:underline">{noSheetOnly ? "Show all" : "Show them"}</button>
+        </div>
+      )}
       {error && <p role="alert" className={errCls}>{error}</p>}
-      {rows.length === 0 ? <div className="card p-10 text-center text-sm text-muted">No bills here.</div> : (
+      {list.length === 0 ? <div className="card p-10 text-center text-sm text-muted">No bills here.</div> : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>{canPay && <th className="w-10 px-4 py-3" />}<th className="px-4 py-3">Supplier / bill</th><th className="px-3 py-3">Due</th><th className="px-3 py-3 text-right">Total</th><th className="px-3 py-3 text-right">Balance</th><th className="px-3 py-3">Status</th><th className="px-3 py-3" /></tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {rows.map((b) => (
+              {list.map((b) => (
                 <tr key={b.id} className="align-top">
                   {canPay && <td className="px-4 py-3">{payable(b) && <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} ariaLabel={`Select bill ${b.billNo}`} />}</td>}
                   <td className="px-4 py-3">
                     <p className="font-medium text-primary">{b.supplier}</p>
-                    <p className="text-xs text-muted">#{b.billNo} · {b.billDate}{b.description ? ` · ${b.description}` : ""}{b.viaPortal ? " · submitted by supplier" : ""}</p>
+                    <p className="text-xs text-muted">#{b.billNo} · {day(b.billDate)}{b.description ? ` · ${b.description}` : ""}{b.viaPortal ? " · submitted by supplier" : ""}</p>
                     {b.variance && b.variance.state !== "MATCH" && b.variance.state !== "NO_REFERENCE" && <p className="mt-0.5 text-xs font-medium text-[var(--warning)]">{b.variance.diff > 0 ? "+" : "−"}AED {aed(Math.abs(b.variance.diff))} ({Math.abs(b.variance.pct ?? 0)}%) {b.variance.state === "OVER" ? "above" : "below"} the {b.periodMonth} timesheet</p>}
-                    {b.variance?.state === "MATCH" && <p className="mt-0.5 text-xs text-[var(--success)]">Matches the {b.periodMonth} timesheet</p>}
-                    {!b.variance && b.periodMonth && <p className="mt-0.5 text-xs text-subtle">No timesheet for {b.periodMonth}</p>}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-secondary">{b.dueDate}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-secondary">{day(b.dueDate)}{b.balance > 0 && b.approval === "APPROVED" && <span className={`block text-xs ${dueNote(b.dueDate).tone}`}>{dueNote(b.dueDate).text}</span>}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(b.total)}</td>
                   <td className="px-3 py-3 text-right font-medium tabular-nums text-primary">{aed(b.balance)}</td>
-                  <td className="px-3 py-3">
+                  <td className="whitespace-nowrap px-3 py-3">
                     <div className="flex flex-col items-start gap-1">
                       {b.approval === "APPROVED" ? <Badge color={COLOR[b.status]} dot>{BILL_STATUS_LABELS[b.status]}</Badge> : <Badge color={APPROVAL[b.approval]?.color ?? "slate"} dot>{APPROVAL[b.approval]?.label ?? b.approval}</Badge>}
                       {b.approval === "REJECTED" && b.approvalNote && <span className="max-w-40 truncate text-xs text-muted" title={b.approvalNote}>{b.approvalNote}</span>}
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="flex justify-end gap-1.5">
-                      {b.approval === "PENDING" && <Link href="/approvals?type=BILL" className="btn btn-secondary">Review in Approvals</Link>}
-                      {payable(b) && canPay && <button type="button" className="btn btn-secondary" onClick={() => setPaying(b)}><CreditCard className="h-4 w-4" aria-hidden /> Pay</button>}
-                      <button type="button" className="btn btn-secondary" onClick={() => setViewing(b.id)} aria-label="Details"><Eye className="h-4 w-4" aria-hidden />{b.files.length > 0 ? b.files.length : ""}</button>
-                      {b.paymentCount === 0 && canDelete && (
-                        <button type="button" className="rounded-md p-1.5 text-subtle hover:bg-surface-hover hover:text-secondary" aria-label="Delete bill" disabled={pending}
-                          onClick={() => run(deleteBillAction, { id: b.id })}><Trash2 className="h-4 w-4" /></button>
-                      )}
+                    <div className="flex items-center justify-end gap-1">
+                      {b.approval === "PENDING" && <Link href="/approvals?type=BILL" className="btn btn-secondary">Review</Link>}
+                      {payable(b) && canPay && <button type="button" className="btn btn-secondary" onClick={() => setPaying(b)}>Pay</button>}
+                      <RowMenu items={[
+                        { label: b.files.length > 0 ? `Details · ${b.files.length} ${b.files.length === 1 ? "file" : "files"}` : "Details", onSelect: () => setViewing(b.id) },
+                        ...(b.paymentCount === 0 && canDelete ? [{ label: "Delete", danger: true, disabled: pending, onSelect: () => { if (confirm(`Delete bill #${b.billNo}?`)) run(deleteBillAction, { id: b.id }); } }] : []),
+                      ]} />
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {canPay && selectedRows.length > 0 && (
+        <div className="sticky bottom-4 z-10 flex w-fit items-center gap-3 rounded-2xl bg-[var(--brand-primary)] px-4 py-2.5 text-sm text-white shadow-lg">
+          <b>{selectedRows.length} selected · AED {aed(selectedRows.reduce((s, b) => s + b.balance, 0))}</b>
+          <button type="button" className="inline-flex items-center gap-1.5 font-semibold hover:underline" onClick={() => setBatching(true)}><Layers className="h-4 w-4" aria-hidden /> Pay selected</button>
+          <button type="button" className="opacity-80 hover:underline" onClick={() => setSelected(new Set())}>Clear</button>
         </div>
       )}
 
