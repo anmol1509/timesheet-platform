@@ -65,7 +65,7 @@ function summarise(res: ApplyResult): BatchSummary {
   // Plain successes are in the counts; the report lists what needs attention.
   const interesting = res.rows.filter((r) => r.status === "error" || (r.notes && r.notes.length > 0));
   const kept = [...interesting].slice(0, MAX_REPORT_ROWS);
-  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers, existingClients: res.existingClients, existingProjects: res.existingProjects, deployments: res.deployments?.slice(0, 600), placementIssues: res.placementIssues, placements: res.placements?.slice(0, 400) };
+  return { counts: res.counts, notes: res.notes, rows: kept, totalRows: res.rows.length, truncated: interesting.length > kept.length, fixables: res.fixables, newSuppliers: res.newSuppliers, existingSuppliers: res.existingSuppliers, existingClients: res.existingClients, existingProjects: res.existingProjects, deployments: res.deployments?.slice(0, 600), placementIssues: res.placementIssues, placements: res.placements?.slice(0, 400), breakdown: res.breakdown };
 }
 
 function isTransient(e: unknown): boolean {

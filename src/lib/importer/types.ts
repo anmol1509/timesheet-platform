@@ -104,6 +104,22 @@ export type DeploymentRow = {
   note?: string;
 };
 
+/** What a timesheet file holds, grouped by client, so the review can show it before anything is saved. */
+export type BreakdownPerson = { name: string; idNo: string; trade: string; days: number; hours: number; /** Why this worker needs a look, e.g. matched to an existing worker by name. */ note?: string };
+export type BreakdownClient = {
+  name: string;
+  /** Not on record yet: importing adds it. */
+  isNew: boolean;
+  /** The spelling in the sheet when it differed from the client on record. */
+  matchedFrom?: string;
+  workers: number;
+  months: { month: string; label: string; workers: number }[];
+  people: BreakdownPerson[];
+  /** Workers beyond the ones listed in `people`. */
+  hiddenPeople: number;
+};
+export type ImportBreakdown = { clients: BreakdownClient[]; workers: number; months: number };
+
 export type ApplyResult = {
   rows: RowReport[];
   counts: Record<string, number>;
@@ -120,6 +136,7 @@ export type ApplyResult = {
   deployments?: DeploymentRow[];
   placementIssues?: PlacementIssue[];
   placements?: PlacementRow[];
+  breakdown?: ImportBreakdown;
 };
 
 export type ApplyCtx = {
