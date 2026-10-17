@@ -14,6 +14,8 @@ import { Badge } from "@/components/Badge";
 import { approvedHeadcount } from "@/lib/demandApproval";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
 export default async function DemandDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
@@ -61,6 +63,10 @@ export default async function DemandDashboardPage() {
     totalNeeded > 0 ? Math.round((totalFilled / totalNeeded) * 100) : 0;
   const shortfall = rows.filter((r) => r.filled < r.needed);
   const pendingApprovalCount = rows.filter((r) => r.pendingApproval).length;
+
+  const attention: AttentionItem[] = [];
+  if (shortfall.length > 0) attention.push({ key: "short", tone: "amber", icon: ListIcon, title: `${shortfall.length} request${shortfall.length === 1 ? "" : "s"} below headcount`, sub: `${totalNeeded - totalFilled} workers still to mobilise`, href: "/demand/mobilisation", action: "Mobilise" });
+  if (pendingApprovalCount > 0) attention.push({ key: "approve", tone: "red", icon: WarnIcon, title: `${pendingApprovalCount} request${pendingApprovalCount === 1 ? "" : "s"} waiting for approval`, sub: "Headcount not yet approved", href: "/demand", action: "Review" });
 
   const hiddenSections = await getHiddenSections(user.id, "demand");
 
@@ -110,6 +116,8 @@ export default async function DemandDashboardPage() {
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="overview" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

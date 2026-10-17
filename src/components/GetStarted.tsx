@@ -14,7 +14,7 @@ export async function GetStarted({ branchId, compact = false }: { branchId: stri
   // On the dashboard the card folds instead of disappearing (a card hidden
   // with the old button now simply opens folded); Import Data can still hide it.
   const jar = await cookies();
-  const folded = jar.get("gs_collapsed")?.value === "1" || (compact && hidden);
+  const folded = jar.get("gs_collapsed")?.value === "1" || (compact && (hidden || jar.get("gs_collapsed")?.value !== "0"));
   const steps = await getSetupSteps(branchId);
   const done = steps.filter((s) => s.done).length;
   if (done === steps.length) return null;

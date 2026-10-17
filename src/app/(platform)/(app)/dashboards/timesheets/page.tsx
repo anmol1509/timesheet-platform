@@ -16,6 +16,8 @@ import { getHoursSplit } from "@/lib/attendanceHours";
 import { getTimesheetPipeline } from "@/lib/timesheetPipeline";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
+import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
+import { ClipboardList as ListIcon } from "lucide-react";
 
 function currentMonthKey() {
   const now = new Date();
@@ -83,6 +85,13 @@ export default async function TimesheetsDashboardPage({ searchParams }: { search
   }
   const monthlyMax = Math.max(1, ...months.map((m) => (normalByMonth.get(m) ?? 0) + (otByMonth.get(m) ?? 0)));
 
+  const attention: AttentionItem[] = [];
+  const count = (st: string[]) => statusBreakdown.filter((s) => st.includes(s.status)).reduce((n, s) => n + s._count._all, 0);
+  const awaitingReview = count(["SUBMITTED", "UNDER_REVIEW"]);
+  const stillDraft = count(["DRAFT"]);
+  if (awaitingReview > 0) attention.push({ key: "review", tone: "amber", icon: ListIcon, title: `${awaitingReview} timesheet row${awaitingReview === 1 ? "" : "s"} waiting for client approval`, sub: "Submitted or under review", href: "/invoices/client-timesheet", action: "Open timesheets" });
+  if (stillDraft > 0) attention.push({ key: "draft", tone: "blue", icon: ListIcon, title: `${stillDraft} timesheet row${stillDraft === 1 ? "" : "s"} still in draft`, sub: "Not yet submitted to the client", href: "/invoices/client-timesheet", action: "Open timesheets" });
+
   const hiddenSections = await getHiddenSections(user.id, "timesheets");
 
   return (
@@ -125,6 +134,8 @@ export default async function TimesheetsDashboardPage({ searchParams }: { search
           },
         ]}
       />
+
+      <AttentionPanel items={attention} />
 
       <Sec id="hours" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

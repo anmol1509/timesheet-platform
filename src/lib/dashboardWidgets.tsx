@@ -11,8 +11,10 @@ import {
   ClipboardList,
   FolderKanban,
   Users,
+  Truck,
+  Package,
 } from "lucide-react";
-import type { ApprovalsSummary, AttendanceToday, DemandFill, MoneySnapshot, PayrollStatus } from "@/lib/dashboardExtras";
+import type { ApprovalsSummary, AttendanceToday, DemandFill, MoneySnapshot, OperationsSnapshot, PayrollStatus } from "@/lib/dashboardExtras";
 import { Panel, QuickAction } from "@/components/DashboardPanel";
 import { DashboardKpiCards } from "@/components/DashboardKpiCards";
 import { Badge } from "@/components/Badge";
@@ -41,6 +43,7 @@ import type { EntityCounts } from "@/lib/entityCounts";
 import type { DeploymentStage } from "@/lib/deploymentPipeline";
 import type { RecentActivityRow } from "@/lib/recentActivity";
 import { cn } from "@/lib/cn";
+import { AttentionRow, type AttentionItem as ActionItem } from "@/components/dashboard/AttentionList";
 
 function formatMonthLabel(month: string) {
   const [y, m] = month.split("-");
@@ -94,12 +97,26 @@ export type DashboardData = {
   payrollStatus: { run: PayrollStatus } | null;
   money: MoneySnapshot | null;
   demandFill: DemandFill | null;
+  operations: OperationsSnapshot | null;
   activeProjects: { id: string; name: string; code: string; clientName: string; workers: number; required: number | null }[];
 };
+
+/** The headed groups the dashboard is laid out in, top to bottom. */
+export const DASHBOARD_SECTIONS = [
+  { id: "overview", label: null },
+  { id: "people", label: "People & deployment" },
+  { id: "hours", label: "Hours & timesheets" },
+  { id: "money", label: "Money" },
+  { id: "business", label: "Sales, hiring & facilities" },
+  { id: "compliance", label: "Compliance" },
+  { id: "more", label: "More" },
+] as const;
+export type DashboardSectionId = (typeof DASHBOARD_SECTIONS)[number]["id"];
 
 export type DashboardWidget = {
   id: string;
   label: string;
+  section: DashboardSectionId;
   render: (data: DashboardData) => React.ReactNode;
 };
 
@@ -110,6 +127,7 @@ export type DashboardWidget = {
 export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   {
     id: "kpi",
+    section: "overview",
     label: "KPI cards (workforce, deployment, projects, attention)",
     render: (d) => (
       <DashboardKpiCards
@@ -128,111 +146,58 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "today",
-    label: "Needs doing today (approvals, attendance, payroll)",
+    section: "overview",
+    label: "Needs you today + Demand fill",
     render: (d) => {
-      const a = d.approvalsSummary;
-      const t = d.attendanceToday;
-      const p = d.payrollStatus;
-      if (!a && !t && !p) return null;
-      const count = [a, t, p].filter(Boolean).length;
+      const todo = buildTodo(d);
+      const f = d.demandFill;
+      if (todo.length === 0 && !d.approvalsSummary && !d.attendanceToday && !d.payrollStatus && !f) return null;
+      const shown = todo.slice(0, 5);
+      const rest = todo.slice(5);
       return (
-        <div className={`grid grid-cols-1 gap-4 ${count >= 3 ? "lg:grid-cols-3" : count === 2 ? "lg:grid-cols-2" : ""}`}>
-          {a && (
-            <Panel title="Approvals waiting" icon={CheckCircle2} href="/approvals" linkLabel="Open inbox">
-              {a.total === 0 ? (
-                <p className="py-4 text-center text-sm text-muted">Nothing is waiting for your decision.</p>
-              ) : (
-                <div className="space-y-3">
-                  <p className="flex items-baseline gap-2">
-                    <span className="tabular text-3xl font-semibold text-primary">{a.total}</span>
-                    <span className="text-xs text-muted">{a.oldestDays > 0 ? `oldest waiting ${a.oldestDays} day${a.oldestDays === 1 ? "" : "s"}` : "all new today"}</span>
-                  </p>
-                  <ul className="space-y-1.5">
-                    {a.byKind.slice(0, 4).map((k) => (
-                      <li key={k.kind}>
-                        <Link href={`/approvals?type=${k.kind}`} className="flex items-center justify-between rounded-md px-1.5 py-1 text-sm text-secondary transition hover:bg-surface-hover hover:text-primary">
-                          <span>{k.label}</span>
-                          <span className="tabular font-medium text-primary">{k.count}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </Panel>
-          )}
-
-          {t && (
-            <Panel title="Attendance today" icon={Users} href="/attendance" linkLabel="Mark attendance">
-              {t.expected === 0 ? (
-                <p className="py-4 text-center text-sm text-muted">No one is linked to a project yet, so no attendance is expected.</p>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex h-2 overflow-hidden rounded-full bg-surface-sunken">
-                    <span className="bg-[var(--success)]" style={{ width: `${(t.present / t.expected) * 100}%` }} />
-                    <span className="bg-[var(--error)]" style={{ width: `${(t.absent / t.expected) * 100}%` }} />
-                    <span className="bg-[var(--border-strong)]" style={{ width: `${(t.offOrLeave / t.expected) * 100}%` }} />
-                  </div>
-                  <p className="text-xs text-secondary">
-                    <span className="font-medium text-primary">{t.present}</span> present · <span className="font-medium text-primary">{t.absent}</span> absent ·{" "}
-                    <span className="font-medium text-primary">{t.offOrLeave}</span> off/leave · <span className={t.unmarked > 0 ? "font-medium text-[var(--warning)]" : "font-medium text-primary"}>{t.unmarked}</span> not marked
-                    <span className="text-subtle"> (of {t.expected})</span>
-                  </p>
-                  {t.byProject.length > 0 && (
-                    <ul className="space-y-1">
-                      {t.byProject.map((pr) => (
-                        <li key={pr.projectId}>
-                          <Link href="/attendance" className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs text-secondary transition hover:bg-surface-hover hover:text-primary">
-                            <span className="truncate">{pr.name}</span>
-                            <span className="tabular shrink-0 font-medium text-[var(--warning)]">{pr.unmarked} not marked</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </Panel>
-          )}
-
-          {p && (
-            <Panel title="Payroll" icon={FileText} href={p.run ? `/payroll/${p.run.runId}` : "/payroll"} linkLabel={p.run ? "Open run" : "Payroll"}>
-              {!p.run ? (
-                <p className="py-4 text-center text-sm text-muted">No payroll run yet. Start one from the Payroll page when a month closes.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  <p className="flex items-center gap-2">
-                    <span className="text-base font-semibold whitespace-nowrap text-primary">{formatMonthLabel(p.run.month)}</span>
-                    <Badge color={p.run.status === "PAID" ? "green" : p.run.status === "APPROVED" ? "blue" : p.run.submitted ? "amber" : "slate"} dot>
-                      {p.run.status === "DRAFT" && p.run.submitted ? "Awaiting approval" : p.run.status.toLowerCase()}
-                    </Badge>
-                  </p>
-                  <p className="text-sm text-secondary">
-                    <span className="tabular font-medium text-primary">{p.run.workers}</span> workers · net{" "}
-                    <span className="tabular font-medium text-primary">AED {Math.round(p.run.netTotal).toLocaleString()}</span>
-                  </p>
-                  {!p.run.hasCurrentMonth && <p className="text-xs text-muted">No run yet for this month.</p>}
-                </div>
-              )}
-            </Panel>
-          )}
+        <div className={`grid grid-cols-1 gap-4 ${f ? "lg:grid-cols-3" : ""}`}>
+          <section className={cn("card overflow-hidden", f && "lg:col-span-2")}>
+            <div className="card-header">
+              <h2 className="text-[15px] font-semibold tracking-tight text-primary">Needs you today</h2>
+              {todo.length > 0 && <span className="text-xs text-muted">{todo.length} item{todo.length === 1 ? "" : "s"} · most urgent first</span>}
+            </div>
+            {todo.length === 0 ? (
+              <div className="flex flex-col items-center px-5 py-10 text-center">
+                <CheckCircle2 className="mb-2 h-5 w-5 text-[var(--success)]" aria-hidden />
+                <p className="text-sm font-medium text-primary">All clear</p>
+                <p className="mt-1 text-xs text-muted">Nothing is waiting for you right now.</p>
+              </div>
+            ) : (
+              <>
+                <ul className="divide-y divide-[var(--border)]">{shown.map((t) => <AttentionRow key={t.key} item={t} />)}</ul>
+                {rest.length > 0 && (
+                  <details className="group border-t border-default">
+                    <summary className="cursor-pointer px-5 py-3 text-sm font-medium text-[var(--brand-primary)] hover:underline group-open:hidden">Show {rest.length} more</summary>
+                    <ul className="divide-y divide-[var(--border)]">{rest.map((t) => <AttentionRow key={t.key} item={t} />)}</ul>
+                  </details>
+                )}
+              </>
+            )}
+          </section>
+          {f && <DemandPanel f={f} />}
         </div>
       );
     },
   },
   {
     id: "money-demand",
-    label: "Money in and out + Demand fill",
+    section: "money",
+    label: "Money in and out + Payroll",
     render: (d) => {
       const m = d.money;
-      const f = d.demandFill;
-      if (!m && !f) return null;
+      const p = d.payrollStatus;
+      if (!m && !p) return null;
       const aed = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
       return (
-        <div className={`grid grid-cols-1 gap-4 ${m && f ? "lg:grid-cols-2" : ""}`}>
+        <div className={`grid grid-cols-1 gap-4 ${m && p ? "lg:grid-cols-3" : ""}`}>
           {m && (
-            <Panel title="Money in and out" icon={FileText} href={m.scope.invoices ? "/dashboards/billing" : "/finance/bills"} linkLabel={m.scope.invoices ? "Billing" : "Bills"}>
-              <div className="grid grid-cols-2 gap-3">
+            <Panel title="Money in and out" icon={FileText} className={p ? "lg:col-span-2" : undefined} href={m.scope.invoices ? "/dashboards/billing" : "/finance/bills"} linkLabel={m.scope.invoices ? "Billing" : "Bills"}>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {m.scope.invoices && (
                   <>
                     <Stat label="Invoiced this month" value={aed(m.invoicedThisMonth)} sub={`${m.invoicedCount} invoice${m.invoicedCount === 1 ? "" : "s"}`} />
@@ -250,110 +215,29 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
               </div>
             </Panel>
           )}
-
-          {f && (
-            <Panel title="Demand fill" icon={ClipboardList} href="/demand" linkLabel="Demands">
-              {f.openRequests === 0 ? (
-                <p className="py-4 text-center text-sm text-muted">No open demand requests.</p>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <p className="flex items-baseline gap-2">
-                      <span className="tabular text-3xl font-semibold text-primary">{f.needed > 0 ? Math.round((f.filled / f.needed) * 100) : 0}%</span>
-                      <span className="text-xs text-muted">{f.filled} of {f.needed} workers mobilised across {f.openRequests} open request{f.openRequests === 1 ? "" : "s"}</span>
-                    </p>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-sunken">
-                      <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${f.needed > 0 ? (f.filled / f.needed) * 100 : 0}%` }} />
-                    </div>
-                  </div>
-                  {f.gaps.length === 0 ? (
-                    <p className="text-xs text-[var(--success)]">Every open request is fully staffed.</p>
-                  ) : (
-                    <ul className="space-y-1">
-                      {f.gaps.map((g) => (
-                        <li key={g.trade} className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs">
-                          <span className="text-secondary">{g.trade}</span>
-                          <span className="tabular">
-                            <span className="font-medium text-[var(--warning)]">short by {g.short}</span>
-                            <span className="text-muted"> · {g.bench >= g.short ? `${g.bench} on bench covers it` : `${g.bench} on bench`}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </Panel>
-          )}
+          {p && <PayrollPanel p={p} />}
         </div>
       );
     },
   },
   {
     id: "trend-attention",
-    label: "Hours trend + Needs attention queue",
+    section: "hours",
+    label: "Hours — normal vs overtime + Hours by weekday",
     render: (d) => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel
-          title="Hours — normal vs overtime"
-          className="lg:col-span-2"
-          href="/attendance"
-          linkLabel="Attendance"
-        >
+        <Panel title="Hours — normal vs overtime" className="lg:col-span-2" href="/attendance" linkLabel="Attendance">
           <HoursSplitChart split={d.hoursSplit} />
         </Panel>
-
-        <Panel
-          title="Needs attention"
-          icon={AlertTriangle}
-          href="/documents"
-          className="scroll-mt-20"
-          bodyClassName="p-0"
-        >
-          <div id="needs-attention" />
-          {d.attention.length === 0 ? (
-            <div className="flex flex-col items-center px-5 py-10 text-center">
-              <CheckCircle2 className="mb-2 h-5 w-5 text-[var(--success)]" aria-hidden />
-              <p className="text-sm font-medium text-primary">All clear</p>
-              <p className="mt-1 text-xs text-muted">Nothing expires in the next 30 days.</p>
-            </div>
-          ) : (
-            <ul className="max-h-[22rem] divide-y divide-[var(--border)] overflow-y-auto">
-              {d.attention.map((item) => (
-                <li key={item.key} className="px-5 py-3">
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={cn(
-                        "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                        item.overdue ? "bg-[var(--error-soft)] text-[var(--error)]" : "bg-[var(--warning-soft)] text-[var(--warning)]"
-                      )}
-                    >
-                      <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-primary">{item.title}</span>
-                      <span className="block truncate text-xs text-muted">{item.sub}</span>
-                    </span>
-                    <Badge color={item.overdue ? "red" : "amber"}>{item.badge}</Badge>
-                  </div>
-                  <div className="mt-2 flex gap-2 pl-10">
-                    <Link href={item.href} className="rounded-full border border-default px-2.5 py-1 text-xs font-medium text-secondary transition hover:border-strong hover:text-primary">
-                      View employee
-                    </Link>
-                    <Link href={item.href} className="rounded-full border border-default px-2.5 py-1 text-xs font-medium text-secondary transition hover:border-strong hover:text-primary">
-                      Renew document
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+        <Panel title="Hours by weekday" href="/history" linkLabel="History">
+          <WeeklyHoursChart days={d.weeklyHours} />
         </Panel>
       </div>
     ),
   },
   {
     id: "utilization-projects",
+    section: "people",
     label: "Workforce utilization + Active projects",
     render: (d) => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -423,41 +307,92 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "deployment-pipeline",
-    label: "Deployment pipeline + Recent activity",
+    section: "people",
+    label: "Deployment pipeline + Workforce by type",
     render: (d) => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel title="Deployment pipeline" className="lg:col-span-2" href="/employees" linkLabel="Workforce">
           <DeploymentPipelineFunnel stages={d.deploymentPipeline} />
         </Panel>
-
-        <Panel title="Recent activity">
-          <RecentActivityFeed rows={d.recentActivity} />
+        <Panel title="Workforce by type" icon={Users} href="/employees">
+          <EmployeeTypeBreakdown counts={d.employeeTypeCounts} />
         </Panel>
       </div>
     ),
   },
   {
     id: "timesheet-pipeline",
-    label: "Timesheet pipeline + Hours by weekday",
+    section: "hours",
+    label: "Timesheet pipeline",
     render: (d) => (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel
-          title="Timesheet pipeline"
-          className="lg:col-span-2"
-          href="/invoices/client-timesheet"
-          linkLabel="Open timesheets"
-        >
-          <TimesheetPipelineChart pipeline={d.timesheetPipeline} />
-        </Panel>
-
-        <Panel title="Hours by weekday" href="/history" linkLabel="History">
-          <WeeklyHoursChart days={d.weeklyHours} />
-        </Panel>
-      </div>
+      <Panel title="Timesheet pipeline" href="/invoices/client-timesheet" linkLabel="Open timesheets">
+        <TimesheetPipelineChart pipeline={d.timesheetPipeline} />
+      </Panel>
     ),
   },
   {
+    id: "business",
+    section: "business",
+    label: "Sales, Onboarding, Applications, Transport, Inventory",
+    render: (d) => {
+      const o = d.operations;
+      if (!o) return null;
+      const cards: React.ReactNode[] = [];
+      if (o.sales) {
+        const s = o.sales;
+        cards.push(
+          <MiniCard key="sales" title="Sales" icon={FileText} href="/sales" linkLabel="Open sales" lines={[
+            { label: "Open enquiries", value: s.openEnquiries },
+            { label: "Quotations sent or negotiating", value: s.sentQuotes },
+            { label: "Quotations still in draft", value: s.draftQuotes },
+            { label: "Quotations expiring this week", value: s.expiringQuotes, warn: s.expiringQuotes > 0 },
+          ]} />,
+        );
+      }
+      if (o.onboarding) {
+        cards.push(
+          <MiniCard key="onb" title="Onboarding" icon={UserPlus} href="/onboarding" linkLabel="Candidate tracker" lines={[
+            { label: "Candidates in progress", value: o.onboarding.inProgress },
+            { label: "Ready to join", value: o.onboarding.readyToJoin, good: o.onboarding.readyToJoin > 0 },
+          ]} />,
+        );
+      }
+      if (o.applications) {
+        cards.push(
+          <MiniCard key="apps" title="Visa & labour cards" icon={ClipboardList} href="/employees/renewals" linkLabel="Renewals" lines={[
+            { label: "Visa applications in progress", value: o.applications.visa },
+            { label: "Labour card applications in progress", value: o.applications.labourCard },
+          ]} />,
+        );
+      }
+      if (o.transport) {
+        const t = o.transport;
+        cards.push(
+          <MiniCard key="transport" title="Transport" icon={Truck} href="/transport" linkLabel="Vehicles" lines={[
+            { label: "Active vehicles", value: t.vehicles },
+            { label: "Registration or insurance expired", value: t.expired, bad: t.expired > 0 },
+            { label: "Expiring in 30 days", value: t.expiringSoon, warn: t.expiringSoon > 0 },
+            { label: "In maintenance", value: t.inMaintenance },
+          ]} />,
+        );
+      }
+      if (o.inventory) {
+        const i = o.inventory;
+        cards.push(
+          <MiniCard key="inv" title="Inventory" icon={Package} href="/inventory" linkLabel="Stock" lines={[
+            { label: "Sizes out of stock", value: i.out, bad: i.out > 0 },
+            { label: "Sizes running low", value: i.low, warn: i.low > 0 },
+            { label: "Items held by workers", value: i.itemsHeld },
+          ]} />,
+        );
+      }
+      if (cards.length === 0) return null;
+      return <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{cards}</div>;
+    },
+  },
+  {
     id: "compliance-runway",
+    section: "compliance",
     label: "Compliance runway (90-day document expiry)",
     render: (d) => (
       <Panel
@@ -472,6 +407,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "document-expiry",
+    section: "compliance",
     label: "Document expiry counters",
     render: (d) => (
       <section>
@@ -481,16 +417,8 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     ),
   },
   {
-    id: "composition",
-    label: "Workforce by type",
-    render: (d) => (
-      <Panel title="Workforce by type" icon={Users} href="/employees">
-        <EmployeeTypeBreakdown counts={d.employeeTypeCounts} />
-      </Panel>
-    ),
-  },
-  {
     id: "staff-partners-facilities",
+    section: "people",
     label: "Assigned staff + Business associates + Camp occupancy",
     render: (d) => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -543,7 +471,18 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
     ),
   },
   {
+    id: "activity",
+    section: "more",
+    label: "Recent activity",
+    render: (d) => (
+      <Panel title="Recent activity" href="/audit-log" linkLabel="Audit log">
+        <RecentActivityFeed rows={d.recentActivity} />
+      </Panel>
+    ),
+  },
+  {
     id: "quick-actions",
+    section: "more",
     label: "Quick actions + Assistant AI",
     render: () => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -565,6 +504,7 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   },
   {
     id: "months-with-data",
+    section: "more",
     label: "Months with data (footer strip)",
     render: (d) =>
       d.months.length > 0 ? (
@@ -618,5 +558,145 @@ function Stat({ label, value, sub, tone, href }: { label: string; value: string;
     <Link href={href} className="block rounded-lg border border-default p-3 transition hover:bg-surface-hover">{body}</Link>
   ) : (
     <div className="rounded-lg border border-default p-3">{body}</div>
+  );
+}
+
+type TodoItem = ActionItem;
+
+/** Everything waiting on this person, most urgent first. Shared with the page so the greeting can count it. */
+export function buildTodo(d: DashboardData): TodoItem[] {
+  const out: (TodoItem & { rank: number })[] = [];
+  const aed = (n: number) => `AED ${Math.round(n).toLocaleString()}`;
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+  const expired = d.alerts.filter((a) => a.days < 0);
+  const soon = d.alerts.filter((a) => a.days >= 0);
+  if (expired.length > 0) {
+    out.push({ rank: 10, key: "expired", tone: "red", icon: AlertTriangle, title: `${plural(expired.length, "document")} expired`, sub: expired.slice(0, 3).map((a) => `${a.field} — ${a.name}`).join(", ") + (expired.length > 3 ? ` and ${expired.length - 3} more` : ""), href: "/employees/renewals", action: "Review", tag: "Expired" });
+  }
+  const m = d.money;
+  if (m?.scope.bills && m.billsOverdue.count > 0) {
+    out.push({ rank: 20, key: "bills-overdue", tone: "red", icon: FileText, title: `${aed(m.billsOverdue.amount)} overdue to suppliers`, sub: `${plural(m.billsOverdue.count, "supplier bill")} past due`, href: "/finance/bills", action: "Review bills" });
+  }
+  if (m?.scope.invoices && m.overdueCount > 0) {
+    out.push({ rank: 30, key: "inv-overdue", tone: "red", icon: FileText, title: `${aed(m.overdue)} overdue from clients`, sub: `${plural(m.overdueCount, "invoice")} past due`, href: "/invoices/history", action: "Chase" });
+  }
+  const a = d.approvalsSummary;
+  if (a && a.total > 0) {
+    out.push({ rank: a.oldestDays > 7 ? 15 : 40, key: "approvals", tone: a.oldestDays > 7 ? "red" : "amber", icon: CheckCircle2, title: `${plural(a.total, "approval")} waiting`, sub: a.byKind.slice(0, 4).map((k) => `${k.label} ${k.count}`).join(" · "), href: "/approvals", action: "Open inbox", tag: a.oldestDays > 0 ? `${a.oldestDays}d old` : undefined });
+  }
+  const t = d.attendanceToday;
+  if (t && t.expected > 0 && t.unmarked > 0) {
+    out.push({ rank: 50, key: "attendance", tone: "amber", icon: Users, title: "Attendance not marked today", sub: `${plural(t.unmarked, "worker")} not marked${t.byProject.length > 0 ? ` across ${plural(t.byProject.length, "project")}` : ""}`, href: "/attendance", action: "Mark" });
+  }
+  const run = d.payrollStatus?.run;
+  if (run && run.status !== "PAID") {
+    const label = run.status === "APPROVED" ? "approved, waiting to be paid" : run.submitted ? "awaiting approval" : "in draft";
+    out.push({ rank: 60, key: "payroll", tone: "blue", icon: FileText, title: `${formatMonthLabel(run.month)} payroll ${label}`, sub: `${plural(run.workers, "worker")} · net ${aed(run.netTotal)}`, href: `/payroll/${run.runId}`, action: "Open run" });
+  }
+  if (d.payrollStatus && !run) {
+    // nothing yet — the payroll page explains how to start one
+  }
+  if (m?.scope.bills && m.billsDueSoon.count > 0) {
+    out.push({ rank: 70, key: "bills-soon", tone: "amber", icon: FileText, title: `${aed(m.billsDueSoon.amount)} due to suppliers this week`, sub: plural(m.billsDueSoon.count, "bill"), href: "/finance/bills", action: "Review" });
+  }
+  if (soon.length > 0) {
+    out.push({ rank: 80, key: "expiring", tone: "amber", icon: AlertTriangle, title: `${plural(soon.length, "document")} expiring soon`, sub: soon.slice(0, 3).map((x) => `${x.field} — ${x.name}`).join(", ") + (soon.length > 3 ? ` and ${soon.length - 3} more` : ""), href: "/employees/renewals", action: "Review" });
+  }
+  if (d.lpoAlerts.length > 0) {
+    out.push({ rank: 90, key: "lpo", tone: "amber", icon: ClipboardList, title: `${plural(d.lpoAlerts.length, "LPO alert")}`, sub: d.lpoAlerts.slice(0, 2).map((x) => `${x.lpoNumber} — ${x.projectName}`).join(", "), href: "/projects", action: "Review" });
+  }
+  const o = d.operations;
+  if (o?.transport && o.transport.expired > 0) {
+    out.push({ rank: 25, key: "vehicles", tone: "red", icon: Truck, title: `${plural(o.transport.expired, "vehicle")} with expired papers`, sub: "Registration or insurance has lapsed", href: "/transport", action: "Review" });
+  }
+  if (o?.waitingForBed) {
+    out.push({ rank: 35, key: "beds", tone: "amber", icon: BedDouble, title: `${plural(o.waitingForBed, "worker")} waiting for a bed`, sub: "Checked in, no bed yet", href: "/accommodation/camps", action: "Assign beds" });
+  }
+  if (o?.onboarding && o.onboarding.readyToJoin > 0) {
+    out.push({ rank: 55, key: "ready", tone: "blue", icon: UserPlus, title: `${plural(o.onboarding.readyToJoin, "candidate")} ready to join`, sub: "Onboarding is complete", href: "/onboarding", action: "Open tracker" });
+  }
+  if (o?.inventory && o.inventory.out > 0) {
+    out.push({ rank: 75, key: "stock-out", tone: "amber", icon: Package, title: `${plural(o.inventory.out, "size")} out of stock`, sub: `${o.inventory.low} more running low`, href: "/inventory", action: "Review" });
+  }
+  if (o && o.drafts > 0) {
+    out.push({ rank: 85, key: "drafts", tone: "blue", icon: FileText, title: `${plural(o.drafts, "unfinished draft")}`, sub: "Forms you started and haven't submitted", href: "/drafts", action: "Finish" });
+  }
+  return out.sort((x, y) => x.rank - y.rank);
+}
+
+function DemandPanel({ f }: { f: DemandFill }) {
+  return (
+    <Panel title="Demand fill" icon={ClipboardList} href="/demand" linkLabel="Demands">
+      {f.openRequests === 0 ? (
+        <p className="py-4 text-center text-sm text-muted">No open demand requests.</p>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <p className="flex items-baseline gap-2">
+              <span className="tabular text-3xl font-semibold text-primary">{f.needed > 0 ? Math.round((f.filled / f.needed) * 100) : 0}%</span>
+              <span className="text-xs text-muted">{f.filled} of {f.needed} mobilised · {f.openRequests} open request{f.openRequests === 1 ? "" : "s"}</span>
+            </p>
+            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-sunken">
+              <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${f.needed > 0 ? (f.filled / f.needed) * 100 : 0}%` }} />
+            </div>
+          </div>
+          {f.gaps.length === 0 ? (
+            <p className="text-xs text-[var(--success)]">Every open request is fully staffed.</p>
+          ) : (
+            <ul className="space-y-1">
+              {f.gaps.map((g) => (
+                <li key={g.trade} className="flex items-center justify-between rounded-md px-1.5 py-1 text-xs">
+                  <span className="text-secondary">{g.trade}</span>
+                  <span className="tabular">
+                    <span className="font-medium text-[var(--warning)]">short by {g.short}</span>
+                    <span className="text-muted"> · {g.bench >= g.short ? `${g.bench} on bench covers it` : `${g.bench} on bench`}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function PayrollPanel({ p }: { p: { run: PayrollStatus } }) {
+  return (
+    <Panel title="Payroll" icon={FileText} href={p.run ? `/payroll/${p.run.runId}` : "/payroll"} linkLabel={p.run ? "Open run" : "Payroll"}>
+      {!p.run ? (
+        <p className="py-4 text-center text-sm text-muted">No payroll run yet. Start one from the Payroll page when a month closes.</p>
+      ) : (
+        <div className="space-y-2.5">
+          <p className="flex items-center gap-2">
+            <span className="text-base font-semibold whitespace-nowrap text-primary">{formatMonthLabel(p.run.month)}</span>
+            <Badge color={p.run.status === "PAID" ? "green" : p.run.status === "APPROVED" ? "blue" : p.run.submitted ? "amber" : "slate"} dot>
+              {p.run.status === "DRAFT" && p.run.submitted ? "Awaiting approval" : p.run.status.toLowerCase()}
+            </Badge>
+          </p>
+          <p className="text-sm text-secondary">
+            <span className="tabular font-medium text-primary">{p.run.workers}</span> workers · net{" "}
+            <span className="tabular font-medium text-primary">AED {Math.round(p.run.netTotal).toLocaleString()}</span>
+          </p>
+          {!p.run.hasCurrentMonth && <p className="text-xs text-muted">No run yet for this month.</p>}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function MiniCard({ title, icon, href, linkLabel, lines }: { title: string; icon: React.ComponentType<{ className?: string }>; href: string; linkLabel: string; lines: { label: string; value: number; warn?: boolean; bad?: boolean; good?: boolean }[] }) {
+  return (
+    <Panel title={title} icon={icon} href={href} linkLabel={linkLabel}>
+      <ul className="space-y-1">
+        {lines.map((l) => (
+          <li key={l.label} className="flex items-center justify-between py-1 text-sm">
+            <span className="text-muted">{l.label}</span>
+            <span className={cn("tabular font-semibold", l.bad ? "text-[var(--error)]" : l.warn ? "text-[var(--warning)]" : l.good ? "text-[var(--success)]" : "text-primary")}>{l.value}</span>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }

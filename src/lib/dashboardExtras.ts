@@ -208,3 +208,95 @@ export async function getApprovalsSummary(scope: ApprovalScope): Promise<Approva
     byKind: APPROVAL_KINDS.map((k) => ({ kind: k.kind, label: k.label, count: counts[k.kind] })).filter((k) => k.count > 0).sort((a, b) => b.count - a.count),
   };
 }
+
+// ------------------------------------------------------------ operations
+
+export type OperationsSnapshot = {
+  /** Each block is null when the person may not open that module. */
+  sales: { openEnquiries: number; draftQuotes: number; sentQuotes: number; expiringQuotes: number } | null;
+  onboarding: { inProgress: number; readyToJoin: number } | null;
+  applications: { visa: number; labourCard: number } | null;
+  transport: { vehicles: number; inMaintenance: number; expired: number; expiringSoon: number } | null;
+  inventory: { low: number; out: number; itemsHeld: number } | null;
+  waitingForBed: number | null;
+  drafts: number;
+};
+
+/** A stage that ends an application; anything else counts as still in progress. */
+const DONE_STAGE = /issued|complete|approved|done|stamped|received|closed|cancel|reject|granted/i;
+
+export async function getOperationsSnapshot(
+  branchId: string | null,
+  userId: string,
+  allow: { sales: boolean; onboarding: boolean; employees: boolean; transport: boolean; inventory: boolean; camps: boolean },
+): Promise<OperationsSnapshot> {
+  const bw = branchWhere(branchId);
+  const now = new Date();
+  const in7 = new Date(now.getTime() + 7 * 864e5);
+  const in30 = new Date(now.getTime() + 30 * 864e5);
+  const latestPerEmployee = (rows: { employeeId: string; stage: string }[]) => {
+    const seen = new Set<string>();
+    let n = 0;
+    for (const r of rows) {
+      if (seen.has(r.employeeId)) continue;
+      seen.add(r.employeeId);
+      if (!DONE_STAGE.test(r.stage)) n++;
+    }
+    return n;
+  };
+  const [sales, onboarding, applications, transport, inventory, waiting, drafts] = await Promise.all([
+    allow.sales
+      ? Promise.all([
+          prisma.enquiry.count({ where: { ...bw, status: "Open" } }),
+          prisma.quotation.count({ where: { ...bw, status: "DRAFT" } }),
+          prisma.quotation.count({ where: { ...bw, status: { in: ["SENT", "NEGOTIATION"] } } }),
+          prisma.quotation.count({ where: { ...bw, status: { in: ["SENT", "NEGOTIATION"] }, validUntil: { gte: now, lte: in7 } } }),
+        ]).then(([openEnquiries, draftQuotes, sentQuotes, expiringQuotes]) => ({ openEnquiries, draftQuotes, sentQuotes, expiringQuotes }))
+      : null,
+    allow.onboarding
+      ? Promise.all([
+          prisma.candidateOnboarding.count({ where: { ...bw, joined: false } }),
+          prisma.candidateOnboarding.count({ where: { ...bw, joined: false, readyToJoin: true } }),
+        ]).then(([inProgress, readyToJoin]) => ({ inProgress, readyToJoin }))
+      : null,
+    allow.employees
+      ? Promise.all([
+          prisma.visaApplication.findMany({ where: { employee: bw }, orderBy: { createdAt: "desc" }, select: { employeeId: true, stage: true } }),
+          prisma.labourCardApplication.findMany({ where: { employee: bw }, orderBy: { createdAt: "desc" }, select: { employeeId: true, stage: true } }),
+        ]).then(([v, l]) => ({ visa: latestPerEmployee(v), labourCard: latestPerEmployee(l) }))
+      : null,
+    allow.transport
+      ? Promise.all([
+          prisma.vehicle.count({ where: { ...bw, status: "ACTIVE" } }),
+          prisma.vehicle.count({ where: { ...bw, status: "MAINTENANCE" } }),
+          prisma.vehicle.count({ where: { ...bw, status: { not: "INACTIVE" }, OR: [{ registrationExpiry: { lt: now } }, { insuranceExpiry: { lt: now } }] } }),
+          prisma.vehicle.count({
+            where: { ...bw, status: { not: "INACTIVE" }, AND: [{ OR: [{ registrationExpiry: { gte: now, lte: in30 } }, { insuranceExpiry: { gte: now, lte: in30 } }] }, { NOT: { OR: [{ registrationExpiry: { lt: now } }, { insuranceExpiry: { lt: now } }] } }] },
+          }),
+        ]).then(([vehicles, inMaintenance, expired, expiringSoon]) => ({ vehicles, inMaintenance, expired, expiringSoon }))
+      : null,
+    allow.inventory
+      ? prisma.inventoryItem
+          .findMany({ where: bw, select: { variants: { select: { id: true, stock: true } }, employeeAssignments: { where: { returnDate: null }, select: { quantity: true, variantId: true } } } })
+          .then((items) => {
+            let low = 0, out = 0, held = 0;
+            for (const it of items) {
+              const issued = new Map<string, number>();
+              for (const a of it.employeeAssignments) {
+                held += a.quantity;
+                if (a.variantId) issued.set(a.variantId, (issued.get(a.variantId) ?? 0) + a.quantity);
+              }
+              for (const v of it.variants) {
+                const left = v.stock - (issued.get(v.id) ?? 0);
+                if (left <= 0) out++;
+                else if (v.stock > 0 && left / v.stock <= 0.2) low++;
+              }
+            }
+            return { low, out, itemsHeld: held };
+          })
+      : null,
+    allow.camps ? prisma.campCheckIn.count({ where: { status: "CHECKED_IN", bedId: null, camp: { ownerType: "OWN", ...bw } } }) : null,
+    prisma.draft.count({ where: { userId } }),
+  ]);
+  return { sales, onboarding, applications, transport, inventory, waitingForBed: waiting, drafts };
+}
