@@ -28,9 +28,15 @@ export default async function SetupPage() {
     prisma.account.findMany({ where: { branchId, isActive: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, type: true, tag: true } }),
     prisma.journalEntry.findFirst({ where: { branchId, sourceKey: "opening" }, include: { lines: true } }),
   ]);
-  const byAcc = new Map((opening?.lines ?? []).map((l) => [l.accountId, l]));
+  const byAcc = new Map<string, { debit: number; credit: number }>();
+  for (const l of opening?.lines ?? []) {
+    const c = byAcc.get(l.accountId) ?? { debit: 0, credit: 0 };
+    byAcc.set(l.accountId, { debit: c.debit + Number(l.debit), credit: c.credit + Number(l.credit) });
+  }
+  // An account split across clients or suppliers shows its net, on whichever side it nets to.
+  const net = (id: string) => { const v = byAcc.get(id); return v ? Math.round((v.debit - v.credit) * 100) / 100 : 0; };
   // Opening balance equity is the balancing figure, so it is not typed in.
-  const editable = accounts.filter((a) => a.tag !== "OPENING_EQUITY").map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: Number(byAcc.get(a.id)?.debit ?? 0), credit: Number(byAcc.get(a.id)?.credit ?? 0) }));
+  const editable = accounts.filter((a) => a.tag !== "OPENING_EQUITY").map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: net(a.id) > 0 ? net(a.id) : 0, credit: net(a.id) < 0 ? -net(a.id) : 0 }));
   return (
     <div className="space-y-5">
       {header}

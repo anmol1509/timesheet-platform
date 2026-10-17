@@ -13,9 +13,9 @@ import { VoidButton } from "./void-button";
 export const metadata = { title: "Books" };
 const TYPES = [
   { k: "", l: "All" }, { k: "JOURNAL", l: "Vouchers" }, { k: "SALES", l: "Sales" }, { k: "RECEIPT", l: "Receipts" },
-  { k: "BILL", l: "Bills" }, { k: "PAYMENT", l: "Payments" }, { k: "EXPENSE", l: "Expenses" }, { k: "PAYROLL", l: "Payroll" },
+  { k: "BILL", l: "Bills" }, { k: "PAYMENT", l: "Payments" }, { k: "CREDIT_NOTE", l: "Credit notes" }, { k: "DEBIT_NOTE", l: "Debit notes" }, { k: "EXPENSE", l: "Expenses" }, { k: "PAYROLL", l: "Payroll" },
 ];
-const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer" };
+const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note" };
 
 export default async function BooksPage({ searchParams }: { searchParams: Promise<{ type?: string; q?: string }> }) {
   const ctx = await getBooksContext();

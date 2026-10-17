@@ -170,16 +170,25 @@ export async function saveOpeningBalancesAction(rows: { accountId: string; debit
   if (!state?.booksOpeningDate) return { error: "Set up the books first." };
   const date = utcDay(state.booksOpeningDate);
   if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "The opening date is in a locked period." };
-  const lines = rows.map((r) => ({ accountId: r.accountId, debit: r2(Number(r.debit) || 0), credit: r2(Number(r.credit) || 0) })).filter((r) => r.debit > 0 || r.credit > 0);
+  const lines = rows.map((r) => ({ accountId: r.accountId, debit: r2(Number(r.debit) || 0), credit: r2(Number(r.credit) || 0) }));
   if (lines.some((l) => l.debit > 0 && l.credit > 0)) return { error: "Each account takes a debit or a credit, not both." };
   const equity = await prisma.account.findFirst({ where: { branchId, tag: "OPENING_EQUITY" }, select: { id: true } });
   if (!equity) return { error: "The Opening balance equity account is missing." };
   const ids = [...new Set(lines.map((l) => l.accountId))];
   const ok = await prisma.account.count({ where: { branchId, id: { in: ids } } });
   if (ok !== ids.length) return { error: "One of the accounts isn't available." };
-  const t = totals(lines);
+  // Amounts already split by client or supplier stay split: only the part not assigned to anyone follows the row.
+  const prior = await prisma.journalLine.findMany({ where: { entry: { branchId, sourceKey: "opening" }, partyId: { not: null } }, select: { accountId: true, debit: true, credit: true, partyType: true, partyId: true } });
+  const tagged = prior.map((l) => ({ accountId: l.accountId, debit: Number(l.debit), credit: Number(l.credit), partyType: l.partyType ?? undefined, partyId: l.partyId ?? undefined }));
+  const split = lines.filter((l) => l.debit > 0 || l.credit > 0 || tagged.some((t) => t.accountId === l.accountId)).map((l) => {
+    const t = r2(tagged.filter((x) => x.accountId === l.accountId).reduce((n, x) => n + x.debit - x.credit, 0));
+    const rest = r2(l.debit - l.credit - t);
+    return { accountId: l.accountId, debit: rest > 0 ? rest : 0, credit: rest < 0 ? -rest : 0 };
+  }).filter((l) => l.debit > 0 || l.credit > 0);
+  const keep = tagged.filter((t) => lines.some((l) => l.accountId === t.accountId));
+  const t = totals([...split, ...keep]);
   const plug = r2(t.debit - t.credit);
-  const all = plug === 0 ? lines : [...lines, plug > 0 ? { accountId: equity.id, debit: 0, credit: plug } : { accountId: equity.id, debit: -plug, credit: 0 }];
+  const all: { accountId: string; debit: number; credit: number; partyType?: string; partyId?: string }[] = [...split, ...keep, ...(plug === 0 ? [] : [plug > 0 ? { accountId: equity.id, debit: 0, credit: plug } : { accountId: equity.id, debit: -plug, credit: 0 }])];
 
   const existing = await prisma.journalEntry.findFirst({ where: { branchId, sourceKey: "opening" }, select: { id: true } });
   await prisma.$transaction(async (tx) => {
