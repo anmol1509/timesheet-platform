@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { BedDouble, Building2 } from "lucide-react";
+import { BedDouble, Building2, Search } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
 import { Badge } from "@/components/Badge";
@@ -41,17 +41,33 @@ type Filter = "all" | "awaiting" | "allocated";
 export function BedAllocationTable({ rows, camps, suppliers, clients }: { rows: Row[]; camps: CampChoice[]; suppliers: Party[]; clients: Party[] }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [activeRow, setActiveRow] = useState<Row | null>(null);
+  const [query, setQuery] = useState("");
+  const [campFilter, setCampFilter] = useState("");
 
   const counts = {
     all: rows.length,
     awaiting: rows.filter((r) => !r.bedId).length,
     allocated: rows.filter((r) => r.bedId).length,
   };
-  const visible =
-    filter === "all" ? rows : rows.filter((r) => (filter === "awaiting" ? !r.bedId : !!r.bedId));
+  const q = query.trim().toLowerCase();
+  const visible = rows.filter(
+    (r) =>
+      (filter === "all" || (filter === "awaiting" ? !r.bedId : !!r.bedId)) &&
+      (!campFilter || r.campId === campFilter) &&
+      (!q || `${r.employeeName} ${r.employeeIdNo} CHK-${String(r.checkInNo).padStart(5, "0")} ${r.supplierName ?? ""} ${r.nationality ?? ""}`.toLowerCase().includes(q))
+  );
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-[16rem] flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, ID, supplier…" aria-label="Search workers" className="input w-full pl-9" />
+        </label>
+        <div className="w-52">
+          <Select value={campFilter} onChange={setCampFilter} placeholder="Camp" options={[{ value: "", label: "All camps" }, ...camps.map((c) => ({ value: c.id, label: c.name }))]} />
+        </div>
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {(
           [

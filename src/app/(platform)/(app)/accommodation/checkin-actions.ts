@@ -214,6 +214,59 @@ export async function checkInAndAssignAction(formData: FormData): Promise<CheckI
   return { ids: created.map((c) => c.checkInId), assigned, waiting: created.length - assigned.length };
 }
 
+/**
+ * Gives every worker who is checked in to an own camp but has no bed the next vacant bed in that
+ * camp, in the order they were checked in. Optionally limited to one camp.
+ */
+export async function autoAssignWaitingAction(campId?: string): Promise<{ assigned: number; waiting: number } | { error: string }> {
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const subject = subjectOf(user);
+  if (!canWrite(subject, "facilities.bed-allocation")) return { error: "You don't have permission to allocate beds." };
+  await settleDueCheckouts(branchId, user);
+  const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+  const waitingRows = await prisma.campCheckIn.findMany({
+    where: { status: "CHECKED_IN", bedId: null, camp: { ownerType: "OWN", ...(campId ? { id: campId } : {}) } },
+    include: { camp: { select: { id: true, name: true, branchId: true } }, employee: { select: { id: true, name: true, branchId: true } } },
+    orderBy: { checkInDate: "asc" },
+  });
+  const rows = waitingRows.filter((c) => !isOutsideBranch(c.camp.branchId, branchId, isSuperAdmin));
+  const vacantByCamp = new Map<string, Awaited<ReturnType<typeof prisma.bed.findMany<{ include: { room: { select: { name: true } } } }>>>>();
+  let assigned = 0;
+  for (const c of rows) {
+    if (!vacantByCamp.has(c.camp.id)) {
+      const beds = await prisma.bed.findMany({ where: { employeeId: null, room: { campId: c.camp.id } }, include: { room: { select: { name: true } } } });
+      vacantByCamp.set(c.camp.id, beds.sort((a, b) => natural(a.room.name, b.room.name) || natural(a.label, b.label)));
+    }
+    const bed = vacantByCamp.get(c.camp.id)!.shift();
+    if (!bed) continue;
+    try {
+      await prisma.$transaction(async (tx) => {
+        const fresh = await tx.bed.findUnique({ where: { id: bed.id }, select: { employeeId: true } });
+        const already = await tx.bed.findFirst({ where: { employeeId: c.employeeId }, select: { id: true } });
+        if (fresh?.employeeId || already) throw new Error("taken");
+        await tx.bed.update({ where: { id: bed.id }, data: { employeeId: c.employeeId } });
+        await tx.accommodationHistory.create({ data: { employeeId: c.employeeId, campName: c.camp.name, roomName: bed.room.name, bedLabel: bed.label, checkInDate: c.checkInDate } });
+        await tx.campCheckIn.update({ where: { id: c.id }, data: { bedId: bed.id, status: "BED_ALLOCATED" } });
+      });
+    } catch {
+      continue;
+    }
+    assigned++;
+    await logAudit({
+      entityType: "ACCOMMODATION",
+      entityId: bed.id,
+      action: "UPDATE",
+      after: { employeeId: c.employeeId, campName: c.camp.name, roomName: bed.room.name, bedLabel: bed.label },
+      userId: user.id,
+      userName: user.name,
+      branchId,
+    });
+    revalidatePath(`/employees/${c.employeeId}`);
+  }
+  revalidateAccommodation();
+  return { assigned, waiting: rows.length - assigned };
+}
+
 // Moves an employee to a different camp before a bed has been picked. If a
 // bed was already allocated in the old camp, it's freed first — a bed
 // belongs to a specific camp's room, so it can't follow the switch.

@@ -2,36 +2,63 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown, Plus } from "lucide-react";
 import { createCampWithRoomsAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
+import { cn } from "@/lib/cn";
 
 type RoomDraft = { name: string; bedCount: number; bunkCount: number };
+const clamp = (v: unknown, min: number, max: number) => Math.max(min, Math.min(max, Number(String(v)) || 0));
 
-function defaultRooms(count: number, previous: RoomDraft[]): RoomDraft[] {
-  return Array.from({ length: count }, (_, i) => previous[i] ?? { name: `Room ${i + 1}`, bedCount: 0, bunkCount: 2 });
+function build(count: number, bunks: number, singles: number, previous: RoomDraft[]): RoomDraft[] {
+  return Array.from({ length: count }, (_, i) => ({ name: previous[i]?.name ?? `Room ${i + 1}`, bunkCount: bunks, bedCount: singles }));
 }
 
+/** "+ Add camp": a name and how it is laid out; rooms are created with it. */
 export function AddCampForm() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button type="button" className="btn btn-secondary btn-sm shrink-0 gap-1.5 rounded-full">
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Add camp
+        </button>
+      </DialogTrigger>
+      {open && (
+        <DialogContent title="Add a camp" description="One of your own camps. Supplier and client camps are recorded when you check workers in." className="max-w-xl">
+          <AddCampBody />
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+}
+
+function AddCampBody() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [roomCount, setRoomCount] = useState(1);
-  const [rooms, setRooms] = useState<RoomDraft[]>(defaultRooms(1, []));
+  const [roomCount, setRoomCount] = useState(4);
+  const [bunks, setBunks] = useState(2);
+  const [singles, setSingles] = useState(0);
+  const [rooms, setRooms] = useState<RoomDraft[]>(() => build(4, 2, 0, []));
+  const [custom, setCustom] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function changeRoomCount(count: number) {
-    const clamped = Math.max(1, Math.min(50, count || 1));
-    setRoomCount(clamped);
-    setRooms((prev) => defaultRooms(clamped, prev));
+  // Changing the layout re-lays every room; names you typed are kept.
+  function layout(next: { count?: number; bunks?: number; singles?: number }) {
+    const c = next.count ?? roomCount;
+    const b = next.bunks ?? bunks;
+    const s = next.singles ?? singles;
+    setRoomCount(c);
+    setBunks(b);
+    setSingles(s);
+    setRooms((prev) => build(c, b, s, prev));
   }
-
   function updateRoom(index: number, patch: Partial<RoomDraft>) {
     setRooms((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
-
-  const [sameBunks, setSameBunks] = useState(2);
-  const [sameSingles, setSameSingles] = useState(0);
-  const applyToAll = () => setRooms((prev) => prev.map((r) => ({ ...r, bunkCount: sameBunks, bedCount: sameSingles })));
 
   const totalBeds = rooms.reduce((sum, r) => sum + r.bedCount + r.bunkCount * 2, 0);
   const canSubmit = name.trim().length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.bedCount + r.bunkCount > 0);
@@ -44,87 +71,67 @@ export function AddCampForm() {
     formData.append("roomsJson", JSON.stringify(rooms));
     startTransition(async () => {
       const result = await createCampWithRoomsAction(formData);
-      if ("error" in result) {
-        setError(result.error);
-      } else {
-        router.push(`/accommodation/camps?campId=${result.campId}`);
-      }
+      if ("error" in result) setError(result.error);
+      else router.push(`/accommodation/camps?campId=${result.campId}`);
     });
   }
 
+  const label = "mb-1.5 block text-xs font-medium text-muted";
   return (
-    <div className="card space-y-4 p-5">
-      <h3 className="text-sm font-semibold text-primary">Add New Camp</h3>
-
+    <div className="mt-5 space-y-5">
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-muted">Camp name</span>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          placeholder="e.g. Dubai Industrial Camp 1"
-          className="input w-full"
-        />
+        <span className={label}>Camp name</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Dubai Industrial Camp 1" className="input w-full" />
       </label>
 
-      <p className="text-xs text-muted">This adds one of your own camps. Supplier and client camps are recorded when you check workers in, since you don&apos;t manage their rooms.</p>
-
-      <label className="block max-w-[160px]">
-        <span className="mb-1 block text-xs font-medium text-muted">How many rooms?</span>
-        <NumberInput value={roomCount} onChange={(v) => changeRoomCount(Number(String(v)))} min={1} max={50} className="w-full" />
-      </label>
-
-      <div className="space-y-2">
-        <span className="block text-xs font-medium text-muted">Beds in each room</span>
-        <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface-sunken p-2.5">
+      <div>
+        <span className={label}>Layout</span>
+        <div className="grid grid-cols-3 gap-3">
           <label className="block">
-            <span className="mb-0.5 block text-[11px] font-medium text-muted">Bunks (upper + lower)</span>
-            <NumberInput value={sameBunks} onChange={(v) => setSameBunks(Math.max(0, Math.min(20, Number(String(v)) || 0)))} min={0} max={20} ariaLabel="Bunks for every room" className="w-28" />
+            <span className="mb-1 block text-[11px] text-subtle">Rooms</span>
+            <NumberInput value={roomCount} onChange={(v) => layout({ count: clamp(v, 1, 50) })} min={1} max={50} ariaLabel="Number of rooms" className="w-full" />
           </label>
           <label className="block">
-            <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
-            <NumberInput value={sameSingles} onChange={(v) => setSameSingles(Math.max(0, Math.min(20, Number(String(v)) || 0)))} min={0} max={20} ariaLabel="Single beds for every room" className="w-28" />
+            <span className="mb-1 block text-[11px] text-subtle">Bunks per room</span>
+            <NumberInput value={bunks} onChange={(v) => layout({ bunks: clamp(v, 0, 20) })} min={0} max={20} ariaLabel="Bunks in every room" className="w-full" />
           </label>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={applyToAll}>Apply to all rooms</button>
-          <span className="text-xs text-subtle">Then change any room that is different.</span>
+          <label className="block">
+            <span className="mb-1 block text-[11px] text-subtle">Single beds per room</span>
+            <NumberInput value={singles} onChange={(v) => layout({ singles: clamp(v, 0, 20) })} min={0} max={20} ariaLabel="Single beds in every room" className="w-full" />
+          </label>
         </div>
-        <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-          {rooms.map((room, i) => (
-            <div key={i} className="space-y-2 rounded-lg border border-default p-2.5">
-              <input
-                value={room.name}
-                onChange={(e) => updateRoom(i, { name: e.target.value })}
-                placeholder={`Room ${i + 1} name`}
-                className="input w-full px-2 py-1 text-sm"
-              />
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2">
-                <label className="block">
-                  <span className="mb-0.5 block text-[11px] font-medium text-muted">Bunks (upper + lower)</span>
-                  <NumberInput value={room.bunkCount} onChange={(v) => updateRoom(i, { bunkCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Bunk beds in this room" />
-                </label>
-                <label className="block">
-                  <span className="mb-0.5 block text-[11px] font-medium text-muted">Single beds</span>
-                  <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: Math.max(0, Math.min(20, Number(String(v)) || 0)) })} min={0} max={20} ariaLabel="Single beds in this room" />
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-subtle">
-          {rooms.length} room{rooms.length === 1 ? "" : "s"}, {totalBeds} bed{totalBeds === 1 ? "" : "s"} total ({rooms.reduce((n, r) => n + r.bunkCount, 0)} bunk{rooms.reduce((n, r) => n + r.bunkCount, 0) === 1 ? "" : "s"}, {rooms.reduce((n, r) => n + r.bedCount, 0)} single).
+        <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2 text-sm text-primary">
+          <b>{rooms.length}</b> room{rooms.length === 1 ? "" : "s"} · <b>{totalBeds}</b> bed{totalBeds === 1 ? "" : "s"}
+          <span className="text-muted"> — a bunk counts as 2 beds (upper and lower)</span>
         </p>
       </div>
 
-      {error && <p className="text-sm text-[var(--error)]">{error}</p>}
+      <div>
+        <button type="button" onClick={() => setCustom((v) => !v)} aria-expanded={custom} className="flex items-center gap-1 text-sm font-medium text-[var(--brand-primary)] hover:underline">
+          <ChevronDown className={cn("h-4 w-4 transition-transform", custom && "rotate-180")} aria-hidden />
+          Name or change individual rooms
+        </button>
+        {custom && (
+          <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+            {rooms.map((room, i) => (
+              <div key={i} className="grid grid-cols-[1fr_8.5rem_8.5rem] items-center gap-2">
+                <input value={room.name} onChange={(e) => updateRoom(i, { name: e.target.value })} aria-label={`Room ${i + 1} name`} className="input w-full" />
+                <NumberInput value={room.bunkCount} onChange={(v) => updateRoom(i, { bunkCount: clamp(v, 0, 20) })} min={0} max={20} ariaLabel={`Bunks in ${room.name}`} />
+                <NumberInput value={room.bedCount} onChange={(v) => updateRoom(i, { bedCount: clamp(v, 0, 20) })} min={0} max={20} ariaLabel={`Single beds in ${room.name}`} />
+              </div>
+            ))}
+            <p className="text-xs text-subtle">Columns: room name · bunks · single beds</p>
+          </div>
+        )}
+      </div>
 
-      <button
-        type="button"
-        onClick={handleSubmit}
-        disabled={!canSubmit || pending}
-        className="btn btn-primary"
-      >
-        {pending ? "Creating…" : "Add Camp"}
-      </button>
+      {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
+
+      <DialogFooter>
+        <button type="button" onClick={handleSubmit} disabled={!canSubmit || pending} className="btn btn-primary">
+          {pending ? "Creating…" : `Create camp with ${totalBeds} bed${totalBeds === 1 ? "" : "s"}`}
+        </button>
+      </DialogFooter>
     </div>
   );
 }
