@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { Select } from "@/components/ui/Select";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { isOnWork } from "@/lib/employeeStage";
 import {
   expandSuppliers,
@@ -155,6 +156,8 @@ export function AttendanceForm({
   // ON_WORK_STAGES. Matching ACTIVE exactly hid the newly mobilised.
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("working");
   const [query, setQuery] = useState("");
+  /** Narrow the roster by what has been marked today, e.g. only the people still to do. */
+  const [markFilter, setMarkFilter] = useState<"all" | "todo" | "PRESENT" | "ABSENT" | "leave" | "other">("all");
   const [statuses, setStatuses] = useState<Record<string, string>>({});
   const [normalHours, setNormalHours] = useState<Record<string, string>>({});
   const [otHours, setOtHours] = useState<Record<string, string>>({});
@@ -195,7 +198,7 @@ export function AttendanceForm({
     if (siteId && !visibleSites.some((x) => x.id === siteId)) setSiteId("");
   }, [visibleSites, siteId]);
 
-  const rows = useMemo(
+  const baseRows = useMemo(
     () =>
       employees.filter((e) =>
         matchesFilters(e, {
@@ -209,6 +212,7 @@ export function AttendanceForm({
       ),
     [employees, expandedSupplierIds, clientId, projectId, siteId, statusFilter, query]
   );
+
 
   useEffect(() => {
     // `date` is always set — the form is only rendered once a day is picked.
@@ -273,6 +277,21 @@ export function AttendanceForm({
   function isMarked(employeeId: string) {
     return marked[employeeId] ?? !!existing[employeeId];
   }
+
+  const markOf = (id: string) => (isMarked(id) ? statusFor(id) : null);
+  const matchesMark = (id: string, f: typeof markFilter) => {
+    const m = markOf(id);
+    switch (f) {
+      case "all": return true;
+      case "todo": return m === null;
+      case "PRESENT": return m === "PRESENT";
+      case "ABSENT": return m === "ABSENT";
+      case "leave": return m === "LEAVE" || m === "SICK_LEAVE";
+      case "other": return m === "IDLE" || m === "HOLIDAY" || m === "OFF";
+    }
+  };
+  // What the table shows: the roster filters, then the "what has been marked" chip.
+  const rows = baseRows.filter((e) => matchesMark(e.id, markFilter));
 
   /**
    * Attendance can't predate a worker's confirmed site arrival — checking it
@@ -452,61 +471,51 @@ export function AttendanceForm({
             ]}
           />
         </label>
-        <div className="w-full">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Suppliers {supplierIds.length > 0 && `(${supplierIds.length} selected)`}
-          </span>
-          {/* Multi-select, and picking a parent pulls in its subsidiaries. */}
-          <div className="flex flex-wrap gap-1.5">
-            {suppliers.map((sup) => {
-              const on = supplierIds.includes(sup.id);
-              const impliedByParent =
-                !on && !!sup.parentId && supplierIds.includes(sup.parentId);
-              return (
-                <button
-                  key={sup.id}
-                  type="button"
-                  onClick={() =>
-                    setSupplierIds((prev) =>
-                      prev.includes(sup.id)
-                        ? prev.filter((x) => x !== sup.id)
-                        : [...prev, sup.id]
-                    )
-                  }
-                  className={cn(
-                    "rounded-control border px-2 py-1 text-xs font-medium transition",
-                    on
-                      ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
-                      : impliedByParent
-                        ? "border-[var(--brand-primary)]/40 bg-brand-soft/50 text-[var(--brand-primary)]"
-                        : "border-default bg-surface text-secondary hover:bg-surface-hover"
-                  )}
-                >
-                  {sup.parentId && <span className="mr-1 text-subtle">└</span>}
-                  {sup.name}
-                </button>
-              );
-            })}
-            {supplierIds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSupplierIds([])}
-                className="px-2 py-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
+        <label className="w-60">
+          <span className="mb-1 block text-xs font-medium text-muted">Supplier</span>
+          {/* Picking a parent pulls in its subsidiaries. */}
+          <MultiSelect
+            values={supplierIds}
+            onChange={setSupplierIds}
+            noun="suppliers"
+            placeholder="All suppliers"
+            options={suppliers.map((sup) => ({ value: sup.id, label: sup.name, indent: !!sup.parentId }))}
+          />
+        </label>
       </div>
 
-      {rows.length > 0 && (
+      {baseRows.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {([
+            ["all", "All"],
+            ["todo", "Not marked"],
+            ["PRESENT", "Present"],
+            ["ABSENT", "Absent"],
+            ["leave", "Leave / sick"],
+            ["other", "Idle / holiday / off"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMarkFilter(key)}
+              className={cn(
+                "rounded-control border px-3 py-1.5 text-xs font-medium transition",
+                markFilter === key ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default bg-surface text-secondary hover:bg-surface-hover"
+              )}
+            >
+              {label} ({baseRows.filter((r) => matchesMark(r.id, key)).length})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {baseRows.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {SUMMARY.map((t) => (
             <div key={t.label} className="card px-4 py-3">
               <p className="text-xs text-muted">{t.label}</p>
               <p className={cn("tabular text-2xl font-semibold", t.tone)}>
-                {rows.filter((r) => isMarked(r.id) && t.statuses.includes(statusFor(r.id))).length}
+                {baseRows.filter((r) => isMarked(r.id) && t.statuses.includes(statusFor(r.id))).length}
               </p>
             </div>
           ))}
