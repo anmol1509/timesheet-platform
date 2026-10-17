@@ -420,9 +420,6 @@ model Client {
   contractEnd   DateTime?
   status        String    @default("ACTIVE")
   createdAt     DateTime  @default(now())
-  // Days this client's sites are closed (0=Sun..6=Sat). Workers placed here follow
-  // it unless their own record sets different off days.
-  weeklyOffDays Int[]     @default([5])
 
   trn                String? // Tax Registration Number
   tradeLicenseNumber String?
@@ -956,7 +953,7 @@ model Document {
 
 model Project {
   id            String    @id @default(cuid())
-  weeklyOffDays Int[]     @default([5]) // 0=Sun..6=Sat; work on these days is paid at the rest-day rate
+  weeklyOffDays Int[]     @default([0]) // 0=Sun..6=Sat; set per project. Work on these days is paid at the rest-day rate
   expenses      Expense[]
   code          String    @unique
   name          String

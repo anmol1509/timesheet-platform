@@ -37,6 +37,8 @@ type EmployeeOption = {
   clientId: string | null;
   projectName: string;
   siteId: string | null;
+  /** Days of the week (0 = Sunday) this worker's project is off. */
+  weeklyOffDays: number[];
 };
 type ExistingRow = { id: string; status: string; normalHours: number | null; otHours: number | null; locked: boolean };
 
@@ -93,7 +95,7 @@ function StatusButtons({ value, disabled, name, onChange }: { value: string | nu
         disabled={disabled}
         value={value && MORE[value] ? value : ""}
         onChange={(ev) => onChange(ev.target.value || null)}
-        className={cn("input h-8 w-[5.5rem] px-1.5 py-0 text-xs", value && MORE[value] && "font-semibold text-primary")}
+        className={cn("input h-8 w-[6.75rem] px-1.5 py-0 text-xs", value && MORE[value] && "font-semibold text-primary")}
       >
         <option value="">More…</option>
         {Object.entries(MORE).map(([v, l]) => (
@@ -161,6 +163,8 @@ export function AttendanceForm({
   // isn't ticked: the roster lists everyone on the books, and defaulting the
   // whole list to Present marks idle workers as having worked a full day.
   const [marked, setMarked] = useState<Record<string, boolean>>({});
+  /** Workers pre-set to Off because the day is their project's weekly off. */
+  const [autoOff, setAutoOff] = useState<Record<string, boolean>>({});
   const [correctionFor, setCorrectionFor] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   // Bumped after a mark is deleted, to re-pull the day from the server.
@@ -220,10 +224,24 @@ export function AttendanceForm({
         nextNormal[employeeId] = row.normalHours != null ? String(row.normalHours) : "";
         nextOt[employeeId] = row.otHours != null ? String(row.otHours) : "";
       }
+      // The project's weekly off is filled in for anyone with nothing recorded yet; a tap changes it.
+      const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+      const nextAuto: Record<string, boolean> = {};
+      const nextMarked: Record<string, boolean> = {};
+      for (const e of employees) {
+        if (res.rows[e.id] || !e.siteArrivalDate || date < e.siteArrivalDate || !e.weeklyOffDays.includes(weekday)) continue;
+        nextStatuses[e.id] = "OFF";
+        nextMarked[e.id] = true;
+        nextAuto[e.id] = true;
+      }
       setStatuses(nextStatuses);
       setNormalHours(nextNormal);
       setOtHours(nextOt);
+      setAutoOff(nextAuto);
+      setMarked(nextMarked);
     });
+    // `employees` is stable for the page's life; the day or a reload is what re-reads it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, reloadKey]);
 
   // Clears a saved mark outright, for a day recorded against the wrong worker
@@ -554,6 +572,9 @@ export function AttendanceForm({
                           <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="xs" />
                           <span>{e.name} <span className="text-subtle">{e.employeeIdNo}</span></span>
                         </span>
+                        {autoOff[e.id] && statusFor(e.id) === "OFF" && (
+                          <span className="ml-1.5 text-xs text-muted" title={e.projectName ? `Weekly off for ${e.projectName}` : "No project, so Sunday"}>weekly off</span>
+                        )}
                         {!eligible && (
                           <span className="ml-1.5 text-xs text-[var(--warning)]">
                             not yet arrived{e.siteArrivalDate ? ` (from ${e.siteArrivalDate})` : ""}

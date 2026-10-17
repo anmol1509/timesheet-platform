@@ -55,7 +55,7 @@ export default async function AttendancePage({
         supplier: { select: { name: true } },
         projectId: true,
         siteId: true,
-        project: { select: { id: true, name: true, code: true, clientId: true } },
+        project: { select: { id: true, name: true, code: true, clientId: true, weeklyOffDays: true } },
       },
       orderBy: { name: "asc" },
     }),
@@ -129,6 +129,8 @@ export default async function AttendancePage({
             clientId: e.project?.clientId ?? null,
             projectName: e.project ? `${e.project.code} — ${e.project.name}` : "",
             siteId: e.siteId,
+            // The project decides the weekly off; a worker with no project is off on Sunday.
+            weeklyOffDays: e.project?.weeklyOffDays ?? [0],
           }))}
         />
       ) : (
