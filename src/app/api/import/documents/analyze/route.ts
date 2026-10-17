@@ -58,7 +58,7 @@ const READ_FIELD_HELP: Record<string, string> = {
   mohrePermitNumber: "MOHRE permit number.",
   trn: "Tax registration number.",
   dateOfBirth: "Date of birth as YYYY-MM-DD, only if printed.",
-  passportExpiry: "Passport expiry as YYYY-MM-DD, only on a passport page.",
+  passportExpiry: "Passport expiry as YYYY-MM-DD, only on a passport page: the date under the label Date of expiry, never the date of issue.",
   emiratesIdExpiry: "Emirates ID expiry as YYYY-MM-DD, only on an Emirates ID page.",
   laborCardExpiry: "Labour card expiry as YYYY-MM-DD.",
   visaExpiry: "Residency / visa expiry as YYYY-MM-DD.",
@@ -70,7 +70,7 @@ For each page say which document it is, using exactly one of these types: ${labe
 ${audience === "EMPLOYEE"
   ? "The documents belong to workers: passport bio-data page, Emirates ID (front and back are separate pages of ONE document), visa or residence page, MOHRE labour card / work permit, medical certificate, insurance and so on."
   : "The documents belong to supplier companies: trade licence, MOHRE permit, establishment card, insurance, Ejari / tenancy, chamber of commerce certificate, TRN certificate, contracts."}
-Rules: a page that carries on the document before it (back of a card, page 2 of a licence) has continuation=true; the first page of any new document has continuation=false, even if the same person is on both. Read the holder's name and the document number exactly as printed. Dates must be YYYY-MM-DD (convert 19/Apr/2028 to 2028-04-19). Also fill the record fields in the schema for what each page prints (a field a page does not show is an empty string). Give an empty string for anything you cannot read with confidence and never guess. Set confidence low when the page is unclear.
+Rules: a page that carries on the document before it (back of a card, page 2 of a licence) has continuation=true; the first page of any new document has continuation=false, even if the same person is on both. Read the holder's name and the document number exactly as printed. On a passport the issue date and the expiry date sit side by side under their labels: the expiry is the later one (normally ten years after issue, sometimes five) and is also encoded in the machine-readable line at the bottom (YYMMDD right after the sex letter); use that to confirm which date is the expiry, and never report the issue date as the expiry. Dates must be YYYY-MM-DD (convert 19/Apr/2028 to 2028-04-19). Also fill the record fields in the schema for what each page prints (a field a page does not show is an empty string). Give an empty string for anything you cannot read with confidence and never guess. Set confidence low when the page is unclear.
 Return one entry per page, in the order given, with the same ref.`;
 
 /** Reads a few pages and says what each is. Nothing is stored; the page images are not kept. */
