@@ -4,13 +4,15 @@ import Link from "next/link";
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, ChevronRight, Download, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, MoreHorizontal, Search, Trash2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { bulkImportInventoryAction, deleteInventoryItemAction } from "./actions";
 import { CsvImportDialog } from "@/components/CsvImportDialog";
 import { Select } from "@/components/ui/Select";
 import { downloadXlsx } from "@/lib/spreadsheet";
-import { DeleteButton } from "@/components/DeleteButton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { IssueDialog, ReturnDialog, type EmployeeOption, type Holder } from "./issue-dialogs";
+import { isLowStock } from "./stock";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/cn";
 
@@ -25,6 +27,7 @@ type ItemRow = {
   assignedQuantity: number;
   inStock: number;
   issued: number;
+  holders: Holder[];
   variants: VariantRow[];
 };
 
@@ -40,7 +43,7 @@ const IMPORT_COLUMNS = [
 /** Same expand-in-place pattern as the Suppliers list uses for subsidiaries —
  * a chevron toggles variant rows into the same table, indented, rather than
  * a floating panel. */
-export function InventoryList({ items }: { items: ItemRow[] }) {
+export function InventoryList({ items, employees }: { items: ItemRow[]; employees: EmployeeOption[] }) {
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   function toggleExpanded(id: string) {
@@ -55,6 +58,8 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [stockFilter, setStockFilter] = useState("");
+  const [issuing, setIssuing] = useState<string | null>(null);
+  const [returning, setReturning] = useState<string | null>(null);
 
   const categoryOptions = [...new Set(items.map((i) => i.category).filter((c): c is string => !!c))].sort().map((v) => ({ value: v, label: v }));
   const shown = items.filter((i) => {
@@ -64,6 +69,7 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
     const left = i.inStock - i.issued;
     if (stockFilter === "out" && !(left <= 0)) return false;
     if (stockFilter === "in" && !(left > 0)) return false;
+    if (stockFilter === "low" && !(left <= 0 || isLowStock(i.inStock, i.issued))) return false;
     if (stockFilter === "issued" && !(i.activeAssignments > 0 || i.issued > 0)) return false;
     return true;
   });
@@ -108,15 +114,12 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
         <div className="w-44 shrink-0">
           <Select value={category} onChange={setCategory} triggerClassName="h-9" placeholder="All categories" options={[{ value: "", label: "All categories" }, ...categoryOptions]} />
         </div>
-        <div className="w-44 shrink-0">
-          <Select
-            value={stockFilter}
-            onChange={setStockFilter}
-            triggerClassName="h-9"
-            placeholder="Any stock"
-            searchable={false}
-            options={[{ value: "", label: "Any stock" }, { value: "in", label: "In stock" }, { value: "out", label: "Out of stock" }, { value: "issued", label: "Issued out" }]}
-          />
+        <div className="flex flex-wrap gap-1.5">
+          {([["", "All"], ["low", "Low / out"], ["issued", "Issued out"]] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setStockFilter(key)} className={cn("rounded-control border px-3 py-1.5 text-xs font-medium transition", stockFilter === key ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]" : "border-default bg-surface text-secondary hover:bg-surface-hover")}>
+              {label} ({items.filter((i) => key === "" || (key === "low" ? i.inStock - i.issued <= 0 || isLowStock(i.inStock, i.issued) : i.activeAssignments > 0 || i.issued > 0)).length})
+            </button>
+          ))}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <CsvImportDialog entityLabel="inventory" columns={IMPORT_COLUMNS} importAction={bulkImportInventoryAction} onDone={() => router.refresh()} />
@@ -147,9 +150,8 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
             <tr>
               <th className="px-4 py-3">Item</th>
               <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3 text-right">Qty in stock</th>
+              <th className="px-4 py-3">Available</th>
               <th className="px-4 py-3 text-right">Issued</th>
-              <th className="px-4 py-3 text-right">Available</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -188,32 +190,27 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-secondary">{i.category || "—"}</td>
-                    <td className="px-4 py-3 text-right tabular">{i.inStock}</td>
-                    <td className="px-4 py-3 text-right tabular text-secondary">{i.issued}</td>
-                    <td
-                      className={cn(
-                        "px-4 py-3 text-right tabular font-medium",
-                        left < 0 ? "text-[var(--error)]" : left === 0 && i.inStock > 0 ? "text-[var(--warning)]" : "text-primary"
-                      )}
-                    >
-                      {left}
-                    </td>
                     <td className="px-4 py-3">
-                      {i.activeAssignments > 0 ? (
-                        <Badge color="amber">
-                          In use ({i.assignedQuantity} on {i.activeAssignments} project
-                          {i.activeAssignments === 1 ? "" : "s"})
-                        </Badge>
-                      ) : (
-                        <Badge color="green">Available</Badge>
-                      )}
+                      <span className="tabular"><b className={cn(left < 0 ? "text-[var(--error)]" : "text-primary")}>{Math.max(left, 0)}</b> <span className="text-muted">of {i.inStock}</span></span>
+                      <span className="mt-1 block h-1.5 w-28 overflow-hidden rounded-full bg-surface-sunken">
+                        <span className={cn("block h-full rounded-full", left <= 0 ? "bg-[var(--error)]" : isLowStock(i.inStock, i.issued) ? "bg-[var(--warning)]" : "bg-[var(--success)]")} style={{ width: `${i.inStock ? Math.max(0, (left / i.inStock) * 100) : 0}%` }} />
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular text-secondary">{i.issued}</td>
+                    <td className="px-4 py-3">
+                      {i.inStock === 0 || left <= 0 ? <Badge color="red">{i.inStock === 0 ? "No stock" : "Out of stock"}</Badge> : isLowStock(i.inStock, i.issued) ? <Badge color="amber">Low stock</Badge> : <Badge color="green">In stock</Badge>}
+                      {i.activeAssignments > 0 && <span className="ml-2 text-xs text-subtle">{i.assignedQuantity} on {i.activeAssignments} project{i.activeAssignments === 1 ? "" : "s"}</span>}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <DeleteButton
-                        action={deleteInventoryItemAction}
-                        hiddenFields={{ itemId: i.id }}
-                        confirmMessage={`Delete "${i.name}"?${i.activeAssignments > 0 ? " It is still assigned to a project." : ""}`}
-                      />
+                      <span className="inline-flex items-center gap-1.5">
+                        {i.holders.length > 0 && <button type="button" onClick={() => setReturning(i.id)} className="btn btn-secondary btn-sm">Return</button>}
+                        {left > 0 ? (
+                          <button type="button" onClick={() => setIssuing(i.id)} className="btn btn-secondary btn-sm">Issue</button>
+                        ) : (
+                          <Link href={`/inventory/${i.id}`} className="btn btn-secondary btn-sm">Add stock</Link>
+                        )}
+                        <RowMenu item={i} />
+                      </span>
                     </td>
                   </tr>
                   {isOpen &&
@@ -224,11 +221,10 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
                           {v.sku && <span className="ml-1.5 text-xs text-subtle">{v.sku}</span>}
                         </td>
                         <td className="px-4 py-2" />
-                        <td className="px-4 py-2 text-right tabular text-secondary">{v.stock}</td>
-                        <td className="px-4 py-2 text-right tabular text-secondary">{v.issued}</td>
-                        <td className={cn("px-4 py-2 text-right tabular font-medium", v.available <= 0 ? "text-[var(--error)]" : "text-primary")}>
-                          {v.available}
+                        <td className={cn("px-4 py-2 tabular font-medium", v.available <= 0 ? "text-[var(--error)]" : "text-primary")}>
+                          {v.available} <span className="font-normal text-muted">of {v.stock}</span>
                         </td>
+                        <td className="px-4 py-2 text-right tabular text-secondary">{v.issued}</td>
                         <td className="px-4 py-2" colSpan={2} />
                       </tr>
                     ))}
@@ -239,10 +235,44 @@ export function InventoryList({ items }: { items: ItemRow[] }) {
         </table>
         {shown.length === 0 && (
           <p className="px-4 py-10 text-center text-sm text-muted">
-            {items.length === 0 ? "No inventory items yet. Add one above, or import a list." : "No items match."}
+            {items.length === 0 ? "No inventory items yet. Add one with the button above, or import a list." : "No items match."}
           </p>
         )}
       </div>
+      <IssueDialog open={!!issuing} onClose={() => setIssuing(null)} item={items.find((i) => i.id === issuing) ?? null} employees={employees} />
+      <ReturnDialog open={!!returning} onClose={() => setReturning(null)} item={items.find((i) => i.id === returning) ?? null} />
     </div>
+  );
+}
+
+/** Open or delete, behind one "⋯" so the row stays quiet. */
+function RowMenu({ item }: { item: ItemRow }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const entry = "flex w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-sm text-secondary hover:bg-surface-hover hover:text-primary";
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button type="button" aria-label={`Actions for ${item.name}`} className="rounded-md p-1.5 text-subtle hover:bg-surface-sunken hover:text-primary"><MoreHorizontal className="h-4 w-4" aria-hidden /></button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content align="end" sideOffset={4} className="rx-popover z-50 w-40 rounded-control border border-default bg-surface p-1 shadow-popover">
+          <Link href={`/inventory/${item.id}`} className={entry} onClick={() => setOpen(false)}>Open item</Link>
+          <ConfirmDialog
+            title="Delete this item?"
+            description={`Delete "${item.name}"?${item.activeAssignments > 0 ? " It is still assigned to a project." : ""}`}
+            confirmLabel="Delete"
+            onConfirm={async () => {
+              const form = new FormData();
+              form.append("itemId", item.id);
+              setOpen(false);
+              await deleteInventoryItemAction(form);
+              router.refresh();
+            }}
+            trigger={(openConfirm) => <button type="button" className={cn(entry, "text-[var(--error)] hover:text-[var(--error)]")} onClick={openConfirm}><Trash2 className="h-4 w-4" aria-hidden />Delete</button>}
+          />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

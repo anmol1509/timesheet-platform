@@ -307,3 +307,81 @@ export async function bulkImportInventoryAction(rows: Record<string, string>[]):
   revalidatePath("/inventory");
   return results;
 }
+
+/** One line of a bulk issue: who gets how many of which variant. */
+export type IssueLine = { employeeId: string; variantId: string | null; quantity: number };
+
+/**
+ * Hands one item to several workers in one go. All or nothing: if the stock on any variant can't cover everything
+ * asked of it, nothing is issued and the message says which one is short.
+ */
+export async function issueInventoryBulkAction(input: { itemId: string; issuedDate: string; lines: IssueLine[] }): Promise<{ issued: number; error?: string }> {
+  await requireWrite("facilities.inventory");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { itemId } = input;
+  if (!(await assertItemInBranch(itemId, branchId, isSuperAdmin))) return { issued: 0, error: "That item isn't part of this branch's inventory." };
+  const lines = input.lines.filter((l) => l.employeeId && Number.isFinite(l.quantity) && l.quantity >= 1).map((l) => ({ ...l, quantity: Math.trunc(l.quantity) }));
+  if (lines.length === 0) return { issued: 0, error: "Add at least one worker." };
+  if (lines.length > 200) return { issued: 0, error: "Issue to up to 200 workers at a time." };
+  const issuedDate = /^\d{4}-\d{2}-\d{2}$/.test(input.issuedDate) ? new Date(input.issuedDate) : new Date();
+
+  const item = await prisma.inventoryItem.findUnique({ where: { id: itemId }, select: { name: true, variants: { select: { id: true, name: true, stock: true } } } });
+  if (!item) return { issued: 0, error: "That item no longer exists." };
+  if (item.variants.length === 0) return { issued: 0, error: "This item has no stock recorded. Add stock first." };
+  if (item.variants.length > 0 && lines.some((l) => !l.variantId)) return { issued: 0, error: "Choose a size or variant for every worker." };
+
+  const employees = await prisma.employee.findMany({ where: { id: { in: [...new Set(lines.map((l) => l.employeeId))] } }, select: { id: true, branchId: true } });
+  const okEmployee = new Set(employees.filter((e) => !isOutsideBranch(e.branchId, branchId, isSuperAdmin)).map((e) => e.id));
+  if (lines.some((l) => !okEmployee.has(l.employeeId))) return { issued: 0, error: "One of those workers isn't in this branch." };
+
+  const created: { id: string; employeeId: string; variantId: string | null; quantity: number }[] = [];
+  try {
+    await prisma.$transaction(async (tx) => {
+      const wantedBy = new Map<string, number>();
+      for (const l of lines) wantedBy.set(l.variantId!, (wantedBy.get(l.variantId!) ?? 0) + l.quantity);
+      for (const [variantId, wanted] of wantedBy) {
+        const variant = item.variants.find((v) => v.id === variantId);
+        if (!variant) throw new Error("A chosen variant no longer exists.");
+        const held = await tx.employeeInventoryAssignment.aggregate({ where: { variantId, returnDate: null }, _sum: { quantity: true } });
+        const available = variant.stock - (held._sum.quantity ?? 0);
+        if (wanted > available) throw new Error(`Only ${available} of "${variant.name}" left, and ${wanted} were asked for.`);
+      }
+      for (const l of lines) {
+        const row = await tx.employeeInventoryAssignment.create({ data: { employeeId: l.employeeId, itemId, variantId: l.variantId, quantity: l.quantity, issuedDate } });
+        created.push({ id: row.id, employeeId: l.employeeId, variantId: l.variantId, quantity: l.quantity });
+      }
+    });
+  } catch (e) {
+    return { issued: 0, error: e instanceof Error ? e.message : "Couldn't issue those." };
+  }
+  for (const c of created) {
+    await logAudit({ entityType: "EMPLOYEE_INVENTORY_ASSIGNMENT", entityId: c.id, action: "CREATE", after: { employeeId: c.employeeId, itemId, itemName: item.name, variantId: c.variantId, quantity: c.quantity, issuedDate }, userId: user.id, userName: user.name, branchId });
+  }
+  for (const id of okEmployee) revalidatePath(`/employees/${id}`);
+  revalidatePath(`/inventory/${itemId}`);
+  revalidatePath("/inventory");
+  return { issued: created.length };
+}
+
+/** Marks the chosen issued items as returned today (the ones in this branch that are still out). */
+export async function returnInventoryBulkAction(assignmentIds: string[]): Promise<{ returned: number; error?: string }> {
+  await requireWrite("facilities.inventory");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const wanted = [...new Set(assignmentIds.filter(Boolean))].slice(0, 500);
+  if (wanted.length === 0) return { returned: 0, error: "Choose at least one." };
+  const rows = await prisma.employeeInventoryAssignment.findMany({
+    where: { id: { in: wanted }, returnDate: null },
+    select: { id: true, itemId: true, employeeId: true, employee: { select: { branchId: true } } },
+  });
+  const mine = rows.filter((r) => !isOutsideBranch(r.employee.branchId, branchId, isSuperAdmin));
+  if (mine.length === 0) return { returned: 0, error: "Nothing to return." };
+  const returnDate = new Date();
+  await prisma.employeeInventoryAssignment.updateMany({ where: { id: { in: mine.map((r) => r.id) } }, data: { returnDate } });
+  for (const r of mine) {
+    await logAudit({ entityType: "EMPLOYEE_INVENTORY_ASSIGNMENT", entityId: r.id, action: "UPDATE", before: { returnDate: null }, after: { returnDate }, userId: user.id, userName: user.name, branchId });
+    revalidatePath(`/employees/${r.employeeId}`);
+  }
+  revalidatePath("/inventory");
+  for (const itemId of new Set(mine.map((r) => r.itemId))) revalidatePath(`/inventory/${itemId}`);
+  return { returned: mine.length };
+}

@@ -6,7 +6,7 @@ import { ComboSelect } from "@/components/ui/ComboSelect";
 import { INVENTORY_CATEGORIES } from "@/lib/formLists";
 import { NumberInput } from "@/components/ui/NumberInput";
 
-export function NewItemForm() {
+export function NewItemForm({ bare }: { bare?: boolean } = {}) {
   const [state, formAction, pending] = useActionState(createInventoryItemAction, {
     error: null,
   });
@@ -14,7 +14,7 @@ export function NewItemForm() {
   return (
     <form
       action={formAction}
-      className="card flex flex-wrap items-end gap-3 p-4"
+      className={bare ? "flex flex-wrap items-end gap-3" : "card flex flex-wrap items-end gap-3 p-4"}
     >
       <label className="block flex-1 min-w-[180px]">
         <span className="mb-1 block text-xs font-medium text-muted">Item name *</span>
