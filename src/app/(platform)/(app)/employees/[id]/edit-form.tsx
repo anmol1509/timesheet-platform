@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { InlineDocumentUpload } from "./inline-document-upload";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
+import { PassportCheckNote } from "@/components/PassportCheckNote";
+import type { PassportCheck } from "@/lib/passportMrz";
 import { ComboSelect } from "@/components/ui/ComboSelect";
 import { UAE_BANKS } from "@/lib/formLists";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -227,12 +229,15 @@ export function EditForm({
 
   // Dates filled in from a scanned document remount their picker with the new value.
   const [auto, setAuto] = useState<Record<string, string>>({});
+  // How far the last scanned passport can be trusted; cleared when the expiry is typed over.
+  const [passportCheck, setPassportCheck] = useState<PassportCheck | null>(null);
   const passportNumberRef = useRef<HTMLInputElement>(null);
   const emiratesIdRef = useRef<HTMLInputElement>(null);
   const laborCardNumberRef = useRef<HTMLInputElement>(null);
   const laborCardPersonalNoRef = useRef<HTMLInputElement>(null);
 
   function applyExtractedFields(fields: ExtractedDocumentFields) {
+    if (fields.passportCheck) setPassportCheck(fields.passportCheck);
     setAuto((a) => ({ ...a, ...(fields.dateOfBirth ? { dateOfBirth: fields.dateOfBirth } : {}), ...(fields.passportExpiry ? { passportExpiry: fields.passportExpiry } : {}), ...(fields.emiratesIdExpiry ? { emiratesIdExpiry: fields.emiratesIdExpiry } : {}), ...(fields.laborCardExpiry ? { laborCardExpiry: fields.laborCardExpiry } : {}) }));
     if (fields.nationality) setNationality(fields.nationality);
     if (fields.passportNumber && passportNumberRef.current) passportNumberRef.current.value = fields.passportNumber;
@@ -485,7 +490,8 @@ export function EditForm({
               />
             </Field>
             <Field label="Passport expiry date">
-              <DatePicker key={`passportExpiry-${auto.passportExpiry ?? ""}`} name="passportExpiry" defaultValue={auto.passportExpiry ?? toDateInput(employee.passportExpiry)} />
+              <DatePicker key={`passportExpiry-${auto.passportExpiry ?? ""}`} name="passportExpiry" defaultValue={auto.passportExpiry ?? toDateInput(employee.passportExpiry)} onChange={() => setPassportCheck(null)} />
+              <PassportCheckNote check={passportCheck} hasExpiry={!!auto.passportExpiry} />
             </Field>
             <InlineDocumentUpload
               employeeId={employee.id}
