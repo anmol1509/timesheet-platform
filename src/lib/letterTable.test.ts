@@ -22,3 +22,11 @@ test("a table's words are all in its text, for snippets and field checks", () =>
   const text = htmlToText(TABLE);
   for (const w of ["Project", "From", "Jebel Ali", "Mar 2022"]) assert.ok(text.includes(w), w);
 });
+
+import { leftoverPlaceholders } from "./letterHtml";
+
+test("blanks still shown as [Label] in edited wording are found", () => {
+  const html = "<p>Holder of passport number [Passport number], born in India, joined [Joining date].</p>";
+  assert.deepEqual(leftoverPlaceholders(html, ["Passport number", "Joining date", "Nationality"]), ["Passport number", "Joining date"]);
+  assert.deepEqual(leftoverPlaceholders("<p>All filled in.</p>", ["Passport number"]), []);
+});

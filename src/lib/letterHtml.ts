@@ -100,3 +100,9 @@ export const isDateAsk = (label: string) => /\bdate\b/i.test(label) && !/\b(upda
 /** A calendar's YYYY-MM-DD as the DD-MM-YYYY every letter prints, and back. Anything else comes back unchanged or empty. */
 export const isoToLetterDate = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.split("-").reverse().join("-") : "");
 export const letterDateToIso = (d: string) => (/^\d{2}-\d{2}-\d{4}$/.test(d) ? d.split("-").reverse().join("-") : "");
+
+/** Which of these blanks (shown in the text as "[Label]") are still sitting unfilled in an edited letter. */
+export function leftoverPlaceholders(html: string, labels: string[]): string[] {
+  const text = htmlToText(html);
+  return [...new Set(labels)].filter((l) => l.trim() && text.includes(`[${l}]`));
+}

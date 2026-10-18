@@ -7,7 +7,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import { refLabel, renderEmployeeLetter } from "@/lib/employeeLetter";
-import { htmlToText, substituteInHtml } from "@/lib/letterHtml";
+import { htmlToText, leftoverPlaceholders, substituteInHtml } from "@/lib/letterHtml";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
 import { GAP_FIELDS } from "@/lib/letterGaps";
 import { formatMasked } from "@/lib/idFormats";
@@ -30,6 +30,19 @@ export async function previewLetterAction(employeeId: string, templateId: string
   if ("error" in who) return { error: who.error };
   const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId });
   return r.ok ? { html: r.html, title: r.title, missing: r.missing, empty: r.empty, gaps: r.gaps } : { error: r.error };
+}
+
+/** The letter as text to edit by hand: details missing on the employee's record show as "[Label]" so they can be seen and filled in. */
+export async function editableLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; gaps?: string[]; error?: string }> {
+  await requireView("workforce.letters");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } } } });
+  if (!emp || isOutsideBranch(emp.branchId, branchId, isSuperAdmin)) return { error: "Employee not found." };
+  if (!emp.supplier?.isOwnCompany) return { error: "Letters are only made for employees of your own company." };
+  const who = await resolveIssuerSupplier(employeeId, issuer);
+  if ("error" in who) return { error: who.error };
+  const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId, markGaps: true });
+  return r.ok ? { html: r.html, gaps: r.empty } : { error: r.error };
 }
 
 /** Issues the letter: numbers it, stores the exact wording, and records who issued it. */
@@ -84,7 +97,13 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   const first = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, issuerSupplierId: who.supplierId });
   if (!first.ok) return { error: first.error };
   if (first.missing.length > 0) return { error: `Fill in: ${first.missing.join(", ")}.` };
-  if (first.empty.length > 0 && !allowEmpty) return { error: `${first.employeeName} has no ${first.empty.join(", ").toLowerCase()} on file, so the letter would have a gap. Add it on their record, or tick “Issue anyway”.` };
+  // Highlighted blanks left in the edited wording would print as they are.
+  if (edited !== null && !allowEmpty) {
+    const left = leftoverPlaceholders(edited, first.empty);
+    if (left.length > 0) return { error: `Replace these highlighted blanks in the wording first: ${left.map((l) => `[${l}]`).join(", ")}. Or tick “Issue anyway”.` };
+  }
+  // In edited wording the blanks were dealt with by hand (the check above found none left), so the record's gaps no longer hold it back.
+  if (first.empty.length > 0 && !allowEmpty && edited === null) return { error: `${first.employeeName} has no ${first.empty.join(", ").toLowerCase()} on file, so the letter would have a gap. Add it on their record, or tick “Issue anyway”.` };
 
   // The reference number comes from the database, so create the row first, then write it into the wording.
   const created = await prisma.issuedLetter.create({

@@ -81,6 +81,28 @@ const TokenPills = Extension.create<{ known: Set<string> }>({
   },
 });
 
+/** In a letter being edited by hand, a blank still to fill in shows as "[Label]": this makes it stand out. */
+const BracketPills = Extension.create({
+  name: "bracketPills",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("bracketPills"),
+        props: {
+          decorations(state) {
+            const decos: Decoration[] = [];
+            state.doc.descendants((node, pos) => {
+              if (!node.isText || !node.text) return;
+              for (const m of node.text.matchAll(/\[[^[\]\n]{2,60}\]/g)) decos.push(Decoration.inline(pos + (m.index ?? 0), pos + (m.index ?? 0) + m[0].length, { class: "letter-token-ask" }));
+            });
+            return DecorationSet.create(state.doc, decos);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 const btn = "inline-flex h-8 min-w-8 items-center justify-center rounded-md px-1.5 text-secondary transition hover:bg-surface-hover disabled:opacity-40";
 const on = "bg-brand-soft text-[var(--brand-primary)]";
 const sel = "h-8 rounded-md border border-default bg-surface px-1.5 text-xs text-secondary outline-none";
@@ -283,6 +305,7 @@ export function LetterEditor({
       WideHeader,
       WorkerTable,
       TokenPills.configure({ known }),
+      ...(oneOff ? [BracketPills] : []),
     ],
     content: html,
     onUpdate: ({ editor: e }) => onChange(e.getHTML()),

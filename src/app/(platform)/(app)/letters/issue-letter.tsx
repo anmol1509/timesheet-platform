@@ -6,9 +6,9 @@ import { FileDown, Loader2, Pencil, RotateCcw } from "lucide-react";
 import { LetterEditor } from "@/components/LetterEditor";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { isDateAsk, isoToLetterDate, letterDateToIso } from "@/lib/letterHtml";
+import { isDateAsk, isoToLetterDate, letterDateToIso, leftoverPlaceholders } from "@/lib/letterHtml";
 import { EmployeeLetterPaper } from "@/components/LetterPreview";
-import { issueLetterAction, letterIssuersAction, previewLetterAction } from "./actions";
+import { editableLetterAction, issueLetterAction, letterIssuersAction, previewLetterAction } from "./actions";
 import { FixLetterDialog, type OneOff } from "./fix-letter-dialog";
 import type { IssuerKey, IssuerOption } from "@/lib/employeeLetterIssuer";
 
@@ -35,6 +35,8 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   // answers and letterhead it was made for; change any of them and it no longer applies. `editorKey` remounts the editor.
   const [editState, setEditState] = useState<{ scope: string; html: string; editing: boolean } | null>(null);
   const [editorKey, setEditorKey] = useState(0);
+  const [openingEdit, setOpeningEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [oneOffSig, setOneOffSig] = useState<OneOff>(null);
   const [oneOffStamp, setOneOffStamp] = useState<OneOff>(null);
   const [reload, setReload] = useState(0);
@@ -97,8 +99,22 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   const setEditing = (on: boolean) => setEditState((cur) => (cur && cur.scope === editScope ? { ...cur, editing: on } : cur));
 
   const emptyFields = preview?.empty ?? [];
-  const ready = !!employeeId && !!template && preview?.html && !(preview.missing?.length) && (emptyFields.length === 0 || allowEmpty);
+  // Highlighted blanks still in edited wording hold the letter back unless the person chooses to issue with gaps.
+  const leftBlanks = edited !== null ? leftoverPlaceholders(edited, emptyFields) : [];
+  const ready = !!employeeId && !!template && preview?.html && !(preview.missing?.length) && (emptyFields.length === 0 || allowEmpty || edited !== null) && (leftBlanks.length === 0 || allowEmpty);
   const shown = employeeId && template ? preview : null;
+
+  /** Opens the editor: the letter's words with each missing detail shown as a highlighted "[Label]", unless it was already edited. */
+  async function openEditor(fallbackHtml: string) {
+    setEditError(null);
+    if (edited !== null) { setEditState({ scope: editScope, html: edited, editing: true }); setEditorKey((n) => n + 1); return; }
+    setOpeningEdit(true);
+    const r = await editableLetterAction(employeeId, templateId, inputs, (issuerKey || "PROFILE") as IssuerKey).catch(() => ({ error: "Couldn't open the letter for editing." }));
+    setOpeningEdit(false);
+    if ("error" in r && r.error) { setEditError(r.error); return; }
+    setEditState({ scope: editScope, html: ("html" in r && r.html) || fallbackHtml, editing: true });
+    setEditorKey((n) => n + 1);
+  }
 
   function issue() {
     setError(null);
@@ -192,11 +208,15 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
             <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
               Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
               {canIssue && shown?.html && !editing && (
-                <button type="button" onClick={() => { setEditState({ scope: editScope, html: edited ?? shown.html ?? "", editing: true }); setEditorKey((n) => n + 1); }} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-default bg-surface px-3 py-1 text-xs font-semibold text-primary transition-colors hover:border-[var(--brand-primary)]">
-                  <Pencil className="h-3 w-3" aria-hidden /> {edited !== null ? "Edit again" : "Edit this letter"}
+                <button type="button" disabled={openingEdit} onClick={() => openEditor(shown.html ?? "")} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-default bg-surface px-3 py-1 text-xs font-semibold text-primary transition-colors hover:border-[var(--brand-primary)]">
+                  <Pencil className="h-3 w-3" aria-hidden /> {openingEdit ? "Opening…" : edited !== null ? "Edit again" : "Edit this letter"}
                 </button>
               )}
             </div>
+            {editError && <p role="alert" className="mb-2 text-xs text-[var(--error)]">{editError}</p>}
+            {edited !== null && leftBlanks.length > 0 && (
+              <p className="mb-2 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary"><b className="text-primary">Still to fill in:</b> {leftBlanks.map((l) => `[${l}]`).join(", ")}. They show highlighted in the wording. Type the real details over them, or add them to the employee&apos;s record with Fix missing details and edit again.</p>
+            )}
             {edited !== null && (
               <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">
                 <p className="min-w-0 flex-1"><span className="font-semibold text-primary">{editing ? "Editing this letter only." : "This letter has been edited."}</span> The template is not changed, and the history will mark it Edited. Changing the employee, letter or answers starts again from the template.</p>

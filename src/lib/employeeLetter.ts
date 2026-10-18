@@ -85,6 +85,8 @@ export async function renderEmployeeLetter(opts: {
   refNo?: string;
   /** Letters issued for a visa or supplier company name that company as the employer. */
   issuerSupplierId?: string | null;
+  /** For editing by hand: a detail missing on the employee's record shows as "[Label]" instead of vanishing. */
+  markGaps?: boolean;
 }): Promise<RenderedLetter> {
   const companyName = opts.issuerSupplierId ? await supplierLetterName(opts.issuerSupplierId) : null;
   const [template, ev] = await Promise.all([
@@ -116,6 +118,7 @@ export async function renderEmployeeLetter(opts: {
   const labelOf = new Map(EMPLOYEE_MERGE_FIELDS.map((f) => [f.key, f.label]));
   const gaps = [...tokens].filter((t) => labelOf.has(t) && !(values[t] ?? "").trim()).map((t) => ({ key: t, label: labelOf.get(t)! }));
   const empty = gaps.map((g) => g.label);
+  if (opts.markGaps) for (const g of gaps) values[g.key] = `[${g.label}]`;
   return {
     ok: true,
     empty,
