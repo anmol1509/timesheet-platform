@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Download, FileText, Loader2, Package } from "lucide-react";
 import { m } from "motion/react";
@@ -8,6 +8,8 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { ClientLetterPaper } from "@/components/LetterPreview";
+import { EditWording } from "@/components/EditWording";
+import { loadDocEditAction } from "@/app/(platform)/(app)/doc-edit/actions";
 import type { marginsOfBranch } from "@/lib/paperMargins";
 import { useLetterheadImage } from "@/components/useLetterheadImage";
 import { cn } from "@/lib/cn";
@@ -116,7 +118,21 @@ function LetterBuilder({
   const [issuing, startIssue] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const template = templates.find((t) => t.id === templateId);
+  // Wording changed for this letter alone (kept until the NOC is made, then it moves onto the NOC).
+  const [override, setOverride] = useState<{ scope: string; html: string } | null>(null);
+  const [overrideTick, setOverrideTick] = useState(0);
+  const overrideScope = `${demand.id}:${templateId}`;
+  useEffect(() => {
+    if (!templateId) return;
+    let live = true;
+    void loadDocEditAction({ kind: isNoc ? "noc-draft" : "undertaking", subjectId: overrideScope })
+      .then((r) => { if (live) setOverride("error" in r || !r.edited ? null : { scope: overrideScope, html: r.html }); })
+      .catch(() => { if (live) setOverride(null); });
+    return () => { live = false; };
+  }, [overrideScope, overrideTick, isNoc, templateId]);
+  const baseTemplate = templates.find((t) => t.id === templateId);
+  const edited = override && override.scope === overrideScope ? override.html : null;
+  const template = baseTemplate && edited ? { ...baseTemplate, html: edited } : baseTemplate;
   const picked = workers.filter((w) => chosen.has(w.id));
   const columns = useMemo(() => {
     const keys = isNoc ? columnsFromNocFields([...fields]) : DEFAULT_LETTER_COLUMNS;
@@ -189,6 +205,12 @@ function LetterBuilder({
             <span className="mb-1 block text-xs font-medium text-muted">Letter</span>
             <Select value={templateId} onChange={setTemplateId} searchable={false} options={templates.map((t) => ({ value: t.id, label: t.name }))} />
           </label>
+          {templateId && (
+            <div className="-mt-2 flex items-center gap-3 text-xs">
+              <EditWording target={{ kind: isNoc ? "noc-draft" : "undertaking", subjectId: overrideScope }} label="Edit wording" onChanged={() => setOverrideTick((n) => n + 1)} />
+              {edited && <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-medium text-brand">Edited for this letter</span>}
+            </div>
+          )}
 
           <div>
             <div className="mb-1.5 flex items-center justify-between">
@@ -306,6 +328,7 @@ function LetterBuilder({
                   <a href={`/api/nocs/${n.id}${onLetterhead ? "?letterhead=1" : ""}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
                     <Download className="h-3.5 w-3.5" aria-hidden /> PDF
                   </a>
+                  <EditWording target={{ kind: "noc", subjectId: n.id }} label="Edit wording" className="inline-flex items-center gap-1 text-xs text-muted hover:text-[var(--brand-primary)] hover:underline" />
                 </li>
               ))}
             </ul>

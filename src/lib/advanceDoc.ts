@@ -67,7 +67,7 @@ export async function loadAdvanceDoc(id: string): Promise<AdvanceDoc | null> {
   // The wording: the company's own copy of the template if it has made one in Letters, else the built-in one.
   const base = await employeeLetterValues(l.employeeId, { canSeePay: false, companyName: letterhead.name });
   const values: Record<string, string> = { ...(base?.values ?? {}), REFNO: ref, ...advanceLetterValues({ ref, kind, amount: principal, reason: l.reason, requestedOn: day(l.createdAt)!, requestedBy: nameOf.get(l.createdById) ?? "—", approval, given, plan, balance }) };
-  const doc = await renderPresetDoc({ branchId: l.branchId, presetKey: given ? "advance-receipt" : "advance-request", values });
+  const doc = await renderPresetDoc({ branchId: l.branchId, presetKey: given ? "advance-receipt" : "advance-request", subjectId: l.id, values });
 
   return {
     ref,

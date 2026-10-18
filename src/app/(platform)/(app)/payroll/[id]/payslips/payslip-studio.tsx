@@ -16,6 +16,7 @@ import { PrintButton } from "./print-button";
  */
 export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHidden, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; margins: PaperMarginSet; defaultHidden: string[]; preselect: string | null }) {
   // Lines left off the payslip are folded into Other earnings / deductions, so totals and net pay never change.
+  const [note, setNote] = useState("");
   const [hidden, setHidden] = useState<string[]>(defaultHidden);
   const [savedHidden, setSavedHidden] = useState<string[]>(defaultHidden);
   const [savingDefault, setSavingDefault] = useState(false);
@@ -48,6 +49,7 @@ export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHid
   if ((showSignature || showStamp) && signatoryTitle.trim()) params.set("title", signatoryTitle.trim());
   // Always stated, so the download matches the preview even when it differs from the company default.
   params.set("hide", hidden.join(","));
+  if (note.trim()) params.set("note", note.trim().replace(/\s+/g, " ").slice(0, 300));
   const pdf = `/api/payroll/${runId}/payslips?${params}`;
   const hiddenChanged = hidden.slice().sort().join(",") !== savedHidden.slice().sort().join(",");
   const toggleHidden = (key: string) => setHidden((h) => (h.includes(key) ? h.filter((k) => k !== key) : [...h, key]));
@@ -111,6 +113,12 @@ export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHid
           </div>
         </section>
 
+        <section className="card space-y-2 p-4">
+          <h2 className="text-sm font-semibold text-primary">Note on payslip <span className="text-xs font-normal text-muted">(optional)</span></h2>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={300} placeholder="e.g. Eid bonus included in this month's allowances." className="input w-full" aria-label="Note printed on every payslip" />
+          <p className="text-xs text-muted">Printed under the figures on every payslip you download now. Only for this printout; it isn&apos;t saved.</p>
+        </section>
+
         <section className="card space-y-3 p-4">
           <h2 className="text-sm font-semibold text-primary">Signature &amp; printing <span className="text-xs font-normal text-muted">(optional)</span></h2>
           <p className="text-xs text-muted">Issued in the name of <strong>{issuer.name}</strong>.</p>
@@ -147,7 +155,7 @@ export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHid
                 <button type="button" className="rounded p-1 hover:bg-surface-hover disabled:opacity-40" disabled={at >= chosen.length - 1} onClick={() => setViewing(chosen[at + 1].s.lineId)} aria-label="Next payslip"><ChevronRight className="h-4 w-4" aria-hidden /></button>
               </span>
             </div>
-            <PayslipCard doc={doc} i={current.i} paper={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
+            <PayslipCard doc={doc} i={current.i} note={note.trim() ? note.trim().replace(/\s+/g, " ").slice(0, 300) : undefined} paper={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
           </>
         ) : <p className="card p-6 text-sm text-muted">Select at least one employee to preview their payslip.</p>}
       </div>

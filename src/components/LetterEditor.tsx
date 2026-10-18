@@ -178,7 +178,7 @@ function AskButton({ editor }: { editor: Editor }) {
   );
 }
 
-function Toolbar({ editor, fields, audience, oneOff }: { editor: Editor; fields: MergeField[]; audience: "SITE" | "EMPLOYEE"; oneOff?: boolean }) {
+function Toolbar({ editor, fields, audience, oneOff, noAsk }: { editor: Editor; fields: MergeField[]; audience: "SITE" | "EMPLOYEE"; oneOff?: boolean; noAsk?: boolean }) {
   const size = /^(\d+(?:\.\d+)?)pt$/.exec(editor.getAttributes("textStyle").fontSize ?? "")?.[1] ?? "";
   const family = FONT_FAMILIES.find((f) => f.value === editor.getAttributes("textStyle").fontFamily)?.value ?? "";
   const heading = editor.isActive("heading", { level: 1 }) ? "1" : editor.isActive("heading", { level: 2 }) ? "2" : editor.isActive("heading", { level: 3 }) ? "3" : "0";
@@ -237,7 +237,7 @@ function Toolbar({ editor, fields, audience, oneOff }: { editor: Editor; fields:
           <Table2 className="h-3.5 w-3.5" /> Worker table
         </button>
       )}
-      {audience === "EMPLOYEE" && !oneOff && <AskButton editor={editor} />}
+      {audience === "EMPLOYEE" && !oneOff && !noAsk && <AskButton editor={editor} />}
     </div>
   );
 }
@@ -248,6 +248,7 @@ export function LetterEditor({
   fields,
   audience,
   oneOff,
+  noAsk,
 }: {
   html: string;
   onChange: (html: string) => void;
@@ -255,6 +256,8 @@ export function LetterEditor({
   audience: "SITE" | "EMPLOYEE";
   /** Editing one finished letter: no merge fields or "ask when issuing" blanks, just the words. */
   oneOff?: boolean;
+  /** No "ask when issuing" blanks: there is no one to ask (letters made from records). */
+  noAsk?: boolean;
 }) {
   const known = useMemo(() => new Set(fields.map((f) => f.key).concat(audience === "SITE" ? ["SPONSORSHIPCOMPANYNAME"] : [])), [fields, audience]);
   const editor = useEditor({
@@ -276,7 +279,7 @@ export function LetterEditor({
   if (!editor) return <div className="h-96 animate-pulse rounded-lg bg-surface-sunken" />;
   return (
     <div className="letter-editor overflow-hidden rounded-lg border border-default">
-      <Toolbar editor={editor} fields={fields} audience={audience} oneOff={oneOff} />
+      <Toolbar editor={editor} fields={fields} audience={audience} oneOff={oneOff} noAsk={noAsk} />
       <EditorContent editor={editor} />
     </div>
   );

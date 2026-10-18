@@ -36,6 +36,8 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
           validUntil: isoDay(q.validUntil),
           nextFollowUpAt: isoDay(q.nextFollowUpAt),
           terms: q.terms ?? "",
+          coverIntro: q.coverIntro ?? "",
+          coverClosing: q.coverClosing ?? "",
           accommodationResponsibility: q.accommodationResponsibility ?? "",
           transportationResponsibility: q.transportationResponsibility ?? "",
           ppeResponsibility: q.ppeResponsibility ?? "",

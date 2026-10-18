@@ -1,3 +1,4 @@
+import { EditWording } from "@/components/EditWording";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -38,6 +39,7 @@ export default async function NocDetailPage({ params }: { params: Promise<{ id: 
             <a href={`/api/nocs/${noc.id}`} className="btn btn-secondary">
               Download plain
             </a>
+            <EditWording target={{ kind: "noc", subjectId: noc.id }} label="Edit wording" className="btn btn-secondary inline-flex items-center gap-1.5" />
             <DeleteButton
               action={deleteNocAction}
               hiddenFields={{ nocId: noc.id }}

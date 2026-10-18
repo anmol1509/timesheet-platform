@@ -110,6 +110,7 @@ model Branch {
   lookupValues         LookupValue[]
   demandRequests       DemandRequest[]
   letterTemplates      LetterTemplate[]
+  documentEdits        DocumentEdit[]
   nocs                 Noc[]
   lpos                 Lpo[]
   attendance           Attendance[]
@@ -1171,6 +1172,9 @@ model Quotation {
   status                       String    @default("DRAFT") // "DRAFT" | "SENT" | "NEGOTIATION" | "APPROVED" | "ACCEPTED" | "REJECTED" | "CONVERTED"
   validUntil                   DateTime?
   terms                        String?
+  /// Opening and closing paragraphs written for this quotation alone; empty uses the chosen cover text.
+  coverIntro                   String?
+  coverClosing                 String?
   accommodationResponsibility  String?
   transportationResponsibility String?
   ppeResponsibility            String?
@@ -2979,4 +2983,26 @@ model RenewalCase {
   @@unique([kind, subjectId, document, expiry])
   @@index([branchId, status])
   @@index([ownerId])
+}
+
+/// Wording changed for one document only (a NOC, an undertaking, a settlement letter, a deduction notice, an advance
+/// letter, a salary revision letter). Kept with its merge fields, so it still fills in from the records each time the
+/// document is printed. The template itself is never touched.
+model DocumentEdit {
+  id           String   @id @default(cuid())
+  /// noc | undertaking | noc-draft | salary-revision | final-settlement | deduction-notice | advance-request | advance-receipt
+  kind         String
+  /// The record the wording belongs to, e.g. a NOC id, or "demandId:templateId" for an undertaking.
+  subjectId    String
+  bodyHtml     String
+  editedById   String?
+  editedByName String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([kind, subjectId])
+  @@index([branchId])
 }

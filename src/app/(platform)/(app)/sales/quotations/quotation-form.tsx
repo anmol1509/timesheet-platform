@@ -52,6 +52,8 @@ export type QuotationFormInitial = {
   contactId: string;
   validUntil: string;
   terms: string;
+  coverIntro: string;
+  coverClosing: string;
   accommodationResponsibility: string;
   transportationResponsibility: string;
   ppeResponsibility: string;
@@ -109,6 +111,8 @@ export function QuotationForm({
   const [nextFollowUpAt, setNextFollowUpAt] = useState(initial.nextFollowUpAt);
   const [currency, setCurrency] = useState(initial.currency);
   const [terms, setTerms] = useState(initial.terms);
+  const [coverIntro, setCoverIntro] = useState(initial.coverIntro);
+  const [coverClosing, setCoverClosing] = useState(initial.coverClosing);
   const [accommodation, setAccommodation] = useState(initial.accommodationResponsibility);
   const [transport, setTransport] = useState(initial.transportationResponsibility);
   const [ppe, setPpe] = useState(initial.ppeResponsibility);
@@ -146,7 +150,7 @@ export function QuotationForm({
   }
 
   function formState() {
-    return { clientId, contactId, validUntil, nextFollowUpAt, currency, terms, accommodation, transport, ppe, showCost, adjustments, lines };
+    return { clientId, contactId, validUntil, nextFollowUpAt, currency, terms, coverIntro, coverClosing, accommodation, transport, ppe, showCost, adjustments, lines };
   }
 
   function submit() {
@@ -163,6 +167,8 @@ export function QuotationForm({
     fd.append("nextFollowUpAt", nextFollowUpAt);
     fd.append("currency", currency);
     fd.append("terms", terms);
+    fd.append("coverIntro", coverIntro);
+    fd.append("coverClosing", coverClosing);
     fd.append("accommodationResponsibility", accommodation);
     fd.append("transportationResponsibility", transport);
     fd.append("ppeResponsibility", ppe);
@@ -230,6 +236,8 @@ export function QuotationForm({
               setNextFollowUpAt(d.nextFollowUpAt ?? "");
               setCurrency(d.currency ?? "AED");
               setTerms(d.terms ?? "");
+              setCoverIntro(d.coverIntro ?? "");
+              setCoverClosing(d.coverClosing ?? "");
               setAccommodation(d.accommodation ?? "");
               setTransport(d.transport ?? "");
               setPpe(d.ppe ?? "");
@@ -349,6 +357,12 @@ export function QuotationForm({
             <span className="mb-1 block text-xs font-medium text-muted">Other terms</span>
             <textarea value={terms} onChange={(e) => setTerms(e.target.value)} rows={2} className="input w-full" />
           </label>
+          <div className="sm:col-span-3">
+            <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">Wording around the table (this quotation only)</h3>
+            <p className="mt-1 text-xs text-muted">Leave empty to use the cover text you pick when sending. Anything written here replaces it for this quotation. <code>{"{CLIENT}"}</code>, <code>{"{CONTACT}"}</code>, <code>{"{TOTAL}"}</code>, <code>{"{VALID_UNTIL}"}</code>, <code>{"{DATE}"}</code> and <code>{"{COMPANY}"}</code> are filled in.</p>
+            <label className="mt-2 block"><span className="mb-1 block text-xs font-medium text-muted">Opening paragraph</span><textarea value={coverIntro} onChange={(e) => setCoverIntro(e.target.value)} rows={3} className="input w-full" maxLength={2000} /></label>
+            <label className="mt-2 block"><span className="mb-1 block text-xs font-medium text-muted">Closing paragraph</span><textarea value={coverClosing} onChange={(e) => setCoverClosing(e.target.value)} rows={3} className="input w-full" maxLength={2000} /></label>
+          </div>
         </div>
       </div>
 

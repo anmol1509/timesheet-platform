@@ -33,6 +33,8 @@ export default async function NewQuotationPage({
           validUntil: "",
           nextFollowUpAt: "",
           terms: "",
+          coverIntro: "",
+          coverClosing: "",
           accommodationResponsibility: "",
           transportationResponsibility: "",
           ppeResponsibility: "",
