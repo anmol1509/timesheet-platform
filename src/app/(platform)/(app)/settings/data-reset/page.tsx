@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { requireUserWithBranch } from "@/lib/auth";
 import { RESET_MODULES } from "@/lib/dataReset";
 import { ResetModuleCard } from "./reset-module-card";
@@ -27,9 +27,14 @@ export default async function DataResetPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Data Reset"
-        description="Permanently delete a module's data to reset for testing. Every reset is logged to the Audit Log and cannot be undone."
+      <HeroHeader
+        icon={AlertTriangle}
+        title="Reset data"
+        subtitle="Permanently delete a module's data, for testing or before go-live. Every reset is logged and cannot be undone."
+        pills={[
+          { label: "Modules", value: String(modules.length) },
+          { label: "Records held", value: String(modules.reduce((n, m) => n + m.count, 0)) },
+        ]}
       />
 
       <div className="flex items-start gap-3 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-3 text-sm text-[var(--error)]">

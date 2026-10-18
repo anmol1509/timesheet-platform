@@ -1,5 +1,5 @@
 import { Wrench, Plus } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -64,10 +64,16 @@ export default async function SkillsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Trades"
+      <HeroHeader
         icon={Wrench}
-        description={<>The trades your workforce holds, and where demand is highest.</>}
+        title="Trades"
+        subtitle="The trades your workforce holds, and where demand is highest."
+        pills={[
+          { label: "Trades", value: String(rows.length) },
+          { label: "Workers with a trade", value: String(rows.reduce((n, r) => n + r.employeeCount, 0)) },
+          { label: "Idle now", value: String(rows.reduce((n, r) => n + r.idle, 0)) },
+          { label: "Open demand", value: String(rows.reduce((n, r) => n + r.openDemand, 0)), warn: rows.some((r) => r.openDemand > 0) },
+        ]}
       />
 
       <form

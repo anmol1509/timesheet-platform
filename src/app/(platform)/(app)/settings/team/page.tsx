@@ -1,5 +1,5 @@
 import { UserCog } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
@@ -45,10 +45,16 @@ export default async function TeamPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Team & access"
+      <HeroHeader
         icon={UserCog}
-        description={<>Add sub-users, choose what each can open and do, suspend or reset them. Permission sets are built on the Roles &amp; permissions tab.</>}
+        title="Team & access"
+        subtitle="Add sub-users, choose what each can open and do, suspend or reset them."
+        pills={[
+          { label: "Can sign in", value: String(rows.filter((r) => r.isActive).length) },
+          { label: "Suspended", value: String(rows.filter((r) => !r.isActive).length), warn: rows.some((r) => !r.isActive) },
+          { label: "Roles", value: String(accessRoles.length) },
+          { label: "No role set", value: String(rows.filter((r) => !r.accessRoleId && r.role !== "SUPER_ADMIN" && r.role !== "BRANCH_ADMIN").length) },
+        ]}
       />
       <TeamManager users={rows} branches={branches} accessRoles={accessRoles} isSuperAdmin={isSuperAdmin} />
     </div>

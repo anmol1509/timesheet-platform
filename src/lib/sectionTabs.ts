@@ -14,6 +14,23 @@ export type SectionTab = {
 const under = (base: string) => (p: string) => p === base || p.startsWith(base + "/");
 
 export const SECTION_TABS: SectionTab[][] = [
+  // Administration: the company itself
+  [
+    { href: "/settings/company", label: "Company profile", match: under("/settings/company") },
+    { href: "/settings", label: "Branches & billing", match: (p) => p === "/settings" },
+  ],
+  // Administration: getting data in, keeping it clean, and wiping it
+  [
+    { href: "/import", label: "Import", match: under("/import") },
+    { href: "/data-health", label: "Data health", match: under("/data-health") },
+    { href: "/lookups", label: "Lookups", match: under("/lookups") },
+    { href: "/settings/data-reset", label: "Reset data", match: under("/settings/data-reset") },
+  ],
+  // Administration: what happened, and what people told the assistant
+  [
+    { href: "/audit-log", label: "Audit log", match: under("/audit-log") },
+    { href: "/settings/assistant", label: "Assistant feedback", match: under("/settings/assistant") },
+  ],
   // Who can sign in, and what each person may open and do
   [
     { href: "/settings/team", label: "Team", match: under("/settings/team") },

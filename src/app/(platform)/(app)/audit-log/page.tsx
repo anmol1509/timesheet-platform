@@ -1,5 +1,5 @@
 import { History } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -40,28 +40,18 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageHeader
-          title="Audit Log"
-          icon={History}
-          description={<>Who changed what, in plain words, across every module. {entityType && entityId ? "Showing the history of one record." : `Showing the most recent ${MAX_ROWS} entries.`}</>}
-        />
-        <ExportDialog />
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {[
-          { l: "Changes today", v: today.length, sub: `${new Set(today.map((e) => e.userName)).size} people` },
-          { l: "Most active", v: topUser ?? "—", sub: topUser ? "today" : "no activity today" },
-          { l: "Busiest area", v: topModule ?? "—", sub: "today" },
-        ].map((t) => (
-          <div key={t.l} className="card px-3 py-2.5 sm:px-4 sm:py-3">
-            <p className="truncate text-[11px] font-medium text-muted sm:text-xs">{t.l}</p>
-            <p className="tabular mt-0.5 truncate text-base font-semibold tracking-tight text-primary sm:text-xl">{t.v}</p>
-            <p className="hidden text-xs text-subtle sm:block">{t.sub}</p>
-          </div>
-        ))}
-      </div>
+      <HeroHeader
+        icon={History}
+        title="Audit log"
+        subtitle={entityType && entityId ? "The history of one record: who changed what, in plain words." : `Who changed what, in plain words, across every module. Showing the most recent ${MAX_ROWS} entries.`}
+        pills={[
+          { label: "Changes today", value: String(today.length) },
+          { label: "People active", value: String(new Set(today.map((e) => e.userName)).size) },
+          { label: "Most active", value: topUser ?? "—" },
+          { label: "Busiest area", value: topModule ?? "—" },
+        ]}
+        actions={<ExportDialog triggerClassName={heroButton(true)} />}
+      />
 
       {entries.length === 0 ? (
         <div className="empty-state">

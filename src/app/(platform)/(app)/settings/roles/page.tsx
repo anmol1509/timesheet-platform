@@ -1,5 +1,5 @@
 import { KeyRound } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { RolesManager } from "./roles-manager";
@@ -21,10 +21,15 @@ export default async function RolesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Roles & permissions"
+      <HeroHeader
         icon={KeyRound}
-        description={<>A role is a set of modules and actions. Assign one to a team member on the Team tab to limit what they can see and do. Admins always have full access.</>}
+        title="Roles & permissions"
+        subtitle="A role is a set of modules and actions. Assign one on the Team tab to limit what a person can see and do. Admins always have full access."
+        pills={[
+          { label: "Roles", value: String(roles.length) },
+          { label: "People assigned", value: String(roles.reduce((n, r) => n + r.users.length, 0)) },
+          { label: "Unused roles", value: String(roles.filter((r) => r.users.length === 0).length) },
+        ]}
       />
       <RolesManager
         isSuperAdmin={isSuperAdmin}

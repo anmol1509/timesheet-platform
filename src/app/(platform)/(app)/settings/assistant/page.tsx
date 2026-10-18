@@ -1,5 +1,5 @@
 import { MessageSquareWarning } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
@@ -25,17 +25,17 @@ export default async function AssistantFeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Assistant feedback"
-        description="Questions My Assistant could not resolve and answers people marked not helpful. Each one is a gap in the help it gives: add or fix a guide, then mark it reviewed."
+      <HeroHeader
         icon={MessageSquareWarning}
+        title="Assistant feedback"
+        subtitle="Questions My Assistant could not resolve and answers marked not helpful. Each is a gap: fix the guide, then mark it reviewed."
+        pills={[
+          { label: "To review", value: String(open.length), warn: open.length > 0 },
+          { label: "Helpful (30d)", value: rated > 0 ? `${up} · ${Math.round((up / rated) * 100)}%` : String(up) },
+          { label: "Not helpful (30d)", value: String(down), warn: down > 0 },
+          { label: "Unanswered (30d)", value: String(unanswered), warn: unanswered > 0 },
+        ]}
       />
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="card p-4"><p className="text-xs text-muted">Helpful (last 30 days)</p><p className="mt-1 text-2xl font-semibold text-primary">{up}</p>{rated > 0 && <p className="text-xs text-muted">{Math.round((up / rated) * 100)}% of {rated} rated</p>}</div>
-        <div className="card p-4"><p className="text-xs text-muted">Not helpful (last 30 days)</p><p className="mt-1 text-2xl font-semibold text-primary">{down}</p></div>
-        <div className="card p-4"><p className="text-xs text-muted">Could not resolve (last 30 days)</p><p className="mt-1 text-2xl font-semibold text-primary">{unanswered}</p></div>
-      </div>
-
       <section className="card overflow-hidden">
         <h2 className="border-b border-default px-4 py-3 text-sm font-semibold text-primary">To review ({open.length})</h2>
         {open.length === 0 ? (

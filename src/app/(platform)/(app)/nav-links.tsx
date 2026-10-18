@@ -17,7 +17,6 @@ import {
   BedDouble,
   FileText,
   Clock,
-  Settings as SettingsIcon,
   ChevronRight,
   Truck,
   Bus,
@@ -27,7 +26,6 @@ import {
   Wallet,
   ListChecks,
   History,
-  MessageSquareWarning,
   Building,
   UserCog,
   ShieldCheck,
@@ -39,14 +37,12 @@ import {
   FilePlus2,
   HardHat,
   FileStack,
-  Trash2,
   Banknote,
   Landmark,
   Inbox,
   FileClock,
   UserCheck,
   type LucideIcon,
-  HeartPulse,
   FileOutput,
   Pin,
   PinOff, KeyRound,
@@ -242,8 +238,6 @@ const NAV: Entry[] = [
   },
 ];
 
-const ADMIN_ITEM: Item = { href: "/settings", label: "Settings", icon: SettingsIcon };
-
 export type NavPage = { href: string; label: string; group: string; icon: LucideIcon };
 
 /** Flattens the nav into one list of every reachable page — consumed by the
@@ -265,7 +259,6 @@ export function getNavPages(
       }
     }
   }
-  if (isAdmin) pages.push({ href: ADMIN_ITEM.href, label: ADMIN_ITEM.label, group: "Administration", icon: ADMIN_ITEM.icon });
   return pages;
 }
 
@@ -291,17 +284,10 @@ function adminGroup(): Entry {
     icon: ListChecks,
     category: "Setup",
     children: [
-      { href: "/settings/company", label: "Company Profile", icon: Building },
-      { href: "/import", label: "Import Data", icon: UploadIcon },
-      { href: "/data-health", label: "Data health", icon: HeartPulse },
-      { href: "/settings/team", label: "Team & Access", icon: UserCog },
-      { href: "/settings/developers", label: "Developers", icon: KeyRound },
-      { href: "/lookups", label: "Lookups", icon: ListChecks },
-      { href: "/audit-log", label: "Audit Log", icon: History },
-      { href: "/settings/assistant", label: "Assistant feedback", icon: MessageSquareWarning },
-      // Deletes real data. The whole group is admin-only; the page and its
-      // actions additionally confine a branch admin to their own branch.
-      { href: "/settings/data-reset", label: "Data Reset", icon: Trash2 },
+      { href: "/settings/company", label: "Company", icon: Building, alsoMatch: ["/settings"] },
+      { href: "/settings/team", label: "Team & Access", icon: UserCog, alsoMatch: ["/settings/roles", "/settings/developers"] },
+      { href: "/import", label: "Data", icon: UploadIcon, alsoMatch: ["/data-health", "/lookups", "/settings/data-reset"] },
+      { href: "/audit-log", label: "Audit & feedback", icon: History, alsoMatch: ["/settings/assistant"] },
     ],
   };
 }
@@ -427,10 +413,7 @@ export function NavLinks({
   // the same URL. See matchSpecificity/resolveActiveHref. Cheap enough (~40
   // items) to recompute every render rather than memoize against `entries`,
   // which is itself rebuilt each render.
-  const navCandidates = isAdmin
-    ? [...entries, { type: "link" as const, item: ADMIN_ITEM, category: "" }]
-    : entries;
-  const activeHref = resolveActiveHref(pathname, navCandidates);
+  const activeHref = resolveActiveHref(pathname, entries);
 
   // Any number of groups can be open. What is open comes from the groups this browser last left open, plus
   // the group holding the current page (so a deep link or a search result reveals where you are). Collapsing
@@ -474,9 +457,8 @@ export function NavLinks({
       if (e.type === "link") m.set(e.item.href, e.item);
       else for (const c of e.children) m.set(c.href, c);
     }
-    if (isAdmin) m.set(ADMIN_ITEM.href, ADMIN_ITEM);
     return m;
-  }, [entries, isAdmin]);
+  }, [entries]);
   const pins = useMemo(() => {
     let list: string[] = [];
     try {
@@ -729,26 +711,6 @@ export function NavLinks({
           </div>
         );
       })}
-
-      {isAdmin &&
-        (collapsed ? (
-          <Tooltip label={ADMIN_ITEM.label} className="w-full">
-            <Link
-              href={ADMIN_ITEM.href}
-              aria-label={ADMIN_ITEM.label}
-              aria-current={ADMIN_ITEM.href === activeHref ? "page" : undefined}
-              className={cn(
-                ROW,
-                "h-9 w-9 justify-center",
-                ADMIN_ITEM.href === activeHref ? ACTIVE : INACTIVE
-              )}
-            >
-              <ADMIN_ITEM.icon className="h-4 w-4 shrink-0" />
-            </Link>
-          </Tooltip>
-        ) : (
-          renderLeaf(ADMIN_ITEM, 0)
-        ))}
     </nav>
   );
 }

@@ -1,5 +1,5 @@
 import { KeyRound } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { HeroHeader } from "@/components/HeroHeader";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SITE } from "@/app/(marketing)/welcome/content";
@@ -44,10 +44,15 @@ export default async function DevelopersPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Developers"
+      <HeroHeader
         icon={KeyRound}
-        description="API keys let Zoho Books, Tally, attendance devices or your own software read data from this account. Each key sees only this company and only the permissions you give it."
+        title="Developers"
+        subtitle="API keys let Zoho Books, Tally, attendance devices or your own software read data from this account, scoped to the permissions you give."
+        pills={[
+          { label: "API access", value: branch?.apiAccess ? "On" : "Off", warn: !branch?.apiAccess },
+          { label: "Active keys", value: String(rows.filter((r) => !r.revoked).length) },
+          { label: "Webhooks", value: String(endpoints.length) },
+        ]}
       />
       {!branchId ? (
         <p className="card p-5 text-sm text-muted">Pick a branch from the switcher (top right) to manage its API keys.</p>

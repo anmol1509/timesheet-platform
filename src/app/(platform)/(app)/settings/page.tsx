@@ -1,8 +1,7 @@
-import { Settings } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { Landmark } from "lucide-react";
+import { HeroHeader } from "@/components/HeroHeader";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import Link from "next/link";
 import { setBranchApiAccessAction, updateIssuedToAction } from "./actions";
 import { CreateBranchForm } from "./create-branch-form";
 import { MaskedInput } from "@/components/ui/MaskedInput";
@@ -22,10 +21,15 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Settings"
-        icon={Settings}
-        description={<>Billing defaults, branches, and account & access management.</>}
+      <HeroHeader
+        icon={Landmark}
+        title="Branches & billing"
+        subtitle="The name and TRN printed on invoices, and the branches that make up this account."
+        pills={[
+          { label: "Billing as", value: billingBranch ? (billingBranch.issuedTo ?? billingBranch.name) : "No branch picked" },
+          { label: "TRN", value: billingBranch?.trn ? "Set" : "Missing", warn: !!billingBranch && !billingBranch.trn },
+          ...(isSuperAdmin ? [{ label: "Branches", value: String(branches.length) }, { label: "API access on", value: String(branches.filter((b) => b.apiAccess).length) }] : []),
+        ]}
       />
 
       <section>
@@ -39,7 +43,7 @@ export default async function SettingsPage() {
         ) : (
         <form
           action={updateIssuedToAction}
-          className="card max-w-md p-5"
+          className="card max-w-xl p-5"
         >
           <input type="hidden" name="branchId" value={billingBranch.id} />
           <p className="mb-3 text-xs text-muted">Billing details for <span className="font-medium text-primary">{billingBranch.name}</span>.</p>
@@ -115,23 +119,6 @@ export default async function SettingsPage() {
           </div>
         </section>
       )}
-
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-primary">Account &amp; access</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {[
-            { href: "/settings/company", title: "Company profile", body: "Logo, name, address and TRN — shown in the sidebar and on generated documents." },
-            { href: "/settings/team", title: "Team & access", body: "Add sub-users, assign what they can open and do, suspend or reset them." },
-            { href: "/settings/roles", title: "Roles & permissions", body: "Build permission sets per module and action (view, create, edit, delete, approve, export)." },
-            { href: "/settings/developers", title: "Developers", body: "API keys for connecting Zoho Books, Tally, attendance devices and your own software (Pro and Custom plans)." },
-          ].map((c) => (
-            <Link key={c.href} href={c.href} className="card block p-4 transition hover:border-[var(--brand-primary)]">
-              <h3 className="text-sm font-semibold text-primary">{c.title}</h3>
-              <p className="mt-1 text-xs text-muted">{c.body}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
