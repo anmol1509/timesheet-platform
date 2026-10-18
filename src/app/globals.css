@@ -697,3 +697,12 @@ main .card > div > table > thead > tr:first-child > th:last-child {
   .rx-drawer[data-state="open"],
   .rx-drawer[data-state="closed"] { animation: none; }
 }
+
+/* A small picture of a letter on paper (Templates screen). The sheet is laid out at 794px and scaled down. */
+.paper-thumb .tpl-body p { margin: 0 0 9px; }
+.paper-thumb .tpl-body ul { list-style: disc; padding-left: 22px; margin: 0 0 9px; }
+.paper-thumb .tpl-body ol { list-style: decimal; padding-left: 22px; margin: 0 0 9px; }
+.paper-thumb .tpl-body table { border-collapse: collapse; width: 100%; margin: 0 0 9px; font-size: 11px; }
+.paper-thumb .tpl-body th, .paper-thumb .tpl-body td { border: 1px solid #333; padding: 3px 6px; text-align: left; }
+.paper-thumb .tpl-body th { background: #e5e7eb; }
+.paper-thumb .tpl-body h1, .paper-thumb .tpl-body h2, .paper-thumb .tpl-body h3 { font-weight: 700; margin: 0 0 8px; }
