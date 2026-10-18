@@ -60,3 +60,36 @@ export function approvalBlockers(f: BlockerFacts): string[] {
 }
 
 export { wpsGaps };
+
+/** A button under an answer that takes the person straight to the place that fixes the cause. */
+export type AssistantAction = { label: string; href: string };
+
+/** The fix for each cause `missingFromPayrollReasons` can name. Causes with no fix (terminated, not yet joined) get no button. */
+export function missingFromPayrollFixes(
+  f: MissingFacts,
+  ids: { employeeId: string; employeeName: string; supplierId: string | null; runId: string | null }
+): AssistantAction[] {
+  if (f.inRun) return [];
+  const out: AssistantAction[] = [];
+  const first = ids.employeeName.split(/\s+/)[0] || "worker";
+  if (!f.company) out.push({ label: `Set ${first}'s company`, href: `/employees/${ids.employeeId}` });
+  else if (!f.company.isOwnCompany && ids.supplierId) out.push({ label: `Open ${f.company.name}`, href: `/suppliers/${ids.supplierId}` });
+  if (payDataGap(f.company?.payType ?? null, f.pay)) out.push({ label: `Set ${first}'s pay`, href: `/employees/${ids.employeeId}?tab=trade` });
+  if (f.hourlyHours !== null && f.hourlyHours <= 0) out.push({ label: "Add the month's timesheet", href: "/timesheets" });
+  if (!f.runExists) out.push({ label: "Start the payroll run", href: "/payroll" });
+  else if (ids.runId) out.push({ label: "Open the run to recalculate", href: `/payroll/${ids.runId}` });
+  return out;
+}
+
+/** The fix for each blocker `approvalBlockers` can name; bank-detail gaps get one button per worker (first three). */
+export function payrollBlockerFixes(
+  f: BlockerFacts,
+  run: { id: string; label: string },
+  workers: { employeeId: string; name: string }[]
+): AssistantAction[] {
+  if (f.status !== "DRAFT") return [];
+  const out: AssistantAction[] = [];
+  if (f.lineCount === 0 || !f.submitted) out.push({ label: f.lineCount === 0 ? `Open ${run.label}` : "Submit for approval", href: `/payroll/${run.id}` });
+  for (const w of workers.slice(0, 3)) out.push({ label: `Fix ${w.name.split(/\s+/)[0]}'s bank details`, href: `/employees/${w.employeeId}?tab=payroll` });
+  return out;
+}

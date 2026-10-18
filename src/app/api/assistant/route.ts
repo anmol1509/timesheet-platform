@@ -6,6 +6,8 @@ import { moduleForPath, viewableModules } from "@/lib/permissions";
 import { ASSISTANT_LIMIT, rateLimit } from "@/lib/rateLimit";
 import { ASSISTANT_FALLBACK_MODEL, ASSISTANT_MODEL, assistantModelExtras } from "@/lib/constants";
 import { TOOLS, runTool, type AssistantTable, type RecordLink } from "@/lib/assistantTools";
+import type { AssistantAction } from "@/lib/assistantDiagnose";
+import { collectSources } from "@/lib/assistantSources";
 import {
   EXTRA_PAGES,
   MAX_MESSAGES,
@@ -102,6 +104,8 @@ export async function POST(request: Request) {
     const convo: Anthropic.Messages.MessageParam[] = [...messages];
     const recordLinks: RecordLink[] = [];
     let table: AssistantTable | undefined;
+    const actions: AssistantAction[] = [];
+    const sources: string[] = [];
 
     let text: Anthropic.Messages.TextBlock | undefined;
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
@@ -144,6 +148,8 @@ export async function POST(request: Request) {
         const out = await runTool(block.name, block.input, ctx);
         recordLinks.push(...(out.links ?? []));
         if (out.table) table = out.table;
+        actions.push(...(out.actions ?? []));
+        sources.push(...(out.sources ?? []));
         results.push({ type: "tool_result", tool_use_id: block.id, content: out.content });
       }
       convo.push({ role: "user", content: results });
@@ -167,7 +173,9 @@ export async function POST(request: Request) {
         .create({ data: { userId: user.id, userName: user.name, branchId: user.role === "SUPER_ADMIN" ? branchId : user.branchId, page: path, question, answer, unanswered: true } })
         .catch((e) => console.error("assistant: could not save an unanswered question", e));
     }
-    return NextResponse.json({ answer, links, needsSupport, ...(table ? { table } : {}) });
+    // Fix buttons come from the tools, never from the model, so each one is a place the person is already allowed to open.
+    const fixes = [...new Map(actions.map((a) => [a.href, a])).values()].slice(0, 4);
+    return NextResponse.json({ answer, links, needsSupport, sources: collectSources(sources), ...(fixes.length ? { actions: fixes } : {}), ...(table ? { table } : {}) });
   } catch (err) {
     console.error("assistant failed", err);
     return NextResponse.json({ error: "The assistant is unavailable right now." }, { status: 502 });

@@ -1,7 +1,8 @@
 import { FileSearch } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { getCurrentUser, requireUserWithBranch } from "@/lib/auth";
+import { InstantPrintSheet } from "./print-sheet";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { InstantViewPicker } from "./picker";
 import { Badge } from "@/components/Badge";
@@ -82,9 +83,15 @@ export default async function InstantViewPage({
   const validEmployee =
     employee && !isOutsideBranch(employee.branchId, branchId, isSuperAdmin) ? employee : null;
 
+  const printedBy = (await getCurrentUser())?.name ?? "";
+  const printedAt = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
   return (
     <div className="space-y-5">
+      {/* A page of its own for paper: the sheet below replaces the screen layout, and the browser's date/URL margins are dropped. */}
+      <style>{`@media print { @page { size: A4; margin: 0; } }`}</style>
       <PageHeader
+        className="print:hidden"
         title="Employee Instant View"
         icon={FileSearch}
         description={<>A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.</>}
@@ -93,7 +100,7 @@ export default async function InstantViewPage({
       <InstantViewPicker category={category} employeeId={employeeId ?? ""} employees={employees} />
 
       {validEmployee && (
-        <div className="card space-y-6 p-6">
+        <div className="card space-y-6 p-6 print:hidden">
           <div className="flex items-center gap-4">
             {/* A snapshot used to identify someone at a gate needs the face. */}
             <span className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-default bg-surface-sunken">
@@ -323,6 +330,7 @@ export default async function InstantViewPage({
           </div>
         </div>
       )}
+      {validEmployee && <InstantPrintSheet employee={validEmployee} printedBy={printedBy} printedAt={printedAt} />}
     </div>
   );
 }

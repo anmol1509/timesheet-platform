@@ -16,6 +16,7 @@ type Strings = {
   helpful: string; notHelpful: string; thanks: string; sendToSupport: string; sentToSupport: string; sending: string; thisScreen: string;
   thinking: string; footnote: string; expand: string; dock: string; close: string;
   lookingAt: (page: string) => string; answeredIn: (secs: number) => string;
+  basedOn: string; fixIt: string; attention: string; allClear: string; why: string;
 };
 
 const EN: Strings = {
@@ -42,6 +43,7 @@ const EN: Strings = {
   close: "to close",
   lookingAt: (page) => `Looking at ${page}`,
   answeredIn: (secs) => `Answered in ${secs}s`,
+    basedOn: "Based on", fixIt: "Fix it", attention: "Needs attention today", allClear: "All clear. Nothing needs attention today.", why: "Why?",
 };
 
 export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
@@ -70,6 +72,7 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     close: "बंद करने के लिए",
     lookingAt: (page) => `${page} देख रहा है`,
     answeredIn: (secs) => `${secs} सेकंड में जवाब`,
+    basedOn: "आधार", fixIt: "ठीक करें", attention: "आज ध्यान देने योग्य", allClear: "सब ठीक है। आज कुछ भी ध्यान देने योग्य नहीं है।", why: "क्यों?",
   },
   ur: {
     ready: "مدد کے لیے تیار",
@@ -95,6 +98,7 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     close: "بند کرنے کے لیے",
     lookingAt: (page) => `${page} دیکھ رہا ہے`,
     answeredIn: (secs) => `${secs} سیکنڈ میں جواب`,
+    basedOn: "ماخذ", fixIt: "درست کریں", attention: "آج توجہ طلب", allClear: "سب ٹھیک ہے۔ آج کوئی چیز توجہ طلب نہیں۔", why: "کیوں؟",
   },
   ne: {
     ready: "सहयोगका लागि तयार",
@@ -120,6 +124,7 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     close: "बन्द गर्न",
     lookingAt: (page) => `${page} हेर्दै`,
     answeredIn: (secs) => `${secs} सेकेन्डमा जवाफ`,
+    basedOn: "आधार", fixIt: "समाधान गर्नुहोस्", attention: "आज ध्यान दिनुपर्ने", allClear: "सबै ठीक छ। आज कुनै कुरामा ध्यान दिनुपर्ने छैन।", why: "किन?",
   },
 };
 
