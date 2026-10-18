@@ -3,24 +3,24 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { LETTER_PRESETS, presetByKey, presetHtml } from "@/lib/letterPresets";
-import { htmlToText, templateHtml } from "@/lib/letterHtml";
-import { Badge } from "@/components/Badge";
+import { sampleFilledHtml } from "@/lib/templatePaper";
+import { formatLetterDate } from "@/lib/letterLayout";
+import { askLabels, htmlToText, templateHtml } from "@/lib/letterHtml";
 import { Copy } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { AddDefaultsButton, NewTemplateButton } from "./gallery";
-import { duplicateTemplateAction } from "./actions";
+import { TemplateGallery, type TemplateCard } from "./template-gallery";
 
 export const metadata = { title: "Letter templates" };
-
-const snippet = (t: { bodyHtml: string | null; remarksText: string }) => htmlToText(templateHtml(t)).replace(/%%[^%\n]+?%%/g, "…").replace(/\n+/g, " ").slice(0, 150);
 
 export default async function LetterTemplatesPage({ searchParams }: { searchParams: Promise<{ error?: string; tab?: string }> }) {
   await requireAdmin();
   const { error, tab = "all" } = await searchParams;
   const { branchId } = await requireUserWithBranch();
-  const [templates, usage] = await Promise.all([
+  const [templates, nocUse, letterUse] = await Promise.all([
     prisma.letterTemplate.findMany({ where: branchWhere(branchId), orderBy: [{ category: "asc" }, { name: "asc" }] }),
-    prisma.noc.groupBy({ by: ["templateId"], where: branchWhere(branchId), _count: true }),
+    prisma.noc.groupBy({ by: ["templateId"], where: branchWhere(branchId), _count: { _all: true }, _max: { createdAt: true } }),
+    prisma.issuedLetter.groupBy({ by: ["templateId"], where: { ...branchWhere(branchId), templateId: { not: null } }, _count: { _all: true }, _max: { createdAt: true } }),
   ]);
   // Which kind of letter each template is, for the tabs.
   const kindOf = (t: { audience: string; category: string | null }): string =>
@@ -34,9 +34,29 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
   ];
   const counts = new Map<string, number>(TABS.map((x) => [x.key, x.key === "all" ? templates.length : templates.filter((t) => kindOf(t) === x.key).length]));
   const shown = tab === "all" ? templates : templates.filter((t) => kindOf(t) === tab);
-  const usedBy = new Map(usage.map((u) => [u.templateId, u._count]));
-  // Templates of the same letter type together, each type with its versions.
-  const groups = [...shown.reduce((m, t) => m.set(t.category ?? "No letter type", [...(m.get(t.category ?? "No letter type") ?? []), t]), new Map<string, typeof shown>())];
+  // How often each template has been used (NOCs and issued letters together) and when last.
+  const used = new Map<string, { n: number; last: Date | null }>();
+  for (const u of [...nocUse, ...letterUse]) {
+    if (!u.templateId) continue;
+    const cur = used.get(u.templateId) ?? { n: 0, last: null };
+    const last = u._max.createdAt;
+    used.set(u.templateId, { n: cur.n + u._count._all, last: last && (!cur.last || last > cur.last) ? last : cur.last });
+  }
+  const versionsOf = new Map<string, number>();
+  for (const t of templates) versionsOf.set(t.category ?? "No letter type", (versionsOf.get(t.category ?? "No letter type") ?? 0) + 1);
+  const cards: TemplateCard[] = shown.map((t) => {
+    const html = templateHtml(t);
+    const pr = presetByKey(t.presetKey);
+    const audience = t.audience === "EMPLOYEE" ? "EMPLOYEE" : "SITE";
+    const u = used.get(t.id);
+    return {
+      id: t.id, name: t.name, category: t.category ?? "No letter type", audience,
+      state: !pr ? "own" : htmlToText(presetHtml(pr)) === htmlToText(html) ? "original" : "edited",
+      title: t.title || t.category || t.name, html: sampleFilledHtml(html, audience),
+      issued: u?.n ?? 0, lastUsed: u?.last ? formatLetterDate(u.last) : null, asks: askLabels(html),
+      versions: versionsOf.get(t.category ?? "No letter type") ?? 1,
+    };
+  });
   const haveKeys = new Set(templates.map((t) => t.presetKey).filter(Boolean));
   const missingDefaults = LETTER_PRESETS.some((p) => !haveKeys.has(p.key));
 
@@ -94,39 +114,7 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
         shown.length === 0 ? (
           <p className="text-sm text-muted">No templates of this type yet. Use “New template” to add one.</p>
         ) : (
-        <div className="space-y-6">
-          {groups.map(([category, list]) => (
-            <section key={category} aria-label={category}>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-semibold text-primary">{category}</h2>
-                <span className="text-xs text-muted">{list.length === 1 ? "1 version" : `${list.length} versions`}</span>
-                {/* Several versions of one letter (a bank one, an embassy one…) sit together; this starts another from the first. */}
-                <form action={duplicateTemplateAction} className="ml-auto">
-                  <input type="hidden" name="id" value={list[0].id} />
-                  <button type="submit" className="text-xs font-semibold text-brand hover:underline">+ Add another version</button>
-                </form>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {list.map((t) => {
-                  const n = usedBy.get(t.id) ?? 0;
-                  const pr = presetByKey(t.presetKey);
-                  const original = !!pr && htmlToText(presetHtml(pr)) === htmlToText(templateHtml(t));
-                  return (
-                    <Link key={t.id} href={`/letter-templates/${t.id}`} className="card block p-4 transition hover:border-[var(--brand-primary)]">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-primary">{t.name}</h3>
-                        {t.presetKey && <Badge color={original ? "slate" : "blue"}>{original ? "Ready-made" : "Edited"}</Badge>}
-                      </div>
-                      <p className="mt-0.5 text-xs text-muted">{t.audience === "EMPLOYEE" ? "Employee letter" : "Client letter"}{n > 0 ? ` · used by ${n} NOC${n === 1 ? "" : "s"}` : ""}</p>
-                      <p className="mt-2 line-clamp-3 text-xs text-secondary">{snippet(t)}</p>
-                      <p className="mt-3 text-xs font-medium text-[var(--brand-primary)]">Edit →</p>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
-        </div>
+        <TemplateGallery cards={cards} />
         )
       )}
     </div>
