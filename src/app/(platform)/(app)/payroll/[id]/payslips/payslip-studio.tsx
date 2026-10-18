@@ -1,5 +1,6 @@
 "use client";
 
+import type { PaperMarginSet } from "@/lib/paperMargins";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { PayslipCard } from "@/components/PayslipCard";
@@ -11,7 +12,7 @@ import { PrintButton } from "./print-button";
  * Payslips of a run, laid out like the Letters screen: pick who gets one (one, several or all), choose
  * plain paper or letterhead and whether to sign and stamp, watch the preview change, then download.
  */
-export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; preselect: string | null }) {
+export function PayslipStudio({ runId, doc, issuer, margins, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; margins: PaperMarginSet; preselect: string | null }) {
   const [picked, setPicked] = useState<Set<string>>(() => new Set(preselect ? [preselect] : doc.slips.map((s) => s.lineId)));
   const [query, setQuery] = useState("");
   const [onLetterhead, setOnLetterhead] = useState(false);
@@ -85,7 +86,7 @@ export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string
             <span>Add company stamp{!issuer.stampUrl && <span className="block text-xs text-muted">No stamp uploaded for {issuer.name}. Add one under {issuer.where}.</span>}</span>
           </label>
           <div className="space-y-2 border-t border-default pt-3 text-sm text-secondary">
-            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints the header (name, address, contact) of {issuer.name}.</span></span></label>
+            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints the header (name, address, contact) of {issuer.name}, inside the margins set in Company profile › Letters.</span></span></label>
             <label className="flex items-start gap-2"><input type="radio" name="paper" checked={onLetterhead} onChange={() => setOnLetterhead(true)} className="mt-0.5" /><span>On letterhead<span className="block text-xs text-muted">{issuer.letterheadKind === "image" ? `Uses the uploaded letterhead of ${issuer.name} as the page background.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the downloaded PDF, not in this preview.` : `No letterhead is uploaded for ${issuer.name} (add one under ${issuer.where}). Leaves the header and footer space clear for pre-printed paper.`}</span></span></label>
           </div>
         </section>
@@ -107,7 +108,7 @@ export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string
                 <button type="button" className="rounded p-1 hover:bg-surface-hover disabled:opacity-40" disabled={at >= chosen.length - 1} onClick={() => setViewing(chosen[at + 1].s.lineId)} aria-label="Next payslip"><ChevronRight className="h-4 w-4" aria-hidden /></button>
               </span>
             </div>
-            <PayslipCard doc={doc} i={current.i} paper={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
+            <PayslipCard doc={doc} i={current.i} paper={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
           </>
         ) : <p className="card p-6 text-sm text-muted">Select at least one employee to preview their payslip.</p>}
       </div>

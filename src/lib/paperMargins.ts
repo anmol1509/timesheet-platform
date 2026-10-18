@@ -34,3 +34,17 @@ export function clampMargin(v: unknown, min: number, max: number): number | null
 const MM = 72 / 25.4;
 /** Millimetres to PDF points. */
 export const mmToPt = (mm: number) => mm * MM;
+
+export type PaperMarginSet = ReturnType<typeof marginsOfBranch>;
+
+/**
+ * Page padding in PDF points for a printed document: all four margins on plain paper; on a letterhead the
+ * clearance for its header and footer plus the sides. Null when no margins were supplied, so the document keeps
+ * its own fixed padding.
+ */
+export function pagePaddingPt(m: PaperMarginSet | null | undefined, onLetterhead: boolean, topMm: number, bottomMm: number) {
+  if (!m) return null;
+  if (onLetterhead) return { paddingTop: mmToPt(topMm), paddingBottom: mmToPt(bottomMm), paddingLeft: mmToPt(m.letterheadSides.left), paddingRight: mmToPt(m.letterheadSides.right) };
+  const p = m.plain;
+  return { paddingTop: mmToPt(p.top), paddingBottom: mmToPt(p.bottom), paddingLeft: mmToPt(p.left), paddingRight: mmToPt(p.right) };
+}

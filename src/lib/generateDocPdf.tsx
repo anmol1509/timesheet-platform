@@ -1,3 +1,4 @@
+import { pagePaddingPt } from "@/lib/paperMargins";
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { Letterhead } from "@/lib/letterhead";
 import type { PayslipLayout } from "@/lib/payslipPrint";
@@ -50,7 +51,7 @@ function DocPage({ doc, layout }: { doc: DocPdfInput; layout?: PayslipLayout }) 
   const onLetterhead = !!layout?.onLetterhead;
   const contact = [h.phone && `Tel ${h.phone}`, h.email, h.poBox && `P.O. Box ${h.poBox}`, h.trn && `TRN ${h.trn}`].filter(Boolean).join("  ·  ");
   return (
-    <Page size="A4" style={onLetterhead ? [s.page, { paddingTop: layout!.topMm * MM, paddingBottom: layout!.bottomMm * MM }] : s.page}>
+    <Page size="A4" style={[s.page, ...(onLetterhead ? [{ paddingTop: layout!.topMm * MM, paddingBottom: layout!.bottomMm * MM }] : []), pagePaddingPt(layout?.margins, onLetterhead, layout?.topMm ?? 65, layout?.bottomMm ?? 35) ?? {}]}>
       {onLetterhead && layout!.letterheadImage && <Image src={layout!.letterheadImage} style={s.background} fixed />}
       {!onLetterhead && (
         <View style={s.head}>

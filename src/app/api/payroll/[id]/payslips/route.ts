@@ -19,9 +19,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (doc.slips.length === 0) return NextResponse.json({ error: "No payslips in this run." }, { status: 404 });
   // Printing choices, as on the Letters screen. Nothing is signed, stamped or put on letterhead unless asked for.
   const flag = (k: string) => q.get(k) === "1";
-  const layout = flag("letterhead") || flag("signature") || flag("stamp") || q.get("name") || q.get("title")
-    ? await loadPayslipLayout(id, { onLetterhead: flag("letterhead"), showSignature: flag("signature"), showStamp: flag("stamp"), signatoryName: (q.get("name") ?? "").slice(0, 120), signatoryTitle: (q.get("title") ?? "").slice(0, 120) })
-    : null;
+  // Always loaded: even a plain printout takes the company's margins.
+  const layout = await loadPayslipLayout(id, { onLetterhead: flag("letterhead"), showSignature: flag("signature"), showStamp: flag("stamp"), signatoryName: (q.get("name") ?? "").slice(0, 120), signatoryTitle: (q.get("title") ?? "").slice(0, 120) });
   const pdf = await generatePayslipPdf(doc, layout ?? undefined);
   const name = doc.slips.length === 1 ? `payslip-${doc.slips[0].employee.idNo}-${doc.month}` : `payslips-${doc.month}`;
   return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${name}.pdf"`, "Cache-Control": "private, no-store" } });

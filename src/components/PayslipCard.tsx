@@ -6,6 +6,8 @@ const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2,
 export type PayslipPaper = {
   onLetterhead: boolean; letterheadUrl: string | null; topMm: number; bottomMm: number;
   signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null;
+  /** The company's page margins (mm): all four on plain paper; left and right on a letterhead. */
+  margins?: { plain: { top: number; bottom: number; left: number; right: number }; letterheadSides: { left: number; right: number } };
 };
 
 /** One payslip on screen: the issuing company, earnings and deductions side by side, net pay, year to date. */
@@ -31,7 +33,8 @@ export function PayslipCard({ doc, i, paper }: { doc: PayslipDoc; i: number; pap
       className={paper ? "mx-auto aspect-[210/297] w-full max-w-2xl space-y-4 overflow-hidden border border-default bg-white text-sm text-neutral-900 shadow-sm [break-after:page] print:border-0 print:shadow-none" : "card mx-auto max-w-2xl space-y-4 p-6 text-sm [break-after:page] print:border-0 print:shadow-none"}
       style={paper ? {
         // Percentages are of the sheet's width, so millimetres of an A4 page (210 mm wide) scale with the preview.
-        paddingTop: `${((paper.onLetterhead ? paper.topMm : 12) / 210) * 100}%`, paddingBottom: `${((paper.onLetterhead ? paper.bottomMm : 12) / 210) * 100}%`, paddingLeft: "7%", paddingRight: "7%",
+        paddingTop: `${((paper.onLetterhead ? paper.topMm : paper.margins?.plain.top ?? 12) / 210) * 100}%`, paddingBottom: `${((paper.onLetterhead ? paper.bottomMm : paper.margins?.plain.bottom ?? 12) / 210) * 100}%`,
+        paddingLeft: paper.margins ? `${((paper.onLetterhead ? paper.margins.letterheadSides.left : paper.margins.plain.left) / 210) * 100}%` : "7%", paddingRight: paper.margins ? `${((paper.onLetterhead ? paper.margins.letterheadSides.right : paper.margins.plain.right) / 210) * 100}%` : "7%",
         ...(paper.onLetterhead && paper.letterheadUrl ? { backgroundImage: `url(${paper.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : {}),
       } : undefined}
     >

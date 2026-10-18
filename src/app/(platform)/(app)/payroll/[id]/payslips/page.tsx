@@ -24,7 +24,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
       </div>
       {doc.slips.length === 0
         ? <p className="card p-6 text-sm text-muted">There are no payslips in this run yet.</p>
-        : <PayslipStudio runId={id} doc={doc} issuer={issuer.issuer} preselect={preselect} />}
+        : <PayslipStudio runId={id} doc={doc} issuer={issuer.issuer} margins={issuer.margins} preselect={preselect} />}
     </div>
   );
 }

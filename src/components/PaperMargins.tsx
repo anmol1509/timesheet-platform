@@ -96,8 +96,8 @@ export function PaperMargins({
           {slider("right", "Right")}
           <p className="text-xs text-muted">
             {tab === "plain"
-              ? "Letters on plain paper print no header from us: just the reference, date, title, wording and signature, inside these margins. Used for every letter printed on plain or blank paper."
-              : "Letters printed on pre-printed letterhead start below the top margin and stop above the bottom one, so nothing prints over your header or footer. Leave a little more than the artwork needs."}
+              ? "Letters on plain paper print no header from us: just the reference, date, title, wording and signature, inside these margins. Also used for payslips, payroll documents, NOCs and quotations printed on plain or blank paper."
+              : "Letters printed on pre-printed letterhead start below the top margin and stop above the bottom one, so nothing prints over your header or footer. Leave a little more than the artwork needs. The sides apply to payslips, NOCs and quotations on letterhead too."}
           </p>
           <div className="flex items-center gap-2">
             <button type="button" className="btn btn-primary btn-sm" disabled={!dirty || pending} onClick={save}>{pending ? "Saving…" : "Save margins"}</button>

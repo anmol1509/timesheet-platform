@@ -1,4 +1,5 @@
 import { Document, Image, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { pagePaddingPt, type PaperMarginSet } from "@/lib/paperMargins";
 import type { Letterhead } from "@/lib/letterhead";
 import { conversionNote, monthlyEach, monthlyTotal, quoteTotals, unitWord, type Adjustment, type PricedLine, type QuoteSettings } from "@/lib/quotationMath";
 
@@ -15,6 +16,8 @@ export type QuotationPdfInput = {
   artwork: string | null;
   topMm: number;
   bottomMm: number;
+  /** The company's page margins (mm); unset keeps the old fixed padding. */
+  margins?: PaperMarginSet;
   signature: string | null;
   stamp: string | null;
   signatoryName: string | null;
@@ -119,7 +122,7 @@ export async function generateQuotationPdf(i: QuotationPdfInput): Promise<Buffer
     <Document>
       <Page
         size="A4"
-        style={[s.page, onArt ? { paddingTop: i.topMm * MM, paddingBottom: i.bottomMm * MM } : {}]}
+        style={[s.page, onArt ? { paddingTop: i.topMm * MM, paddingBottom: i.bottomMm * MM } : {}, pagePaddingPt(i.margins, onArt, i.topMm, i.bottomMm) ?? {}]}
       >
         {i.artwork && <Image src={i.artwork} style={s.background} fixed />}
         {!onArt && (

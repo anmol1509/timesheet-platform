@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { MARGIN_BRANCH_SELECT, marginsOfBranch, type PaperMarginSet } from "@/lib/paperMargins";
 import { imageDataUri } from "@/lib/storedImage";
 import { loadSupplierPrint, type IssuerOption } from "@/lib/employeeLetterIssuer";
 
@@ -15,17 +16,19 @@ export type PayslipLayout = {
   signatoryTitle: string | null;
   signatureImage: string | null;
   stampImage: string | null;
+  /** The company's page margins (mm). */
+  margins?: PaperMarginSet;
 };
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg"];
 
 /** What the run's issuing company has on file (letterhead, signatory, signature, stamp), for the options screen. Null when the run isn't found. */
-export async function loadPayslipIssuer(runId: string): Promise<{ branchId: string; issuer: IssuerOption } | null> {
+export async function loadPayslipIssuer(runId: string): Promise<{ branchId: string; issuer: IssuerOption; margins: PaperMarginSet } | null> {
   const run = await prisma.payrollRun.findUnique({
     where: { id: runId },
     select: {
       branchId: true, companyId: true,
-      branch: { select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true } },
+      branch: { select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true, ...MARGIN_BRANCH_SELECT } },
     },
   });
   if (!run) return null;
@@ -40,6 +43,7 @@ export async function loadPayslipIssuer(runId: string): Promise<{ branchId: stri
       const name = (s.fullName || s.name).toUpperCase();
       return {
         branchId: run.branchId,
+        margins: marginsOfBranch(run.branch),
         issuer: {
           key: "SUPPLIER", label: name, name, supplierId: s.id,
           letterheadUrl: kind === "image" ? `/api/suppliers/${s.id}/letterhead` : null, letterheadKind: kind,
@@ -54,6 +58,7 @@ export async function loadPayslipIssuer(runId: string): Promise<{ branchId: stri
   const b = run.branch;
   return {
     branchId: run.branchId,
+    margins: marginsOfBranch(b),
     issuer: {
       key: "PROFILE", label: b.name.toUpperCase(), name: b.name.toUpperCase(), supplierId: null,
       letterheadUrl: b.letterheadImageId ? `/api/images/${b.letterheadImageId}` : null, letterheadKind: b.letterheadImageId ? "image" : null,
@@ -69,10 +74,11 @@ export async function loadPayslipIssuer(runId: string): Promise<{ branchId: stri
 export async function loadCompanyLayout(branchId: string, companyId: string | null, choice: PayslipPrintChoice): Promise<PayslipLayout | null> {
   const branch = await prisma.branch.findUnique({
     where: { id: branchId },
-    select: { signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true },
+    select: { signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true, ...MARGIN_BRANCH_SELECT },
   });
   if (!branch) return null;
-  const base = { signatoryName: choice.signatoryName.trim() || null, signatoryTitle: choice.signatoryTitle.trim() || null };
+  const margins = marginsOfBranch(branch);
+  const base = { signatoryName: choice.signatoryName.trim() || null, signatoryTitle: choice.signatoryTitle.trim() || null, margins };
   const supplier = companyId ? await loadSupplierPrint(companyId, branchId, { signature: choice.showSignature, stamp: choice.showStamp, letterhead: choice.onLetterhead }) : null;
   if (supplier) {
     return { ...base, onLetterhead: choice.onLetterhead, letterheadImage: supplier.letterheadImage, letterheadPdf: supplier.letterheadPdf, topMm: supplier.topMm ?? 65, bottomMm: supplier.bottomMm ?? 35, signatureImage: supplier.signatureImage, stampImage: supplier.stampImage };
