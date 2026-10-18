@@ -14,6 +14,8 @@ type Strings = {
   suggestions: [string, string, string, string];
   downloadCsv: string; showing: (shown: number, total: number) => string;
   helpful: string; notHelpful: string; thanks: string; sendToSupport: string; sentToSupport: string; sending: string; thisScreen: string;
+  thinking: string; footnote: string; expand: string; dock: string; close: string;
+  lookingAt: (page: string) => string; answeredIn: (secs: number) => string;
 };
 
 const EN: Strings = {
@@ -33,6 +35,13 @@ const EN: Strings = {
   sentToSupport: "Sent to support. They'll follow up by email.",
   sending: "Sending…",
   thisScreen: "What can I do on this screen?",
+  thinking: "Looking through your records…",
+  footnote: "Answers come from your own records. Check important details.",
+  expand: "Open as a window",
+  dock: "Dock to the side",
+  close: "to close",
+  lookingAt: (page) => `Looking at ${page}`,
+  answeredIn: (secs) => `Answered in ${secs}s`,
 };
 
 export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
@@ -54,6 +63,13 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     sentToSupport: "सपोर्ट को भेज दिया गया। वे ईमेल से संपर्क करेंगे।",
     sending: "भेजा जा रहा है…",
     thisScreen: "इस स्क्रीन पर मैं क्या कर सकता हूँ?",
+    thinking: "आपके रिकॉर्ड देख रहा हूँ…",
+    footnote: "जवाब आपके अपने रिकॉर्ड से आते हैं। ज़रूरी बातें जाँच लें।",
+    expand: "विंडो में खोलें",
+    dock: "किनारे पर लगाएँ",
+    close: "बंद करने के लिए",
+    lookingAt: (page) => `${page} देख रहा है`,
+    answeredIn: (secs) => `${secs} सेकंड में जवाब`,
   },
   ur: {
     ready: "مدد کے لیے تیار",
@@ -72,6 +88,13 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     sentToSupport: "سپورٹ کو بھیج دیا گیا۔ وہ ای میل پر رابطہ کریں گے۔",
     sending: "بھیجا جا رہا ہے…",
     thisScreen: "اس اسکرین پر میں کیا کر سکتا ہوں؟",
+    thinking: "آپ کے ریکارڈ دیکھ رہا ہوں…",
+    footnote: "جوابات آپ کے اپنے ریکارڈ سے آتے ہیں۔ اہم باتیں چیک کر لیں۔",
+    expand: "ونڈو میں کھولیں",
+    dock: "سائیڈ پر لگائیں",
+    close: "بند کرنے کے لیے",
+    lookingAt: (page) => `${page} دیکھ رہا ہے`,
+    answeredIn: (secs) => `${secs} سیکنڈ میں جواب`,
   },
   ne: {
     ready: "सहयोगका लागि तयार",
@@ -90,6 +113,13 @@ export const STRINGS: Record<Exclude<AssistantLang, "auto">, Strings> = {
     sentToSupport: "सपोर्टमा पठाइयो। उनीहरूले इमेलमा सम्पर्क गर्नेछन्।",
     sending: "पठाइँदैछ…",
     thisScreen: "यो स्क्रिनमा म के गर्न सक्छु?",
+    thinking: "तपाईंका रेकर्ड हेर्दै…",
+    footnote: "जवाफ तपाईंकै रेकर्डबाट आउँछन्। महत्त्वपूर्ण कुरा जाँच गर्नुहोस्।",
+    expand: "विन्डोमा खोल्नुहोस्",
+    dock: "छेउमा राख्नुहोस्",
+    close: "बन्द गर्न",
+    lookingAt: (page) => `${page} हेर्दै`,
+    answeredIn: (secs) => `${secs} सेकेन्डमा जवाफ`,
   },
 };
 
