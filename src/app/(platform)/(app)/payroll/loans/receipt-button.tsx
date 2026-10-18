@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { EditWording } from "@/components/EditWording";
+import type { DocTarget } from "@/app/(platform)/(app)/doc-edit/actions";
+
+/** Which document this button prints, so its wording can be edited: a payroll letter by its link, otherwise the advance. */
+function targetOf(id: string, base?: string): DocTarget {
+  const m = base ? /\/api\/payroll\/docs\/(salary-revision|settlement|deduction-notice)\/([^/?]+)/.exec(base) : null;
+  if (!m) return { kind: "advance", subjectId: id };
+  return { kind: m[1] === "settlement" ? "final-settlement" : (m[1] as "salary-revision" | "deduction-notice"), subjectId: m[2] };
+}
 
 /** Opens the advance as a PDF, with the same printing choices as payslips and letters: plain paper or letterhead, signature, stamp. */
 export function ReceiptButton({ id, label, icon, base, hint }: { id: string; label: string; icon?: React.ReactNode; base?: string; hint?: string }) {
@@ -21,6 +30,7 @@ export function ReceiptButton({ id, label, icon, base, hint }: { id: string; lab
   return (
     <>
       <button type="button" className="inline-flex items-center gap-1 text-[var(--brand-primary)] hover:underline" onClick={() => setOpen(true)}>{icon} {label}</button>
+      <EditWording target={targetOf(id, base)} label="Edit wording" className="ml-3 inline-flex items-center gap-1 text-muted hover:text-[var(--brand-primary)] hover:underline" />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title={label} description={hint ?? "Opens as a PDF to print and sign. The employee signs the acknowledgement at the bottom of the same page. The wording comes from your Advance letter templates (Letters › Templates)."}>
           <div className="mt-4 space-y-3 text-sm">

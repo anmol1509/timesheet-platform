@@ -11,7 +11,7 @@ export type PayslipPaper = {
 };
 
 /** One payslip on screen: the issuing company, earnings and deductions side by side, net pay, year to date. */
-export function PayslipCard({ doc, i, paper }: { doc: PayslipDoc; i: number; paper?: PayslipPaper }) {
+export function PayslipCard({ doc, i, paper, note }: { doc: PayslipDoc; i: number; paper?: PayslipPaper; note?: string }) {
   const { slip, ytd, employee, paidBy } = doc.slips[i];
   const h = doc.letterhead;
   const contact = [h.phone && `Tel ${h.phone}`, h.email, h.poBox && `P.O. Box ${h.poBox}`, h.trn && `TRN ${h.trn}`].filter(Boolean).join(" · ");
@@ -71,6 +71,7 @@ export function PayslipCard({ doc, i, paper }: { doc: PayslipDoc; i: number; pap
           Year to date ({ytd.months} month{ytd.months === 1 ? "" : "s"} of {doc.month.slice(0, 4)}): earnings {aed(ytd.gross)} · deductions {aed(ytd.deductions)} · net pay {aed(ytd.net)}
         </p>
       )}
+      {note && <p className="whitespace-pre-wrap text-sm">{note}</p>}
       {paper && (paper.signatureUrl || paper.stampUrl) ? (
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>

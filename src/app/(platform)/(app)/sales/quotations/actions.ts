@@ -98,6 +98,8 @@ function readHeader(formData: FormData) {
   return {
     validUntil: dateOrNull(formData.get("validUntil")),
     terms: stringOrNull(formData.get("terms")),
+    coverIntro: stringOrNull(formData.get("coverIntro")),
+    coverClosing: stringOrNull(formData.get("coverClosing")),
     accommodationResponsibility: stringOrNull(formData.get("accommodationResponsibility")),
     transportationResponsibility: stringOrNull(formData.get("transportationResponsibility")),
     ppeResponsibility: stringOrNull(formData.get("ppeResponsibility")),

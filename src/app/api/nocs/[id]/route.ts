@@ -1,3 +1,4 @@
+import { findDocEdit } from "@/lib/documentEdit";
 import { NextResponse } from "next/server";
 import { templateHtml } from "@/lib/letterHtml";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -38,7 +39,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: noc.employees.map((ne) => toLetterWorker(ne.employee)),
-    templateHtml: templateHtml(noc.template),
+    // Wording changed for this NOC alone wins over the template's.
+    templateHtml: (await findDocEdit("noc", noc.id)) ?? templateHtml(noc.template),
     onLetterhead,
     fallbackIssuerName: noc.branch.name,
     issuedBy: "SPONSOR",

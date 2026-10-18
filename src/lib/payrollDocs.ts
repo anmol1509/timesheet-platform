@@ -26,7 +26,7 @@ export async function loadPayrollDoc(kind: PayrollDocKind, id: string): Promise<
     const letterhead = await headerFor({ companyId, branch: r.branch });
     const ev = await employeeLetterValues(r.employeeId, { canSeePay: true, companyName: letterhead.name });
     const ref = `REV-${shortId(r.id)}`;
-    const doc = await renderPresetDoc({ branchId: r.branchId, presetKey: "salary-revision", values: { ...(ev?.values ?? {}), REFNO: ref, ...revisionValues({ effectiveFrom: day(r.effectiveFrom), fixedBefore: n(r.fixedBefore), fixedAfter: n(r.fixedAfter), reason: r.reason }) } });
+    const doc = await renderPresetDoc({ branchId: r.branchId, presetKey: "salary-revision", subjectId: r.id, values: { ...(ev?.values ?? {}), REFNO: ref, ...revisionValues({ effectiveFrom: day(r.effectiveFrom), fixedBefore: n(r.fixedBefore), fixedAfter: n(r.fixedAfter), reason: r.reason }) } });
     return { title: doc.title, ref, date: today(), letterhead, bodyHtml: doc.html, employeeName: ev?.employee.name ?? null, approvedBy: null, footer: "Salary revision", branchId: r.branchId, companyId, fileName: ref, templateName: doc.templateName };
   }
 
@@ -41,7 +41,7 @@ export async function loadPayrollDoc(kind: PayrollDocKind, id: string): Promise<
     ]);
     const ref = `FS-${shortId(s.id)}`;
     const doc = await renderPresetDoc({
-      branchId: s.branchId, presetKey: "final-settlement",
+      branchId: s.branchId, presetKey: "final-settlement", subjectId: s.id,
       values: { ...(ev?.values ?? {}), REFNO: ref, ...settlementValues({ exitDate: day(s.exitDate), reason: s.reason, serviceYears: s.serviceYears, gratuity: n(s.gratuity), unpaidSalary: n(s.unpaidSalary), leavePay: n(s.leavePay), noticePay: n(s.noticePay), otherEarnings: n(s.otherEarnings), loanBalance: n(s.loanBalance), otherDeductions: n(s.otherDeductions), net: n(s.net) }) },
     });
     const state = s.status === "PAID" ? "Paid" : s.status === "APPROVED" ? "Approved" : "Draft";
@@ -54,6 +54,6 @@ export async function loadPayrollDoc(kind: PayrollDocKind, id: string): Promise<
   const letterhead = await headerFor({ companyId: l.run.companyId, branch: l.run.branch });
   const ev = await employeeLetterValues(l.employeeId, { canSeePay: true, companyName: letterhead.name });
   const ref = `DN-${shortId(l.id)}`;
-  const doc = await renderPresetDoc({ branchId: l.run.branchId, presetKey: "deduction-notice", values: { ...(ev?.values ?? {}), REFNO: ref, ...deductionValues({ amount: n(l.manualDeduction), reason: l.deductionNote, month: l.run.month }) } });
+  const doc = await renderPresetDoc({ branchId: l.run.branchId, presetKey: "deduction-notice", subjectId: l.id, values: { ...(ev?.values ?? {}), REFNO: ref, ...deductionValues({ amount: n(l.manualDeduction), reason: l.deductionNote, month: l.run.month }) } });
   return { title: doc.title, ref, date: today(), letterhead, bodyHtml: doc.html, employeeName: ev?.employee.name ?? null, approvedBy: null, footer: "Deduction notice", branchId: l.run.branchId, companyId: l.run.companyId, fileName: ref, templateName: doc.templateName };
 }

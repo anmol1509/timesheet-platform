@@ -96,8 +96,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     adjustments,
     settings,
     options: { layout: compact ? "COMPACT" : "STANDARD", showTerms: flag("terms", true), showOt: flag("ot", true) },
-    intro: template ? fillCoverText(template.intro, facts) : compact ? null : fillCoverText(STANDARD_INTRO, facts),
-    closing: template?.closing ? fillCoverText(template.closing, facts) : null,
+    // Wording written on this quotation wins over the cover text picked at send time.
+    intro: quotation.coverIntro?.trim() ? fillCoverText(quotation.coverIntro, facts) : template ? fillCoverText(template.intro, facts) : compact ? null : fillCoverText(STANDARD_INTRO, facts),
+    closing: quotation.coverClosing?.trim() ? fillCoverText(quotation.coverClosing, facts) : template?.closing ? fillCoverText(template.closing, facts) : null,
   });
 
   const inline = q.get("inline") === "1";

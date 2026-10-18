@@ -56,6 +56,7 @@ export const ENTITY_META: Record<string, Meta> = {
   BANK: M("Bank account", "Finance", (id) => `/banks/${id}`),
   LETTER_TEMPLATE: M("Letter template", "Letters", () => "/letter-templates"),
   ISSUED_LETTER: M("Issued letter", "Letters", () => "/letters"),
+  DOCUMENT_EDIT: M("Document wording", "Letters", () => "/letters"),
   USER: M("Team member", "Administration", () => "/settings/team"),
   ACCESS_ROLE: M("Role", "Administration", () => "/settings/roles"),
   RENEWAL: M("Renewal", "Workforce", () => "/employees/renewals"),

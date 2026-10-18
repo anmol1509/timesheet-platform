@@ -35,7 +35,7 @@ function monthName(m: string) {
   return new Date(`${m}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-function PayslipPage({ doc, i, layout }: { doc: PayslipDoc; i: number; layout?: PayslipLayout }) {
+function PayslipPage({ doc, i, layout, note }: { doc: PayslipDoc; i: number; layout?: PayslipLayout; note?: string }) {
   const { slip, ytd, employee } = doc.slips[i];
   const h = doc.letterhead;
   const contact = [h.phone && `Tel ${h.phone}`, h.email, h.poBox && `P.O. Box ${h.poBox}`, h.trn && `TRN ${h.trn}`].filter(Boolean).join("  ·  ");
@@ -95,6 +95,7 @@ function PayslipPage({ doc, i, layout }: { doc: PayslipDoc; i: number; layout?: 
           </View>
         </View>
       )}
+      {note && <Text style={{ marginTop: 12, fontSize: 9.5, lineHeight: 1.4 }}>{note}</Text>}
       {layout && (layout.signatureImage || layout.stampImage) ? (
         <View wrap={false} style={{ marginTop: 22, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
           <View>
@@ -111,8 +112,9 @@ function PayslipPage({ doc, i, layout }: { doc: PayslipDoc; i: number; layout?: 
   );
 }
 
-export async function generatePayslipPdf(doc: PayslipDoc, layout?: PayslipLayout): Promise<Buffer | Uint8Array> {
-  const pdf = await renderToBuffer(<Document title={`Payslips ${doc.month}`}>{doc.slips.map((_, i) => <PayslipPage key={doc.slips[i].lineId} doc={doc} i={i} layout={layout} />)}</Document>);
+/** `note` is a few words printed under the figures on every payslip, e.g. a message about the month. */
+export async function generatePayslipPdf(doc: PayslipDoc, layout?: PayslipLayout, note?: string): Promise<Buffer | Uint8Array> {
+  const pdf = await renderToBuffer(<Document title={`Payslips ${doc.month}`}>{doc.slips.map((_, i) => <PayslipPage key={doc.slips[i].lineId} doc={doc} i={i} layout={layout} note={note} />)}</Document>);
   // A letterhead kept as a PDF is laid under the finished pages rather than drawn as an image.
   if (layout?.onLetterhead && layout.letterheadPdf && !layout.letterheadImage) return overlayOnLetterheadPdf(pdf, layout.letterheadPdf);
   return pdf;

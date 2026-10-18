@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const layout = await loadPayslipLayout(id, { onLetterhead: flag("letterhead"), showSignature: flag("signature"), showStamp: flag("stamp"), signatoryName: (q.get("name") ?? "").slice(0, 120), signatoryTitle: (q.get("title") ?? "").slice(0, 120) });
   // ?hide=gas,ytd names the lines to fold away (empty = show everything); without it the company's own choice applies.
   const hidden = q.has("hide") ? parseHidden(q.get("hide")) : await hiddenDefault(doc.branchId);
-  const pdf = await generatePayslipPdf(applyPayslipView(doc, hidden), layout ?? undefined);
+  const pdf = await generatePayslipPdf(applyPayslipView(doc, hidden), layout ?? undefined, (q.get("note") ?? "").replace(/\s+/g, " ").trim().slice(0, 300) || undefined);
   const name = doc.slips.length === 1 ? `payslip-${doc.slips[0].employee.idNo}-${doc.month}` : `payslips-${doc.month}`;
   return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${name}.pdf"`, "Cache-Control": "private, no-store" } });
 }

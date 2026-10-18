@@ -18,6 +18,14 @@ function dateOrNull(value: FormDataEntryValue | null) {
   return s ? new Date(s) : null;
 }
 
+/** Wording edited on the Documents screen before the NOC existed moves onto the NOC itself. */
+async function adoptDraftWording(nocId: string, demandRequestId: string, templateId: string, branchId: string) {
+  const draft = await prisma.documentEdit.findUnique({ where: { kind_subjectId: { kind: "noc-draft", subjectId: `${demandRequestId}:${templateId}` } } });
+  if (!draft) return;
+  await prisma.documentEdit.create({ data: { kind: "noc", subjectId: nocId, bodyHtml: draft.bodyHtml, branchId, editedById: draft.editedById, editedByName: draft.editedByName } });
+  await prisma.documentEdit.delete({ where: { id: draft.id } });
+}
+
 export async function createNocAction(formData: FormData) {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -49,6 +57,7 @@ export async function createNocAction(formData: FormData) {
     },
   });
 
+  await adoptDraftWording(created.id, demandRequestId, templateId, request.branchId);
   await logAudit({
     entityType: "NOC",
     entityId: created.id,
@@ -134,6 +143,7 @@ export async function issueNocAction(formData: FormData): Promise<{ id?: string;
       employees: { create: employeeIds.map((employeeId) => ({ employeeId })) },
     },
   });
+  await adoptDraftWording(created.id, demandRequestId, templateId, request.branchId);
   await logAudit({
     entityType: "NOC",
     entityId: created.id,

@@ -1,3 +1,4 @@
+import { findDocEdit } from "@/lib/documentEdit";
 import { NextResponse } from "next/server";
 import { templateHtml } from "@/lib/letterHtml";
 import { prisma } from "@/lib/db";
@@ -66,7 +67,8 @@ export async function GET(
 
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: workers.map(toLetterWorker),
-    templateHtml: templateHtml(template),
+    // Wording changed for this undertaking alone wins over the template's.
+    templateHtml: (await findDocEdit("undertaking", `${demand.id}:${template.id}`)) ?? templateHtml(template),
     onLetterhead,
     fallbackIssuerName: demand.branch.name,
     issuedBy: "COMPANY",
