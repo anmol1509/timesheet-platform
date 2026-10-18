@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { PayslipDoc } from "@/lib/payslipData";
 import type { PayslipLayout } from "@/lib/payslipPrint";
+import { pagePaddingPt } from "@/lib/paperMargins";
 import { overlayOnLetterheadPdf } from "@/lib/letterheadOverlay";
 
 const MM = 72 / 25.4; // millimetres to points
@@ -39,7 +40,7 @@ function PayslipPage({ doc, i, layout }: { doc: PayslipDoc; i: number; layout?: 
   const h = doc.letterhead;
   const contact = [h.phone && `Tel ${h.phone}`, h.email, h.poBox && `P.O. Box ${h.poBox}`, h.trn && `TRN ${h.trn}`].filter(Boolean).join("  ·  ");
   return (
-    <Page size="A4" style={layout?.onLetterhead ? [s.page, { paddingTop: layout.topMm * MM, paddingBottom: layout.bottomMm * MM }] : s.page}>
+    <Page size="A4" style={[s.page, ...(layout?.onLetterhead ? [{ paddingTop: layout.topMm * MM, paddingBottom: layout.bottomMm * MM }] : []), pagePaddingPt(layout?.margins, !!layout?.onLetterhead, layout?.topMm ?? 65, layout?.bottomMm ?? 35) ?? {}]}>
       {layout?.onLetterhead && layout.letterheadImage && <Image src={layout.letterheadImage} style={s.background} fixed />}
       {/* On a letterhead the company's own header is already printed, so only the title and month are drawn. */}
       <View style={s.head}>

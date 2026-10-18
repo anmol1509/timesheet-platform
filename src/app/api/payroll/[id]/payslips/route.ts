@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
-import { loadRunPayslips } from "@/lib/payslipData";
+import { hiddenDefault, loadRunPayslips } from "@/lib/payslipData";
+import { applyPayslipView, parseHidden } from "@/lib/payslipView";
 import { generatePayslipPdf } from "@/lib/generatePayslipPdf";
 import { loadPayslipLayout } from "@/lib/payslipPrint";
 
@@ -19,10 +20,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (doc.slips.length === 0) return NextResponse.json({ error: "No payslips in this run." }, { status: 404 });
   // Printing choices, as on the Letters screen. Nothing is signed, stamped or put on letterhead unless asked for.
   const flag = (k: string) => q.get(k) === "1";
-  const layout = flag("letterhead") || flag("signature") || flag("stamp") || q.get("name") || q.get("title")
-    ? await loadPayslipLayout(id, { onLetterhead: flag("letterhead"), showSignature: flag("signature"), showStamp: flag("stamp"), signatoryName: (q.get("name") ?? "").slice(0, 120), signatoryTitle: (q.get("title") ?? "").slice(0, 120) })
-    : null;
-  const pdf = await generatePayslipPdf(doc, layout ?? undefined);
+  // Always loaded: even a plain printout takes the company's margins.
+  const layout = await loadPayslipLayout(id, { onLetterhead: flag("letterhead"), showSignature: flag("signature"), showStamp: flag("stamp"), signatoryName: (q.get("name") ?? "").slice(0, 120), signatoryTitle: (q.get("title") ?? "").slice(0, 120) });
+  // ?hide=gas,ytd names the lines to fold away (empty = show everything); without it the company's own choice applies.
+  const hidden = q.has("hide") ? parseHidden(q.get("hide")) : await hiddenDefault(doc.branchId);
+  const pdf = await generatePayslipPdf(applyPayslipView(doc, hidden), layout ?? undefined);
   const name = doc.slips.length === 1 ? `payslip-${doc.slips[0].employee.idNo}-${doc.month}` : `payslips-${doc.month}`;
   return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${name}.pdf"`, "Cache-Control": "private, no-store" } });
 }

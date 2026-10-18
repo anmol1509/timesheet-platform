@@ -12,7 +12,8 @@ export type PayslipLine = {
   absentDays: number; unpaidLeaveDays: number; otHours: number; restHours: number; normalHours: number; employedDays: number | null; daysInMonth: number; net: number;
   items?: { kind: string; label: string; amount: number }[] | null;
 };
-export type PayslipRow = { label: string; amount: number; note?: string };
+/** `key` names the kind of line, so a payslip can be told which kinds to fold away (see payslipView). */
+export type PayslipRow = { label: string; amount: number; note?: string; key?: string };
 export type Payslip = { earnings: PayslipRow[]; deductions: PayslipRow[]; gross: number; totalDeductions: number; net: number };
 
 const pos = (n: number) => round2(Math.max(0, n));
@@ -20,26 +21,26 @@ const pos = (n: number) => round2(Math.max(0, n));
 export function buildPayslip(l: PayslipLine): Payslip {
   const days = l.absentDays + l.unpaidLeaveDays;
   const earnings: PayslipRow[] = [];
-  const add = (rows: PayslipRow[], label: string, amount: number, note?: string) => { if (amount > 0) rows.push({ label, amount: round2(amount), note }); };
+  const add = (rows: PayslipRow[], label: string, amount: number, note?: string, key?: string) => { if (amount > 0) rows.push({ label, amount: round2(amount), note, key }); };
 
-  add(earnings, l.payStructure === "FLAT" ? "Monthly rate" : l.payStructure === "HOURLY" ? "Hourly pay" : "Basic salary", l.basic, l.payStructure === "HOURLY" ? `${l.normalHours} hours` : l.employedDays != null ? `${l.employedDays} of ${l.daysInMonth} days` : undefined);
-  add(earnings, "Allowances", l.allowances);
-  add(earnings, "Overtime", l.overtimePay, [l.otHours > 0 ? `${l.otHours} h` : "", l.restHours > 0 ? `${l.restHours} h rest day or holiday` : ""].filter(Boolean).join(" + ") || undefined);
+  add(earnings, l.payStructure === "FLAT" ? "Monthly rate" : l.payStructure === "HOURLY" ? "Hourly pay" : "Basic salary", l.basic, l.payStructure === "HOURLY" ? `${l.normalHours} hours` : l.employedDays != null ? `${l.employedDays} of ${l.daysInMonth} days` : undefined, "basic");
+  add(earnings, "Allowances", l.allowances, undefined, "allowances");
+  add(earnings, "Overtime", l.overtimePay, [l.otHours > 0 ? `${l.otHours} h` : "", l.restHours > 0 ? `${l.restHours} h rest day or holiday` : ""].filter(Boolean).join(" + ") || undefined, "overtime");
   const earnItems = (l.items ?? []).filter((i) => i.kind === "EARNING");
-  if (earnItems.length > 0) for (const i of earnItems) add(earnings, i.label, i.amount);
-  else add(earnings, "Other earnings", l.otherEarnings);
-  add(earnings, l.adjustmentNote || "Adjustment", pos(l.adjustment));
+  if (earnItems.length > 0) for (const i of earnItems) add(earnings, i.label, i.amount, undefined, "earningItem");
+  else add(earnings, "Other earnings", l.otherEarnings, undefined, "otherEarnings");
+  add(earnings, l.adjustmentNote || "Adjustment", pos(l.adjustment), undefined, "adjustment");
 
   const deductions: PayslipRow[] = [];
-  add(deductions, "Absence", l.deductions, days > 0 ? `${days} day${days === 1 ? "" : "s"}` : undefined);
-  add(deductions, "Gas charge", l.gasCharge);
-  add(deductions, "Short hours", l.shortfallDeduction ?? 0, (l.shortfallHours ?? 0) > 0 ? `${l.shortfallHours} h short on days worked less than the standard day` : undefined);
+  add(deductions, "Absence", l.deductions, days > 0 ? `${days} day${days === 1 ? "" : "s"}` : undefined, "absence");
+  add(deductions, "Gas charge", l.gasCharge, undefined, "gas");
+  add(deductions, "Short hours", l.shortfallDeduction ?? 0, (l.shortfallHours ?? 0) > 0 ? `${l.shortfallHours} h short on days worked less than the standard day` : undefined, "shortHours");
   const dedItems = (l.items ?? []).filter((i) => i.kind === "DEDUCTION");
-  if (dedItems.length > 0) for (const i of dedItems) add(deductions, i.label, i.amount);
-  else add(deductions, "Other deductions", l.otherDeductions);
-  add(deductions, l.deductionNote || "Deduction", l.manualDeduction);
-  add(deductions, l.advanceNote || "Loan or advance recovery", l.loanDeduction);
-  add(deductions, l.adjustmentNote || "Adjustment", pos(-l.adjustment));
+  if (dedItems.length > 0) for (const i of dedItems) add(deductions, i.label, i.amount, undefined, "deductionItem");
+  else add(deductions, "Other deductions", l.otherDeductions, undefined, "otherDeductions");
+  add(deductions, l.deductionNote || "Deduction", l.manualDeduction, undefined, "manual");
+  add(deductions, l.advanceNote || "Loan or advance recovery", l.loanDeduction, undefined, "loan");
+  add(deductions, l.adjustmentNote || "Adjustment", pos(-l.adjustment), undefined, "adjustmentDeduction");
 
   const gross = round2(earnings.reduce((s, r) => s + r.amount, 0));
   const totalDeductions = round2(deductions.reduce((s, r) => s + r.amount, 0));

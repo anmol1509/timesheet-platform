@@ -8,6 +8,7 @@ import { Badge } from "@/components/Badge";
 import { Copy } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { AddDefaultsButton, NewTemplateButton } from "./gallery";
+import { duplicateTemplateAction } from "./actions";
 
 export const metadata = { title: "Letter templates" };
 
@@ -34,6 +35,8 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
   const counts = new Map<string, number>(TABS.map((x) => [x.key, x.key === "all" ? templates.length : templates.filter((t) => kindOf(t) === x.key).length]));
   const shown = tab === "all" ? templates : templates.filter((t) => kindOf(t) === tab);
   const usedBy = new Map(usage.map((u) => [u.templateId, u._count]));
+  // Templates of the same letter type together, each type with its versions.
+  const groups = [...shown.reduce((m, t) => m.set(t.category ?? "No letter type", [...(m.get(t.category ?? "No letter type") ?? []), t]), new Map<string, typeof shown>())];
   const haveKeys = new Set(templates.map((t) => t.presetKey).filter(Boolean));
   const missingDefaults = LETTER_PRESETS.some((p) => !haveKeys.has(p.key));
 
@@ -91,23 +94,38 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
         shown.length === 0 ? (
           <p className="text-sm text-muted">No templates of this type yet. Use “New template” to add one.</p>
         ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {shown.map((t) => {
-            const n = usedBy.get(t.id) ?? 0;
-            const pr = presetByKey(t.presetKey);
-            const original = !!pr && htmlToText(presetHtml(pr)) === htmlToText(templateHtml(t));
-            return (
-              <Link key={t.id} href={`/letter-templates/${t.id}`} className="card block p-4 transition hover:border-[var(--brand-primary)]">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-primary">{t.name}</h3>
-                  {t.presetKey && <Badge color={original ? "slate" : "blue"}>{original ? "Ready-made" : "Edited"}</Badge>}
-                </div>
-                <p className="mt-0.5 text-xs text-muted">{t.audience === "EMPLOYEE" ? "Employee letter" : "Client letter"} · {t.category ?? "No letter type"}{n > 0 ? ` · used by ${n} NOC${n === 1 ? "" : "s"}` : ""}</p>
-                <p className="mt-2 line-clamp-3 text-xs text-secondary">{snippet(t)}</p>
-                <p className="mt-3 text-xs font-medium text-[var(--brand-primary)]">Edit →</p>
-              </Link>
-            );
-          })}
+        <div className="space-y-6">
+          {groups.map(([category, list]) => (
+            <section key={category} aria-label={category}>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold text-primary">{category}</h2>
+                <span className="text-xs text-muted">{list.length === 1 ? "1 version" : `${list.length} versions`}</span>
+                {/* Several versions of one letter (a bank one, an embassy one…) sit together; this starts another from the first. */}
+                <form action={duplicateTemplateAction} className="ml-auto">
+                  <input type="hidden" name="id" value={list[0].id} />
+                  <button type="submit" className="text-xs font-semibold text-brand hover:underline">+ Add another version</button>
+                </form>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {list.map((t) => {
+                  const n = usedBy.get(t.id) ?? 0;
+                  const pr = presetByKey(t.presetKey);
+                  const original = !!pr && htmlToText(presetHtml(pr)) === htmlToText(templateHtml(t));
+                  return (
+                    <Link key={t.id} href={`/letter-templates/${t.id}`} className="card block p-4 transition hover:border-[var(--brand-primary)]">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-primary">{t.name}</h3>
+                        {t.presetKey && <Badge color={original ? "slate" : "blue"}>{original ? "Ready-made" : "Edited"}</Badge>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted">{t.audience === "EMPLOYEE" ? "Employee letter" : "Client letter"}{n > 0 ? ` · used by ${n} NOC${n === 1 ? "" : "s"}` : ""}</p>
+                      <p className="mt-2 line-clamp-3 text-xs text-secondary">{snippet(t)}</p>
+                      <p className="mt-3 text-xs font-medium text-[var(--brand-primary)]">Edit →</p>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
         )
       )}

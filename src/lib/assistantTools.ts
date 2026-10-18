@@ -482,8 +482,11 @@ async function draftLetter(input: Record<string, unknown>, ctx: ToolContext): Pr
   if (emps.length === 0) return { content: "No employee of the user's own company matches that name." };
   if (emps.length > 1) return { content: JSON.stringify({ ambiguous: true, matches: emps.map((e) => `${e.name} (${e.employeeIdNo})`) }) + " Ask which one." };
   if (templates.length === 0) return { content: "No employee letter template has that name. Letters › Templates lists them." };
+  // Several versions of one letter (a bank one, an embassy one): ask which, unless one is named exactly.
+  const exact = templates.find((t) => t.name.toLowerCase() === word.toLowerCase());
+  if (templates.length > 1 && !exact) return { content: JSON.stringify({ ambiguous: true, versions: templates.map((t) => t.name) }) + " Ask which version." };
   const e = emps[0];
-  const t = templates[0];
+  const t = exact ?? templates[0];
   return {
     content: JSON.stringify({ worker: `${e.name} (${e.employeeIdNo})`, letter: t.name, note: "Opens the Letters screen with both chosen. Nothing is issued until the user clicks Issue." }),
     links: [{ href: `/letters?employee=${e.id}&template=${encodeURIComponent(t.name)}`, label: `${t.name} for ${e.name}`, group: "Letters" }],

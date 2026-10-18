@@ -1,7 +1,10 @@
 "use client";
 
+import type { PaperMarginSet } from "@/lib/paperMargins";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
+import { PAYSLIP_HIDEABLE, applyPayslipView } from "@/lib/payslipView";
+import { savePayslipDefaultAction } from "./actions";
 import { PayslipCard } from "@/components/PayslipCard";
 import type { PayslipDoc } from "@/lib/payslipData";
 import type { IssuerOption } from "@/lib/employeeLetterIssuer";
@@ -11,7 +14,13 @@ import { PrintButton } from "./print-button";
  * Payslips of a run, laid out like the Letters screen: pick who gets one (one, several or all), choose
  * plain paper or letterhead and whether to sign and stamp, watch the preview change, then download.
  */
-export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; preselect: string | null }) {
+export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHidden, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; margins: PaperMarginSet; defaultHidden: string[]; preselect: string | null }) {
+  // Lines left off the payslip are folded into Other earnings / deductions, so totals and net pay never change.
+  const [hidden, setHidden] = useState<string[]>(defaultHidden);
+  const [savedHidden, setSavedHidden] = useState<string[]>(defaultHidden);
+  const [savingDefault, setSavingDefault] = useState(false);
+  const [defaultError, setDefaultError] = useState<string | null>(null);
+  const doc = useMemo(() => applyPayslipView(fullDoc, hidden), [fullDoc, hidden]);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(preselect ? [preselect] : doc.slips.map((s) => s.lineId)));
   const [query, setQuery] = useState("");
   const [onLetterhead, setOnLetterhead] = useState(false);
@@ -37,7 +46,18 @@ export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string
   if (showStamp) params.set("stamp", "1");
   if ((showSignature || showStamp) && signatoryName.trim()) params.set("name", signatoryName.trim());
   if ((showSignature || showStamp) && signatoryTitle.trim()) params.set("title", signatoryTitle.trim());
-  const pdf = `/api/payroll/${runId}/payslips${params.size > 0 ? `?${params}` : ""}`;
+  // Always stated, so the download matches the preview even when it differs from the company default.
+  params.set("hide", hidden.join(","));
+  const pdf = `/api/payroll/${runId}/payslips?${params}`;
+  const hiddenChanged = hidden.slice().sort().join(",") !== savedHidden.slice().sort().join(",");
+  const toggleHidden = (key: string) => setHidden((h) => (h.includes(key) ? h.filter((k) => k !== key) : [...h, key]));
+  async function saveDefault() {
+    setSavingDefault(true);
+    setDefaultError(null);
+    const r = await savePayslipDefaultAction(runId, hidden).catch(() => ({ error: "Could not save." }));
+    setSavingDefault(false);
+    if (r.error) setDefaultError(r.error); else setSavedHidden(hidden);
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
@@ -71,6 +91,26 @@ export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string
           {!allShownPicked && picked.size === 0 && <p className="text-xs text-[var(--warning)]">Pick at least one employee to download.</p>}
         </section>
 
+        <section className="card space-y-2 p-4">
+          <h2 className="text-sm font-semibold text-primary">Show on payslip</h2>
+          <p className="text-xs text-muted">Switch a line off to keep it off the payslip. Its amount is added into <b>Other earnings</b> or <b>Other deductions</b>, so the totals and net pay stay the same.</p>
+          <ul className="divide-y divide-[var(--border)]">
+            {PAYSLIP_HIDEABLE.map((h) => (
+              <li key={h.key}>
+                <label className="flex cursor-pointer items-center justify-between gap-3 py-1.5 text-sm text-secondary">
+                  <span>{h.label}</span>
+                  <input type="checkbox" role="switch" checked={!hidden.includes(h.key)} onChange={() => toggleHidden(h.key)} aria-label={`Show ${h.label}`} />
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <button type="button" className="font-semibold text-brand hover:underline disabled:opacity-40 disabled:no-underline" disabled={!hiddenChanged || savingDefault} onClick={saveDefault}>{savingDefault ? "Saving…" : "Use this for every payslip"}</button>
+            {!hiddenChanged && hidden.length > 0 && <span className="text-muted">This is the company default.</span>}
+            {defaultError && <span role="alert" className="text-[var(--error)]">{defaultError}</span>}
+          </div>
+        </section>
+
         <section className="card space-y-3 p-4">
           <h2 className="text-sm font-semibold text-primary">Signature &amp; printing <span className="text-xs font-normal text-muted">(optional)</span></h2>
           <p className="text-xs text-muted">Issued in the name of <strong>{issuer.name}</strong>.</p>
@@ -85,7 +125,7 @@ export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string
             <span>Add company stamp{!issuer.stampUrl && <span className="block text-xs text-muted">No stamp uploaded for {issuer.name}. Add one under {issuer.where}.</span>}</span>
           </label>
           <div className="space-y-2 border-t border-default pt-3 text-sm text-secondary">
-            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints the header (name, address, contact) of {issuer.name}.</span></span></label>
+            <label className="flex items-start gap-2"><input type="radio" name="paper" checked={!onLetterhead} onChange={() => setOnLetterhead(false)} className="mt-0.5" /><span>Plain paper<span className="block text-xs text-muted">Prints the header (name, address, contact) of {issuer.name}, inside the margins set in Company profile › Letters.</span></span></label>
             <label className="flex items-start gap-2"><input type="radio" name="paper" checked={onLetterhead} onChange={() => setOnLetterhead(true)} className="mt-0.5" /><span>On letterhead<span className="block text-xs text-muted">{issuer.letterheadKind === "image" ? `Uses the uploaded letterhead of ${issuer.name} as the page background.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the downloaded PDF, not in this preview.` : `No letterhead is uploaded for ${issuer.name} (add one under ${issuer.where}). Leaves the header and footer space clear for pre-printed paper.`}</span></span></label>
           </div>
         </section>
@@ -107,7 +147,7 @@ export function PayslipStudio({ runId, doc, issuer, preselect }: { runId: string
                 <button type="button" className="rounded p-1 hover:bg-surface-hover disabled:opacity-40" disabled={at >= chosen.length - 1} onClick={() => setViewing(chosen[at + 1].s.lineId)} aria-label="Next payslip"><ChevronRight className="h-4 w-4" aria-hidden /></button>
               </span>
             </div>
-            <PayslipCard doc={doc} i={current.i} paper={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
+            <PayslipCard doc={doc} i={current.i} paper={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
           </>
         ) : <p className="card p-6 text-sm text-muted">Select at least one employee to preview their payslip.</p>}
       </div>

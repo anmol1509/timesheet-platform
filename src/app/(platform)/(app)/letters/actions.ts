@@ -7,7 +7,8 @@ import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import { refLabel, renderEmployeeLetter } from "@/lib/employeeLetter";
-import { substituteInHtml } from "@/lib/letterHtml";
+import { htmlToText, substituteInHtml } from "@/lib/letterHtml";
+import { sanitizeLetterHtml } from "@/lib/letterSanitize";
 import { GAP_FIELDS } from "@/lib/letterGaps";
 import { formatMasked } from "@/lib/idFormats";
 import { storeImage } from "@/lib/storedImage";
@@ -32,7 +33,7 @@ export async function previewLetterAction(employeeId: string, templateId: string
 }
 
 /** Issues the letter: numbers it, stores the exact wording, and records who issued it. */
-export async function issueLetterAction(employeeId: string, templateId: string, inputs: Inputs, layoutIn: LayoutInput, allowEmpty = false): Promise<{ id?: string; error?: string }> {
+export async function issueLetterAction(employeeId: string, templateId: string, inputs: Inputs, layoutIn: LayoutInput, allowEmpty = false, editedHtml: string | null = null): Promise<{ id?: string; error?: string }> {
   await requireWrite("workforce.letters");
   await requirePermission("workforce.letters", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -60,7 +61,11 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   const margins = layoutIn.onLetterhead
     ? { top: issuerOpt.topMm, bottom: issuerOpt.bottomMm, left: m.letterheadSides.left, right: m.letterheadSides.right }
     : m.plain;
+  // Wording changed for this one letter: cleaned the same way as a template, and it must still say something.
+  const edited = typeof editedHtml === "string" && editedHtml.trim() ? sanitizeLetterHtml(editedHtml.slice(0, 40_000)) : null;
+  if (edited !== null && htmlToText(edited).length === 0) return { error: "The edited letter is empty." };
   const layout = {
+    ...(edited !== null ? { edited: true } : {}),
     modern: true,
     margins,
     issuerKey,
@@ -87,7 +92,7 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   });
   const ref = refLabel(created.refNo);
   const final = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, refNo: ref, issuerSupplierId: who.supplierId });
-  const bodyHtml = final.ok ? final.html : substituteInHtml(first.html, { "LTR-••••••": ref });
+  const bodyHtml = edited !== null ? edited.split("LTR-••••••").join(ref) : final.ok ? final.html : substituteInHtml(first.html, { "LTR-••••••": ref });
   await prisma.issuedLetter.update({ where: { id: created.id }, data: { bodyHtml } });
   await logAudit({ entityType: "ISSUED_LETTER", entityId: created.id, action: "CREATE", after: { ref, title: first.title, employee: first.employeeName, template: first.templateName, ...layout }, userId: user.id, userName: user.name, branchId: first.branchId });
   revalidatePath("/letters");

@@ -1,3 +1,4 @@
+import { marginsOfBranch } from "@/lib/paperMargins";
 import { NextResponse } from "next/server";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -75,6 +76,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     artwork,
     topMm: quotation.branch.letterheadTopMm,
     bottomMm: quotation.branch.letterheadBottomMm,
+    margins: marginsOfBranch(quotation.branch),
     signature,
     stamp,
     signatoryName: quotation.branch.signatoryName,

@@ -23,7 +23,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
   const subject = subjectOf(user);
   const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
   const [templates, employees, issued, nocs, branch, totalIssued, issuedThisMonth, byTitle, byTemplate] = await Promise.all([
-    prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: { name: "asc" } }),
+    prisma.letterTemplate.findMany({ where: { ...branchWhere(branchId), audience: "EMPLOYEE" }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
     prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
     prisma.noc.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { template: { select: { title: true, name: true } }, demandRequest: { select: { requestNo: true, client: { select: { name: true } }, project: { select: { name: true } } } }, requestedBy: { select: { name: true } }, _count: { select: { employees: true } } } }),
@@ -35,7 +35,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
   ]);
   // Employee letters and NOCs in one list, newest first.
   const history: IssuedRow[] = [
-    ...issued.map((l) => ({ key: `l-${l.id}`, kind: "Letter" as const, ref: refLabel(l.refNo), who: l.employee.name, whoSub: l.employee.employeeIdNo, title: l.title, at: l.createdAt, by: l.issuedBy.name, href: `/api/letters/${l.id}/pdf` })),
+    ...issued.map((l) => ({ key: `l-${l.id}`, kind: "Letter" as const, ref: refLabel(l.refNo), who: l.employee.name, whoSub: l.employee.employeeIdNo, title: l.title, at: l.createdAt, by: l.issuedBy.name, href: `/api/letters/${l.id}/pdf`, edited: !!(l.layout as { edited?: boolean } | null)?.edited })),
     ...nocs.map((n) => ({ key: `n-${n.id}`, kind: "NOC" as const, ref: `NOC-${n.docNo}`, who: n.demandRequest.client.name, whoSub: `${n.demandRequest.project.name} · ${n._count.employees} worker${n._count.employees === 1 ? "" : "s"}`, title: n.template.title || n.template.name, at: n.createdAt, by: n.requestedBy?.name ?? "—", href: `/api/nocs/${n.id}?letterhead=1` })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 60).map((h) => ({ ...h, at: formatLetterDate(h.at) }));
   const mostRequested = byTitle[0]?.title ?? "—";

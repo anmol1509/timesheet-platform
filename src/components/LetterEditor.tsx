@@ -6,6 +6,7 @@ import { Node as TipNode, Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
+import { TableKit } from "@tiptap/extension-table";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import * as Popover from "@radix-ui/react-popover";
@@ -177,7 +178,7 @@ function AskButton({ editor }: { editor: Editor }) {
   );
 }
 
-function Toolbar({ editor, fields, audience }: { editor: Editor; fields: MergeField[]; audience: "SITE" | "EMPLOYEE" }) {
+function Toolbar({ editor, fields, audience, oneOff }: { editor: Editor; fields: MergeField[]; audience: "SITE" | "EMPLOYEE"; oneOff?: boolean }) {
   const size = /^(\d+(?:\.\d+)?)pt$/.exec(editor.getAttributes("textStyle").fontSize ?? "")?.[1] ?? "";
   const family = FONT_FAMILIES.find((f) => f.value === editor.getAttributes("textStyle").fontFamily)?.value ?? "";
   const heading = editor.isActive("heading", { level: 1 }) ? "1" : editor.isActive("heading", { level: 2 }) ? "2" : editor.isActive("heading", { level: 3 }) ? "3" : "0";
@@ -217,16 +218,26 @@ function Toolbar({ editor, fields, audience }: { editor: Editor; fields: MergeFi
       <Tool title="Decrease indent" disabled={!editor.can().liftListItem("listItem")} onClick={() => c().liftListItem("listItem").run()}><IndentDecrease className="h-4 w-4" /></Tool>
       <Tool title="Quote" active={editor.isActive("blockquote")} onClick={() => c().toggleBlockquote().run()}><MessageSquareQuote className="h-4 w-4" /></Tool>
       <LinkButton editor={editor} />
+      <Tool title="Insert table" active={editor.isActive("table")} onClick={() => c().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><Table2 className="h-4 w-4" /></Tool>
       <Tool title="Horizontal line" onClick={() => c().setHorizontalRule().run()}><Minus className="h-4 w-4" /></Tool>
       <Tool title="Clear formatting" onClick={() => c().unsetAllMarks().clearNodes().run()}><Eraser className="h-4 w-4" /></Tool>
-      <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden />
-      <FieldMenu editor={editor} fields={fields} label="Insert field" audience={audience} />
-      {audience === "SITE" && (
+      {editor.isActive("table") && (
+        <>
+          <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden />
+          <span className="text-[11px] font-semibold text-muted uppercase">Table</span>
+          {([["Add row below", () => c().addRowAfter().run()], ["Add column right", () => c().addColumnAfter().run()], ["Delete row", () => c().deleteRow().run()], ["Delete column", () => c().deleteColumn().run()], ["Delete table", () => c().deleteTable().run()]] as [string, () => void][]).map(([label, run]) => (
+            <button key={label} type="button" onMouseDown={(e) => e.preventDefault()} onClick={run} className="h-8 rounded-md border border-default px-2 text-xs font-medium text-secondary transition hover:bg-surface-hover">{label}</button>
+          ))}
+        </>
+      )}
+      {!oneOff && <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden />}
+      {!oneOff && <FieldMenu editor={editor} fields={fields} label="Insert field" audience={audience} />}
+      {audience === "SITE" && !oneOff && (
         <button type="button" disabled={editor.getHTML().includes("data-worker-table")} onMouseDown={(e) => e.preventDefault()} onClick={() => c().insertContent({ type: "workerTable" }).run()} className="inline-flex h-8 items-center gap-1 rounded-md border border-default px-2 text-xs font-medium text-secondary transition hover:bg-surface-hover disabled:opacity-40" title="Choose where the worker table goes (one per letter). Text below it prints under the table.">
           <Table2 className="h-3.5 w-3.5" /> Worker table
         </button>
       )}
-      {audience === "EMPLOYEE" && <AskButton editor={editor} />}
+      {audience === "EMPLOYEE" && !oneOff && <AskButton editor={editor} />}
     </div>
   );
 }
@@ -236,11 +247,14 @@ export function LetterEditor({
   onChange,
   fields,
   audience,
+  oneOff,
 }: {
   html: string;
   onChange: (html: string) => void;
   fields: MergeField[];
   audience: "SITE" | "EMPLOYEE";
+  /** Editing one finished letter: no merge fields or "ask when issuing" blanks, just the words. */
+  oneOff?: boolean;
 }) {
   const known = useMemo(() => new Set(fields.map((f) => f.key).concat(audience === "SITE" ? ["SPONSORSHIPCOMPANYNAME"] : [])), [fields, audience]);
   const editor = useEditor({
@@ -250,6 +264,7 @@ export function LetterEditor({
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: false } }),
       TextStyleKit,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TableKit.configure({ table: { resizable: false } }),
       WorkerTable,
       TokenPills.configure({ known }),
     ],
@@ -261,7 +276,7 @@ export function LetterEditor({
   if (!editor) return <div className="h-96 animate-pulse rounded-lg bg-surface-sunken" />;
   return (
     <div className="letter-editor overflow-hidden rounded-lg border border-default">
-      <Toolbar editor={editor} fields={fields} audience={audience} />
+      <Toolbar editor={editor} fields={fields} audience={audience} oneOff={oneOff} />
       <EditorContent editor={editor} />
     </div>
   );

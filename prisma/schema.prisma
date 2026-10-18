@@ -66,6 +66,8 @@ model Branch {
   plainBottomMm      Int          @default(25)
   plainLeftMm        Int          @default(25)
   plainRightMm       Int          @default(25)
+  // Payslip lines kept off every payslip (comma-separated kinds, e.g. "gas,ytd"); their amounts fold into Other earnings / deductions.
+  payslipHidden      String       @default("")
 
   // WPS establishment details (Company profile -> Payroll / WPS).
   wpsEstablishmentId       String? // MOHRE establishment / employer ID

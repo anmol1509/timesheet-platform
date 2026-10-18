@@ -13,12 +13,14 @@ const LINEH = /^\d(\.\d+)?$/;
 
 export function sanitizeLetterHtml(html: string): string {
   return sanitizeHtml(html, {
-    allowedTags: ["p", "br", "strong", "b", "em", "i", "u", "s", "strike", "span", "h1", "h2", "h3", "ul", "ol", "li", "a", "blockquote", "hr", "div", "mark"],
+    allowedTags: ["p", "br", "strong", "b", "em", "i", "u", "s", "strike", "span", "h1", "h2", "h3", "ul", "ol", "li", "a", "blockquote", "hr", "div", "mark", "table", "thead", "tbody", "tr", "th", "td"],
     allowedAttributes: {
       "*": ["style"],
       a: ["href", "target", "rel"],
       div: ["data-worker-table"],
       ol: ["start"],
+      th: ["colspan", "rowspan"],
+      td: ["colspan", "rowspan"],
     },
     allowedSchemes: ["http", "https", "mailto", "tel"],
     allowedStyles: {
