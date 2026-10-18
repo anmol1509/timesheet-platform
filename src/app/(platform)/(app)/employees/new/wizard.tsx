@@ -19,6 +19,8 @@ import {
 import { MultiUploadSlot, PhotoSlot, UploadSlot, type UploadStatus } from "./upload-slot";
 import { DocumentChecklist, type ChecklistItem } from "./document-checklist";
 import { MAX_REQUEST_BYTES, shrinkImage } from "@/lib/compressImage";
+import { PassportCheckNote } from "@/components/PassportCheckNote";
+import type { PassportCheck } from "@/lib/passportMrz";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
 import { Select } from "@/components/ui/Select";
 import { PhoneInput } from "@/components/ui/PhoneInput";
@@ -215,6 +217,8 @@ export function EmployeeWizard({
   const [dismissedWarnings, setDismissedWarnings] = useState<unknown>(null);
 
   const [step, setStep] = useState(0);
+  // How far a scanned passport's expiry can be trusted; cleared when the expiry is typed over.
+  const [passportCheck, setPassportCheck] = useState<PassportCheck | null>(null);
   const [fields, setFields] = useState<Fields>(() => ({
     ...EMPTY_FIELDS,
     name: prefill?.name ?? "",
@@ -297,6 +301,8 @@ export function EmployeeWizard({
   /** Writes extracted values into any field the user hasn't already filled. */
   function applyExtractedFields(data: ExtractedDocumentFields) {
     const filled: string[] = [];
+    // The expiry is only filled when empty, so only then does this scan's confidence apply to what is shown.
+    if (data.passportCheck && !fields.passportExpiry) setPassportCheck(data.passportCheck);
     setFields((prev) => {
       const next = { ...prev };
       const put = (key: keyof Fields, value: string | null | undefined, label: string) => {
@@ -1243,7 +1249,8 @@ export function EmployeeWizard({
               />
             </Field>
             <Field label="Passport expiry">
-              <DatePicker value={fields.passportExpiry} onChange={(v) => set("passportExpiry", v)} dataField="passportExpiry" className="w-full" />
+              <DatePicker value={fields.passportExpiry} onChange={(v) => { set("passportExpiry", v); setPassportCheck(null); }} dataField="passportExpiry" className="w-full" />
+              <PassportCheckNote check={passportCheck} hasExpiry={!!fields.passportExpiry} />
             </Field>
           </Group>
 

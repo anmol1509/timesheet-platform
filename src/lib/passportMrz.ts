@@ -3,6 +3,9 @@
  * side under their labels and are easy to swap) and in the machine-readable zone, which carries check digits. When
  * the MRZ reads cleanly it is the better source, so it overrules whatever was read from the visual zone.
  */
+/** How far a passport read can be trusted: which values were confirmed by the machine-readable lines' check digits. */
+export type PassportCheck = { number: boolean; dateOfBirth: boolean; expiry: boolean; /** The expiry on the printed page looked wrong and was left blank. */ expiryDropped: boolean };
+
 type Fields = { passportNumber?: string | null; passportExpiry?: string | null; dateOfBirth?: string | null; passportIssueDate?: string | null; mrzLine2?: string | null; [k: string]: unknown };
 
 const val = (c: string) => (c === "<" ? 0 : /\d/.test(c) ? Number(c) : c.charCodeAt(0) - 55);
@@ -39,15 +42,17 @@ export function readMrzLine2(raw: string, ref = new Date()): { passportNumber?: 
  * Settles a passport's fields: MRZ values that pass their check digits win; otherwise an expiry that is not after
  * the issue date (the usual swap) or before the date of birth is dropped rather than saved wrong.
  */
-export function reconcilePassport<T extends Fields>(parsed: T, ref = new Date()): T {
-  const next = { ...parsed };
+export function reconcilePassport<T extends Fields>(parsed: T, ref = new Date()): T & { passportCheck: PassportCheck } {
+  const next = { ...parsed } as T & { passportCheck: PassportCheck };
   const mrz = parsed.mrzLine2 ? readMrzLine2(parsed.mrzLine2, ref) : null;
   if (mrz?.passportExpiry) next.passportExpiry = mrz.passportExpiry;
   if (mrz?.passportNumber) next.passportNumber = mrz.passportNumber;
   if (mrz?.dateOfBirth && !parsed.dateOfBirth) next.dateOfBirth = mrz.dateOfBirth;
+  let expiryDropped = false;
   if (!mrz?.passportExpiry && next.passportExpiry) {
     const e = next.passportExpiry;
-    if ((parsed.passportIssueDate && e <= parsed.passportIssueDate) || (next.dateOfBirth && e <= next.dateOfBirth)) next.passportExpiry = "";
+    if ((parsed.passportIssueDate && e <= parsed.passportIssueDate) || (next.dateOfBirth && e <= next.dateOfBirth)) { next.passportExpiry = ""; expiryDropped = true; }
   }
+  next.passportCheck = { number: !!mrz?.passportNumber, dateOfBirth: !!mrz?.dateOfBirth, expiry: !!mrz?.passportExpiry, expiryDropped };
   return next;
 }

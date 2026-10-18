@@ -34,3 +34,12 @@ test("one bad field does not stop the others being used", () => {
   assert.equal(r?.passportExpiry, "2034-10-24");
   assert.equal(r?.dateOfBirth, undefined);
 });
+
+test("the result says which values the check digits confirmed", () => {
+  const ok = reconcilePassport({ passportExpiry: "2034-10-24", mrzLine2: MRZ }, REF);
+  assert.deepEqual(ok.passportCheck, { number: true, dateOfBirth: true, expiry: true, expiryDropped: false });
+  const printedOnly = reconcilePassport({ passportExpiry: "2034-10-24", passportIssueDate: "2024-10-24", mrzLine2: "" }, REF);
+  assert.deepEqual(printedOnly.passportCheck, { number: false, dateOfBirth: false, expiry: false, expiryDropped: false });
+  const dropped = reconcilePassport({ passportExpiry: "2024-10-24", passportIssueDate: "2024-10-24", mrzLine2: "" }, REF);
+  assert.equal(dropped.passportCheck.expiryDropped, true);
+});

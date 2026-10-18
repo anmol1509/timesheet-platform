@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
-import { reconcilePassport } from "@/lib/passportMrz";
+import { reconcilePassport, type PassportCheck } from "@/lib/passportMrz";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
 const SUPPORTED_IMAGE_TYPES = new Set([
@@ -231,6 +231,8 @@ export type ExtractedDocumentFields = {
   passportExpiry?: string | null;
   passportIssueDate?: string | null;
   mrzLine2?: string | null;
+  /** Passports: which values the machine-readable lines confirmed. Absent when no passport was read. */
+  passportCheck?: PassportCheck;
   emiratesId?: string | null;
   emiratesIdExpiry?: string | null;
   laborCardNumber?: string | null;
