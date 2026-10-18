@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DrawerFrame } from "@/components/quick-view/DrawerFrame";
+import { companyNameMatches } from "@/lib/companyName";
 import { ScanDrop } from "@/components/quick-view/ScanDrop";
 import { ScanSummary, type ScanSummaryData } from "@/components/quick-view/ScanSummary";
 import { ChoiceField, ClickToEdit, Notice, Pill, Row, TextEditor, useFieldFlow, type Kind, type SaveResult } from "@/components/quick-view/fields";
@@ -179,7 +180,7 @@ export function CompanyDrawer({ adapter, id, order, fallbackName, onNavigate, on
       {data && tab === "compliance" && (
         <fieldset disabled={!data.canEdit} className="min-w-0 space-y-3">
           {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
-          <CompanyScan adapter={adapter} id={id} onDone={onScanDone} title="Scan the trade licence" hint="Licence number, expiry, TRN and contact details are read and saved." />
+          <CompanyScan adapter={adapter} id={id} names={[data.name, typeof data.fullName === "string" ? data.fullName : null]} onDone={onScanDone} title="Scan the trade licence" hint="Licence number, expiry, TRN and contact details are read and saved." />
           <dl className="rounded-[14px] border border-default">
             <Row label="Licence no."><ClickToEdit label="trade licence number" value={data.tradeLicenseNumber} onSave={bound("tradeLicenseNumber", "Trade licence number")} /></Row>
             <Row label="Expires">
@@ -217,7 +218,7 @@ export function CompanyDrawer({ adapter, id, order, fallbackName, onNavigate, on
           </div>
           {scan && <ScanSummary outcome={scan} onUse={useScanValue} onDismiss={() => setScanState(null)} />}
           {open.some((g) => ["tradeLicenseNumber", "tradeLicenseExpiry", "trn", "scan"].includes(g.key)) && (
-            <CompanyScan adapter={adapter} id={id} onDone={onScanDone} title="Scan the trade licence" hint="Licence number, expiry and TRN are read and saved." />
+            <CompanyScan adapter={adapter} id={id} names={[data.name, typeof data.fullName === "string" ? data.fullName : null]} onDone={onScanDone} title="Scan the trade licence" hint="Licence number, expiry and TRN are read and saved." />
           )}
           {open.some((g) => g.key !== "scan") && (
             <div className="rounded-[14px] border border-default">
@@ -267,10 +268,40 @@ function GapRow({ gap, save }: { gap: CompanyGap; save: Save }) {
  * One way to add a company document: it is read, kept against the company, and everything readable is put on the
  * record in the same step, so nothing is typed that the scan already said.
  */
-function CompanyScan({ adapter, id, onDone, title, hint }: { adapter: CompanyAdapter; id: string; onDone: (o: CompanyScanOutcome) => void; title: string; hint: string }) {
+// Documents that carry the company's own name. A tenancy or insurance document names other parties too, so it is not checked.
+const OWN_NAME_DOCS = new Set(["TRADE_LICENSE", "MOHRE_PERMIT", "ESTABLISHMENT_CARD", "TRN_CERTIFICATE", "CHAMBER_OF_COMMERCE"]);
+
+type Held = { file: File; fields: ExtractedCompanyFields; docType: string; companyName: string };
+
+function CompanyScan({ adapter, id, names, onDone, title, hint }: { adapter: CompanyAdapter; id: string; names: (string | null)[]; onDone: (o: CompanyScanOutcome) => void; title: string; hint: string }) {
+  // Documents that read as a different company, waiting for a decision. Nothing from them is saved yet.
+  const [held, setHeld] = useState<Held[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
+
+  /** Keeps the file against the company and puts what was read on the record. */
+  async function commit(file: File, fields: ExtractedCompanyFields, docType: string, out: CompanyScanOutcome) {
+    const problem = await adapter.storeFile(id, file, docType, fields.documentExpiry || (docType === "TRADE_LICENSE" ? fields.tradeLicenseExpiry || "" : ""));
+    if (problem) { setError(problem); return; }
+    out.files++;
+    if (Object.keys(fields).length > 0) {
+      const a = await adapter.applyScan({ id, fields });
+      if ("error" in a) setError(a.error);
+      else {
+        for (const x of a.applied) if (!out.applied.some((y) => y.key === x.key)) out.applied.push(x);
+        for (const c of a.conflicts) if (!out.conflicts.some((y) => y.key === c.key)) out.conflicts.push(c);
+      }
+    }
+  }
+
+  async function fileHeld(h: Held) {
+    setHeld((x) => x.filter((y) => y !== h));
+    setStatus("Saving…");
+    const out: CompanyScanOutcome = { applied: [], conflicts: [], files: 0, unread: 0, reason: null };
+    try { await commit(h.file, h.fields, h.docType, out); } finally { setStatus(null); }
+    if (out.files > 0) onDone(out);
+  }
 
   async function run(files: File[]) {
     if (files.length === 0) return;
@@ -294,19 +325,14 @@ function CompanyScan({ adapter, id, onDone, title, hint }: { adapter: CompanyAda
           if (res?.ok && payload) fields = payload as ExtractedCompanyFields;
           else { out.unread++; out.reason = (payload && typeof payload.error === "string" && payload.error) || "The document couldn't be read."; }
         }
-        setStatus("Saving…");
         const docType = fields.docType && adapter.docTypes.includes(fields.docType) ? fields.docType : "TRADE_LICENSE";
-        const problem = await adapter.storeFile(id, file, docType, fields.documentExpiry || (docType === "TRADE_LICENSE" ? fields.tradeLicenseExpiry || "" : ""));
-        if (problem) { setError(problem); continue; }
-        out.files++;
-        if (Object.keys(fields).length > 0) {
-          const a = await adapter.applyScan({ id, fields });
-          if ("error" in a) setError(a.error);
-          else {
-            for (const x of a.applied) if (!out.applied.some((y) => y.key === x.key)) out.applied.push(x);
-            for (const c of a.conflicts) if (!out.conflicts.some((y) => y.key === c.key)) out.conflicts.push(c);
-          }
+        // A document plainly belonging to another company is held back, not filed against this one.
+        if (OWN_NAME_DOCS.has(docType) && !companyNameMatches(fields.companyName, names)) {
+          setHeld((h) => [...h, { file, fields, docType, companyName: (fields.companyName ?? "").trim() }]);
+          continue;
         }
+        setStatus("Saving…");
+        await commit(file, fields, docType, out);
       }
     } catch {
       setError("That didn't upload. Please try again.");
@@ -317,5 +343,21 @@ function CompanyScan({ adapter, id, onDone, title, hint }: { adapter: CompanyAda
     if (out.files > 0) onDone(out);
   }
 
-  return <ScanDrop title={title} hint={hint} compact multiple status={status} error={error} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />;
+  return (
+    <div>
+      <ScanDrop title={title} hint={hint} compact multiple status={status} error={error} onFiles={(f) => void run(f)} onCancel={() => abort.current?.abort()} />
+      {held.map((h) => (
+        <div key={`${h.file.name}-${h.file.size}-${h.file.lastModified}`} role="alert" className="mt-2 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] p-3 text-sm">
+          <p className="font-semibold text-[var(--error)]">This doesn’t look like {names[0] ? `${names[0]}’s` : `this ${adapter.noun}’s`} document.</p>
+          <p className="mt-1 text-xs text-secondary">
+            {h.file.name} reads <b className="text-primary">{h.companyName}</b>. Nothing has been uploaded or filled in.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHeld((x) => x.filter((y) => y !== h))}>Skip it</button>
+            <button type="button" className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]" onClick={() => void fileHeld(h)}>It’s the right company, upload anyway</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
