@@ -3,6 +3,8 @@
 import type { PaperMarginSet } from "@/lib/paperMargins";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
+import { PAYSLIP_HIDEABLE, applyPayslipView } from "@/lib/payslipView";
+import { savePayslipDefaultAction } from "./actions";
 import { PayslipCard } from "@/components/PayslipCard";
 import type { PayslipDoc } from "@/lib/payslipData";
 import type { IssuerOption } from "@/lib/employeeLetterIssuer";
@@ -12,7 +14,13 @@ import { PrintButton } from "./print-button";
  * Payslips of a run, laid out like the Letters screen: pick who gets one (one, several or all), choose
  * plain paper or letterhead and whether to sign and stamp, watch the preview change, then download.
  */
-export function PayslipStudio({ runId, doc, issuer, margins, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; margins: PaperMarginSet; preselect: string | null }) {
+export function PayslipStudio({ runId, doc: fullDoc, issuer, margins, defaultHidden, preselect }: { runId: string; doc: PayslipDoc; issuer: IssuerOption; margins: PaperMarginSet; defaultHidden: string[]; preselect: string | null }) {
+  // Lines left off the payslip are folded into Other earnings / deductions, so totals and net pay never change.
+  const [hidden, setHidden] = useState<string[]>(defaultHidden);
+  const [savedHidden, setSavedHidden] = useState<string[]>(defaultHidden);
+  const [savingDefault, setSavingDefault] = useState(false);
+  const [defaultError, setDefaultError] = useState<string | null>(null);
+  const doc = useMemo(() => applyPayslipView(fullDoc, hidden), [fullDoc, hidden]);
   const [picked, setPicked] = useState<Set<string>>(() => new Set(preselect ? [preselect] : doc.slips.map((s) => s.lineId)));
   const [query, setQuery] = useState("");
   const [onLetterhead, setOnLetterhead] = useState(false);
@@ -38,7 +46,18 @@ export function PayslipStudio({ runId, doc, issuer, margins, preselect }: { runI
   if (showStamp) params.set("stamp", "1");
   if ((showSignature || showStamp) && signatoryName.trim()) params.set("name", signatoryName.trim());
   if ((showSignature || showStamp) && signatoryTitle.trim()) params.set("title", signatoryTitle.trim());
-  const pdf = `/api/payroll/${runId}/payslips${params.size > 0 ? `?${params}` : ""}`;
+  // Always stated, so the download matches the preview even when it differs from the company default.
+  params.set("hide", hidden.join(","));
+  const pdf = `/api/payroll/${runId}/payslips?${params}`;
+  const hiddenChanged = hidden.slice().sort().join(",") !== savedHidden.slice().sort().join(",");
+  const toggleHidden = (key: string) => setHidden((h) => (h.includes(key) ? h.filter((k) => k !== key) : [...h, key]));
+  async function saveDefault() {
+    setSavingDefault(true);
+    setDefaultError(null);
+    const r = await savePayslipDefaultAction(runId, hidden).catch(() => ({ error: "Could not save." }));
+    setSavingDefault(false);
+    if (r.error) setDefaultError(r.error); else setSavedHidden(hidden);
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[22rem_1fr]">
@@ -70,6 +89,26 @@ export function PayslipStudio({ runId, doc, issuer, margins, preselect }: { runI
             ))}
           </ul>
           {!allShownPicked && picked.size === 0 && <p className="text-xs text-[var(--warning)]">Pick at least one employee to download.</p>}
+        </section>
+
+        <section className="card space-y-2 p-4">
+          <h2 className="text-sm font-semibold text-primary">Show on payslip</h2>
+          <p className="text-xs text-muted">Switch a line off to keep it off the payslip. Its amount is added into <b>Other earnings</b> or <b>Other deductions</b>, so the totals and net pay stay the same.</p>
+          <ul className="divide-y divide-[var(--border)]">
+            {PAYSLIP_HIDEABLE.map((h) => (
+              <li key={h.key}>
+                <label className="flex cursor-pointer items-center justify-between gap-3 py-1.5 text-sm text-secondary">
+                  <span>{h.label}</span>
+                  <input type="checkbox" role="switch" checked={!hidden.includes(h.key)} onChange={() => toggleHidden(h.key)} aria-label={`Show ${h.label}`} />
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <button type="button" className="font-semibold text-brand hover:underline disabled:opacity-40 disabled:no-underline" disabled={!hiddenChanged || savingDefault} onClick={saveDefault}>{savingDefault ? "Saving…" : "Use this for every payslip"}</button>
+            {!hiddenChanged && hidden.length > 0 && <span className="text-muted">This is the company default.</span>}
+            {defaultError && <span role="alert" className="text-[var(--error)]">{defaultError}</span>}
+          </div>
         </section>
 
         <section className="card space-y-3 p-4">

@@ -555,6 +555,12 @@ main .card > div > table > thead > tr:first-child > th:last-child {
 }
 .letter-editor .ProseMirror .letter-worker-table::before { content: "▦  Worker table — filled in automatically when the letter is made"; }
 .letter-editor .ProseMirror .ProseMirror-selectednode.letter-worker-table { outline: 2px solid var(--brand-primary, #2563eb); }
+/* Tables written in the letter editor (not the worker table, which has its own class). */
+.letter-editor .ProseMirror table, .letter-paper table:not(.letter-sample-table) { width: 100%; border-collapse: collapse; margin: 0.6em 0; table-layout: fixed; }
+.letter-editor .ProseMirror th, .letter-editor .ProseMirror td, .letter-paper table:not(.letter-sample-table) th, .letter-paper table:not(.letter-sample-table) td { border: 1px solid #111; padding: 3px 6px; text-align: left; vertical-align: top; }
+.letter-editor .ProseMirror th, .letter-paper table:not(.letter-sample-table) th { background: #e5e7eb; font-weight: 700; }
+.letter-editor .ProseMirror td p, .letter-editor .ProseMirror th p, .letter-paper table:not(.letter-sample-table) td p, .letter-paper table:not(.letter-sample-table) th p { margin: 0; }
+.letter-editor .ProseMirror .selectedCell { background: #dbeafe; }
 .letter-paper table.letter-sample-table { width: 100%; border-collapse: collapse; margin: 0.6em 0; font-size: 9px; }
 .letter-paper table.letter-sample-table th, .letter-paper table.letter-sample-table td { border: 1px solid #000; padding: 2px 4px; text-align: left; }
 .letter-paper table.letter-sample-table th { background: #e5e5e5; }

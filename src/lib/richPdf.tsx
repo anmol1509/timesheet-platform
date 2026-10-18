@@ -145,6 +145,26 @@ function Blocks({ nodes, ctx, depth, keyBase }: { nodes: Node[]; ctx: Ctx; depth
         if (tag === "blockquote") {
           return <View key={key} style={{ borderLeftWidth: 2, borderLeftColor: "#9CA3AF", paddingLeft: 8, marginBottom: 8 }}><Blocks nodes={n.childNodes} ctx={{ ...c, italic: true }} depth={depth} keyBase={key} /></View>;
         }
+        if (tag === "table") {
+          const rows = n.querySelectorAll("tr");
+          return (
+            <View key={key} style={{ marginBottom: 8, borderTopWidth: 0.5, borderLeftWidth: 0.5, borderColor: "#000000" }}>
+              {rows.map((tr, r) => (
+                <View key={`${key}-r${r}`} style={{ flexDirection: "row" }} wrap={false}>
+                  {tr.childNodes.filter((x): x is HTMLElement => x instanceof HTMLElement && /^(td|th)$/i.test(x.tagName ?? "")).map((cell, ci) => {
+                    const head = cell.tagName.toLowerCase() === "th";
+                    const span = Math.max(1, parseInt(cell.getAttribute("colspan") ?? "1", 10) || 1);
+                    return (
+                      <View key={`${key}-r${r}-c${ci}`} style={{ flex: span, borderRightWidth: 0.5, borderBottomWidth: 0.5, borderColor: "#000000", paddingVertical: 3, paddingHorizontal: 5, ...(head ? { backgroundColor: "#E5E7EB" } : {}) }}>
+                        <Blocks nodes={cell.childNodes} ctx={{ ...inherit(c, cell), tight: true, ...(head ? { bold: true } : {}) }} depth={depth} keyBase={`${key}-r${r}-c${ci}`} />
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          );
+        }
         if (tag === "hr") return <View key={key} style={{ borderBottomWidth: 0.7, borderBottomColor: "#000000", marginVertical: 8 }} />;
         if (tag === "div") return <Blocks key={key} nodes={n.childNodes} ctx={c} depth={depth} keyBase={key} />;
         // Bare inline content at block level.

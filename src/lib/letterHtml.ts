@@ -37,7 +37,8 @@ export function templateHtml(t: { bodyHtml: string | null; remarksText: string }
 /** Visible text of an HTML body — used for snippets, search and field checks. */
 export function htmlToText(html: string): string {
   return html
-    .replace(/<\/(p|div|h[1-6]|li|blockquote)>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|blockquote|tr)>/gi, "\n")
+    .replace(/<\/(td|th)>/gi, "  ")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")

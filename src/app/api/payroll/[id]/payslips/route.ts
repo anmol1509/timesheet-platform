@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
-import { loadRunPayslips } from "@/lib/payslipData";
+import { hiddenDefault, loadRunPayslips } from "@/lib/payslipData";
+import { applyPayslipView, parseHidden } from "@/lib/payslipView";
 import { generatePayslipPdf } from "@/lib/generatePayslipPdf";
 import { loadPayslipLayout } from "@/lib/payslipPrint";
 
@@ -21,7 +22,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const flag = (k: string) => q.get(k) === "1";
   // Always loaded: even a plain printout takes the company's margins.
   const layout = await loadPayslipLayout(id, { onLetterhead: flag("letterhead"), showSignature: flag("signature"), showStamp: flag("stamp"), signatoryName: (q.get("name") ?? "").slice(0, 120), signatoryTitle: (q.get("title") ?? "").slice(0, 120) });
-  const pdf = await generatePayslipPdf(doc, layout ?? undefined);
+  // ?hide=gas,ytd names the lines to fold away (empty = show everything); without it the company's own choice applies.
+  const hidden = q.has("hide") ? parseHidden(q.get("hide")) : await hiddenDefault(doc.branchId);
+  const pdf = await generatePayslipPdf(applyPayslipView(doc, hidden), layout ?? undefined);
   const name = doc.slips.length === 1 ? `payslip-${doc.slips[0].employee.idNo}-${doc.month}` : `payslips-${doc.month}`;
   return new NextResponse(new Uint8Array(pdf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${name}.pdf"`, "Cache-Control": "private, no-store" } });
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { buildLetterhead, type Letterhead } from "@/lib/letterhead";
+import { applyPayslipView, parseHidden } from "@/lib/payslipView";
 import { buildPayslip, yearToDate, type Payslip, type PayslipLine } from "@/lib/payslip";
 
 const n = (d: { toString(): string }) => Number(d.toString());
@@ -103,5 +104,12 @@ export async function loadEssPayslip(employeeId: string, lineId: string): Promis
   });
   if (!l) return null;
   const doc = await loadRunPayslips(l.runId, lineId);
-  return doc;
+  // The employee sees the payslip as the company has chosen to show it.
+  return doc ? applyPayslipView(doc, await hiddenDefault(doc.branchId)) : null;
+}
+
+/** The payslip lines this company keeps off every payslip, unless a printout chooses otherwise. */
+export async function hiddenDefault(branchId: string): Promise<string[]> {
+  const b = await prisma.branch.findUnique({ where: { id: branchId }, select: { payslipHidden: true } });
+  return parseHidden(b?.payslipHidden);
 }
