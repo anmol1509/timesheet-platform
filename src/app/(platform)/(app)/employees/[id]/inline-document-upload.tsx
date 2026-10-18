@@ -7,6 +7,7 @@ import { uploadDocumentAction, deleteDocumentAction, applyExtractedFieldsAction 
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { shrinkImage } from "@/lib/compressImage";
 import type { ExtractedDocumentFields } from "@/app/api/documents/extract/route";
+import { identityMismatch } from "@/lib/personName";
 
 type Doc = {
   id: string;
@@ -28,6 +29,8 @@ const STATUS_BADGE = {
 // where the corresponding fields are being filled in.
 export function InlineDocumentUpload({
   employeeId,
+  employeeName,
+  employeeDob,
   type,
   documents,
   expiryFieldName,
@@ -35,6 +38,9 @@ export function InlineDocumentUpload({
   onExtracted,
 }: {
   employeeId: string;
+  // Who this is being filed against. A document that reads as someone else is held back and asked about, not filed.
+  employeeName?: string;
+  employeeDob?: string | null;
   type: string;
   documents: Doc[];
   // Name of the sibling <input> in the same <form> holding this document's
@@ -55,6 +61,8 @@ export function InlineDocumentUpload({
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedDocumentFields | null>(null);
   const [applied, setApplied] = useState(false);
+  // A document that reads as a different person, waiting for a decision.
+  const [held, setHeld] = useState<{ file: File; expiryDate: string; fields: ExtractedDocumentFields; reason: NonNullable<ReturnType<typeof identityMismatch>> } | null>(null);
 
   // This component is rendered inside the employee edit page's single big
   // <form> (so the sibling-expiry-field lookup below works), which means a
@@ -69,6 +77,24 @@ export function InlineDocumentUpload({
       await deleteDocumentAction(formData);
       setRemovingId(null);
     });
+  }
+
+  function fileDocument(file: File, expiryDate: string, fields: ExtractedDocumentFields | null) {
+    const formData = new FormData();
+    formData.append("employeeId", employeeId);
+    formData.append("type", type);
+    formData.append("expiryDate", expiryDate);
+    formData.append("file", file);
+    startTransition(() => {
+      uploadDocumentAction(formData);
+    });
+    if (!fields) return;
+    if (onExtracted) {
+      onExtracted(fields);
+      setApplied(true);
+    } else {
+      setExtracted(fields);
+    }
   }
 
   async function handleUpload() {
@@ -90,36 +116,29 @@ export function InlineDocumentUpload({
       ? (form?.querySelector<HTMLInputElement>(`input[name="${expiryFieldName}"]`)?.value ?? "")
       : "";
 
-    const formData = new FormData();
-    formData.append("employeeId", employeeId);
-    formData.append("type", type);
-    formData.append("expiryDate", expiryDate);
-    formData.append("file", file);
-    startTransition(() => {
-      uploadDocumentAction(formData);
-    });
-
-    if (enableExtraction && (file.type.startsWith("image/") || file.type === "application/pdf")) {
+    const wantsExtraction = enableExtraction && (file.type.startsWith("image/") || file.type === "application/pdf");
+    let fields: ExtractedDocumentFields | null = null;
+    if (wantsExtraction) {
       setExtracting(true);
       try {
         const extractForm = new FormData();
         extractForm.append("file", file);
         extractForm.append("docType", type);
         const res = await fetch("/api/documents/extract", { method: "POST", body: extractForm });
-        if (res.ok) {
-          const fields = (await res.json()) as ExtractedDocumentFields;
-          if (onExtracted) {
-            onExtracted(fields);
-            setApplied(true);
-          } else {
-            setExtracted(fields);
-          }
-        }
+        if (res.ok) fields = (await res.json()) as ExtractedDocumentFields;
       } catch {
         // Extraction is a convenience — silently skip on failure.
       } finally {
         setExtracting(false);
       }
+    }
+
+    // Read before filing: a document that is plainly someone else's is not filed or applied until it is confirmed.
+    const reason = fields && employeeName ? identityMismatch(fields, { name: employeeName, dateOfBirth: employeeDob }) : null;
+    if (fields && reason) {
+      setHeld({ file, expiryDate, fields, reason });
+    } else {
+      fileDocument(file, expiryDate, fields);
     }
 
     if (fileRef.current) fileRef.current.value = "";
@@ -164,6 +183,25 @@ export function InlineDocumentUpload({
       />
       {error && <p className="mt-1 text-xs text-[var(--error)]">{error}</p>}
       {extracting && <p className="mt-1 text-xs text-muted">Reading document details…</p>}
+      {held && (
+        <div role="alert" className="mt-2 rounded-lg border border-[var(--error-border)] bg-[var(--error-soft)] p-3 text-sm">
+          <p className="font-semibold text-[var(--error)]">
+            {held.reason.kind === "name" ? "This doesn’t look like this employee’s document." : "The date of birth on this document is different."}
+          </p>
+          <p className="mt-1 text-xs text-secondary">
+            {held.reason.kind === "name"
+              ? <>It reads <b className="text-primary">{held.reason.documentName || "a different name"}</b>, but you are on <b className="text-primary">{employeeName}</b>.</>
+              : <>The name matches <b className="text-primary">{employeeName}</b>, but the document shows {held.fields.dateOfBirth} and the record has {employeeDob?.slice(0, 10)}. These may be two different people with the same name.</>}{" "}
+            Nothing has been uploaded or filled in.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setHeld(null)}>Cancel</button>
+            <button type="button" className="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs font-medium text-[var(--error)] hover:bg-[var(--error-soft)]" onClick={() => { const h = held; setHeld(null); fileDocument(h.file, h.expiryDate, h.fields); }}>
+              It&rsquo;s the right person, upload anyway
+            </button>
+          </div>
+        </div>
+      )}
       {extracted && !applied && (
         <div className="mt-2 rounded-lg border border-[var(--info-border)] bg-[var(--info-soft)] p-3">
           <p className="mb-2 text-xs font-medium text-[var(--brand-primary)]">

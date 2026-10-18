@@ -489,6 +489,8 @@ export function EditForm({
             </Field>
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="PASSPORT"
               documents={docsByType("PASSPORT")}
               expiryFieldName="passportExpiry"
@@ -514,6 +516,8 @@ export function EditForm({
             <div />
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="EMIRATES_ID"
               documents={docsByType("EMIRATES_ID")}
               expiryFieldName="emiratesIdExpiry"
@@ -546,6 +550,8 @@ export function EditForm({
             </Field>
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="LABOR_CARD"
               documents={docsByType("LABOR_CARD")}
               expiryFieldName="laborCardExpiry"
@@ -565,6 +571,8 @@ export function EditForm({
             <div />
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="VISA"
               documents={docsByType("VISA")}
               expiryFieldName="visaExpiry"
@@ -581,6 +589,8 @@ export function EditForm({
             <LookupField label="Medical status" name="medicalStatus" defaultValue={employee.medicalStatus} options={lookups.MEDICAL_STATUS} />
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="MEDICAL"
               documents={docsByType("MEDICAL")}
               expiryFieldName="medicalExpiry"
@@ -596,6 +606,8 @@ export function EditForm({
             <DateField label="Expiry date" name="cicpaExpiry" defaultValue={employee.cicpaExpiry} />
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="CICPA"
               documents={docsByType("CICPA")}
               expiryFieldName="cicpaExpiry"
@@ -609,6 +621,8 @@ export function EditForm({
             <DateField label="Expiry date" name="insuranceExpiry" defaultValue={employee.insuranceExpiry} />
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="INSURANCE"
               documents={docsByType("INSURANCE")}
               expiryFieldName="insuranceExpiry"
@@ -624,6 +638,8 @@ export function EditForm({
             <DateField label="Expiry date" name="drivingLicenceExpiry" defaultValue={employee.drivingLicenceExpiry} />
             <InlineDocumentUpload
               employeeId={employee.id}
+              employeeName={employee.name}
+              employeeDob={employee.dateOfBirth ? toDateInput(employee.dateOfBirth) : null}
               type="DRIVING_LICENCE"
               documents={docsByType("DRIVING_LICENCE")}
               expiryFieldName="drivingLicenceExpiry"
