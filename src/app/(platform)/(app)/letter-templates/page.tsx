@@ -2,10 +2,11 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { LETTER_PRESETS, presetByKey, presetHtml } from "@/lib/letterPresets";
+import { LETTER_PRESETS, presetByKey } from "@/lib/letterPresets";
+import { presetState } from "@/lib/letterPresetHistory";
 import { sampleFilledHtml } from "@/lib/templatePaper";
 import { formatLetterDate } from "@/lib/letterLayout";
-import { askLabels, htmlToText, templateHtml } from "@/lib/letterHtml";
+import { askLabels, templateHtml } from "@/lib/letterHtml";
 import { Copy } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { AddDefaultsButton, NewTemplateButton } from "./gallery";
@@ -51,7 +52,7 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
     const u = used.get(t.id);
     return {
       id: t.id, name: t.name, category: t.category ?? "No letter type", audience,
-      state: !pr ? "own" : htmlToText(presetHtml(pr)) === htmlToText(html) ? "original" : "edited",
+      state: !pr ? "own" : presetState(pr, html),
       title: t.title || t.category || t.name, html: sampleFilledHtml(html, audience),
       issued: u?.n ?? 0, lastUsed: u?.last ? formatLetterDate(u.last) : null, asks: askLabels(html),
       versions: versionsOf.get(t.category ?? "No letter type") ?? 1,

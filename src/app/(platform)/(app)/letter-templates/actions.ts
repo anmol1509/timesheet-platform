@@ -13,6 +13,7 @@ import { unknownFieldsIn, type Audience } from "@/lib/letterFields";
 import { can } from "@/lib/permissions";
 import { subjectOf } from "@/lib/auth";
 import { employeeLetterValues } from "@/lib/employeeLetter";
+import { presetState } from "@/lib/letterPresetHistory";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
@@ -108,6 +109,19 @@ export async function duplicateTemplateAction(formData: FormData) {
   await logAudit({ entityType: "LETTER_TEMPLATE", entityId: created.id, action: "CREATE", after: { duplicatedFrom: template.id }, userId: user.id, userName: user.name, branchId: template.branchId });
   revalidatePath("/letter-templates");
   redirect(`/letter-templates/${created.id}`);
+}
+
+/** Moves an untouched ready-made template to the current wording. A template someone has edited is never overwritten. */
+export async function updateToLatestWordingAction(formData: FormData): Promise<State> {
+  const { user, template } = await ownTemplate(str(formData.get("id")));
+  const preset = presetByKey(template?.presetKey);
+  if (!template || !preset) return { error: "There's no ready-made wording to update to." };
+  if (presetState(preset, templateHtml(template)) !== "update") return { error: "This template has been edited, so it was left as it is. Use Reset to original to replace it." };
+  const html = presetHtml(preset);
+  await prisma.letterTemplate.update({ where: { id: template.id }, data: { category: preset.category, title: preset.title, bodyHtml: html, remarksText: htmlToText(html) } });
+  await logAudit({ entityType: "LETTER_TEMPLATE", entityId: template.id, action: "UPDATE", before: { body: htmlToText(templateHtml(template)) }, after: { updatedToPreset: preset.key }, userId: user.id, userName: user.name, branchId: template.branchId });
+  revalidatePath("/letter-templates");
+  return { error: null, ok: true };
 }
 
 export async function resetToPresetAction(formData: FormData): Promise<State> {
