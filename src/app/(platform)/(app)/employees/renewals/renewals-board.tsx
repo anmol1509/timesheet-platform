@@ -23,6 +23,8 @@ import {
 import { EmployeeAvatar } from "@/components/Avatar";
 import { Badge } from "@/components/Badge";
 import { SlideOver } from "@/components/motion";
+import { RowMenu } from "@/components/ui/RowMenu";
+import { useViewerPref } from "@/lib/useViewerPref";
 import { Select } from "@/components/ui/Select";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { cn } from "@/lib/cn";
@@ -94,6 +96,8 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<RenewalStatus | "">("");
   const [mine, setMine] = useState(false);
+  const [viewPref, setViewPref] = useViewerPref("ui.renewals.view");
+  const view = viewPref === "board" ? "board" : "list";
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -102,7 +106,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
     if (targets.length === 0) return;
     setSaveError(null);
     const view: Partial<RenewalCaseView> = {
-      ...(patch.status !== undefined ? { status: patch.status as RenewalStatus } : {}),
+      ...(patch.status !== undefined ? { status: patch.status as RenewalStatus, recent: true } : {}),
       ...(patch.ownerId !== undefined ? { ownerId: patch.ownerId, ownerName: patch.ownerId ? (owners.find((o) => o.id === patch.ownerId)?.name ?? null) : null } : {}),
       ...(patch.note !== undefined ? { note: patch.note } : {}),
     };
@@ -255,10 +259,15 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
 
       <div className="card overflow-hidden">
         {saveError && <p role="alert" className="border-b border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{saveError}</p>}
-        {canEdit && pickedRows.length > 0 && (
+        {view === "list" && canEdit && pickedRows.length > 0 && (
           <BulkBar count={pickedRows.length} owners={owners} currentUserId={currentUserId} canExport={canExport} onStatus={(s) => change(pickedRows, { status: s })} onOwner={(id) => change(pickedRows, { ownerId: id })} onExport={() => { setExportError(null); setExportOpen(true); }} onClear={() => setPicked(new Set())} />
         )}
         <div className="flex flex-wrap items-center gap-2 border-b border-default p-3">
+          <div className="inline-flex overflow-hidden rounded-[10px] border border-default" role="group" aria-label="View">
+            {([["board", "Board"], ["list", "List"]] as const).map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={view === k} onClick={() => setViewPref(k)} className={cn("px-3.5 py-1.5 text-sm", view === k ? "bg-brand-soft font-semibold text-brand" : "text-secondary hover:bg-surface-hover")}>{l}</button>
+            ))}
+          </div>
           <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
             <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or ID" aria-label="Search renewals" className="input h-9 w-full py-0 pl-9 text-sm" />
@@ -277,7 +286,9 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
           )}
           <span className="tabular ml-auto text-xs text-muted">{rows.length} of {items.length}</span>
         </div>
-        {rows.length === 0 ? (
+        {view === "board" && rows.length > 0 ? (
+          <RenewalKanban rows={rows} owners={owners} currentUserId={currentUserId} canEdit={canEdit} onChange={(row, patch) => change([row], patch)} onOpen={(row) => setSelected(row)} />
+        ) : rows.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-14 text-center">
             <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--success-soft)] text-[var(--success)]">
               <ShieldCheck className="h-5 w-5" aria-hidden />
@@ -387,6 +398,91 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
       {canExport && (
         <ExportDialog open={exportOpen} onOpenChange={setExportOpen} choices={exportChoices} busy={exporting} error={exportError} onExport={(k) => void download(exportRows(k))} />
       )}
+    </div>
+  );
+}
+
+/** Renewals as columns by status. Drag a card to another column to change its status; on a phone one column shows at a time. */
+function RenewalKanban({ rows, owners, currentUserId, canEdit, onChange, onOpen }: { rows: RenewalRow[]; owners: Owner[]; currentUserId: string; canEdit: boolean; onChange: (row: RenewalRow, patch: RenewalPatch) => void; onOpen: (row: RenewalRow) => void }) {
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [over, setOver] = useState<RenewalStatus | null>(null);
+  const [mobile, setMobile] = useState<RenewalStatus>("NOT_STARTED");
+  const byStatus = (s: RenewalStatus) => rows.filter((r) => r.status === s).sort((a, b) => a.days - b.days);
+  // Done shows only what was finished lately, so the column does not grow for ever.
+  const doneAll = byStatus("DONE");
+  const done = doneAll.filter((r) => r.recent);
+  const hiddenDone = doneAll.length - done.length;
+  const drop = (status: RenewalStatus) => {
+    const row = rows.find((r) => r.key === dragKey);
+    setDragKey(null);
+    setOver(null);
+    if (row && row.status !== status && canEdit) onChange(row, { status });
+  };
+  return (
+    <div className="p-3">
+      <div className="mb-3 flex gap-2 overflow-x-auto md:hidden" role="tablist" aria-label="Status">
+        {RENEWAL_STATUSES.map((s) => {
+          const n = (s.key === "DONE" ? done : byStatus(s.key)).length;
+          return (
+            <button key={s.key} type="button" role="tab" aria-selected={mobile === s.key} onClick={() => setMobile(s.key)} className={cn("shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap", mobile === s.key ? "bg-[var(--brand-primary)] text-white" : "border border-default text-secondary")}>{s.label} {n}</button>
+          );
+        })}
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        {RENEWAL_STATUSES.map((s) => {
+          const items = s.key === "DONE" ? done : byStatus(s.key);
+          const isOver = over === s.key && dragKey !== null;
+          return (
+            <section
+              key={s.key}
+              aria-label={s.label}
+              onDragOver={(e) => { if (canEdit && dragKey) { e.preventDefault(); setOver(s.key); } }}
+              onDragLeave={() => setOver((o) => (o === s.key ? null : o))}
+              onDrop={(e) => { e.preventDefault(); drop(s.key); }}
+              className={cn("rounded-card bg-surface-sunken p-2.5 md:max-h-[72vh] md:min-h-[20rem] md:overflow-y-auto", s.key === mobile ? "block" : "hidden md:block", isOver && "ring-2 ring-[var(--brand-primary)]")}
+            >
+              <div className="mb-2.5 flex items-center justify-between px-1">
+                <h3 className={cn("text-[13px] font-bold", s.key === "DONE" ? "text-[var(--success)]" : s.key === "SUBMITTED" ? "text-brand" : s.key === "IN_PROGRESS" ? "text-[var(--info)]" : "text-secondary")}>{s.label}</h3>
+                <span className="tabular rounded-full bg-surface px-2 text-xs font-semibold text-muted">{items.length}</span>
+              </div>
+              <div className="space-y-2">
+                {items.map((r) => {
+                  const t = TIER_BY_KEY.get(r.tier)!;
+                  return (
+                    <article
+                      key={r.key}
+                      draggable={canEdit}
+                      onDragStart={(e) => { setDragKey(r.key); e.dataTransfer.setData("text/plain", r.key); e.dataTransfer.effectAllowed = "move"; }}
+                      onDragEnd={() => { setDragKey(null); setOver(null); }}
+                      onClick={() => onOpen(r)}
+                      className={cn("card cursor-pointer p-3 transition hover:border-strong", canEdit && "cursor-grab active:cursor-grabbing", dragKey === r.key && "opacity-50")}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-primary">{r.subjectName}</p>
+                          <p className="truncate text-xs text-muted">{r.document} · expires {fmt(r.expiry)}</p>
+                        </div>
+                        {canEdit && (
+                          <span onClick={(e) => e.stopPropagation()}>
+                            <RowMenu label="Change status" items={RENEWAL_STATUSES.filter((x) => x.key !== r.status).map((x) => ({ label: `Move to ${x.label}`, onSelect: () => onChange(r, { status: x.key }) }))} />
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2"><Badge color={t.badge}>{runwayLabel(r.days)}</Badge></div>
+                      {r.note && <p className="mt-2 line-clamp-2 border-l-2 border-[var(--brand-primary-border)] pl-2 text-xs text-secondary">{r.note}</p>}
+                      <div className="mt-2.5" onClick={(e) => e.stopPropagation()}>
+                        <OwnerCell ownerId={r.ownerId} ownerName={r.ownerName} owners={owners} currentUserId={currentUserId} disabled={!canEdit} onChange={(id) => onChange(r, { ownerId: id })} />
+                      </div>
+                    </article>
+                  );
+                })}
+                {items.length === 0 && <p className="px-2 py-6 text-center text-xs text-subtle">{canEdit && dragKey ? "Drop here" : "Nothing here"}</p>}
+                {s.key === "DONE" && hiddenDone > 0 && <p className="px-2 pt-1 text-center text-xs text-muted">{hiddenDone} older done in the List view</p>}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -21,10 +21,12 @@ export default async function RenewalsPage() {
       })
     : [];
   const caseOf = new Map(cases.map((c) => [renewalKey({ kind: c.kind as "employee" | "supplier", subjectId: c.subjectId, document: c.document, expiry: c.expiry.toISOString() }), c]));
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
   const rows: RenewalRow[] = items.map((i) => {
     const key = renewalKey(i);
     const c = caseOf.get(key);
-    return { ...i, key, status: (c?.status ?? "NOT_STARTED") as RenewalStatus, ownerId: c?.ownerId ?? null, ownerName: c?.owner?.name ?? null, note: c?.note ?? null };
+    return { ...i, key, status: (c?.status ?? "NOT_STARTED") as RenewalStatus, ownerId: c?.ownerId ?? null, ownerName: c?.owner?.name ?? null, note: c?.note ?? null, recent: !!c && c.updatedAt > weekAgo };
   });
   const owners = await prisma.user.findMany({
     where: { isActive: true, ...(branchId ? { OR: [{ branchId }, { role: "SUPER_ADMIN" as const }] } : {}) },
