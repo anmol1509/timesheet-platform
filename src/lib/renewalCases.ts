@@ -16,7 +16,8 @@ export const renewalStatusLabel = (s: string) => RENEWAL_STATUSES.find((x) => x.
 export type RenewalRef = Pick<RenewalItem, "kind" | "subjectId" | "document" | "expiry">;
 export const renewalKey = (r: RenewalRef) => `${r.kind}|${r.subjectId}|${r.document}|${r.expiry.slice(0, 10)}`;
 
-export type RenewalCaseView = { status: RenewalStatus; ownerId: string | null; ownerName: string | null; note: string | null };
+/** `recent`: it was last touched within a week, which keeps the board's Done column to what has just been finished. */
+export type RenewalCaseView = { status: RenewalStatus; ownerId: string | null; ownerName: string | null; note: string | null; recent: boolean };
 
 /** A renewal with its workflow state. */
 export type RenewalRow = RenewalItem & { key: string } & RenewalCaseView;
