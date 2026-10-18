@@ -579,7 +579,7 @@ export function NavAssistant({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.6 }}
             transition={SPRING}
-            className="group fixed right-4 bottom-4 z-40 h-14 w-14 sm:right-6 sm:bottom-6"
+            className="group fixed right-4 bottom-4 z-40 h-14 w-14 sm:right-6 sm:bottom-6 print:hidden"
           >
             <span className="absolute inset-0 animate-ping rounded-full opacity-25 [animation-duration:2.6s]" style={{ background: GRADIENT }} aria-hidden />
             <m.button
