@@ -9,6 +9,7 @@ import {
   BarChart3,
   Download,
   Check,
+  Database,
   Globe,
   LifeBuoy,
   ListChecks,
@@ -20,6 +21,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   UserSearch,
+  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -31,8 +33,13 @@ import { LANGUAGE_OPTIONS, isAssistantLang, stringsFor, type AssistantLang } fro
 
 type Link = { href: string; label: string; group: string };
 type Table = { title: string; columns: string[]; rows: string[][]; total: number };
+type Action = { label: string; href: string };
+type BriefItem = { id: string; tone: "stop" | "warn" | "info"; title: string; detail?: string; action: Action; ask?: string };
+const TONE_DOT = { stop: "bg-[var(--error)]", warn: "bg-amber-400", info: "bg-[var(--brand-primary)]" } as const;
 type Msg = {
   role: "user" | "assistant"; content: string; links?: Link[]; table?: Table; error?: boolean;
+  /** One-tap fixes for the cause the answer found, and the parts of the app it was read from. */
+  actions?: Action[]; sources?: string[];
   /** The assistant could not resolve it: offer to send it to support. */
   needsSupport?: boolean;
   rating?: "UP" | "DOWN";
@@ -180,6 +187,9 @@ export function NavAssistant({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [lang, setLang] = useState<AssistantLang>("auto");
+  // What needs attention today; null until loaded, or when it could not be.
+  const [brief, setBrief] = useState<BriefItem[] | null>(null);
+  const briefAt = useRef(0);
   const router = useRouter();
   const pathname = usePathname();
   const endRef = useRef<HTMLDivElement>(null);
@@ -221,6 +231,16 @@ export function NavAssistant({
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  // Fresh on opening, but not on every open within a few minutes.
+  useEffect(() => {
+    if (!open || Date.now() - briefAt.current < 5 * 60_000) return;
+    briefAt.current = Date.now();
+    fetch("/api/assistant/brief")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setBrief(d && Array.isArray(d.items) ? d.items : null))
+      .catch(() => setBrief(null));
   }, [open]);
 
   useEffect(() => {
@@ -271,7 +291,7 @@ export function NavAssistant({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
-      setMessages([...next, { role: "assistant", content: data.answer || "I couldn't find a match.", links: data.links, table: data.table, needsSupport: data.needsSupport === true, secs: Math.max(0.1, Math.round((performance.now() - started) / 100) / 10) }]);
+      setMessages([...next, { role: "assistant", content: data.answer || "I couldn't find a match.", links: data.links, table: data.table, actions: data.actions, sources: data.sources, needsSupport: data.needsSupport === true, secs: Math.max(0.1, Math.round((performance.now() - started) / 100) / 10) }]);
     } catch (e) {
       setMessages([...next, { role: "assistant", content: e instanceof Error ? e.message : "Something went wrong.", error: true }]);
     } finally {
@@ -366,6 +386,36 @@ export function NavAssistant({
             <p className="text-[26px] leading-tight font-bold tracking-tight text-primary">{t.hello}</p>
             <p className="text-sm text-secondary">{t.sub}</p>
           </div>
+          {brief && (
+            <m.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+              <p className="text-[11.5px] font-semibold tracking-wide text-muted uppercase">{t.attention}</p>
+              {brief.length === 0 ? (
+                <p className="flex items-center gap-2 rounded-2xl border border-default bg-surface/90 px-3.5 py-3 text-sm text-secondary"><Check className="h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden /> {t.allClear}</p>
+              ) : (
+                <ul className={cn("grid gap-2", isWindow && brief.length > 1 && "sm:grid-cols-2")}>
+                  {brief.map((it) => (
+                    <li key={it.id} className="flex flex-col gap-2.5 rounded-2xl border border-default bg-surface/90 p-3.5 shadow-[0_6px_18px_-12px_rgba(60,40,150,.4)]">
+                      <div className="flex items-start gap-2.5">
+                        <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", TONE_DOT[it.tone])} aria-hidden />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm leading-snug font-semibold text-primary" dir="auto">{it.title}</p>
+                          {it.detail && <p className="mt-0.5 text-xs text-muted" dir="auto">{it.detail}</p>}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pl-4.5">
+                        <button type="button" onClick={() => go(it.action.href)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-[0_8px_18px_-8px_rgba(86,69,212,.7)] transition-transform hover:scale-[1.03]" style={{ background: GRADIENT }}>
+                          {it.action.label} <ArrowRight className="h-3 w-3" aria-hidden />
+                        </button>
+                        {it.ask && (
+                          <button type="button" onClick={() => send(it.ask!)} className="rounded-full border border-default bg-surface px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:border-[var(--brand-primary)]">{t.why}</button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </m.div>
+          )}
           <div className={cn("grid gap-2.5", isWindow ? "sm:grid-cols-2" : "grid-cols-1")}>
             {t.suggestions.map((text, i) => {
               const Icon = SUGGESTION_ICONS[i];
@@ -428,6 +478,16 @@ export function NavAssistant({
               />
             </div>
           )}
+          {msg.actions && msg.actions.length > 0 && (
+            <div className="flex w-full flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-muted"><Wrench className="h-3 w-3" aria-hidden /> {t.fixIt}</span>
+              {msg.actions.map((a) => (
+                <button key={a.href + a.label} type="button" onClick={() => go(a.href)} className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_8px_18px_-8px_rgba(86,69,212,.7)] transition-transform hover:scale-[1.03]" style={{ background: GRADIENT }}>
+                  {a.label} <ArrowRight className="h-3 w-3" aria-hidden />
+                </button>
+              ))}
+            </div>
+          )}
           {msg.links && msg.links.length > 0 && (
             <div className="flex w-full flex-col gap-2">
               {msg.links.map((l, k) => (
@@ -449,6 +509,12 @@ export function NavAssistant({
                 </button>
               ))}
             </div>
+          )}
+          {msg.sources && msg.sources.length > 0 && (
+            <p className="flex w-full items-start gap-1.5 text-[11.5px] text-muted" dir="auto">
+              <Database className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+              <span><span className="font-semibold">{t.basedOn}:</span> {msg.sources.join(" · ")}</span>
+            </p>
           )}
           {msg.role === "assistant" && !msg.error && (
             <div className="flex w-full flex-wrap items-center gap-2 text-[11.5px] text-muted">

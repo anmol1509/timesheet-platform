@@ -7,7 +7,8 @@ import { getDocumentExpiryCounts } from "@/lib/documentExpiryCounts";
 import { getEntityCounts } from "@/lib/entityCounts";
 import { getRenewals, summarise } from "@/lib/renewals";
 import { findGuides } from "@/lib/helpLibrary";
-import { approvalBlockers, missingFromPayrollReasons } from "@/lib/assistantDiagnose";
+import { approvalBlockers, missingFromPayrollFixes, missingFromPayrollReasons, payrollBlockerFixes, type AssistantAction } from "@/lib/assistantDiagnose";
+import { carriedNoData, sourceFor } from "@/lib/assistantSources";
 import { PAY_EMPLOYEE_SELECT, loadPayOf } from "@/lib/payrollRun";
 import { employmentWindow, isPayType, monthBounds, wpsGaps } from "@/lib/payroll";
 
@@ -25,7 +26,8 @@ import { employmentWindow, isPayType, monthBounds, wpsGaps } from "@/lib/payroll
 export type ToolContext = { subject: PermissionSubject; branchId: string | null };
 export type RecordLink = { href: string; label: string; group: string };
 export type AssistantTable = { title: string; columns: string[]; rows: string[][]; total: number };
-type ToolResult = { content: string; links?: RecordLink[]; table?: AssistantTable };
+/** `actions` are fix buttons the app shows under the answer; `sources` is filled in by runTool. */
+type ToolResult = { content: string; links?: RecordLink[]; table?: AssistantTable; actions?: AssistantAction[]; sources?: string[] };
 
 const LIMIT = 8;
 
@@ -64,7 +66,7 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: ["absent_today", "expiring_documents", "timesheet_status", "unpaid_invoices", "approved_not_invoiced", "idle_workers"] },
+        kind: { type: "string", enum: ["absent_today", "expiring_documents", "timesheet_status", "unpaid_invoices", "approved_not_invoiced", "idle_workers", "missing_photo"] },
         month: { type: "string", description: "YYYY-MM, for timesheet_status. Omit for the current month." },
         days: { type: "number", description: "Look-ahead window in days for expiring_documents (1-365)." },
       },
@@ -290,8 +292,17 @@ const day = (d: Date) => d.toISOString().slice(0, 10);
 
 const LIST_MODULE = {
   absent_today: "timesheets", expiring_documents: "workforce", timesheet_status: "timesheets",
-  unpaid_invoices: "billing", approved_not_invoiced: "billing", idle_workers: "workforce",
+  unpaid_invoices: "billing", approved_not_invoiced: "billing", idle_workers: "workforce", missing_photo: "workforce",
 } as const;
+
+const LIST_ACTION: Partial<Record<keyof typeof LIST_MODULE, AssistantAction>> = {
+  absent_today: { label: "Open attendance", href: "/attendance" },
+  expiring_documents: { label: "Open the renewals board", href: "/employees/renewals" },
+  timesheet_status: { label: "Open timesheets", href: "/timesheets" },
+  unpaid_invoices: { label: "Open invoices", href: "/invoices" },
+  approved_not_invoiced: { label: "Create the invoices", href: "/invoices" },
+  missing_photo: { label: "Open workers", href: "/employees" },
+};
 
 async function listRows(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
   const kind = input.kind as keyof typeof LIST_MODULE;
@@ -345,12 +356,16 @@ async function listRows(input: Record<string, unknown>, ctx: ToolContext): Promi
       title: `Approved by clients but not invoiced — AED ${aed(value)} waiting to be billed`, columns: ["Client", "Month", "Workers", "Hours", "Value (AED)"], total: groups.length,
       rows: groups.slice(0, ROW_CAP).map((g) => [g.clientId ? nm.get(g.clientId) ?? "?" : "No client set", g.month, String(g._count._all), aed(g._sum.totalHours ?? 0), aed(g._sum.invoiceValue ?? 0)]),
     };
+  } else if (kind === "missing_photo") {
+    const found = await prisma.employee.findMany({ where: { ...where, active: true, photoMimeType: null }, select: { name: true, employeeIdNo: true, trade: true, project: { select: { name: true } } }, orderBy: { name: "asc" } });
+    table = { title: "Workers with no profile photo", columns: ["Name", "ID", "Trade", "Project"], total: found.length, rows: found.slice(0, ROW_CAP).map((e) => [e.name, e.employeeIdNo, e.trade ?? "", e.project?.name ?? ""]) };
   } else {
     const found = await prisma.employee.findMany({ where: { ...where, active: true, status: "IDLE" }, select: { name: true, employeeIdNo: true, trade: true, nationality: true }, orderBy: { name: "asc" } });
     table = { title: "Workers on the bench", columns: ["Name", "ID", "Trade", "Nationality"], total: found.length, rows: found.slice(0, ROW_CAP).map((e) => [e.name, e.employeeIdNo, e.trade ?? "", e.nationality ?? ""]) };
   }
   const note = table.total > table.rows.length ? ` Showing the first ${table.rows.length} of ${table.total}.` : "";
-  return { content: JSON.stringify({ shownToUser: true, title: table.title, total: table.total, shown: table.rows.length }) + note, table };
+  const open = LIST_ACTION[kind];
+  return { content: JSON.stringify({ shownToUser: true, title: table.title, total: table.total, shown: table.rows.length }) + note, table, ...(open && table.total > 0 ? { actions: [open] } : {}) };
 }
 
 async function explainPayrollLine(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
@@ -412,17 +427,16 @@ async function explainMissingFromPayroll(input: Record<string, unknown>, ctx: To
   const payType = isPayType(e.supplier?.payType) ? e.supplier!.payType as "BASIC" | "HOURLY" : null;
   const paidHourly = payType ? payType === "HOURLY" : pf.payStructure === "HOURLY";
   const hours = paidHourly ? (await prisma.timesheetEntry.aggregate({ where: { month, employeeIdNo: e.employeeIdNo, status: { not: "REJECTED" } }, _sum: { totalHours: true } }))._sum.totalHours ?? 0 : null;
-  const reasons = missingFromPayrollReasons({
+  const facts = {
     company: e.supplier ? { name: e.supplier.name, isOwnCompany: e.supplier.isOwnCompany, payType } : null,
-    status: String(e.status),
-    employedInMonth: !!employmentWindow(bounds, e.joinDate, e.exitDate),
+    status: String(e.status), employedInMonth: !!employmentWindow(bounds, e.joinDate, e.exitDate),
     pay: { payStructure: pf.payStructure, basicSalary: pf.basicSalary, flatMonthlyRate: pf.flatMonthlyRate, hourlyRate: pf.hourlyRate },
-    hourlyHours: hours,
-    runExists: !!run,
-    inRun: !!line,
-  });
+    hourlyHours: hours, runExists: !!run, inRun: !!line,
+  };
+  const reasons = missingFromPayrollReasons(facts);
   const links = run ? [{ href: `/payroll/${run.id}`, label: `Payroll ${month}`, group: "Payroll" }] : [];
-  return { content: JSON.stringify({ worker: `${e.name} (${e.employeeIdNo})`, month, inTheRun: !!line, reasons }), links };
+  const actions = missingFromPayrollFixes(facts, { employeeId: e.id, employeeName: e.name, supplierId: e.supplierId, runId: run?.id ?? null });
+  return { content: JSON.stringify({ worker: `${e.name} (${e.employeeIdNo})`, month, inTheRun: !!line, reasons }), links, actions, sources: [`Payroll ${month}`, "Employees"] };
 }
 
 async function explainPayrollBlockers(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
@@ -431,7 +445,7 @@ async function explainPayrollBlockers(input: Record<string, unknown>, ctx: ToolC
   const company = typeof input.company === "string" ? input.company.trim().slice(0, 60) : "";
   const runs = await prisma.payrollRun.findMany({
     where: { ...branchWhere(ctx.branchId), status: "DRAFT", ...(month ? { month } : {}), ...(company.length >= 2 ? { company: { name: contains(company) } } : {}) },
-    include: { company: { select: { name: true } }, branch: { select: { payrollApprovalThreshold: true } }, lines: { select: { net: true, paymentMode: true, personCode: true, routingCode: true, account: true, employee: { select: { name: true } } } } },
+    include: { company: { select: { name: true } }, branch: { select: { payrollApprovalThreshold: true } }, lines: { select: { employeeId: true, net: true, paymentMode: true, personCode: true, routingCode: true, account: true, employee: { select: { name: true } } } } },
     orderBy: { createdAt: "desc" },
     take: 3,
   });
@@ -443,8 +457,13 @@ async function explainPayrollBlockers(input: Record<string, unknown>, ctx: ToolC
   const total = r.lines.reduce((sum, l) => sum + Number(l.net), 0);
   const threshold = r.branch.payrollApprovalThreshold ? Number(r.branch.payrollApprovalThreshold) : null;
   const bankGaps = r.lines.map((l) => ({ name: l.employee.name, gaps: wpsGaps({ paymentMode: l.paymentMode, personCode: l.personCode, routingCode: l.routingCode, account: l.account }) })).filter((x) => x.gaps.length > 0);
-  const blockers = approvalBlockers({ status: r.status, submitted: !!r.submittedAt, lineCount: r.lines.length, total, threshold, bankGaps });
+  const facts = { status: r.status, submitted: !!r.submittedAt, lineCount: r.lines.length, total, threshold, bankGaps };
+  const blockers = approvalBlockers(facts);
+  const gapIds = r.lines.filter((l) => wpsGaps({ paymentMode: l.paymentMode, personCode: l.personCode, routingCode: l.routingCode, account: l.account }).length > 0).map((l) => ({ employeeId: l.employeeId, name: l.employee.name }));
+  const actions = payrollBlockerFixes(facts, { id: r.id, label: `Payroll ${r.month}` }, gapIds);
   return {
+    actions,
+    sources: [`Payroll ${r.month}`],
     content: JSON.stringify({ run: `${r.company?.name ?? "Payroll"} ${r.month}`, status: r.status, submitted: !!r.submittedAt, blockers, note: blockers.length === 0 ? "Nothing is in the way. If Approve is still missing, the person may lack the payroll approve permission (Settings › Roles)." : undefined }),
     links: [{ href: `/payroll/${r.id}`, label: `Payroll ${r.month}`, group: "Payroll" }],
   };
@@ -474,17 +493,24 @@ async function draftLetter(input: Record<string, unknown>, ctx: ToolContext): Pr
 export async function runTool(name: string, input: unknown, ctx: ToolContext): Promise<ToolResult> {
   const args = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
   try {
-    if (name === "search_records") return await searchRecords(args, ctx);
-    if (name === "get_stats") return await getStats(args, ctx);
-    if (name === "list_rows") return await listRows(args, ctx);
-    if (name === "explain_payroll_line") return await explainPayrollLine(args, ctx);
-    if (name === "find_help_guide") return await findHelpGuide(args);
-    if (name === "explain_missing_from_payroll") return await explainMissingFromPayroll(args, ctx);
-    if (name === "explain_payroll_blockers") return await explainPayrollBlockers(args, ctx);
-    if (name === "draft_letter") return await draftLetter(args, ctx);
-    return { content: "Unknown tool." };
+    const out = await dispatch(name, args, ctx);
+    if (carriedNoData(out.content)) return { content: out.content };
+    const source = sourceFor(name, args);
+    return { ...out, sources: out.sources ?? (source ? [source] : []) };
   } catch (err) {
     console.error("assistant tool failed", name, err);
     return { content: "That lookup failed. Tell the user to try the page directly." };
   }
+}
+
+async function dispatch(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  if (name === "search_records") return searchRecords(args, ctx);
+  if (name === "get_stats") return getStats(args, ctx);
+  if (name === "list_rows") return listRows(args, ctx);
+  if (name === "explain_payroll_line") return explainPayrollLine(args, ctx);
+  if (name === "find_help_guide") return findHelpGuide(args);
+  if (name === "explain_missing_from_payroll") return explainMissingFromPayroll(args, ctx);
+  if (name === "explain_payroll_blockers") return explainPayrollBlockers(args, ctx);
+  if (name === "draft_letter") return draftLetter(args, ctx);
+  return { content: "Unknown tool." };
 }

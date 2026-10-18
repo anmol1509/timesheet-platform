@@ -3,6 +3,7 @@
 import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { SaveWarnings } from "@/components/SaveWarnings";
 import { m } from "motion/react";
 import { SPRING } from "@/lib/motion";
@@ -212,7 +213,9 @@ export function EditForm({
   // Likely mistakes the server found on the last save; the form is kept so "Save anyway" can send it again unchanged.
   const [warnings, setWarnings] = useState<string[] | null>(null);
   const lastForm = useRef<FormData | null>(null);
-  const [tabState, setTab] = useState("overview");
+  // ?tab=trade (or payroll, documents…) opens that tab, so the assistant's fix buttons land on the right field.
+  const wanted = useSearchParams().get("tab");
+  const [tabState, setTab] = useState(TABS.some((x) => x.id === wanted) ? wanted! : "overview");
   const [active, setActive] = useState(employee.active);
     const [payStructure, setPayStructure] = useState(employee.payStructure || "");
   const [category, setCategory] = useState(employee.category);
