@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
-import { buildLetterSections, toLetterWorker } from "@/lib/letterIssuer";
+import { buildLetterSections, toLetterWorker, loadPaperMargins } from "@/lib/letterIssuer";
 
 /**
  * Undertaking letter for a demand's mobilised workers.
@@ -84,6 +84,7 @@ export async function GET(
   });
 
   const buffer = await generateLetterPdf({
+    margins: await loadPaperMargins(demand.branchId),
     title: template.title || template.category || "Undertaking Letter",
     clientName: demand.client.name,
     clientAddress: demand.client.billingAddress,

@@ -40,7 +40,7 @@ function toPreviewHtml(html: string, audience: Audience, values?: Record<string,
  * nothing runs off the bottom: what doesn't fit continues on the next sheet,
  * as it does in the printed PDF.
  */
-export function PagedPaper({ children, padX: padXPx, padTop: padTopPx = 28, padBottom: padBottomPx = 28, padTopRatio, padBottomRatio, background }: { children: React.ReactNode; padX?: number; padTop?: number; padBottom?: number; padTopRatio?: number; padBottomRatio?: number; background?: React.CSSProperties }) {
+export function PagedPaper({ children, padX: padXPx, padTop: padTopPx = 28, padBottom: padBottomPx = 28, padTopRatio, padBottomRatio, padLeftRatio, padRightRatio, fontPt = 9, background }: { children: React.ReactNode; padX?: number; padTop?: number; padBottom?: number; padTopRatio?: number; padBottomRatio?: number; /** Side margins as a fraction of the sheet width; both set = the letter's own margins. */ padLeftRatio?: number; padRightRatio?: number; /** Text size in PDF points on a 595pt page. */ fontPt?: number; background?: React.CSSProperties }) {
   const outer = useRef<HTMLDivElement>(null);
   const measure = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(544);
@@ -75,11 +75,13 @@ export function PagedPaper({ children, padX: padXPx, padTop: padTopPx = 28, padB
   const pageH = (width * 297) / 210;
   // Type and side margins scale with the sheet so a line breaks where it does in the PDF (9pt on a 595pt page, 52pt margins).
   const padX = padXPx ?? (width * 52) / 595;
-  const fontPx = (width * 9) / 595;
+  const fontPx = (width * fontPt) / 595;
+  const padL = padLeftRatio !== undefined ? width * padLeftRatio : padX;
+  const padR = padRightRatio !== undefined ? width * padRightRatio : padX;
   const padTop = padTopRatio !== undefined ? pageH * padTopRatio : padTopPx;
   const padBottom = padBottomRatio !== undefined ? pageH * padBottomRatio : padBottomPx;
   const bodyH = pageH - padTop - padBottom;
-  const inner = width - padX * 2;
+  const inner = width - padL - padR;
 
   // Where each sheet starts in the content. A page ends before a block that would be cut by the
   // bottom margin, so a paragraph, table row or signature block moves whole onto the next sheet.
@@ -107,7 +109,7 @@ export function PagedPaper({ children, padX: padXPx, padTop: padTopPx = 28, padB
         const end = starts[i + 1] ?? layout.height;
         return (
           <div key={i} className={frame} style={{ height: pageH, fontSize: fontPx, ...background }}>
-            <div className="absolute overflow-hidden" style={{ left: padX, top: padTop, width: inner, height: Math.min(bodyH, Math.max(end - start, 0)) }}>
+            <div className="absolute overflow-hidden" style={{ left: padL, top: padTop, width: inner, height: Math.min(bodyH, Math.max(end - start, 0)) }}>
               <div style={{ transform: `translateY(${-start}px)` }}>{children}</div>
             </div>
             {pages > 1 && <span className="absolute bottom-1.5 right-3 text-[8px] text-neutral-400">Page {i + 1} of {pages}</span>}
@@ -126,6 +128,19 @@ export function PagedPaper({ children, padX: padXPx, padTop: padTopPx = 28, padB
  */
 export function LetterPreview({ title, html, audience, values }: { title: string; html: string; audience: Audience; values?: Record<string, string> }) {
   const body = toPreviewHtml(html, audience, values);
+  // Employee letters: the paper as issued letters print, body only on 25 mm margins (the company's own are applied on the Letters screen).
+  if (audience === "EMPLOYEE") {
+    return (
+      <EmployeeLetterPaper
+        companyName={SAMPLE_VALUES.COMPANYNAME}
+        refNo={EMPLOYEE_MERGE_FIELDS.find((f) => f.key === "REFNO")!.example}
+        date={SAMPLE_VALUES.DATE}
+        title={title || "Letter title"}
+        html={body}
+        options={{ onLetterhead: false, letterheadUrl: null, signatoryName: "", signatoryTitle: "", signatureUrl: null, stampUrl: null, margins: { top: 25, bottom: 25, left: 25, right: 25 } }}
+      />
+    );
+  }
   return (
     <PagedPaper>
       <div>
@@ -164,6 +179,8 @@ export type PaperOptions = {
   /** Clear space on a letterhead, in mm (defaults 65 / 35). */
   topMm?: number;
   bottomMm?: number;
+  /** Letters issued from now on: no header of ours, larger text, and the company's own margins (mm). */
+  margins?: { top: number; bottom: number; left: number; right: number };
 };
 
 /** An employee letter with real (already filled in) content, on paper. */
@@ -171,22 +188,23 @@ export function EmployeeLetterPaper({ companyName, refNo, date, title, html, opt
   const o = options;
   const bg = o.onLetterhead && o.letterheadUrl ? { backgroundImage: `url(${o.letterheadUrl})`, backgroundSize: "100% 100%", backgroundRepeat: "no-repeat" } : undefined;
   // On letterhead the printed header and footer artwork must stay clear, as in the PDF.
-  const padTop = o.onLetterhead && o.letterheadUrl ? (o.topMm ?? 65) / 297 : 28 / 770;
-  const padBottom = o.onLetterhead && o.letterheadUrl ? (o.bottomMm ?? 35) / 297 : 28 / 770;
+  const m = o.margins;
+  const padTop = m ? m.top / 297 : o.onLetterhead && o.letterheadUrl ? (o.topMm ?? 65) / 297 : 28 / 770;
+  const padBottom = m ? m.bottom / 297 : o.onLetterhead && o.letterheadUrl ? (o.bottomMm ?? 35) / 297 : 28 / 770;
   return (
-    <PagedPaper padTopRatio={padTop} padBottomRatio={padBottom} background={bg}>
+    <PagedPaper padTopRatio={padTop} padBottomRatio={padBottom} padLeftRatio={m ? m.left / 210 : undefined} padRightRatio={m ? m.right / 210 : undefined} fontPt={m ? 10.5 : 9} background={bg}>
       <div>
-      {o.onLetterhead ? (
+      {m ? null : o.onLetterhead ? (
         // Pre-printed paper (or artwork): keep the header area clear, exactly as the PDF does.
         // (With artwork the clear space is the sheet's own top margin; without, a placeholder box stands in.)
         !o.letterheadUrl && <div className="mb-3 flex h-20 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead prints here</div>
       ) : (
         <div className="mb-3 border-b border-black pb-2"><p className="font-bold" style={{ fontSize: "1.4em" }}>{companyName}</p></div>
       )}
-      <div className="flex justify-between"><p>Ref: {refNo}</p><p>Date: {date}</p></div>
-      <p className="my-3 text-center font-bold underline" style={{ fontSize: "1.22em" }}>{title.toUpperCase()}</p>
+      <div className={m ? "mb-4 flex justify-between text-neutral-600" : "flex justify-between"} style={m ? { fontSize: "0.9em" } : undefined}><p>Ref: {refNo}</p><p>Date: {date}</p></div>
+      <p className={m ? "mb-4 text-center font-bold" : "my-3 text-center font-bold underline"} style={{ fontSize: m ? "1.24em" : "1.22em", letterSpacing: m ? "0.08em" : undefined }}>{title.toUpperCase()}</p>
       <div className="text-justify" dangerouslySetInnerHTML={{ __html: html }} />
-      <div data-keep className="mt-6 flex items-end justify-between gap-3">
+      <div data-keep className={m ? "mt-8 flex items-end justify-between gap-3" : "mt-6 flex items-end justify-between gap-3"}>
         <div>
           <p>For and on behalf of</p>
           <p className="font-bold">{companyName}</p>
@@ -194,15 +212,17 @@ export function EmployeeLetterPaper({ companyName, refNo, date, title, html, opt
             // eslint-disable-next-line @next/next/no-img-element -- our own image route
             <img src={o.signatureUrl} alt="" className="my-1 h-11 w-[7.5rem] object-contain" />
           ) : (
-            <div className="h-7" />
+            <div className={m ? "h-9" : "h-7"} />
           )}
-          <p className="font-bold">{o.signatoryName || "Authorised Signatory"}</p>
-          {o.signatoryTitle && <p>{o.signatoryTitle}</p>}
+          <div className={m ? "w-44 border-t border-black pt-1" : undefined}>
+            <p className="font-bold">{o.signatoryName || "Authorised Signatory"}</p>
+            {o.signatoryTitle && <p>{o.signatoryTitle}</p>}
+          </div>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element -- our own image route */}
         {o.stampUrl && <img src={o.stampUrl} alt="" className="h-[5.75rem] w-[5.75rem] object-contain" />}
       </div>
-      {o.onLetterhead && !o.letterheadUrl && <div className="mt-3 flex h-10 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead footer prints here</div>}
+      {!m && o.onLetterhead && !o.letterheadUrl && <div className="mt-3 flex h-10 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead footer prints here</div>}
       </div>
     </PagedPaper>
   );
@@ -231,6 +251,8 @@ export type ClientLetterPaperProps = {
   letterheadSrc: string | null;
   topMm: number;
   bottomMm: number;
+  /** The company's page margins (mm). Unset keeps the old fixed margins. */
+  margins?: { plain: { top: number; bottom: number; left: number; right: number }; letterheadSides: { left: number; right: number } };
 };
 
 /** A NOC or undertaking as it will print: addressee, project, title, body, the worker table, signature. */
@@ -247,7 +269,13 @@ export function ClientLetterPaper(p: ClientLetterPaperProps) {
     </table>
   );
   return (
-    <PagedPaper padTopRatio={withArt ? p.topMm / 297 : 28 / 770} padBottomRatio={withArt ? p.bottomMm / 297 : 28 / 770} background={bg}>
+    <PagedPaper
+      padTopRatio={withArt ? p.topMm / 297 : p.margins ? p.margins.plain.top / 297 : 28 / 770}
+      padBottomRatio={withArt ? p.bottomMm / 297 : p.margins ? p.margins.plain.bottom / 297 : 28 / 770}
+      padLeftRatio={p.margins ? (withArt ? p.margins.letterheadSides.left : p.margins.plain.left) / 210 : undefined}
+      padRightRatio={p.margins ? (withArt ? p.margins.letterheadSides.right : p.margins.plain.right) / 210 : undefined}
+      background={bg}
+    >
       <div>
         {p.onLetterhead && !withArt && <div className="mb-3 flex h-16 items-center justify-center rounded border border-dashed border-neutral-400 text-[10px] text-neutral-500">Letterhead prints here</div>}
         <p>Date: {p.date}</p>

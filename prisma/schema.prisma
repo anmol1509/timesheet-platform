@@ -59,6 +59,13 @@ model Branch {
   // Clear space (mm) kept free at the top and bottom of the page when a letter is printed on this letterhead.
   letterheadTopMm    Int          @default(65)
   letterheadBottomMm Int          @default(35)
+  // Side margins (mm) on a pre-printed letterhead, and all four margins (mm) when a letter is printed on plain paper.
+  letterheadLeftMm   Int          @default(18)
+  letterheadRightMm  Int          @default(18)
+  plainTopMm         Int          @default(25)
+  plainBottomMm      Int          @default(25)
+  plainLeftMm        Int          @default(25)
+  plainRightMm       Int          @default(25)
 
   // WPS establishment details (Company profile -> Payroll / WPS).
   wpsEstablishmentId       String? // MOHRE establishment / employer ID

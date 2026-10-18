@@ -16,7 +16,7 @@ const LABELS: Record<string, string> = {
   passportNumber: "passport number", visaExpiry: "visa expiry", essEnabled: "self-service access", mobileNumber: "mobile number", joinDate: "join date",
   dateOfBirth: "date of birth", sponsorSupplierId: "sponsor", projectId: "project", tradeLicenseExpiry: "trade licence expiry", tradeLicenseNumber: "trade licence number",
   absentDeductionPerDay: "absence deduction per day", absentFreeDays: "free absence days", gasPerDay: "gas charge per day", gasMonthlyCap: "gas monthly cap",
-  isOwnCompany: "own company", payrollApprovalThreshold: "payroll approval limit", letterheadTopMm: "letterhead top margin", letterheadBottomMm: "letterhead bottom margin",
+  isOwnCompany: "own company", payrollApprovalThreshold: "payroll approval limit", letterheadTopMm: "letterhead top margin", letterheadBottomMm: "letterhead bottom margin", letterheadLeftMm: "letterhead left margin", letterheadRightMm: "letterhead right margin", plainTopMm: "plain-paper top margin", plainBottomMm: "plain-paper bottom margin", plainLeftMm: "plain-paper left margin", plainRightMm: "plain-paper right margin",
   scheduledCheckOut: "scheduled check-out", checkInDate: "check-in date", wpsIban: "IBAN", wpsBankName: "bank", wpsAccountNumber: "bank account number",
   trn: "tax number (TRN)", poBox: "PO box", fullName: "full name", contactPerson: "contact person", contactEmail: "contact email", contactPhone: "contact phone",
   paymentTerms: "payment terms", approvalStatus: "approval status", invoiceApprovalStatus: "invoice approval", labourApprovalStatus: "labour approval", portalEnabled: "portal access",

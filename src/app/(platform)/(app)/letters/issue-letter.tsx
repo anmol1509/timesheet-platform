@@ -1,5 +1,6 @@
 "use client";
 
+import type { Margins } from "@/lib/paperMargins";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { Select } from "@/components/ui/Select";
@@ -13,7 +14,7 @@ import type { IssuerKey, IssuerOption } from "@/lib/employeeLetterIssuer";
 export type TemplateOption = { id: string; name: string; asks: string[]; usesSalary: boolean };
 export type EmployeeOption = { id: string; name: string; idNo: string; trade: string | null };
 
-export type BranchDefaults = { signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; letterheadUrl: string | null; topMm: number; bottomMm: number };
+export type BranchDefaults = { signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; letterheadUrl: string | null; topMm: number; bottomMm: number; plain: Margins; letterheadSides: { left: number; right: number } };
 
 export type PopularTemplate = { id: string; name: string; count: number };
 
@@ -154,7 +155,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
                 <button key={String(l)} type="button" aria-pressed={onLetterhead === v} onClick={() => setOnLetterhead(v as boolean)} className={`px-3 py-1.5 text-sm ${onLetterhead === v ? "bg-brand-soft font-semibold text-[var(--brand-primary)]" : "text-secondary hover:bg-surface-hover"}`}>{l as string}</button>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-muted">{onLetterhead ? (issuer.letterheadKind === "image" ? `Uses the letterhead of ${issuer.name}.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the issued PDF, not in this preview.` : `No letterhead uploaded for ${issuer.name}: the header and footer space is left clear for pre-printed paper.`) : `Prints the header of ${issuer.name}.`}</p>
+            <p className="mt-1.5 text-xs text-muted">{onLetterhead ? (issuer.letterheadKind === "image" ? `Uses the letterhead of ${issuer.name}.` : issuer.letterheadKind === "pdf" ? `Uses the PDF letterhead of ${issuer.name}. It appears on the issued PDF, not in this preview.` : `No letterhead uploaded for ${issuer.name}: the header and footer space is left clear for pre-printed paper.`) : "Plain or blank paper: no header from us, just the letter inside the margins set in Company profile › Letters."}</p>
           </div>
           {issuers.length > 1 && (
             <label className="block">
@@ -178,7 +179,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
           <div className="max-h-[72vh] overflow-y-auto rounded-[var(--radius-card)] bg-surface-sunken p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}</div>
             {shown?.html ? (
-              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
+              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins: onLetterhead ? { top: issuer.topMm, bottom: issuer.bottomMm, ...defaults.letterheadSides } : defaults.plain, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
             ) : (
               <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
             )}

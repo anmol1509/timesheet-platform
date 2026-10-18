@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { ClientLetterPaper } from "@/components/LetterPreview";
+import type { marginsOfBranch } from "@/lib/paperMargins";
 import { useLetterheadImage } from "@/components/useLetterheadImage";
 import { cn } from "@/lib/cn";
 import { SPRING } from "@/lib/motion";
@@ -32,6 +33,7 @@ type Worker = {
 };
 type Sponsor = { name: string; hasLetterhead: boolean; contactPerson: string | null; contactPhone: string | null; contactEmail: string | null; topMm: number; bottomMm: number };
 type Company = {
+  margins: ReturnType<typeof marginsOfBranch>;
   name: string; letterheadUrl: string | null; topMm: number; bottomMm: number; signatoryName: string; signatoryTitle: string;
   signatureUrl: string | null; stampUrl: string | null; phone: string | null; email: string | null;
 };
@@ -331,6 +333,7 @@ function LetterBuilder({
                 letterheadUrl={isNoc ? (g.id && sponsors[g.id]?.hasLetterhead ? `/api/suppliers/${g.id}/letterhead` : null) : company.letterheadUrl}
                 topMm={isNoc ? (g.id ? sponsors[g.id]?.topMm : undefined) ?? 65 : company.topMm}
                 bottomMm={isNoc ? (g.id ? sponsors[g.id]?.bottomMm : undefined) ?? 35 : company.bottomMm}
+                margins={company.margins}
                 signing={isNoc ? { name: g.id ? sponsors[g.id]?.contactPerson ?? null : null, title: null, phone: g.id ? sponsors[g.id]?.contactPhone ?? null : null, email: g.id ? sponsors[g.id]?.contactEmail ?? null : null, signatureUrl: null, stampUrl: null } : { name: signatoryName.trim() || null, title: signatoryTitle.trim() || null, phone: company.phone, email: company.email, signatureUrl: showSignature ? company.signatureUrl : null, stampUrl: showStamp ? company.stampUrl : null }}
                 mobilizeDate={mobilizeDate}
               />
@@ -344,7 +347,7 @@ function LetterBuilder({
 }
 
 function SheetFor({
-  label, demand, template, kind, issuerName, workers, columns, onLetterhead, letterheadUrl, topMm, bottomMm, signing, mobilizeDate,
+  label, demand, template, kind, issuerName, workers, columns, onLetterhead, letterheadUrl, topMm, bottomMm, margins, signing, mobilizeDate,
 }: {
   label: string | null;
   demand: Demand;
@@ -357,6 +360,7 @@ function SheetFor({
   letterheadUrl: string | null;
   topMm: number;
   bottomMm: number;
+  margins: ReturnType<typeof marginsOfBranch>;
   signing: { name: string | null; title: string | null; phone: string | null; email: string | null; signatureUrl: string | null; stampUrl: string | null };
   mobilizeDate: string;
 }) {
@@ -398,6 +402,7 @@ function SheetFor({
         letterheadSrc={src}
         topMm={topMm}
         bottomMm={bottomMm}
+        margins={margins}
       />
     </div>
   );
