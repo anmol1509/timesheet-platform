@@ -1,14 +1,11 @@
-import { Wrench, Plus } from "lucide-react";
-import { HeroHeader } from "@/components/HeroHeader";
+import { Wrench } from "lucide-react";
+import { HeroHeader, heroButton } from "@/components/HeroHeader";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { mayEditSkill, visibleSkillWhere } from "@/lib/skillScope";
-import { createSkillAction } from "./actions";
+import { AddTrade } from "./add-trade";
 import { TradeTable } from "./trade-table";
-import { Checkbox } from "@/components/ui/Checkbox";
-import { BarList } from "@/components/BarList";
-import { Insights } from "@/components/ListSummary";
 
 export default async function SkillsPage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -74,57 +71,42 @@ export default async function SkillsPage() {
           { label: "Idle now", value: String(rows.reduce((n, r) => n + r.idle, 0)) },
           { label: "Open demand", value: String(rows.reduce((n, r) => n + r.openDemand, 0)), warn: rows.some((r) => r.openDemand > 0) },
         ]}
+        actions={<AddTrade triggerClassName={heroButton(true)} />}
       />
 
-      <form
-        action={createSkillAction}
-        className="card flex flex-wrap items-end gap-3 p-4"
-      >
-        <label className="block flex-1 min-w-[160px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Trade name *</span>
-          <input
-            name="name"
-            required
-            placeholder="e.g. Welding"
-            className="input w-full"
-          />
-        </label>
-        <label className="block flex-1 min-w-[160px]">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Category
-          </span>
-          <input
-            name="category"
-            placeholder="e.g. Technical"
-            className="input w-full"
-          />
-        </label>
-        <div className="pb-2">
-          <Checkbox name="trending" value="on" label="Trending" />
-        </div>
-        <button
-          type="submit"
-          className="btn btn-primary"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-
-          Add Trade
-        </button>
-      </form>
-
-      {rows.length > 0 && (
-        <Insights id="trades" title="Top trades by headcount">
-          <BarList
-            tone="brand"
-            items={[...rows]
-              .sort((a, b) => b.employeeCount - a.employeeCount)
-              .slice(0, 8)
-              .map((r) => ({ key: r.id, label: r.name, value: r.employeeCount }))}
-            emptyLabel="No employees assigned to a trade yet."
-          />
-        </Insights>
-      )}
+      {rows.length > 0 && (() => {
+        const shown = [...rows].sort((a, b) => Math.max(0, b.openDemand - b.idle) - Math.max(0, a.openDemand - a.idle) || b.employeeCount - a.employeeCount).slice(0, 8);
+        const max = Math.max(1, ...shown.map((r) => Math.max(r.employeeCount, r.employeeCount + r.openDemand)));
+        return (
+          <section className="card p-5">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-primary">Supply vs demand</h2>
+                <p className="text-xs text-muted">Workers you have, against workers clients are still asking for. Trades short of people come first.</p>
+              </div>
+              <p className="flex items-center gap-4 text-xs text-muted">
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--brand-primary)]" />Workers</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--warning)]" />Still needed</span>
+              </p>
+            </div>
+            <ul className="mt-4 space-y-2">
+              {shown.map((r) => {
+                const short = Math.max(0, r.openDemand - r.idle);
+                return (
+                  <li key={r.id} className="grid grid-cols-[minmax(0,9rem)_1fr_7rem] items-center gap-3 text-sm sm:grid-cols-[11rem_1fr_8rem]">
+                    <span className="truncate text-secondary" title={r.name}>{r.name}</span>
+                    <span className="flex h-3.5 gap-0.5">
+                      <span className="h-full rounded bg-[var(--brand-primary)]" style={{ width: `${(r.employeeCount / max) * 100}%`, minWidth: r.employeeCount ? 4 : 0 }} title={`${r.employeeCount} workers`} />
+                      <span className="h-full rounded bg-[var(--warning)]" style={{ width: `${(r.openDemand / max) * 100}%`, minWidth: r.openDemand ? 4 : 0 }} title={`${r.openDemand} still needed`} />
+                    </span>
+                    <span className={short ? "text-right text-xs font-medium text-[var(--warning)]" : "text-right text-xs text-subtle"}>{short ? `short by ${short}` : r.openDemand ? "bench covers it" : "no open demand"}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })()}
       <TradeTable trades={rows} />
     </div>
   );

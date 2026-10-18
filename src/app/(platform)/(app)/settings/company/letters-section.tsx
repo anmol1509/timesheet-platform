@@ -19,11 +19,13 @@ export function LettersSection(p: Props) {
   const extra = (kind: string) => ({ branchId: p.branchId, kind });
   return (
     <div className="space-y-6">
+      <div className="grid gap-5 sm:grid-cols-3">
       <ImageUpload
+        stacked
         currentUrl={p.signatureUrl}
         fallback={<span className="text-xs text-subtle">Signature</span>}
         label="Signature (optional)"
-        hint="A PNG of the signature on a plain or transparent background. Only printed when you tick it on a letter."
+        hint="PNG on a plain or transparent background. Printed only when ticked on a letter."
         shape="square"
         format="image/png"
         maxPx={600}
@@ -32,10 +34,11 @@ export function LettersSection(p: Props) {
         extraFields={extra("signature")}
       />
       <ImageUpload
+        stacked
         currentUrl={p.stampUrl}
         fallback={<span className="text-xs text-subtle">Stamp</span>}
         label="Company stamp (optional)"
-        hint="A PNG of the round or square stamp, ideally transparent. Only printed when you tick it on a letter."
+        hint="PNG of the stamp, ideally transparent. Printed only when ticked on a letter."
         shape="square"
         format="image/png"
         maxPx={500}
@@ -44,10 +47,11 @@ export function LettersSection(p: Props) {
         extraFields={extra("stamp")}
       />
       <ImageUpload
+        stacked
         currentUrl={p.letterheadUrl}
         fallback={<span className="text-xs text-subtle">Letterhead</span>}
         label="Letterhead artwork (optional)"
-        hint="Upload your letterhead as a PDF or an image (the first page of a PDF is used). Used as the page background when a letter is printed on letterhead. Skip this if you print on pre-printed paper."
+        hint="PDF or image (first page used). Background when a letter is printed on letterhead. Skip for pre-printed paper."
         shape="square"
         format="image/jpeg"
         maxPx={1600}
@@ -56,6 +60,7 @@ export function LettersSection(p: Props) {
         removeAction={removeLetterImageAction}
         extraFields={extra("letterhead")}
       />
+      </div>
       <div>
         <p className="mb-2 text-sm font-medium text-primary">Letterhead margins</p>
         <LetterheadMargins letterheadUrl={p.letterheadUrl} topMm={p.topMm} bottomMm={p.bottomMm} action={saveLetterheadMarginsAction} extraFields={{ branchId: p.branchId }} />
