@@ -93,13 +93,13 @@ export default async function SkillsPage() {
               {shown.map((r) => {
                 const short = Math.max(0, r.openDemand - r.idle);
                 return (
-                  <li key={r.id} className="grid grid-cols-[minmax(0,9rem)_1fr_7rem] items-center gap-3 text-sm sm:grid-cols-[11rem_1fr_8rem]">
-                    <span className="truncate text-secondary" title={r.name}>{r.name}</span>
-                    <span className="flex h-3.5 gap-0.5">
+                  <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 text-sm sm:grid-cols-[11rem_1fr_8rem]">
+                    <span className="order-1 truncate text-secondary" title={r.name}>{r.name}</span>
+                    <span className="order-3 col-span-2 flex h-3.5 gap-0.5 sm:order-2 sm:col-span-1">
                       <span className="h-full rounded bg-[var(--brand-primary)]" style={{ width: `${(r.employeeCount / max) * 100}%`, minWidth: r.employeeCount ? 4 : 0 }} title={`${r.employeeCount} workers`} />
                       <span className="h-full rounded bg-[var(--warning)]" style={{ width: `${(r.openDemand / max) * 100}%`, minWidth: r.openDemand ? 4 : 0 }} title={`${r.openDemand} still needed`} />
                     </span>
-                    <span className={short ? "text-right text-xs font-medium text-[var(--warning)]" : "text-right text-xs text-subtle"}>{short ? `short by ${short}` : r.openDemand ? "bench covers it" : "no open demand"}</span>
+                    <span className={`order-2 text-right text-xs sm:order-3 ${short ? "font-medium text-[var(--warning)]" : "text-subtle"}`}>{short ? `short by ${short}` : r.openDemand ? "bench covers it" : "no open demand"}</span>
                   </li>
                 );
               })}

@@ -44,7 +44,7 @@ export default async function LookupsPage({
       />
 
       <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
-        <nav aria-label="Lookup lists" className="card h-fit p-2 lg:sticky lg:top-4">
+        <nav aria-label="Lookup lists" className="card h-fit min-w-0 p-2 lg:sticky lg:top-4">
           <ul className="flex gap-1 overflow-x-auto lg:max-h-[70vh] lg:flex-col lg:overflow-y-auto">
             {LOOKUP_CATEGORIES.map((c) => {
               const n = countBy.get(c.key) ?? 0;
@@ -66,7 +66,7 @@ export default async function LookupsPage({
           </ul>
         </nav>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <form action={createLookupValueAction} className="card flex flex-wrap items-end gap-3 p-4">
             <input type="hidden" name="category" value={category} />
             <label className="block flex-1 min-w-[180px]">

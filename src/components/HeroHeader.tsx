@@ -22,7 +22,7 @@ export function HeroHeader({ icon: Icon, title, subtitle, pills = [], actions, c
           {children && <div className="mt-3">{children}</div>}
         </div>
         {aside && <div aria-hidden className="hidden shrink-0 lg:block">{aside}</div>}
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {actions && <div className="flex w-full flex-wrap gap-2 sm:w-auto">{actions}</div>}
       </div>
       {pills.length > 0 && (
         <dl className="relative mt-4 flex flex-wrap gap-2">
