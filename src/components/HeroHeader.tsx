@@ -8,7 +8,7 @@ export type HeroPill = { label: string; value: string; /** Amber: something here
  * page's main actions on the right. Used by Approvals and Letters so the pages that are about doing something
  * share one look.
  */
-export function HeroHeader({ icon: Icon, title, subtitle, pills = [], actions, className }: { icon: LucideIcon; title: string; subtitle: React.ReactNode; pills?: HeroPill[]; actions?: React.ReactNode; className?: string }) {
+export function HeroHeader({ icon: Icon, title, subtitle, pills = [], actions, className, eyebrow, aside, children }: { icon: LucideIcon; title: string; subtitle: React.ReactNode; pills?: HeroPill[]; actions?: React.ReactNode; className?: string; /** Small label above the title. */ eyebrow?: string; /** Decoration on the right, hidden on small screens. */ aside?: React.ReactNode; /** Extra content under the subtitle, e.g. a row of reassurances. */ children?: React.ReactNode }) {
   return (
     <header className={cn("relative overflow-hidden rounded-[var(--radius-overlay,20px)] px-5 py-5 text-white sm:px-7 sm:py-6", className)} style={{ background: "linear-gradient(135deg,#43359f 0%,#5b49d8 55%,#7a4fe3 100%)" }}>
       <span aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/[0.07]" />
@@ -16,9 +16,12 @@ export function HeroHeader({ icon: Icon, title, subtitle, pills = [], actions, c
       <div className="relative flex flex-wrap items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15"><Icon className="h-5 w-5" aria-hidden /></span>
         <div className="min-w-0 flex-1">
+          {eyebrow && <p className="text-[11px] font-semibold tracking-[0.14em] text-white/70 uppercase">{eyebrow}</p>}
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-white/80">{subtitle}</p>
+          {children && <div className="mt-3">{children}</div>}
         </div>
+        {aside && <div aria-hidden className="hidden shrink-0 lg:block">{aside}</div>}
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
       {pills.length > 0 && (
