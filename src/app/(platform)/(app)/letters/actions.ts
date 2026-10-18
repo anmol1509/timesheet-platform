@@ -11,6 +11,7 @@ import { substituteInHtml } from "@/lib/letterHtml";
 import { GAP_FIELDS } from "@/lib/letterGaps";
 import { formatMasked } from "@/lib/idFormats";
 import { storeImage } from "@/lib/storedImage";
+import { MARGIN_BRANCH_SELECT, marginsOfBranch } from "@/lib/paperMargins";
 import { loadIssuerOptions, resolveIssuerSupplier, type IssuerKey, type IssuerOption } from "@/lib/employeeLetterIssuer";
 
 type Inputs = Record<string, string>;
@@ -53,7 +54,15 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   const stampImageId = layoutIn.showStamp ? await oneOff(layoutIn.stampImageId) : null;
   if (layoutIn.showSignature && !signatureImageId && !issuerOpt.signatureUrl) return { error: `No signature image is uploaded for ${issuerOpt.name} (${issuerOpt.where}).` };
   if (layoutIn.showStamp && !stampImageId && !issuerOpt.stampUrl) return { error: `No stamp is uploaded for ${issuerOpt.name} (${issuerOpt.where}).` };
+  // The margins in force now are saved with the letter, so a later change to them never moves an issued letter.
+  const marginRow = await prisma.branch.findUnique({ where: { id: emp.branchId }, select: MARGIN_BRANCH_SELECT });
+  const m = marginsOfBranch(marginRow);
+  const margins = layoutIn.onLetterhead
+    ? { top: issuerOpt.topMm, bottom: issuerOpt.bottomMm, left: m.letterheadSides.left, right: m.letterheadSides.right }
+    : m.plain;
   const layout = {
+    modern: true,
+    margins,
     issuerKey,
     issuerSupplierId: who.supplierId,
     onLetterhead: !!layoutIn.onLetterhead,

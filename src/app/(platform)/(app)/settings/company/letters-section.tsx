@@ -1,8 +1,9 @@
 "use client";
 
 import { ImageUpload } from "@/components/ImageUpload";
-import { LetterheadMargins } from "@/components/LetterheadMargins";
-import { removeLetterImageAction, saveLetterheadMarginsAction, uploadLetterImageAction } from "./actions";
+import { PaperMargins } from "@/components/PaperMargins";
+import type { Margins } from "@/lib/paperMargins";
+import { removeLetterImageAction, saveLetterheadMarginsAction, savePlainMarginsAction, uploadLetterImageAction } from "./actions";
 
 type Props = {
   branchId: string;
@@ -11,8 +12,8 @@ type Props = {
   signatureUrl: string | null;
   stampUrl: string | null;
   letterheadUrl: string | null;
-  topMm: number;
-  bottomMm: number;
+  plain: Margins;
+  letterhead: Margins;
 };
 
 export function LettersSection(p: Props) {
@@ -62,8 +63,8 @@ export function LettersSection(p: Props) {
       />
       </div>
       <div>
-        <p className="mb-2 text-sm font-medium text-primary">Letterhead margins</p>
-        <LetterheadMargins letterheadUrl={p.letterheadUrl} topMm={p.topMm} bottomMm={p.bottomMm} action={saveLetterheadMarginsAction} extraFields={{ branchId: p.branchId }} />
+        <p className="mb-2 text-sm font-medium text-primary">Letter margins</p>
+        <PaperMargins branchId={p.branchId} letterheadUrl={p.letterheadUrl} plain={p.plain} letterhead={p.letterhead} savePlain={savePlainMarginsAction} saveLetterhead={saveLetterheadMarginsAction} />
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { marginsOfBranch } from "@/lib/paperMargins";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
@@ -23,10 +24,11 @@ export async function POST(request: Request) {
     for (const t of tokensIn(clean)) if (t.startsWith(ASK_PREFIX)) values[t] = `[${t.slice(ASK_PREFIX.length)}]`;
     buffer = await generateEmployeeLetterPdf({
       letterhead: { name: SAMPLE_VALUES.COMPANYNAME, addressLines: ["Business Bay", "Dubai"], phone: "+971 4 123 4567", fax: null, email: "office@example.com", poBox: "12345", trn: "100000000000003", logo: await loadLogoDataUri() },
-      refNo: values.REFNO, date: values.DATE, title: (title || "Letter").slice(0, 120), bodyHtml: substituteInHtml(clean, values), layout: PLAIN_LAYOUT,
+      refNo: values.REFNO, date: values.DATE, title: (title || "Letter").slice(0, 120), bodyHtml: substituteInHtml(clean, values), layout: { ...PLAIN_LAYOUT, modern: true, margins: { top: 25, bottom: 25, left: 25, right: 25 } },
     });
   } else {
     buffer = await generateLetterPdf({
+      margins: marginsOfBranch(null),
       title: (title || "Letter").slice(0, 120),
       clientName: SAMPLE_VALUES.CLIENTNAME,
       clientAddress: SAMPLE_VALUES.CLIENTADDRESS,

@@ -1,5 +1,6 @@
 "use server";
 
+import { MARGIN_LIMITS, clampMargin } from "@/lib/paperMargins";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { isUsableBank } from "@/lib/bankStatus";
@@ -197,9 +198,28 @@ export async function saveLetterheadMarginsAction(formData: FormData) {
   if (!branch) return { error: "You can't edit that company." };
   const top = clampMm(formData.get("topMm"), 15, 140);
   const bottom = clampMm(formData.get("bottomMm"), 10, 100);
-  if (top === null || bottom === null) return { error: "Enter the margins in millimetres." };
-  await prisma.branch.update({ where: { id: branch.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom } });
-  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { letterheadTopMm: branch.letterheadTopMm, letterheadBottomMm: branch.letterheadBottomMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  const left = clampMargin(formData.get("leftMm"), MARGIN_LIMITS.side.min, MARGIN_LIMITS.side.max);
+  const right = clampMargin(formData.get("rightMm"), MARGIN_LIMITS.side.min, MARGIN_LIMITS.side.max);
+  if (top === null || bottom === null || left === null || right === null) return { error: "Enter the margins in millimetres." };
+  await prisma.branch.update({ where: { id: branch.id }, data: { letterheadTopMm: top, letterheadBottomMm: bottom, letterheadLeftMm: left, letterheadRightMm: right } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { letterheadTopMm: branch.letterheadTopMm, letterheadBottomMm: branch.letterheadBottomMm, letterheadLeftMm: branch.letterheadLeftMm, letterheadRightMm: branch.letterheadRightMm }, after: { letterheadTopMm: top, letterheadBottomMm: bottom, letterheadLeftMm: left, letterheadRightMm: right }, userId: admin.id, userName: admin.name, branchId: branch.id });
+  revalidatePath("/settings/company");
+  revalidatePath("/letters");
+  return { error: null };
+}
+
+/** Margins for letters printed on plain paper, where we print no header of our own. */
+export async function savePlainMarginsAction(formData: FormData) {
+  const { admin, branch } = await loadEditableBranch(String(formData.get("branchId") || ""));
+  if (!branch) return { error: "You can't edit that company." };
+  const { min, max } = MARGIN_LIMITS.plain;
+  const top = clampMargin(formData.get("topMm"), min, max);
+  const bottom = clampMargin(formData.get("bottomMm"), min, max);
+  const left = clampMargin(formData.get("leftMm"), min, max);
+  const right = clampMargin(formData.get("rightMm"), min, max);
+  if (top === null || bottom === null || left === null || right === null) return { error: "Enter the margins in millimetres." };
+  await prisma.branch.update({ where: { id: branch.id }, data: { plainTopMm: top, plainBottomMm: bottom, plainLeftMm: left, plainRightMm: right } });
+  await logAudit({ entityType: "BRANCH", entityId: branch.id, action: "UPDATE", before: { plainTopMm: branch.plainTopMm, plainBottomMm: branch.plainBottomMm, plainLeftMm: branch.plainLeftMm, plainRightMm: branch.plainRightMm }, after: { plainTopMm: top, plainBottomMm: bottom, plainLeftMm: left, plainRightMm: right }, userId: admin.id, userName: admin.name, branchId: branch.id });
   revalidatePath("/settings/company");
   revalidatePath("/letters");
   return { error: null };

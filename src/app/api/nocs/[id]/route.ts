@@ -4,7 +4,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { generateLetterPdf } from "@/lib/generateLetterPdf";
-import { buildLetterSections, toLetterWorker } from "@/lib/letterIssuer";
+import { buildLetterSections, toLetterWorker, loadPaperMargins } from "@/lib/letterIssuer";
 import { columnsFromNocFields } from "@/lib/letterLayout";
 
 /**
@@ -59,6 +59,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const buffer = await generateLetterPdf({
+    margins: await loadPaperMargins(noc.branchId),
     title: noc.template.title || noc.template.category || "No Objection Certificate",
     clientName: noc.demandRequest.client.name,
     clientAddress: noc.demandRequest.client.billingAddress,

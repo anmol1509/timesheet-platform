@@ -155,7 +155,7 @@ function Blocks({ nodes, ctx, depth, keyBase }: { nodes: Node[]; ctx: Ctx; depth
 }
 
 /** Renders sanitised editor HTML as PDF blocks. */
-export function RichHtml({ html }: { html: string }) {
+export function RichHtml({ html, baseSize }: { html: string; /** Text size in points, set explicitly so wrapped lines space evenly. */ baseSize?: number }) {
   const root = parse(html || "");
-  return <Blocks nodes={root.childNodes} ctx={{}} depth={0} keyBase="r" />;
+  return <Blocks nodes={root.childNodes} ctx={baseSize ? { size: baseSize } : {}} depth={0} keyBase="r" />;
 }

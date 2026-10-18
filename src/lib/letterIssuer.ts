@@ -1,3 +1,4 @@
+import { MARGIN_BRANCH_SELECT, marginsOfBranch } from "@/lib/paperMargins";
 import { prisma } from "@/lib/db";
 import { imageDataUri } from "@/lib/storedImage";
 import { substituteInHtml } from "@/lib/letterHtml";
@@ -225,4 +226,9 @@ async function buildCompanySection(opts: {
     sections: [{ group, issuer, bodyHtml } satisfies LetterSection],
     missingLetterheads: opts.onLetterhead && !letterheadImage ? [name] : [],
   };
+}
+
+/** The company's page margins for site letters (NOC, undertaking). */
+export async function loadPaperMargins(branchId: string) {
+  return marginsOfBranch(await prisma.branch.findUnique({ where: { id: branchId }, select: MARGIN_BRANCH_SELECT }));
 }

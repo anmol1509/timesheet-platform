@@ -1,3 +1,4 @@
+import { marginsOfBranch } from "@/lib/paperMargins";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -109,6 +110,7 @@ export default async function DemandDocumentsPage({
           letterheadUrl: b.letterheadImageId ? `/api/images/${b.letterheadImageId}` : null,
           topMm: b.letterheadTopMm,
           bottomMm: b.letterheadBottomMm,
+          margins: marginsOfBranch(b),
           signatoryName: b.signatoryName ?? "",
           signatoryTitle: b.signatoryTitle ?? "",
           signatureUrl: b.signatureId ? `/api/images/${b.signatureId}` : null,

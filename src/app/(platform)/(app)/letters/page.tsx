@@ -1,3 +1,4 @@
+import { MARGIN_BRANCH_SELECT, marginsOfBranch } from "@/lib/paperMargins";
 import Link from "next/link";
 import { FileSignature } from "lucide-react";
 import { HeroHeader, heroButton } from "@/components/HeroHeader";
@@ -26,7 +27,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
     prisma.employee.findMany({ where: { ...branchWhere(branchId), status: { not: "TERMINATED" }, supplier: { isOwnCompany: true } }, orderBy: { name: "asc" }, take: 2000, select: { id: true, name: true, employeeIdNo: true, trade: true } }),
     prisma.issuedLetter.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { employee: { select: { name: true, employeeIdNo: true } }, issuedBy: { select: { name: true } } } }),
     prisma.noc.findMany({ where: branchWhere(branchId), orderBy: { createdAt: "desc" }, take: 50, include: { template: { select: { title: true, name: true } }, demandRequest: { select: { requestNo: true, client: { select: { name: true } }, project: { select: { name: true } } } }, requestedBy: { select: { name: true } }, _count: { select: { employees: true } } } }),
-    branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true } }) : null,
+    branchId ? prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, signatoryName: true, signatoryTitle: true, signatureId: true, stampId: true, letterheadImageId: true, letterheadTopMm: true, letterheadBottomMm: true, ...MARGIN_BRANCH_SELECT } }) : null,
     prisma.issuedLetter.count({ where: branchWhere(branchId) }),
     prisma.issuedLetter.count({ where: { ...branchWhere(branchId), createdAt: { gte: monthStart } } }),
     prisma.issuedLetter.groupBy({ by: ["title"], where: branchWhere(branchId), _count: { _all: true }, orderBy: { _count: { title: "desc" } }, take: 1 }),
@@ -79,6 +80,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
             letterheadUrl: branch?.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null,
             topMm: branch?.letterheadTopMm ?? 65,
             bottomMm: branch?.letterheadBottomMm ?? 35,
+            ...marginsOfBranch(branch),
           }}
           employees={employees.map((e) => ({ id: e.id, name: e.name, idNo: e.employeeIdNo, trade: e.trade }))}
           popular={popular}

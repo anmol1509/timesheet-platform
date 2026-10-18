@@ -1,3 +1,4 @@
+import type { Margins } from "@/lib/paperMargins";
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import {
   DEFAULT_LETTER_COLUMNS,
@@ -58,6 +59,8 @@ export type LetterPdfInput = {
   sections: LetterSection[];
   /** Defaults to the client's own column set. */
   columns?: LetterColumnKey[];
+  /** The company's margins in mm: all four on plain paper, left and right on a letterhead. Unset keeps the old fixed margins. */
+  margins?: { plain: Margins; letterheadSides: { left: number; right: number } };
 };
 
 // Printed content is inset from the top when a letterhead image is behind it,
@@ -130,6 +133,11 @@ function LetterBody({
   // Proportional rather than fixed widths: the widths express how much room a
   // column deserves relative to the others, so any selection fills the page
   // exactly instead of nine columns running off the edge of it.
+  // Wider margins leave less width for the table, so its text shrinks in step (the old 44pt margins leave 507pt).
+  const onArt = !!section.issuer.letterheadImage || !!section.issuer.letterheadPdf;
+  const sides = input.margins ? (onArt ? input.margins.letterheadSides : input.margins.plain) : null;
+  const fit = sides ? Math.min(1, (A4_WIDTH - (sides.left + sides.right) * MM) / 507) : 1;
+  const cellSize = Math.round(8 * fit * 10) / 10;
   const totalWeight = selected.reduce((sum, c) => sum + c.width, 0) || 1;
   const columns = selected.map((c) => ({
     ...c,
@@ -155,7 +163,7 @@ function LetterBody({
           <View style={s.headerRow} fixed>
             {columns.map((c) => (
               <View key={c.key} style={[s.cell, { width: c.percent }]}>
-                <Text style={s.headerCell}>{c.label}</Text>
+                <Text style={[s.headerCell, { fontSize: cellSize }]}>{c.label}</Text>
               </View>
             ))}
           </View>
@@ -163,7 +171,7 @@ function LetterBody({
             <View key={w.id} style={s.row} wrap={false}>
               {columns.map((c) => (
                 <View key={c.key} style={[s.cell, { width: c.percent }]}>
-                  <Text style={s.bodyCell}>{cellValue(c.key, w, i, companyName)}</Text>
+                  <Text style={[s.bodyCell, { fontSize: cellSize }]}>{cellValue(c.key, w, i, companyName)}</Text>
                 </View>
               ))}
             </View>
@@ -191,13 +199,23 @@ function LetterBody({
   );
 }
 
+function pageStyle(margins: LetterPdfInput["margins"], onLetterhead: boolean, issuer: LetterIssuer) {
+  if (onLetterhead) {
+    const sides = margins ? { paddingLeft: margins.letterheadSides.left * MM, paddingRight: margins.letterheadSides.right * MM } : {};
+    return [s.pageOnLetterhead, { paddingTop: (issuer.topMm ?? 65) * MM, paddingBottom: (issuer.bottomMm ?? 35) * MM }, sides];
+  }
+  if (!margins) return s.page;
+  const p = margins.plain;
+  return [s.page, { paddingTop: p.top * MM, paddingBottom: p.bottom * MM, paddingLeft: p.left * MM, paddingRight: p.right * MM }];
+}
+
 export async function generateLetterPdf(input: LetterPdfInput): Promise<Buffer> {
   const render = (sections: LetterSection[]) => (
     <Document>
       {sections.map((section, i) => {
         const onLetterhead = !!section.issuer.letterheadImage || !!section.issuer.letterheadPdf;
         return (
-          <Page key={i} size="A4" style={onLetterhead ? [s.pageOnLetterhead, { paddingTop: (section.issuer.topMm ?? 65) * MM, paddingBottom: (section.issuer.bottomMm ?? 35) * MM }] : s.page}>
+          <Page key={i} size="A4" style={pageStyle(input.margins, onLetterhead, section.issuer)}>
             {/* Repeated on every page of this letter, so a table that runs on
                 doesn't leave later pages bare. A PDF letterhead is laid under the
                 finished pages afterwards instead. */}

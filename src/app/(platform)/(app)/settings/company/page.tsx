@@ -1,3 +1,4 @@
+import { marginsOfBranch } from "@/lib/paperMargins";
 import { Building } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import Link from "next/link";
@@ -114,8 +115,8 @@ export default async function CompanyProfilePage({
           signatureUrl={branch.signatureId ? `/api/images/${branch.signatureId}` : null}
           stampUrl={branch.stampId ? `/api/images/${branch.stampId}` : null}
           letterheadUrl={branch.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null}
-          topMm={branch.letterheadTopMm}
-          bottomMm={branch.letterheadBottomMm}
+          plain={marginsOfBranch(branch).plain}
+          letterhead={{ top: branch.letterheadTopMm, bottom: branch.letterheadBottomMm, ...marginsOfBranch(branch).letterheadSides }}
         />
       </section>
 
