@@ -7,6 +7,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { isDateAsk, isoToLetterDate, letterDateToIso } from "@/lib/letterHtml";
 import { EmployeeLetterPaper } from "@/components/LetterPreview";
 import { issueLetterAction, letterIssuersAction, previewLetterAction } from "./actions";
+import { FixLetterDialog, type OneOff } from "./fix-letter-dialog";
 import type { IssuerKey, IssuerOption } from "@/lib/employeeLetterIssuer";
 
 export type TemplateOption = { id: string; name: string; asks: string[]; usesSalary: boolean };
@@ -16,7 +17,7 @@ export type BranchDefaults = { signatoryName: string; signatoryTitle: string; si
 
 export type PopularTemplate = { id: string; name: string; count: number };
 
-export function IssueLetter({ employees, templates, popular, companyName, today, canIssue, defaults, initialEmployeeId, preferTemplate }: { popular: PopularTemplate[]; initialEmployeeId?: string; preferTemplate?: string; employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
+export function IssueLetter({ employees, templates, popular, companyName, today, canIssue, defaults, initialEmployeeId, preferTemplate, branchId, canSaveDefault }: { branchId: string; canSaveDefault: { profile: boolean; supplier: boolean }; popular: PopularTemplate[]; initialEmployeeId?: string; preferTemplate?: string; employees: EmployeeOption[]; templates: TemplateOption[]; companyName: string; today: string; canIssue: boolean; defaults: BranchDefaults }) {
   // Printing choices. All optional; signature and stamp start off so nothing is signed or stamped by accident.
   const [signatoryName, setSignatoryName] = useState(defaults.signatoryName);
   const [signatoryTitle, setSignatoryTitle] = useState(defaults.signatoryTitle);
@@ -27,12 +28,19 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   const [employeeId, setEmployeeId] = useState(employees.some((e) => e.id === initialEmployeeId) ? initialEmployeeId! : "");
   const [templateId, setTemplateId] = useState(templates.find((t) => preferTemplate && t.name.toLowerCase().includes(preferTemplate.toLowerCase()))?.id ?? templates[0]?.id ?? "");
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [fixOpen, setFixOpen] = useState(false);
+  const [oneOffSig, setOneOffSig] = useState<OneOff>(null);
+  const [oneOffStamp, setOneOffStamp] = useState<OneOff>(null);
+  const [reload, setReload] = useState(0);
   // Whose letterhead, signature and stamp: the visa company, the supplier company or the company profile.
   const [issuers, setIssuers] = useState<IssuerOption[]>([]);
   const [issuerKey, setIssuerKey] = useState<IssuerKey | "">("");
   const profileFallback: IssuerOption = { key: "PROFILE", label: companyName, name: companyName, supplierId: null, letterheadUrl: defaults.letterheadUrl, letterheadKind: defaults.letterheadUrl ? "image" : null, topMm: defaults.topMm, bottomMm: defaults.bottomMm, signatoryName: defaults.signatoryName, signatoryTitle: defaults.signatoryTitle, signatureUrl: defaults.signatureUrl, stampUrl: defaults.stampUrl, where: "Settings → Company profile → Letters" };
   const issuer = issuers.find((o) => o.key === issuerKey) ?? profileFallback;
-  const [preview, setPreview] = useState<{ html?: string; title?: string; missing?: string[]; empty?: string[]; error?: string } | null>(null);
+  const signatureUrl = oneOffSig?.url ?? issuer.signatureUrl;
+  const stampUrl = oneOffStamp?.url ?? issuer.stampUrl;
+  const [preview, setPreview] = useState<{ html?: string; title?: string; missing?: string[]; empty?: string[]; gaps?: { key: string; label: string }[]; error?: string } | null>(null);
+  // Fixing what is missing: the dialog, a signature or stamp for this letter only, and a nudge to reload the preview.
   const [loading, startPreview] = useTransition();
   const [issuing, startIssue] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +81,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
     const t = setTimeout(() => startPreview(async () => setPreview(await previewLetterAction(employeeId, templateId, inputs, issuerKey))), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeId, templateId, key, issuerKey]);
+  }, [employeeId, templateId, key, issuerKey, reload]);
 
   const emptyFields = preview?.empty ?? [];
   const ready = !!employeeId && !!template && preview?.html && !(preview.missing?.length) && (emptyFields.length === 0 || allowEmpty);
@@ -82,7 +90,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   function issue() {
     setError(null);
     startIssue(async () => {
-      const res = await issueLetterAction(employeeId, templateId, inputs, { issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp }, allowEmpty);
+      const res = await issueLetterAction(employeeId, templateId, inputs, { issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp, signatureImageId: showSignature ? oneOffSig?.id ?? null : null, stampImageId: showStamp ? oneOffStamp?.id ?? null : null }, allowEmpty);
       if (res.error) setError(res.error);
       else if (res.id) window.open(`/api/letters/${res.id}/pdf`, "_blank");
     });
@@ -94,7 +102,9 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   const toggle = (label: string, on: boolean, available: boolean, set: (v: boolean) => void, missing: string) => (
     <label className={`flex items-center justify-between gap-2 text-sm ${available ? "cursor-pointer text-primary" : "text-subtle"}`}>
       <span className="flex items-center gap-2"><input type="checkbox" checked={on} disabled={!available} onChange={(e) => set(e.target.checked)} />{label}</span>
-      {!available && <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] font-medium text-muted" title={`Add one under ${issuer.where}`}>{missing}</span>}
+      {!available && (canIssue && employeeId
+        ? <button type="button" onClick={(e) => { e.preventDefault(); setFixOpen(true); }} className="shrink-0 text-xs font-semibold whitespace-nowrap text-brand hover:underline" title={`Not uploaded. Saved under ${issuer.where}`}>Upload now</button>
+        : <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] font-medium text-muted" title={`Add one under ${issuer.where}`}>{missing}</span>)}
     </label>
   );
 
@@ -118,7 +128,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
       <section className={`${cardCls} grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3`}>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Employee</span>
-          <Select value={employeeId} onChange={(v) => { setEmployeeId(v); setPreview(null); setAllowEmpty(false); }} placeholder="Choose an employee…" searchPlaceholder="Search name or ID…" options={employees.map((e) => ({ value: e.id, label: `${e.name} · ${e.idNo}` }))} />
+          <Select value={employeeId} onChange={(v) => { setEmployeeId(v); setPreview(null); setAllowEmpty(false); setOneOffSig(null); setOneOffStamp(null); setShowSignature(false); setShowStamp(false); }} placeholder="Choose an employee…" searchPlaceholder="Search name or ID…" options={employees.map((e) => ({ value: e.id, label: `${e.name} · ${e.idNo}` }))} />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Letter</span>
@@ -158,8 +168,8 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
             <input value={signatoryTitle} onChange={(e) => setSignatoryTitle(e.target.value)} placeholder="Title, e.g. General Manager" aria-label="Title" className="input mt-2 w-full" />
           </label>
           <div className="space-y-2">
-            {toggle("Signature", showSignature, !!issuer.signatureUrl, setShowSignature, "Not uploaded")}
-            {toggle("Company stamp", showStamp, !!issuer.stampUrl, setShowStamp, "Not uploaded")}
+            {toggle("Signature", showSignature, !!signatureUrl, setShowSignature, "Not uploaded")}
+            {toggle("Company stamp", showStamp, !!stampUrl, setShowStamp, "Not uploaded")}
           </div>
           <p className="text-xs text-muted">Signature and stamp are added only when ticked.</p>
         </aside>
@@ -168,7 +178,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
           <div className="max-h-[72vh] overflow-y-auto rounded-[var(--radius-card)] bg-surface-sunken p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">Preview {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}</div>
             {shown?.html ? (
-              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? issuer.signatureUrl : null, stampUrl: showStamp ? issuer.stampUrl : null }} />
+              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
             ) : (
               <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
             )}
@@ -176,9 +186,12 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
           <div className={`${cardCls} sticky bottom-3 z-10 space-y-2 p-3 shadow-lg`}>
             {emptyFields.length > 0 && (
               <div className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">
-                <p><span className="font-semibold text-primary">{emptyFields.length} {emptyFields.length === 1 ? "detail is" : "details are"} missing on this employee&apos;s record</span> and would print as a gap. Add {emptyFields.length === 1 ? "it" : "them"} on their page, or issue anyway.</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p><span className="font-semibold text-primary">{emptyFields.length} {emptyFields.length === 1 ? "detail is" : "details are"} missing on this employee&apos;s record</span> and would print as a gap.</p>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setFixOpen(true)}>Fix missing details</button>
+                </div>
                 <details className="mt-1"><summary className="cursor-pointer text-muted hover:underline">Which ones</summary><p className="mt-1">{emptyFields.join(", ")}</p></details>
-                <label className="mt-1.5 flex items-center gap-2 font-medium text-primary"><input type="checkbox" checked={allowEmpty} onChange={(e) => setAllowEmpty(e.target.checked)} /> Issue anyway</label>
+                <label className="mt-1.5 flex items-center gap-2 text-muted"><input type="checkbox" checked={allowEmpty} onChange={(e) => setAllowEmpty(e.target.checked)} /> Issue anyway, with the gaps</label>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-3">
@@ -197,6 +210,27 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
           </div>
         </div>
       </div>
+      {employeeId && template && (
+        <FixLetterDialog
+          open={fixOpen}
+          onOpenChange={setFixOpen}
+          employeeId={employeeId}
+          employeeName={employees.find((e) => e.id === employeeId)?.name ?? ""}
+          templateName={template.name}
+          gaps={preview?.gaps ?? []}
+          issuer={issuer}
+          branchId={branchId}
+          canSaveDefault={issuer.supplierId ? canSaveDefault.supplier : canSaveDefault.profile}
+          oneOffSignature={oneOffSig}
+          oneOffStamp={oneOffStamp}
+          onOneOff={(kind, img) => { if (kind === "signature") { setOneOffSig(img); setShowSignature(true); } else { setOneOffStamp(img); setShowStamp(true); } }}
+          onSaved={(what, kind) => {
+            if (what === "details") { setReload((n) => n + 1); setAllowEmpty(false); return; }
+            void letterIssuersAction(employeeId).then((r) => { if (r.options) setIssuers(r.options); });
+            if (kind === "signature") setShowSignature(true); else setShowStamp(true);
+          }}
+        />
+      )}
     </div>
   );
 }
