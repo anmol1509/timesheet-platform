@@ -70,7 +70,7 @@ import { EMPLOYEE_MERGE_FIELDS } from "@/lib/letterFields";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
 
 export type RenderedLetter =
-  | { ok: true; html: string; title: string; employeeName: string; branchId: string; templateName: string; missing: string[]; asks: string[]; empty: string[] }
+  | { ok: true; html: string; title: string; employeeName: string; branchId: string; templateName: string; missing: string[]; asks: string[]; empty: string[]; gaps: { key: string; label: string }[] }
   | { ok: false; error: string };
 
 /**
@@ -114,10 +114,12 @@ export async function renderEmployeeLetter(opts: {
   }
   // Details the letter uses that are blank on the employee's record (it would print a gap).
   const labelOf = new Map(EMPLOYEE_MERGE_FIELDS.map((f) => [f.key, f.label]));
-  const empty = [...tokens].filter((t) => labelOf.has(t) && !(values[t] ?? "").trim()).map((t) => labelOf.get(t)!);
+  const gaps = [...tokens].filter((t) => labelOf.has(t) && !(values[t] ?? "").trim()).map((t) => ({ key: t, label: labelOf.get(t)! }));
+  const empty = gaps.map((g) => g.label);
   return {
     ok: true,
     empty,
+    gaps,
     html: sanitizeLetterHtml(substituteInHtml(html, values)),
     title: template.title || template.category || "Letter",
     employeeName: ev.employee.name,

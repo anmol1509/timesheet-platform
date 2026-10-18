@@ -19,10 +19,10 @@ export function PrintPreview({ initial, logoUrl, letterheadUrl, signatureUrl, st
   return (
     <div className="card p-5">
       <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">How it prints</p>
-      <div className="relative aspect-[1/1.2] overflow-hidden rounded-lg border border-default bg-white text-slate-900 shadow-sm">
+      <div className="relative aspect-[210/297] overflow-hidden rounded-lg border border-default bg-white text-slate-900 shadow-sm">
         {letterheadUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- our own image route
-          <img src={letterheadUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={letterheadUrl} alt="" className="absolute inset-0 h-full w-full object-fill" />
         )}
         <div className="relative p-4">
           {!letterheadUrl && (

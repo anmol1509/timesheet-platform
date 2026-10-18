@@ -5,7 +5,7 @@ import { Camera, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 
-type ActionResult = { error?: string | null } | void;
+type ActionResult = { error?: string | null; id?: string; url?: string } | void;
 
 /** Resizes to fit `max`px on the longest side in the browser, so uploads stay
  * tiny (server actions cap the request body) and PNG transparency survives. */
@@ -39,7 +39,10 @@ export function ImageUpload({
   removeAction,
   extraFields,
   stacked = false,
+  onUploaded,
 }: {
+  /** Called with the action's result after a successful upload. */
+  onUploaded?: (res: Exclude<ActionResult, void>) => void;
   /** Picture above the text, for narrow tiles. */
   stacked?: boolean;
   currentUrl: string | null;
@@ -88,7 +91,7 @@ export function ImageUpload({
         if (res && res.error) {
           setError(res.error);
           setPreview(null);
-        }
+        } else if (res) onUploaded?.(res);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Upload failed.");
         setPreview(null);

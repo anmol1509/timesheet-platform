@@ -8,14 +8,17 @@ import { can } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 import { refLabel, renderEmployeeLetter } from "@/lib/employeeLetter";
 import { substituteInHtml } from "@/lib/letterHtml";
+import { GAP_FIELDS } from "@/lib/letterGaps";
+import { formatMasked } from "@/lib/idFormats";
+import { storeImage } from "@/lib/storedImage";
 import { loadIssuerOptions, resolveIssuerSupplier, type IssuerKey, type IssuerOption } from "@/lib/employeeLetterIssuer";
 
 type Inputs = Record<string, string>;
-export type LayoutInput = { issuer: IssuerKey; onLetterhead: boolean; signatoryName: string; signatoryTitle: string; showSignature: boolean; showStamp: boolean };
+export type LayoutInput = { issuer: IssuerKey; onLetterhead: boolean; signatoryName: string; signatoryTitle: string; showSignature: boolean; showStamp: boolean; /** A signature or stamp uploaded for this letter only. Wins over the company's own. */ signatureImageId?: string | null; stampImageId?: string | null };
 const clean = (inputs: Inputs) => Object.fromEntries(Object.entries(inputs ?? {}).map(([k, v]) => [String(k).slice(0, 120), String(v ?? "").slice(0, 400)]));
 
 /** Live preview: the letter with the employee's real details filled in. Stores nothing. */
-export async function previewLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; title?: string; missing?: string[]; empty?: string[]; error?: string }> {
+export async function previewLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; title?: string; missing?: string[]; empty?: string[]; gaps?: { key: string; label: string }[]; error?: string }> {
   await requireView("workforce.letters");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } } } });
@@ -24,7 +27,7 @@ export async function previewLetterAction(employeeId: string, templateId: string
   const who = await resolveIssuerSupplier(employeeId, issuer);
   if ("error" in who) return { error: who.error };
   const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId });
-  return r.ok ? { html: r.html, title: r.title, missing: r.missing, empty: r.empty } : { error: r.error };
+  return r.ok ? { html: r.html, title: r.title, missing: r.missing, empty: r.empty, gaps: r.gaps } : { error: r.error };
 }
 
 /** Issues the letter: numbers it, stores the exact wording, and records who issued it. */
@@ -44,8 +47,12 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   if (!issuerOpt) return { error: "Employee not found." };
 
   // Signature and stamp are opt-in and only possible if that company has uploaded them.
-  if (layoutIn.showSignature && !issuerOpt.signatureUrl) return { error: `No signature image is uploaded for ${issuerOpt.name} (${issuerOpt.where}).` };
-  if (layoutIn.showStamp && !issuerOpt.stampUrl) return { error: `No stamp is uploaded for ${issuerOpt.name} (${issuerOpt.where}).` };
+  // A one-off image uploaded for this letter must be a stored image; it stands in for the company's own.
+  const oneOff = async (id: string | null | undefined) => (id && (await prisma.storedImage.findUnique({ where: { id }, select: { id: true } })) ? id : null);
+  const signatureImageId = layoutIn.showSignature ? await oneOff(layoutIn.signatureImageId) : null;
+  const stampImageId = layoutIn.showStamp ? await oneOff(layoutIn.stampImageId) : null;
+  if (layoutIn.showSignature && !signatureImageId && !issuerOpt.signatureUrl) return { error: `No signature image is uploaded for ${issuerOpt.name} (${issuerOpt.where}).` };
+  if (layoutIn.showStamp && !stampImageId && !issuerOpt.stampUrl) return { error: `No stamp is uploaded for ${issuerOpt.name} (${issuerOpt.where}).` };
   const layout = {
     issuerKey,
     issuerSupplierId: who.supplierId,
@@ -54,6 +61,8 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
     signatoryTitle: String(layoutIn.signatoryTitle ?? "").trim().slice(0, 80) || null,
     showSignature: !!layoutIn.showSignature,
     showStamp: !!layoutIn.showStamp,
+    signatureImageId,
+    stampImageId,
   };
 
   const values = clean(inputs);
@@ -83,4 +92,45 @@ export async function letterIssuersAction(employeeId: string): Promise<{ options
   const r = await loadIssuerOptions(employeeId);
   if (!r || isOutsideBranch(r.branchId, branchId, isSuperAdmin)) return { error: "Employee not found." };
   return { options: r.options };
+}
+
+
+/** Signature or stamp for one letter only: stored, but not made the company's default. */
+export async function uploadLetterOneOffImageAction(formData: FormData): Promise<{ error?: string; id?: string; url?: string }> {
+  await requireWrite("workforce.letters");
+  await requirePermission("workforce.letters", "create");
+  const saved = await storeImage(formData.get("image"));
+  if ("error" in saved) return { error: saved.error };
+  return { id: saved.id, url: `/api/images/${saved.id}` };
+}
+
+/** Saves details the letter was missing to the employee's own record, so the next letter has them too. */
+export async function fixLetterGapsAction(employeeId: string, values: Record<string, string>): Promise<{ error?: string }> {
+  await requireWrite("workforce.employees");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true, branchId: true, trade: true, nationality: true, passportNumber: true, emiratesId: true, joinDate: true, wpsBankName: true, wpsIban: true } });
+  if (!emp || isOutsideBranch(emp.branchId, branchId, isSuperAdmin)) return { error: "Employee not found." };
+  const mayPay = can(subjectOf(user), "payroll", "edit");
+  const data: Record<string, string | Date> = {};
+  const before: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(values ?? {})) {
+    const f = GAP_FIELDS[key];
+    const v = String(raw ?? "").trim();
+    if (!f || !v) continue;
+    if (f.pay && !mayPay) return { error: "Bank details need payroll access. Add them on the employee's Payroll & WPS tab." };
+    if (f.column === "joinDate") {
+      const d = new Date(`${v}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(d.getTime())) return { error: "Enter the joining date as a full date." };
+      data.joinDate = d;
+    } else if (f.column === "passportNumber") data.passportNumber = formatMasked("passport", v);
+    else if (f.column === "emiratesId") data.emiratesId = formatMasked("eid", v);
+    else if (f.column === "wpsIban") data.wpsIban = formatMasked("iban", v);
+    else data[f.column] = v.slice(0, 120);
+    before[f.column] = emp[f.column];
+  }
+  if (Object.keys(data).length === 0) return { error: "Fill in at least one detail." };
+  await prisma.employee.update({ where: { id: emp.id }, data });
+  await logAudit({ entityType: "EMPLOYEE", entityId: emp.id, action: "UPDATE", before, after: data, userId: user.id, userName: user.name, branchId: emp.branchId });
+  revalidatePath(`/employees/${emp.id}`);
+  return {};
 }

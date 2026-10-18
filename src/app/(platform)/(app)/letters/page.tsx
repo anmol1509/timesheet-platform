@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { can } from "@/lib/permissions";
+import { isAdminRole } from "@/lib/roles";
 import { askLabels, templateHtml, tokensIn } from "@/lib/letterHtml";
 import { formatLetterDate } from "@/lib/letterLayout";
 import { SALARY_KEYS, refLabel } from "@/lib/employeeLetter";
@@ -66,6 +67,8 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
           initialEmployeeId={sp.employee}
           preferTemplate={sp.template}
           canIssue={can(subject, "workforce.letters", "create")}
+          branchId={branchId}
+          canSaveDefault={{ profile: isAdminRole(user.role), supplier: can(subject, "partners.suppliers", "edit") }}
           companyName={(branch?.name ?? "").toUpperCase()}
           today={formatLetterDate(new Date())}
           defaults={{
