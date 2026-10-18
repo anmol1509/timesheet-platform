@@ -24,6 +24,7 @@ const SCOPE = "partners.suppliers";
 export type SupplierQuickView = {
   id: string;
   name: string;
+  fullName: string | null;
   code: string | null;
   category: string | null;
   status: string;
@@ -56,6 +57,7 @@ export async function loadSupplierQuickViewAction(id: string): Promise<SupplierQ
   return {
     id: s.id,
     name: s.name,
+    fullName: s.fullName,
     code: s.code,
     category: s.category,
     status: s.status,
