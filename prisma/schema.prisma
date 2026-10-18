@@ -17,6 +17,7 @@ enum Role {
 
 model Branch {
   id               String            @id @default(cuid())
+  renewalCases     RenewalCase[]
   tradePays        TradePay[]
   apiKeys          ApiKey[]
   webhookEndpoints WebhookEndpoint[]
@@ -160,6 +161,7 @@ model Bank {
 
 model User {
   id              String            @id @default(cuid())
+  renewalsOwned   RenewalCase[]
   apiKeysCreated  ApiKey[]
   webhooksCreated WebhookEndpoint[]
   email           String            @unique
@@ -2940,4 +2942,32 @@ model BankStatementLine {
   @@unique([accountId, importHash])
   @@index([accountId, date])
   @@index([entryId])
+}
+
+/// Who is handling one renewal and how far it has got. A renewal is one document of one employee or supplier running
+/// out on one date, so a renewed document (new expiry) starts a new case and the old one simply stops being listed.
+model RenewalCase {
+  id            String   @id @default(cuid())
+  /// "employee" or "supplier"
+  kind          String
+  subjectId     String
+  /// The label shown in the renewal queue, e.g. "Visa", "Trade licence".
+  document      String
+  expiry        DateTime @db.Date
+  /// NOT_STARTED | IN_PROGRESS | SUBMITTED | DONE
+  status        String   @default("NOT_STARTED")
+  note          String?
+  updatedById   String?
+  updatedByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owner    User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId  String?
+  branch   Branch  @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([kind, subjectId, document, expiry])
+  @@index([branchId, status])
+  @@index([ownerId])
 }

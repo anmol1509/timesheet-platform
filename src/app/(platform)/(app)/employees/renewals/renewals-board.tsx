@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertOctagon,
@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ChevronRight,
   Clock,
+  Download,
   FileText,
   MapPin,
   Search,
@@ -26,6 +27,11 @@ import { Select } from "@/components/ui/Select";
 import { MultiSelect } from "@/components/ui/MultiSelect";
 import { cn } from "@/lib/cn";
 import type { RenewalItem, RenewalTier } from "@/lib/renewals";
+import { RENEWAL_STATUSES, type RenewalCaseView, type RenewalRow, type RenewalStatus } from "@/lib/renewalCases";
+import { updateRenewalsAction, type RenewalPatch } from "./actions";
+import { BulkBar, ExportDialog, NoteCell, OwnerCell, ProgressStrip, StatusChip, type Owner } from "./renewal-workflow";
+
+const NO_CHANGES: Record<string, Partial<RenewalCaseView>> = {};
 
 type TierMeta = {
   key: RenewalTier;
@@ -78,7 +84,53 @@ function SubjectAvatar({ item, size = "md" }: { item: RenewalItem; size?: "md" |
   );
 }
 
-export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts: Record<RenewalTier, number> }) {
+export function RenewalsBoard({ items: base, counts, owners, currentUserId, canEdit, canExport }: { items: RenewalRow[]; counts: Record<RenewalTier, number>; owners: Owner[]; currentUserId: string; canEdit: boolean; canExport: boolean }) {
+  // Changes show at once and are replaced by the saved state when the page refreshes.
+  const [ov, setOv] = useState<{ base: RenewalRow[]; map: Record<string, Partial<RenewalCaseView>> }>({ base, map: {} });
+  const overrides = ov.base === base ? ov.map : NO_CHANGES;
+  const items = useMemo(() => base.map((i) => (overrides[i.key] ? { ...i, ...overrides[i.key] } : i)), [base, overrides]);
+  const [, startSave] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<RenewalStatus | "">("");
+  const [mine, setMine] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  function change(targets: RenewalRow[], patch: RenewalPatch) {
+    if (targets.length === 0) return;
+    setSaveError(null);
+    const view: Partial<RenewalCaseView> = {
+      ...(patch.status !== undefined ? { status: patch.status as RenewalStatus } : {}),
+      ...(patch.ownerId !== undefined ? { ownerId: patch.ownerId, ownerName: patch.ownerId ? (owners.find((o) => o.id === patch.ownerId)?.name ?? null) : null } : {}),
+      ...(patch.note !== undefined ? { note: patch.note } : {}),
+    };
+    setOv({ base, map: { ...overrides, ...Object.fromEntries(targets.map((t) => [t.key, { ...overrides[t.key], ...view }])) } });
+    startSave(async () => {
+      const res = await updateRenewalsAction(targets.map((t) => ({ kind: t.kind, subjectId: t.subjectId, document: t.document, expiry: t.expiry })), patch);
+      if ("error" in res) { setSaveError(res.error); setOv({ base, map: {} }); }
+    });
+  }
+
+  async function download(refs: RenewalRow[]) {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const res = await fetch("/api/renewals/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refs: refs.map((r) => ({ kind: r.kind, subjectId: r.subjectId, document: r.document, expiry: r.expiry })) }) });
+      if (!res.ok) { setExportError(((await res.json().catch(() => null)) as { error?: string } | null)?.error ?? "The export didn't work. Please try again."); return; }
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `renewals-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportOpen(false);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   // The filters live in the address, so a filtered list can be shared or reloaded.
   const params = useSearchParams();
   const list = (k: string) => (params.get(k) ?? "").split("|").filter(Boolean);
@@ -91,7 +143,9 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
   const [sort, setSort] = useState<"soonest" | "name" | "document">((["soonest", "name", "document"].includes(params.get("sort") ?? "") ? params.get("sort") : "soonest") as "soonest" | "name" | "document");
   const wp = params.get("week");
   const [week, setWeek] = useState<WeekKey | null>(wp === "overdue" ? "overdue" : wp !== null && /^\d+$/.test(wp) && Number(wp) < WEEKS ? Number(wp) : null);
-  const [selected, setSelected] = useState<RenewalItem | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const selected = selectedKey ? (items.find((i) => i.key === selectedKey) ?? null) : null;
+  const setSelected = (i: RenewalItem | null) => setSelectedKey(i ? (i as RenewalRow).key : null);
   const NONE = "__none";
   useEffect(() => {
     const q = new URLSearchParams();
@@ -118,15 +172,35 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
         (suppliers.length === 0 || (i.supplier !== null && suppliers.includes(i.supplier))) &&
         (projects.length === 0 || (i.project === null ? projects.includes(NONE) : projects.includes(i.project))) &&
         (!kind || i.kind === kind) &&
+        (!statusFilter || i.status === statusFilter) &&
+        (!mine || i.ownerId === currentUserId) &&
         (!q || [i.subjectName, i.subjectRef, i.document, i.project, i.supplier].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)))
     );
     return sort === "soonest" ? out : [...out].sort((a, b) => (sort === "name" ? a.subjectName.localeCompare(b.subjectName) : a.document.localeCompare(b.document) || a.days - b.days));
-  }, [items, tier, query, docs, suppliers, projects, kind, sort]);
+  }, [items, tier, query, docs, suppliers, projects, kind, sort, statusFilter, mine, currentUserId]);
   const rows = useMemo(() => (week === null ? rowsNoWeek : rowsNoWeek.filter((i) => weekOf(i.days) === week)), [rowsNoWeek, week]);
-  const filtersActive = week !== null || tier !== "all" || !!query || docs.length > 0 || suppliers.length > 0 || projects.length > 0 || !!kind;
-  const clear = () => { setWeek(null); setTier("all"); setQuery(""); setDocs([]); setSuppliers([]); setProjects([]); setKind(""); };
+  const filtersActive = !!statusFilter || mine || week !== null || tier !== "all" || !!query || docs.length > 0 || suppliers.length > 0 || projects.length > 0 || !!kind;
+  const clear = () => { setStatusFilter(""); setMine(false); setWeek(null); setTier("all"); setQuery(""); setDocs([]); setSuppliers([]); setProjects([]); setKind(""); };
+  const statusCounts = useMemo(() => Object.fromEntries(RENEWAL_STATUSES.map((s) => [s.key, items.filter((i) => i.status === s.key).length])) as Record<RenewalStatus, number>, [items]);
+  const mineCount = items.filter((i) => i.ownerId === currentUserId).length;
+  const pickedRows = items.filter((i) => picked.has(i.key));
+  const allShownPicked = rows.length > 0 && rows.every((r) => picked.has(r.key));
+  const togglePick = (key: string) => setPicked((p) => { const n = new Set(p); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  const exportChoices = [
+    { key: "selected", label: "Selected", count: pickedRows.length },
+    { key: "notstarted", label: "All not started", count: items.filter((i) => i.status === "NOT_STARTED").length },
+    { key: "month", label: "Due in 30 days", count: items.filter((i) => i.days <= 30).length },
+    { key: "list", label: "Everything in the list below", count: rows.length },
+    { key: "all", label: "All renewals", count: items.length },
+  ];
+  const exportRows = (key: string) => (key === "selected" ? pickedRows : key === "notstarted" ? items.filter((i) => i.status === "NOT_STARTED") : key === "month" ? items.filter((i) => i.days <= 30) : key === "list" ? rows : items);
   return (
     <div className="space-y-5">
+      {canExport && items.length > 0 && (
+        <div className="flex justify-end">
+          <button type="button" className="btn btn-secondary" onClick={() => { setExportError(null); setExportOpen(true); }}><Download className="h-4 w-4" aria-hidden /> Export for PRO</button>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {TIERS.map((t) => {
           const active = tier === t.key;
@@ -173,11 +247,17 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
         </div>
       )}
 
+      {items.length > 0 && <ProgressStrip counts={statusCounts} status={statusFilter} onStatus={setStatusFilter} mine={mine} onMine={setMine} mineCount={mineCount} />}
+
       {items.length > 0 && (
         <ExpiryChart items={rowsNoWeek} week={week} onWeek={setWeek} onSelect={setSelected} />
       )}
 
       <div className="card overflow-hidden">
+        {saveError && <p role="alert" className="border-b border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{saveError}</p>}
+        {canEdit && pickedRows.length > 0 && (
+          <BulkBar count={pickedRows.length} owners={owners} currentUserId={currentUserId} canExport={canExport} onStatus={(s) => change(pickedRows, { status: s })} onOwner={(id) => change(pickedRows, { ownerId: id })} onExport={() => { setExportError(null); setExportOpen(true); }} onClear={() => setPicked(new Set())} />
+        )}
         <div className="flex flex-wrap items-center gap-2 border-b border-default p-3">
           <div className="relative min-w-[12rem] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
@@ -213,13 +293,21 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[52rem] text-sm">
+            <table className="w-full min-w-[74rem] text-sm">
               <thead className="border-b border-default text-left text-xs uppercase">
                 <tr>
+                  {canEdit && (
+                    <th className="relative w-10 px-4">
+                      <input type="checkbox" aria-label="Select all shown" checked={allShownPicked} onChange={() => setPicked(allShownPicked ? new Set() : new Set(rows.map((r) => r.key)))} />
+                    </th>
+                  )}
                   <th className="px-4">Employee / Supplier</th>
                   <th className="px-4">Document</th>
                   <th className="px-4">Expires</th>
-                  <th className="w-56 px-4">Runway</th>
+                  <th className="w-44 px-4">Runway</th>
+                  <th className="px-4">Status</th>
+                  <th className="px-4">Owner</th>
+                  <th className="px-4">Note</th>
                   <th className="px-4">Deployment</th>
                   <th className="relative px-4"><span className="sr-only">Open</span></th>
                 </tr>
@@ -229,10 +317,15 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
                   const t = TIER_BY_KEY.get(item.tier)!;
                   return (
                     <tr
-                      key={`${item.kind}-${item.subjectId}-${item.document}`}
+                      key={item.key}
                       onClick={() => setSelected(item)}
-                      className="cursor-pointer transition-colors hover:bg-surface-subtle"
+                      className={cn("cursor-pointer transition-colors hover:bg-surface-subtle", picked.has(item.key) && "bg-brand-soft/60", item.status === "DONE" && "opacity-65")}
                     >
+                      {canEdit && (
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" aria-label={`Select ${item.subjectName}, ${item.document}`} checked={picked.has(item.key)} onChange={() => togglePick(item.key)} />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <SubjectAvatar item={item} />
@@ -245,12 +338,12 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-2 text-secondary">
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap text-secondary">
                           <FileText className="h-4 w-4 text-subtle" aria-hidden />
                           {item.document}
                         </span>
                       </td>
-                      <td className="tabular px-4 py-3 text-secondary">{fmt(item.expiry)}</td>
+                      <td className="tabular px-4 py-3 whitespace-nowrap text-secondary">{fmt(item.expiry)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-sunken">
@@ -259,7 +352,16 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
                           <Badge color={t.badge}>{runwayLabel(item.days)}</Badge>
                         </div>
                       </td>
-                      <td className="max-w-[14rem] truncate px-4 py-3 text-muted">{item.project || item.supplier || "—"}</td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <StatusChip value={item.status} disabled={!canEdit} onChange={(s) => change([item], { status: s })} />
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <OwnerCell ownerId={item.ownerId} ownerName={item.ownerName} owners={owners} currentUserId={currentUserId} disabled={!canEdit} onChange={(id) => change([item], { ownerId: id })} />
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <NoteCell value={item.note} disabled={!canEdit} onSave={(n) => change([item], { note: n })} />
+                      </td>
+                      <td className="max-w-[12rem] truncate px-4 py-3 text-muted">{item.project || item.supplier || "—"}</td>
                       <td className="px-4 py-3 text-right">
                         <ChevronRight className="ml-auto h-4 w-4 text-subtle" aria-hidden />
                       </td>
@@ -279,13 +381,17 @@ export function RenewalsBoard({ items, counts }: { items: RenewalItem[]; counts:
         description={selected ? runwayLabel(selected.days) : undefined}
         width="28rem"
       >
-        {selected && <RenewalDetail item={selected} />}
+        {selected && <RenewalDetail item={selected} owners={owners} currentUserId={currentUserId} canEdit={canEdit} onChange={(patch) => change([selected], patch)} />}
       </SlideOver>
+
+      {canExport && (
+        <ExportDialog open={exportOpen} onOpenChange={setExportOpen} choices={exportChoices} busy={exporting} error={exportError} onExport={(k) => void download(exportRows(k))} />
+      )}
     </div>
   );
 }
 
-function RenewalDetail({ item }: { item: RenewalItem }) {
+function RenewalDetail({ item, owners, currentUserId, canEdit, onChange }: { item: RenewalRow; owners: Owner[]; currentUserId: string; canEdit: boolean; onChange: (patch: RenewalPatch) => void }) {
   const t = TIER_BY_KEY.get(item.tier)!;
   const href = subjectHref(item);
   return (
@@ -321,6 +427,15 @@ function RenewalDetail({ item }: { item: RenewalItem }) {
         {item.kind === "employee" && <DetailRow icon={MapPin} label="Project" value={item.project ?? "Not deployed"} />}
         <DetailRow icon={Building2} label={item.kind === "employee" ? "Company" : "Supplier"} value={item.supplier ?? "—"} />
       </dl>
+
+      <div className="space-y-3 rounded-card border border-default p-4">
+        <p className="eyebrow">Progress</p>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <StatusChip value={item.status} disabled={!canEdit} onChange={(s) => onChange({ status: s })} />
+          <OwnerCell ownerId={item.ownerId} ownerName={item.ownerName} owners={owners} currentUserId={currentUserId} disabled={!canEdit} onChange={(id) => onChange({ ownerId: id })} />
+        </div>
+        <NoteCell value={item.note} disabled={!canEdit} onSave={(n) => onChange({ note: n })} />
+      </div>
 
       <div className="mt-auto grid gap-2">
         <Link href={href} className="btn btn-primary w-full">

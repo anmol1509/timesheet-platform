@@ -58,6 +58,7 @@ export const ENTITY_META: Record<string, Meta> = {
   ISSUED_LETTER: M("Issued letter", "Letters", () => "/letters"),
   USER: M("Team member", "Administration", () => "/settings/team"),
   ACCESS_ROLE: M("Role", "Administration", () => "/settings/roles"),
+  RENEWAL: M("Renewal", "Workforce", () => "/employees/renewals"),
   BRANCH: M("Branch", "Administration", () => "/settings"),
   SETTINGS: M("Settings", "Administration", () => "/settings"),
   LOOKUP_VALUE: M("Lookup value", "Administration", () => "/lookups"),

@@ -59,7 +59,7 @@ const DEFS: ModuleDef[] = [
     pages: [
       { key: "employees", label: "Employees", paths: ["/employees", "/api/employees"] },
       { key: "instant-view", label: "Instant View", paths: ["/employees/instant-view"] },
-      { key: "renewals", label: "Renewals", paths: ["/employees/renewals"] },
+      { key: "renewals", label: "Renewals", paths: ["/employees/renewals", "/api/renewals"] },
       { key: "documents", label: "Documents", paths: ["/documents", "/api/documents"] },
       { key: "letters", label: "Letters", paths: ["/letters", "/api/letters", "/letter-templates"] },
       { key: "trades", label: "Trades", paths: ["/trades"] },
