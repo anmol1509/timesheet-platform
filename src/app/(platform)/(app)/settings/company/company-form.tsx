@@ -33,13 +33,23 @@ export function CompanyForm({ branch }: { branch: Branch }) {
     </label>
   );
   return (
-    <form action={action} className="space-y-4">
+    <form
+      action={action}
+      className="space-y-4"
+      onInput={(e) => {
+        const d = new FormData(e.currentTarget);
+        const v = (k: string) => String(d.get(k) ?? "");
+        window.dispatchEvent(new CustomEvent("company:preview", { detail: { name: v("name"), address: v("address"), trn: v("trn"), emirate: v("emirate"), country: v("country") } }));
+      }}
+    >
       <input type="hidden" name="branchId" value={branch.id} />
       <div className="grid gap-3 sm:grid-cols-2">
+        <p className="text-xs font-semibold tracking-wide text-muted uppercase sm:col-span-2">Identity</p>
         {f("Company name", "name", { required: true, span: true })}
         {f("Address", "address", { span: true })}
         <div><span className={lab}>Country</span><CountrySelect name="country" value={country} onChange={setCountry} /></div>
         <div><span className={lab}>Emirate / city</span><CitySelect name="emirate" country={country} defaultValue={branch.emirate ?? ""} /></div>
+        <p className="mt-2 border-t border-default pt-4 text-xs font-semibold tracking-wide text-muted uppercase sm:col-span-2">Contact &amp; tax</p>
         <div><span className={lab}>Phone</span><PhoneField name="phone" defaultValue={branch.phone} country={country} /></div>
         <div><span className={lab}>Fax</span><PhoneField name="fax" defaultValue={branch.fax} country={country} /></div>
         {f("Email", "email")}

@@ -38,7 +38,10 @@ export function ImageUpload({
   uploadAction,
   removeAction,
   extraFields,
+  stacked = false,
 }: {
+  /** Picture above the text, for narrow tiles. */
+  stacked?: boolean;
   currentUrl: string | null;
   /** Shown when there's no image (initials tile). */
   fallback: React.ReactNode;
@@ -107,7 +110,7 @@ export function ImageUpload({
   const round = shape === "circle";
 
   return (
-    <div className="flex items-center gap-4">
+    <div className={cn("flex gap-4", stacked ? "flex-col items-start" : "items-center")}>
       <div
         className={cn(
           "flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-default bg-surface-sunken",

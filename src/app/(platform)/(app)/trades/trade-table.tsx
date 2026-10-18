@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { DeleteButton } from "@/components/DeleteButton";
+import { RowMenu } from "@/components/ui/RowMenu";
 import { TrendingUp } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/data-table/DataTable";
 import { bulkImportTradesAction, toggleTrendingAction, deleteSkillAction, updateSkillAction } from "./actions";
@@ -53,6 +53,13 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
     });
   }
 
+  function toggleTrending(s: TradeRow) {
+    const fd = new FormData();
+    fd.set("skillId", s.id);
+    fd.set("trending", String(s.trending));
+    startTransition(async () => { await toggleTrendingAction(fd); });
+  }
+
   const categoryOptions = useMemo(
     () => [...new Set(trades.map((t) => t.category).filter((c): c is string => !!c))].sort().map((v) => ({ value: v, label: v })),
     [trades],
@@ -86,29 +93,10 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
                 Standard
               </span>
             )}
-            {s.editable ? (
-              <form action={toggleTrendingAction}>
-                <input type="hidden" name="skillId" value={s.id} />
-                <input type="hidden" name="trending" value={String(s.trending)} />
-                <button
-                  type="submit"
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                    s.trending ? "bg-[var(--info-soft)] text-[var(--brand-primary)]" : "bg-surface-subtle text-subtle hover:text-muted"
-                  }`}
-                  title="Toggle trending"
-                >
-                  <TrendingUp className="h-3 w-3" /> Trending
-                </button>
-              </form>
-            ) : s.trending ? (
+            {s.trending && (
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--info-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--brand-primary)]">
                 <TrendingUp className="h-3 w-3" /> Trending
               </span>
-            ) : null}
-            {s.editable && (
-              <button type="button" onClick={() => startEdit(s)} className="text-xs font-medium text-subtle hover:text-secondary hover:underline">
-                Edit
-              </button>
             )}
           </div>
         ),
@@ -202,7 +190,7 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
       searchable
       searchPlaceholder="Search trades…"
       pageSize={50}
-      emptyState={<p className="px-4 py-10 text-center text-sm text-muted">No trades tracked yet. Add one above, import a list, or tag skills from an employee&rsquo;s profile.</p>}
+      emptyState={<p className="px-4 py-10 text-center text-sm text-muted">No trades tracked yet. Add one with the button above, import a list, or tag skills from an employee&rsquo;s profile.</p>}
       csvFilename={`trades-${new Date().toISOString().slice(0, 10)}.csv`}
       importConfig={{ entityLabel: "trades", columns: IMPORT_COLUMNS, importAction: bulkImportTradesAction }}
       filters={[
@@ -213,10 +201,21 @@ export function TradeTable({ trades }: { trades: TradeRow[] }) {
       ]}
       renderRowActions={(s) =>
         s.editable ? (
-          <DeleteButton
-            action={deleteSkillAction}
-            hiddenFields={{ skillId: s.id }}
-            confirmMessage={`Delete the "${s.name}" trade? It will be removed from ${s.employeeCount} employee(s).`}
+          <RowMenu
+            items={[
+              { label: "Edit", onSelect: () => startEdit(s) },
+              { label: s.trending ? "Remove trending" : "Mark trending", onSelect: () => toggleTrending(s) },
+              {
+                label: "Delete",
+                danger: true,
+                onSelect: () => {
+                  if (!window.confirm(`Delete the "${s.name}" trade? It will be removed from ${s.employeeCount} employee(s).`)) return;
+                  const fd = new FormData();
+                  fd.set("skillId", s.id);
+                  startTransition(async () => { await deleteSkillAction(fd); });
+                },
+              },
+            ]}
           />
         ) : null
       }

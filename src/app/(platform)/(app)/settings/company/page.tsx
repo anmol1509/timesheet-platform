@@ -7,6 +7,7 @@ import { isUsableBank } from "@/lib/bankStatus";
 import { ImageUpload } from "@/components/ImageUpload";
 import { CompanyForm } from "./company-form";
 import { WpsForm } from "./wps-form";
+import { PrintPreview } from "./print-preview";
 import { LettersSection } from "./letters-section";
 import { removeLogoAction, uploadLogoAction } from "./actions";
 
@@ -35,6 +36,16 @@ export default async function CompanyProfilePage({
   if (!branch) {
     return <p className="text-sm text-muted">No company to edit — this account isn&apos;t attached to a branch.</p>;
   }
+
+
+  const todo = [
+    { label: "Company TRN", done: !!branch.trn },
+    { label: "Address", done: !!branch.address },
+    { label: "Company logo", done: !!branch.logoId },
+    { label: "Letterhead, signature or stamp for letters", done: !!(branch.letterheadImageId || branch.signatureId || branch.stampId) },
+    { label: "MOHRE establishment ID", done: !!branch.wpsEstablishmentId },
+    { label: "Salary bank account (WPS)", done: !!branch.wpsPayerBankId },
+  ];
 
   return (
     <div className="space-y-5">
@@ -71,7 +82,9 @@ export default async function CompanyProfilePage({
         </div>
       )}
 
-      <div className="card max-w-2xl space-y-6 p-5">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-5">
+      <div className="card space-y-6 p-5">
         <ImageUpload
           key={branch.id}
           currentUrl={branch.logoId ? `/api/images/${branch.logoId}` : null}
@@ -88,9 +101,9 @@ export default async function CompanyProfilePage({
         <CompanyForm key={branch.id} branch={branch} />
       </div>
 
-      <section className="card max-w-2xl space-y-4 p-5">
+      <section className="card space-y-4 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-primary">Letters</h2>
+          <h2 className="text-base font-semibold text-primary">Letters</h2>
           <p className="mt-1 text-xs text-muted">Optional defaults for letters about your employees: a signature image, a company stamp, and your letterhead. Each is chosen per letter, so nothing prints unless you tick it.</p>
         </div>
         <LettersSection
@@ -106,9 +119,9 @@ export default async function CompanyProfilePage({
         />
       </section>
 
-      <section className="card max-w-2xl space-y-4 p-5">
+      <section className="card space-y-4 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-primary">Payroll / WPS</h2>
+          <h2 className="text-base font-semibold text-primary">Payroll / WPS</h2>
           <p className="mt-1 text-xs text-muted">
             Needed to generate the WPS salary file: your MOHRE establishment ID and the bank account salaries are paid from.
           </p>
@@ -125,6 +138,30 @@ export default async function CompanyProfilePage({
           }))}
         />
       </section>
+        </div>
+
+        <aside className="space-y-4 xl:sticky xl:top-4">
+          <PrintPreview
+            key={branch.id}
+            initial={{ name: branch.name, address: branch.address ?? "", trn: branch.trn ?? "", emirate: branch.emirate ?? "", country: branch.country ?? "" }}
+            logoUrl={branch.logoId ? `/api/images/${branch.logoId}` : null}
+            letterheadUrl={branch.letterheadImageId ? `/api/images/${branch.letterheadImageId}` : null}
+            signatureUrl={branch.signatureId ? `/api/images/${branch.signatureId}` : null}
+            stampUrl={branch.stampId ? `/api/images/${branch.stampId}` : null}
+          />
+          <div className="card p-5">
+            <p className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">Set-up checklist · {todo.filter((t) => t.done).length} of {todo.length}</p>
+            <ul className="space-y-1.5 text-sm">
+              {todo.map((t) => (
+                <li key={t.label} className={t.done ? "flex items-center gap-2 text-subtle" : "flex items-center gap-2 text-primary"}>
+                  <span aria-hidden className={t.done ? "text-[var(--success)]" : "text-muted"}>{t.done ? "✓" : "○"}</span>
+                  {t.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
