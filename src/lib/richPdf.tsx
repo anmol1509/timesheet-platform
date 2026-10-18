@@ -151,12 +151,19 @@ function Blocks({ nodes, ctx, depth, keyBase }: { nodes: Node[]; ctx: Ctx; depth
             <View key={key} style={{ marginBottom: 8, borderTopWidth: 0.5, borderLeftWidth: 0.5, borderColor: "#000000" }}>
               {rows.map((tr, r) => (
                 <View key={`${key}-r${r}`} style={{ flexDirection: "row" }} wrap={false}>
-                  {tr.childNodes.filter((x): x is HTMLElement => x instanceof HTMLElement && /^(td|th)$/i.test(x.tagName ?? "")).map((cell, ci) => {
+                  {(() => {
+                    const cells = tr.childNodes.filter((x): x is HTMLElement => x instanceof HTMLElement && /^(td|th)$/i.test(x.tagName ?? ""));
+                    // A cell may ask for a share of the row ("width: 35%"); the others split what is left.
+                    const asked = cells.map((c) => { const m = /width:\s*(\d{1,3})%/.exec(c.getAttribute("style") ?? ""); return m ? Number(m[1]) : null; });
+                    const left = Math.max(0, 100 - asked.reduce<number>((a, w) => a + (w ?? 0), 0));
+                    const free = asked.filter((w) => w === null).length;
+                    return cells.map((cell, ci) => ({ cell, ci, share: asked[ci] ?? (free ? left / free : 0) }));
+                  })().map(({ cell, ci, share }) => {
                     const head = cell.tagName.toLowerCase() === "th";
                     const span = Math.max(1, parseInt(cell.getAttribute("colspan") ?? "1", 10) || 1);
                     return (
-                      <View key={`${key}-r${r}-c${ci}`} style={{ flex: span, borderRightWidth: 0.5, borderBottomWidth: 0.5, borderColor: "#000000", paddingVertical: 3, paddingHorizontal: 5, ...(head ? { backgroundColor: "#E5E7EB" } : {}) }}>
-                        <Blocks nodes={cell.childNodes} ctx={{ ...inherit(c, cell), tight: true, ...(head ? { bold: true } : {}) }} depth={depth} keyBase={`${key}-r${r}-c${ci}`} />
+                      <View key={`${key}-r${r}-c${ci}`} style={{ flex: share > 0 ? share * span : span, borderRightWidth: 0.5, borderBottomWidth: 0.5, borderColor: "#000000", paddingVertical: 3, paddingHorizontal: 5, ...(head ? { backgroundColor: "#E5E7EB" } : {}) }}>
+                        <Blocks nodes={cell.childNodes} ctx={{ ...inherit(c, cell), tight: true, size: c.size ?? BASE_SIZE, ...(head ? { bold: true } : {}) }} depth={depth} keyBase={`${key}-r${r}-c${ci}`} />
                       </View>
                     );
                   })}

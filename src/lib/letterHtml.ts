@@ -7,7 +7,11 @@ export const WORKER_TABLE_TAG = `<div ${WORKER_TABLE_ATTR}="true"></div>`;
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-/** Old templates were plain text ("new line = paragraph", **bold**, "- bullet"); read them as HTML. */
+/**
+ * Old templates were plain text ("new line = paragraph", **bold**, "- bullet"); read them as HTML.
+ * Ready-made templates also use `| a | b |` lines for tables: a run of them is one table, and a row of `|---|---|`
+ * right after the first makes that first row the heading. `|30%| a | b |`-style widths are written `| a{30%} | b |`.
+ */
 export function legacyTextToHtml(text: string): string {
   const lines = text.replace(/\r\n/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
   const inline = (l: string) => {
@@ -17,13 +21,33 @@ export function legacyTextToHtml(text: string): string {
   };
   const out: string[] = [];
   let list: string[] = [];
+  let rows: string[] = [];
   const flush = () => { if (list.length) { out.push(`<ul>${list.join("")}</ul>`); list = []; } };
+  const flushTable = () => {
+    if (!rows.length) return;
+    const parse = (r: string) => r.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+    const grid = rows.map(parse);
+    const head = grid.length > 1 && /^[-:\s|]+$/.test(rows[1]);
+    const body = grid.filter((_, i) => !(head && i === 1));
+    // A width given on the first row's first cell applies down the whole first column.
+    const firstWidth = /\{(\d{1,3})%\}\s*$/.exec(body[0]?.[0] ?? "")?.[1];
+    if (firstWidth) for (const r of body) if (!/\{\d{1,3}%\}\s*$/.test(r[0] ?? "")) r[0] = `${r[0] ?? ""}{${firstWidth}%}`;
+    const cell = (tag: string, c: string) => {
+      const w = /\{(\d{1,3})%\}\s*$/.exec(c);
+      return `<${tag}${w ? ` style="width: ${w[1]}%"` : ""}><p>${inline(c.replace(/\{\d{1,3}%\}\s*$/, "").trim())}</p></${tag}>`;
+    };
+    out.push(`<table><tbody>${body.map((r, i) => `<tr>${r.map((c) => cell(head && i === 0 ? "th" : "td", c)).join("")}</tr>`).join("")}</tbody></table>`);
+    rows = [];
+  };
   for (const l of lines) {
+    if (l.startsWith("|")) { flush(); rows.push(l); continue; }
+    flushTable();
     const b = /^[-•]\s+(.*)$/.exec(l);
     if (b) list.push(`<li><p>${inline(b[1])}</p></li>`);
     else { flush(); out.push(`<p>${inline(l)}</p>`); }
   }
   flush();
+  flushTable();
   return out.join("") || "<p></p>";
 }
 

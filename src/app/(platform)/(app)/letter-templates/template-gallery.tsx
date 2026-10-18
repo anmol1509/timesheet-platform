@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Copy, Eye, Search } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { RowMenu } from "@/components/ui/RowMenu";
-import { duplicateTemplateAction } from "./actions";
+import { duplicateTemplateAction, updateToLatestWordingAction } from "./actions";
 
 export type TemplateCard = {
   id: string;
@@ -13,7 +13,7 @@ export type TemplateCard = {
   category: string;
   audience: "EMPLOYEE" | "SITE";
   /** Ready-made and unchanged, ready-made and edited, or one of your own. */
-  state: "original" | "edited" | "own";
+  state: "original" | "update" | "edited" | "own";
   /** The heading printed on the letter. */
   title: string;
   /** The wording with sample details filled in. */
@@ -45,9 +45,9 @@ function PaperThumb({ title, html, width, employee }: { title: string; html: str
   );
 }
 
-const STATE_LABEL = { original: "Ready-made", edited: "Edited", own: "Yours" } as const;
+const STATE_LABEL = { original: "Ready-made", update: "New wording", edited: "Edited", own: "Yours" } as const;
 const stateChip = (s: TemplateCard["state"]) => (
-  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${s === "edited" ? "bg-brand-soft text-brand" : "bg-surface-sunken text-muted"}`}>{STATE_LABEL[s]}</span>
+  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${s === "edited" || s === "update" ? "bg-brand-soft text-brand" : "bg-surface-sunken text-muted"}`}>{STATE_LABEL[s]}</span>
 );
 
 /** Where "Use letter" goes: an employee letter opens the Letters screen with it chosen; a NOC starts a new NOC. Other client letters are made from a demand. */
@@ -111,6 +111,7 @@ export function TemplateGallery({ cards }: { cards: TemplateCard[] }) {
                   <div className="flex justify-between gap-3 py-2"><dt className="shrink-0 text-muted">Asks when issuing</dt><dd className="text-right font-semibold text-primary">{open.asks.length ? open.asks.join(", ") : "Nothing"}</dd></div>
                   <div className="flex justify-between gap-3 py-2"><dt className="text-muted">Versions of this letter</dt><dd className="font-semibold text-primary">{open.versions}</dd></div>
                 </dl>
+                {open.state === "update" && <UpdateWording id={open.id} onDone={() => setOpen(null)} />}
                 <p className="text-xs text-muted">The picture uses sample details and shows the first page. Real letters fill in each person&apos;s own.</p>
                 <div className="flex flex-wrap gap-2">
                   {startHref(open) && <Link href={startHref(open)!} className="btn btn-primary">Use letter</Link>}
@@ -129,4 +130,26 @@ export function TemplateGallery({ cards }: { cards: TemplateCard[] }) {
 /** ⋯ on a card: the occasional actions. */
 function DuplicateMenu({ id }: { id: string }) {
   return <RowMenu items={[{ label: "Add another version", onSelect: () => { const fd = new FormData(); fd.set("id", id); void duplicateTemplateAction(fd); } }]} />;
+}
+
+/** An untouched ready-made template with newer wording available: one click brings it up to date. */
+function UpdateWording({ id, onDone }: { id: string; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function run() {
+    setBusy(true);
+    setError(null);
+    const fd = new FormData();
+    fd.set("id", id);
+    const r = await updateToLatestWordingAction(fd).catch(() => ({ error: "Could not update." }));
+    setBusy(false);
+    if (r.error) setError(r.error); else onDone();
+  }
+  return (
+    <div className="rounded-lg border border-[var(--brand-primary-border)] bg-brand-soft px-3 py-2.5 text-xs text-secondary">
+      <p><b className="text-primary">Newer wording is available.</b> This template has never been edited, so it can be updated to the latest ready-made wording, with a details table.</p>
+      <button type="button" className="btn btn-primary btn-sm mt-2" disabled={busy} onClick={run}>{busy ? "Updating…" : "Update to the new wording"}</button>
+      {error && <p role="alert" className="mt-1 text-[var(--error)]">{error}</p>}
+    </div>
+  );
 }

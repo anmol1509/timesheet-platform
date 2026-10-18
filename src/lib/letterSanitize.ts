@@ -24,6 +24,8 @@ export function sanitizeLetterHtml(html: string): string {
     },
     allowedSchemes: ["http", "https", "mailto", "tel"],
     allowedStyles: {
+      th: { width: [/^\d{1,3}%$/] },
+      td: { width: [/^\d{1,3}%$/] },
       "*": {
         color: [COLOR],
         "background-color": [COLOR],

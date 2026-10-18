@@ -6,7 +6,7 @@ import { Node as TipNode, Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
-import { TableKit } from "@tiptap/extension-table";
+import { TableKit, TableCell, TableHeader } from "@tiptap/extension-table";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import * as Popover from "@radix-ui/react-popover";
@@ -30,6 +30,17 @@ const COLORS = [
   "#1971c2", "#1d3a8a", "#6741d9", "#c2255c", "#ffe3e3", "#fff3bf",
   "#d3f9d8", "#d0ebff", "#e5dbff", "#ffdeeb",
 ];
+
+/** Table cells that remember a width ("width: 34%"), so a narrow label column survives editing and saving. */
+const widthAttr = {
+  width: {
+    default: null,
+    parseHTML: (el: HTMLElement) => (/^\d{1,3}%$/.test(el.style.width) ? el.style.width : null),
+    renderHTML: (attrs: Record<string, unknown>) => (attrs.width ? { style: `width: ${attrs.width as string}` } : {}),
+  },
+};
+const WideCell = TableCell.extend({ addAttributes() { return { ...this.parent?.(), ...widthAttr }; } });
+const WideHeader = TableHeader.extend({ addAttributes() { return { ...this.parent?.(), ...widthAttr }; } });
 
 /** A block the template author drops in: the client's worker table, filled in when the letter is made. */
 const WorkerTable = TipNode.create({
@@ -267,7 +278,9 @@ export function LetterEditor({
       StarterKit.configure({ heading: { levels: [1, 2, 3] }, link: { openOnClick: false, autolink: false } }),
       TextStyleKit,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
-      TableKit.configure({ table: { resizable: false } }),
+      TableKit.configure({ table: { resizable: false }, tableCell: false, tableHeader: false }),
+      WideCell,
+      WideHeader,
       WorkerTable,
       TokenPills.configure({ known }),
     ],
