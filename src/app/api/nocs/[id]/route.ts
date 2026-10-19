@@ -37,10 +37,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "NOC not found." }, { status: 404 });
   }
 
+  const edit = await findDocEdit("noc", noc.id);
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: noc.employees.map((ne) => toLetterWorker(ne.employee)),
-    // Wording changed for this NOC alone wins over the template's.
-    templateHtml: (await findDocEdit("noc", noc.id)) ?? templateHtml(noc.template),
+    // Wording and heading changed for this NOC alone win over the template's.
+    templateHtml: edit?.html ?? templateHtml(noc.template),
     onLetterhead,
     fallbackIssuerName: noc.branch.name,
     issuedBy: "SPONSOR",
@@ -62,7 +63,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const buffer = await generateLetterPdf({
     margins: await loadPaperMargins(noc.branchId),
-    title: noc.template.title || noc.template.category || "No Objection Certificate",
+    title: edit?.title || noc.template.title || noc.template.category || "No Objection Certificate",
     clientName: noc.demandRequest.client.name,
     clientAddress: noc.demandRequest.client.billingAddress,
     projectName: noc.demandRequest.project.name,

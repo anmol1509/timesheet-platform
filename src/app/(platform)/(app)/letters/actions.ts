@@ -33,7 +33,7 @@ export async function previewLetterAction(employeeId: string, templateId: string
 }
 
 /** The letter as text to edit by hand: details missing on the employee's record show as "[Label]" so they can be seen and filled in. */
-export async function editableLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; gaps?: string[]; error?: string }> {
+export async function editableLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; title?: string; gaps?: string[]; error?: string }> {
   await requireView("workforce.letters");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } } } });
@@ -42,11 +42,11 @@ export async function editableLetterAction(employeeId: string, templateId: strin
   const who = await resolveIssuerSupplier(employeeId, issuer);
   if ("error" in who) return { error: who.error };
   const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId, markGaps: true });
-  return r.ok ? { html: r.html, gaps: r.empty } : { error: r.error };
+  return r.ok ? { html: r.html, title: r.title, gaps: r.empty } : { error: r.error };
 }
 
 /** Issues the letter: numbers it, stores the exact wording, and records who issued it. */
-export async function issueLetterAction(employeeId: string, templateId: string, inputs: Inputs, layoutIn: LayoutInput, allowEmpty = false, editedHtml: string | null = null): Promise<{ id?: string; error?: string }> {
+export async function issueLetterAction(employeeId: string, templateId: string, inputs: Inputs, layoutIn: LayoutInput, allowEmpty = false, editedHtml: string | null = null, editedTitle: string | null = null): Promise<{ id?: string; error?: string }> {
   await requireWrite("workforce.letters");
   await requirePermission("workforce.letters", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
@@ -94,8 +94,11 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
 
   const values = clean(inputs);
   const canSeePay = can(subjectOf(user), "payroll", "view");
+  // The heading printed on this letter: as typed when it was changed by hand, else the template's.
+  const typedHeading = typeof editedTitle === "string" ? editedTitle.replace(/\s+/g, " ").trim().slice(0, 120) : "";
   const first = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, issuerSupplierId: who.supplierId });
   if (!first.ok) return { error: first.error };
+  const heading = edited !== null && typedHeading ? typedHeading : first.title;
   if (first.missing.length > 0) return { error: `Fill in: ${first.missing.join(", ")}.` };
   // Highlighted blanks left in the edited wording would print as they are.
   if (edited !== null && !allowEmpty) {
@@ -107,13 +110,13 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
 
   // The reference number comes from the database, so create the row first, then write it into the wording.
   const created = await prisma.issuedLetter.create({
-    data: { employeeId, templateId, title: first.title, bodyHtml: first.html, inputs: values, layout, issuedById: user.id, branchId: first.branchId },
+    data: { employeeId, templateId, title: heading, bodyHtml: first.html, inputs: values, layout, issuedById: user.id, branchId: first.branchId },
   });
   const ref = refLabel(created.refNo);
   const final = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, refNo: ref, issuerSupplierId: who.supplierId });
   const bodyHtml = edited !== null ? edited.split("LTR-••••••").join(ref) : final.ok ? final.html : substituteInHtml(first.html, { "LTR-••••••": ref });
   await prisma.issuedLetter.update({ where: { id: created.id }, data: { bodyHtml } });
-  await logAudit({ entityType: "ISSUED_LETTER", entityId: created.id, action: "CREATE", after: { ref, title: first.title, employee: first.employeeName, template: first.templateName, ...layout }, userId: user.id, userName: user.name, branchId: first.branchId });
+  await logAudit({ entityType: "ISSUED_LETTER", entityId: created.id, action: "CREATE", after: { ref, title: heading, employee: first.employeeName, template: first.templateName, ...layout }, userId: user.id, userName: user.name, branchId: first.branchId });
   revalidatePath("/letters");
   return { id: created.id };
 }

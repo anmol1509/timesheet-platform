@@ -21,13 +21,13 @@ export async function renderPresetDoc(opts: { branchId: string; presetKey: strin
   if (!preset) throw new Error(`No built-in template "${opts.presetKey}".`);
   const own = await prisma.letterTemplate.findFirst({ where: { branchId: opts.branchId, audience: "EMPLOYEE", presetKey: opts.presetKey }, orderBy: { createdAt: "desc" } });
   const mine = opts.subjectId ? await findDocEdit(opts.presetKey as DocEditKind, opts.subjectId) : null;
-  const html = mine ?? (own ? templateHtml(own) : presetHtml(preset));
+  const html = mine?.html ?? (own ? templateHtml(own) : presetHtml(preset));
   const values = { ...opts.values };
   // "Ask when issuing" blanks have no one to ask here: leave them visibly open to fill in by hand.
   for (const label of askLabels(html)) values[`${ASK_PREFIX}${label}`] = `[${label}]`;
   return {
     html: sanitizeLetterHtml(substituteInHtml(html, values)),
-    title: (own?.title || own?.category || preset.title).toUpperCase(),
+    title: (mine?.title || own?.title || own?.category || preset.title).toUpperCase(),
     templateName: own ? own.name : `${preset.name} (built in)`,
     edited: mine !== null,
   };

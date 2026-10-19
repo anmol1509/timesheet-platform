@@ -14,7 +14,8 @@ import { loadDocEditAction, resetDocEditAction, saveDocEditAction, type DocTarge
  */
 export function EditWording({ target, label = "Edit wording", className, onChanged }: { target: DocTarget; label?: string; className?: string; onChanged?: () => void }) {
   const [open, setOpen] = useState(false);
-  const [state, setState] = useState<{ html: string; edited: boolean; audience: Audience; label: string } | null>(null);
+  const [state, setState] = useState<{ html: string; title: string; edited: boolean; audience: Audience; label: string } | null>(null);
+  const [title, setTitle] = useState("");
   const [html, setHtml] = useState("");
   const [key, setKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export function EditWording({ target, label = "Edit wording", className, onChang
     if ("error" in r) { setError(r.error); return; }
     setState(r);
     setHtml(r.html);
+    setTitle(r.title);
     setKey((n) => n + 1);
   }
 
@@ -49,10 +51,11 @@ export function EditWording({ target, label = "Edit wording", className, onChang
           {error && !state ? <p role="alert" className="mt-4 text-sm text-[var(--error)]">{error}</p> : !state ? <div className="mt-4 h-72 animate-pulse rounded-lg bg-surface-sunken" /> : (
             <div className="mt-4 space-y-3">
               {state.edited && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">This document already has its own wording. <b>Reset to template</b> goes back to the template&apos;s.</p>}
+              <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Heading printed on the document</span><input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="input w-full" aria-label="Heading" /></label>
               <LetterEditor key={key} html={html} onChange={setHtml} fields={fieldsFor(state.audience)} audience={state.audience} noAsk />
               {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => saveDocEditAction(target, html))}>{busy ? "Saving…" : "Save wording"}</button>
+                <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => saveDocEditAction(target, html, title))}>{busy ? "Saving…" : "Save wording"}</button>
                 <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
                 {state.edited && <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline" disabled={busy} onClick={() => run(() => resetDocEditAction(target))}><RotateCcw className="h-3.5 w-3.5" aria-hidden /> Reset to template</button>}
               </div>

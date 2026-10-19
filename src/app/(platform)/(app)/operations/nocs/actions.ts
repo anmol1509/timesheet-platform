@@ -22,7 +22,7 @@ function dateOrNull(value: FormDataEntryValue | null) {
 async function adoptDraftWording(nocId: string, demandRequestId: string, templateId: string, branchId: string) {
   const draft = await prisma.documentEdit.findUnique({ where: { kind_subjectId: { kind: "noc-draft", subjectId: `${demandRequestId}:${templateId}` } } });
   if (!draft) return;
-  await prisma.documentEdit.create({ data: { kind: "noc", subjectId: nocId, bodyHtml: draft.bodyHtml, branchId, editedById: draft.editedById, editedByName: draft.editedByName } });
+  await prisma.documentEdit.create({ data: { kind: "noc", subjectId: nocId, bodyHtml: draft.bodyHtml, title: draft.title, branchId, editedById: draft.editedById, editedByName: draft.editedByName } });
   await prisma.documentEdit.delete({ where: { id: draft.id } });
 }
 
