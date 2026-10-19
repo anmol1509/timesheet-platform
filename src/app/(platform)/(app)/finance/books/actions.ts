@@ -6,6 +6,9 @@ import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ACCOUNT_TYPES, VOUCHER_PREFIX } from "@/lib/books/chart";
 import { readPolicy, type Policy } from "@/lib/books/accruals";
+import { closingLines } from "@/lib/books/closing";
+import { foreignAccounts } from "@/lib/books/banks";
+import { toAed } from "@/lib/books/fx";
 import type { Prisma } from "@/generated/prisma/client";
 import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
@@ -48,13 +51,22 @@ export type MoneyInSource = "OTHER_INCOME" | "CAPITAL" | "STAFF_REPAYMENT" | "SU
 const SOURCE_TAG: Record<Exclude<MoneyInSource, "OTHER">, string> = { OTHER_INCOME: "INCOME_OTHER", CAPITAL: "CAPITAL", STAFF_REPAYMENT: "STAFF_ADVANCES", SUPPLIER_REFUND: "COST_SUPPLIERS" };
 
 /** Money received that is not a client payment: other income, owner's capital, a staff repayment, a refund, a loan... */
-export async function receiveMoneyAction(input: { source: MoneyInSource; from: string; date: string; amount: number; narration: string; moneyAccountId: string; creditAccountId?: string }): Promise<Result & { number?: string }> {
+export async function receiveMoneyAction(input: { source: MoneyInSource; from: string; date: string; amount: number; narration: string; moneyAccountId: string; creditAccountId?: string; foreign?: { amount: number; rate: number } }): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch first." };
   const date = parseDay(input.date);
   if (!date) return { error: "Choose a date." };
-  const amount = r2(Number(input.amount) || 0);
+  const fx = (await foreignAccounts(branchId))[input.moneyAccountId];
+  let amount = r2(Number(input.amount) || 0);
+  let foreignAmount: number | null = null;
+  if (fx) {
+    foreignAmount = r2(Number(input.foreign?.amount) || 0);
+    const rate = Number(input.foreign?.rate) || 0;
+    if (foreignAmount <= 0) return { error: `Enter the amount in ${fx.currency}.` };
+    if (rate <= 0) return { error: `Enter the exchange rate (AED for 1 ${fx.currency}).` };
+    amount = toAed(foreignAmount, rate);
+  }
   if (amount <= 0) return { error: "Enter an amount." };
   const from = input.from.trim();
   if (!from) return { error: "Say who it is from." };
@@ -77,7 +89,7 @@ export async function receiveMoneyAction(input: { source: MoneyInSource; from: s
   const narration = `${from}${input.narration.trim() ? ` — ${input.narration.trim()}` : ""}`;
   const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.RECEIPT, 1);
   const entry = await prisma.journalEntry.create({
-    data: { branchId, number, date, type: "RECEIPT", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.moneyAccountId, debit: amount, credit: 0 }, { accountId: creditId as string, debit: 0, credit: amount }] } },
+    data: { branchId, number, date, type: "RECEIPT", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.moneyAccountId, debit: amount, credit: 0, ...(fx && foreignAmount ? { currency: fx.currency, foreignAmount } : {}) }, { accountId: creditId as string, debit: 0, credit: amount }] } },
   });
   await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "RECEIPT", source: input.source, from, total: amount }, userId: user.id, userName: user.name, branchId });
   refresh();
@@ -360,4 +372,121 @@ export async function saveProvisionRuleAction(input: RuleInput): Promise<Result>
   const result = await syncPostings(branchId);
   refresh();
   return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}
+
+/** The bank receipts and payments use when none is picked on the invoice, bill or payroll run. */
+export async function saveDefaultBanksAction(input: { receipt: string; payment: string }): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const check = async (id: string) => (id ? !!(await prisma.bank.findFirst({ where: { id, branchId }, select: { id: true } })) : true);
+  if (!(await check(input.receipt)) || !(await check(input.payment))) return { error: "Choose one of the company's banks." };
+  const data = { defaultReceiptBankId: input.receipt || null, defaultPaymentBankId: input.payment || null };
+  await prisma.branch.update({ where: { id: branchId }, data });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: data, userId: user.id, userName: user.name, branchId });
+  const result = await syncPostings(branchId);
+  refresh();
+  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}
+
+/** Money moved between two of the company's own bank or cash accounts. */
+export async function createTransferAction(input: { from: string; to: string; date: string; amount: number; narration: string; fromForeign?: number; toForeign?: number }): Promise<Result & { number?: string }> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const date = parseDay(input.date);
+  if (!date) return { error: "Choose a date." };
+  const amount = r2(Number(input.amount) || 0);
+  if (amount <= 0) return { error: "Enter an amount." };
+  if (!input.from || !input.to) return { error: "Choose both accounts." };
+  if (input.from === input.to) return { error: "Choose two different accounts." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  if (date.getTime() < utcDay(state.booksOpeningDate).getTime()) return { error: "That is before your books start." };
+  if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "That period is locked." };
+  const accts = await prisma.account.findMany({ where: { id: { in: [input.from, input.to] }, branchId, type: "ASSET", isActive: true }, select: { id: true, name: true } });
+  if (accts.length !== 2) return { error: "Choose bank or cash accounts." };
+  const fxMap = await foreignAccounts(branchId);
+  const side = (id: string, typed: number | undefined) => {
+    const fx = fxMap[id];
+    if (!fx) return { fields: {} as { currency?: string; foreignAmount?: number } };
+    const f = r2(Number(typed) || 0);
+    return f > 0 ? { fields: { currency: fx.currency, foreignAmount: f } } : { error: `Enter the amount in ${fx.currency}.` };
+  };
+  const toSide = side(input.to, input.toForeign), fromSide = side(input.from, input.fromForeign);
+  if ("error" in toSide) return { error: toSide.error };
+  if ("error" in fromSide) return { error: fromSide.error };
+  const nameOf = (id: string) => accts.find((x) => x.id === id)?.name ?? "";
+  const narration = input.narration.trim() || `Transfer from ${nameOf(input.from)} to ${nameOf(input.to)}`;
+  const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.TRANSFER, 1);
+  const entry = await prisma.journalEntry.create({
+    data: { branchId, number, date, type: "TRANSFER", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.to, debit: amount, credit: 0, ...toSide.fields }, { accountId: input.from, debit: 0, credit: amount, ...fromSide.fields }] } },
+  });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "TRANSFER", total: amount }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { number };
+}
+
+/** Closes a finished year: income and costs are zeroed into retained earnings so the next year starts clean. Reversible by voiding the entry. */
+export async function closeYearAction(year: number, lockIt: boolean): Promise<Result & { profit?: number }> {
+  await requireAdmin();
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const y = Math.round(Number(year));
+  if (!Number.isFinite(y) || y < 2000 || y > 2100) return { error: "Choose a year." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  const end = new Date(Date.UTC(y, 11, 31));
+  if (end.getTime() >= utcDay(new Date()).getTime()) return { error: `${y} isn't over yet.` };
+  const open = utcDay(state.booksOpeningDate);
+  if (end.getTime() < open.getTime()) return { error: `${y} is before your books start.` };
+  if (isLocked(end, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: `${y} is in a locked period. Unlock it first, then close the year.` };
+  const start = new Date(Date.UTC(y, 0, 1)).getTime() < open.getTime() ? open : new Date(Date.UTC(y, 0, 1));
+  const done = await prisma.journalEntry.findFirst({ where: { branchId, type: "CLOSING", status: "POSTED", date: end }, select: { number: true } });
+  if (done) return { error: `${y} is already closed (${done.number}). Void that entry to close it again.` };
+  const [accounts, retained, sums] = await Promise.all([
+    prisma.account.findMany({ where: { branchId, type: { in: ["INCOME", "EXPENSE"] } }, select: { id: true, type: true } }),
+    prisma.account.findFirst({ where: { branchId, tag: "RETAINED_EARNINGS" }, select: { id: true } }),
+    prisma.journalLine.groupBy({ by: ["accountId"], where: { account: { branchId, type: { in: ["INCOME", "EXPENSE"] } }, entry: { branchId, status: "POSTED", type: { not: "CLOSING" }, date: { gte: start, lte: end } } }, _sum: { debit: true, credit: true } }),
+  ]);
+  if (!retained) return { error: "The Retained earnings account is missing. Open Set-up first." };
+  const by = new Map(sums.map((s) => [s.accountId, { debit: Number(s._sum.debit ?? 0), credit: Number(s._sum.credit ?? 0) }]));
+  const { lines, profit } = closingLines(accounts.map((a) => ({ id: a.id, type: a.type, debit: by.get(a.id)?.debit ?? 0, credit: by.get(a.id)?.credit ?? 0 })), retained.id);
+  if (lines.length === 0) return { error: `Nothing was earned or spent in ${y}.` };
+  const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.CLOSING, 1);
+  const entry = await prisma.journalEntry.create({ data: { branchId, number, date: end, type: "CLOSING", narration: `Year-end close ${y}: profit moved to retained earnings`, createdById: user.id, createdByName: user.name, lines: { create: lines } } });
+  if (lockIt) await prisma.branch.update({ where: { id: branchId }, data: { booksLockedUntil: end } });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "CLOSING", year: y, profit, locked: lockIt }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { profit };
+}
+
+/** An exchange rate: how many dirhams one unit of a currency was worth on a day. Foreign bank balances are revalued at these. */
+export async function saveExchangeRateAction(input: { currency: string; date: string; rate: number }): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const currency = input.currency.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency) || currency === "AED") return { error: "Choose a foreign currency." };
+  const date = parseDay(input.date);
+  if (!date) return { error: "Choose the date the rate is for." };
+  const rate = Number(input.rate);
+  if (!Number.isFinite(rate) || rate <= 0 || rate > 100000) return { error: "Enter the rate: AED for 1 unit of the currency." };
+  await prisma.exchangeRate.upsert({ where: { branchId_currency_date: { branchId, currency, date } }, create: { branchId, currency, date, rate }, update: { rate } });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { rate: { currency, date: input.date, rate } }, userId: user.id, userName: user.name, branchId });
+  const result = await syncPostings(branchId);
+  refresh();
+  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}
+
+export async function deleteExchangeRateAction(id: string): Promise<Result> {
+  await requireWrite("finance.books");
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const cur = await prisma.exchangeRate.findUnique({ where: { id }, select: { branchId: true } });
+  if (!cur || cur.branchId !== branchId) return { error: "Not found." };
+  await prisma.exchangeRate.delete({ where: { id } });
+  await syncPostings(branchId);
+  refresh();
+  return {};
 }

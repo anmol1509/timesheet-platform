@@ -12,6 +12,8 @@ import { SetupCard } from "./setup-card";
 import { VoucherDialog } from "./voucher-dialog";
 import { VoidButton } from "./void-button";
 import { ReceivePayment } from "./receive-payment";
+import { TransferDialog } from "./transfer-dialog";
+import { foreignAccounts } from "@/lib/books/banks";
 import { LockNow } from "./lock-now";
 
 export const metadata = { title: "Accounting" };
@@ -19,7 +21,7 @@ const TYPES = [
   { k: "", l: "All" }, { k: "SALES", l: "Sales" }, { k: "RECEIPT", l: "Receipts" }, { k: "BILL", l: "Bills" }, { k: "PAYMENT", l: "Payments" },
   { k: "EXPENSE", l: "Expenses" }, { k: "PAYROLL", l: "Payroll" }, { k: "CREDIT_NOTE", l: "Credit notes" }, { k: "JOURNAL", l: "Vouchers" },
 ];
-const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note" };
+const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note", CLOSING: "Year-end close" };
 const TYPE_TONE: Record<string, string> = { SALES: "bg-info-soft text-info", RECEIPT: "bg-success-soft text-success", PAYMENT: "bg-warning-soft text-warning", BILL: "bg-warning-soft text-warning", EXPENSE: "bg-warning-soft text-warning", PAYROLL: "bg-warning-soft text-warning", CREDIT_NOTE: "bg-error-soft text-error", DEBIT_NOTE: "bg-error-soft text-error", JOURNAL: "bg-brand-soft text-brand" };
 const isMoney = isMoneyAccount;
 
@@ -33,7 +35,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const yearStart = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
   const [accounts, ytd, entries, unmatched, clients] = await Promise.all([
     accountsWithTotals(branchId),
-    accountsWithTotals(branchId, undefined, yearStart),
+    accountsWithTotals(branchId, undefined, yearStart, true),
     prisma.journalEntry.findMany({
       where: { branchId, ...(type ? { type } : {}), ...(q ? { OR: [{ narration: { contains: q, mode: "insensitive" } }, { number: { contains: q, mode: "insensitive" } }] } : {}) },
       orderBy: [{ date: "desc" }, { number: "desc" }],
@@ -43,6 +45,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     prisma.bankStatementLine.count({ where: { branchId, entryId: null } }),
     ctx.canWrite ? prisma.client.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
   ]);
+  const fxAccounts = ctx.canWrite ? await foreignAccounts(branchId) : {};
   const bal = (tag: string) => accounts.filter((a) => a.tag === tag).reduce((s, a) => s + normalBalance(a), 0);
   const moneyAccts = accounts.filter((a) => a.isActive && isMoney(a));
   const cash = moneyAccts.reduce((s, a) => s + normalBalance(a), 0);
@@ -67,7 +70,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         description={`Everything that moves money, posted automatically from ${fmtDate(ctx.branch.booksOpeningDate!)}${lockedUntil ? ` · locked up to ${fmtDate(lockedUntil)}` : ""}.`}
         actions={ctx.canWrite ? (
           <div className="flex gap-2">
-            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} />
+            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} foreign={fxAccounts} />
+            {moneyAccts.length > 1 && <TransferDialog accounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} minDate={minDate} foreign={fxAccounts} />}
             <VoucherDialog accounts={options} minDate={minDate} label="New entry" />
           </div>
         ) : undefined}

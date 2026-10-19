@@ -1,38 +1,20 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { BUCKETS, BUCKET_LABEL, ageParties, ageTotals, termsDays, type AgeRow, type Bucket } from "@/lib/books/ageing";
-import { CF_LABEL, cashFlow, type CfKey } from "@/lib/books/cashflow";
+import { BUCKETS, BUCKET_LABEL, type AgeRow, type Bucket } from "@/lib/books/ageing";
+import { CF_LABEL, type CfKey } from "@/lib/books/cashflow";
 import { PROVISIONS, provisionAt, provisionTotals, type Policy } from "@/lib/books/accruals";
 import { provisionTag, ruleTarget, type CustomRule, type RuleStaff } from "@/lib/books/customProvisions";
-import { isMoneyAccount } from "@/lib/books/ledger";
 import { branchWhere } from "@/lib/branch";
-import { profitByClient } from "@/lib/books/projectProfit";
+import { EMIRATES, quarterOf, type Manual } from "@/lib/books/vat";
 import { aed, fmtDate } from "../books-data";
+import { loadAgeing, loadCashFlow, loadProjectProfit, loadVat } from "./report-data";
 
 const BUCKET_TONE: Record<Bucket, string> = { current: "var(--success, #16a34a)", d30: "#ca8a04", d60: "#ea580c", d90: "#dc2626", over: "#991b1b" };
 const dash = (n: number) => (n ? aed(n) : "–");
 
 /** Receivables or payables: who is owed what and how late, oldest first. */
 export async function AgeingView({ branchId, asOf, side }: { branchId: string; asOf: Date; side: "RECEIVABLE" | "PAYABLE" }) {
-  const rec = side === "RECEIVABLE";
-  const lines = await prisma.journalLine.findMany({
-    where: { account: { branchId, tag: side }, entry: { branchId, status: "POSTED", date: { lte: asOf } } },
-    select: { debit: true, credit: true, partyId: true, entry: { select: { date: true } } },
-  });
-  const ids = [...new Set(lines.map((l) => l.partyId).filter((x): x is string => !!x))];
-  const parties = ids.length
-    ? rec
-      ? await prisma.client.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, paymentTerms: true } })
-      : await prisma.supplier.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, paymentTerms: true } })
-    : [];
-  const info = new Map(parties.map((p) => [p.id, p]));
-  const rows = ageParties(
-    lines.map((l) => ({ date: l.entry.date, debit: Number(l.debit), credit: Number(l.credit), partyId: l.partyId })),
-    asOf, rec ? "debit" : "credit",
-    (id) => termsDays(id ? info.get(id)?.paymentTerms : null),
-  );
-  const t = ageTotals(rows);
-  const late = rows.filter((r) => r.buckets.d90 + r.buckets.over > 0).sort((a, b) => b.buckets.d90 + b.buckets.over - (a.buckets.d90 + a.buckets.over));
+  const { rec, rows, t, late, info } = await loadAgeing(branchId, asOf, side);
   const name = (r: AgeRow) => (r.partyId ? info.get(r.partyId)?.name ?? "Unknown" : "Opening balance (not split by name)");
   const href = (r: AgeRow) => (r.partyId ? `/finance/books/parties/${rec ? "CLIENT" : "SUPPLIER"}/${r.partyId}` : null);
   return (
@@ -96,17 +78,8 @@ function CfSection({ title, rows, total, label }: { title: string; rows: { key: 
 
 /** Where the cash came from and went, from the bank and cash accounts. */
 export async function CashFlowView({ branchId, from, asOf }: { branchId: string; from: Date; asOf: Date }) {
-  const accounts = await prisma.account.findMany({ where: { branchId }, select: { id: true, type: true, tag: true, name: true, bankId: true } });
-  const money = new Set(accounts.filter(isMoneyAccount).map((a) => a.id));
-  const entries = await prisma.journalEntry.findMany({
-    where: { branchId, status: "POSTED", date: { lte: asOf }, lines: { some: { accountId: { in: [...money] } } } },
-    select: { date: true, type: true, lines: { select: { debit: true, credit: true, account: { select: { id: true, type: true, tag: true } } } } },
-  });
-  const cf = (list: typeof entries) => cashFlow(list.map((e) => ({ type: e.type, lines: e.lines.map((l) => ({ money: money.has(l.account.id), debit: Number(l.debit), credit: Number(l.credit), accountType: l.account.type, tag: l.account.tag })) })));
-  const opening = entries.filter((e) => e.date < from).reduce((s, e) => s + e.lines.filter((l) => money.has(l.account.id)).reduce((n, l) => n + Number(l.debit) - Number(l.credit), 0), 0);
-  const c = cf(entries.filter((e) => e.date >= from));
+  const { opening, c, close } = await loadCashFlow(branchId, from, asOf);
   const row = (k: CfKey) => ({ key: k, label: CF_LABEL[k], value: c.rows[k] });
-  const close = Math.round((opening + c.net) * 100) / 100;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -126,17 +99,7 @@ export async function CashFlowView({ branchId, from, asOf }: { branchId: string;
 
 /** Profit by client and project: revenue from invoices, costs from the project they were tagged to. */
 export async function ProjectProfitView({ branchId, from, asOf }: { branchId: string; from: Date; asOf: Date }) {
-  const entries = await prisma.journalEntry.findMany({
-    where: { branchId, status: "POSTED", date: { gte: from, lte: asOf } },
-    select: { lines: { select: { debit: true, credit: true, partyType: true, partyId: true, projectId: true, account: { select: { type: true, tag: true } } } } },
-  });
-  const projectIds = [...new Set(entries.flatMap((e) => e.lines.map((l) => l.projectId)).filter((x): x is string => !!x))];
-  const projects = projectIds.length ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, name: true, code: true, clientId: true } }) : [];
-  const pById = new Map(projects.map((p) => [p.id, p]));
-  const result = profitByClient(entries.map((e) => ({ lines: e.lines.map((l) => ({ accountType: l.account.type, tag: l.account.tag, debit: Number(l.debit), credit: Number(l.credit), partyType: l.partyType, partyId: l.partyId, projectId: l.projectId })) })), (id) => pById.get(id)?.clientId ?? null);
-  const clientIds = result.clients.map((c) => c.clientId).filter((x): x is string => !!x);
-  const clients = clientIds.length ? await prisma.client.findMany({ where: { id: { in: clientIds } }, select: { id: true, name: true } }) : [];
-  const cName = new Map(clients.map((c) => [c.id, c.name]));
+  const { result, cName, pById } = await loadProjectProfit(branchId, from, asOf);
   const pct = (profit: number, revenue: number) => (revenue > 0 ? `${((profit / revenue) * 100).toFixed(1)}%` : "–");
   const tone = (profit: number) => (profit < 0 ? "text-error" : "text-success");
   return (
@@ -240,6 +203,88 @@ export async function ProvisionsView({ branchId, asOf, on, policy }: { branchId:
         )}
       </section>
       <p className="text-xs text-muted">Worked out with your rules (Accounting › Settings › Staff provisions). Leave and tickets use each person&apos;s own terms (on their pay tab) or the company default{noContract ? `; ${noContract} ${noContract === 1 ? "person has" : "people have"} none, so only gratuity applies to them` : ""}. Month-end entries are posted once the month is over.</p>
+    </div>
+  );
+}
+
+const money = (n: number) => (n ? aed(n) : "–");
+
+function VatRow({ box, label, amount, vat, bold }: { box: string; label: string; amount?: number; vat?: number; bold?: boolean }) {
+  return (
+    <tr className={bold ? "font-semibold" : ""}>
+      <td className="w-14 px-4 py-1.5 font-mono text-xs text-muted">{box}</td>
+      <td className="px-3 py-1.5 text-secondary">{label}</td>
+      <td className="tabular px-3 py-1.5 text-right">{amount === undefined ? "" : money(amount)}</td>
+      <td className="tabular px-4 py-1.5 text-right">{vat === undefined ? "" : money(vat)}</td>
+    </tr>
+  );
+}
+
+function VatHead({ title, cols }: { title: string; cols?: boolean }) {
+  return (
+    <thead><tr className="bg-[var(--surface-sunken)] text-left text-xs text-muted"><th className="px-4 py-2 font-semibold text-primary" colSpan={2}>{title}</th><th className="px-3 py-2 text-right font-medium">{cols ? "Amount (AED)" : ""}</th><th className="px-4 py-2 text-right font-medium">{cols ? "VAT (AED)" : ""}</th></tr></thead>
+  );
+}
+
+/** The FTA VAT return (Form 201) worked out from the ledger, with room for what the books can't know. */
+export async function VatReturnView({ branchId, from, asOf, manual }: { branchId: string; from: Date; asOf: Date; manual: Manual }) {
+  const { r, branch } = await loadVat(branchId, from, asOf, manual);
+  const now = new Date();
+  const q0 = quarterOf(now), q1 = quarterOf(now, 1);
+  const iso0 = from.toISOString().slice(0, 10), iso1 = asOf.toISOString().slice(0, 10);
+  const field = (name: string, label: string, v: number | undefined) => <label key={name} className="text-xs text-muted">{label}<input name={name} inputMode="decimal" defaultValue={v ? String(v) : ""} className="input mt-1 block h-8 w-28 text-right text-sm" /></label>;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-muted">Period:</span>
+        {[q0, q1].map((q) => <Link key={q.label} href={`/finance/books/reports?view=vat&from=${q.from}&asof=${q.to}`} className={`rounded-full border px-3 py-1 font-medium ${iso0 === q.from && iso1 === q.to ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{q.label}</Link>)}
+      </div>
+      <div className="rounded-[var(--radius-card)] border border-default bg-surface px-4 py-3 text-sm">
+        <p className="font-semibold text-primary">{branch?.name} — VAT return (Form 201)</p>
+        <p className="text-xs text-muted">Tax registration number: <span className="font-mono text-primary">{branch?.trn || "not set (add it under Reference Data › Company)"}</span> · {fmtDate(from)} – {fmtDate(asOf)} · registered in {r.emirate}</p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="overflow-x-auto rounded-[var(--radius-card)] border border-default bg-surface">
+          <table className="w-full text-sm">
+            <VatHead title="VAT on sales and all other outputs" cols />
+            <tbody className="divide-y divide-default">
+              {r.byEmirate.map((e, i) => <VatRow key={e.emirate} box={`1${"abcdefg"[i]}`} label={`Standard rated supplies in ${e.emirate}`} amount={e.amount} vat={e.vat} />)}
+              <VatRow box="3" label="Supplies subject to the reverse charge" amount={r.reverseSales.amount} vat={r.reverseSales.vat} />
+              <VatRow box="4" label="Zero rated supplies" amount={r.zeroRated} />
+              <VatRow box="5" label="Exempt supplies" amount={r.exempt} />
+              <VatRow box="6" label="Goods imported into the UAE" amount={r.imports.amount} vat={r.imports.vat} />
+              <VatRow box="8" label="Total" amount={r.salesTotal.amount} vat={r.salesTotal.vat} bold />
+            </tbody>
+          </table>
+        </section>
+        <section className="overflow-x-auto rounded-[var(--radius-card)] border border-default bg-surface">
+          <table className="w-full text-sm">
+            <VatHead title="VAT on expenses and all other inputs" cols />
+            <tbody className="divide-y divide-default">
+              <VatRow box="9" label="Standard rated expenses" amount={r.expensesStandard.amount} vat={r.expensesStandard.vat} />
+              <VatRow box="10" label="Supplies subject to the reverse charge" amount={r.reverseExpenses.amount} vat={r.reverseExpenses.vat} />
+              <VatRow box="11" label="Total" amount={r.expensesTotal.amount} vat={r.expensesTotal.vat} bold />
+            </tbody>
+            <VatHead title="Net VAT due" />
+            <tbody className="divide-y divide-default">
+              <VatRow box="12" label="Total due tax for the period" vat={r.due} />
+              <VatRow box="13" label="Total recoverable tax for the period" vat={r.recoverable} />
+              <VatRow box="14" label={r.net >= 0 ? "Payable tax for the period" : "Refundable tax for the period"} vat={Math.abs(r.net)} bold />
+            </tbody>
+          </table>
+        </section>
+      </div>
+      <form className="flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-default bg-surface p-4 text-sm">
+        <input type="hidden" name="view" value="vat" /><input type="hidden" name="from" value={iso0} /><input type="hidden" name="asof" value={iso1} />
+        <p className="w-full text-xs text-muted">The books can&apos;t tell these apart, so type them in if you have any (amounts before VAT):</p>
+        {field("ex", "Exempt supplies", manual.exempt)}
+        {field("rs", "Reverse charge sales", manual.reverseSales)}
+        {field("re", "Reverse charge purchases", manual.reverseExpenses)}
+        {field("ia", "Imported goods", manual.importsAmount)}
+        {field("iv", "VAT paid on imports", manual.importsVat)}
+        <button className="h-8 rounded-lg border border-default px-3 font-medium text-primary hover:bg-surface-hover">Update</button>
+      </form>
+      <p className="text-xs text-muted">Sales are the sales income in the books: entries with output VAT are standard rated, the rest zero rated. Expenses are the costs on entries with input VAT. Check boxes against the FTA portal before filing; {EMIRATES.length} emirates are listed, your own is filled in.</p>
     </div>
   );
 }

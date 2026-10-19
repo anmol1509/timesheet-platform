@@ -7,6 +7,7 @@ import { can } from "@/lib/permissions";
 import { billStatus, billTotals } from "@/lib/payables";
 import { billVariance } from "@/lib/financeRules";
 import { BillsBoard, type BillRow } from "./bills-board";
+import { listBanks } from "@/lib/books/banks";
 import { SummaryStrip, type SummaryCell } from "@/components/SummaryStrip";
 
 export const metadata = { title: "Supplier bills" };
@@ -113,6 +114,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         filters={FILTERS.map((f) => ({ ...f, count: f.k === "REVIEW" ? reviewCount : undefined }))}
         rows={shown}
         suppliers={suppliers}
+        banks={await listBanks(branchId)}
         canCreate={can(subject, "finance.bills", "create")}
         canPay={can(subject, "finance.bills", "edit")}
         canDelete={can(subject, "finance.bills", "delete")}

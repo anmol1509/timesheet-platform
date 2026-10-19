@@ -1,5 +1,6 @@
 "use server";
 
+import { ownBankId } from "@/lib/books/banks";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
@@ -183,7 +184,7 @@ export async function recordPaymentAction(_prev: State, formData: FormData): Pro
   const t = billTotals({ amount: Number(bill.amount), vatAmount: Number(bill.vatAmount) }, bill.payments.map((p) => ({ amount: Number(p.amount) })));
   if (amount > t.balance + 0.005) return { error: `That's more than the outstanding balance (AED ${t.balance.toFixed(2)}).` };
   const created = await prisma.billPayment.create({
-    data: { billId, paidOn, amount, method: str(formData.get("method")) || null, reference: str(formData.get("reference")) || null, createdById: user.id },
+    data: { billId, paidOn, amount, method: str(formData.get("method")) || null, reference: str(formData.get("reference")) || null, bankId: await ownBankId(formData.get("bankId"), bill.branchId), createdById: user.id },
   });
   await logAudit({ entityType: "BILL_PAYMENT", entityId: created.id, action: "CREATE", after: { billNo: bill.billNo, amount, paidOn: paidOn.toISOString().slice(0, 10) }, userId: user.id, userName: user.name, branchId: bill.branchId });
   await notifySupplier({ supplierId: bill.supplierId, kind: "PAYMENT", title: `Payment recorded: AED ${amount.toLocaleString("en-AE", { minimumFractionDigits: 2 })}`, body: `Against invoice ${bill.billNo}.`, href: "/vendor/payments" });
@@ -341,12 +342,13 @@ export async function payBatchAction(_prev: State, formData: FormData): Promise<
   if (notApproved.length > 0) return { error: `Approve ${notApproved.map((b) => `#${b.billNo}`).slice(0, 3).join(", ")} before paying.` };
   const method = str(formData.get("method")) || null;
   const reference = str(formData.get("reference")) || null;
+  const bankId = await ownBankId(formData.get("bankId"), bills[0]?.branchId ?? null);
   let total = 0;
   const data = bills.flatMap((b) => {
     const t = billTotals({ amount: Number(b.amount), vatAmount: Number(b.vatAmount) }, b.payments.map((p) => ({ amount: Number(p.amount) })));
     if (t.balance <= 0) return [];
     total += t.balance;
-    return [{ billId: b.id, paidOn, amount: t.balance, method, reference, createdById: user.id }];
+    return [{ billId: b.id, paidOn, amount: t.balance, method, reference, bankId, createdById: user.id }];
   });
   if (data.length === 0) return { error: "Those bills are already settled." };
   await prisma.billPayment.createMany({ data });

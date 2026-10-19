@@ -6,7 +6,8 @@ import { expenseTagFor } from "./chart";
  * that name accounts by tag, so the sync, the tests and any later preview all use the same rules.
  */
 export type PartyType = "CLIENT" | "SUPPLIER" | "EMPLOYEE";
-export type PostLine = { tag: string; debit?: number; credit?: number; description?: string; partyType?: PartyType; partyId?: string; projectId?: string };
+/** `accountId` names a ledger account directly (it wins over `tag`); `bankId` picks the ledger account of that company bank, falling back to the main bank account. */
+export type PostLine = { tag: string; debit?: number; credit?: number; description?: string; partyType?: PartyType; partyId?: string; projectId?: string; accountId?: string; bankId?: string };
 export type Posting = { sourceKey: string; date: Date; type: string; narration: string; lines: PostLine[] };
 
 export const r2 = (n: number) => Math.round((n + Math.sign(n) * Number.EPSILON) * 100) / 100;
@@ -28,13 +29,13 @@ export function totals(lines: { debit?: number; credit?: number }[]) {
 
 /** A fingerprint of what a posting would write, so unchanged ones can be skipped. */
 export function hashPosting(p: Posting): string {
-  const body = JSON.stringify([p.date.toISOString().slice(0, 10), p.type, p.narration, p.lines.map((l) => [l.tag, l.debit ?? 0, l.credit ?? 0, l.partyType ?? "", l.partyId ?? "", l.projectId ?? "", l.description ?? ""])]);
+  const body = JSON.stringify([p.date.toISOString().slice(0, 10), p.type, p.narration, p.lines.map((l) => [l.tag, l.debit ?? 0, l.credit ?? 0, l.partyType ?? "", l.partyId ?? "", l.projectId ?? "", l.description ?? "", ...(l.accountId ? [l.accountId] : []), ...(l.bankId ? [l.bankId] : [])])]);
   return createHash("sha1").update(body).digest("hex");
 }
 
 const moneyTag = (method: string | null | undefined) => (method === "CASH" ? "CASH" : "BANK");
 
-export type InvoiceFacts = { id: string; invoiceNumber: string; clientId: string; clientName: string; status: string; issueDate: Date; paidDate: Date | null; subtotal: number; vatAmount: number; totalAmount: number };
+export type InvoiceFacts = { id: string; invoiceNumber: string; clientId: string; clientName: string; status: string; issueDate: Date; paidDate: Date | null; paidBankId?: string | null; subtotal: number; vatAmount: number; totalAmount: number };
 
 /** An issued invoice, and — once it is marked paid — the money coming in. Draft invoices post nothing. */
 export function invoicePostings(i: InvoiceFacts): Posting[] {
@@ -70,7 +71,7 @@ export function invoicePostings(i: InvoiceFacts): Posting[] {
 
 export type BillFacts = {
   id: string; billNo: string; supplierId: string; supplierName: string; billDate: Date; amount: number; vatAmount: number; approvalStatus: string;
-  payments: { id: string; paidOn: Date; amount: number; method: string | null; reference: string | null }[];
+  payments: { id: string; paidOn: Date; amount: number; method: string | null; reference: string | null; bankId?: string | null }[];
 };
 
 /** An approved supplier bill, and each payment against it. A "credit" payment is a credit note that cancels cost. */
@@ -102,7 +103,7 @@ export function billPostings(b: BillFacts): Posting[] {
       date: utcDay(p.paidOn),
       type: credit ? "JOURNAL" : "PAYMENT",
       narration: `${b.supplierName} — ${credit ? "credit applied to" : "payment for"} bill ${b.billNo}${p.reference ? ` (${p.reference})` : ""}`,
-      lines: [{ tag: "PAYABLE", debit: a, ...party }, { tag: credit ? "COST_SUPPLIERS" : moneyTag(p.method), credit: a, ...(credit ? party : {}) }],
+      lines: [{ tag: "PAYABLE", debit: a, ...party }, { tag: credit ? "COST_SUPPLIERS" : moneyTag(p.method), credit: a, ...(credit ? party : {}), ...(!credit && p.bankId ? { bankId: p.bankId } : {}) }],
     });
   }
   return out;
@@ -147,7 +148,7 @@ export function expensePostings(e: ExpenseFacts): Posting[] {
 }
 
 export type PayrollFacts = {
-  id: string; month: string; status: string; approvedAt: Date | null; paidAt: Date | null; label: string;
+  id: string; month: string; status: string; approvedAt: Date | null; paidAt: Date | null; label: string; bankId?: string | null;
   lines: { net: number; loanDeduction: number; paymentStatus: string; projectId: string | null }[];
 };
 
@@ -182,7 +183,7 @@ export function payrollPostings(r: PayrollFacts): Posting[] {
       date: utcDay(r.paidAt ?? r.approvedAt ?? monthEnd(r.month)),
       type: "PAYMENT",
       narration: `Salaries paid ${r.month} — ${r.label}`,
-      lines: [{ tag: "ACCRUED_SALARIES", debit: paid }, { tag: "BANK", credit: paid }],
+      lines: [{ tag: "ACCRUED_SALARIES", debit: paid }, { tag: "BANK", credit: paid, ...(r.bankId ? { bankId: r.bankId } : {}) }],
     });
   }
   return out;

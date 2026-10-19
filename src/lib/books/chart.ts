@@ -27,7 +27,8 @@ export const DEFAULT_CHART: ChartRow[] = [
   { code: "1300", name: "VAT input (recoverable)", type: "ASSET", tag: "VAT_INPUT" },
   { code: "1400", name: "Staff advances & loans", type: "ASSET", tag: "STAFF_ADVANCES" },
   { code: "1500", name: "Prepayments (visas, insurance)", type: "ASSET", tag: "PREPAYMENTS" },
-  { code: "1700", name: "Property & equipment", type: "ASSET" },
+  { code: "1700", name: "Property & equipment", type: "ASSET", tag: "FIXED_ASSETS" },
+  { code: "1750", name: "Accumulated depreciation", type: "ASSET", tag: "ACC_DEP" },
   { code: "2100", name: "Accounts payable", type: "LIABILITY", tag: "PAYABLE" },
   { code: "2200", name: "VAT output (payable)", type: "LIABILITY", tag: "VAT_OUTPUT" },
   { code: "2300", name: "Accrued salaries", type: "LIABILITY", tag: "ACCRUED_SALARIES" },
@@ -53,6 +54,8 @@ export const DEFAULT_CHART: ChartRow[] = [
   { code: "5500", name: "Office & admin", type: "EXPENSE", tag: "EXP_OFFICE" },
   { code: "5600", name: "PPE & safety", type: "EXPENSE", tag: "EXP_PPE" },
   { code: "5700", name: "Bank charges", type: "EXPENSE", tag: "BANK_CHARGES" },
+  { code: "5800", name: "Depreciation", type: "EXPENSE", tag: "EXP_DEPRECIATION" },
+  { code: "5950", name: "Exchange (gain) / loss", type: "EXPENSE", tag: "EXP_FX" },
   { code: "5900", name: "Other expenses", type: "EXPENSE", tag: "EXPENSE_OTHER" },
 ];
 
@@ -81,6 +84,7 @@ export const VOUCHER_PREFIX: Record<string, string> = {
   EXPENSE: "EX",
   PAYROLL: "PR",
   TRANSFER: "TR",
+  CLOSING: "CL",
 };
 
 export const TYPE_NAMES: Record<string, string> = {
@@ -93,4 +97,5 @@ export const TYPE_NAMES: Record<string, string> = {
   EXPENSE: "Expense",
   PAYROLL: "Payroll",
   TRANSFER: "Transfer",
+  CLOSING: "Year-end close",
 };

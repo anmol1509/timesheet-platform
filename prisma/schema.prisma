@@ -134,9 +134,16 @@ model Branch {
   accrueTickets    Boolean   @default(false)
   // The company's rules for those provisions (gratuity days and cap, leave cap, default ticket); see lib/books/accruals.ts.
   provisionPolicy  Json?
+  // Which company bank receipts and payments use when none is chosen.
+  defaultReceiptBankId String?
+  defaultPaymentBankId String?
   accounts         Account[]
   journalEntries   JournalEntry[]
   provisionRules   ProvisionRule[]
+  fixedAssets      FixedAsset[]
+  cheques          Cheque[]
+  recurringEntries RecurringEntry[]
+  exchangeRates    ExchangeRate[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -540,6 +547,8 @@ model ClientInvoice {
   issueDate     DateTime  @default(now())
   dueDate       DateTime?
   paidDate      DateTime?
+  // The company bank account the money arrived in (null: the branch's default receiving bank).
+  paidBankId    String?
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
@@ -2132,6 +2141,8 @@ model BillPayment {
   amount    Decimal  @db.Decimal(12, 2)
   method    String? // "BANK" | "CASH" | "CHEQUE"
   reference String?
+  // The company bank account it was paid from (null: the branch's default paying bank).
+  bankId    String?
   createdAt DateTime @default(now())
 
   bill   SupplierBill @relation(fields: [billId], references: [id], onDelete: Cascade)
@@ -2930,6 +2941,9 @@ model JournalLine {
   partyType   String?
   partyId     String?
   projectId   String?
+  // For a line in a foreign currency: the currency and the amount in it (always positive; the side is debit or credit).
+  currency    String?
+  foreignAmount Decimal? @db.Decimal(14, 2)
 
   entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   entryId   String
@@ -3045,4 +3059,84 @@ model ProvisionRule {
   branchId String
 
   @@index([branchId])
+}
+
+/// An item the company owns and writes off over its useful life (vehicle, camp furniture, equipment).
+model FixedAsset {
+  id           String    @id @default(cuid())
+  name         String
+  category     String?
+  cost         Decimal   @db.Decimal(14, 2)
+  salvage      Decimal   @default(0) @db.Decimal(14, 2)
+  purchaseDate DateTime  @db.Date
+  lifeMonths   Int
+  // Set when the purchase should be posted too (paid from this account); blank when it is already in the books.
+  paidFromAccountId String?
+  disposedOn   DateTime? @db.Date
+  disposalAmount Decimal? @db.Decimal(14, 2)
+  disposalAccountId String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId])
+}
+
+/// A cheque received or issued. Nothing reaches the books until it clears; post-dated ones sit here until their date.
+model Cheque {
+  id          String    @id @default(cuid())
+  direction   String // RECEIVED | ISSUED
+  number      String
+  chequeDate  DateTime  @db.Date
+  amount      Decimal   @db.Decimal(14, 2)
+  partyType   String // CLIENT | SUPPLIER | OTHER
+  partyId     String?
+  partyName   String
+  // The company bank account it is drawn on (issued) or will be deposited in (received).
+  bankId      String?
+  // For OTHER parties: the account the other side of the entry goes to.
+  counterAccountId String?
+  narration   String?
+  status      String    @default("PENDING") // PENDING | CLEARED | BOUNCED | CANCELLED
+  clearedOn   DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId, status])
+}
+
+/// An entry that repeats (rent, insurance, a loan instalment): debit one account and credit another on a schedule.
+model RecurringEntry {
+  id         String    @id @default(cuid())
+  name       String
+  frequency  String // MONTHLY | QUARTERLY | YEARLY
+  startDate  DateTime  @db.Date
+  endDate    DateTime? @db.Date
+  debitAccountId  String
+  creditAccountId String
+  amount     Decimal   @db.Decimal(14, 2)
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId])
+}
+
+/// What one unit of a foreign currency was worth in AED on a date. Foreign bank balances are revalued at the latest rate on or before each month end.
+model ExchangeRate {
+  id       String   @id @default(cuid())
+  currency String
+  date     DateTime @db.Date
+  rate     Decimal  @db.Decimal(14, 6)
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, currency, date])
 }

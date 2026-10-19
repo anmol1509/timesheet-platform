@@ -33,7 +33,7 @@ function statusInfo(status: string, dueDate: string | null): { label: string; co
   return { label: "Draft", color: "slate" };
 }
 
-export function InvoiceHistoryList({ invoices }: { invoices: InvoiceRow[] }) {
+export function InvoiceHistoryList({ invoices, banks = [], defaultBankId = "" }: { invoices: InvoiceRow[]; banks?: { id: string; label: string }[]; defaultBankId?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status");
@@ -104,6 +104,8 @@ export function InvoiceHistoryList({ invoices }: { invoices: InvoiceRow[] }) {
                             action={markInvoicePaidAction}
                             invoiceId={inv.id}
                             invoiceNumber={inv.invoiceNumber}
+                            banks={banks}
+                            defaultBankId={defaultBankId}
                           />
                         </span>
                       )}

@@ -7,11 +7,12 @@ import { accountsWithTotals, aed, fmtDate, getBooksContext, iso } from "../books
 import { readPolicy } from "@/lib/books/accruals";
 import { SetupCard } from "../setup-card";
 import { AccountsView } from "./accounts-view";
-import { AgeingView, CashFlowView, ProjectProfitView, ProvisionsView } from "./extra-views";
+import { ExportBar } from "./export-bar";
+import { AgeingView, CashFlowView, ProjectProfitView, ProvisionsView, VatReturnView } from "./extra-views";
 
 export const metadata = { title: "Accounting reports" };
 const VIEWS = [
-  { k: "pnl", l: "Profit & loss" }, { k: "balance", l: "Balance sheet" }, { k: "cash", l: "Cash flow" }, { k: "ar", l: "Who owes you" }, { k: "ap", l: "Who you owe" }, { k: "project", l: "Profit by project" }, { k: "provisions", l: "Staff provisions" }, { k: "vat", l: "VAT" }, { k: "trial", l: "Trial balance" }, { k: "accounts", l: "Chart of accounts" },
+  { k: "pnl", l: "Profit & loss" }, { k: "balance", l: "Balance sheet" }, { k: "cash", l: "Cash flow" }, { k: "ar", l: "Who owes you" }, { k: "ap", l: "Who you owe" }, { k: "project", l: "Profit by project" }, { k: "provisions", l: "Staff provisions" }, { k: "vat", l: "VAT return" }, { k: "trial", l: "Trial balance" }, { k: "accounts", l: "Chart of accounts" },
 ] as const;
 type View = (typeof VIEWS)[number]["k"];
 
@@ -27,7 +28,7 @@ function Block({ title, rows, total, totalLabel }: { title: string; rows: { key:
   );
 }
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ view?: string; asof?: string; from?: string; hidden?: string }> }) {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ view?: string; asof?: string; from?: string; hidden?: string; ex?: string; rs?: string; re?: string; ia?: string; iv?: string }> }) {
   const ctx = await getBooksContext();
   const header = <PageHeader title="Reports" icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Reports" }]} description="Profit & loss, balance sheet, cash flow, who owes whom, profit by project, VAT and the trial balance, straight from your transactions." />;
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header}<SetupCard isAdmin={ctx.isAdmin} /></div>;
@@ -44,7 +45,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const asOf = valid(sp.asof) ?? new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
   const open = ctx.branch.booksOpeningDate!;
   const from = valid(sp.from) ?? new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
-  const [cumulative, period] = await Promise.all([accountsWithTotals(ctx.branch.id, asOf), accountsWithTotals(ctx.branch.id, asOf, from)]);
+  const [cumulative, period] = await Promise.all([accountsWithTotals(ctx.branch.id, asOf), accountsWithTotals(ctx.branch.id, asOf, from, true)]);
   const plain = (a: (typeof cumulative)[number]) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: a.debit, credit: a.credit });
   const ranged = view === "pnl" || view === "vat" || view === "cash" || view === "project";
   const form = (
@@ -94,9 +95,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </div>
     );
   } else if (view === "vat") {
-    const vatOut = period.filter((a) => a.tag === "VAT_OUTPUT").reduce((n, a) => n + normalBalance(a), 0);
-    const vatIn = period.filter((a) => a.tag === "VAT_INPUT").reduce((n, a) => n + normalBalance(a), 0);
-    body = <div className="max-w-xl"><Block title={`VAT ${fmtDate(from)} – ${fmtDate(asOf)}`} rows={[{ key: "o", label: "VAT collected on sales (output)", value: vatOut }, { key: "i", label: "VAT paid on purchases and expenses (input)", value: vatIn }]} total={vatOut - vatIn} totalLabel={vatOut - vatIn >= 0 ? "VAT payable to FTA" : "VAT refundable"} /></div>;
+    const n = (v?: string) => { const x = Number((v ?? "").replace(/,/g, "")); return Number.isFinite(x) && x > 0 ? x : undefined; };
+    body = <VatReturnView branchId={ctx.branch.id} from={from} asOf={asOf} manual={{ exempt: n(sp.ex), reverseSales: n(sp.rs), reverseExpenses: n(sp.re), importsAmount: n(sp.ia), importsVat: n(sp.iv) }} />;
   } else {
     const tb = trialBalance(cumulative);
     body = (
@@ -112,5 +112,22 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </section>
     );
   }
-  return <div className="space-y-5">{header}{switcher}{form}{body}</div>;
+  const keep = new URLSearchParams({ view, from: iso(from), asof: iso(asOf) });
+  for (const k of ["ex", "rs", "re", "ia", "iv"] as const) if (sp[k]) keep.set(k, sp[k] as string);
+  const title = VIEWS.find((v) => v.k === view)?.l ?? "";
+  return (
+    <div className="space-y-5">
+      {header}
+      <div data-print-hide>{switcher}</div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div data-print-hide>{form}</div>
+        <ExportBar query={keep.toString()} canExport={view !== "provisions"} />
+      </div>
+      <div className="hidden print:block">
+        <p className="text-lg font-semibold text-primary">{ctx.branch.name}</p>
+        <p className="text-sm text-secondary">{title}{ranged ? `, ${fmtDate(from)} – ${fmtDate(asOf)}` : ` as of ${fmtDate(asOf)}`}</p>
+      </div>
+      {body}
+    </div>
+  );
 }

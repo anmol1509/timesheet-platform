@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import type { Policy } from "@/lib/books/accruals";
 import { METHOD_LABEL, type CustomRule, type RuleMethod } from "@/lib/books/customProvisions";
-import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
+import { lockBooksAction, refreshPostingsAction, saveDefaultBanksAction, saveOpeningBalancesAction, closeYearAction, saveExchangeRateAction, deleteExchangeRateAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -215,6 +215,101 @@ export function CustomProvisions({ rules, canEdit }: { rules: CustomRule[]; canE
         {canEdit && <RuleRow key="new" rule={null} canEdit />}
       </ul>
       <p className="text-xs text-muted">Each builds up month by month across its cycle and starts again after it. When you pay it out, record the payment against its provision account and the books keep the balance right.</p>
+    </div>
+  );
+}
+
+/** Which bank money goes through when nobody picks one. */
+export function DefaultBanks({ banks, receipt, payment, canEdit }: { banks: { id: string; label: string }[]; receipt: string; payment: string; canEdit: boolean }) {
+  const [r, setR] = useState(receipt);
+  const [p, setP] = useState(payment);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  if (banks.length === 0) return <p className="text-sm text-muted">Add your bank accounts under Reference Data › Banks and they show up here.</p>;
+  const sel = (value: string, onChange: (v: string) => void) => (
+    <select disabled={!canEdit} value={value} onChange={(e) => onChange(e.target.value)} className="input mt-1 block h-9 w-72 text-sm">
+      <option value="">Main account (first bank)</option>
+      {banks.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+    </select>
+  );
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-5">
+        <label className="block text-xs text-muted">Customer receipts arrive in{sel(r, setR)}</label>
+        <label className="block text-xs text-muted">Bills, payroll and other payments go out from{sel(p, setP)}</label>
+      </div>
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
+            const res = await saveDefaultBanksAction({ receipt: r, payment: p });
+            setMsg(res.error ? { ok: false, text: res.error } : { ok: true, text: "Saved. Postings without their own bank now use these." });
+          })}>{pending ? "Saving…" : "Save"}</Button>
+          {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Closing a finished year. */
+export function YearEnd({ years }: { years: { year: number; profit: number; closed: boolean }[] }) {
+  const [lock, setLock] = useState(true);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  if (years.length === 0) return <p className="text-sm text-muted">There is no finished year with activity to close yet.</p>;
+  return (
+    <div className="space-y-3">
+      <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default">
+        {years.map((y) => (
+          <li key={y.year} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
+            <span><span className="font-medium text-primary">{y.year}</span><span className="ml-3 tabular text-secondary">{y.profit < 0 ? "Loss" : "Profit"} {aed(Math.abs(y.profit))}</span></span>
+            {y.closed ? <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success">Closed</span> : (
+              <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => {
+                if (!window.confirm(`Close ${y.year}? Income and costs are zeroed into retained earnings${lock ? " and the year is locked" : ""}. You can undo it by voiding the entry.`)) return;
+                start(async () => { const r = await closeYearAction(y.year, lock); setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: `${y.year} closed.` }); });
+              }}>Close {y.year}</Button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" checked={lock} onChange={(e) => setLock(e.target.checked)} /> Also lock the year so nothing can be changed in it</label>
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+    </div>
+  );
+}
+
+/** Exchange rates for foreign bank accounts. The month-end rate decides what each account is worth in dirhams. */
+export function ExchangeRates({ currencies, rates, canEdit }: { currencies: string[]; rates: { id: string; currency: string; date: string; rate: number }[]; canEdit: boolean }) {
+  const [currency, setCurrency] = useState(currencies[0] ?? "");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [rate, setRate] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  if (currencies.length === 0) return <p className="text-sm text-muted">You have no foreign-currency bank account yet. Set a bank&apos;s currency (for example USD) under Reference Data › Banks and it appears here.</p>;
+  return (
+    <div className="space-y-3">
+      {canEdit && (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block text-xs text-muted">Currency<select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input mt-1 block h-8 w-24 text-sm">{currencies.map((x) => <option key={x}>{x}</option>)}</select></label>
+          <label className="block text-xs text-muted">On<DatePicker value={date} onChange={setDate} ariaLabel="Rate date" /></label>
+          <label className="block text-xs text-muted">AED for 1 {currency}<input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3.6725" className="input mt-1 block h-8 w-28 text-right text-sm" /></label>
+          <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
+            const r = await saveExchangeRateAction({ currency, date, rate: Number(rate) });
+            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: "Saved. Foreign accounts are revalued at month ends." });
+            if (!r.error) setRate("");
+          })}>{pending ? "Saving…" : "Save rate"}</Button>
+        </div>
+      )}
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+      {rates.length > 0 && (
+        <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default text-sm">
+          {rates.map((r) => (
+            <li key={r.id} className="flex items-center justify-between px-4 py-2"><span><span className="font-medium text-primary">{r.currency}</span> <span className="ml-2 tabular text-secondary">{r.rate}</span> <span className="ml-2 text-xs text-muted">on {r.date}</span></span>
+              {canEdit && <button type="button" className="text-xs text-muted hover:text-error" onClick={() => start(async () => { await deleteExchangeRateAction(r.id); })}>Remove</button>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

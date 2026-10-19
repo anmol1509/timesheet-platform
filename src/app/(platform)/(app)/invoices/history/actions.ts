@@ -7,6 +7,7 @@ import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/au
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
+import { ownBankId } from "@/lib/books/banks";
 
 export async function markInvoicePaidAction(formData: FormData) {
   await requireWrite("billing.invoices");
@@ -20,7 +21,10 @@ export async function markInvoicePaidAction(formData: FormData) {
   });
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
 
-  const data = { status: "PAID", paidDate: new Date() };
+  const day = String(formData.get("paidDate") || "");
+  const paidDate = /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= new Date().toISOString().slice(0, 10) ? new Date(`${day}T00:00:00.000Z`) : new Date();
+  const paidBankId = await ownBankId(formData.get("bankId"), existing.branchId);
+  const data = { status: "PAID", paidDate, paidBankId };
   await prisma.clientInvoice.update({ where: { id: invoiceId }, data });
 
   await logAudit({
