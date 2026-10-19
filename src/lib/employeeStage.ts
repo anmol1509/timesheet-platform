@@ -56,5 +56,7 @@ export const STAGE_COLOR: Record<string, "green" | "amber" | "slate" | "red" | "
  */
 export function stageBadge(status: string, hasProject: boolean) {
   if ((status === "ACTIVE" || status === "IDLE") && !hasProject) return { label: "On bench", color: "amber" as const };
+  // "Active" is already the employment chip beside it, so a working stage reads "Deployed".
+  if (status === "ACTIVE") return { label: "Deployed", color: "green" as const };
   return { label: STAGE_LABEL[status] ?? status, color: STAGE_COLOR[status] ?? "slate" };
 }
