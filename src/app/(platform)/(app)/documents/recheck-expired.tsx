@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { applyExpiriesAction, recheckDocumentAction, type Recheck } from "./actions";
 
 const fmt = (iso: string | null) => (iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "none read");
+/** The scan shows a different date, or shows none where one is filed. */
+const differs = (r: Recheck) => (r.read ? r.read !== r.stored : !!r.stored);
 const label = (t: string) => t.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
 
 /** Reads each expired document's scan again and lets the person approve the dates that differ. */
@@ -32,7 +34,7 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
         if ("error" in r && !("id" in r)) { setDone((n) => n + 1); continue; }
         const row = r as Recheck;
         setRows((prev) => [...prev, row]);
-        if (!row.error && row.read && row.read !== row.stored && row.confidence !== "low") setChosen((prev) => new Set(prev).add(row.id));
+        if (!row.error && differs(row) && row.confidence !== "low") setChosen((prev) => new Set(prev).add(row.id));
         setDone((n) => n + 1);
       }
     };
@@ -41,13 +43,13 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
   }
 
   async function apply() {
-    const items = rows.filter((r) => chosen.has(r.id) && r.read).map((r) => ({ id: r.id, expiry: r.read! }));
+    const items = rows.filter((r) => chosen.has(r.id)).map((r) => ({ id: r.id, expiry: r.read }));
     const res = await applyExpiriesAction(items);
     setMsg(res.error ?? `Updated ${res.updated} document${res.updated === 1 ? "" : "s"}.`);
-    if (!res.error) { applied.current = true; setChosen(new Set()); setRows((prev) => prev.map((r) => (chosen.has(r.id) && r.read ? { ...r, stored: r.read } : r))); }
+    if (!res.error) { applied.current = true; setChosen(new Set()); setRows((prev) => prev.map((r) => (chosen.has(r.id) ? { ...r, stored: r.read } : r))); }
   }
 
-  const changed = rows.filter((r) => !r.error && r.read && r.read !== r.stored);
+  const changed = rows.filter((r) => !r.error && differs(r));
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o && !started.current) void run(); if (!o && applied.current) { applied.current = false; router.refresh(); } }}>
       <DialogTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs hover:bg-surface-hover hover:text-primary">
@@ -60,13 +62,13 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
             <thead className="sticky top-0 bg-surface-hover text-muted"><tr><th className="w-8 px-2 py-2" /><th className="px-2 py-2">Employee</th><th className="px-2 py-2">On file</th><th className="px-2 py-2">Scan shows</th></tr></thead>
             <tbody>
               {rows.map((r) => {
-                const differs = !r.error && !!r.read && r.read !== r.stored;
+                const diff = !r.error && differs(r);
                 return (
                   <tr key={r.id} className="border-t border-default align-top">
-                    <td className="px-2 py-2"><input type="checkbox" disabled={!differs} checked={chosen.has(r.id)} aria-label={`Use the scan's date for ${r.employee}`} onChange={(e) => setChosen((prev) => { const n = new Set(prev); if (e.target.checked) n.add(r.id); else n.delete(r.id); return n; })} className="h-4 w-4 accent-[var(--brand-primary)]" /></td>
+                    <td className="px-2 py-2"><input type="checkbox" disabled={!diff} checked={chosen.has(r.id)} aria-label={`Use the scan's date for ${r.employee}`} onChange={(e) => setChosen((prev) => { const n = new Set(prev); if (e.target.checked) n.add(r.id); else n.delete(r.id); return n; })} className="h-4 w-4 accent-[var(--brand-primary)]" /></td>
                     <td className="px-2 py-2"><span className="font-medium text-primary">{r.employee}</span><br /><span className="text-muted">{label(r.type)}</span></td>
                     <td className="px-2 py-2 tabular text-secondary">{fmt(r.stored)}</td>
-                    <td className="px-2 py-2 tabular">{r.error ? <span className="text-[var(--error)]">{r.error}</span> : <span className={differs ? "font-medium text-primary" : "text-muted"}>{fmt(r.read)}{differs && r.confidence !== "high" ? ` (${r.confidence} confidence)` : ""}{!differs && r.read ? " ✓ same" : ""}</span>}</td>
+                    <td className="px-2 py-2 tabular">{r.error ? <span className="text-[var(--error)]">{r.error}</span> : <span className={diff ? "font-medium text-primary" : "text-muted"}>{r.read ? fmt(r.read) : diff ? "No expiry printed: clear it" : "none read"}{diff && r.confidence !== "high" ? ` (${r.confidence} confidence)` : ""}{!diff && r.read ? " ✓ same" : ""}</span>}</td>
                   </tr>
                 );
               })}
