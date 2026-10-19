@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ScanSearch } from "lucide-react";
+import { ExternalLink, ScanSearch } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { applyExpiriesAction, recheckDocumentAction, type Recheck } from "./actions";
 
@@ -59,7 +59,7 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
         <p className="mt-3 text-xs text-muted" aria-live="polite">{running ? `Reading ${done} of ${ids.length}…` : `Read ${rows.length} of ${ids.length}. ${changed.length} differ from what is on file.`}</p>
         <div className="mt-2 max-h-[55vh] overflow-y-auto rounded-lg border border-default">
           <table className="w-full text-left text-xs">
-            <thead className="sticky top-0 bg-surface-hover text-muted"><tr><th className="w-8 px-2 py-2" /><th className="px-2 py-2">Employee</th><th className="px-2 py-2">On file</th><th className="px-2 py-2">Scan shows</th></tr></thead>
+            <thead className="sticky top-0 bg-surface-hover text-muted"><tr><th className="w-8 px-2 py-2" /><th className="px-2 py-2">Employee</th><th className="w-9 px-1 py-2"><span className="sr-only">Open</span></th><th className="px-2 py-2">On file</th><th className="px-2 py-2">Scan shows</th></tr></thead>
             <tbody>
               {rows.map((r) => {
                 const diff = !r.error && differs(r);
@@ -67,6 +67,7 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
                   <tr key={r.id} className="border-t border-default align-top">
                     <td className="px-2 py-2"><input type="checkbox" disabled={!diff} checked={chosen.has(r.id)} aria-label={`Use the scan's date for ${r.employee}`} onChange={(e) => setChosen((prev) => { const n = new Set(prev); if (e.target.checked) n.add(r.id); else n.delete(r.id); return n; })} className="h-4 w-4 accent-[var(--brand-primary)]" /></td>
                     <td className="px-2 py-2"><span className="font-medium text-primary">{r.employee}</span><br /><span className="text-muted">{label(r.type)}</span></td>
+                    <td className="px-1 py-2"><a href={`/api/documents/${r.id}`} target="_blank" rel="noreferrer" title="Open the document in a new tab" aria-label={`Open the ${label(r.type).toLowerCase()} of ${r.employee}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-subtle hover:bg-surface-hover hover:text-primary"><ExternalLink className="h-4 w-4" aria-hidden /></a></td>
                     <td className="px-2 py-2 tabular text-secondary">{fmt(r.stored)}</td>
                     <td className="px-2 py-2 tabular">{r.error ? <span className="text-[var(--error)]">{r.error}</span> : <span className={diff ? "font-medium text-primary" : "text-muted"}>{r.read ? fmt(r.read) : diff ? "No expiry printed: clear it" : "none read"}{diff && r.confidence !== "high" ? ` (${r.confidence} confidence)` : ""}{!diff && r.read ? " ✓ same" : ""}</span>}</td>
                   </tr>
