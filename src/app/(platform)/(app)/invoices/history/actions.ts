@@ -8,7 +8,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 import { ownBankId } from "@/lib/books/banks";
-import { lockedPeriodError } from "@/lib/books/lockCheck";
+import { lockedPeriodError, markBooksStale } from "@/lib/books/lockCheck";
 import { todayInUae } from "@/lib/today";
 
 export async function markInvoicePaidAction(formData: FormData): Promise<{ error?: string }> {
@@ -31,6 +31,7 @@ export async function markInvoicePaidAction(formData: FormData): Promise<{ error
   const paidBankId = await ownBankId(formData.get("bankId"), existing.branchId);
   const data = { status: "PAID", paidDate, paidBankId };
   await prisma.clientInvoice.update({ where: { id: invoiceId }, data });
+  await markBooksStale(existing.branchId);
 
   await logAudit({
     entityType: "CLIENT_INVOICE",

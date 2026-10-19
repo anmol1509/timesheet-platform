@@ -1,7 +1,7 @@
 "use server";
 
 import { ownBankId } from "@/lib/books/banks";
-import { lockedPeriodError } from "@/lib/books/lockCheck";
+import { lockedPeriodError, markBooksStale } from "@/lib/books/lockCheck";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
@@ -188,6 +188,7 @@ export async function recordPaymentAction(_prev: State, formData: FormData): Pro
   const created = await prisma.billPayment.create({
     data: { billId, paidOn, amount, method: str(formData.get("method")) || null, reference: str(formData.get("reference")) || null, bankId: await ownBankId(formData.get("bankId"), bill.branchId), createdById: user.id },
   });
+  await markBooksStale(bill.branchId);
   await logAudit({ entityType: "BILL_PAYMENT", entityId: created.id, action: "CREATE", after: { billNo: bill.billNo, amount, paidOn: paidOn.toISOString().slice(0, 10) }, userId: user.id, userName: user.name, branchId: bill.branchId });
   await notifySupplier({ supplierId: bill.supplierId, kind: "PAYMENT", title: `Payment recorded: AED ${amount.toLocaleString("en-AE", { minimumFractionDigits: 2 })}`, body: `Against invoice ${bill.billNo}.`, href: "/vendor/payments" });
   revalidatePath("/finance/bills");
@@ -355,6 +356,7 @@ export async function payBatchAction(_prev: State, formData: FormData): Promise<
   });
   if (data.length === 0) return { error: "Those bills are already settled." };
   await prisma.billPayment.createMany({ data });
+  await markBooksStale(bills[0]?.branchId);
   for (const d of data) {
     const b = bills.find((x) => x.id === d.billId)!;
     await notifySupplier({ supplierId: b.supplierId, kind: "PAYMENT", title: `Payment recorded: AED ${d.amount.toLocaleString("en-AE", { minimumFractionDigits: 2 })}`, body: `Against invoice ${b.billNo}.`, href: "/vendor/payments" });
