@@ -2,11 +2,12 @@ import { BookOpen } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { readPolicy } from "@/lib/books/accruals";
+import { listBanks } from "@/lib/books/banks";
 import type { CustomRule, RuleMethod } from "@/lib/books/customProvisions";
 import { getBooksContext, iso } from "../books-data";
 import { SetupCard } from "../setup-card";
 import { ImportWizard } from "./import-wizard";
-import { CustomProvisions, LockControl, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
+import { CustomProvisions, DefaultBanks, LockControl, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
 
 export const metadata = { title: "Accounting settings" };
 
@@ -73,6 +74,9 @@ export default async function SetupPage() {
           <LockControl lockedUntil={ctx.branch.booksLockedUntil ? iso(ctx.branch.booksLockedUntil) : null} minDate={open} />
         </Card>
       )}
+      <Card title="Default banks" hint="Invoices, bills and payroll runs can name the bank they used. When one doesn't, these decide which bank account the books use.">
+        <DefaultBanks banks={await listBanks(branchId)} receipt={ctx.branch.defaultReceiptBankId ?? ""} payment={ctx.branch.defaultPaymentBankId ?? ""} canEdit={ctx.canWrite} />
+      </Card>
       <Card title="Staff provisions" hint="Gratuity, leave and air tickets are paid later but earned every month. Switch them on and the books charge each finished month and build the liability on the balance sheet. See the amounts under Reports › Staff provisions.">
         <ProvisionSettings initial={{ gratuity: ctx.branch.accrueGratuity, leave: ctx.branch.accrueLeave, tickets: ctx.branch.accrueTickets }} policy={readPolicy(ctx.branch.provisionPolicy)} canEdit={ctx.canWrite} />
       </Card>

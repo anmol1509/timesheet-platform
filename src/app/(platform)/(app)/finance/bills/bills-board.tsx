@@ -104,7 +104,9 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
   );
 }
 
-function PayForm({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
+type BankOpt = { id: string; label: string };
+
+function PayForm({ bill, banks, onDone }: { bill: BillRow; banks: BankOpt[]; onDone: () => void }) {
   const [state, action, pending] = useActionState(
     async (prev: State, fd: FormData) => { const r = await recordPaymentAction(prev, fd); if (r.ok) onDone(); return r; },
     { error: null } as State
@@ -117,13 +119,14 @@ function PayForm({ bill, onDone }: { bill: BillRow; onDone: () => void }) {
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Amount (AED) *</span><NumberInput name="amount" defaultValue={bill.balance} required min={0} step={0.01} className="w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Method</span><Select name="method" defaultValue="BANK" searchable={false} options={PAYMENT_METHODS.map((m) => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))} /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference</span><input name="reference" className="input w-full" placeholder="Transfer / cheque no." /></label>
+        {banks.length > 0 && <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-muted">Paid from</span><Select name="bankId" defaultValue="" searchable={false} options={[{ value: "", label: "Default bank" }, ...banks.map((b) => ({ value: b.id, label: b.label }))]} /></label>}
       </div>
       <div className="flex items-center gap-3"><button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Record payment"}</button>{state.error && <p role="alert" className={errCls}>{state.error}</p>}</div>
     </form>
   );
 }
 
-function BatchForm({ bills, onDone }: { bills: BillRow[]; onDone: () => void }) {
+function BatchForm({ bills, banks, onDone }: { bills: BillRow[]; banks: BankOpt[]; onDone: () => void }) {
   const [state, action, pending] = useActionState(
     async (prev: State, fd: FormData) => { const r = await payBatchAction(prev, fd); if (r.ok) onDone(); return r; },
     { error: null } as State
@@ -140,6 +143,7 @@ function BatchForm({ bills, onDone }: { bills: BillRow[]; onDone: () => void }) 
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Paid on *</span><DatePicker name="paidOn" defaultValue={new Date().toISOString().slice(0, 10)} required className="w-full" /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Method</span><Select name="method" defaultValue="BANK" searchable={false} options={PAYMENT_METHODS.map((m) => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))} /></label>
         <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Batch reference</span><input name="reference" className="input w-full" placeholder="Transfer batch no." /></label>
+        {banks.length > 0 && <label className="col-span-3 block"><span className="mb-1 block text-xs font-medium text-muted">Paid from</span><Select name="bankId" defaultValue="" searchable={false} options={[{ value: "", label: "Default bank" }, ...banks.map((b) => ({ value: b.id, label: b.label }))]} /></label>}
       </div>
       <div className="flex items-center gap-3"><button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Recording…" : `Record ${bills.length} payments`}</button>{state.error && <p role="alert" className={errCls}>{state.error}</p>}</div>
     </form>
@@ -171,7 +175,7 @@ function dueNote(iso: string) {
 
 const VARIANCE_TEXT = { MATCH: "The bill matches the timesheet", OVER: "The bill is more than the timesheet says we owe", UNDER: "The bill is less than the timesheet says we owe", NO_REFERENCE: "There is no timesheet to compare with" } as const;
 
-export function BillsBoard({ rows, suppliers, canCreate, canPay, canDelete, filters, view }: { rows: BillRow[]; suppliers: { id: string; name: string }[]; canCreate: boolean; canPay: boolean; canDelete: boolean; filters: { k: string; l: string; count?: number }[]; view: string }) {
+export function BillsBoard({ rows, suppliers, banks = [], canCreate, canPay, canDelete, filters, view }: { rows: BillRow[]; banks?: BankOpt[]; suppliers: { id: string; name: string }[]; canCreate: boolean; canPay: boolean; canDelete: boolean; filters: { k: string; l: string; count?: number }[]; view: string }) {
   const [adding, setAdding] = useState(false);
   const [paying, setPaying] = useState<BillRow | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -274,10 +278,10 @@ export function BillsBoard({ rows, suppliers, canCreate, canPay, canDelete, filt
 
       <Dialog open={adding} onOpenChange={setAdding}><DialogContent title="Add supplier bill"><BillForm suppliers={suppliers} onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Dialog open={paying !== null} onOpenChange={(o) => !o && setPaying(null)}>
-        {paying && <DialogContent title={`Pay ${paying.supplier}`} description={`Bill #${paying.billNo} — balance AED ${aed(paying.balance)}`}><PayForm bill={paying} onDone={() => setPaying(null)} /></DialogContent>}
+        {paying && <DialogContent title={`Pay ${paying.supplier}`} description={`Bill #${paying.billNo} — balance AED ${aed(paying.balance)}`}><PayForm bill={paying} banks={banks} onDone={() => setPaying(null)} /></DialogContent>}
       </Dialog>
       <Dialog open={batching} onOpenChange={setBatching}>
-        <DialogContent title="Pay selected bills" description="One date, method and reference for the whole batch."><BatchForm bills={selectedRows} onDone={() => { setBatching(false); setSelected(new Set()); }} /></DialogContent>
+        <DialogContent title="Pay selected bills" description="One date, method and reference for the whole batch."><BatchForm bills={selectedRows} banks={banks} onDone={() => { setBatching(false); setSelected(new Set()); }} /></DialogContent>
       </Dialog>
       <Dialog open={viewingRow !== null} onOpenChange={(o) => !o && setViewing(null)}>
         {viewingRow && (

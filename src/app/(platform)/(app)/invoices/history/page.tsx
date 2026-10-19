@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { InvoiceHistoryList } from "./invoice-history-list";
+import { listBanks } from "@/lib/books/banks";
 
 function fmt(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -24,6 +25,7 @@ export default async function InvoiceHistoryPage({
     include: { client: true, generatedBy: true },
   });
 
+  const banks = await listBanks(branchId);
   const outstanding = invoices
     .filter((i) => i.status !== "PAID")
     .reduce((s, i) => s + i.totalAmount, 0);
@@ -92,7 +94,7 @@ export default async function InvoiceHistoryPage({
           </p>
         </div>
       ) : (
-        <InvoiceHistoryList invoices={rows} />
+        <InvoiceHistoryList invoices={rows} banks={banks} />
       )}
     </div>
   );

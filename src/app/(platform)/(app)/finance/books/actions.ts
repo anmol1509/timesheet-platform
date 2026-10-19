@@ -361,3 +361,18 @@ export async function saveProvisionRuleAction(input: RuleInput): Promise<Result>
   refresh();
   return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
+
+/** The bank receipts and payments use when none is picked on the invoice, bill or payroll run. */
+export async function saveDefaultBanksAction(input: { receipt: string; payment: string }): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const check = async (id: string) => (id ? !!(await prisma.bank.findFirst({ where: { id, branchId }, select: { id: true } })) : true);
+  if (!(await check(input.receipt)) || !(await check(input.payment))) return { error: "Choose one of the company's banks." };
+  const data = { defaultReceiptBankId: input.receipt || null, defaultPaymentBankId: input.payment || null };
+  await prisma.branch.update({ where: { id: branchId }, data });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: data, userId: user.id, userName: user.name, branchId });
+  const result = await syncPostings(branchId);
+  refresh();
+  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}

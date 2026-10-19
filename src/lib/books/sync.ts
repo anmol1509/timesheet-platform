@@ -131,7 +131,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     prisma.payrollRun.findMany({ where: { ...scope, status: { in: ["APPROVED", "PAID"] }, OR: [{ month: { gte: openMonth } }, { paidAt: { gte: since } }] }, include: { lines: { select: { net: true, loanDeduction: true, paymentStatus: true, projectId: true } } } }),
     prisma.employeeLoan.findMany({ where: { ...scope, approvalStatus: "APPROVED", givenDate: { gte: since } }, include: { employee: { select: { name: true } } } }),
     prisma.pettyCashTopUp.findMany({ where: { ...scope, date: { gte: since } } }),
-    prisma.branch.findUnique({ where: { id: branchId }, select: { accrueGratuity: true, accrueLeave: true, accrueTickets: true, provisionPolicy: true } }),
+    prisma.branch.findUnique({ where: { id: branchId }, select: { accrueGratuity: true, accrueLeave: true, accrueTickets: true, provisionPolicy: true, defaultReceiptBankId: true, defaultPaymentBankId: true } }),
     prisma.employee.findMany({
       where: { ...scope, joinDate: { not: null } },
       select: { id: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true, skipGratuity: true, category: true },
@@ -147,10 +147,10 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
 
   const out: Posting[] = [];
-  for (const i of invoices) out.push(...invoicePostings({ id: i.id, invoiceNumber: i.invoiceNumber, clientId: i.clientId, clientName: i.client.name, status: i.status, issueDate: i.issueDate, paidDate: i.paidDate, subtotal: i.subtotal, vatAmount: i.vatAmount, totalAmount: i.totalAmount }));
-  for (const b of bills) out.push(...billPostings({ id: b.id, billNo: b.billNo, supplierId: b.supplierId, supplierName: b.supplier.name, billDate: b.billDate, amount: Number(b.amount), vatAmount: Number(b.vatAmount), approvalStatus: b.approvalStatus, payments: b.payments.map((p) => ({ id: p.id, paidOn: p.paidOn, amount: Number(p.amount), method: p.method, reference: p.reference })) }));
+  for (const i of invoices) out.push(...invoicePostings({ id: i.id, invoiceNumber: i.invoiceNumber, clientId: i.clientId, clientName: i.client.name, status: i.status, issueDate: i.issueDate, paidDate: i.paidDate, paidBankId: i.paidBankId, subtotal: i.subtotal, vatAmount: i.vatAmount, totalAmount: i.totalAmount }));
+  for (const b of bills) out.push(...billPostings({ id: b.id, billNo: b.billNo, supplierId: b.supplierId, supplierName: b.supplier.name, billDate: b.billDate, amount: Number(b.amount), vatAmount: Number(b.vatAmount), approvalStatus: b.approvalStatus, payments: b.payments.map((p) => ({ id: p.id, paidOn: p.paidOn, amount: Number(p.amount), method: p.method, reference: p.reference, bankId: p.bankId })) }));
   for (const e of expenses) out.push(...expensePostings({ id: e.id, date: e.date, category: e.category, description: e.description, amount: Number(e.amount), vatAmount: Number(e.vatAmount), paidTo: e.paidTo, paymentMethod: e.paymentMethod, outOfPocket: e.outOfPocket, reimbursedAt: e.reimbursedAt, projectId: e.projectId, status: e.status }));
-  for (const r of runs) out.push(...payrollPostings({ id: r.id, month: r.month, status: r.status, approvedAt: r.approvedAt, paidAt: r.paidAt, label: (r.companyId && companyName.get(r.companyId)) || "all workers", lines: r.lines.map((l) => ({ net: Number(l.net), loanDeduction: Number(l.loanDeduction), paymentStatus: l.paymentStatus, projectId: l.projectId })) }));
+  for (const r of runs) out.push(...payrollPostings({ id: r.id, month: r.month, status: r.status, approvedAt: r.approvedAt, paidAt: r.paidAt, label: (r.companyId && companyName.get(r.companyId)) || "all workers", bankId: r.payerBankId, lines: r.lines.map((l) => ({ net: Number(l.net), loanDeduction: Number(l.loanDeduction), paymentStatus: l.paymentStatus, projectId: l.projectId })) }));
   for (const l of loans) out.push(...loanPostings({ id: l.id, refNo: l.refNo, employeeId: l.employeeId, employeeName: l.employee.name, principal: Number(l.principal), approvalStatus: l.approvalStatus, givenDate: l.givenDate, method: l.method, type: l.type }));
   for (const t of topUps) out.push(...topUpPostings({ id: t.id, amount: Number(t.amount), date: t.date, note: t.note }));
   for (const st of settlements) out.push(...settlementPostings({ id: st.id, employeeId: st.employeeId, employeeName: st.employee.name, status: st.status, paidAt: st.paidAt, gratuity: Number(st.gratuity), unpaidSalary: Number(st.unpaidSalary), leavePay: Number(st.leavePay), noticePay: Number(st.noticePay), otherEarnings: Number(st.otherEarnings), loanBalance: Number(st.loanBalance), otherDeductions: Number(st.otherDeductions), fromGratuityProvision: on.gratuity, fromLeaveProvision: on.leave }));
@@ -195,7 +195,15 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     }
     out.push(...customPostings({ months: monthsBetween(openMonth, last), staff, rules: customRules, opening, used }));
   }
-  return out.filter((p) => p.date.getTime() >= since.getTime());
+  // Money that no bank was named for goes through the branch's default receiving or paying bank, when one is set.
+  const receiveBank = branchRow?.defaultReceiptBankId ?? null;
+  const payBank = branchRow?.defaultPaymentBankId ?? null;
+  const withDefaultBank = (p: Posting): Posting => {
+    const bank = /^invoice-paid:/.test(p.sourceKey) ? receiveBank : /^(billpay|payroll-paid|expense-reimbursed|loan|settlement):/.test(p.sourceKey) ? payBank : null;
+    if (!bank) return p;
+    return { ...p, lines: p.lines.map((l) => (l.tag === "BANK" && !l.bankId && !l.accountId ? { ...l, bankId: bank } : l)) };
+  };
+  return out.map(withDefaultBank).filter((p) => p.date.getTime() >= since.getTime());
 }
 
 /**

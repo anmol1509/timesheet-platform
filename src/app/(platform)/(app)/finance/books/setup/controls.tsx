@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import type { Policy } from "@/lib/books/accruals";
 import { METHOD_LABEL, type CustomRule, type RuleMethod } from "@/lib/books/customProvisions";
-import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
+import { lockBooksAction, refreshPostingsAction, saveDefaultBanksAction, saveOpeningBalancesAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -215,6 +215,38 @@ export function CustomProvisions({ rules, canEdit }: { rules: CustomRule[]; canE
         {canEdit && <RuleRow key="new" rule={null} canEdit />}
       </ul>
       <p className="text-xs text-muted">Each builds up month by month across its cycle and starts again after it. When you pay it out, record the payment against its provision account and the books keep the balance right.</p>
+    </div>
+  );
+}
+
+/** Which bank money goes through when nobody picks one. */
+export function DefaultBanks({ banks, receipt, payment, canEdit }: { banks: { id: string; label: string }[]; receipt: string; payment: string; canEdit: boolean }) {
+  const [r, setR] = useState(receipt);
+  const [p, setP] = useState(payment);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  if (banks.length === 0) return <p className="text-sm text-muted">Add your bank accounts under Reference Data › Banks and they show up here.</p>;
+  const sel = (value: string, onChange: (v: string) => void) => (
+    <select disabled={!canEdit} value={value} onChange={(e) => onChange(e.target.value)} className="input mt-1 block h-9 w-72 text-sm">
+      <option value="">Main account (first bank)</option>
+      {banks.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+    </select>
+  );
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-5">
+        <label className="block text-xs text-muted">Customer receipts arrive in{sel(r, setR)}</label>
+        <label className="block text-xs text-muted">Bills, payroll and other payments go out from{sel(p, setP)}</label>
+      </div>
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
+            const res = await saveDefaultBanksAction({ receipt: r, payment: p });
+            setMsg(res.error ? { ok: false, text: res.error } : { ok: true, text: "Saved. Postings without their own bank now use these." });
+          })}>{pending ? "Saving…" : "Save"}</Button>
+          {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+        </div>
+      )}
     </div>
   );
 }

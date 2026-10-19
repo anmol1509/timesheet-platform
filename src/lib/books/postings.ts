@@ -35,7 +35,7 @@ export function hashPosting(p: Posting): string {
 
 const moneyTag = (method: string | null | undefined) => (method === "CASH" ? "CASH" : "BANK");
 
-export type InvoiceFacts = { id: string; invoiceNumber: string; clientId: string; clientName: string; status: string; issueDate: Date; paidDate: Date | null; subtotal: number; vatAmount: number; totalAmount: number };
+export type InvoiceFacts = { id: string; invoiceNumber: string; clientId: string; clientName: string; status: string; issueDate: Date; paidDate: Date | null; paidBankId?: string | null; subtotal: number; vatAmount: number; totalAmount: number };
 
 /** An issued invoice, and — once it is marked paid — the money coming in. Draft invoices post nothing. */
 export function invoicePostings(i: InvoiceFacts): Posting[] {
@@ -71,7 +71,7 @@ export function invoicePostings(i: InvoiceFacts): Posting[] {
 
 export type BillFacts = {
   id: string; billNo: string; supplierId: string; supplierName: string; billDate: Date; amount: number; vatAmount: number; approvalStatus: string;
-  payments: { id: string; paidOn: Date; amount: number; method: string | null; reference: string | null }[];
+  payments: { id: string; paidOn: Date; amount: number; method: string | null; reference: string | null; bankId?: string | null }[];
 };
 
 /** An approved supplier bill, and each payment against it. A "credit" payment is a credit note that cancels cost. */
@@ -103,7 +103,7 @@ export function billPostings(b: BillFacts): Posting[] {
       date: utcDay(p.paidOn),
       type: credit ? "JOURNAL" : "PAYMENT",
       narration: `${b.supplierName} — ${credit ? "credit applied to" : "payment for"} bill ${b.billNo}${p.reference ? ` (${p.reference})` : ""}`,
-      lines: [{ tag: "PAYABLE", debit: a, ...party }, { tag: credit ? "COST_SUPPLIERS" : moneyTag(p.method), credit: a, ...(credit ? party : {}) }],
+      lines: [{ tag: "PAYABLE", debit: a, ...party }, { tag: credit ? "COST_SUPPLIERS" : moneyTag(p.method), credit: a, ...(credit ? party : {}), ...(!credit && p.bankId ? { bankId: p.bankId } : {}) }],
     });
   }
   return out;
@@ -148,7 +148,7 @@ export function expensePostings(e: ExpenseFacts): Posting[] {
 }
 
 export type PayrollFacts = {
-  id: string; month: string; status: string; approvedAt: Date | null; paidAt: Date | null; label: string;
+  id: string; month: string; status: string; approvedAt: Date | null; paidAt: Date | null; label: string; bankId?: string | null;
   lines: { net: number; loanDeduction: number; paymentStatus: string; projectId: string | null }[];
 };
 
@@ -183,7 +183,7 @@ export function payrollPostings(r: PayrollFacts): Posting[] {
       date: utcDay(r.paidAt ?? r.approvedAt ?? monthEnd(r.month)),
       type: "PAYMENT",
       narration: `Salaries paid ${r.month} — ${r.label}`,
-      lines: [{ tag: "ACCRUED_SALARIES", debit: paid }, { tag: "BANK", credit: paid }],
+      lines: [{ tag: "ACCRUED_SALARIES", debit: paid }, { tag: "BANK", credit: paid, ...(r.bankId ? { bankId: r.bankId } : {}) }],
     });
   }
   return out;

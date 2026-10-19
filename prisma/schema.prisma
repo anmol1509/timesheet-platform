@@ -134,6 +134,9 @@ model Branch {
   accrueTickets    Boolean   @default(false)
   // The company's rules for those provisions (gratuity days and cap, leave cap, default ticket); see lib/books/accruals.ts.
   provisionPolicy  Json?
+  // Which company bank receipts and payments use when none is chosen.
+  defaultReceiptBankId String?
+  defaultPaymentBankId String?
   accounts         Account[]
   journalEntries   JournalEntry[]
   provisionRules   ProvisionRule[]
@@ -541,6 +544,8 @@ model ClientInvoice {
   issueDate     DateTime  @default(now())
   dueDate       DateTime?
   paidDate      DateTime?
+  // The company bank account the money arrived in (null: the branch's default receiving bank).
+  paidBankId    String?
 
   client   Client @relation(fields: [clientId], references: [id])
   clientId String
@@ -2133,6 +2138,8 @@ model BillPayment {
   amount    Decimal  @db.Decimal(12, 2)
   method    String? // "BANK" | "CASH" | "CHEQUE"
   reference String?
+  // The company bank account it was paid from (null: the branch's default paying bank).
+  bankId    String?
   createdAt DateTime @default(now())
 
   bill   SupplierBill @relation(fields: [billId], references: [id], onDelete: Cascade)
