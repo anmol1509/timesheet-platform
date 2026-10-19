@@ -143,6 +143,9 @@ export default async function EmployeeDetailPage({
           hourlyRate: true,
           otMultiplier: true,
         dailyHours: true,
+          leaveDaysPerYear: true,
+          airTicketAmount: true,
+          airTicketEveryMonths: true,
         },
       })
     : null;
@@ -159,6 +162,9 @@ export default async function EmployeeDetailPage({
         hourlyRate: n(payRow.hourlyRate),
         otMultiplier: n(payRow.otMultiplier) || "1.25",
         dailyHours: n(payRow.dailyHours) || "8",
+        leaveDaysPerYear: n(payRow.leaveDaysPerYear),
+        airTicketAmount: n(payRow.airTicketAmount),
+        airTicketEveryMonths: n(payRow.airTicketEveryMonths),
       }
     : null;
 

@@ -117,6 +117,17 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
     const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
     if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
+    const whole = (k: string, max: number) => {
+      const v = numberOrNull(formData.get(k));
+      return v === null ? null : v >= 0 && v <= max && Number.isInteger(v) ? v : "bad";
+    };
+    const leaveDays = whole("leaveDaysPerYear", 90);
+    const ticketMonths = whole("airTicketEveryMonths", 60);
+    const ticketAmount = money("airTicketAmount");
+    if (leaveDays === "bad") return { error: "Leave days a year must be a whole number up to 90." };
+    if (ticketMonths === "bad" || ticketMonths === 0) return { error: "Air ticket every how many months? Enter a whole number from 1 to 60." };
+    if (ticketAmount === "bad") return { error: "The air ticket amount can't be negative." };
+    if (ticketAmount && !ticketMonths) return { error: "Say how often the air ticket is given (in months)." };
     const daily = numberOrNull(formData.get("dailyHours")) ?? 8;
     if (daily < 1 || daily > 16) return { error: "Daily hours must be between 1 and 16." };
     payData = {
@@ -136,6 +147,9 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       hourlyRate: structure === "HOURLY" ? (formData.has("hourlyRate") ? parsed.hourlyRate : undefined) : null,
       paysOvertime: formData.get("paysOvertime") === "on",
       otMultiplier: mult,
+      leaveDaysPerYear: leaveDays,
+      airTicketAmount: ticketAmount,
+      airTicketEveryMonths: ticketAmount ? ticketMonths : null,
     };
   }
 

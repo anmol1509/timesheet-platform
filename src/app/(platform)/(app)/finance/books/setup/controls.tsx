@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction } from "../actions";
+import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -82,6 +82,42 @@ export function RefreshControl() {
         setMsg(r.error ? r.error : `${r.created} new, ${r.updated} updated, ${r.removed} removed.${r.unmapped?.length ? ` Not posted (no account): ${r.unmapped.join(", ")}.` : ""}`);
       })}>{pending ? "Posting…" : "Post everything now"}</Button>
       {msg && <p role="status" className="text-sm text-secondary">{msg}</p>}
+    </div>
+  );
+}
+
+const PROVISION_ROWS = [
+  { key: "gratuity", title: "End-of-service gratuity", note: "21 days of basic a year (30 after 5 years), set aside from each person's first day." },
+  { key: "leave", title: "Annual leave", note: "Uses each person's paid leave days. Builds up to one year's worth." },
+  { key: "tickets", title: "Air tickets", note: "Uses each person's ticket amount and how often it is given." },
+] as const;
+
+/** Month-end provisions: what is owed to staff later is charged to the month they earn it. */
+export function ProvisionSettings({ initial, canEdit }: { initial: { gratuity: boolean; leave: boolean; tickets: boolean }; canEdit: boolean }) {
+  const [on, setOn] = useState(initial);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <div className="space-y-3">
+      <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default">
+        {PROVISION_ROWS.map((r) => (
+          <li key={r.key}>
+            <label className="flex items-start gap-3 px-4 py-3 text-sm">
+              <input type="checkbox" className="mt-1" disabled={!canEdit} checked={on[r.key]} onChange={(e) => setOn((c) => ({ ...c, [r.key]: e.target.checked }))} />
+              <span><span className="font-medium text-primary">{r.title}</span><span className="block text-xs text-muted">{r.note}</span></span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
+            const r = await saveProvisionSettingsAction(on);
+            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: "Saved. Each finished month now gets one entry." });
+          })}>{pending ? "Saving…" : "Save"}</Button>
+          {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+        </div>
+      )}
     </div>
   );
 }

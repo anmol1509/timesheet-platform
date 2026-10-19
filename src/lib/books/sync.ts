@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { DEFAULT_CHART, VOUCHER_PREFIX } from "./chart";
-import { billPostings, expensePostings, hashPosting, invoicePostings, loanPostings, payrollPostings, topUpPostings, totals, utcDay, type Posting } from "./postings";
+import { billPostings, expensePostings, hashPosting, invoicePostings, loanPostings, payrollPostings, settlementPostings, topUpPostings, r2, totals, utcDay, type Posting } from "./postings";
 import { isLocked } from "./ledger";
+import { accrualPostings, monthsBetween, type StaffFacts } from "./accruals";
 
 const SYNC_MAX_AGE_MS = 30_000;
 const CHUNK = 400;
@@ -16,6 +17,21 @@ export async function ensureChart(branchId: string) {
     data: DEFAULT_CHART.map((c) => ({ branchId, code: c.code, name: c.name, type: c.type, tag: c.tag ?? null, isSystem: !!c.tag })),
     skipDuplicates: true,
   });
+}
+
+/** Adds the staff-provision accounts to a chart made before they existed. Safe to call repeatedly. */
+export async function ensureProvisionAccounts(branchId: string) {
+  const wanted = DEFAULT_CHART.filter((c) => c.tag && /^(EOSB|PROVISION_|EXP_EOSB|EXP_LEAVE|EXP_TICKETS)/.test(c.tag));
+  const have = await prisma.account.findMany({ where: { branchId }, select: { code: true, tag: true } });
+  const tags = new Set(have.map((a) => a.tag));
+  const codes = new Set(have.map((a) => a.code));
+  for (const c of wanted) {
+    if (tags.has(c.tag as string)) continue;
+    let code = Number(c.code);
+    while (codes.has(String(code))) code += 1;
+    codes.add(String(code));
+    await prisma.account.create({ data: { branchId, code: String(code), name: c.name, type: c.type, tag: c.tag, isSystem: true } });
+  }
 }
 
 /** "Emirates NBD · ···1234 (AED)": the ledger name for a company bank account. */
@@ -79,14 +95,22 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   const scope = branchWhere(branchId);
   const since = opening;
   const openMonth = `${opening.getUTCFullYear()}-${String(opening.getUTCMonth() + 1).padStart(2, "0")}`;
-  const [invoices, bills, expenses, runs, loans, topUps] = await Promise.all([
+  const [invoices, bills, expenses, runs, loans, topUps, branchRow, people, settlements, openingLines] = await Promise.all([
     prisma.clientInvoice.findMany({ where: { ...scope, OR: [{ issueDate: { gte: since } }, { paidDate: { gte: since } }] }, include: { client: { select: { name: true } } } }),
     prisma.supplierBill.findMany({ where: { ...scope, approvalStatus: "APPROVED", OR: [{ billDate: { gte: since } }, { payments: { some: { paidOn: { gte: since } } } }] }, include: { supplier: { select: { name: true } }, payments: true } }),
     prisma.expense.findMany({ where: { ...scope, status: "APPROVED", OR: [{ date: { gte: since } }, { reimbursedAt: { gte: since } }] } }),
     prisma.payrollRun.findMany({ where: { ...scope, status: { in: ["APPROVED", "PAID"] }, OR: [{ month: { gte: openMonth } }, { paidAt: { gte: since } }] }, include: { lines: { select: { net: true, loanDeduction: true, paymentStatus: true, projectId: true } } } }),
     prisma.employeeLoan.findMany({ where: { ...scope, approvalStatus: "APPROVED", givenDate: { gte: since } }, include: { employee: { select: { name: true } } } }),
     prisma.pettyCashTopUp.findMany({ where: { ...scope, date: { gte: since } } }),
+    prisma.branch.findUnique({ where: { id: branchId }, select: { accrueGratuity: true, accrueLeave: true, accrueTickets: true } }),
+    prisma.employee.findMany({
+      where: { ...scope, joinDate: { not: null } },
+      select: { id: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true },
+    }),
+    prisma.finalSettlement.findMany({ where: { ...scope }, include: { employee: { select: { name: true } } } }),
+    prisma.journalLine.findMany({ where: { entry: { branchId, sourceKey: "opening" }, account: { tag: { in: ["EOSB", "PROVISION_LEAVE", "PROVISION_TICKETS"] } } }, select: { debit: true, credit: true, account: { select: { tag: true } } } }),
   ]);
+  const on = { gratuity: !!branchRow?.accrueGratuity, leave: !!branchRow?.accrueLeave, tickets: !!branchRow?.accrueTickets };
   const companyIds = [...new Set(runs.map((r) => r.companyId).filter((x): x is string => !!x))];
   const companies = companyIds.length ? await prisma.supplier.findMany({ where: { id: { in: companyIds } }, select: { id: true, name: true } }) : [];
   const companyName = new Map(companies.map((c) => [c.id, c.name]));
@@ -98,6 +122,29 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   for (const r of runs) out.push(...payrollPostings({ id: r.id, month: r.month, status: r.status, approvedAt: r.approvedAt, paidAt: r.paidAt, label: (r.companyId && companyName.get(r.companyId)) || "all workers", lines: r.lines.map((l) => ({ net: Number(l.net), loanDeduction: Number(l.loanDeduction), paymentStatus: l.paymentStatus, projectId: l.projectId })) }));
   for (const l of loans) out.push(...loanPostings({ id: l.id, refNo: l.refNo, employeeId: l.employeeId, employeeName: l.employee.name, principal: Number(l.principal), approvalStatus: l.approvalStatus, givenDate: l.givenDate, method: l.method, type: l.type }));
   for (const t of topUps) out.push(...topUpPostings({ id: t.id, amount: Number(t.amount), date: t.date, note: t.note }));
+  for (const st of settlements) out.push(...settlementPostings({ id: st.id, employeeId: st.employeeId, employeeName: st.employee.name, status: st.status, paidAt: st.paidAt, gratuity: Number(st.gratuity), unpaidSalary: Number(st.unpaidSalary), leavePay: Number(st.leavePay), noticePay: Number(st.noticePay), otherEarnings: Number(st.otherEarnings), loanBalance: Number(st.loanBalance), otherDeductions: Number(st.otherDeductions), fromGratuityProvision: on.gratuity, fromLeaveProvision: on.leave }));
+  if (on.gratuity || on.leave || on.tickets) {
+    const settledOn = new Map(settlements.filter((x) => x.status === "PAID" && x.paidAt).map((x) => [x.employeeId, utcDay(x.paidAt as Date)]));
+    const staff: StaffFacts[] = people.map((e) => {
+      const itemised = e.payStructure === "ITEMISED";
+      const flat = e.payStructure === "FLAT";
+      const basic = itemised ? Number(e.basicSalary ?? 0) : flat ? Number(e.flatMonthlyRate ?? 0) : 0;
+      const fixed = itemised ? basic + Number(e.housingAllowance ?? 0) + Number(e.foodAllowance ?? 0) + Number(e.transportAllowance ?? 0) + Number(e.otherAllowance ?? 0) : basic;
+      return { id: e.id, joinDate: e.joinDate ? utcDay(e.joinDate) : null, exitDate: e.exitDate ? utcDay(e.exitDate) : null, settledOn: settledOn.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths };
+    });
+    const opening0 = { gratuity: 0, leave: 0, tickets: 0 };
+    for (const l of openingLines) {
+      const k = l.account.tag === "EOSB" ? "gratuity" : l.account.tag === "PROVISION_LEAVE" ? "leave" : "tickets";
+      opening0[k] = r2(opening0[k] + Number(l.credit) - Number(l.debit));
+    }
+    const today = utcDay(new Date());
+    const lastDone = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0)); // last day of the previous month
+    const last = `${lastDone.getUTCFullYear()}-${String(lastDone.getUTCMonth() + 1).padStart(2, "0")}`;
+    const used = settlements
+      .filter((x) => x.status === "PAID" && x.paidAt)
+      .map((x) => ({ date: utcDay(x.paidAt as Date), amounts: { gratuity: on.gratuity ? Number(x.gratuity) : 0, leave: on.leave ? Number(x.leavePay) : 0 } }));
+    if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, opening: opening0, used }));
+  }
   return out.filter((p) => p.date.getTime() >= since.getTime());
 }
 
@@ -110,6 +157,7 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
   const result: SyncResult = { created: 0, updated: 0, removed: 0, skippedLocked: 0, unmapped: [] };
   if (!branch?.booksOpeningDate) return result;
+  await ensureProvisionAccounts(branchId);
   const opening = utcDay(branch.booksOpeningDate);
   const locked = branch.booksLockedUntil ? utcDay(branch.booksLockedUntil) : null;
 

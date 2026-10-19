@@ -155,6 +155,9 @@ export type PayFormValues = {
   hourlyRate: string;
   otMultiplier: string;
   dailyHours: string;
+  leaveDaysPerYear: string;
+  airTicketAmount: string;
+  airTicketEveryMonths: string;
 };
 
 function toDateInput(d: Date | null) {
@@ -736,6 +739,16 @@ export function EditForm({
                   </Field>
                   <Field label="Overtime multiplier">
                     <NumberInput name="otMultiplier" defaultValue={pay.otMultiplier} min={1} max={3} step={0.01} className="w-full" />
+                  </Field>
+                  <p className="text-xs text-muted sm:col-span-2">Contract terms the books can set aside each month. Leave blank if they aren&apos;t in this person&apos;s contract.</p>
+                  <Field label="Paid leave (days a year)">
+                    <NumberInput name="leaveDaysPerYear" defaultValue={pay.leaveDaysPerYear} min={0} max={90} step={1} className="w-full" />
+                  </Field>
+                  <Field label="Air ticket amount (AED)">
+                    <NumberInput name="airTicketAmount" defaultValue={pay.airTicketAmount} min={0} step={0.01} className="w-full" />
+                  </Field>
+                  <Field label="Air ticket every (months)">
+                    <NumberInput name="airTicketEveryMonths" defaultValue={pay.airTicketEveryMonths} min={1} max={60} step={1} className="w-full" />
                   </Field>
                 </>
               )}

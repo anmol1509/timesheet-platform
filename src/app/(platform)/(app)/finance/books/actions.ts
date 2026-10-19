@@ -312,3 +312,16 @@ export async function importOpeningBalancesAction(rows: ImportRow[]): Promise<Re
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { imported: merged.length, newAccounts: created }, userId: user.id, userName: user.name, branchId });
   return { plug: saved.plug, created };
 }
+
+/** Which staff provisions the books set aside each month. Takes effect on the next refresh; closed (locked) months stay as they are. */
+export async function saveProvisionSettingsAction(input: { gratuity: boolean; leave: boolean; tickets: boolean }): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const data = { accrueGratuity: !!input.gratuity, accrueLeave: !!input.leave, accrueTickets: !!input.tickets };
+  await prisma.branch.update({ where: { id: branchId }, data });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: data, userId: user.id, userName: user.name, branchId });
+  const result = await syncPostings(branchId);
+  refresh();
+  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}
