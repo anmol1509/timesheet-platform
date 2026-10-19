@@ -12,6 +12,7 @@ import { SetupCard } from "./setup-card";
 import { VoucherDialog } from "./voucher-dialog";
 import { VoidButton } from "./void-button";
 import { ReceivePayment } from "./receive-payment";
+import { TransferDialog } from "./transfer-dialog";
 import { LockNow } from "./lock-now";
 
 export const metadata = { title: "Accounting" };
@@ -68,6 +69,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         actions={ctx.canWrite ? (
           <div className="flex gap-2">
             <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} />
+            {moneyAccts.length > 1 && <TransferDialog accounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} minDate={minDate} />}
             <VoucherDialog accounts={options} minDate={minDate} label="New entry" />
           </div>
         ) : undefined}

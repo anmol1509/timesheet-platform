@@ -376,3 +376,31 @@ export async function saveDefaultBanksAction(input: { receipt: string; payment: 
   refresh();
   return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
+
+/** Money moved between two of the company's own bank or cash accounts. */
+export async function createTransferAction(input: { from: string; to: string; date: string; amount: number; narration: string }): Promise<Result & { number?: string }> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const date = parseDay(input.date);
+  if (!date) return { error: "Choose a date." };
+  const amount = r2(Number(input.amount) || 0);
+  if (amount <= 0) return { error: "Enter an amount." };
+  if (!input.from || !input.to) return { error: "Choose both accounts." };
+  if (input.from === input.to) return { error: "Choose two different accounts." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  if (date.getTime() < utcDay(state.booksOpeningDate).getTime()) return { error: "That is before your books start." };
+  if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "That period is locked." };
+  const accts = await prisma.account.findMany({ where: { id: { in: [input.from, input.to] }, branchId, type: "ASSET", isActive: true }, select: { id: true, name: true } });
+  if (accts.length !== 2) return { error: "Choose bank or cash accounts." };
+  const nameOf = (id: string) => accts.find((x) => x.id === id)?.name ?? "";
+  const narration = input.narration.trim() || `Transfer from ${nameOf(input.from)} to ${nameOf(input.to)}`;
+  const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.TRANSFER, 1);
+  const entry = await prisma.journalEntry.create({
+    data: { branchId, number, date, type: "TRANSFER", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.to, debit: amount, credit: 0 }, { accountId: input.from, debit: 0, credit: amount }] } },
+  });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "TRANSFER", total: amount }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { number };
+}

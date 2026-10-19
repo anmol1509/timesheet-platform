@@ -5,6 +5,8 @@ import { DEFAULT_CHART, VOUCHER_PREFIX } from "./chart";
 import { billPostings, expensePostings, hashPosting, invoicePostings, loanPostings, payrollPostings, settlementPostings, topUpPostings, r2, totals, utcDay, type Posting } from "./postings";
 import { isLocked } from "./ledger";
 import { assetPostings } from "./assets";
+import { chequePostings } from "./cheques";
+import { recurringPostings, type Frequency } from "./recurring";
 import { costTag, customPostings, provisionTag, type CustomRule, type RuleStaff } from "./customProvisions";
 import { accrualPostings, monthsBetween, readPolicy } from "./accruals";
 
@@ -124,7 +126,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   const scope = branchWhere(branchId);
   const since = opening;
   const openMonth = `${opening.getUTCFullYear()}-${String(opening.getUTCMonth() + 1).padStart(2, "0")}`;
-  const [invoices, bills, expenses, runs, loans, topUps, branchRow, people, settlements, openingLines, rules, assets] = await Promise.all([
+  const [invoices, bills, expenses, runs, loans, topUps, branchRow, people, settlements, openingLines, rules, assets, cheques, recurring] = await Promise.all([
     prisma.clientInvoice.findMany({ where: { ...scope, OR: [{ issueDate: { gte: since } }, { paidDate: { gte: since } }] }, include: { client: { select: { name: true } } } }),
     prisma.supplierBill.findMany({ where: { ...scope, approvalStatus: "APPROVED", OR: [{ billDate: { gte: since } }, { payments: { some: { paidOn: { gte: since } } } }] }, include: { supplier: { select: { name: true } }, payments: true } }),
     prisma.expense.findMany({ where: { ...scope, status: "APPROVED", OR: [{ date: { gte: since } }, { reimbursedAt: { gte: since } }] } }),
@@ -140,6 +142,8 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     prisma.journalLine.findMany({ where: { entry: { branchId, sourceKey: "opening" }, account: { tag: { in: ["EOSB", "PROVISION_LEAVE", "PROVISION_TICKETS"] } } }, select: { debit: true, credit: true, account: { select: { tag: true } } } }),
     prisma.provisionRule.findMany({ where: { branchId }, orderBy: { createdAt: "asc" } }),
     prisma.fixedAsset.findMany({ where: { branchId } }),
+    prisma.cheque.findMany({ where: { branchId, status: "CLEARED" } }),
+    prisma.recurringEntry.findMany({ where: { branchId } }),
   ]);
   const on = { gratuity: !!branchRow?.accrueGratuity, leave: !!branchRow?.accrueLeave, tickets: !!branchRow?.accrueTickets };
   const companyIds = [...new Set(runs.map((r) => r.companyId).filter((x): x is string => !!x))];
@@ -176,6 +180,8 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
       .map((x) => ({ date: utcDay(x.paidAt as Date), amounts: { gratuity: on.gratuity ? Number(x.gratuity) : 0, leave: on.leave ? Number(x.leavePay) : 0 } }));
     if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, policy: readPolicy(branchRow?.provisionPolicy), opening: opening0, used }));
   }
+  for (const c of cheques) out.push(...chequePostings({ id: c.id, direction: c.direction as "RECEIVED" | "ISSUED", number: c.number, amount: Number(c.amount), partyType: c.partyType as "CLIENT" | "SUPPLIER" | "OTHER", partyId: c.partyId, partyName: c.partyName, bankId: c.bankId, counterAccountId: c.counterAccountId, narration: c.narration, status: c.status, clearedOn: c.clearedOn ? utcDay(c.clearedOn) : null }));
+  for (const r of recurring) out.push(...recurringPostings({ id: r.id, name: r.name, frequency: r.frequency as Frequency, startDate: utcDay(r.startDate), endDate: r.endDate ? utcDay(r.endDate) : null, debitAccountId: r.debitAccountId, creditAccountId: r.creditAccountId, amount: Number(r.amount), active: r.active }, opening, today));
   if (assets.length) {
     out.push(...assetPostings(assets.map((a) => ({ id: a.id, name: a.name, cost: Number(a.cost), salvage: Number(a.salvage), purchaseDate: utcDay(a.purchaseDate), lifeMonths: a.lifeMonths, paidFromAccountId: a.paidFromAccountId, disposedOn: a.disposedOn ? utcDay(a.disposedOn) : null, disposalAmount: a.disposalAmount == null ? null : Number(a.disposalAmount), disposalAccountId: a.disposalAccountId })), opening, last));
   }
@@ -199,7 +205,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   const receiveBank = branchRow?.defaultReceiptBankId ?? null;
   const payBank = branchRow?.defaultPaymentBankId ?? null;
   const withDefaultBank = (p: Posting): Posting => {
-    const bank = /^invoice-paid:/.test(p.sourceKey) ? receiveBank : /^(billpay|payroll-paid|expense-reimbursed|loan|settlement):/.test(p.sourceKey) ? payBank : null;
+    const bank = /^invoice-paid:/.test(p.sourceKey) ? receiveBank : /^(billpay|payroll-paid|expense-reimbursed|loan|settlement):/.test(p.sourceKey) ? payBank : /^cheque:/.test(p.sourceKey) ? (p.type === "RECEIPT" ? receiveBank : payBank) : null;
     if (!bank) return p;
     return { ...p, lines: p.lines.map((l) => (l.tag === "BANK" && !l.bankId && !l.accountId ? { ...l, bankId: bank } : l)) };
   };

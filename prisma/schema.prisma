@@ -141,6 +141,8 @@ model Branch {
   journalEntries   JournalEntry[]
   provisionRules   ProvisionRule[]
   fixedAssets      FixedAsset[]
+  cheques          Cheque[]
+  recurringEntries RecurringEntry[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -3071,6 +3073,50 @@ model FixedAsset {
   disposalAccountId String?
   notes        String?
   createdAt    DateTime  @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId])
+}
+
+/// A cheque received or issued. Nothing reaches the books until it clears; post-dated ones sit here until their date.
+model Cheque {
+  id          String    @id @default(cuid())
+  direction   String // RECEIVED | ISSUED
+  number      String
+  chequeDate  DateTime  @db.Date
+  amount      Decimal   @db.Decimal(14, 2)
+  partyType   String // CLIENT | SUPPLIER | OTHER
+  partyId     String?
+  partyName   String
+  // The company bank account it is drawn on (issued) or will be deposited in (received).
+  bankId      String?
+  // For OTHER parties: the account the other side of the entry goes to.
+  counterAccountId String?
+  narration   String?
+  status      String    @default("PENDING") // PENDING | CLEARED | BOUNCED | CANCELLED
+  clearedOn   DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId, status])
+}
+
+/// An entry that repeats (rent, insurance, a loan instalment): debit one account and credit another on a schedule.
+model RecurringEntry {
+  id         String    @id @default(cuid())
+  name       String
+  frequency  String // MONTHLY | QUARTERLY | YEARLY
+  startDate  DateTime  @db.Date
+  endDate    DateTime? @db.Date
+  debitAccountId  String
+  creditAccountId String
+  amount     Decimal   @db.Decimal(14, 2)
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String

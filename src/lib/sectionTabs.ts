@@ -65,6 +65,8 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     { href: "/finance/books", label: "Transactions", match: (p) => p === "/finance/books" || under("/finance/books/parties")(p) },
     { href: "/finance/books/bank", label: "Bank", match: under("/finance/books/bank") },
+    { href: "/finance/books/cheques", label: "Cheques", match: under("/finance/books/cheques") },
+    { href: "/finance/books/recurring", label: "Recurring", match: under("/finance/books/recurring") },
     { href: "/finance/books/assets", label: "Assets", match: under("/finance/books/assets") },
     { href: "/finance/books/reports", label: "Reports", match: (p) => under("/finance/books/reports")(p) || under("/finance/books/accounts")(p) || under("/finance/books/ledger")(p) },
     { href: "/finance/books/setup", label: "Settings", match: under("/finance/books/setup") },
