@@ -58,7 +58,7 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
       <DialogTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs hover:bg-surface-hover hover:text-primary">
         <ScanSearch className="h-3.5 w-3.5" aria-hidden /> Re-check expired against scans
       </DialogTrigger>
-      <DialogContent title="Re-check expired documents" description="Each scan is read again and the date it shows is set beside the one on file. Nothing changes until you apply." className="max-w-6xl">
+      <DialogContent title="Re-check expired documents" description="Each scan is read again and the date it shows is set beside the one on file. Nothing changes until you apply." className="max-w-6xl!">
         <p className="mt-3 text-xs text-muted" aria-live="polite">{running ? `Reading ${done} of ${ids.length}…` : `Read ${rows.length} of ${ids.length}. ${changed.length} differ from what is on file.`}</p>
         <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-default">
