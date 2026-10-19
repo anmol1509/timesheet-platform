@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import type { Policy } from "@/lib/books/accruals";
-import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction, saveProvisionSettingsAction } from "../actions";
+import { METHOD_LABEL, type CustomRule, type RuleMethod } from "@/lib/books/customProvisions";
+import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -157,6 +158,63 @@ export function ProvisionSettings({ initial, policy, canEdit }: { initial: { gra
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+const APPLIES: Record<CustomRule["appliesTo"], string> = { ALL: "Everyone", SITE_STAFF: "Site staff", STAFF: "Office staff" };
+
+function RuleRow({ rule, canEdit }: { rule: CustomRule | null; canEdit: boolean }) {
+  const [name, setName] = useState(rule?.name ?? "");
+  const [method, setMethod] = useState<RuleMethod>(rule?.method ?? "PER_PERSON");
+  const [amount, setAmount] = useState(rule ? String(rule.amount) : "");
+  const [every, setEvery] = useState(rule ? String(rule.everyMonths) : "12");
+  const [applies, setApplies] = useState<CustomRule["appliesTo"]>(rule?.appliesTo ?? "ALL");
+  const [active, setActive] = useState(rule?.active ?? true);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  const save = (nextActive: boolean) => start(async () => {
+    const r = await saveProvisionRuleAction({ id: rule?.id, name, method, amount: Number(amount.replace(/,/g, "")) || 0, everyMonths: Number(every) || 0, appliesTo: applies, active: nextActive });
+    if (r.error) { setMsg({ ok: false, text: r.error }); return; }
+    setActive(nextActive);
+    setMsg({ ok: true, text: "Saved." });
+    if (!rule) { setName(""); setAmount(""); }
+  });
+  return (
+    <li className={`px-4 py-3 ${rule && !active ? "opacity-60" : ""}`}>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block text-xs text-muted">{rule ? "Name" : "New provision"}<input disabled={!canEdit} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Annual bonus" className="input mt-1 block h-8 w-44 text-sm" /></label>
+        <label className="block text-xs text-muted">Worked out as
+          <select disabled={!canEdit} value={method} onChange={(e) => setMethod(e.target.value as RuleMethod)} className="input mt-1 block h-8 w-56 text-sm">{(Object.keys(METHOD_LABEL) as RuleMethod[]).map((k) => <option key={k} value={k}>{METHOD_LABEL[k]}</option>)}</select>
+        </label>
+        <label className="block text-xs text-muted">Amount<input disabled={!canEdit} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="input mt-1 block h-8 w-24 text-right text-sm" /></label>
+        <label className="block text-xs text-muted">Every (months)<input disabled={!canEdit} inputMode="numeric" value={every} onChange={(e) => setEvery(e.target.value)} className="input mt-1 block h-8 w-20 text-right text-sm" /></label>
+        {method !== "COMPANY" && (
+          <label className="block text-xs text-muted">For
+            <select disabled={!canEdit} value={applies} onChange={(e) => setApplies(e.target.value as CustomRule["appliesTo"])} className="input mt-1 block h-8 w-36 text-sm">{(Object.keys(APPLIES) as CustomRule["appliesTo"][]).map((k) => <option key={k} value={k}>{APPLIES[k]}</option>)}</select>
+          </label>
+        )}
+        {canEdit && (
+          <div className="flex gap-2">
+            <Button type="button" size="sm" disabled={pending} onClick={() => save(rule ? active : true)}>{pending ? "Saving…" : rule ? "Save" : "Add"}</Button>
+            {rule && <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => save(!active)}>{active ? "Switch off" : "Switch on"}</Button>}
+          </div>
+        )}
+      </div>
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`mt-2 text-xs ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+    </li>
+  );
+}
+
+/** The company's own provisions, on top of gratuity, leave and tickets. */
+export function CustomProvisions({ rules, canEdit }: { rules: CustomRule[]; canEdit: boolean }) {
+  return (
+    <div className="space-y-2">
+      <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default">
+        {rules.map((r) => <RuleRow key={`${r.id}:${r.name}:${r.amount}:${r.everyMonths}:${r.method}:${r.appliesTo}:${r.active}`} rule={r} canEdit={canEdit} />)}
+        {canEdit && <RuleRow key="new" rule={null} canEdit />}
+      </ul>
+      <p className="text-xs text-muted">Each builds up month by month across its cycle and starts again after it. When you pay it out, record the payment against its provision account and the books keep the balance right.</p>
     </div>
   );
 }

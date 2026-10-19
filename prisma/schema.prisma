@@ -136,6 +136,7 @@ model Branch {
   provisionPolicy  Json?
   accounts         Account[]
   journalEntries   JournalEntry[]
+  provisionRules   ProvisionRule[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -3023,5 +3024,25 @@ model DocumentEdit {
   branchId String
 
   @@unique([kind, subjectId])
+  @@index([branchId])
+}
+
+/// A provision the company defines itself (annual bonus, medical insurance, visa renewals...). Each builds up month by
+/// month across a cycle and starts again; its liability and cost accounts are created from `id` (tags PROV_<id>, EXPC_<id>).
+model ProvisionRule {
+  id          String   @id @default(cuid())
+  name        String
+  // PER_PERSON: `amount` AED per person per cycle. PERCENT: `amount` % of monthly pay each month of the cycle.
+  // COMPANY: `amount` AED for the whole company per cycle.
+  method      String   @default("PER_PERSON")
+  amount      Decimal  @db.Decimal(14, 2)
+  everyMonths Int      @default(12)
+  appliesTo   String   @default("ALL") // ALL | SITE_STAFF | STAFF
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
   @@index([branchId])
 }

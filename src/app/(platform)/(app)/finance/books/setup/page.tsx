@@ -2,10 +2,11 @@ import { BookOpen } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { readPolicy } from "@/lib/books/accruals";
+import type { CustomRule, RuleMethod } from "@/lib/books/customProvisions";
 import { getBooksContext, iso } from "../books-data";
 import { SetupCard } from "../setup-card";
 import { ImportWizard } from "./import-wizard";
-import { LockControl, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
+import { CustomProvisions, LockControl, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
 
 export const metadata = { title: "Accounting settings" };
 
@@ -25,9 +26,10 @@ export default async function SetupPage() {
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header}<SetupCard isAdmin={ctx.isAdmin} /></div>;
   const branchId = ctx.branch.id;
   const open = iso(ctx.branch.booksOpeningDate!);
-  const [accounts, opening] = await Promise.all([
+  const [accounts, opening, ruleRows] = await Promise.all([
     prisma.account.findMany({ where: { branchId, isActive: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, type: true, tag: true } }),
     prisma.journalEntry.findFirst({ where: { branchId, sourceKey: "opening" }, include: { lines: true } }),
+    prisma.provisionRule.findMany({ where: { branchId }, orderBy: { createdAt: "asc" } }),
   ]);
   const byAcc = new Map<string, { debit: number; credit: number }>();
   for (const l of opening?.lines ?? []) {
@@ -73,6 +75,9 @@ export default async function SetupPage() {
       )}
       <Card title="Staff provisions" hint="Gratuity, leave and air tickets are paid later but earned every month. Switch them on and the books charge each finished month and build the liability on the balance sheet. See the amounts under Reports › Staff provisions.">
         <ProvisionSettings initial={{ gratuity: ctx.branch.accrueGratuity, leave: ctx.branch.accrueLeave, tickets: ctx.branch.accrueTickets }} policy={readPolicy(ctx.branch.provisionPolicy)} canEdit={ctx.canWrite} />
+      </Card>
+      <Card title="Your own provisions" hint="Anything else you owe later but earn now: an annual bonus, staff insurance, visa renewals, the yearly audit fee. Name it, say how it is worked out and how often it is paid.">
+        <CustomProvisions rules={ruleRows.map((r) => ({ id: r.id, name: r.name, method: r.method as RuleMethod, amount: Number(r.amount), everyMonths: r.everyMonths, appliesTo: r.appliesTo as CustomRule["appliesTo"], active: r.active }))} canEdit={ctx.canWrite} />
       </Card>
       {ctx.canWrite && (
         <Card title="Automatic postings" hint="Invoices, supplier bills and payments, expenses, payroll and loans post by themselves. They refresh whenever the books are opened; use this to do it now.">
