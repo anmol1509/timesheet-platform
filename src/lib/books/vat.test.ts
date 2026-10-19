@@ -43,3 +43,10 @@ test("emirate names and quarters", () => {
   assert.deepEqual([q.from, q.to, q.label], ["2026-10-01", "2026-12-31", "Q4 2026"]);
   assert.equal(quarterOf(new Date(Date.UTC(2026, 0, 10)), 1).label, "Q4 2025");
 });
+
+test("the year-end close and opening entries never count as sales", () => {
+  const close: VatEntry = { type: "CLOSING", lines: [line("INCOME_SALES", "INCOME", 1000, 0), line("RETAINED_EARNINGS", "EQUITY", 0, 1000)] };
+  const r = vatReturn([sale(1000, 50), close], "Dubai");
+  assert.equal(r.zeroRated, 0);
+  assert.equal(r.salesTotal.amount, 1000);
+});

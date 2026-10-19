@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { DEFAULT_CHART, VOUCHER_PREFIX } from "./chart";
@@ -84,6 +84,8 @@ export async function linkBankAccounts(branchId: string) {
     prisma.account.findMany({ where: { branchId }, select: { id: true, code: true, tag: true, name: true, bankId: true } }),
   ]);
   if (!banks.length) return;
+  // The generic "Bank — main account" goes to a dirham account first: everything not tied to a bank posts there.
+  banks.sort((a, b) => Number(a.currency !== "AED") - Number(b.currency !== "AED"));
   const byBank = new Map(accounts.filter((a) => a.bankId).map((a) => [a.bankId as string, a]));
   const main = accounts.find((a) => a.tag === "BANK" && !a.bankId);
   let mainFree = !!main && !accounts.some((a) => a.tag === "BANK" && a.bankId);
@@ -123,7 +125,20 @@ export async function reserveNumbers(branchId: string, prefix: string, count: nu
 export type SyncResult = { created: number; updated: number; removed: number; skippedLocked: number; unmapped: string[] };
 
 /** Everything the business has done, as postings dated on or after `opening`. */
-async function gatherPostings(branchId: string, opening: Date): Promise<Posting[]> {
+/** What the ledger really holds on provision accounts (credit minus debit) up to the lock date, by account tag. */
+async function balancesAtLock(branchId: string, tags: string[], lockedUntil: Date): Promise<Map<string, number>> {
+  if (!tags.length) return new Map();
+  const accounts = await prisma.account.findMany({ where: { branchId, tag: { in: tags } }, select: { id: true, tag: true } });
+  const sums = await prisma.journalLine.groupBy({ by: ["accountId"], where: { accountId: { in: accounts.map((a) => a.id) }, entry: { branchId, status: "POSTED", date: { lte: lockedUntil } } }, _sum: { debit: true, credit: true } });
+  const out = new Map<string, number>();
+  for (const a of accounts) {
+    const row = sums.find((x) => x.accountId === a.id);
+    out.set(a.tag as string, row ? r2(Number(row._sum.credit ?? 0) - Number(row._sum.debit ?? 0)) : 0);
+  }
+  return out;
+}
+
+async function gatherPostings(branchId: string, opening: Date, locked: Date | null): Promise<Posting[]> {
   const scope = branchWhere(branchId);
   const since = opening;
   const openMonth = `${opening.getUTCFullYear()}-${String(opening.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -179,7 +194,12 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     const used = settlements
       .filter((x) => x.status === "PAID" && x.paidAt)
       .map((x) => ({ date: utcDay(x.paidAt as Date), amounts: { gratuity: on.gratuity ? Number(x.gratuity) : 0, leave: on.leave ? Number(x.leavePay) : 0 } }));
-    if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, policy: readPolicy(branchRow?.provisionPolicy), opening: opening0, used }));
+    let lock: { until: Date; balance: { gratuity: number; leave: number; tickets: number } } | undefined;
+    if (locked) {
+      const bal = await balancesAtLock(branchId, ["EOSB", "PROVISION_LEAVE", "PROVISION_TICKETS"], locked);
+      lock = { until: locked, balance: { gratuity: bal.get("EOSB") ?? 0, leave: bal.get("PROVISION_LEAVE") ?? 0, tickets: bal.get("PROVISION_TICKETS") ?? 0 } };
+    }
+    if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, policy: readPolicy(branchRow?.provisionPolicy), opening: opening0, used, lock }));
   }
   for (const c of cheques) out.push(...chequePostings({ id: c.id, direction: c.direction as "RECEIVED" | "ISSUED", number: c.number, amount: Number(c.amount), partyType: c.partyType as "CLIENT" | "SUPPLIER" | "OTHER", partyId: c.partyId, partyName: c.partyName, bankId: c.bankId, counterAccountId: c.counterAccountId, narration: c.narration, status: c.status, clearedOn: c.clearedOn ? utcDay(c.clearedOn) : null }));
   for (const r of recurring) out.push(...recurringPostings({ id: r.id, name: r.name, frequency: r.frequency as Frequency, startDate: utcDay(r.startDate), endDate: r.endDate ? utcDay(r.endDate) : null, debitAccountId: r.debitAccountId, creditAccountId: r.creditAccountId, amount: Number(r.amount), active: r.active }, opening, today));
@@ -212,14 +232,20 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
           }),
         };
       });
-      out.push(...fxPostings(accountsFx, rates, monthsBetween(openMonth, last)));
+      let lock: { until: Date; adjusted: Record<string, number> } | undefined;
+      if (locked) {
+        // The revaluations already posted up to the lock date (debit minus credit on each foreign account).
+        const posted = await prisma.journalLine.groupBy({ by: ["accountId"], where: { accountId: { in: foreignBanks.map((a) => a.id) }, entry: { branchId, status: "POSTED", date: { lte: locked }, sourceKey: { startsWith: "fx:" } } }, _sum: { debit: true, credit: true } });
+        lock = { until: locked, adjusted: Object.fromEntries(posted.map((x) => [x.accountId, r2(Number(x._sum.debit ?? 0) - Number(x._sum.credit ?? 0))])) };
+      }
+      out.push(...fxPostings(accountsFx, rates, monthsBetween(openMonth, last), lock));
     }
   }
   const customRules: CustomRule[] = rules.map((r) => ({ id: r.id, name: r.name, method: r.method as CustomRule["method"], amount: Number(r.amount), everyMonths: r.everyMonths, appliesTo: r.appliesTo as CustomRule["appliesTo"], active: r.active }));
   if (customRules.length && openMonth <= last) {
     const tagToRule = new Map(customRules.map((r) => [provisionTag(r.id), r.id]));
     const ruleLines = await prisma.journalLine.findMany({
-      where: { account: { branchId, tag: { in: [...tagToRule.keys()] } }, entry: { OR: [{ sourceKey: null }, { NOT: { sourceKey: { startsWith: "accrual" } } }] } },
+      where: { account: { branchId, tag: { in: [...tagToRule.keys()] } }, entry: { status: "POSTED", OR: [{ sourceKey: null }, { NOT: { sourceKey: { startsWith: "accrual" } } }] } },
       select: { debit: true, credit: true, account: { select: { tag: true } }, entry: { select: { date: true, sourceKey: true } } },
     });
     const opening: Record<string, number> = {};
@@ -229,7 +255,12 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
       if (l.entry.sourceKey === "opening") opening[id] = r2((opening[id] ?? 0) + Number(l.credit) - Number(l.debit));
       else used.push({ date: utcDay(l.entry.date), ruleId: id, amount: r2(Number(l.debit) - Number(l.credit)) });
     }
-    out.push(...customPostings({ months: monthsBetween(openMonth, last), staff, rules: customRules, opening, used }));
+    let lock: { until: Date; balance: Record<string, number> } | undefined;
+    if (locked) {
+      const bal = await balancesAtLock(branchId, [...tagToRule.keys()], locked);
+      lock = { until: locked, balance: Object.fromEntries(customRules.map((r) => [r.id, bal.get(provisionTag(r.id)) ?? 0])) };
+    }
+    out.push(...customPostings({ months: monthsBetween(openMonth, last), staff, rules: customRules, opening, used, lock }));
   }
   // Money that no bank was named for goes through the branch's default receiving or paying bank, when one is set.
   const receiveBank = branchRow?.defaultReceiptBankId ?? null;
@@ -247,7 +278,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
  * appears, rewritten when the source changes, and removed when the source goes away. Entries on or before the lock
  * date are never touched, and nothing before the opening date is posted (opening balances stand in for it).
  */
-export async function syncPostings(branchId: string): Promise<SyncResult> {
+async function runSync(branchId: string): Promise<SyncResult> {
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
   const result: SyncResult = { created: 0, updated: 0, removed: 0, skippedLocked: 0, unmapped: [] };
   if (!branch?.booksOpeningDate) return result;
@@ -257,7 +288,7 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
   const locked = branch.booksLockedUntil ? utcDay(branch.booksLockedUntil) : null;
 
   const [desiredAll, accounts, existing] = await Promise.all([
-    gatherPostings(branchId, opening),
+    gatherPostings(branchId, opening, locked),
     prisma.account.findMany({ where: { branchId }, select: { id: true, tag: true, bankId: true } }),
     prisma.journalEntry.findMany({ where: { branchId, AND: [{ sourceKey: { not: null } }, { sourceKey: { not: "opening" } }] }, select: { id: true, sourceKey: true, sourceHash: true, date: true } }),
   ]);
@@ -268,6 +299,9 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
 
   type Ready = { posting: Posting; hash: string; lines: { accountId: string; debit: number; credit: number; description?: string; partyType?: string; partyId?: string; projectId?: string }[] };
   const desired = new Map<string, Ready>();
+  // Postings that could not be written this time (an account is missing, or they don't balance). Whatever entry they
+  // already have is left alone: a transient mapping problem must not erase history.
+  const unresolved = new Set<string>();
   for (const p of desiredAll) {
     const lines = [];
     let missing = false;
@@ -276,8 +310,9 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
       if (!accountId) { unmapped.add(l.tag); missing = true; break; }
       lines.push({ accountId, debit: l.debit ?? 0, credit: l.credit ?? 0, description: l.description, partyType: l.partyType, partyId: l.partyId, projectId: l.projectId });
     }
-    if (missing || !totals(p.lines).balanced) continue;
-    desired.set(p.sourceKey, { posting: p, hash: hashPosting(p), lines });
+    if (missing || !totals(p.lines).balanced) { unresolved.add(p.sourceKey); continue; }
+    // The hash covers the accounts the lines resolved to, so relinking a bank or changing the main account rewrites the entry.
+    desired.set(p.sourceKey, { posting: p, hash: createHash("sha1").update(hashPosting(p)).update(lines.map((l) => l.accountId).join(",")).digest("hex"), lines });
   }
   result.unmapped = [...unmapped];
 
@@ -294,8 +329,9 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
       else toUpdate.push({ id: cur.id, ready });
     }
   }
-  const toRemove = existing.filter((e) => !desired.has(e.sourceKey as string) && !isLocked(utcDay(e.date), locked)).map((e) => e.id);
-  result.skippedLocked += existing.filter((e) => !desired.has(e.sourceKey as string) && isLocked(utcDay(e.date), locked)).length;
+  const gone = existing.filter((e) => !desired.has(e.sourceKey as string) && !unresolved.has(e.sourceKey as string));
+  const toRemove = gone.filter((e) => !isLocked(utcDay(e.date), locked)).map((e) => e.id);
+  result.skippedLocked += gone.filter((e) => isLocked(utcDay(e.date), locked)).length;
 
   // Numbers, one block per voucher prefix.
   const numbers = new Map<string, string[]>();
@@ -329,6 +365,30 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
   }
   await prisma.branch.update({ where: { id: branchId }, data: { booksSyncedAt: new Date() } });
   return result;
+}
+
+const running = new Map<string, Promise<SyncResult>>();
+
+/**
+ * Brings the ledger up to date. Two syncs for the same branch never run side by side in one server (the second waits for
+ * the first), and if another server wins the race and writes an entry first, the duplicate is simply dropped.
+ */
+export async function syncPostings(branchId: string): Promise<SyncResult> {
+  const previous = running.get(branchId) ?? Promise.resolve(null);
+  const next = previous.catch(() => null).then(async () => {
+    try {
+      return await runSync(branchId);
+    } catch (e) {
+      if (typeof e === "object" && e && "code" in e && (e as { code?: string }).code === "P2002") return { created: 0, updated: 0, removed: 0, skippedLocked: 0, unmapped: [] } as SyncResult;
+      throw e;
+    }
+  });
+  running.set(branchId, next);
+  try {
+    return await next;
+  } finally {
+    if (running.get(branchId) === next) running.delete(branchId);
+  }
 }
 
 /** Syncs unless it was done moments ago, so opening several books pages in a row stays quick. */

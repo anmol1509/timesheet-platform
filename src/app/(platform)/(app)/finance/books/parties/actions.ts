@@ -1,5 +1,6 @@
 "use server";
 
+import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite } from "@/lib/auth";
@@ -100,7 +101,7 @@ export async function createPartyEntryAction(input: PartyEntryInput): Promise<Re
   const date = new Date(`${input.date}T00:00:00.000Z`);
   const amount = r2(Number(input.amount) || 0);
   const vat = input.kind === "NOTE" ? r2(Number(input.vat) || 0) : 0;
-  if (amount <= 0) return { error: "Enter an amount." };
+  { const bad = amountError(amount); if (bad) return { error: bad }; }
   if (vat < 0) return { error: "VAT can't be negative." };
   const narration = input.narration.trim();
   if (!narration) return { error: "Say what it is for." };

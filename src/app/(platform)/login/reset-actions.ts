@@ -1,5 +1,6 @@
 "use server";
 
+import { endSessionsFor } from "@/lib/userSessions";
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -77,6 +78,8 @@ export async function resetPasswordAction(_prev: State, formData: FormData): Pro
     prisma.otpChallenge.deleteMany({ where: { kind: RESET_KIND, phone: emailKey(user.email), consumedAt: null, NOT: { id: challenge.id } } }),
     prisma.otpChallenge.deleteMany({ where: { kind: "STAFF_LOGIN", phone: emailKey(user.email) } }),
   ]);
+  // A reset is the answer to "someone else may have my password": every existing sign-in ends.
+  await endSessionsFor(user.id);
   await logAudit({
     entityType: "USER",
     entityId: user.id,

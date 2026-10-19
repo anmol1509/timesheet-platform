@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -153,7 +154,7 @@ export function ProvisionSettings({ initial, policy, canEdit }: { initial: { gra
         <div className="flex items-center gap-3">
           <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
             const r = await saveProvisionSettingsAction({ ...on, policy: fromText(t) });
-            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: "Saved. Months that aren't locked are recalculated." });
+            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: r.warning ?? "Saved. Months that aren't locked are recalculated." });
           })}>{pending ? "Saving…" : "Save"}</Button>
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
         </div>
@@ -177,7 +178,7 @@ function RuleRow({ rule, canEdit }: { rule: CustomRule | null; canEdit: boolean 
     const r = await saveProvisionRuleAction({ id: rule?.id, name, method, amount: Number(amount.replace(/,/g, "")) || 0, everyMonths: Number(every) || 0, appliesTo: applies, active: nextActive });
     if (r.error) { setMsg({ ok: false, text: r.error }); return; }
     setActive(nextActive);
-    setMsg({ ok: true, text: "Saved." });
+    setMsg({ ok: true, text: r.warning ?? "Saved." });
     if (!rule) { setName(""); setAmount(""); }
   });
   return (
@@ -211,7 +212,7 @@ export function CustomProvisions({ rules, canEdit }: { rules: CustomRule[]; canE
   return (
     <div className="space-y-2">
       <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default">
-        {rules.map((r) => <RuleRow key={`${r.id}:${r.name}:${r.amount}:${r.everyMonths}:${r.method}:${r.appliesTo}:${r.active}`} rule={r} canEdit={canEdit} />)}
+        {rules.map((r) => <RuleRow key={r.id} rule={r} canEdit={canEdit} />)}
         {canEdit && <RuleRow key="new" rule={null} canEdit />}
       </ul>
       <p className="text-xs text-muted">Each builds up month by month across its cycle and starts again after it. When you pay it out, record the payment against its provision account and the books keep the balance right.</p>
@@ -242,7 +243,7 @@ export function DefaultBanks({ banks, receipt, payment, canEdit }: { banks: { id
         <div className="flex items-center gap-3">
           <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
             const res = await saveDefaultBanksAction({ receipt: r, payment: p });
-            setMsg(res.error ? { ok: false, text: res.error } : { ok: true, text: "Saved. Postings without their own bank now use these." });
+            setMsg(res.error ? { ok: false, text: res.error } : { ok: true, text: res.warning ?? "Saved. Postings without their own bank now use these." });
           })}>{pending ? "Saving…" : "Save"}</Button>
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
         </div>
@@ -281,7 +282,7 @@ export function YearEnd({ years }: { years: { year: number; profit: number; clos
 /** Exchange rates for foreign bank accounts. The month-end rate decides what each account is worth in dirhams. */
 export function ExchangeRates({ currencies, rates, canEdit }: { currencies: string[]; rates: { id: string; currency: string; date: string; rate: number }[]; canEdit: boolean }) {
   const [currency, setCurrency] = useState(currencies[0] ?? "");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInUae());
   const [rate, setRate] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
@@ -295,7 +296,7 @@ export function ExchangeRates({ currencies, rates, canEdit }: { currencies: stri
           <label className="block text-xs text-muted">AED for 1 {currency}<input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3.6725" className="input mt-1 block h-8 w-28 text-right text-sm" /></label>
           <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
             const r = await saveExchangeRateAction({ currency, date, rate: Number(rate) });
-            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: "Saved. Foreign accounts are revalued at month ends." });
+            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: r.warning ?? "Saved. Foreign accounts are revalued at month ends." });
             if (!r.error) setRate("");
           })}>{pending ? "Saving…" : "Save rate"}</Button>
         </div>

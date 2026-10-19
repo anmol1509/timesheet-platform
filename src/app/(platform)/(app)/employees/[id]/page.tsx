@@ -11,7 +11,7 @@ import { can } from "@/lib/permissions";
 import { isOutsideBranch, branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { stagesFor } from "@/lib/lookupCategories";
-import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
+import { stageBadge } from "@/lib/employeeStage";
 import { PhotoUpload } from "./photo-upload";
 import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
@@ -239,8 +239,8 @@ export default async function EmployeeDetailPage({
                 {/* Where the worker sits in the mobilisation cycle. The
                     active/inactive chip is about the employment; this is
                     about the job, and they differ often enough to show both. */}
-                <Badge color={STAGE_COLOR[employee.status] ?? "slate"}>
-                  {STAGE_LABEL[employee.status] ?? employee.status}
+                <Badge color={stageBadge(employee.status, !!employee.project).color}>
+                  {stageBadge(employee.status, !!employee.project).label}
                 </Badge>
                 {employee.category !== "STAFF" && employee.project && (
                   <Link href={`/projects/${employee.project.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">

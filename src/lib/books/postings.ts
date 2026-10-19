@@ -12,8 +12,15 @@ export type Posting = { sourceKey: string; date: Date; type: string; narration: 
 
 export const r2 = (n: number) => Math.round((n + Math.sign(n) * Number.EPSILON) * 100) / 100;
 
-/** Dates stored as DATE come back as UTC midnight already. */
-export const utcDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+/**
+ * The calendar day a moment falls on in the UAE (UTC+4), as a UTC-midnight date. Dates stored as DATE come back as UTC
+ * midnight already and keep their day; a timestamp (an invoice marked paid at 1am Dubai time) lands on the Dubai day,
+ * not the previous UTC day, so it never slips into the wrong month or VAT quarter.
+ */
+export const utcDay = (d: Date) => {
+  const u = new Date(d.getTime() + 4 * 60 * 60 * 1000);
+  return new Date(Date.UTC(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()));
+};
 
 /** Last day of "YYYY-MM". */
 export function monthEnd(month: string): Date {

@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { deleteChequeAction, saveChequeAction, setChequeStatusAction } from "./actions";
 
 type Opt = { id: string; label: string };
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayInUae();
 const num = (s: string) => Number(s.replace(/,/g, "")) || 0;
 
 export function AddCheque({ clients, suppliers, banks, accounts }: { clients: Opt[]; suppliers: Opt[]; banks: Opt[]; accounts: Opt[] }) {

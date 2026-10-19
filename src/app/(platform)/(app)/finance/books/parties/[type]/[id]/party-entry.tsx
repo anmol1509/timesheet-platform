@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/Dialog";
@@ -14,7 +15,7 @@ const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2,
 export function PartyEntry({ type, partyId, moneyAccounts, minDate }: { type: "CLIENT" | "SUPPLIER"; partyId: string; moneyAccounts: { id: string; label: string }[]; minDate: string }) {
   const client = type === "CLIENT";
   const [kind, setKind] = useState<"NOTE" | "MONEY" | null>(null);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInUae());
   const [amount, setAmount] = useState("");
   const [vat, setVat] = useState("");
   const [narration, setNarration] = useState("");

@@ -41,7 +41,7 @@ export function emirateOf(text: string | null | undefined): Emirate {
 export function vatReturn(entries: VatEntry[], emirate: string, manual: Manual = {}): VatReturn {
   let stdSales = 0, outVat = 0, zero = 0, stdCost = 0, inVat = 0;
   for (const e of entries) {
-    if (e.type === "OPENING") continue;
+    if (e.type === "OPENING" || e.type === "CLOSING") continue;
     const vatOut = e.lines.filter((l) => l.tag === "VAT_OUTPUT").reduce((s, l) => s + l.credit - l.debit, 0);
     const vatIn = e.lines.filter((l) => l.tag === "VAT_INPUT").reduce((s, l) => s + l.debit - l.credit, 0);
     const sales = e.lines.filter((l) => l.tag === "INCOME_SALES").reduce((s, l) => s + l.credit - l.debit, 0);

@@ -32,3 +32,12 @@ test("months without a rate yet are skipped, and a cleared balance is cleared in
   assert.deepEqual(posts[0].lines[0], { tag: "BANK", debit: 27.5, accountId: "usd" }); // 0 − (3,672.50 − 3,700)
   assert.deepEqual(fxPostings([acc], {}, monthsBetween("2026-01", "2026-02")), []);
 });
+
+test("revaluations posted in locked months are kept and later months build on them", () => {
+  const acc = { accountId: "usd", currency: "USD", movements: [{ date: d("2026-01-10"), aed: 3672.5, foreign: 1000 }] };
+  const rates = { USD: [{ date: d("2026-01-31"), rate: 3.6725 }, { date: d("2026-02-28"), rate: 3.68 }, { date: d("2026-03-31"), rate: 3.65 }] };
+  // February is locked and already holds a +7.50 revaluation.
+  const posts = fxPostings([acc], rates, monthsBetween("2026-01", "2026-03"), { until: d("2026-02-28"), adjusted: { usd: 7.5 } });
+  assert.deepEqual(posts.map((p) => p.sourceKey), ["fx:2026-03"]);
+  assert.deepEqual(posts[0].lines[0], { tag: "BANK", credit: 30, accountId: "usd" });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { THEME_COOKIE, type ThemePreference } from "@/lib/theme-preference";
@@ -33,10 +33,18 @@ export function ThemeToggle({
 }) {
   const [value, setValue] = useState<ThemePreference>(initial);
 
+  // The Appearance page can change the theme too; keep this switch in step with it.
+  useEffect(() => {
+    const sync = (e: Event) => setValue((e as CustomEvent<ThemePreference>).detail);
+    window.addEventListener("theme-changed", sync);
+    return () => window.removeEventListener("theme-changed", sync);
+  }, []);
+
   function apply(next: ThemePreference) {
     setValue(next);
     writeThemePreference(next);
-    void setThemeAction(next);
+    // Saving on the account is a convenience: if it fails the choice still holds on this device.
+    void setThemeAction(next).catch(() => {});
   }
 
   return (

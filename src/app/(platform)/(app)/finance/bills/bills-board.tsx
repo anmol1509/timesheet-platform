@@ -35,7 +35,9 @@ const errCls = "text-sm text-[var(--danger-text,#b42318)]";
 function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string }[]; onDone: () => void }) {
   const [allowDuplicate, setAllowDuplicate] = useState(false);
   const [supplierId, setSupplierId] = useState("");
-  const prev = new Date(); prev.setUTCMonth(prev.getUTCMonth() - 1);
+  // Last month, worked out from the first of this month so the 29th–31st can't overflow into the current month.
+  const now = new Date();
+  const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
   const [month, setMonth] = useState(prev.toISOString().slice(0, 7));
   const [sheet, setSheet] = useState<SupplierMonthPayable | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);

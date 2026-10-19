@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +18,7 @@ const aed = (x: number) => x.toLocaleString("en-AE", { minimumFractionDigits: 2,
 /** A manual journal voucher: any set of debits and credits that balance. */
 export function VoucherDialog({ accounts, minDate, label = "New voucher" }: { accounts: { id: string; label: string }[]; minDate?: string; label?: string }) {
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInUae());
   const [narration, setNarration] = useState("");
   const [lines, setLines] = useState<Line[]>([blank(), blank()]);
   const [error, setError] = useState<string | null>(null);

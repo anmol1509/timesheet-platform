@@ -38,3 +38,10 @@ test("month-end journals balance, honour payments, and release when the cycle re
   // The month-end journals must add back the 1,200 the payment took out, plus January's new-cycle 100.
   assert.equal(Math.round(net * 100) / 100, 1200 / 12 + 1200);
 });
+
+test("locked months restart the running balance from the ledger", () => {
+  const posts = customPostings({ months: monthsBetween("2026-01", "2026-04"), staff: [person()], rules: [rule()], opening: {}, used: [], lock: { until: d("2026-03-31"), balance: { r1: 150 } } });
+  assert.deepEqual(posts.map((p) => p.sourceKey), ["accrual-custom:2026-04"]);
+  const credit = posts[0].lines.filter((l) => l.tag === "PROV_r1").reduce((s, l) => s + (l.credit ?? 0) - (l.debit ?? 0), 0);
+  assert.equal(150 + credit, ruleTarget(rule(), [person()], d("2026-04-30")));
+});

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BedDouble, FileCheck2, HardHat, MapPin, Phone, MessageCircle, Package } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { COMPLIANCE_FIELDS, complianceStatus, daysUntil } from "@/lib/compliance";
-import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
+import { stageBadge } from "@/lib/employeeStage";
 import { cn } from "@/lib/cn";
 
 const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
@@ -52,7 +52,7 @@ export function ProfileSummary({ employee: e, project, bed, supplier, latest, pp
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Card icon={HardHat} title="Deployment">
           <div>
-            <Badge color={STAGE_COLOR[e.status] ?? "slate"} dot>{STAGE_LABEL[e.status] ?? e.status}</Badge>
+            <Badge color={stageBadge(e.status, !!project).color} dot>{stageBadge(e.status, !!project).label}</Badge>
           </div>
           {project ? (
             <div className="text-sm">

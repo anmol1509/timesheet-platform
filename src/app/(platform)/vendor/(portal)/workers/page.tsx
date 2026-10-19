@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { visibleSkillWhere } from "@/lib/skillScope";
 import { getVendor } from "@/lib/vendor/session";
 import { Badge, type BadgeColor } from "@/components/Badge";
-import { STAGE_LABEL } from "@/lib/employeeStage";
+import { stageBadge } from "@/lib/employeeStage";
 import { AddWorker, SubmissionList, type SubmissionRow } from "./add-worker";
 
 export const metadata = { title: "Your workers" };
@@ -55,7 +55,7 @@ export default async function VendorWorkersPage() {
             <li key={w.id} className="space-y-1.5 px-4 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-medium text-primary">{w.name} <span className="font-normal text-muted">· {w.employeeIdNo}</span></p>
-                <span className="text-xs text-muted">{STAGE_LABEL[w.status as keyof typeof STAGE_LABEL] ?? w.status}{w.project ? ` · ${w.project.name}` : ""}</span>
+                <span className="text-xs text-muted">{stageBadge(w.status, !!w.project).label}{w.project ? ` · ${w.project.name}` : ""}</span>
               </div>
               {w.trade && <p className="text-xs text-muted">{w.trade}</p>}
               <div className="flex flex-wrap gap-1.5">

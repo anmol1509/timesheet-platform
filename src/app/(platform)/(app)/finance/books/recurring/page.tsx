@@ -14,9 +14,9 @@ export default async function RecurringPage() {
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header()}<SetupCard isAdmin={ctx.isAdmin} /></div>;
   const [rows, accounts] = await Promise.all([
     prisma.recurringEntry.findMany({ where: { branchId: ctx.branch.id }, orderBy: { createdAt: "asc" } }),
-    prisma.account.findMany({ where: { branchId: ctx.branch.id, isActive: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }),
+    prisma.account.findMany({ where: { branchId: ctx.branch.id }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, isActive: true } }),
   ]);
-  const opts = accounts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }));
+  const opts = accounts.filter((a) => a.isActive).map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }));
   const name = new Map(accounts.map((a) => [a.id, `${a.code} · ${a.name}`]));
   const now = new Date();
   const horizon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 14, 1));

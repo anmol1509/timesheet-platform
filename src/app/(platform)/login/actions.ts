@@ -3,8 +3,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
-import { setSessionCookie } from "@/lib/session";
-import { startSession } from "@/lib/userSessions";
+import { getSessionFromCookies, setSessionCookie } from "@/lib/session";
+import { endSession, startSession } from "@/lib/userSessions";
 import { parsePreferences } from "@/lib/preferences";
 import { canOpenPage, writePreferenceCookies } from "@/lib/preferenceCookies";
 
@@ -47,11 +47,13 @@ export async function loginAction(
     return { error: "This account has been suspended. Contact your administrator." };
   }
 
+  // Signing in again on this browser replaces whatever sign-in it already had.
+  await endSession((await getSessionFromCookies())?.sid);
   const sid = await startSession(user.id);
   await setSessionCookie(user.id, remember, sid);
   // Their own look follows them to this device, and they land where they chose to start.
   const prefs = parsePreferences(user.preferences);
-  if (user.preferences) await writePreferenceCookies(prefs);
+  await writePreferenceCookies(prefs); // also clears a previous person's look on a shared browser
   const subject = { role: user.role, permissions: user.accessRole?.permissions ?? null };
   redirect(prefs.startPage !== "/" && canOpenPage(subject, prefs.startPage) ? prefs.startPage : "/");
 }

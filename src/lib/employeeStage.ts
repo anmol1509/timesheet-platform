@@ -48,3 +48,13 @@ export const STAGE_COLOR: Record<string, "green" | "amber" | "slate" | "red" | "
   ON_VACATION: "slate",
   TERMINATED: "red",
 };
+
+/**
+ * What to show for a worker's stage. A new or imported worker is stored as
+ * ACTIVE (the column default), but without a project they have not been
+ * deployed anywhere, so the plain stages read as "On bench" until they are.
+ */
+export function stageBadge(status: string, hasProject: boolean) {
+  if ((status === "ACTIVE" || status === "IDLE") && !hasProject) return { label: "On bench", color: "amber" as const };
+  return { label: STAGE_LABEL[status] ?? status, color: STAGE_COLOR[status] ?? "slate" };
+}

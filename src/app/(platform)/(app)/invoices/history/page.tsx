@@ -14,9 +14,9 @@ function fmt(n: number) {
 export default async function InvoiceHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; status?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, status } = await searchParams;
   const { branchId } = await requireUserWithBranch();
   const invoices = await prisma.clientInvoice.findMany({
     where: branchWhere(branchId),
@@ -94,7 +94,7 @@ export default async function InvoiceHistoryPage({
           </p>
         </div>
       ) : (
-        <InvoiceHistoryList invoices={rows} banks={banks} />
+        <InvoiceHistoryList key={status ?? ""} invoices={rows} banks={banks} />
       )}
     </div>
   );

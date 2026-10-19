@@ -1,5 +1,6 @@
 "use server";
 
+import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite } from "@/lib/auth";
@@ -34,7 +35,7 @@ export async function saveAssetAction(input: AssetInput): Promise<Result> {
   if (!name) return { error: "Give the asset a name." };
   const cost = r2(Number(input.cost) || 0);
   const salvage = r2(Number(input.salvage) || 0);
-  if (cost <= 0) return { error: "Enter what it cost." };
+  { const bad = amountError(cost, "cost"); if (bad) return { error: bad }; }
   if (salvage < 0 || salvage >= cost) return { error: "The value left at the end must be below the cost." };
   const life = Math.round(Number(input.lifeMonths));
   if (!Number.isFinite(life) || life < 1 || life > 600) return { error: "Useful life must be 1 to 600 months." };

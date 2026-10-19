@@ -18,7 +18,7 @@ export const CF_LABEL: Record<CfKey, string> = {
 export function cfKey(others: CfLine[]): CfKey {
   const has = (f: (l: CfLine) => boolean) => others.some(f);
   if (has((l) => l.accountType === "EQUITY" && l.tag !== "OPENING_EQUITY")) return "capital";
-  if (has((l) => l.accountType === "ASSET" && !l.tag)) return "assets";
+  if (has((l) => l.accountType === "ASSET" && (!l.tag || l.tag === "FIXED_ASSETS" || l.tag === "ACC_DEP"))) return "assets";
   if (has((l) => l.tag === "RECEIVABLE")) return "clients";
   if (has((l) => l.tag === "PAYABLE")) return "suppliers";
   if (has((l) => l.tag === "ACCRUED_SALARIES" || l.tag === "SALARIES" || l.tag === "STAFF_ADVANCES" || l.tag === "DUE_TO_STAFF")) return "salaries";
@@ -29,6 +29,7 @@ export function cfKey(others: CfLine[]): CfKey {
 export function cashFlow(entries: CfEntry[]): CashFlow {
   const rows: Record<CfKey, number> = { clients: 0, suppliers: 0, salaries: 0, otherOperating: 0, assets: 0, capital: 0 };
   for (const e of entries) {
+    if (e.type === "OPENING") continue; // the opening balance is where the period starts, not money that moved
     const delta = e.lines.filter((l) => l.money).reduce((s, l) => s + l.debit - l.credit, 0);
     if (Math.abs(delta) < 0.005) continue;
     rows[cfKey(e.lines.filter((l) => !l.money))] += delta;

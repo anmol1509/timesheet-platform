@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -15,7 +16,7 @@ const FREQ = [{ value: "MONTHLY", label: "Every month" }, { value: "QUARTERLY", 
 
 export function RecurringDialog({ accounts, row }: { accounts: Opt[]; row?: RecurringRow }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ name: row?.name ?? "", frequency: row?.frequency ?? "MONTHLY", start: row?.startDate ?? new Date().toISOString().slice(0, 10), end: row?.endDate ?? "", debit: row?.debitAccountId ?? "", credit: row?.creditAccountId ?? "", amount: row ? String(row.amount) : "" });
+  const [f, setF] = useState({ name: row?.name ?? "", frequency: row?.frequency ?? "MONTHLY", start: row?.startDate ?? todayInUae(), end: row?.endDate ?? "", debit: row?.debitAccountId ?? "", credit: row?.creditAccountId ?? "", amount: row ? String(row.amount) : "" });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const set = (k: keyof typeof f) => (v: string) => setF((c) => ({ ...c, [k]: v }));
@@ -23,7 +24,7 @@ export function RecurringDialog({ accounts, row }: { accounts: Opt[]; row?: Recu
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{row ? <Button type="button" size="sm" variant="ghost">Change</Button> : <Button type="button" size="sm">New recurring entry</Button>}</DialogTrigger>
-      <DialogContent title={row ? "Change recurring entry" : "New recurring entry"} description="Posts itself on every due date, from the first date until today. Rent, insurance, a loan instalment, a retainer.">
+      <DialogContent title={row ? "Change recurring entry" : "New recurring entry"} description={row ? "Posts itself on every due date. Changing the amount or accounts changes entries already posted, unless their month is locked. To change it from now on only, end this one and add a new one." : "Posts itself on every due date, from the first date until today. Rent, insurance, a loan instalment, a retainer."}>
         <div className="space-y-3">
           <label className="block text-sm font-medium text-primary">What is it for<Input className="mt-1" value={f.name} onChange={(e) => set("name")(e.target.value)} placeholder="e.g. Office rent" /></label>
           <div className="grid grid-cols-2 gap-3">
@@ -41,6 +42,7 @@ export function RecurringDialog({ accounts, row }: { accounts: Opt[]; row?: Recu
           <Button type="button" disabled={pending} onClick={() => start(async () => {
             const r = await saveRecurringAction({ id: row?.id, name: f.name, frequency: f.frequency, startDate: f.start, endDate: f.end || undefined, debitAccountId: f.debit, creditAccountId: f.credit, amount: num(f.amount), active: row?.active ?? true });
             if (r.error) { setError(r.error); return; }
+            if (r.warning) window.alert(r.warning);
             setOpen(false); setError(null);
             if (!row) setF((c) => ({ ...c, name: "", amount: "" }));
           })}>{pending ? "Saving…" : "Save"}</Button>
@@ -55,7 +57,7 @@ export function RecurringActions({ accounts, row }: { accounts: Opt[]; row: Recu
   return (
     <div className="flex justify-end gap-1.5">
       <RecurringDialog accounts={accounts} row={row} />
-      <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await saveRecurringAction({ ...row, endDate: row.endDate || undefined, active: !row.active }); if (r.error) window.alert(r.error); })}>{row.active ? "Pause" : "Resume"}</Button>
+      <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await saveRecurringAction({ ...row, endDate: row.endDate || undefined, active: !row.active }); if (r.error) window.alert(r.error); else if (r.warning) window.alert(r.warning); })}>{row.active ? "Pause" : "Resume"}</Button>
       <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { if (window.confirm(`Remove "${row.name}"? The entries it posted are removed too, unless their month is locked.`)) start(async () => { const r = await deleteRecurringAction(row.id); if (r.error) window.alert(r.error); }); }}>Remove</Button>
     </div>
   );
