@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { BUCKETS, BUCKET_LABEL, ageParties, ageTotals, termsDays, type AgeRow, type Bucket } from "@/lib/books/ageing";
 import { CF_LABEL, cashFlow, type CfKey } from "@/lib/books/cashflow";
-import { PROVISIONS, provisionAt, provisionTotals, type StaffFacts } from "@/lib/books/accruals";
+import { PROVISIONS, provisionAt, provisionTotals, type Policy, type StaffFacts } from "@/lib/books/accruals";
 import { isMoneyAccount } from "@/lib/books/ledger";
 import { branchWhere } from "@/lib/branch";
 import { profitByClient } from "@/lib/books/projectProfit";
@@ -168,11 +168,11 @@ export async function ProjectProfitView({ branchId, from, asOf }: { branchId: st
 }
 
 /** What is owed to staff for later, per person, set against what the books have set aside so far. */
-export async function ProvisionsView({ branchId, asOf, on }: { branchId: string; asOf: Date; on: { gratuity: boolean; leave: boolean; tickets: boolean } }) {
+export async function ProvisionsView({ branchId, asOf, on, policy }: { branchId: string; asOf: Date; on: { gratuity: boolean; leave: boolean; tickets: boolean }; policy: Policy }) {
   const [people, paid, ledger] = await Promise.all([
     prisma.employee.findMany({
       where: { ...branchWhere(branchId), joinDate: { not: null } },
-      select: { id: true, name: true, employeeIdNo: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true },
+      select: { id: true, name: true, employeeIdNo: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true, skipGratuity: true },
       orderBy: { name: "asc" },
     }),
     prisma.finalSettlement.findMany({ where: { branchId, status: "PAID", paidAt: { not: null } }, select: { employeeId: true, paidAt: true } }),
@@ -184,16 +184,16 @@ export async function ProvisionsView({ branchId, asOf, on }: { branchId: string;
     const itemised = e.payStructure === "ITEMISED", flat = e.payStructure === "FLAT";
     const basic = itemised ? Number(e.basicSalary ?? 0) : flat ? Number(e.flatMonthlyRate ?? 0) : 0;
     const fixed = itemised ? basic + Number(e.housingAllowance ?? 0) + Number(e.foodAllowance ?? 0) + Number(e.transportAllowance ?? 0) + Number(e.otherAllowance ?? 0) : basic;
-    const f: StaffFacts = { id: e.id, joinDate: e.joinDate, exitDate: e.exitDate, settledOn: settled.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths };
-    return { e, f, a: provisionAt(f, asOf, { gratuity: true, leave: true, tickets: true }) };
+    const f: StaffFacts = { id: e.id, joinDate: e.joinDate, exitDate: e.exitDate, settledOn: settled.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths, skipGratuity: e.skipGratuity };
+    return { e, f, a: provisionAt(f, asOf, { gratuity: true, leave: true, tickets: true }, policy) };
   }).filter((r) => r.a.gratuity + r.a.leave + r.a.tickets > 0);
-  const total = provisionTotals(facts.map((r) => r.f), asOf, { gratuity: true, leave: true, tickets: true });
+  const total = provisionTotals(facts.map((r) => r.f), asOf, { gratuity: true, leave: true, tickets: true }, policy);
   const posted = (tag: string) => {
     const id = accounts.find((a) => a.tag === tag)?.id;
     const row = ledger.find((l) => l.accountId === id);
     return row ? Number(row._sum.credit ?? 0) - Number(row._sum.debit ?? 0) : 0;
   };
-  const noContract = facts.filter((r) => r.f.leaveDaysPerYear == null && r.f.ticketAmount == null).length;
+  const noContract = facts.filter((r) => (r.f.leaveDaysPerYear ?? policy.leave.defaultDays) == null && (r.f.ticketAmount ?? policy.tickets.defaultAmount) == null).length;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -223,7 +223,7 @@ export async function ProvisionsView({ branchId, asOf, on }: { branchId: string;
           </table>
         )}
       </section>
-      <p className="text-xs text-muted">Gratuity is counted from the first day at 21 days of basic a year. Leave and tickets use each person&apos;s contract terms (set on their pay tab){noContract ? `; ${noContract} ${noContract === 1 ? "person has" : "people have"} none, so only gratuity applies to them` : ""}. Month-end entries are posted once the month is over.</p>
+      <p className="text-xs text-muted">Worked out with your rules (Accounting › Settings › Staff provisions). Leave and tickets use each person&apos;s own terms (on their pay tab) or the company default{noContract ? `; ${noContract} ${noContract === 1 ? "person has" : "people have"} none, so only gratuity applies to them` : ""}. Month-end entries are posted once the month is over.</p>
     </div>
   );
 }

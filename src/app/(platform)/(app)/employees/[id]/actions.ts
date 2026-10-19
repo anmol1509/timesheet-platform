@@ -127,7 +127,6 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (leaveDays === "bad") return { error: "Leave days a year must be a whole number up to 90." };
     if (ticketMonths === "bad" || ticketMonths === 0) return { error: "Air ticket every how many months? Enter a whole number from 1 to 60." };
     if (ticketAmount === "bad") return { error: "The air ticket amount can't be negative." };
-    if (ticketAmount && !ticketMonths) return { error: "Say how often the air ticket is given (in months)." };
     const daily = numberOrNull(formData.get("dailyHours")) ?? 8;
     if (daily < 1 || daily > 16) return { error: "Daily hours must be between 1 and 16." };
     payData = {
@@ -149,7 +148,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       otMultiplier: mult,
       leaveDaysPerYear: leaveDays,
       airTicketAmount: ticketAmount,
-      airTicketEveryMonths: ticketAmount ? ticketMonths : null,
+      airTicketEveryMonths: ticketMonths,
+      skipGratuity: formData.get("skipGratuity") === "on",
     };
   }
 

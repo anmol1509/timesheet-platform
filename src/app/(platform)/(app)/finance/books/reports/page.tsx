@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TYPE_LABEL } from "@/lib/books/chart";
 import { netProfit, normalBalance, trialBalance } from "@/lib/books/ledger";
 import { accountsWithTotals, aed, fmtDate, getBooksContext, iso } from "../books-data";
+import { readPolicy } from "@/lib/books/accruals";
 import { SetupCard } from "../setup-card";
 import { AccountsView } from "./accounts-view";
 import { AgeingView, CashFlowView, ProjectProfitView, ProvisionsView } from "./extra-views";
@@ -59,7 +60,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (view === "ar" || view === "ap") {
     body = <AgeingView branchId={ctx.branch.id} asOf={asOf} side={view === "ar" ? "RECEIVABLE" : "PAYABLE"} />;
   } else if (view === "provisions") {
-    body = <ProvisionsView branchId={ctx.branch.id} asOf={asOf} on={{ gratuity: ctx.branch.accrueGratuity, leave: ctx.branch.accrueLeave, tickets: ctx.branch.accrueTickets }} />;
+    body = <ProvisionsView branchId={ctx.branch.id} asOf={asOf} on={{ gratuity: ctx.branch.accrueGratuity, leave: ctx.branch.accrueLeave, tickets: ctx.branch.accrueTickets }} policy={readPolicy(ctx.branch.provisionPolicy)} />;
   } else if (view === "cash") {
     body = <CashFlowView branchId={ctx.branch.id} from={from} asOf={asOf} />;
   } else if (view === "project") {

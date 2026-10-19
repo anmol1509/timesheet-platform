@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ACCOUNT_TYPES, VOUCHER_PREFIX } from "@/lib/books/chart";
+import { readPolicy, type Policy } from "@/lib/books/accruals";
+import type { Prisma } from "@/generated/prisma/client";
 import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
 import { r2, totals, utcDay } from "@/lib/books/postings";
@@ -314,11 +316,14 @@ export async function importOpeningBalancesAction(rows: ImportRow[]): Promise<Re
 }
 
 /** Which staff provisions the books set aside each month. Takes effect on the next refresh; closed (locked) months stay as they are. */
-export async function saveProvisionSettingsAction(input: { gratuity: boolean; leave: boolean; tickets: boolean }): Promise<Result> {
+export async function saveProvisionSettingsAction(input: { gratuity: boolean; leave: boolean; tickets: boolean; policy: Policy }): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch first." };
-  const data = { accrueGratuity: !!input.gratuity, accrueLeave: !!input.leave, accrueTickets: !!input.tickets };
+  const policy = readPolicy(input.policy);
+  const g = policy.gratuity;
+  if (g.daysFirst > 0 && g.capMonths <= 0) return { error: "Set a gratuity cap of at least 1 month, or 0 days to turn it off." };
+  const data = { accrueGratuity: !!input.gratuity, accrueLeave: !!input.leave, accrueTickets: !!input.tickets, provisionPolicy: policy as unknown as Prisma.InputJsonValue };
   await prisma.branch.update({ where: { id: branchId }, data });
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: data, userId: user.id, userName: user.name, branchId });
   const result = await syncPostings(branchId);

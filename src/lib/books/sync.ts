@@ -4,7 +4,7 @@ import { branchWhere } from "@/lib/branch";
 import { DEFAULT_CHART, VOUCHER_PREFIX } from "./chart";
 import { billPostings, expensePostings, hashPosting, invoicePostings, loanPostings, payrollPostings, settlementPostings, topUpPostings, r2, totals, utcDay, type Posting } from "./postings";
 import { isLocked } from "./ledger";
-import { accrualPostings, monthsBetween, type StaffFacts } from "./accruals";
+import { accrualPostings, monthsBetween, readPolicy, type StaffFacts } from "./accruals";
 
 const SYNC_MAX_AGE_MS = 30_000;
 const CHUNK = 400;
@@ -102,10 +102,10 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     prisma.payrollRun.findMany({ where: { ...scope, status: { in: ["APPROVED", "PAID"] }, OR: [{ month: { gte: openMonth } }, { paidAt: { gte: since } }] }, include: { lines: { select: { net: true, loanDeduction: true, paymentStatus: true, projectId: true } } } }),
     prisma.employeeLoan.findMany({ where: { ...scope, approvalStatus: "APPROVED", givenDate: { gte: since } }, include: { employee: { select: { name: true } } } }),
     prisma.pettyCashTopUp.findMany({ where: { ...scope, date: { gte: since } } }),
-    prisma.branch.findUnique({ where: { id: branchId }, select: { accrueGratuity: true, accrueLeave: true, accrueTickets: true } }),
+    prisma.branch.findUnique({ where: { id: branchId }, select: { accrueGratuity: true, accrueLeave: true, accrueTickets: true, provisionPolicy: true } }),
     prisma.employee.findMany({
       where: { ...scope, joinDate: { not: null } },
-      select: { id: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true },
+      select: { id: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true, skipGratuity: true },
     }),
     prisma.finalSettlement.findMany({ where: { ...scope }, include: { employee: { select: { name: true } } } }),
     prisma.journalLine.findMany({ where: { entry: { branchId, sourceKey: "opening" }, account: { tag: { in: ["EOSB", "PROVISION_LEAVE", "PROVISION_TICKETS"] } } }, select: { debit: true, credit: true, account: { select: { tag: true } } } }),
@@ -130,7 +130,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
       const flat = e.payStructure === "FLAT";
       const basic = itemised ? Number(e.basicSalary ?? 0) : flat ? Number(e.flatMonthlyRate ?? 0) : 0;
       const fixed = itemised ? basic + Number(e.housingAllowance ?? 0) + Number(e.foodAllowance ?? 0) + Number(e.transportAllowance ?? 0) + Number(e.otherAllowance ?? 0) : basic;
-      return { id: e.id, joinDate: e.joinDate ? utcDay(e.joinDate) : null, exitDate: e.exitDate ? utcDay(e.exitDate) : null, settledOn: settledOn.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths };
+      return { id: e.id, joinDate: e.joinDate ? utcDay(e.joinDate) : null, exitDate: e.exitDate ? utcDay(e.exitDate) : null, settledOn: settledOn.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths, skipGratuity: e.skipGratuity };
     });
     const opening0 = { gratuity: 0, leave: 0, tickets: 0 };
     for (const l of openingLines) {
@@ -143,7 +143,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     const used = settlements
       .filter((x) => x.status === "PAID" && x.paidAt)
       .map((x) => ({ date: utcDay(x.paidAt as Date), amounts: { gratuity: on.gratuity ? Number(x.gratuity) : 0, leave: on.leave ? Number(x.leavePay) : 0 } }));
-    if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, opening: opening0, used }));
+    if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, policy: readPolicy(branchRow?.provisionPolicy), opening: opening0, used }));
   }
   return out.filter((p) => p.date.getTime() >= since.getTime());
 }

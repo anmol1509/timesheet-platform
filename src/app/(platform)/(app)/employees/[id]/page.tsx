@@ -146,6 +146,7 @@ export default async function EmployeeDetailPage({
           leaveDaysPerYear: true,
           airTicketAmount: true,
           airTicketEveryMonths: true,
+          skipGratuity: true,
         },
       })
     : null;
@@ -165,6 +166,7 @@ export default async function EmployeeDetailPage({
         leaveDaysPerYear: n(payRow.leaveDaysPerYear),
         airTicketAmount: n(payRow.airTicketAmount),
         airTicketEveryMonths: n(payRow.airTicketEveryMonths),
+        skipGratuity: payRow.skipGratuity,
       }
     : null;
 

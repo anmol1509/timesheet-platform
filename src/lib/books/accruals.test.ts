@@ -60,3 +60,27 @@ test("a paid settlement posts balanced lines, with the bank paying the net", () 
   assert.equal(p.lines.filter((l) => l.tag === "SALARIES").reduce((n, l) => n + (l.debit ?? 0), 0), 800); // unpaid salary plus leave charged straight to cost
   assert.deepEqual(settlementPostings({ id: "s2", employeeId: "e1", employeeName: "Ali", status: "DRAFT", paidAt: null, gratuity: 1, unpaidSalary: 0, leavePay: 0, noticePay: 0, otherEarnings: 0, loanBalance: 0, otherDeductions: 0, fromGratuityProvision: false, fromLeaveProvision: false }), []);
 });
+
+import { DEFAULT_POLICY, readPolicy } from "./accruals";
+
+test("the company's own gratuity rules replace the defaults", () => {
+  const p = readPolicy({ gratuity: { daysFirst: 30, startAfterMonths: 12, basis: "fixed", capMonths: 1 } });
+  assert.equal(provisionAt(person({ joinDate: d("2026-03-01"), basic: 3000, fixed: 4000 }), d("2026-10-01"), all, p).gratuity, 0); // under a year
+  const later = provisionAt(person({ joinDate: d("2024-01-01"), basic: 3000, fixed: 4000 }), d("2026-01-01"), all, p).gratuity;
+  assert.equal(later, 4000); // 2 years × 30 days of 4,000 = 8,000, capped at 1 month of pay
+});
+
+test("company defaults fill in for people without their own terms, and 0 turns an item off", () => {
+  const p = readPolicy({ leave: { defaultDays: 30 }, tickets: { defaultAmount: 1000, defaultEveryMonths: 12 } });
+  const blank = person({ leaveDaysPerYear: null, ticketAmount: null, ticketEveryMonths: null });
+  const at = d("2026-07-01");
+  assert.ok(provisionAt(blank, at, all, p).leave > 0);
+  assert.ok(provisionAt(blank, at, all, p).tickets > 0);
+  const off = person({ leaveDaysPerYear: 0, ticketAmount: 0, skipGratuity: true });
+  assert.deepEqual(provisionAt(off, at, all, p), { gratuity: 0, leave: 0, tickets: 0 });
+});
+
+test("a damaged stored policy falls back to the defaults", () => {
+  assert.deepEqual(readPolicy(null), DEFAULT_POLICY);
+  assert.deepEqual(readPolicy({ gratuity: { daysFirst: "x", capMonths: -4 } }).gratuity, DEFAULT_POLICY.gratuity);
+});

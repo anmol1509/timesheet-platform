@@ -11,7 +11,7 @@ export async function getBooksContext() {
   const subject = subjectOf(user);
   if (!can(subject, "finance.books", "view")) redirect("/no-access");
   const branch = branchId
-    ? await prisma.branch.findUnique({ where: { id: branchId }, select: { id: true, name: true, booksOpeningDate: true, booksLockedUntil: true, booksSyncedAt: true, accrueGratuity: true, accrueLeave: true, accrueTickets: true } })
+    ? await prisma.branch.findUnique({ where: { id: branchId }, select: { id: true, name: true, booksOpeningDate: true, booksLockedUntil: true, booksSyncedAt: true, accrueGratuity: true, accrueLeave: true, accrueTickets: true, provisionPolicy: true } })
     : null;
   const initialized = !!branch?.booksOpeningDate;
   if (branch && initialized) {

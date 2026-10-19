@@ -132,6 +132,8 @@ model Branch {
   accrueGratuity   Boolean   @default(false)
   accrueLeave      Boolean   @default(false)
   accrueTickets    Boolean   @default(false)
+  // The company's rules for those provisions (gratuity days and cap, leave cap, default ticket); see lib/books/accruals.ts.
+  provisionPolicy  Json?
   accounts         Account[]
   journalEntries   JournalEntry[]
 }
@@ -679,6 +681,8 @@ model Employee {
   leaveDaysPerYear     Int?
   airTicketAmount      Decimal?            @db.Decimal(12, 2)
   airTicketEveryMonths Int?
+  // Not entitled to gratuity (for example a limited-term contract), so none is set aside.
+  skipGratuity         Boolean             @default(false)
   otMultiplier       Decimal             @default(1.25) @db.Decimal(4, 2)
   // Working pattern: hours beyond dailyHours on a working day are overtime at
   // otMultiplier; hours on a weekly off day (0=Sun..6=Sat) or a HOLIDAY/OFF day

@@ -11,6 +11,34 @@ export type ProvisionKey = (typeof PROVISIONS)[number]["key"];
 export type Switches = Record<ProvisionKey, boolean>;
 export type Amounts = Record<ProvisionKey, number>;
 
+/** The company's own rules. Anything not set falls back to the UAE labour-law default. */
+export type Policy = {
+  gratuity: { daysFirst: number; daysAfter: number; firstYears: number; capMonths: number; startAfterMonths: number; basis: "basic" | "fixed" };
+  leave: { defaultDays: number | null; capYears: number };
+  tickets: { defaultAmount: number | null; defaultEveryMonths: number | null };
+};
+
+export const DEFAULT_POLICY: Policy = {
+  gratuity: { daysFirst: 21, daysAfter: 30, firstYears: 5, capMonths: 24, startAfterMonths: 0, basis: "basic" },
+  leave: { defaultDays: null, capYears: 1 },
+  tickets: { defaultAmount: null, defaultEveryMonths: null },
+};
+
+const num = (v: unknown, fallback: number, min = 0, max = 1000) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? v : fallback);
+const numOrNull = (v: unknown, min = 0, max = 1_000_000) => (typeof v === "number" && Number.isFinite(v) && v > min && v <= max ? v : null);
+
+/** Reads the stored policy defensively, so a missing or odd value never breaks the books. */
+export function readPolicy(raw: unknown): Policy {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, Record<string, unknown> | undefined>;
+  const g = r.gratuity ?? {}, l = r.leave ?? {}, t = r.tickets ?? {};
+  const d = DEFAULT_POLICY;
+  return {
+    gratuity: { daysFirst: num(g.daysFirst, d.gratuity.daysFirst, 0, 60), daysAfter: num(g.daysAfter, d.gratuity.daysAfter, 0, 60), firstYears: num(g.firstYears, d.gratuity.firstYears, 0, 50), capMonths: num(g.capMonths, d.gratuity.capMonths, 0, 600), startAfterMonths: num(g.startAfterMonths, d.gratuity.startAfterMonths, 0, 60), basis: g.basis === "fixed" ? "fixed" : "basic" },
+    leave: { defaultDays: numOrNull(l.defaultDays, 0, 90), capYears: num(l.capYears, d.leave.capYears, 0.25, 5) },
+    tickets: { defaultAmount: numOrNull(t.defaultAmount), defaultEveryMonths: numOrNull(t.defaultEveryMonths, 0, 60) },
+  };
+}
+
 export type StaffFacts = {
   id: string;
   joinDate: Date | null;
@@ -23,39 +51,45 @@ export type StaffFacts = {
   leaveDaysPerYear: number | null;
   ticketAmount: number | null;
   ticketEveryMonths: number | null;
+  skipGratuity?: boolean;
 };
 
 /**
- * Gratuity earned so far, counted from the first day (the legal minimum is one year, but the cost is earned as the
- * work is done): 21 days' basic a year for the first 5 years, 30 after, capped at two years' basic.
+ * Gratuity earned so far under the company's rules: `daysFirst` days of pay a year for the first `firstYears` years,
+ * `daysAfter` after, up to `capMonths` months' pay. Counted from the first day unless the policy says to wait
+ * `startAfterMonths` (the legal minimum is one year).
  */
-export function gratuityEarned(basicMonthly: number, years: number): number {
-  if (years <= 0 || basicMonthly <= 0) return 0;
-  const day = basicMonthly / 30;
-  return r2(Math.min(Math.min(years, 5) * 21 * day + Math.max(0, years - 5) * 30 * day, basicMonthly * 24));
+export function gratuityEarned(base: number, years: number, p: Policy["gratuity"] = DEFAULT_POLICY.gratuity): number {
+  if (years <= 0 || base <= 0 || years * 12 < p.startAfterMonths) return 0;
+  const day = base / 30;
+  const raw = Math.min(years, p.firstYears) * p.daysFirst * day + Math.max(0, years - p.firstYears) * p.daysAfter * day;
+  return r2(Math.min(raw, base * p.capMonths));
 }
 
-/** What each provision should stand at on a date, for one person. Blank contract terms accrue nothing. */
-export function provisionAt(s: StaffFacts, asOf: Date, on: Switches): Amounts {
+/** What each provision should stand at on a date, for one person. A person's own terms beat the company default; 0 means none. */
+export function provisionAt(s: StaffFacts, asOf: Date, on: Switches, policy: Policy = DEFAULT_POLICY): Amounts {
   const none: Amounts = { gratuity: 0, leave: 0, tickets: 0 };
   if (!s.joinDate || s.joinDate.getTime() > asOf.getTime()) return none;
   if (s.settledOn && s.settledOn.getTime() <= asOf.getTime()) return none;
   const end = s.exitDate && s.exitDate.getTime() < asOf.getTime() ? s.exitDate : asOf;
   const years = yearsOfService(s.joinDate, end);
   const months = years * 12;
+  const leaveDays = s.leaveDaysPerYear ?? policy.leave.defaultDays;
+  const ticketAmount = s.ticketAmount ?? policy.tickets.defaultAmount;
+  const ticketEvery = s.ticketEveryMonths ?? policy.tickets.defaultEveryMonths;
   return {
-    gratuity: on.gratuity ? gratuityEarned(s.basic, years) : 0,
-    // Up to one year's entitlement, on the assumption that leave is taken or paid out each year.
-    leave: on.leave && s.leaveDaysPerYear && s.fixed > 0 ? r2((s.fixed / 30) * s.leaveDaysPerYear * Math.min(years, 1)) : 0,
+    gratuity: on.gratuity && !s.skipGratuity ? gratuityEarned(policy.gratuity.basis === "fixed" ? s.fixed : s.basic, years, policy.gratuity) : 0,
+    // Builds up to `capYears` of entitlement, on the assumption that leave is taken or paid out as it falls due.
+    leave: on.leave && leaveDays && s.fixed > 0 ? r2((s.fixed / 30) * leaveDays * Math.min(years, policy.leave.capYears)) : 0,
     // Builds across each ticket cycle, then starts again once the ticket is bought.
-    tickets: on.tickets && s.ticketAmount && s.ticketEveryMonths ? r2(s.ticketAmount * ((months % s.ticketEveryMonths) / s.ticketEveryMonths)) : 0,
+    tickets: on.tickets && ticketAmount && ticketEvery ? r2(ticketAmount * ((months % ticketEvery) / ticketEvery)) : 0,
   };
 }
 
-export function provisionTotals(staff: StaffFacts[], asOf: Date, on: Switches): Amounts {
+export function provisionTotals(staff: StaffFacts[], asOf: Date, on: Switches, policy: Policy = DEFAULT_POLICY): Amounts {
   const t: Amounts = { gratuity: 0, leave: 0, tickets: 0 };
   for (const s of staff) {
-    const a = provisionAt(s, asOf, on);
+    const a = provisionAt(s, asOf, on, policy);
     for (const p of PROVISIONS) t[p.key] = r2(t[p.key] + a[p.key]);
   }
   return t;
@@ -80,6 +114,7 @@ export type AccrualInput = {
   months: string[];
   staff: StaffFacts[];
   on: Switches;
+  policy?: Policy;
   /** What each provision already stood at when the books opened (credit balance). */
   opening: Amounts;
   /** Amounts a paid settlement took out of a provision, by the day it was paid. */
@@ -102,7 +137,7 @@ export function accrualPostings(i: AccrualInput): Posting[] {
         for (const p of PROVISIONS) running[p.key] = r2(running[p.key] - (u.amounts[p.key] ?? 0));
       }
     }
-    const target = provisionTotals(i.staff, end, i.on);
+    const target = provisionTotals(i.staff, end, i.on, i.policy ?? DEFAULT_POLICY);
     const lines: PostLine[] = [];
     const parts: string[] = [];
     for (const p of PROVISIONS) {
