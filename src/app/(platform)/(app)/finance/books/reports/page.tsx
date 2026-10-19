@@ -6,10 +6,11 @@ import { netProfit, normalBalance, trialBalance } from "@/lib/books/ledger";
 import { accountsWithTotals, aed, fmtDate, getBooksContext, iso } from "../books-data";
 import { SetupCard } from "../setup-card";
 import { AccountsView } from "./accounts-view";
+import { AgeingView, CashFlowView, ProjectProfitView } from "./extra-views";
 
 export const metadata = { title: "Accounting reports" };
 const VIEWS = [
-  { k: "pnl", l: "Profit & loss" }, { k: "balance", l: "Balance sheet" }, { k: "vat", l: "VAT" }, { k: "trial", l: "Trial balance" }, { k: "accounts", l: "Chart of accounts" },
+  { k: "pnl", l: "Profit & loss" }, { k: "balance", l: "Balance sheet" }, { k: "cash", l: "Cash flow" }, { k: "ar", l: "Who owes you" }, { k: "ap", l: "Who you owe" }, { k: "project", l: "Profit by project" }, { k: "vat", l: "VAT" }, { k: "trial", l: "Trial balance" }, { k: "accounts", l: "Chart of accounts" },
 ] as const;
 type View = (typeof VIEWS)[number]["k"];
 
@@ -27,7 +28,7 @@ function Block({ title, rows, total, totalLabel }: { title: string; rows: { key:
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ view?: string; asof?: string; from?: string; hidden?: string }> }) {
   const ctx = await getBooksContext();
-  const header = <PageHeader title="Reports" icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Reports" }]} description="Profit & loss, balance sheet, VAT and the trial balance, straight from your transactions." />;
+  const header = <PageHeader title="Reports" icon={BookOpen} breadcrumbs={[{ label: "Finance", href: "/finance/bills" }, { label: "Accounting", href: "/finance/books" }, { label: "Reports" }]} description="Profit & loss, balance sheet, cash flow, who owes whom, profit by project, VAT and the trial balance, straight from your transactions." />;
   if (!ctx.branch || !ctx.initialized) return <div className="space-y-5">{header}<SetupCard isAdmin={ctx.isAdmin} /></div>;
   const sp = await searchParams;
   const view: View = VIEWS.some((v) => v.k === sp.view) ? (sp.view as View) : "pnl";
@@ -44,7 +45,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const from = valid(sp.from) ?? new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
   const [cumulative, period] = await Promise.all([accountsWithTotals(ctx.branch.id, asOf), accountsWithTotals(ctx.branch.id, asOf, from)]);
   const plain = (a: (typeof cumulative)[number]) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: a.debit, credit: a.credit });
-  const ranged = view === "pnl" || view === "vat";
+  const ranged = view === "pnl" || view === "vat" || view === "cash" || view === "project";
   const form = (
     <form className="flex flex-wrap items-end gap-3 text-sm">
       <input type="hidden" name="view" value={view} />
@@ -55,7 +56,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   );
 
   let body: React.ReactNode;
-  if (view === "pnl") {
+  if (view === "ar" || view === "ap") {
+    body = <AgeingView branchId={ctx.branch.id} asOf={asOf} side={view === "ar" ? "RECEIVABLE" : "PAYABLE"} />;
+  } else if (view === "cash") {
+    body = <CashFlowView branchId={ctx.branch.id} from={from} asOf={asOf} />;
+  } else if (view === "project") {
+    body = <ProjectProfitView branchId={ctx.branch.id} from={from} asOf={asOf} />;
+  } else if (view === "pnl") {
     const income = period.filter((a) => a.type === "INCOME" && (a.debit || a.credit));
     const expense = period.filter((a) => a.type === "EXPENSE" && (a.debit || a.credit));
     const profit = netProfit(period.map(plain));

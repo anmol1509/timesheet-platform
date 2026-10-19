@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { suggestMatches } from "@/lib/books/reconcile";
 import { r2 } from "@/lib/books/postings";
+import { isMoneyAccount } from "@/lib/books/ledger";
 import { getBooksContext, iso } from "../books-data";
 import { SetupCard } from "../setup-card";
 import { ReconcileBoard, type LedgerRow, type StatementRow } from "./reconcile-board";
@@ -17,7 +18,7 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
   const branchId = ctx.branch.id;
   const sp = await searchParams;
   const accounts = await prisma.account.findMany({ where: { branchId, isActive: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, type: true, tag: true } });
-  const money = accounts.filter((a) => a.type === "ASSET" && (a.tag === "BANK" || a.tag === "CASH" || /bank|cash/i.test(a.name)));
+  const money = accounts.filter((a) => isMoneyAccount(a));
   const current = money.find((a) => a.id === sp.account) ?? money.find((a) => a.tag === "BANK") ?? money[0];
   if (!current) return <div className="space-y-5">{header()}<p className="text-sm text-muted">There is no bank account in your chart yet. Add one under Accounts.</p></div>;
 

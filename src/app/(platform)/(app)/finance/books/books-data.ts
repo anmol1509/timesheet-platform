@@ -21,7 +21,7 @@ export async function getBooksContext() {
   return { user, branch, branchId, initialized, canWrite: canWrite(subject, "finance.books"), isAdmin: isAdminRole(user.role) };
 }
 
-export type AccountRow = { id: string; code: string; name: string; type: string; tag: string | null; isSystem: boolean; isActive: boolean; debit: number; credit: number };
+export type AccountRow = { id: string; code: string; name: string; type: string; tag: string | null; bankId: string | null; isSystem: boolean; isActive: boolean; debit: number; credit: number };
 
 /** Every account with its debit and credit totals up to a date (inclusive), counting only posted entries. */
 export async function accountsWithTotals(branchId: string, upTo?: Date, from?: Date): Promise<AccountRow[]> {
@@ -34,7 +34,7 @@ export async function accountsWithTotals(branchId: string, upTo?: Date, from?: D
     }),
   ]);
   const by = new Map(sums.map((s) => [s.accountId, { debit: Number(s._sum.debit ?? 0), credit: Number(s._sum.credit ?? 0) }]));
-  return accounts.map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, tag: a.tag, isSystem: a.isSystem, isActive: a.isActive, debit: by.get(a.id)?.debit ?? 0, credit: by.get(a.id)?.credit ?? 0 }));
+  return accounts.map((a) => ({ id: a.id, code: a.code, name: a.name, type: a.type, tag: a.tag, bankId: a.bankId, isSystem: a.isSystem, isActive: a.isActive, debit: by.get(a.id)?.debit ?? 0, credit: by.get(a.id)?.credit ?? 0 }));
 }
 
 export const iso = (d: Date) => d.toISOString().slice(0, 10);
