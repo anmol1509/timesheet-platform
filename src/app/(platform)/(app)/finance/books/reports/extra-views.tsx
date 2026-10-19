@@ -2,7 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { BUCKETS, BUCKET_LABEL, ageParties, ageTotals, termsDays, type AgeRow, type Bucket } from "@/lib/books/ageing";
 import { CF_LABEL, cashFlow, type CfKey } from "@/lib/books/cashflow";
-import { PROVISIONS, provisionAt, provisionTotals, type Policy, type StaffFacts } from "@/lib/books/accruals";
+import { PROVISIONS, provisionAt, provisionTotals, type Policy } from "@/lib/books/accruals";
+import { provisionTag, ruleTarget, type CustomRule, type RuleStaff } from "@/lib/books/customProvisions";
 import { isMoneyAccount } from "@/lib/books/ledger";
 import { branchWhere } from "@/lib/branch";
 import { profitByClient } from "@/lib/books/projectProfit";
@@ -169,30 +170,38 @@ export async function ProjectProfitView({ branchId, from, asOf }: { branchId: st
 
 /** What is owed to staff for later, per person, set against what the books have set aside so far. */
 export async function ProvisionsView({ branchId, asOf, on, policy }: { branchId: string; asOf: Date; on: { gratuity: boolean; leave: boolean; tickets: boolean }; policy: Policy }) {
-  const [people, paid, ledger] = await Promise.all([
+  const [people, paid, ledger, ruleRows] = await Promise.all([
     prisma.employee.findMany({
       where: { ...branchWhere(branchId), joinDate: { not: null } },
-      select: { id: true, name: true, employeeIdNo: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true, skipGratuity: true },
+      select: { id: true, name: true, employeeIdNo: true, joinDate: true, exitDate: true, payStructure: true, basicSalary: true, housingAllowance: true, foodAllowance: true, transportAllowance: true, otherAllowance: true, flatMonthlyRate: true, leaveDaysPerYear: true, airTicketAmount: true, airTicketEveryMonths: true, skipGratuity: true, category: true },
       orderBy: { name: "asc" },
     }),
     prisma.finalSettlement.findMany({ where: { branchId, status: "PAID", paidAt: { not: null } }, select: { employeeId: true, paidAt: true } }),
     prisma.journalLine.groupBy({ by: ["accountId"], where: { account: { branchId, tag: { in: PROVISIONS.map((p) => p.provision) } }, entry: { branchId, status: "POSTED", date: { lte: asOf } } }, _sum: { debit: true, credit: true } }),
+    prisma.provisionRule.findMany({ where: { branchId }, orderBy: { createdAt: "asc" } }),
   ]);
-  const accounts = await prisma.account.findMany({ where: { branchId, tag: { in: PROVISIONS.map((p) => p.provision) } }, select: { id: true, tag: true } });
+  const rules: CustomRule[] = ruleRows.map((r) => ({ id: r.id, name: r.name, method: r.method as CustomRule["method"], amount: Number(r.amount), everyMonths: r.everyMonths, appliesTo: r.appliesTo as CustomRule["appliesTo"], active: r.active }));
+  const ruleTags = rules.map((r) => provisionTag(r.id));
+  const accounts = await prisma.account.findMany({ where: { branchId, tag: { in: [...PROVISIONS.map((p) => p.provision), ...ruleTags] } }, select: { id: true, tag: true } });
+  const ruleLedger = accounts.length ? await prisma.journalLine.groupBy({ by: ["accountId"], where: { accountId: { in: accounts.filter((a) => ruleTags.includes(a.tag as string)).map((a) => a.id) }, entry: { branchId, status: "POSTED", date: { lte: asOf } } }, _sum: { debit: true, credit: true } }) : [];
   const settled = new Map(paid.map((x) => [x.employeeId, x.paidAt as Date]));
-  const facts = people.map((e) => {
+  const everyone = people.map((e) => {
     const itemised = e.payStructure === "ITEMISED", flat = e.payStructure === "FLAT";
     const basic = itemised ? Number(e.basicSalary ?? 0) : flat ? Number(e.flatMonthlyRate ?? 0) : 0;
     const fixed = itemised ? basic + Number(e.housingAllowance ?? 0) + Number(e.foodAllowance ?? 0) + Number(e.transportAllowance ?? 0) + Number(e.otherAllowance ?? 0) : basic;
-    const f: StaffFacts = { id: e.id, joinDate: e.joinDate, exitDate: e.exitDate, settledOn: settled.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths, skipGratuity: e.skipGratuity };
+    const f: RuleStaff = { id: e.id, category: e.category, joinDate: e.joinDate, exitDate: e.exitDate, settledOn: settled.get(e.id) ?? null, basic, fixed, leaveDaysPerYear: e.leaveDaysPerYear, ticketAmount: e.airTicketAmount == null ? null : Number(e.airTicketAmount), ticketEveryMonths: e.airTicketEveryMonths, skipGratuity: e.skipGratuity };
     return { e, f, a: provisionAt(f, asOf, { gratuity: true, leave: true, tickets: true }, policy) };
-  }).filter((r) => r.a.gratuity + r.a.leave + r.a.tickets > 0);
+  });
+  const perPerson = rules.filter((r) => r.method !== "COMPANY");
+  const facts = everyone.filter((r) => r.a.gratuity + r.a.leave + r.a.tickets > 0 || perPerson.some((x) => ruleTarget(x, [r.f], asOf) > 0));
   const total = provisionTotals(facts.map((r) => r.f), asOf, { gratuity: true, leave: true, tickets: true }, policy);
   const posted = (tag: string) => {
     const id = accounts.find((a) => a.tag === tag)?.id;
-    const row = ledger.find((l) => l.accountId === id);
+    const row = [...ledger, ...ruleLedger].find((l) => l.accountId === id);
     return row ? Number(row._sum.credit ?? 0) - Number(row._sum.debit ?? 0) : 0;
   };
+  const ruleAmount = (r: CustomRule, f: RuleStaff) => ruleTarget(r, [f], asOf);
+  const ruleTotal = (r: CustomRule) => ruleTarget(r, everyone.map((x) => x.f), asOf);
   const noContract = facts.filter((r) => (r.f.leaveDaysPerYear ?? policy.leave.defaultDays) == null && (r.f.ticketAmount ?? policy.tickets.defaultAmount) == null).length;
   return (
     <div className="space-y-4">
@@ -204,21 +213,28 @@ export async function ProvisionsView({ branchId, asOf, on, policy }: { branchId:
             <p className="mt-1 text-xs text-muted">{on[p.key] ? <>In the books: <span className="tabular">{aed(posted(p.provision))}</span></> : <>Not being set aside <Link href="/finance/books/setup" className="text-brand hover:underline">· turn on</Link></>}</p>
           </div>
         ))}
+        {rules.map((r) => (
+          <div key={r.id} className="rounded-[var(--radius-card)] border border-default bg-surface p-4">
+            <p className="text-xs text-muted">{r.name}{r.active ? "" : " (off)"}</p>
+            <p className="tabular mt-1 text-lg font-semibold text-primary">{aed(ruleTotal(r))}</p>
+            <p className="mt-1 text-xs text-muted">In the books: <span className="tabular">{aed(posted(provisionTag(r.id)))}</span></p>
+          </div>
+        ))}
       </div>
       <section className="overflow-x-auto rounded-[var(--radius-card)] border border-default bg-surface">
         <h3 className="bg-[var(--surface-sunken)] px-4 py-2 text-sm font-semibold text-primary">Owed to staff as of {fmtDate(asOf)}</h3>
         {facts.length === 0 ? <p className="px-4 py-6 text-sm text-muted">No one has a join date and pay set up yet.</p> : (
           <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted"><tr><th className="px-4 py-2 font-medium">Employee</th><th className="px-3 py-2 font-medium">Joined</th>{PROVISIONS.map((p) => <th key={p.key} className="px-3 py-2 text-right font-medium">{p.label}</th>)}</tr></thead>
+            <thead className="text-left text-xs text-muted"><tr><th className="px-4 py-2 font-medium">Employee</th><th className="px-3 py-2 font-medium">Joined</th>{PROVISIONS.map((p) => <th key={p.key} className="px-3 py-2 text-right font-medium">{p.label}</th>)}{perPerson.map((r) => <th key={r.id} className="px-3 py-2 text-right font-medium">{r.name}</th>)}</tr></thead>
             <tbody className="divide-y divide-default">
               {facts.map((r) => (
                 <tr key={r.e.id}>
                   <td className="px-4 py-1.5"><Link href={`/employees/${r.e.id}`} className="font-medium text-primary hover:underline">{r.e.name}</Link><span className="ml-2 font-mono text-xs text-muted">{r.e.employeeIdNo}</span></td>
                   <td className="px-3 py-1.5 text-secondary">{r.f.joinDate ? fmtDate(r.f.joinDate) : ""}</td>
-                  {PROVISIONS.map((p) => <td key={p.key} className="tabular px-3 py-1.5 text-right">{dash(r.a[p.key])}</td>)}
+                  {PROVISIONS.map((p) => <td key={p.key} className="tabular px-3 py-1.5 text-right">{dash(r.a[p.key])}</td>)}{perPerson.map((x) => <td key={x.id} className="tabular px-3 py-1.5 text-right">{dash(ruleAmount(x, r.f))}</td>)}
                 </tr>
               ))}
-              <tr className="font-semibold"><td className="px-4 py-2" colSpan={2}>Total</td>{PROVISIONS.map((p) => <td key={p.key} className="tabular px-3 py-2 text-right">{aed(total[p.key])}</td>)}</tr>
+              <tr className="font-semibold"><td className="px-4 py-2" colSpan={2}>Total</td>{PROVISIONS.map((p) => <td key={p.key} className="tabular px-3 py-2 text-right">{aed(total[p.key])}</td>)}{perPerson.map((r) => <td key={r.id} className="tabular px-3 py-2 text-right">{aed(ruleTotal(r))}</td>)}</tr>
             </tbody>
           </table>
         )}

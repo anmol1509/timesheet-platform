@@ -330,3 +330,34 @@ export async function saveProvisionSettingsAction(input: { gratuity: boolean; le
   refresh();
   return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
+
+export type RuleInput = { id?: string; name: string; method: string; amount: number; everyMonths: number; appliesTo: string; active: boolean };
+
+/** Adds or changes one of the company's own provisions (a bonus, insurance, visa renewals...). Its accounts are created on the next refresh. */
+export async function saveProvisionRuleAction(input: RuleInput): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const name = input.name.trim();
+  if (!name) return { error: "Give the provision a name." };
+  if (name.length > 60) return { error: "Keep the name under 60 characters." };
+  if (!["PER_PERSON", "PERCENT", "COMPANY"].includes(input.method)) return { error: "Choose how it is worked out." };
+  const amount = r2(Number(input.amount) || 0);
+  if (amount <= 0) return { error: "Enter an amount above zero." };
+  if (input.method === "PERCENT" && amount > 100) return { error: "A percentage can't be over 100." };
+  const every = Math.round(Number(input.everyMonths));
+  if (!Number.isFinite(every) || every < 1 || every > 60) return { error: "The cycle must be 1 to 60 months." };
+  if (!["ALL", "SITE_STAFF", "STAFF"].includes(input.appliesTo)) return { error: "Choose who it applies to." };
+  const data = { name, method: input.method, amount, everyMonths: every, appliesTo: input.appliesTo, active: !!input.active };
+  if (input.id) {
+    const cur = await prisma.provisionRule.findUnique({ where: { id: input.id }, select: { branchId: true } });
+    if (!cur || cur.branchId !== branchId) return { error: "Provision not found." };
+    await prisma.provisionRule.update({ where: { id: input.id }, data });
+  } else {
+    await prisma.provisionRule.create({ data: { ...data, branchId } });
+  }
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: input.id ? "UPDATE" : "CREATE", after: { provision: data }, userId: user.id, userName: user.name, branchId });
+  const result = await syncPostings(branchId);
+  refresh();
+  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}
