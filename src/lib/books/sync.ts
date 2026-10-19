@@ -4,6 +4,7 @@ import { branchWhere } from "@/lib/branch";
 import { DEFAULT_CHART, VOUCHER_PREFIX } from "./chart";
 import { billPostings, expensePostings, hashPosting, invoicePostings, loanPostings, payrollPostings, settlementPostings, topUpPostings, r2, totals, utcDay, type Posting } from "./postings";
 import { isLocked } from "./ledger";
+import { assetPostings } from "./assets";
 import { costTag, customPostings, provisionTag, type CustomRule, type RuleStaff } from "./customProvisions";
 import { accrualPostings, monthsBetween, readPolicy } from "./accruals";
 
@@ -20,18 +21,24 @@ export async function ensureChart(branchId: string) {
   });
 }
 
-/** Adds the staff-provision accounts to a chart made before they existed. Safe to call repeatedly. */
-export async function ensureProvisionAccounts(branchId: string) {
-  const wanted = DEFAULT_CHART.filter((c) => c.tag && /^(EOSB|PROVISION_|EXP_EOSB|EXP_LEAVE|EXP_TICKETS)/.test(c.tag));
-  const have = await prisma.account.findMany({ where: { branchId }, select: { code: true, tag: true } });
+/**
+ * Makes sure a chart made before a feature existed has the accounts it posts to. A missing tagged account is created,
+ * or taken over from an untagged account that already has its code and type (Property & equipment was untagged).
+ * Safe to call repeatedly.
+ */
+export async function ensureSystemAccounts(branchId: string) {
+  const have = await prisma.account.findMany({ where: { branchId }, select: { id: true, code: true, tag: true, type: true } });
   const tags = new Set(have.map((a) => a.tag));
   const codes = new Set(have.map((a) => a.code));
-  for (const c of wanted) {
-    if (tags.has(c.tag as string)) continue;
+  for (const c of DEFAULT_CHART) {
+    if (!c.tag || tags.has(c.tag)) continue;
+    const same = have.find((a) => a.code === c.code && !a.tag && a.type === c.type);
+    if (same) { await prisma.account.update({ where: { id: same.id }, data: { tag: c.tag, isSystem: true } }); tags.add(c.tag); continue; }
     let code = Number(c.code);
     while (codes.has(String(code))) code += 1;
     codes.add(String(code));
     await prisma.account.create({ data: { branchId, code: String(code), name: c.name, type: c.type, tag: c.tag, isSystem: true } });
+    tags.add(c.tag);
   }
 }
 
@@ -117,7 +124,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   const scope = branchWhere(branchId);
   const since = opening;
   const openMonth = `${opening.getUTCFullYear()}-${String(opening.getUTCMonth() + 1).padStart(2, "0")}`;
-  const [invoices, bills, expenses, runs, loans, topUps, branchRow, people, settlements, openingLines, rules] = await Promise.all([
+  const [invoices, bills, expenses, runs, loans, topUps, branchRow, people, settlements, openingLines, rules, assets] = await Promise.all([
     prisma.clientInvoice.findMany({ where: { ...scope, OR: [{ issueDate: { gte: since } }, { paidDate: { gte: since } }] }, include: { client: { select: { name: true } } } }),
     prisma.supplierBill.findMany({ where: { ...scope, approvalStatus: "APPROVED", OR: [{ billDate: { gte: since } }, { payments: { some: { paidOn: { gte: since } } } }] }, include: { supplier: { select: { name: true } }, payments: true } }),
     prisma.expense.findMany({ where: { ...scope, status: "APPROVED", OR: [{ date: { gte: since } }, { reimbursedAt: { gte: since } }] } }),
@@ -132,6 +139,7 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
     prisma.finalSettlement.findMany({ where: { ...scope }, include: { employee: { select: { name: true } } } }),
     prisma.journalLine.findMany({ where: { entry: { branchId, sourceKey: "opening" }, account: { tag: { in: ["EOSB", "PROVISION_LEAVE", "PROVISION_TICKETS"] } } }, select: { debit: true, credit: true, account: { select: { tag: true } } } }),
     prisma.provisionRule.findMany({ where: { branchId }, orderBy: { createdAt: "asc" } }),
+    prisma.fixedAsset.findMany({ where: { branchId } }),
   ]);
   const on = { gratuity: !!branchRow?.accrueGratuity, leave: !!branchRow?.accrueLeave, tickets: !!branchRow?.accrueTickets };
   const companyIds = [...new Set(runs.map((r) => r.companyId).filter((x): x is string => !!x))];
@@ -168,6 +176,9 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
       .map((x) => ({ date: utcDay(x.paidAt as Date), amounts: { gratuity: on.gratuity ? Number(x.gratuity) : 0, leave: on.leave ? Number(x.leavePay) : 0 } }));
     if (openMonth <= last) out.push(...accrualPostings({ months: monthsBetween(openMonth, last), staff, on, policy: readPolicy(branchRow?.provisionPolicy), opening: opening0, used }));
   }
+  if (assets.length) {
+    out.push(...assetPostings(assets.map((a) => ({ id: a.id, name: a.name, cost: Number(a.cost), salvage: Number(a.salvage), purchaseDate: utcDay(a.purchaseDate), lifeMonths: a.lifeMonths, paidFromAccountId: a.paidFromAccountId, disposedOn: a.disposedOn ? utcDay(a.disposedOn) : null, disposalAmount: a.disposalAmount == null ? null : Number(a.disposalAmount), disposalAccountId: a.disposalAccountId })), opening, last));
+  }
   const customRules: CustomRule[] = rules.map((r) => ({ id: r.id, name: r.name, method: r.method as CustomRule["method"], amount: Number(r.amount), everyMonths: r.everyMonths, appliesTo: r.appliesTo as CustomRule["appliesTo"], active: r.active }));
   if (customRules.length && openMonth <= last) {
     const tagToRule = new Map(customRules.map((r) => [provisionTag(r.id), r.id]));
@@ -196,17 +207,19 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
   const result: SyncResult = { created: 0, updated: 0, removed: 0, skippedLocked: 0, unmapped: [] };
   if (!branch?.booksOpeningDate) return result;
-  await ensureProvisionAccounts(branchId);
+  await ensureSystemAccounts(branchId);
   await ensureRuleAccounts(branchId);
   const opening = utcDay(branch.booksOpeningDate);
   const locked = branch.booksLockedUntil ? utcDay(branch.booksLockedUntil) : null;
 
   const [desiredAll, accounts, existing] = await Promise.all([
     gatherPostings(branchId, opening),
-    prisma.account.findMany({ where: { branchId, tag: { not: null } }, select: { id: true, tag: true } }),
+    prisma.account.findMany({ where: { branchId }, select: { id: true, tag: true, bankId: true } }),
     prisma.journalEntry.findMany({ where: { branchId, AND: [{ sourceKey: { not: null } }, { sourceKey: { not: "opening" } }] }, select: { id: true, sourceKey: true, sourceHash: true, date: true } }),
   ]);
-  const accountByTag = new Map(accounts.map((a) => [a.tag as string, a.id]));
+  const accountByTag = new Map(accounts.filter((a) => a.tag).map((a) => [a.tag as string, a.id]));
+  const accountByBank = new Map(accounts.filter((a) => a.bankId).map((a) => [a.bankId as string, a.id]));
+  const known = new Set(accounts.map((a) => a.id));
   const unmapped = new Set<string>();
 
   type Ready = { posting: Posting; hash: string; lines: { accountId: string; debit: number; credit: number; description?: string; partyType?: string; partyId?: string; projectId?: string }[] };
@@ -215,7 +228,7 @@ export async function syncPostings(branchId: string): Promise<SyncResult> {
     const lines = [];
     let missing = false;
     for (const l of p.lines) {
-      const accountId = accountByTag.get(l.tag);
+      const accountId = (l.accountId && known.has(l.accountId) ? l.accountId : undefined) ?? (l.bankId ? accountByBank.get(l.bankId) : undefined) ?? accountByTag.get(l.tag);
       if (!accountId) { unmapped.add(l.tag); missing = true; break; }
       lines.push({ accountId, debit: l.debit ?? 0, credit: l.credit ?? 0, description: l.description, partyType: l.partyType, partyId: l.partyId, projectId: l.projectId });
     }

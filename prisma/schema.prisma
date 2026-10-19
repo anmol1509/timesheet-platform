@@ -137,6 +137,7 @@ model Branch {
   accounts         Account[]
   journalEntries   JournalEntry[]
   provisionRules   ProvisionRule[]
+  fixedAssets      FixedAsset[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -3040,6 +3041,29 @@ model ProvisionRule {
   appliesTo   String   @default("ALL") // ALL | SITE_STAFF | STAFF
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@index([branchId])
+}
+
+/// An item the company owns and writes off over its useful life (vehicle, camp furniture, equipment).
+model FixedAsset {
+  id           String    @id @default(cuid())
+  name         String
+  category     String?
+  cost         Decimal   @db.Decimal(14, 2)
+  salvage      Decimal   @default(0) @db.Decimal(14, 2)
+  purchaseDate DateTime  @db.Date
+  lifeMonths   Int
+  // Set when the purchase should be posted too (paid from this account); blank when it is already in the books.
+  paidFromAccountId String?
+  disposedOn   DateTime? @db.Date
+  disposalAmount Decimal? @db.Decimal(14, 2)
+  disposalAccountId String?
+  notes        String?
+  createdAt    DateTime  @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
