@@ -39,7 +39,7 @@ export async function deleteDocumentsAction(ids: string[]): Promise<{ deleted: n
   return { deleted: mine.length };
 }
 
-export type Recheck = { id: string; employee: string; type: string; stored: string | null; read: string | null; issue: string | null; confidence: "high" | "medium" | "low"; error?: string };
+export type Recheck = { id: string; employee: string; type: string; mime: string; stored: string | null; read: string | null; issue: string | null; confidence: "high" | "medium" | "low"; error?: string };
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -50,7 +50,7 @@ export async function recheckDocumentAction(id: string): Promise<Recheck | { err
   const d = await prisma.document.findUnique({ where: { id }, select: { id: true, type: true, mimeType: true, fileData: true, expiryDate: true, employee: { select: { name: true, employeeIdNo: true, branchId: true } } } });
   if (!d || isOutsideBranch(d.employee.branchId, branchId, isSuperAdmin)) return { error: "That document wasn't found." };
   const r = await rereadExpiry({ bytes: d.fileData, mime: d.mimeType, type: d.type });
-  const base = { id: d.id, employee: `${d.employee.name} · ${d.employee.employeeIdNo}`, type: d.type, stored: day(d.expiryDate) };
+  const base = { id: d.id, employee: `${d.employee.name} · ${d.employee.employeeIdNo}`, type: d.type, mime: d.mimeType, stored: day(d.expiryDate) };
   if ("error" in r) return { ...base, read: null, issue: null, confidence: "low", error: r.error };
   return { ...base, read: r.expiry, issue: r.issue, confidence: r.confidence };
 }
