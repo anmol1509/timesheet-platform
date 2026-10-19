@@ -1,3 +1,4 @@
+import { todayInUae } from "@/lib/today";
 import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -42,15 +43,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   if (view === "accounts") return <div className="space-y-5">{header}{switcher}<AccountsView branchId={ctx.branch.id} canWrite={ctx.canWrite} showHidden={sp.hidden === "1"} /></div>;
 
   const valid = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00:00.000Z`) : null);
-  const asOf = valid(sp.asof) ?? new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
+  const asOf = valid(sp.asof) ?? new Date(todayInUae() + "T00:00:00.000Z");
   const open = ctx.branch.booksOpeningDate!;
-  const from = valid(sp.from) ?? new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
+  const yearStart = new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
+  // Books that start part-way through a year have nothing before their opening date, so the period starts there.
+  const from = valid(sp.from) ?? (yearStart.getTime() < open.getTime() ? open : yearStart);
   const [cumulative, period] = await Promise.all([accountsWithTotals(ctx.branch.id, asOf), accountsWithTotals(ctx.branch.id, asOf, from, true)]);
   const plain = (a: (typeof cumulative)[number]) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: a.debit, credit: a.credit });
   const ranged = view === "pnl" || view === "vat" || view === "cash" || view === "project";
   const form = (
     <form className="flex flex-wrap items-end gap-3 text-sm">
       <input type="hidden" name="view" value={view} />
+      {view === "vat" && (["ex", "rs", "re", "ia", "iv"] as const).map((k) => (sp[k] ? <input key={k} type="hidden" name={k} value={sp[k]} /> : null))}
       {ranged && <label className="text-muted">From<input type="date" name="from" defaultValue={iso(from)} min={iso(open)} className="input mt-1 block h-9" /></label>}
       <label className="text-muted">{ranged ? "To" : "As of"}<input type="date" name="asof" defaultValue={iso(asOf)} className="input mt-1 block h-9" /></label>
       <button className="h-9 rounded-lg border border-default px-3 font-medium text-primary hover:bg-surface-hover">Update</button>

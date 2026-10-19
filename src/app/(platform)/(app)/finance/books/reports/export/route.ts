@@ -1,3 +1,4 @@
+import { todayInUae } from "@/lib/today";
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -94,7 +95,7 @@ export async function GET(req: Request) {
   if (!can(subjectOf(user), "finance.books", "view")) return NextResponse.json({ error: "You don't have permission to view the books." }, { status: 403 });
   if (!branchId) return NextResponse.json({ error: "Pick a branch first." }, { status: 400 });
   const q = new URL(req.url).searchParams;
-  const asOf = valid(q.get("asof")) ?? new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
+  const asOf = valid(q.get("asof")) ?? new Date(todayInUae() + "T00:00:00.000Z");
   const from = valid(q.get("from")) ?? new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
   const sheet = await build(q.get("view") ?? "", branchId, from, asOf, q);
   if (!sheet) return NextResponse.json({ error: "That report can't be exported." }, { status: 404 });

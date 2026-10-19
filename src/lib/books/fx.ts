@@ -21,11 +21,13 @@ export const toAed = (foreign: number, rate: number) => r2(foreign * rate);
  * Month-end revaluation of foreign-currency bank balances: each account is brought to what its foreign balance is worth
  * in AED at the month-end rate, with the difference taken to exchange gain or loss. A month with no rate yet is skipped.
  */
-export function fxPostings(accounts: FxAccount[], rates: Record<string, RatePoint[]>, months: string[]): Posting[] {
+export function fxPostings(accounts: FxAccount[], rates: Record<string, RatePoint[]>, months: string[], lock?: { until: Date; adjusted: Record<string, number> }): Posting[] {
   const out: Posting[] = [];
-  const adjusted = new Map<string, number>();
+  // Revaluations already posted in locked months are what they are; later months start from them.
+  const adjusted = new Map<string, number>(lock ? Object.entries(lock.adjusted) : []);
   for (const m of months) {
     const end = monthEnd(m);
+    if (lock && end.getTime() <= lock.until.getTime()) continue;
     const lines: Posting["lines"] = [];
     for (const a of accounts) {
       const rate = rateOn(rates[a.currency] ?? [], end);

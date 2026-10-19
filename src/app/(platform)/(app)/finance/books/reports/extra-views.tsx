@@ -232,12 +232,13 @@ export async function VatReturnView({ branchId, from, asOf, manual }: { branchId
   const now = new Date();
   const q0 = quarterOf(now), q1 = quarterOf(now, 1);
   const iso0 = from.toISOString().slice(0, 10), iso1 = asOf.toISOString().slice(0, 10);
+  const manualQuery = ([["ex", manual.exempt], ["rs", manual.reverseSales], ["re", manual.reverseExpenses], ["ia", manual.importsAmount], ["iv", manual.importsVat]] as const).map(([k, v]) => (v ? `&${k}=${v}` : "")).join("");
   const field = (name: string, label: string, v: number | undefined) => <label key={name} className="text-xs text-muted">{label}<input name={name} inputMode="decimal" defaultValue={v ? String(v) : ""} className="input mt-1 block h-8 w-28 text-right text-sm" /></label>;
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 text-xs" data-print-hide>
         <span className="text-muted">Period:</span>
-        {[q0, q1].map((q) => <Link key={q.label} href={`/finance/books/reports?view=vat&from=${q.from}&asof=${q.to}`} className={`rounded-full border px-3 py-1 font-medium ${iso0 === q.from && iso1 === q.to ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{q.label}</Link>)}
+        {[q0, q1].map((q) => <Link key={q.label} href={`/finance/books/reports?view=vat&from=${q.from}&asof=${q.to}${manualQuery}`} className={`rounded-full border px-3 py-1 font-medium ${iso0 === q.from && iso1 === q.to ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{q.label}</Link>)}
       </div>
       <div className="rounded-[var(--radius-card)] border border-default bg-surface px-4 py-3 text-sm">
         <p className="font-semibold text-primary">{branch?.name} — VAT return (Form 201)</p>
@@ -274,7 +275,7 @@ export async function VatReturnView({ branchId, from, asOf, manual }: { branchId
           </table>
         </section>
       </div>
-      <form className="flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-default bg-surface p-4 text-sm">
+      <form className="flex flex-wrap items-end gap-3 rounded-[var(--radius-card)] border border-default bg-surface p-4 text-sm" data-print-hide>
         <input type="hidden" name="view" value="vat" /><input type="hidden" name="from" value={iso0} /><input type="hidden" name="asof" value={iso1} />
         <p className="w-full text-xs text-muted">The books can&apos;t tell these apart, so type them in if you have any (amounts before VAT):</p>
         {field("ex", "Exempt supplies", manual.exempt)}

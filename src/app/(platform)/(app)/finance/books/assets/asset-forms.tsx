@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { deleteAssetAction, disposeAssetAction, saveAssetAction } from "./actions";
 
 type Opt = { id: string; label: string };
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayInUae();
 const num = (s: string) => Number(s.replace(/,/g, "")) || 0;
 
 export function AddAsset({ accounts, minDate }: { accounts: Opt[]; minDate: string }) {
@@ -48,7 +49,7 @@ export function AddAsset({ accounts, minDate }: { accounts: Opt[]; minDate: stri
   );
 }
 
-export function AssetRowActions({ id, name, moneyAccounts }: { id: string; name: string; moneyAccounts: Opt[] }) {
+export function AssetRowActions({ id, name, moneyAccounts, sold = false }: { id: string; name: string; moneyAccounts: Opt[]; sold?: boolean }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(today());
   const [amount, setAmount] = useState("");
@@ -57,7 +58,7 @@ export function AssetRowActions({ id, name, moneyAccounts }: { id: string; name:
   const [pending, start] = useTransition();
   return (
     <div className="flex justify-end gap-1.5">
-      <Dialog open={open} onOpenChange={setOpen}>
+      {!sold && <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild><Button type="button" size="sm" variant="ghost">Sold / scrapped</Button></DialogTrigger>
         <DialogContent title={`Sold or scrapped: ${name}`} description="Takes it off the books with its depreciation and shows any gain or loss. Enter 0 if it was scrapped.">
           <div className="space-y-3">
@@ -77,7 +78,7 @@ export function AssetRowActions({ id, name, moneyAccounts }: { id: string; name:
             })}>{pending ? "Saving…" : "Save"}</Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
       <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => { if (window.confirm(`Remove ${name} from the register? Its depreciation entries go with it.`)) start(async () => { const r = await deleteAssetAction(id); if (r.error) window.alert(r.error); }); }}>Remove</Button>
     </div>
   );

@@ -119,6 +119,12 @@ export type AccrualInput = {
   opening: Amounts;
   /** Amounts a paid settlement took out of a provision, by the day it was paid. */
   used: { date: Date; amounts: Partial<Amounts> }[];
+  /**
+   * When months are locked, their entries can no longer change, so the running balance restarts from what the ledger
+   * really holds at the lock date. Later months then make up any difference, instead of working from a past that was
+   * never posted.
+   */
+  lock?: { until: Date; balance: Amounts };
 };
 
 /**
@@ -132,7 +138,13 @@ export function accrualPostings(i: AccrualInput): Posting[] {
   for (const m of i.months) {
     const end = monthEnd(m);
     const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+    if (i.lock && end.getTime() <= i.lock.until.getTime()) {
+      for (const p of PROVISIONS) running[p.key] = i.lock.balance[p.key];
+      continue;
+    }
     for (const u of i.used) {
+      if (i.lock && u.date.getTime() <= i.lock.until.getTime()) continue; // already in the ledger balance
+
       if (u.date.getTime() >= start.getTime() && u.date.getTime() <= end.getTime()) {
         for (const p of PROVISIONS) running[p.key] = r2(running[p.key] - (u.amounts[p.key] ?? 0));
       }

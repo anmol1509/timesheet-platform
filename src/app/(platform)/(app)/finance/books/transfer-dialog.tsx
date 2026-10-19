@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -13,7 +14,7 @@ export function TransferDialog({ accounts, minDate, foreign = {} }: { accounts: 
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(accounts[0]?.id ?? "");
   const [to, setTo] = useState(accounts[1]?.id ?? "");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInUae());
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [fromF, setFromF] = useState("");

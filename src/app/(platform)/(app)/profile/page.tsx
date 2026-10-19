@@ -12,6 +12,7 @@ import { SessionsList, type SessionRow } from "./sessions-list";
 import { canOpenPage } from "@/lib/preferenceCookies";
 import { START_PAGES, parsePreferences } from "@/lib/preferences";
 import { getSessionFromCookies } from "@/lib/session";
+import { sessionCutoff } from "@/lib/userSessions";
 import { removeAvatarAction, uploadAvatarAction } from "./actions";
 
 export const metadata = { title: "My account" };
@@ -102,7 +103,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     );
   } else {
     const current = (await getSessionFromCookies())?.sid;
-    const rows = await prisma.userSession.findMany({ where: { userId: user.id, revokedAt: null }, orderBy: { lastSeenAt: "desc" }, take: 20 });
+    const rows = await prisma.userSession.findMany({ where: { userId: user.id, revokedAt: null, createdAt: { gt: sessionCutoff() } }, orderBy: { lastSeenAt: "desc" }, take: 20 });
     const list: SessionRow[] = rows.map((r) => ({ id: r.id, label: r.label ?? "Unknown device", ip: r.ip, createdAt: r.createdAt.toISOString(), lastSeenAt: r.lastSeenAt.toISOString(), current: r.id === current, phone: /iPhone|Android|iPad/.test(r.label ?? "") }));
     content = (
       <section className="card p-5">

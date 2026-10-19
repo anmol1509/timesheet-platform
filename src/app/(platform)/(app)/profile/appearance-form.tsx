@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ACCENTS, DEFAULT_PREFERENCES, DENSITIES, TEXT_SIZES, type Preferences } from "@/lib/preferences";
@@ -45,6 +45,10 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
   const [pending, start] = useTransition();
   const change = (patch: Partial<Preferences>) => { const next = { ...p, ...patch }; setP(next); preview(next); setMsg(null); };
   const dirty = JSON.stringify(p) !== JSON.stringify(saved);
+  // Leaving the page without saving drops the preview, so a half-tried look doesn't stick to the app.
+  const savedRef = useRef(saved);
+  useEffect(() => { savedRef.current = saved; }, [saved]);
+  useEffect(() => () => preview(savedRef.current), []);
   const accent = ACCENTS.find((a) => a.key === p.accent);
   return (
     <div className="space-y-5">
@@ -115,7 +119,7 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
         <button type="button" className="btn btn-primary" disabled={pending || !dirty} onClick={() => start(async () => {
           const r = await savePreferencesAction(p);
           if (r.error) setMsg({ ok: false, text: r.error });
-          else { setSaved(p); setMsg({ ok: true, text: "Saved. This follows you to any device." }); }
+          else { setSaved(p); window.dispatchEvent(new CustomEvent("theme-changed", { detail: p.theme })); setMsg({ ok: true, text: "Saved. It is applied on each device when you sign in." }); }
         })}>{pending ? "Saving…" : "Save"}</button>
         <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => change({ ...DEFAULT_PREFERENCES, startPage: p.startPage })}>Back to the defaults</button>
         {dirty && !msg && <span className="text-sm text-muted">Previewing. Save to keep it.</span>}

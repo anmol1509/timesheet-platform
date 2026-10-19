@@ -84,3 +84,16 @@ test("a damaged stored policy falls back to the defaults", () => {
   assert.deepEqual(readPolicy(null), DEFAULT_POLICY);
   assert.deepEqual(readPolicy({ gratuity: { daysFirst: "x", capMonths: -4 } }).gratuity, DEFAULT_POLICY.gratuity);
 });
+
+test("locked months are not restated; the next month makes up the difference from the real ledger balance", () => {
+  const staff = [person({ joinDate: d("2026-01-01") })];
+  const on = { gratuity: true, leave: false, tickets: false };
+  const free = accrualPostings({ months: monthsBetween("2026-01", "2026-04"), staff, on, opening: { gratuity: 0, leave: 0, tickets: 0 }, used: [] });
+  const target = provisionAt(staff[0], d("2026-04-30"), on).gratuity;
+  // Jan-Mar are locked and the ledger holds only 100 (the past was posted before the salary was entered).
+  const locked = accrualPostings({ months: monthsBetween("2026-01", "2026-04"), staff, on, opening: { gratuity: 0, leave: 0, tickets: 0 }, used: [], lock: { until: d("2026-03-31"), balance: { gratuity: 100, leave: 0, tickets: 0 } } });
+  assert.deepEqual(locked.map((p) => p.sourceKey), ["accrual:2026-04"]);
+  const credit = locked[0].lines.filter((l) => l.tag === "EOSB").reduce((s, l) => s + (l.credit ?? 0) - (l.debit ?? 0), 0);
+  assert.equal(Math.round((100 + credit) * 100) / 100, target); // the ledger ends where it should
+  assert.ok(free.length === 4);
+});

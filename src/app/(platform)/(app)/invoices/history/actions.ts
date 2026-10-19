@@ -8,21 +8,26 @@ import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
 import { ownBankId } from "@/lib/books/banks";
+import { lockedPeriodError } from "@/lib/books/lockCheck";
+import { todayInUae } from "@/lib/today";
 
-export async function markInvoicePaidAction(formData: FormData) {
+export async function markInvoicePaidAction(formData: FormData): Promise<{ error?: string }> {
   await requireWrite("billing.invoices");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const invoiceId = String(formData.get("invoiceId") || "");
-  if (!invoiceId) return;
+  if (!invoiceId) return {};
 
   const existing = await prisma.clientInvoice.findUnique({
     where: { id: invoiceId },
   });
-  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return {};
 
   const day = String(formData.get("paidDate") || "");
-  const paidDate = /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= new Date().toISOString().slice(0, 10) ? new Date(`${day}T00:00:00.000Z`) : new Date();
+  if (day && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Enter the date the money arrived." };
+  if (day && day > todayInUae()) return { error: "The money can't have arrived in the future." };
+  const paidDate = day ? new Date(`${day}T00:00:00.000Z`) : new Date();
+  { const locked = await lockedPeriodError(existing.branchId, paidDate); if (locked) return { error: locked }; }
   const paidBankId = await ownBankId(formData.get("bankId"), existing.branchId);
   const data = { status: "PAID", paidDate, paidBankId };
   await prisma.clientInvoice.update({ where: { id: invoiceId }, data });
@@ -39,6 +44,7 @@ export async function markInvoicePaidAction(formData: FormData) {
   });
 
   revalidatePath("/invoices/history");
+  return {};
 }
 
 export async function deleteInvoiceAction(formData: FormData) {

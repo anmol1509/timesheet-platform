@@ -1,5 +1,6 @@
 "use server";
 
+import { endSessionsFor } from "@/lib/userSessions";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
@@ -235,6 +236,8 @@ export async function resetUserPasswordAction(_prev: State, formData: FormData):
   const password = String(formData.get("password") || "");
   if (password.length < 8) return { error: "Password must be at least 8 characters." };
   await prisma.user.update({ where: { id: target.id }, data: { passwordHash: hashPassword(password) } });
+  // Setting someone's password ends their existing sign-ins.
+  await endSessionsFor(target.id);
   await logAudit({
     entityType: "USER",
     entityId: target.id,

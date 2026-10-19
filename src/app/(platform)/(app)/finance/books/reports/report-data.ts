@@ -38,8 +38,8 @@ export async function loadCashFlow(branchId: string, from: Date, asOf: Date) {
     select: { date: true, type: true, lines: { select: { debit: true, credit: true, account: { select: { id: true, type: true, tag: true } } } } },
   });
   const cf = (list: typeof entries) => cashFlow(list.map((e) => ({ type: e.type, lines: e.lines.map((l) => ({ money: money.has(l.account.id), debit: Number(l.debit), credit: Number(l.credit), accountType: l.account.type, tag: l.account.tag })) })));
-  const opening = entries.filter((e) => e.date < from).reduce((s, e) => s + e.lines.filter((l) => money.has(l.account.id)).reduce((n, l) => n + Number(l.debit) - Number(l.credit), 0), 0);
-  const c = cf(entries.filter((e) => e.date >= from));
+  const opening = entries.filter((e) => e.date < from || e.type === "OPENING").reduce((s, e) => s + e.lines.filter((l) => money.has(l.account.id)).reduce((n, l) => n + Number(l.debit) - Number(l.credit), 0), 0);
+  const c = cf(entries.filter((e) => e.date >= from && e.type !== "OPENING"));
   const close = Math.round((opening + c.net) * 100) / 100;
   return { opening, c, close };
 }
@@ -64,7 +64,7 @@ export async function loadProjectProfit(branchId: string, from: Date, asOf: Date
 export async function loadVat(branchId: string, from: Date, asOf: Date, manual: Manual) {
   const [entries, branch] = await Promise.all([
     prisma.journalEntry.findMany({
-      where: { branchId, status: "POSTED", date: { gte: from, lte: asOf }, lines: { some: { account: { tag: { in: ["VAT_OUTPUT", "VAT_INPUT", "INCOME_SALES"] } } } } },
+      where: { branchId, status: "POSTED", type: { notIn: ["CLOSING", "OPENING"] }, date: { gte: from, lte: asOf }, lines: { some: { account: { tag: { in: ["VAT_OUTPUT", "VAT_INPUT", "INCOME_SALES"] } } } } },
       select: { type: true, lines: { select: { debit: true, credit: true, account: { select: { tag: true, type: true } } } } },
     }),
     prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, trn: true, emirate: true } }),

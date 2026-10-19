@@ -47,6 +47,8 @@ export type CustomInput = {
   opening: Record<string, number>;
   /** Net amounts taken out of a provision by entries other than these month-end journals (a payment, a voucher). */
   used: { date: Date; ruleId: string; amount: number }[];
+  /** As for the staff provisions: locked months restart the running balance from what the ledger holds at the lock date. */
+  lock?: { until: Date; balance: Record<string, number> };
 };
 
 /** One journal a month that brings every custom provision up to where it should be, working from the running balance. */
@@ -56,7 +58,12 @@ export function customPostings(i: CustomInput): Posting[] {
   for (const m of i.months) {
     const end = monthEnd(m);
     const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
+    if (i.lock && end.getTime() <= i.lock.until.getTime()) {
+      for (const r of i.rules) running[r.id] = i.lock.balance[r.id] ?? 0;
+      continue;
+    }
     for (const u of i.used) {
+      if (i.lock && u.date.getTime() <= i.lock.until.getTime()) continue;
       if (u.date.getTime() >= start.getTime() && u.date.getTime() <= end.getTime() && u.ruleId in running) running[u.ruleId] = r2(running[u.ruleId] - u.amount);
     }
     const lines: PostLine[] = [];

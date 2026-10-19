@@ -62,3 +62,22 @@ test("profit by client rolls project costs up and keeps company costs apart", ()
   assert.equal(r.companyCosts, 50);
   assert.equal(r.profit, 350);
 });
+
+import { utcDay } from "./postings";
+import { cashFlow as cashFlowOf } from "./cashflow";
+
+test("a moment just after midnight in Dubai lands on the Dubai day", () => {
+  assert.equal(utcDay(new Date("2026-09-30T21:30:00.000Z")).toISOString().slice(0, 10), "2026-10-01"); // 01:30 on 1 Oct in Dubai
+  assert.equal(utcDay(new Date("2026-10-01T00:00:00.000Z")).toISOString().slice(0, 10), "2026-10-01"); // a DATE column keeps its day
+  assert.equal(utcDay(new Date("2026-10-01T19:59:00.000Z")).toISOString().slice(0, 10), "2026-10-01");
+});
+
+test("register asset purchases are investing, and opening balances are not money that moved", () => {
+  const m = (debit: number, credit: number) => ({ money: true, debit, credit, accountType: "ASSET", tag: "BANK" });
+  const cf = cashFlowOf([
+    { type: "JOURNAL", lines: [m(0, 1000), { money: false, debit: 1000, credit: 0, accountType: "ASSET", tag: "FIXED_ASSETS" }] },
+    { type: "OPENING", lines: [m(500, 0), { money: false, debit: 0, credit: 500, accountType: "EQUITY", tag: "OPENING_EQUITY" }] },
+  ]);
+  assert.equal(cf.rows.assets, -1000);
+  assert.equal(cf.net, -1000);
+});

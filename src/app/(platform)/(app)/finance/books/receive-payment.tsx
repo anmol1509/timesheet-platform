@@ -1,5 +1,6 @@
 "use client";
 
+import { todayInUae } from "@/lib/today";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/Dialog";
@@ -27,16 +28,16 @@ export function ReceivePayment({ clients, moneyAccounts, otherAccounts, minDate,
   const [payer, setPayer] = useState("");
   const [credit, setCredit] = useState("");
   const [money, setMoney] = useState(moneyAccounts[0]?.id ?? "");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInUae());
   const [amount, setAmount] = useState("");
   const [narration, setNarration] = useState("");
-  const [rate, setRate] = useState("");
+  const [rate, setRate] = useState(() => { const f = foreign[moneyAccounts[0]?.id ?? ""]; return f?.rate ? String(f.rate) : ""; });
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const fx = foreign[money];
   const aedValue = Math.round((Number(amount.replace(/,/g, "")) || 0) * (Number(rate) || 0) * 100) / 100;
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setError(null); }}>
       <DialogTrigger asChild><Button type="button" size="sm" variant="secondary">Money in</Button></DialogTrigger>
       <DialogContent title="Money in" description="Any money received. A client invoice marked paid posts its own receipt, so use this for part payments, advances and money from anyone else.">
         <div className="space-y-3">

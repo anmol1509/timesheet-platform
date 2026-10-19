@@ -1,6 +1,7 @@
 "use server";
 
 import { ownBankId } from "@/lib/books/banks";
+import { lockedPeriodError } from "@/lib/books/lockCheck";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
@@ -181,6 +182,7 @@ export async function recordPaymentAction(_prev: State, formData: FormData): Pro
   const bill = await prisma.supplierBill.findUnique({ where: { id: billId }, include: { payments: { select: { amount: true } } } });
   if (!bill || isOutsideBranch(bill.branchId, branchId, isSuperAdmin)) return { error: "Bill not found." };
   if (bill.approvalStatus !== "APPROVED") return { error: "Approve the bill before paying it." };
+  { const locked = await lockedPeriodError(bill.branchId, paidOn); if (locked) return { error: locked }; }
   const t = billTotals({ amount: Number(bill.amount), vatAmount: Number(bill.vatAmount) }, bill.payments.map((p) => ({ amount: Number(p.amount) })));
   if (amount > t.balance + 0.005) return { error: `That's more than the outstanding balance (AED ${t.balance.toFixed(2)}).` };
   const created = await prisma.billPayment.create({
@@ -338,6 +340,7 @@ export async function payBatchAction(_prev: State, formData: FormData): Promise<
   if (!paidOn) return { error: "Enter the payment date." };
   const bills = await prisma.supplierBill.findMany({ where: { id: { in: ids } }, include: { payments: { select: { amount: true } }, supplier: { select: { name: true } } } });
   if (bills.length !== ids.length || bills.some((b) => isOutsideBranch(b.branchId, branchId, isSuperAdmin))) return { error: "One of those bills wasn't found." };
+  { const locked = await lockedPeriodError(bills[0]?.branchId ?? null, paidOn); if (locked) return { error: locked }; }
   const notApproved = bills.filter((b) => b.approvalStatus !== "APPROVED");
   if (notApproved.length > 0) return { error: `Approve ${notApproved.map((b) => `#${b.billNo}`).slice(0, 3).join(", ")} before paying.` };
   const method = str(formData.get("method")) || null;

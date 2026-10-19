@@ -1,5 +1,6 @@
 "use server";
 
+import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requireWrite } from "@/lib/auth";
@@ -33,7 +34,7 @@ export async function saveChequeAction(input: ChequeInput): Promise<Result> {
   const date = day(input.chequeDate);
   if (!date) return { error: "Enter the date on the cheque." };
   const amount = r2(Number(input.amount) || 0);
-  if (amount <= 0) return { error: "Enter the amount." };
+  { const bad = amountError(amount); if (bad) return { error: bad }; }
   if (!["CLIENT", "SUPPLIER", "OTHER"].includes(input.partyType)) return { error: "Choose who it is with." };
   let partyName = input.partyName.trim();
   let partyId: string | null = null;

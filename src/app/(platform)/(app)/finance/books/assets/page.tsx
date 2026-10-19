@@ -48,7 +48,7 @@ export default async function AssetsPage() {
                     <td className="tabular px-3 py-2 text-right">{gone ? "–" : aed(monthlyCharge(f, month) || (f.cost - f.salvage) / f.lifeMonths)}</td>
                     <td className="tabular px-3 py-2 text-right">{aed(accumulated(f, month))}</td>
                     <td className="tabular px-3 py-2 text-right font-medium text-primary">{gone ? "–" : aed(bookValue(f, month))}</td>
-                    <td className="px-4 py-1.5">{ctx.canWrite && <AssetRowActions id={a.id} name={a.name} moneyAccounts={gone ? [] : money} />}</td>
+                    <td className="px-4 py-1.5">{ctx.canWrite && <AssetRowActions id={a.id} name={a.name} moneyAccounts={money} sold={gone} />}</td>
                   </tr>
                 );
               })}

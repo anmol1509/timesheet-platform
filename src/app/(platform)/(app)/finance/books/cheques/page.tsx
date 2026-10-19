@@ -21,7 +21,7 @@ export default async function ChequesPage({ searchParams }: { searchParams: Prom
   const status = FILTERS.some((f) => f.k === sp.status) ? (sp.status as string) : "PENDING";
   const branchId = ctx.branch.id;
   const [all, clients, suppliers, banks, accounts] = await Promise.all([
-    prisma.cheque.findMany({ where: { branchId }, orderBy: [{ chequeDate: "asc" }, { createdAt: "asc" }], take: 500 }),
+    prisma.cheque.findMany({ where: { branchId }, orderBy: [{ chequeDate: "asc" }, { createdAt: "asc" }], take: 5000 }),
     prisma.client.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
     listBanks(branchId),

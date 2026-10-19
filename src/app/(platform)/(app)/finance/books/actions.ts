@@ -1,5 +1,6 @@
 "use server";
 
+import { amountError } from "@/lib/books/validate";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
@@ -14,7 +15,7 @@ import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
 import { r2, totals, utcDay } from "@/lib/books/postings";
 
-type Result = { error?: string };
+type Result = { error?: string; /** Saved, with something the person should know. */ warning?: string };
 const refresh = () => {
   revalidatePath("/finance/books", "layout");
 };
@@ -67,7 +68,7 @@ export async function receiveMoneyAction(input: { source: MoneyInSource; from: s
     if (rate <= 0) return { error: `Enter the exchange rate (AED for 1 ${fx.currency}).` };
     amount = toAed(foreignAmount, rate);
   }
-  if (amount <= 0) return { error: "Enter an amount." };
+  { const bad = amountError(amount); if (bad) return { error: bad }; }
   const from = input.from.trim();
   if (!from) return { error: "Say who it is from." };
   const state = await branchState(branchId);
@@ -109,6 +110,7 @@ export async function createVoucherAction(input: VoucherInput): Promise<Result &
   if (!narration) return { error: "Say what the voucher is for." };
   const lines = input.lines.filter((l) => (l.debit || 0) > 0 || (l.credit || 0) > 0).map((l) => ({ ...l, debit: r2(Number(l.debit) || 0), credit: r2(Number(l.credit) || 0) }));
   if (lines.length < 2) return { error: "A voucher needs at least two lines." };
+  if (lines.some((l) => l.debit > 100_000_000_000 || l.credit > 100_000_000_000)) return { error: "One of the amounts is too large. Check the digits." };
   if (lines.some((l) => l.debit < 0 || l.credit < 0 || (l.debit > 0 && l.credit > 0))) return { error: "Each line is either a debit or a credit, not both." };
   const t = totals(lines);
   if (!t.balanced) return { error: `Debits (${t.debit.toFixed(2)}) and credits (${t.credit.toFixed(2)}) must be equal.` };
@@ -340,7 +342,7 @@ export async function saveProvisionSettingsAction(input: { gratuity: boolean; le
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: data, userId: user.id, userName: user.name, branchId });
   const result = await syncPostings(branchId);
   refresh();
-  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+  return result.skippedLocked > 0 ? { warning: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
 
 export type RuleInput = { id?: string; name: string; method: string; amount: number; everyMonths: number; appliesTo: string; active: boolean };
@@ -371,7 +373,7 @@ export async function saveProvisionRuleAction(input: RuleInput): Promise<Result>
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: input.id ? "UPDATE" : "CREATE", after: { provision: data }, userId: user.id, userName: user.name, branchId });
   const result = await syncPostings(branchId);
   refresh();
-  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+  return result.skippedLocked > 0 ? { warning: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
 
 /** The bank receipts and payments use when none is picked on the invoice, bill or payroll run. */
@@ -386,7 +388,7 @@ export async function saveDefaultBanksAction(input: { receipt: string; payment: 
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: data, userId: user.id, userName: user.name, branchId });
   const result = await syncPostings(branchId);
   refresh();
-  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+  return result.skippedLocked > 0 ? { warning: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
 
 /** Money moved between two of the company's own bank or cash accounts. */
@@ -397,7 +399,7 @@ export async function createTransferAction(input: { from: string; to: string; da
   const date = parseDay(input.date);
   if (!date) return { error: "Choose a date." };
   const amount = r2(Number(input.amount) || 0);
-  if (amount <= 0) return { error: "Enter an amount." };
+  { const bad = amountError(amount); if (bad) return { error: bad }; }
   if (!input.from || !input.to) return { error: "Choose both accounts." };
   if (input.from === input.to) return { error: "Choose two different accounts." };
   const state = await branchState(branchId);
@@ -444,6 +446,8 @@ export async function closeYearAction(year: number, lockIt: boolean): Promise<Re
   const start = new Date(Date.UTC(y, 0, 1)).getTime() < open.getTime() ? open : new Date(Date.UTC(y, 0, 1));
   const done = await prisma.journalEntry.findFirst({ where: { branchId, type: "CLOSING", status: "POSTED", date: end }, select: { number: true } });
   if (done) return { error: `${y} is already closed (${done.number}). Void that entry to close it again.` };
+  // Bring every automatic entry up to date first, so nothing dated in the year is missing from the close.
+  await syncPostings(branchId);
   const [accounts, retained, sums] = await Promise.all([
     prisma.account.findMany({ where: { branchId, type: { in: ["INCOME", "EXPENSE"] } }, select: { id: true, type: true } }),
     prisma.account.findFirst({ where: { branchId, tag: "RETAINED_EARNINGS" }, select: { id: true } }),
@@ -476,7 +480,7 @@ export async function saveExchangeRateAction(input: { currency: string; date: st
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { rate: { currency, date: input.date, rate } }, userId: user.id, userName: user.name, branchId });
   const result = await syncPostings(branchId);
   refresh();
-  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+  return result.skippedLocked > 0 ? { warning: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
 }
 
 export async function deleteExchangeRateAction(id: string): Promise<Result> {

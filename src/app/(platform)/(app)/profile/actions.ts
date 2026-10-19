@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -98,7 +99,10 @@ export async function savePreferencesAction(input: Partial<Preferences>): Promis
 
 /** The quick light / dark / match-my-device switch in the account menu. */
 export async function setThemeAction(theme: Preferences["theme"]): Promise<State> {
-  const user = await requireUser();
+  // Not requireUser: that applies the module rules of whichever page the menu is on, and a view-only person on, say, the
+  // timesheets page would be sent to "no access" for flipping the theme. Anyone signed in may change their own look.
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not signed in." };
   const next = parsePreferences({ ...parsePreferences(user.preferences), theme });
   await prisma.user.update({ where: { id: user.id }, data: { preferences: next } });
   return { error: null, ok: true };

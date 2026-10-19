@@ -362,6 +362,7 @@ summary:focus-visible,
   --brand-primary-soft: color-mix(in srgb, var(--accent) 9%, white);
   --brand-primary-border: color-mix(in srgb, var(--accent) 28%, white);
   --brand-gradient: linear-gradient(135deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
+  --shadow-brand: 0 4px 14px -4px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 :root[data-accent][data-theme="dark"] {
   --brand-primary: var(--accent-dark);
