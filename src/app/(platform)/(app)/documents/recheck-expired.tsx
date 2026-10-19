@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, ScanSearch } from "lucide-react";
+import { Eye, ExternalLink, ScanSearch } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { applyExpiriesAction, recheckDocumentAction, type Recheck } from "./actions";
 
@@ -19,6 +20,7 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
   const started = useRef(false);
   const applied = useRef(false);
   const router = useRouter();
@@ -34,6 +36,7 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
         if ("error" in r && !("id" in r)) { setDone((n) => n + 1); continue; }
         const row = r as Recheck;
         setRows((prev) => [...prev, row]);
+        setViewing((v) => v ?? row.id);
         if (!row.error && differs(row) && row.confidence !== "low") setChosen((prev) => new Set(prev).add(row.id));
         setDone((n) => n + 1);
       }
@@ -55,19 +58,20 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
       <DialogTrigger className="inline-flex h-8 items-center gap-1.5 rounded-md border border-strong bg-surface px-2.5 text-xs font-medium text-secondary shadow-xs hover:bg-surface-hover hover:text-primary">
         <ScanSearch className="h-3.5 w-3.5" aria-hidden /> Re-check expired against scans
       </DialogTrigger>
-      <DialogContent title="Re-check expired documents" description="Each scan is read again and the date it shows is set beside the one on file. Nothing changes until you apply." className="max-w-2xl">
+      <DialogContent title="Re-check expired documents" description="Each scan is read again and the date it shows is set beside the one on file. Nothing changes until you apply." className="max-w-6xl">
         <p className="mt-3 text-xs text-muted" aria-live="polite">{running ? `Reading ${done} of ${ids.length}…` : `Read ${rows.length} of ${ids.length}. ${changed.length} differ from what is on file.`}</p>
-        <div className="mt-2 max-h-[55vh] overflow-y-auto rounded-lg border border-default">
+        <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-default">
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-surface-hover text-muted"><tr><th className="w-8 px-2 py-2" /><th className="px-2 py-2">Employee</th><th className="w-9 px-1 py-2"><span className="sr-only">Open</span></th><th className="px-2 py-2">On file</th><th className="px-2 py-2">Scan shows</th></tr></thead>
             <tbody>
               {rows.map((r) => {
                 const diff = !r.error && differs(r);
                 return (
-                  <tr key={r.id} className="border-t border-default align-top">
-                    <td className="px-2 py-2"><input type="checkbox" disabled={!diff} checked={chosen.has(r.id)} aria-label={`Use the scan's date for ${r.employee}`} onChange={(e) => setChosen((prev) => { const n = new Set(prev); if (e.target.checked) n.add(r.id); else n.delete(r.id); return n; })} className="h-4 w-4 accent-[var(--brand-primary)]" /></td>
+                  <tr key={r.id} onClick={() => setViewing(r.id)} className={cn("cursor-pointer border-t border-default align-top hover:bg-surface-hover", viewing === r.id && "bg-brand-soft")}>
+                    <td className="px-2 py-2"><input type="checkbox" disabled={!diff} checked={chosen.has(r.id)} aria-label={`Use the scan's date for ${r.employee}`} onClick={(e) => e.stopPropagation()} onChange={(e) => setChosen((prev) => { const n = new Set(prev); if (e.target.checked) n.add(r.id); else n.delete(r.id); return n; })} className="h-4 w-4 accent-[var(--brand-primary)]" /></td>
                     <td className="px-2 py-2"><span className="font-medium text-primary">{r.employee}</span><br /><span className="text-muted">{label(r.type)}</span></td>
-                    <td className="px-1 py-2"><a href={`/api/documents/${r.id}`} target="_blank" rel="noreferrer" title="Open the document in a new tab" aria-label={`Open the ${label(r.type).toLowerCase()} of ${r.employee}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-subtle hover:bg-surface-hover hover:text-primary"><ExternalLink className="h-4 w-4" aria-hidden /></a></td>
+                    <td className="px-1 py-2"><button type="button" onClick={(e) => { e.stopPropagation(); setViewing(r.id); }} title="Show the document on the right" aria-label={`Show the ${label(r.type).toLowerCase()} of ${r.employee}`} aria-pressed={viewing === r.id} className={cn("inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-hover hover:text-primary", viewing === r.id ? "text-[var(--brand-primary)]" : "text-subtle")}><Eye className="h-4 w-4" aria-hidden /></button></td>
                     <td className="px-2 py-2 tabular text-secondary">{fmt(r.stored)}</td>
                     <td className="px-2 py-2 tabular">{r.error ? <span className="text-[var(--error)]">{r.error}</span> : <span className={diff ? "font-medium text-primary" : "text-muted"}>{r.read ? fmt(r.read) : diff ? "No expiry printed: clear it" : "none read"}{diff && r.confidence !== "high" ? ` (${r.confidence} confidence)` : ""}{!diff && r.read ? " ✓ same" : ""}</span>}</td>
                   </tr>
@@ -76,11 +80,35 @@ export function RecheckExpired({ ids }: { ids: string[] }) {
             </tbody>
           </table>
         </div>
+        <Preview row={rows.find((r) => r.id === viewing) ?? null} />
+        </div>
         {msg && <p className="mt-2 text-xs text-secondary" role="status">{msg}</p>}
         <div className="mt-3 flex justify-end">
           <button type="button" disabled={running || chosen.size === 0} onClick={() => void apply()} className="h-9 rounded-md bg-[var(--brand-primary)] px-3.5 text-sm font-medium text-white disabled:opacity-50">Apply {chosen.size || ""} date{chosen.size === 1 ? "" : "s"}</button>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* eslint-disable @next/next/no-img-element -- a stored scan served by the API, not a static asset */
+/** The scan of the row being checked, shown beside the list so the date can be compared without leaving the dialog. */
+function Preview({ row }: { row: Recheck | null }) {
+  if (!row) return <div className="hidden items-center justify-center rounded-lg border border-dashed border-default p-6 text-center text-xs text-muted md:flex">Click a row to see its scan here.</div>;
+  const src = `/api/documents/${row.id}`;
+  const isPdf = row.mime === "application/pdf";
+  const isImage = /^image\/(jpeg|png|gif|webp)$/.test(row.mime);
+  return (
+    <div className="flex min-h-64 flex-col overflow-hidden rounded-lg border border-default">
+      <div className="flex items-center justify-between gap-2 border-b border-default bg-surface-hover px-3 py-2 text-xs">
+        <span className="min-w-0 truncate"><span className="font-medium text-primary">{row.employee}</span> <span className="text-muted">· {label(row.type)}</span></span>
+        <a href={src} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3.5 w-3.5" aria-hidden />New tab</a>
+      </div>
+      <div className="flex-1 bg-surface">
+        {isPdf ? <iframe key={row.id} title={`Scan of ${row.employee}`} src={`${src}#toolbar=0&navpanes=0&view=FitH`} className="h-[60vh] w-full" />
+          : isImage ? <img key={row.id} src={src} alt={`Scan of ${row.employee}`} className="h-[60vh] w-full object-contain" />
+          : <p className="p-6 text-center text-xs text-muted">This file type can&apos;t be shown here. Use New tab to open it.</p>}
+      </div>
+    </div>
   );
 }
