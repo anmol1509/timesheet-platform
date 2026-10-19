@@ -55,6 +55,7 @@ export const DEFAULT_CHART: ChartRow[] = [
   { code: "5600", name: "PPE & safety", type: "EXPENSE", tag: "EXP_PPE" },
   { code: "5700", name: "Bank charges", type: "EXPENSE", tag: "BANK_CHARGES" },
   { code: "5800", name: "Depreciation", type: "EXPENSE", tag: "EXP_DEPRECIATION" },
+  { code: "5950", name: "Exchange (gain) / loss", type: "EXPENSE", tag: "EXP_FX" },
   { code: "5900", name: "Other expenses", type: "EXPENSE", tag: "EXPENSE_OTHER" },
 ];
 

@@ -13,6 +13,7 @@ import { VoucherDialog } from "./voucher-dialog";
 import { VoidButton } from "./void-button";
 import { ReceivePayment } from "./receive-payment";
 import { TransferDialog } from "./transfer-dialog";
+import { foreignAccounts } from "@/lib/books/banks";
 import { LockNow } from "./lock-now";
 
 export const metadata = { title: "Accounting" };
@@ -44,6 +45,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     prisma.bankStatementLine.count({ where: { branchId, entryId: null } }),
     ctx.canWrite ? prisma.client.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
   ]);
+  const fxAccounts = ctx.canWrite ? await foreignAccounts(branchId) : {};
   const bal = (tag: string) => accounts.filter((a) => a.tag === tag).reduce((s, a) => s + normalBalance(a), 0);
   const moneyAccts = accounts.filter((a) => a.isActive && isMoney(a));
   const cash = moneyAccts.reduce((s, a) => s + normalBalance(a), 0);
@@ -68,8 +70,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         description={`Everything that moves money, posted automatically from ${fmtDate(ctx.branch.booksOpeningDate!)}${lockedUntil ? ` · locked up to ${fmtDate(lockedUntil)}` : ""}.`}
         actions={ctx.canWrite ? (
           <div className="flex gap-2">
-            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} />
-            {moneyAccts.length > 1 && <TransferDialog accounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} minDate={minDate} />}
+            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} foreign={fxAccounts} />
+            {moneyAccts.length > 1 && <TransferDialog accounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} minDate={minDate} foreign={fxAccounts} />}
             <VoucherDialog accounts={options} minDate={minDate} label="New entry" />
           </div>
         ) : undefined}

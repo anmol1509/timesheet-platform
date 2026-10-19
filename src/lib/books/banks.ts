@@ -17,3 +17,18 @@ export async function ownBankId(raw: unknown, branchId: string | null): Promise<
   const b = await prisma.bank.findFirst({ where: { id, branchId }, select: { id: true } });
   return b?.id ?? null;
 }
+
+/** Ledger accounts that stand for a foreign-currency bank account, with the currency and the latest rate on file. */
+export async function foreignAccounts(branchId: string | null): Promise<Record<string, { currency: string; rate: number | null }>> {
+  if (!branchId) return {};
+  const accounts = await prisma.account.findMany({ where: { branchId, bank: { is: { currency: { not: "AED" } } } }, select: { id: true, bank: { select: { currency: true } } } });
+  if (!accounts.length) return {};
+  const rates = await prisma.exchangeRate.findMany({ where: { branchId }, orderBy: { date: "desc" } });
+  const out: Record<string, { currency: string; rate: number | null }> = {};
+  for (const a of accounts) {
+    const cur = (a.bank?.currency ?? "").toUpperCase();
+    const latest = rates.find((r) => r.currency === cur);
+    out[a.id] = { currency: cur, rate: latest ? Number(latest.rate) : null };
+  }
+  return out;
+}

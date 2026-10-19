@@ -7,6 +7,8 @@ import { logAudit } from "@/lib/audit";
 import { ACCOUNT_TYPES, VOUCHER_PREFIX } from "@/lib/books/chart";
 import { readPolicy, type Policy } from "@/lib/books/accruals";
 import { closingLines } from "@/lib/books/closing";
+import { foreignAccounts } from "@/lib/books/banks";
+import { toAed } from "@/lib/books/fx";
 import type { Prisma } from "@/generated/prisma/client";
 import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
@@ -49,13 +51,22 @@ export type MoneyInSource = "OTHER_INCOME" | "CAPITAL" | "STAFF_REPAYMENT" | "SU
 const SOURCE_TAG: Record<Exclude<MoneyInSource, "OTHER">, string> = { OTHER_INCOME: "INCOME_OTHER", CAPITAL: "CAPITAL", STAFF_REPAYMENT: "STAFF_ADVANCES", SUPPLIER_REFUND: "COST_SUPPLIERS" };
 
 /** Money received that is not a client payment: other income, owner's capital, a staff repayment, a refund, a loan... */
-export async function receiveMoneyAction(input: { source: MoneyInSource; from: string; date: string; amount: number; narration: string; moneyAccountId: string; creditAccountId?: string }): Promise<Result & { number?: string }> {
+export async function receiveMoneyAction(input: { source: MoneyInSource; from: string; date: string; amount: number; narration: string; moneyAccountId: string; creditAccountId?: string; foreign?: { amount: number; rate: number } }): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch first." };
   const date = parseDay(input.date);
   if (!date) return { error: "Choose a date." };
-  const amount = r2(Number(input.amount) || 0);
+  const fx = (await foreignAccounts(branchId))[input.moneyAccountId];
+  let amount = r2(Number(input.amount) || 0);
+  let foreignAmount: number | null = null;
+  if (fx) {
+    foreignAmount = r2(Number(input.foreign?.amount) || 0);
+    const rate = Number(input.foreign?.rate) || 0;
+    if (foreignAmount <= 0) return { error: `Enter the amount in ${fx.currency}.` };
+    if (rate <= 0) return { error: `Enter the exchange rate (AED for 1 ${fx.currency}).` };
+    amount = toAed(foreignAmount, rate);
+  }
   if (amount <= 0) return { error: "Enter an amount." };
   const from = input.from.trim();
   if (!from) return { error: "Say who it is from." };
@@ -78,7 +89,7 @@ export async function receiveMoneyAction(input: { source: MoneyInSource; from: s
   const narration = `${from}${input.narration.trim() ? ` — ${input.narration.trim()}` : ""}`;
   const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.RECEIPT, 1);
   const entry = await prisma.journalEntry.create({
-    data: { branchId, number, date, type: "RECEIPT", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.moneyAccountId, debit: amount, credit: 0 }, { accountId: creditId as string, debit: 0, credit: amount }] } },
+    data: { branchId, number, date, type: "RECEIPT", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.moneyAccountId, debit: amount, credit: 0, ...(fx && foreignAmount ? { currency: fx.currency, foreignAmount } : {}) }, { accountId: creditId as string, debit: 0, credit: amount }] } },
   });
   await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "RECEIPT", source: input.source, from, total: amount }, userId: user.id, userName: user.name, branchId });
   refresh();
@@ -379,7 +390,7 @@ export async function saveDefaultBanksAction(input: { receipt: string; payment: 
 }
 
 /** Money moved between two of the company's own bank or cash accounts. */
-export async function createTransferAction(input: { from: string; to: string; date: string; amount: number; narration: string }): Promise<Result & { number?: string }> {
+export async function createTransferAction(input: { from: string; to: string; date: string; amount: number; narration: string; fromForeign?: number; toForeign?: number }): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) return { error: "Pick a branch first." };
@@ -395,11 +406,21 @@ export async function createTransferAction(input: { from: string; to: string; da
   if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "That period is locked." };
   const accts = await prisma.account.findMany({ where: { id: { in: [input.from, input.to] }, branchId, type: "ASSET", isActive: true }, select: { id: true, name: true } });
   if (accts.length !== 2) return { error: "Choose bank or cash accounts." };
+  const fxMap = await foreignAccounts(branchId);
+  const side = (id: string, typed: number | undefined) => {
+    const fx = fxMap[id];
+    if (!fx) return { fields: {} as { currency?: string; foreignAmount?: number } };
+    const f = r2(Number(typed) || 0);
+    return f > 0 ? { fields: { currency: fx.currency, foreignAmount: f } } : { error: `Enter the amount in ${fx.currency}.` };
+  };
+  const toSide = side(input.to, input.toForeign), fromSide = side(input.from, input.fromForeign);
+  if ("error" in toSide) return { error: toSide.error };
+  if ("error" in fromSide) return { error: fromSide.error };
   const nameOf = (id: string) => accts.find((x) => x.id === id)?.name ?? "";
   const narration = input.narration.trim() || `Transfer from ${nameOf(input.from)} to ${nameOf(input.to)}`;
   const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.TRANSFER, 1);
   const entry = await prisma.journalEntry.create({
-    data: { branchId, number, date, type: "TRANSFER", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.to, debit: amount, credit: 0 }, { accountId: input.from, debit: 0, credit: amount }] } },
+    data: { branchId, number, date, type: "TRANSFER", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.to, debit: amount, credit: 0, ...toSide.fields }, { accountId: input.from, debit: 0, credit: amount, ...fromSide.fields }] } },
   });
   await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "TRANSFER", total: amount }, userId: user.id, userName: user.name, branchId });
   refresh();
@@ -438,4 +459,34 @@ export async function closeYearAction(year: number, lockIt: boolean): Promise<Re
   await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "CLOSING", year: y, profit, locked: lockIt }, userId: user.id, userName: user.name, branchId });
   refresh();
   return { profit };
+}
+
+/** An exchange rate: how many dirhams one unit of a currency was worth on a day. Foreign bank balances are revalued at these. */
+export async function saveExchangeRateAction(input: { currency: string; date: string; rate: number }): Promise<Result> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const currency = input.currency.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency) || currency === "AED") return { error: "Choose a foreign currency." };
+  const date = parseDay(input.date);
+  if (!date) return { error: "Choose the date the rate is for." };
+  const rate = Number(input.rate);
+  if (!Number.isFinite(rate) || rate <= 0 || rate > 100000) return { error: "Enter the rate: AED for 1 unit of the currency." };
+  await prisma.exchangeRate.upsert({ where: { branchId_currency_date: { branchId, currency, date } }, create: { branchId, currency, date, rate }, update: { rate } });
+  await logAudit({ entityType: "BOOKS", entityId: branchId, action: "UPDATE", after: { rate: { currency, date: input.date, rate } }, userId: user.id, userName: user.name, branchId });
+  const result = await syncPostings(branchId);
+  refresh();
+  return result.skippedLocked > 0 ? { error: `Saved, but ${result.skippedLocked} entries fall in a locked period and were left as they are.` } : {};
+}
+
+export async function deleteExchangeRateAction(id: string): Promise<Result> {
+  await requireWrite("finance.books");
+  const { branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const cur = await prisma.exchangeRate.findUnique({ where: { id }, select: { branchId: true } });
+  if (!cur || cur.branchId !== branchId) return { error: "Not found." };
+  await prisma.exchangeRate.delete({ where: { id } });
+  await syncPostings(branchId);
+  refresh();
+  return {};
 }

@@ -5,6 +5,7 @@ import { DEFAULT_CHART, VOUCHER_PREFIX } from "./chart";
 import { billPostings, expensePostings, hashPosting, invoicePostings, loanPostings, payrollPostings, settlementPostings, topUpPostings, r2, totals, utcDay, type Posting } from "./postings";
 import { isLocked } from "./ledger";
 import { assetPostings } from "./assets";
+import { fxPostings, rateOn, type FxAccount, type RatePoint } from "./fx";
 import { chequePostings } from "./cheques";
 import { recurringPostings, type Frequency } from "./recurring";
 import { costTag, customPostings, provisionTag, type CustomRule, type RuleStaff } from "./customProvisions";
@@ -184,6 +185,35 @@ async function gatherPostings(branchId: string, opening: Date): Promise<Posting[
   for (const r of recurring) out.push(...recurringPostings({ id: r.id, name: r.name, frequency: r.frequency as Frequency, startDate: utcDay(r.startDate), endDate: r.endDate ? utcDay(r.endDate) : null, debitAccountId: r.debitAccountId, creditAccountId: r.creditAccountId, amount: Number(r.amount), active: r.active }, opening, today));
   if (assets.length) {
     out.push(...assetPostings(assets.map((a) => ({ id: a.id, name: a.name, cost: Number(a.cost), salvage: Number(a.salvage), purchaseDate: utcDay(a.purchaseDate), lifeMonths: a.lifeMonths, paidFromAccountId: a.paidFromAccountId, disposedOn: a.disposedOn ? utcDay(a.disposedOn) : null, disposalAmount: a.disposalAmount == null ? null : Number(a.disposalAmount), disposalAccountId: a.disposalAccountId })), opening, last));
+  }
+  // Foreign-currency bank accounts are revalued at each month end, when rates have been entered.
+  if (openMonth <= last) {
+    const foreignBanks = await prisma.account.findMany({ where: { branchId, bank: { is: { currency: { not: "AED" } } } }, select: { id: true, bank: { select: { currency: true } } } });
+    if (foreignBanks.length) {
+      const [rateRows, fxLines] = await Promise.all([
+        prisma.exchangeRate.findMany({ where: { branchId }, select: { currency: true, date: true, rate: true } }),
+        prisma.journalLine.findMany({
+          where: { accountId: { in: foreignBanks.map((a) => a.id) }, entry: { branchId, status: "POSTED", OR: [{ sourceKey: null }, { NOT: { sourceKey: { startsWith: "fx:" } } }] } },
+          select: { accountId: true, debit: true, credit: true, foreignAmount: true, entry: { select: { date: true } } },
+        }),
+      ]);
+      const rates: Record<string, RatePoint[]> = {};
+      for (const r of rateRows) (rates[r.currency] ??= []).push({ date: utcDay(r.date), rate: Number(r.rate) });
+      const accountsFx: FxAccount[] = foreignBanks.map((a) => {
+        const currency = (a.bank?.currency ?? "AED").toUpperCase();
+        return {
+          accountId: a.id, currency,
+          movements: fxLines.filter((l) => l.accountId === a.id).map((l) => {
+            const aed = r2(Number(l.debit) - Number(l.credit));
+            const date = utcDay(l.entry.date);
+            const fallback = rateOn(rates[currency] ?? [], date) ?? (rates[currency]?.[0]?.rate ?? 1);
+            const foreign = l.foreignAmount != null ? (aed >= 0 ? 1 : -1) * Number(l.foreignAmount) : r2(aed / fallback);
+            return { date, aed, foreign };
+          }),
+        };
+      });
+      out.push(...fxPostings(accountsFx, rates, monthsBetween(openMonth, last)));
+    }
   }
   const customRules: CustomRule[] = rules.map((r) => ({ id: r.id, name: r.name, method: r.method as CustomRule["method"], amount: Number(r.amount), everyMonths: r.everyMonths, appliesTo: r.appliesTo as CustomRule["appliesTo"], active: r.active }));
   if (customRules.length && openMonth <= last) {

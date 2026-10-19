@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import type { Policy } from "@/lib/books/accruals";
 import { METHOD_LABEL, type CustomRule, type RuleMethod } from "@/lib/books/customProvisions";
-import { lockBooksAction, refreshPostingsAction, saveDefaultBanksAction, saveOpeningBalancesAction, closeYearAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
+import { lockBooksAction, refreshPostingsAction, saveDefaultBanksAction, saveOpeningBalancesAction, closeYearAction, saveExchangeRateAction, deleteExchangeRateAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -274,6 +274,42 @@ export function YearEnd({ years }: { years: { year: number; profit: number; clos
       </ul>
       <label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" checked={lock} onChange={(e) => setLock(e.target.checked)} /> Also lock the year so nothing can be changed in it</label>
       {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+    </div>
+  );
+}
+
+/** Exchange rates for foreign bank accounts. The month-end rate decides what each account is worth in dirhams. */
+export function ExchangeRates({ currencies, rates, canEdit }: { currencies: string[]; rates: { id: string; currency: string; date: string; rate: number }[]; canEdit: boolean }) {
+  const [currency, setCurrency] = useState(currencies[0] ?? "");
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [rate, setRate] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  if (currencies.length === 0) return <p className="text-sm text-muted">You have no foreign-currency bank account yet. Set a bank&apos;s currency (for example USD) under Reference Data › Banks and it appears here.</p>;
+  return (
+    <div className="space-y-3">
+      {canEdit && (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block text-xs text-muted">Currency<select value={currency} onChange={(e) => setCurrency(e.target.value)} className="input mt-1 block h-8 w-24 text-sm">{currencies.map((x) => <option key={x}>{x}</option>)}</select></label>
+          <label className="block text-xs text-muted">On<DatePicker value={date} onChange={setDate} ariaLabel="Rate date" /></label>
+          <label className="block text-xs text-muted">AED for 1 {currency}<input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3.6725" className="input mt-1 block h-8 w-28 text-right text-sm" /></label>
+          <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
+            const r = await saveExchangeRateAction({ currency, date, rate: Number(rate) });
+            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: "Saved. Foreign accounts are revalued at month ends." });
+            if (!r.error) setRate("");
+          })}>{pending ? "Saving…" : "Save rate"}</Button>
+        </div>
+      )}
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+      {rates.length > 0 && (
+        <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default text-sm">
+          {rates.map((r) => (
+            <li key={r.id} className="flex items-center justify-between px-4 py-2"><span><span className="font-medium text-primary">{r.currency}</span> <span className="ml-2 tabular text-secondary">{r.rate}</span> <span className="ml-2 text-xs text-muted">on {r.date}</span></span>
+              {canEdit && <button type="button" className="text-xs text-muted hover:text-error" onClick={() => start(async () => { await deleteExchangeRateAction(r.id); })}>Remove</button>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

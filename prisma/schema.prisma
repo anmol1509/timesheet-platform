@@ -143,6 +143,7 @@ model Branch {
   fixedAssets      FixedAsset[]
   cheques          Cheque[]
   recurringEntries RecurringEntry[]
+  exchangeRates    ExchangeRate[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -2940,6 +2941,9 @@ model JournalLine {
   partyType   String?
   partyId     String?
   projectId   String?
+  // For a line in a foreign currency: the currency and the amount in it (always positive; the side is debit or credit).
+  currency    String?
+  foreignAmount Decimal? @db.Decimal(14, 2)
 
   entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
   entryId   String
@@ -3122,4 +3126,17 @@ model RecurringEntry {
   branchId String
 
   @@index([branchId])
+}
+
+/// What one unit of a foreign currency was worth in AED on a date. Foreign bank balances are revalued at the latest rate on or before each month end.
+model ExchangeRate {
+  id       String   @id @default(cuid())
+  currency String
+  date     DateTime @db.Date
+  rate     Decimal  @db.Decimal(14, 6)
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, currency, date])
 }

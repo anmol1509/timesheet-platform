@@ -2,12 +2,12 @@ import { BookOpen } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/PageHeader";
 import { readPolicy } from "@/lib/books/accruals";
-import { listBanks } from "@/lib/books/banks";
+import { foreignAccounts, listBanks } from "@/lib/books/banks";
 import type { CustomRule, RuleMethod } from "@/lib/books/customProvisions";
 import { getBooksContext, iso } from "../books-data";
 import { SetupCard } from "../setup-card";
 import { ImportWizard } from "./import-wizard";
-import { CustomProvisions, DefaultBanks, LockControl, YearEnd, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
+import { CustomProvisions, DefaultBanks, ExchangeRates, LockControl, YearEnd, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
 
 export const metadata = { title: "Accounting settings" };
 
@@ -98,6 +98,9 @@ export default async function SetupPage() {
       )}
       <Card title="Default banks" hint="Invoices, bills and payroll runs can name the bank they used. When one doesn't, these decide which bank account the books use.">
         <DefaultBanks banks={await listBanks(branchId)} receipt={ctx.branch.defaultReceiptBankId ?? ""} payment={ctx.branch.defaultPaymentBankId ?? ""} canEdit={ctx.canWrite} />
+      </Card>
+      <Card title="Exchange rates" hint="For bank accounts held in another currency. Enter the rate at the end of each month and the books revalue the balance and show the exchange gain or loss.">
+        <ExchangeRates currencies={[...new Set(Object.values(await foreignAccounts(branchId)).map((f) => f.currency))]} rates={(await prisma.exchangeRate.findMany({ where: { branchId }, orderBy: { date: "desc" }, take: 12 })).map((r) => ({ id: r.id, currency: r.currency, date: iso(r.date), rate: Number(r.rate) }))} canEdit={ctx.canWrite} />
       </Card>
       <Card title="Staff provisions" hint="Gratuity, leave and air tickets are paid later but earned every month. Switch them on and the books charge each finished month and build the liability on the balance sheet. See the amounts under Reports › Staff provisions.">
         <ProvisionSettings initial={{ gratuity: ctx.branch.accrueGratuity, leave: ctx.branch.accrueLeave, tickets: ctx.branch.accrueTickets }} policy={readPolicy(ctx.branch.provisionPolicy)} canEdit={ctx.canWrite} />
