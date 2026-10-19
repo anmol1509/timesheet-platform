@@ -67,7 +67,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         description={`Everything that moves money, posted automatically from ${fmtDate(ctx.branch.booksOpeningDate!)}${lockedUntil ? ` · locked up to ${fmtDate(lockedUntil)}` : ""}.`}
         actions={ctx.canWrite ? (
           <div className="flex gap-2">
-            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} minDate={minDate} />
+            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} />
             <VoucherDialog accounts={options} minDate={minDate} label="New entry" />
           </div>
         ) : undefined}

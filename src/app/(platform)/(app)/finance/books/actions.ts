@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { ACCOUNT_TYPES } from "@/lib/books/chart";
+import { ACCOUNT_TYPES, VOUCHER_PREFIX } from "@/lib/books/chart";
 import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
 import { r2, totals, utcDay } from "@/lib/books/postings";
@@ -39,6 +39,47 @@ export async function setupBooksAction(openingDate: string): Promise<Result> {
   await logAudit({ entityType: "BOOKS", entityId: branchId, action: "CREATE", after: { openingDate, posted: result.created }, userId: user.id, userName: user.name, branchId });
   refresh();
   return {};
+}
+
+/** Where money coming in from someone other than a client lands: the account it is credited to. */
+export type MoneyInSource = "OTHER_INCOME" | "CAPITAL" | "STAFF_REPAYMENT" | "SUPPLIER_REFUND" | "OTHER";
+const SOURCE_TAG: Record<Exclude<MoneyInSource, "OTHER">, string> = { OTHER_INCOME: "INCOME_OTHER", CAPITAL: "CAPITAL", STAFF_REPAYMENT: "STAFF_ADVANCES", SUPPLIER_REFUND: "COST_SUPPLIERS" };
+
+/** Money received that is not a client payment: other income, owner's capital, a staff repayment, a refund, a loan... */
+export async function receiveMoneyAction(input: { source: MoneyInSource; from: string; date: string; amount: number; narration: string; moneyAccountId: string; creditAccountId?: string }): Promise<Result & { number?: string }> {
+  await requireWrite("finance.books");
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const date = parseDay(input.date);
+  if (!date) return { error: "Choose a date." };
+  const amount = r2(Number(input.amount) || 0);
+  if (amount <= 0) return { error: "Enter an amount." };
+  const from = input.from.trim();
+  if (!from) return { error: "Say who it is from." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  if (date.getTime() < utcDay(state.booksOpeningDate).getTime()) return { error: "That is before your books start. Earlier figures belong in the opening balances." };
+  if (isLocked(date, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: "That period is locked." };
+  const money = await prisma.account.findUnique({ where: { id: input.moneyAccountId }, select: { branchId: true, type: true, isActive: true } });
+  if (!money || money.branchId !== branchId || money.type !== "ASSET" || !money.isActive) return { error: "Choose where the money was paid in." };
+  let creditId: string | undefined;
+  if (input.source === "OTHER") {
+    const a = input.creditAccountId ? await prisma.account.findUnique({ where: { id: input.creditAccountId }, select: { branchId: true, isActive: true } }) : null;
+    if (!a || a.branchId !== branchId || !a.isActive) return { error: "Choose what the money is for." };
+    if (input.creditAccountId === input.moneyAccountId) return { error: "Pick a different account from the one the money is paid in to." };
+    creditId = input.creditAccountId;
+  } else {
+    creditId = (await prisma.account.findFirst({ where: { branchId, tag: SOURCE_TAG[input.source] }, select: { id: true } }))?.id;
+    if (!creditId) return { error: "That account is missing from your chart. Open Set-up first." };
+  }
+  const narration = `${from}${input.narration.trim() ? ` — ${input.narration.trim()}` : ""}`;
+  const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.RECEIPT, 1);
+  const entry = await prisma.journalEntry.create({
+    data: { branchId, number, date, type: "RECEIPT", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.moneyAccountId, debit: amount, credit: 0 }, { accountId: creditId as string, debit: 0, credit: amount }] } },
+  });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "RECEIPT", source: input.source, from, total: amount }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { number };
 }
 
 export type VoucherInput = { date: string; narration: string; lines: { accountId: string; debit: number; credit: number; description?: string }[] };

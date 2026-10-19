@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can, canWrite } from "@/lib/permissions";
 import { isAdminRole } from "@/lib/roles";
-import { syncIfStale } from "@/lib/books/sync";
+import { linkBankAccounts, syncIfStale } from "@/lib/books/sync";
 
 /** Who is looking at the books, and what state the books are in. Redirects people without access. */
 export async function getBooksContext() {
@@ -14,7 +14,10 @@ export async function getBooksContext() {
     ? await prisma.branch.findUnique({ where: { id: branchId }, select: { id: true, name: true, booksOpeningDate: true, booksLockedUntil: true, booksSyncedAt: true } })
     : null;
   const initialized = !!branch?.booksOpeningDate;
-  if (branch && initialized) await syncIfStale(branch.id);
+  if (branch && initialized) {
+    await linkBankAccounts(branch.id);
+    await syncIfStale(branch.id);
+  }
   return { user, branch, branchId, initialized, canWrite: canWrite(subject, "finance.books"), isAdmin: isAdminRole(user.role) };
 }
 
