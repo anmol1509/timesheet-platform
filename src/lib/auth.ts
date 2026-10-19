@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { getSessionFromCookies } from "@/lib/session";
+import { sessionStillValid } from "@/lib/userSessions";
 import {
   can,
   canWrite,
@@ -21,6 +22,7 @@ export async function getCurrentUser() {
   });
   // A suspended user is signed out everywhere on their next request.
   if (user && !user.isActive) return null;
+  if (user && !(await sessionStillValid(session, user.sessionsValidAfter))) return null;
   return user;
 }
 

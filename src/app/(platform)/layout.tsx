@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import "../globals.css";
 import { FormValidation } from "@/components/FormValidation";
 import { MotionProvider } from "@/components/motion/MotionProvider";
-import { THEME_COOKIE, isThemePreference } from "@/lib/theme-preference";
+import { ACCENT_COOKIE, DENSITY_COOKIE, TEXT_COOKIE, THEME_COOKIE, htmlAttributes, parsePreferences } from "@/lib/preferences";
 
 const dmSans = DM_Sans({
   weight: ["400", "500", "600"],
@@ -45,18 +45,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const themePref = cookieStore.get(THEME_COOKIE)?.value;
-  // Default to light regardless of the visitor's OS/browser preference —
-  // only an explicit choice (the ThemeToggle's Light/Dark, stored in this
-  // cookie) should switch it. Without this, an unset cookie fell through to
-  // the `@media (prefers-color-scheme: dark)` rule in globals.css and the
-  // app opened dark for anyone whose system was in dark mode.
-  const dataTheme = isThemePreference(themePref) ? themePref : "light";
+  // The person's look-and-feel choices, mirrored in cookies so the first paint is already right. Unset means the
+  // default (light, purple, comfortable): the app never switches to dark on its own, only when "system" is chosen.
+  const prefs = parsePreferences({
+    theme: cookieStore.get(THEME_COOKIE)?.value,
+    accent: cookieStore.get(ACCENT_COOKIE)?.value,
+    density: cookieStore.get(DENSITY_COOKIE)?.value,
+    textSize: cookieStore.get(TEXT_COOKIE)?.value,
+  });
 
   return (
     <html
       lang="en"
-      data-theme={dataTheme}
+      {...htmlAttributes(prefs)}
       className={`${dmSans.variable} ${jakarta.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-canvas text-[var(--text)]">

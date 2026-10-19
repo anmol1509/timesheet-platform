@@ -19,7 +19,13 @@ export type SessionPayload = {
   // Preserved across re-issues (e.g. switching branch) so a "remember me"
   // login doesn't silently become a session-only cookie later.
   remember?: boolean;
+  // The UserSession row this sign-in belongs to, so it can be listed and ended from My account. Sign-ins made
+  // before sessions were tracked have none and stay valid until they expire or the person signs out everywhere.
+  sid?: string;
 };
+
+/** A verified session, with the second it was issued (used to honour "sign out of other devices"). */
+export type VerifiedSession = SessionPayload & { iat?: number };
 
 export async function createSessionToken(payload: SessionPayload) {
   return new SignJWT(payload)
@@ -31,7 +37,7 @@ export async function createSessionToken(payload: SessionPayload) {
 
 export async function verifySessionToken(
   token: string
-): Promise<SessionPayload | null> {
+): Promise<VerifiedSession | null> {
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
     if (typeof payload.userId !== "string") return null;
@@ -40,6 +46,8 @@ export async function verifySessionToken(
       activeBranchId:
         typeof payload.activeBranchId === "string" ? payload.activeBranchId : null,
       remember: payload.remember === true,
+      sid: typeof payload.sid === "string" ? payload.sid : undefined,
+      iat: typeof payload.iat === "number" ? payload.iat : undefined,
     };
   } catch {
     return null;
@@ -58,8 +66,15 @@ async function writeSessionCookie(payload: SessionPayload, remember: boolean) {
   });
 }
 
-export async function setSessionCookie(userId: string, remember: boolean = true) {
-  await writeSessionCookie({ userId, remember }, remember);
+export async function setSessionCookie(userId: string, remember: boolean = true, sid?: string) {
+  await writeSessionCookie({ userId, remember, sid }, remember);
+}
+
+/** Signs the current session again with a fresh issue time, so it survives a "sign out of other devices" that just ran. */
+export async function reissueSessionCookie() {
+  const current = await getSessionFromCookies();
+  if (!current) return;
+  await writeSessionCookie({ userId: current.userId, activeBranchId: current.activeBranchId, remember: current.remember, sid: current.sid }, current.remember ?? true);
 }
 
 // Re-issues the session cookie with a different active branch, preserving
@@ -68,7 +83,7 @@ export async function setActiveBranchCookie(activeBranchId: string | null) {
   const current = await getSessionFromCookies();
   if (!current) return;
   await writeSessionCookie(
-    { userId: current.userId, activeBranchId, remember: current.remember },
+    { userId: current.userId, activeBranchId, remember: current.remember, sid: current.sid },
     current.remember ?? true
   );
 }
@@ -78,7 +93,7 @@ export async function clearSessionCookie() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getSessionFromCookies(): Promise<SessionPayload | null> {
+export async function getSessionFromCookies(): Promise<VerifiedSession | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;

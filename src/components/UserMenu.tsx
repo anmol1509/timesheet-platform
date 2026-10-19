@@ -73,7 +73,7 @@ export function UserMenu({
               className="flex items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-sm text-secondary transition hover:bg-surface-hover hover:text-primary"
             >
               <UserCircle className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
-              My profile
+              My account
             </Link>
             {isAdmin && (
               <Link
