@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/Select";
 import { EmployeeAvatar } from "@/components/Avatar";
 import type { SelectOption } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
+import { expiryDoubt } from "@/lib/expiryDoubt";
+import { todayInUae } from "@/lib/today";
 import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
 import { MIME_BY_EXT, extOf } from "@/lib/importer/documentMatch";
 import { groupPages, type Audience, type Confidence, type PageRead } from "@/lib/importer/documentRead";
@@ -497,6 +499,7 @@ function DocRows({ docs, types, edits, setEdits, sources, dim, withOwner, pickOp
                 {pageText}{pageText && d.via ? " · " : ""}{d.via ? `matched by ${d.via}` : ""}
                 {d.readByAi && d.confidence === "low" && <span className="ml-1 font-medium text-[var(--warning)]">· check</span>}
                 {d.conflict && <span className="ml-1 font-medium text-[var(--warning)]">· the file name points to someone else</span>}
+                {(() => { const doubt = e.skip ? null : expiryDoubt(e.type ?? d.type, e.expiry ?? d.expiry, todayInUae()); return doubt ? <span className="ml-1 font-medium text-[var(--warning)]">· expiry {doubt}</span> : null; })()}
               </span>
             </span>
             <div className="w-52"><Select value={types.some((t) => t.value === (e.type ?? d.type)) ? (e.type ?? d.type) : "OTHER"} onChange={(v) => patch(d.docKey, { type: v })} searchable={false} options={types} /></div>
