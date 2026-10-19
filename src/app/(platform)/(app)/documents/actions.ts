@@ -56,16 +56,16 @@ export async function recheckDocumentAction(id: string): Promise<Recheck | { err
 }
 
 /** Files the expiry dates the person approved, on the document and on the employee record it feeds. */
-export async function applyExpiriesAction(items: { id: string; expiry: string }[]): Promise<{ updated: number; error?: string }> {
+export async function applyExpiriesAction(items: { id: string; expiry: string | null }[]): Promise<{ updated: number; error?: string }> {
   await requirePermission("workforce", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const wanted = items.filter((i) => i && typeof i.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(i.expiry)).slice(0, 100);
+  const wanted = items.filter((i) => i && typeof i.id === "string" && (i.expiry === null || /^\d{4}-\d{2}-\d{2}$/.test(i.expiry))).slice(0, 100);
   if (wanted.length === 0) return { updated: 0, error: "Choose at least one date." };
   let updated = 0;
   for (const it of wanted) {
     const d = await prisma.document.findUnique({ where: { id: it.id }, select: { id: true, type: true, expiryDate: true, employeeId: true, employee: { select: { branchId: true } } } });
     if (!d || isOutsideBranch(d.employee.branchId, branchId, isSuperAdmin)) continue;
-    const next = new Date(`${it.expiry}T00:00:00.000Z`);
+    const next = it.expiry ? new Date(`${it.expiry}T00:00:00.000Z`) : null;
     await prisma.document.update({ where: { id: d.id }, data: { expiryDate: next } });
     // The record keeps the same date as the document it was read from, so it follows when it still held the old one.
     const field = EXPIRY_FIELD.EMPLOYEE[d.type];
