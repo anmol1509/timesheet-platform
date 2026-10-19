@@ -119,20 +119,20 @@ function LetterBuilder({
   const [error, setError] = useState<string | null>(null);
 
   // Wording changed for this letter alone (kept until the NOC is made, then it moves onto the NOC).
-  const [override, setOverride] = useState<{ scope: string; html: string } | null>(null);
+  const [override, setOverride] = useState<{ scope: string; html: string; title: string } | null>(null);
   const [overrideTick, setOverrideTick] = useState(0);
   const overrideScope = `${demand.id}:${templateId}`;
   useEffect(() => {
     if (!templateId) return;
     let live = true;
     void loadDocEditAction({ kind: isNoc ? "noc-draft" : "undertaking", subjectId: overrideScope })
-      .then((r) => { if (live) setOverride("error" in r || !r.edited ? null : { scope: overrideScope, html: r.html }); })
+      .then((r) => { if (live) setOverride("error" in r || !r.edited ? null : { scope: overrideScope, html: r.html, title: r.title }); })
       .catch(() => { if (live) setOverride(null); });
     return () => { live = false; };
   }, [overrideScope, overrideTick, isNoc, templateId]);
   const baseTemplate = templates.find((t) => t.id === templateId);
   const edited = override && override.scope === overrideScope ? override.html : null;
-  const template = baseTemplate && edited ? { ...baseTemplate, html: edited } : baseTemplate;
+  const template = baseTemplate && edited && override ? { ...baseTemplate, html: edited, title: override.title || baseTemplate.title } : baseTemplate;
   const picked = workers.filter((w) => chosen.has(w.id));
   const columns = useMemo(() => {
     const keys = isNoc ? columnsFromNocFields([...fields]) : DEFAULT_LETTER_COLUMNS;

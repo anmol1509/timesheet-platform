@@ -33,7 +33,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   const [fixOpen, setFixOpen] = useState(false);
   // Words changed for this one letter: none = as the template wrote it. The edit is tied to the employee, letter,
   // answers and letterhead it was made for; change any of them and it no longer applies. `editorKey` remounts the editor.
-  const [editState, setEditState] = useState<{ scope: string; html: string; editing: boolean } | null>(null);
+  const [editState, setEditState] = useState<{ scope: string; html: string; title: string; editing: boolean } | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const [openingEdit, setOpeningEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -95,7 +95,9 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   const live = editState && editState.scope === editScope ? editState : null;
   const edited = live ? live.html : null;
   const editing = !!live?.editing;
-  const setEdited = (html: string | null) => setEditState(html === null ? null : (cur) => ({ scope: editScope, html, editing: cur?.scope === editScope ? cur.editing : false }));
+  const editedTitle = live ? live.title : null;
+  const setEdited = (html: string | null) => setEditState(html === null ? null : (cur) => ({ scope: editScope, html, title: cur?.scope === editScope ? cur.title : "", editing: cur?.scope === editScope ? cur.editing : false }));
+  const setEditedTitle = (title: string) => setEditState((cur) => (cur && cur.scope === editScope ? { ...cur, title } : cur));
   const setEditing = (on: boolean) => setEditState((cur) => (cur && cur.scope === editScope ? { ...cur, editing: on } : cur));
 
   const emptyFields = preview?.empty ?? [];
@@ -107,19 +109,19 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   /** Opens the editor: the letter's words with each missing detail shown as a highlighted "[Label]", unless it was already edited. */
   async function openEditor(fallbackHtml: string) {
     setEditError(null);
-    if (edited !== null) { setEditState({ scope: editScope, html: edited, editing: true }); setEditorKey((n) => n + 1); return; }
+    if (edited !== null) { setEditState({ scope: editScope, html: edited, title: editedTitle ?? "", editing: true }); setEditorKey((n) => n + 1); return; }
     setOpeningEdit(true);
     const r = await editableLetterAction(employeeId, templateId, inputs, (issuerKey || "PROFILE") as IssuerKey).catch(() => ({ error: "Couldn't open the letter for editing." }));
     setOpeningEdit(false);
     if ("error" in r && r.error) { setEditError(r.error); return; }
-    setEditState({ scope: editScope, html: ("html" in r && r.html) || fallbackHtml, editing: true });
+    setEditState({ scope: editScope, html: ("html" in r && r.html) || fallbackHtml, title: ("title" in r && r.title) || shown?.title || "", editing: true });
     setEditorKey((n) => n + 1);
   }
 
   function issue() {
     setError(null);
     startIssue(async () => {
-      const res = await issueLetterAction(employeeId, templateId, inputs, { issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp, signatureImageId: showSignature ? oneOffSig?.id ?? null : null, stampImageId: showStamp ? oneOffStamp?.id ?? null : null }, allowEmpty, edited);
+      const res = await issueLetterAction(employeeId, templateId, inputs, { issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp, signatureImageId: showSignature ? oneOffSig?.id ?? null : null, stampImageId: showStamp ? oneOffStamp?.id ?? null : null }, allowEmpty, edited, editedTitle);
       if (res.error) setError(res.error);
       else if (res.id) window.open(`/api/letters/${res.id}/pdf`, "_blank");
     });
@@ -225,9 +227,12 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
               </div>
             )}
             {editing && edited !== null ? (
-              <LetterEditor key={editorKey} html={edited} onChange={setEdited} fields={[]} audience="EMPLOYEE" oneOff />
+              <div className="space-y-3">
+                <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Heading printed on the letter</span><input value={editedTitle ?? ""} onChange={(e) => setEditedTitle(e.target.value)} maxLength={120} className="input w-full" aria-label="Heading" /></label>
+                <LetterEditor key={editorKey} html={edited} onChange={setEdited} fields={[]} audience="EMPLOYEE" oneOff />
+              </div>
             ) : shown?.html ? (
-              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={shown.title ?? ""} html={edited ?? shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins: onLetterhead ? { top: issuer.topMm, bottom: issuer.bottomMm, ...defaults.letterheadSides } : defaults.plain, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
+              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={(edited !== null && editedTitle?.trim()) || shown.title || ""} html={edited ?? shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins: onLetterhead ? { top: issuer.topMm, bottom: issuer.bottomMm, ...defaults.letterheadSides } : defaults.plain, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
             ) : (
               <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
             )}

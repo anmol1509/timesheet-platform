@@ -2995,6 +2995,8 @@ model DocumentEdit {
   /// The record the wording belongs to, e.g. a NOC id, or "demandId:templateId" for an undertaking.
   subjectId    String
   bodyHtml     String
+  /// The heading printed on this document, when it was changed; empty uses the template's.
+  title        String?
   editedById   String?
   editedByName String?
   createdAt    DateTime @default(now())

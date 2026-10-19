@@ -65,10 +65,11 @@ export async function GET(
     );
   }
 
+  const edit = await findDocEdit("undertaking", `${demand.id}:${template.id}`);
   const { sections, missingLetterheads } = await buildLetterSections({
     workers: workers.map(toLetterWorker),
-    // Wording changed for this undertaking alone wins over the template's.
-    templateHtml: (await findDocEdit("undertaking", `${demand.id}:${template.id}`)) ?? templateHtml(template),
+    // Wording and heading changed for this undertaking alone win over the template's.
+    templateHtml: edit?.html ?? templateHtml(template),
     onLetterhead,
     fallbackIssuerName: demand.branch.name,
     issuedBy: "COMPANY",
@@ -87,7 +88,7 @@ export async function GET(
 
   const buffer = await generateLetterPdf({
     margins: await loadPaperMargins(demand.branchId),
-    title: template.title || template.category || "Undertaking Letter",
+    title: edit?.title || template.title || template.category || "Undertaking Letter",
     clientName: demand.client.name,
     clientAddress: demand.client.billingAddress,
     projectName: demand.project.name,

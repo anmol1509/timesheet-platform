@@ -13,9 +13,9 @@ import type { DocEditKind } from "@/lib/documentEdit";
 
 /** What a person asks to edit. An advance is one record whose letter changes from a request to a receipt, so the server decides which. */
 export type DocTarget = { kind: "noc" | "noc-draft" | "undertaking" | "salary-revision" | "final-settlement" | "deduction-notice" | "advance"; subjectId: string };
-export type DocEditState = { html: string; edited: boolean; audience: Audience; label: string } | { error: string };
+export type DocEditState = { html: string; title: string; edited: boolean; audience: Audience; label: string } | { error: string };
 
-type Resolved = { kind: DocEditKind; subjectId: string; branchId: string; audience: Audience; baseHtml: string; label: string; payroll: boolean };
+type Resolved = { kind: DocEditKind; subjectId: string; branchId: string; audience: Audience; baseHtml: string; baseTitle: string; label: string; payroll: boolean };
 
 const SITE_LABEL: Record<string, string> = { noc: "NOC", "noc-draft": "NOC", undertaking: "Undertaking letter" };
 
@@ -25,16 +25,16 @@ async function resolve(t: DocTarget): Promise<Resolved | null> {
   if (!id) return null;
   if (t.kind === "noc") {
     const n = await prisma.noc.findUnique({ where: { id }, select: { branchId: true, template: true } });
-    return n ? { kind: "noc", subjectId: id, branchId: n.branchId, audience: "SITE", baseHtml: templateHtml(n.template), label: SITE_LABEL.noc, payroll: false } : null;
+    return n ? { kind: "noc", subjectId: id, branchId: n.branchId, audience: "SITE", baseHtml: templateHtml(n.template), baseTitle: n.template.title || n.template.category || "No Objection Certificate", label: SITE_LABEL.noc, payroll: false } : null;
   }
   if (t.kind === "noc-draft" || t.kind === "undertaking") {
     const [demandId, templateId] = id.split(":");
     if (!demandId || !templateId) return null;
     const [d, tpl] = await Promise.all([prisma.demandRequest.findUnique({ where: { id: demandId }, select: { branchId: true } }), prisma.letterTemplate.findUnique({ where: { id: templateId } })]);
     if (!d || !tpl || tpl.branchId !== d.branchId) return null;
-    return { kind: t.kind, subjectId: id, branchId: d.branchId, audience: "SITE", baseHtml: templateHtml(tpl), label: SITE_LABEL[t.kind], payroll: false };
+    return { kind: t.kind, subjectId: id, branchId: d.branchId, audience: "SITE", baseHtml: templateHtml(tpl), baseTitle: tpl.title || tpl.category || (t.kind === "undertaking" ? "Undertaking Letter" : "No Objection Certificate"), label: SITE_LABEL[t.kind], payroll: false };
   }
-  const own = async (branchId: string, key: string, label: string, kind: DocEditKind): Promise<Resolved> => ({ kind, subjectId: id, branchId, audience: "EMPLOYEE", baseHtml: (await presetBase(branchId, key)).html, label, payroll: true });
+  const own = async (branchId: string, key: string, label: string, kind: DocEditKind): Promise<Resolved> => { const b = await presetBase(branchId, key); return { kind, subjectId: id, branchId, audience: "EMPLOYEE", baseHtml: b.html, baseTitle: b.title, label, payroll: true }; };
   if (t.kind === "salary-revision") { const r = await prisma.salaryRevision.findUnique({ where: { id }, select: { branchId: true } }); return r ? own(r.branchId, "salary-revision", "Salary revision letter", "salary-revision") : null; }
   if (t.kind === "final-settlement") { const s = await prisma.finalSettlement.findUnique({ where: { id }, select: { branchId: true } }); return s ? own(s.branchId, "final-settlement", "Settlement letter", "final-settlement") : null; }
   if (t.kind === "deduction-notice") { const l = await prisma.payrollLine.findUnique({ where: { id }, select: { run: { select: { branchId: true } } } }); return l ? own(l.run.branchId, "deduction-notice", "Deduction notice", "deduction-notice") : null; }
@@ -61,12 +61,12 @@ async function guard(t: DocTarget, write: boolean): Promise<{ r: Resolved; user:
 export async function loadDocEditAction(t: DocTarget): Promise<DocEditState> {
   const g = await guard(t, false);
   if ("error" in g) return g;
-  const saved = await prisma.documentEdit.findUnique({ where: { kind_subjectId: { kind: g.r.kind, subjectId: g.r.subjectId } }, select: { bodyHtml: true } });
-  return { html: saved?.bodyHtml ?? g.r.baseHtml, edited: !!saved, audience: g.r.audience, label: g.r.label };
+  const saved = await prisma.documentEdit.findUnique({ where: { kind_subjectId: { kind: g.r.kind, subjectId: g.r.subjectId } }, select: { bodyHtml: true, title: true } });
+  return { html: saved?.bodyHtml ?? g.r.baseHtml, title: saved?.title || g.r.baseTitle, edited: !!saved, audience: g.r.audience, label: g.r.label };
 }
 
 /** Keeps new wording for this one document. The merge fields stay in it, so the figures still come from the records. */
-export async function saveDocEditAction(t: DocTarget, html: string): Promise<{ error: string | null }> {
+export async function saveDocEditAction(t: DocTarget, html: string, title: string): Promise<{ error: string | null }> {
   const g = await guard(t, true);
   if ("error" in g) return { error: g.error };
   const clean = sanitizeLetterHtml(String(html ?? "").slice(0, 40_000));
@@ -74,12 +74,15 @@ export async function saveDocEditAction(t: DocTarget, html: string): Promise<{ e
   const unknown = unknownFieldsIn(clean, g.r.audience);
   if (unknown.length > 0) return { error: `These fields aren't recognised: ${unknown.map((k) => `%%${k}%%`).join(", ")}. Remove them or pick from Insert field.` };
   const { r, user } = g;
+  // A heading identical to the template's is not stored, so the document keeps following the template's.
+  const typed = String(title ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  const heading = typed && typed.toLowerCase() !== r.baseTitle.toLowerCase() ? typed : null;
   await prisma.documentEdit.upsert({
     where: { kind_subjectId: { kind: r.kind, subjectId: r.subjectId } },
-    create: { kind: r.kind, subjectId: r.subjectId, bodyHtml: clean, branchId: r.branchId, editedById: user.id, editedByName: user.name },
-    update: { bodyHtml: clean, editedById: user.id, editedByName: user.name },
+    create: { kind: r.kind, subjectId: r.subjectId, bodyHtml: clean, title: heading, branchId: r.branchId, editedById: user.id, editedByName: user.name },
+    update: { bodyHtml: clean, title: heading, editedById: user.id, editedByName: user.name },
   });
-  await logAudit({ entityType: "DOCUMENT_EDIT", entityId: r.subjectId, action: "UPDATE", after: { kind: r.kind, wording: htmlToText(clean).slice(0, 300) }, userId: user.id, userName: user.name, branchId: r.branchId });
+  await logAudit({ entityType: "DOCUMENT_EDIT", entityId: r.subjectId, action: "UPDATE", after: { kind: r.kind, heading, wording: htmlToText(clean).slice(0, 300) }, userId: user.id, userName: user.name, branchId: r.branchId });
   return { error: null };
 }
 
