@@ -71,7 +71,6 @@ export async function applyExpiriesAction(items: { id: string; expiry: string }[
     const field = EXPIRY_FIELD.EMPLOYEE[d.type];
     if (field && d.expiryDate) await prisma.employee.updateMany({ where: { id: d.employeeId, [field]: d.expiryDate }, data: { [field]: next } });
     await logAudit({ entityType: "DOCUMENT", entityId: d.id, action: "UPDATE", before: { expiryDate: d.expiryDate }, after: { expiryDate: next, source: "re-read from the scan" }, userId: user.id, userName: user.name, branchId });
-    revalidatePath(`/employees/${d.employeeId}`);
     updated++;
   }
   // The documents page itself refreshes when the person closes the review, so the result stays on screen.
