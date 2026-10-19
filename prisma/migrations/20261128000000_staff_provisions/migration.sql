@@ -1,0 +1,6 @@
+ALTER TABLE "Employee" ADD COLUMN "leaveDaysPerYear" INTEGER,
+ADD COLUMN "airTicketAmount" DECIMAL(12,2),
+ADD COLUMN "airTicketEveryMonths" INTEGER;
+ALTER TABLE "Branch" ADD COLUMN "accrueGratuity" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "accrueLeave" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "accrueTickets" BOOLEAN NOT NULL DEFAULT false;

@@ -217,3 +217,31 @@ export function topUpPostings(t: { id: string; amount: number; date: Date; note:
     },
   ];
 }
+
+export type SettlementFacts = {
+  id: string; employeeId: string; employeeName: string; status: string; paidAt: Date | null;
+  gratuity: number; unpaidSalary: number; leavePay: number; noticePay: number; otherEarnings: number; loanBalance: number; otherDeductions: number;
+  /** Whether the gratuity / leave pay come out of a provision the books are building. */
+  fromGratuityProvision: boolean; fromLeaveProvision: boolean;
+};
+
+/**
+ * A final settlement paid out: gratuity and leave pay clear their provisions (or are charged straight to cost when
+ * none is kept), the rest is salary cost, loans still owed clear staff advances, and the bank pays what is left.
+ */
+export function settlementPostings(s: SettlementFacts): Posting[] {
+  if (s.status !== "PAID" || !s.paidAt) return [];
+  const party = { partyType: "EMPLOYEE" as const, partyId: s.employeeId };
+  const salary = r2(s.unpaidSalary + s.noticePay + s.otherEarnings);
+  const lines: PostLine[] = [
+    ...(s.gratuity > 0 ? [{ tag: s.fromGratuityProvision ? "EOSB" : "EXP_EOSB", debit: r2(s.gratuity) }] : []),
+    ...(s.leavePay > 0 ? [{ tag: s.fromLeaveProvision ? "PROVISION_LEAVE" : "SALARIES", debit: r2(s.leavePay) }] : []),
+    ...(salary > 0 ? [{ tag: "SALARIES", debit: salary }] : []),
+    ...(s.loanBalance > 0 ? [{ tag: "STAFF_ADVANCES", credit: r2(s.loanBalance), ...party }] : []),
+    ...(s.otherDeductions > 0 ? [{ tag: "INCOME_OTHER", credit: r2(s.otherDeductions) }] : []),
+  ];
+  if (lines.length === 0) return [];
+  const bank = r2(lines.reduce((n, l) => n + (l.debit ?? 0) - (l.credit ?? 0), 0));
+  if (bank !== 0) lines.push(bank > 0 ? { tag: "BANK", credit: bank } : { tag: "BANK", debit: -bank });
+  return [{ sourceKey: `settlement:${s.id}`, date: utcDay(s.paidAt), type: "PAYMENT", narration: `Final settlement — ${s.employeeName}`, lines }];
+}

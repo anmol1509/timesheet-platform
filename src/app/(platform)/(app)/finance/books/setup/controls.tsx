@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction } from "../actions";
+import type { Policy } from "@/lib/books/accruals";
+import { lockBooksAction, refreshPostingsAction, saveOpeningBalancesAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -82,6 +83,80 @@ export function RefreshControl() {
         setMsg(r.error ? r.error : `${r.created} new, ${r.updated} updated, ${r.removed} removed.${r.unmapped?.length ? ` Not posted (no account): ${r.unmapped.join(", ")}.` : ""}`);
       })}>{pending ? "Posting…" : "Post everything now"}</Button>
       {msg && <p role="status" className="text-sm text-secondary">{msg}</p>}
+    </div>
+  );
+}
+
+type PolicyText = { daysFirst: string; daysAfter: string; firstYears: string; capMonths: string; startAfterMonths: string; basis: "basic" | "fixed"; leaveDays: string; leaveCap: string; ticketAmount: string; ticketEvery: string };
+const toText = (p: Policy): PolicyText => ({ daysFirst: String(p.gratuity.daysFirst), daysAfter: String(p.gratuity.daysAfter), firstYears: String(p.gratuity.firstYears), capMonths: String(p.gratuity.capMonths), startAfterMonths: String(p.gratuity.startAfterMonths), basis: p.gratuity.basis, leaveDays: p.leave.defaultDays == null ? "" : String(p.leave.defaultDays), leaveCap: String(p.leave.capYears), ticketAmount: p.tickets.defaultAmount == null ? "" : String(p.tickets.defaultAmount), ticketEvery: p.tickets.defaultEveryMonths == null ? "" : String(p.tickets.defaultEveryMonths) });
+const n = (v: string) => (v.trim() === "" ? null : Number(v));
+const fromText = (t: PolicyText): Policy => ({
+  gratuity: { daysFirst: n(t.daysFirst) ?? 21, daysAfter: n(t.daysAfter) ?? 30, firstYears: n(t.firstYears) ?? 5, capMonths: n(t.capMonths) ?? 24, startAfterMonths: n(t.startAfterMonths) ?? 0, basis: t.basis },
+  leave: { defaultDays: n(t.leaveDays), capYears: n(t.leaveCap) ?? 1 },
+  tickets: { defaultAmount: n(t.ticketAmount), defaultEveryMonths: n(t.ticketEvery) },
+});
+
+function Num({ label, value, onChange, disabled, suffix, placeholder }: { label: string; value: string; onChange: (v: string) => void; disabled: boolean; suffix?: string; placeholder?: string }) {
+  return (
+    <label className="block text-xs text-muted">{label}
+      <span className="mt-1 flex items-center gap-1.5"><input inputMode="decimal" disabled={disabled} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="input h-8 w-24 text-right text-sm" />{suffix && <span>{suffix}</span>}</span>
+    </label>
+  );
+}
+
+/** Month-end provisions: what is owed to staff later is charged to the month they earn it. Every rule here is the company's to set. */
+export function ProvisionSettings({ initial, policy, canEdit }: { initial: { gratuity: boolean; leave: boolean; tickets: boolean }; policy: Policy; canEdit: boolean }) {
+  const [on, setOn] = useState(initial);
+  const [t, setT] = useState<PolicyText>(() => toText(policy));
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  const set = (k: keyof PolicyText) => (v: string) => setT((c) => ({ ...c, [k]: v }));
+  const Box = ({ k, title, note, children }: { k: "gratuity" | "leave" | "tickets"; title: string; note: string; children: React.ReactNode }) => (
+    <li className="px-4 py-3">
+      <label className="flex items-start gap-3 text-sm">
+        <input type="checkbox" className="mt-1" disabled={!canEdit} checked={on[k]} onChange={(e) => setOn((c) => ({ ...c, [k]: e.target.checked }))} />
+        <span><span className="font-medium text-primary">{title}</span><span className="block text-xs text-muted">{note}</span></span>
+      </label>
+      {on[k] && <div className="ml-7 mt-3 flex flex-wrap items-end gap-4">{children}</div>}
+    </li>
+  );
+  return (
+    <div className="space-y-3">
+      <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default">
+        {Box({ k: "gratuity", title: "End-of-service gratuity", note: "Set aside from each person's first day, so it is never a surprise at settlement. Defaults follow UAE labour law.", children: (
+          <>
+            <Num label="Days of pay a year" value={t.daysFirst} onChange={set("daysFirst")} disabled={!canEdit} suffix="days" />
+            <Num label="For the first" value={t.firstYears} onChange={set("firstYears")} disabled={!canEdit} suffix="years" />
+            <Num label="Then" value={t.daysAfter} onChange={set("daysAfter")} disabled={!canEdit} suffix="days a year" />
+            <Num label="Capped at" value={t.capMonths} onChange={set("capMonths")} disabled={!canEdit} suffix="months of pay" />
+            <Num label="Start after" value={t.startAfterMonths} onChange={set("startAfterMonths")} disabled={!canEdit} suffix="months" />
+            <label className="block text-xs text-muted">Worked out on
+              <select disabled={!canEdit} value={t.basis} onChange={(e) => setT((c) => ({ ...c, basis: e.target.value as "basic" | "fixed" }))} className="input mt-1 h-8 w-44 text-sm"><option value="basic">Basic pay</option><option value="fixed">Basic + allowances</option></select>
+            </label>
+          </>
+        ) })}
+        {Box({ k: "leave", title: "Annual leave", note: "Uses each person's leave days; people without their own use the default below. Enter 0 on a person to exclude them.", children: (
+          <>
+            <Num label="Default paid leave" value={t.leaveDays} onChange={set("leaveDays")} disabled={!canEdit} suffix="days a year" placeholder="none" />
+            <Num label="Builds up to" value={t.leaveCap} onChange={set("leaveCap")} disabled={!canEdit} suffix="years of leave" />
+          </>
+        ) })}
+        {Box({ k: "tickets", title: "Air tickets", note: "Uses each person's ticket terms; people without their own use the default below. Enter 0 on a person to exclude them.", children: (
+          <>
+            <Num label="Default ticket" value={t.ticketAmount} onChange={set("ticketAmount")} disabled={!canEdit} suffix="AED" placeholder="none" />
+            <Num label="Given every" value={t.ticketEvery} onChange={set("ticketEvery")} disabled={!canEdit} suffix="months" placeholder="none" />
+          </>
+        ) })}
+      </ul>
+      {canEdit && (
+        <div className="flex items-center gap-3">
+          <Button type="button" size="sm" disabled={pending} onClick={() => start(async () => {
+            const r = await saveProvisionSettingsAction({ ...on, policy: fromText(t) });
+            setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: "Saved. Months that aren't locked are recalculated." });
+          })}>{pending ? "Saving…" : "Save"}</Button>
+          {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
+        </div>
+      )}
     </div>
   );
 }

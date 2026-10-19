@@ -155,6 +155,10 @@ export type PayFormValues = {
   hourlyRate: string;
   otMultiplier: string;
   dailyHours: string;
+  leaveDaysPerYear: string;
+  airTicketAmount: string;
+  airTicketEveryMonths: string;
+  skipGratuity: boolean;
 };
 
 function toDateInput(d: Date | null) {
@@ -737,6 +741,19 @@ export function EditForm({
                   <Field label="Overtime multiplier">
                     <NumberInput name="otMultiplier" defaultValue={pay.otMultiplier} min={1} max={3} step={0.01} className="w-full" />
                   </Field>
+                  <p className="text-xs text-muted sm:col-span-2">Contract terms the books can set aside each month. Leave a box blank to use the company default (Accounting › Settings), or enter 0 for none.</p>
+                  <Field label="Paid leave (days a year)">
+                    <NumberInput name="leaveDaysPerYear" defaultValue={pay.leaveDaysPerYear} min={0} max={90} step={1} className="w-full" />
+                  </Field>
+                  <Field label="Air ticket amount (AED)">
+                    <NumberInput name="airTicketAmount" defaultValue={pay.airTicketAmount} min={0} step={0.01} className="w-full" />
+                  </Field>
+                  <Field label="Air ticket every (months)">
+                    <NumberInput name="airTicketEveryMonths" defaultValue={pay.airTicketEveryMonths} min={1} max={60} step={1} className="w-full" />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm text-secondary sm:col-span-2">
+                    <input type="checkbox" name="skipGratuity" defaultChecked={pay.skipGratuity} disabled={!pay.canEdit} /> Not entitled to end-of-service gratuity
+                  </label>
                 </>
               )}
             </fieldset>

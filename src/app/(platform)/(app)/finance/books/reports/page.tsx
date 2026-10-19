@@ -4,13 +4,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { TYPE_LABEL } from "@/lib/books/chart";
 import { netProfit, normalBalance, trialBalance } from "@/lib/books/ledger";
 import { accountsWithTotals, aed, fmtDate, getBooksContext, iso } from "../books-data";
+import { readPolicy } from "@/lib/books/accruals";
 import { SetupCard } from "../setup-card";
 import { AccountsView } from "./accounts-view";
-import { AgeingView, CashFlowView, ProjectProfitView } from "./extra-views";
+import { AgeingView, CashFlowView, ProjectProfitView, ProvisionsView } from "./extra-views";
 
 export const metadata = { title: "Accounting reports" };
 const VIEWS = [
-  { k: "pnl", l: "Profit & loss" }, { k: "balance", l: "Balance sheet" }, { k: "cash", l: "Cash flow" }, { k: "ar", l: "Who owes you" }, { k: "ap", l: "Who you owe" }, { k: "project", l: "Profit by project" }, { k: "vat", l: "VAT" }, { k: "trial", l: "Trial balance" }, { k: "accounts", l: "Chart of accounts" },
+  { k: "pnl", l: "Profit & loss" }, { k: "balance", l: "Balance sheet" }, { k: "cash", l: "Cash flow" }, { k: "ar", l: "Who owes you" }, { k: "ap", l: "Who you owe" }, { k: "project", l: "Profit by project" }, { k: "provisions", l: "Staff provisions" }, { k: "vat", l: "VAT" }, { k: "trial", l: "Trial balance" }, { k: "accounts", l: "Chart of accounts" },
 ] as const;
 type View = (typeof VIEWS)[number]["k"];
 
@@ -58,6 +59,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   let body: React.ReactNode;
   if (view === "ar" || view === "ap") {
     body = <AgeingView branchId={ctx.branch.id} asOf={asOf} side={view === "ar" ? "RECEIVABLE" : "PAYABLE"} />;
+  } else if (view === "provisions") {
+    body = <ProvisionsView branchId={ctx.branch.id} asOf={asOf} on={{ gratuity: ctx.branch.accrueGratuity, leave: ctx.branch.accrueLeave, tickets: ctx.branch.accrueTickets }} policy={readPolicy(ctx.branch.provisionPolicy)} />;
   } else if (view === "cash") {
     body = <CashFlowView branchId={ctx.branch.id} from={from} asOf={asOf} />;
   } else if (view === "project") {
