@@ -83,6 +83,7 @@ export const VOUCHER_PREFIX: Record<string, string> = {
   EXPENSE: "EX",
   PAYROLL: "PR",
   TRANSFER: "TR",
+  CLOSING: "CL",
 };
 
 export const TYPE_NAMES: Record<string, string> = {
@@ -95,4 +96,5 @@ export const TYPE_NAMES: Record<string, string> = {
   EXPENSE: "Expense",
   PAYROLL: "Payroll",
   TRANSFER: "Transfer",
+  CLOSING: "Year-end close",
 };

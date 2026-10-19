@@ -20,7 +20,7 @@ const TYPES = [
   { k: "", l: "All" }, { k: "SALES", l: "Sales" }, { k: "RECEIPT", l: "Receipts" }, { k: "BILL", l: "Bills" }, { k: "PAYMENT", l: "Payments" },
   { k: "EXPENSE", l: "Expenses" }, { k: "PAYROLL", l: "Payroll" }, { k: "CREDIT_NOTE", l: "Credit notes" }, { k: "JOURNAL", l: "Vouchers" },
 ];
-const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note" };
+const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note", CLOSING: "Year-end close" };
 const TYPE_TONE: Record<string, string> = { SALES: "bg-info-soft text-info", RECEIPT: "bg-success-soft text-success", PAYMENT: "bg-warning-soft text-warning", BILL: "bg-warning-soft text-warning", EXPENSE: "bg-warning-soft text-warning", PAYROLL: "bg-warning-soft text-warning", CREDIT_NOTE: "bg-error-soft text-error", DEBIT_NOTE: "bg-error-soft text-error", JOURNAL: "bg-brand-soft text-brand" };
 const isMoney = isMoneyAccount;
 
@@ -34,7 +34,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const yearStart = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
   const [accounts, ytd, entries, unmatched, clients] = await Promise.all([
     accountsWithTotals(branchId),
-    accountsWithTotals(branchId, undefined, yearStart),
+    accountsWithTotals(branchId, undefined, yearStart, true),
     prisma.journalEntry.findMany({
       where: { branchId, ...(type ? { type } : {}), ...(q ? { OR: [{ narration: { contains: q, mode: "insensitive" } }, { number: { contains: q, mode: "insensitive" } }] } : {}) },
       orderBy: [{ date: "desc" }, { number: "desc" }],

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import type { Policy } from "@/lib/books/accruals";
 import { METHOD_LABEL, type CustomRule, type RuleMethod } from "@/lib/books/customProvisions";
-import { lockBooksAction, refreshPostingsAction, saveDefaultBanksAction, saveOpeningBalancesAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
+import { lockBooksAction, refreshPostingsAction, saveDefaultBanksAction, saveOpeningBalancesAction, closeYearAction, saveProvisionRuleAction, saveProvisionSettingsAction } from "../actions";
 
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = (s: string) => Math.round((Number(s.replace(/,/g, "")) || 0) * 100) / 100;
@@ -247,6 +247,33 @@ export function DefaultBanks({ banks, receipt, payment, canEdit }: { banks: { id
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Closing a finished year. */
+export function YearEnd({ years }: { years: { year: number; profit: number; closed: boolean }[] }) {
+  const [lock, setLock] = useState(true);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  if (years.length === 0) return <p className="text-sm text-muted">There is no finished year with activity to close yet.</p>;
+  return (
+    <div className="space-y-3">
+      <ul className="divide-y divide-default rounded-[var(--radius-card)] border border-default">
+        {years.map((y) => (
+          <li key={y.year} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
+            <span><span className="font-medium text-primary">{y.year}</span><span className="ml-3 tabular text-secondary">{y.profit < 0 ? "Loss" : "Profit"} {aed(Math.abs(y.profit))}</span></span>
+            {y.closed ? <span className="rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success">Closed</span> : (
+              <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => {
+                if (!window.confirm(`Close ${y.year}? Income and costs are zeroed into retained earnings${lock ? " and the year is locked" : ""}. You can undo it by voiding the entry.`)) return;
+                start(async () => { const r = await closeYearAction(y.year, lock); setMsg(r.error ? { ok: false, text: r.error } : { ok: true, text: `${y.year} closed.` }); });
+              }}>Close {y.year}</Button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" checked={lock} onChange={(e) => setLock(e.target.checked)} /> Also lock the year so nothing can be changed in it</label>
+      {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
     </div>
   );
 }

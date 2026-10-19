@@ -7,7 +7,7 @@ import type { CustomRule, RuleMethod } from "@/lib/books/customProvisions";
 import { getBooksContext, iso } from "../books-data";
 import { SetupCard } from "../setup-card";
 import { ImportWizard } from "./import-wizard";
-import { CustomProvisions, DefaultBanks, LockControl, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
+import { CustomProvisions, DefaultBanks, LockControl, YearEnd, OpeningBalancesEditor, ProvisionSettings, RefreshControl } from "./controls";
 
 export const metadata = { title: "Accounting settings" };
 
@@ -19,6 +19,23 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
       {children}
     </section>
   );
+}
+
+/** Years that have ended, with their profit and whether they are already closed. */
+async function closableYears(branchId: string, opening: Date) {
+  const thisYear = new Date().getUTCFullYear();
+  const [sums, closed] = await Promise.all([
+    prisma.journalLine.findMany({ where: { account: { branchId, type: { in: ["INCOME", "EXPENSE"] } }, entry: { branchId, status: "POSTED", type: { not: "CLOSING" }, date: { lt: new Date(Date.UTC(thisYear, 0, 1)) } } }, select: { debit: true, credit: true, account: { select: { type: true } }, entry: { select: { date: true } } } }),
+    prisma.journalEntry.findMany({ where: { branchId, type: "CLOSING", status: "POSTED" }, select: { date: true } }),
+  ]);
+  const profit = new Map<number, number>();
+  for (const l of sums) {
+    const y = l.entry.date.getUTCFullYear();
+    const v = l.account.type === "INCOME" ? Number(l.credit) - Number(l.debit) : -(Number(l.debit) - Number(l.credit));
+    profit.set(y, (profit.get(y) ?? 0) + v);
+  }
+  const closedYears = new Set(closed.map((c) => c.date.getUTCFullYear()));
+  return [...profit].filter(([y]) => y >= opening.getUTCFullYear()).sort((a, b) => b[0] - a[0]).map(([year, p]) => ({ year, profit: Math.round(p * 100) / 100, closed: closedYears.has(year) }));
 }
 
 export default async function SetupPage() {
@@ -72,6 +89,11 @@ export default async function SetupPage() {
       {ctx.isAdmin && (
         <Card title="Lock a period" hint="Once a month or year is reviewed, lock it. Nothing on or before the date can be added, changed or voided.">
           <LockControl lockedUntil={ctx.branch.booksLockedUntil ? iso(ctx.branch.booksLockedUntil) : null} minDate={open} />
+        </Card>
+      )}
+      {ctx.isAdmin && (
+        <Card title="Close the year" hint="When a year is finished and checked, close it. Income and costs go back to zero and the profit moves to retained earnings, so the next year starts clean. The reports for that year still show what happened in it.">
+          <YearEnd years={await closableYears(branchId, ctx.branch.booksOpeningDate!)} />
         </Card>
       )}
       <Card title="Default banks" hint="Invoices, bills and payroll runs can name the bank they used. When one doesn't, these decide which bank account the books use.">

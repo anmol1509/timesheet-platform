@@ -24,12 +24,13 @@ export async function getBooksContext() {
 export type AccountRow = { id: string; code: string; name: string; type: string; tag: string | null; bankId: string | null; isSystem: boolean; isActive: boolean; debit: number; credit: number };
 
 /** Every account with its debit and credit totals up to a date (inclusive), counting only posted entries. */
-export async function accountsWithTotals(branchId: string, upTo?: Date, from?: Date): Promise<AccountRow[]> {
+/** `excludeClosing` leaves out year-end closing entries, so a year's profit & loss still shows what happened in it. */
+export async function accountsWithTotals(branchId: string, upTo?: Date, from?: Date, excludeClosing = false): Promise<AccountRow[]> {
   const [accounts, sums] = await Promise.all([
     prisma.account.findMany({ where: { branchId }, orderBy: { code: "asc" } }),
     prisma.journalLine.groupBy({
       by: ["accountId"],
-      where: { entry: { branchId, status: "POSTED", ...(upTo || from ? { date: { ...(from ? { gte: from } : {}), ...(upTo ? { lte: upTo } : {}) } } : {}) } },
+      where: { entry: { branchId, status: "POSTED", ...(excludeClosing ? { type: { not: "CLOSING" } } : {}), ...(upTo || from ? { date: { ...(from ? { gte: from } : {}), ...(upTo ? { lte: upTo } : {}) } } : {}) } },
       _sum: { debit: true, credit: true },
     }),
   ]);

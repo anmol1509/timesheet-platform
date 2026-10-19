@@ -6,6 +6,7 @@ import { requireAdmin, requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { ACCOUNT_TYPES, VOUCHER_PREFIX } from "@/lib/books/chart";
 import { readPolicy, type Policy } from "@/lib/books/accruals";
+import { closingLines } from "@/lib/books/closing";
 import type { Prisma } from "@/generated/prisma/client";
 import { ensureChart, reserveNumbers, syncPostings } from "@/lib/books/sync";
 import { isLocked } from "@/lib/books/ledger";
@@ -403,4 +404,38 @@ export async function createTransferAction(input: { from: string; to: string; da
   await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "TRANSFER", total: amount }, userId: user.id, userName: user.name, branchId });
   refresh();
   return { number };
+}
+
+/** Closes a finished year: income and costs are zeroed into retained earnings so the next year starts clean. Reversible by voiding the entry. */
+export async function closeYearAction(year: number, lockIt: boolean): Promise<Result & { profit?: number }> {
+  await requireAdmin();
+  const { user, branchId } = await requireUserWithBranch();
+  if (!branchId) return { error: "Pick a branch first." };
+  const y = Math.round(Number(year));
+  if (!Number.isFinite(y) || y < 2000 || y > 2100) return { error: "Choose a year." };
+  const state = await branchState(branchId);
+  if (!state?.booksOpeningDate) return { error: "Set up the books first." };
+  const end = new Date(Date.UTC(y, 11, 31));
+  if (end.getTime() >= utcDay(new Date()).getTime()) return { error: `${y} isn't over yet.` };
+  const open = utcDay(state.booksOpeningDate);
+  if (end.getTime() < open.getTime()) return { error: `${y} is before your books start.` };
+  if (isLocked(end, state.booksLockedUntil ? utcDay(state.booksLockedUntil) : null)) return { error: `${y} is in a locked period. Unlock it first, then close the year.` };
+  const start = new Date(Date.UTC(y, 0, 1)).getTime() < open.getTime() ? open : new Date(Date.UTC(y, 0, 1));
+  const done = await prisma.journalEntry.findFirst({ where: { branchId, type: "CLOSING", status: "POSTED", date: end }, select: { number: true } });
+  if (done) return { error: `${y} is already closed (${done.number}). Void that entry to close it again.` };
+  const [accounts, retained, sums] = await Promise.all([
+    prisma.account.findMany({ where: { branchId, type: { in: ["INCOME", "EXPENSE"] } }, select: { id: true, type: true } }),
+    prisma.account.findFirst({ where: { branchId, tag: "RETAINED_EARNINGS" }, select: { id: true } }),
+    prisma.journalLine.groupBy({ by: ["accountId"], where: { account: { branchId, type: { in: ["INCOME", "EXPENSE"] } }, entry: { branchId, status: "POSTED", type: { not: "CLOSING" }, date: { gte: start, lte: end } } }, _sum: { debit: true, credit: true } }),
+  ]);
+  if (!retained) return { error: "The Retained earnings account is missing. Open Set-up first." };
+  const by = new Map(sums.map((s) => [s.accountId, { debit: Number(s._sum.debit ?? 0), credit: Number(s._sum.credit ?? 0) }]));
+  const { lines, profit } = closingLines(accounts.map((a) => ({ id: a.id, type: a.type, debit: by.get(a.id)?.debit ?? 0, credit: by.get(a.id)?.credit ?? 0 })), retained.id);
+  if (lines.length === 0) return { error: `Nothing was earned or spent in ${y}.` };
+  const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.CLOSING, 1);
+  const entry = await prisma.journalEntry.create({ data: { branchId, number, date: end, type: "CLOSING", narration: `Year-end close ${y}: profit moved to retained earnings`, createdById: user.id, createdByName: user.name, lines: { create: lines } } });
+  if (lockIt) await prisma.branch.update({ where: { id: branchId }, data: { booksLockedUntil: end } });
+  await logAudit({ entityType: "JOURNAL_ENTRY", entityId: entry.id, action: "CREATE", after: { number, type: "CLOSING", year: y, profit, locked: lockIt }, userId: user.id, userName: user.name, branchId });
+  refresh();
+  return { profit };
 }

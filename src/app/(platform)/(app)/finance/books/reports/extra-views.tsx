@@ -1,39 +1,20 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { BUCKETS, BUCKET_LABEL, ageParties, ageTotals, termsDays, type AgeRow, type Bucket } from "@/lib/books/ageing";
-import { CF_LABEL, cashFlow, type CfKey } from "@/lib/books/cashflow";
+import { BUCKETS, BUCKET_LABEL, type AgeRow, type Bucket } from "@/lib/books/ageing";
+import { CF_LABEL, type CfKey } from "@/lib/books/cashflow";
 import { PROVISIONS, provisionAt, provisionTotals, type Policy } from "@/lib/books/accruals";
 import { provisionTag, ruleTarget, type CustomRule, type RuleStaff } from "@/lib/books/customProvisions";
-import { isMoneyAccount } from "@/lib/books/ledger";
 import { branchWhere } from "@/lib/branch";
-import { EMIRATES, quarterOf, vatReturn, type Manual } from "@/lib/books/vat";
-import { profitByClient } from "@/lib/books/projectProfit";
+import { EMIRATES, quarterOf, type Manual } from "@/lib/books/vat";
 import { aed, fmtDate } from "../books-data";
+import { loadAgeing, loadCashFlow, loadProjectProfit, loadVat } from "./report-data";
 
 const BUCKET_TONE: Record<Bucket, string> = { current: "var(--success, #16a34a)", d30: "#ca8a04", d60: "#ea580c", d90: "#dc2626", over: "#991b1b" };
 const dash = (n: number) => (n ? aed(n) : "–");
 
 /** Receivables or payables: who is owed what and how late, oldest first. */
 export async function AgeingView({ branchId, asOf, side }: { branchId: string; asOf: Date; side: "RECEIVABLE" | "PAYABLE" }) {
-  const rec = side === "RECEIVABLE";
-  const lines = await prisma.journalLine.findMany({
-    where: { account: { branchId, tag: side }, entry: { branchId, status: "POSTED", date: { lte: asOf } } },
-    select: { debit: true, credit: true, partyId: true, entry: { select: { date: true } } },
-  });
-  const ids = [...new Set(lines.map((l) => l.partyId).filter((x): x is string => !!x))];
-  const parties = ids.length
-    ? rec
-      ? await prisma.client.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, paymentTerms: true } })
-      : await prisma.supplier.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, paymentTerms: true } })
-    : [];
-  const info = new Map(parties.map((p) => [p.id, p]));
-  const rows = ageParties(
-    lines.map((l) => ({ date: l.entry.date, debit: Number(l.debit), credit: Number(l.credit), partyId: l.partyId })),
-    asOf, rec ? "debit" : "credit",
-    (id) => termsDays(id ? info.get(id)?.paymentTerms : null),
-  );
-  const t = ageTotals(rows);
-  const late = rows.filter((r) => r.buckets.d90 + r.buckets.over > 0).sort((a, b) => b.buckets.d90 + b.buckets.over - (a.buckets.d90 + a.buckets.over));
+  const { rec, rows, t, late, info } = await loadAgeing(branchId, asOf, side);
   const name = (r: AgeRow) => (r.partyId ? info.get(r.partyId)?.name ?? "Unknown" : "Opening balance (not split by name)");
   const href = (r: AgeRow) => (r.partyId ? `/finance/books/parties/${rec ? "CLIENT" : "SUPPLIER"}/${r.partyId}` : null);
   return (
@@ -97,17 +78,8 @@ function CfSection({ title, rows, total, label }: { title: string; rows: { key: 
 
 /** Where the cash came from and went, from the bank and cash accounts. */
 export async function CashFlowView({ branchId, from, asOf }: { branchId: string; from: Date; asOf: Date }) {
-  const accounts = await prisma.account.findMany({ where: { branchId }, select: { id: true, type: true, tag: true, name: true, bankId: true } });
-  const money = new Set(accounts.filter(isMoneyAccount).map((a) => a.id));
-  const entries = await prisma.journalEntry.findMany({
-    where: { branchId, status: "POSTED", date: { lte: asOf }, lines: { some: { accountId: { in: [...money] } } } },
-    select: { date: true, type: true, lines: { select: { debit: true, credit: true, account: { select: { id: true, type: true, tag: true } } } } },
-  });
-  const cf = (list: typeof entries) => cashFlow(list.map((e) => ({ type: e.type, lines: e.lines.map((l) => ({ money: money.has(l.account.id), debit: Number(l.debit), credit: Number(l.credit), accountType: l.account.type, tag: l.account.tag })) })));
-  const opening = entries.filter((e) => e.date < from).reduce((s, e) => s + e.lines.filter((l) => money.has(l.account.id)).reduce((n, l) => n + Number(l.debit) - Number(l.credit), 0), 0);
-  const c = cf(entries.filter((e) => e.date >= from));
+  const { opening, c, close } = await loadCashFlow(branchId, from, asOf);
   const row = (k: CfKey) => ({ key: k, label: CF_LABEL[k], value: c.rows[k] });
-  const close = Math.round((opening + c.net) * 100) / 100;
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -127,17 +99,7 @@ export async function CashFlowView({ branchId, from, asOf }: { branchId: string;
 
 /** Profit by client and project: revenue from invoices, costs from the project they were tagged to. */
 export async function ProjectProfitView({ branchId, from, asOf }: { branchId: string; from: Date; asOf: Date }) {
-  const entries = await prisma.journalEntry.findMany({
-    where: { branchId, status: "POSTED", date: { gte: from, lte: asOf } },
-    select: { lines: { select: { debit: true, credit: true, partyType: true, partyId: true, projectId: true, account: { select: { type: true, tag: true } } } } },
-  });
-  const projectIds = [...new Set(entries.flatMap((e) => e.lines.map((l) => l.projectId)).filter((x): x is string => !!x))];
-  const projects = projectIds.length ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, name: true, code: true, clientId: true } }) : [];
-  const pById = new Map(projects.map((p) => [p.id, p]));
-  const result = profitByClient(entries.map((e) => ({ lines: e.lines.map((l) => ({ accountType: l.account.type, tag: l.account.tag, debit: Number(l.debit), credit: Number(l.credit), partyType: l.partyType, partyId: l.partyId, projectId: l.projectId })) })), (id) => pById.get(id)?.clientId ?? null);
-  const clientIds = result.clients.map((c) => c.clientId).filter((x): x is string => !!x);
-  const clients = clientIds.length ? await prisma.client.findMany({ where: { id: { in: clientIds } }, select: { id: true, name: true } }) : [];
-  const cName = new Map(clients.map((c) => [c.id, c.name]));
+  const { result, cName, pById } = await loadProjectProfit(branchId, from, asOf);
   const pct = (profit: number, revenue: number) => (revenue > 0 ? `${((profit / revenue) * 100).toFixed(1)}%` : "–");
   const tone = (profit: number) => (profit < 0 ? "text-error" : "text-success");
   return (
@@ -266,14 +228,7 @@ function VatHead({ title, cols }: { title: string; cols?: boolean }) {
 
 /** The FTA VAT return (Form 201) worked out from the ledger, with room for what the books can't know. */
 export async function VatReturnView({ branchId, from, asOf, manual }: { branchId: string; from: Date; asOf: Date; manual: Manual }) {
-  const [entries, branch] = await Promise.all([
-    prisma.journalEntry.findMany({
-      where: { branchId, status: "POSTED", date: { gte: from, lte: asOf }, lines: { some: { account: { tag: { in: ["VAT_OUTPUT", "VAT_INPUT", "INCOME_SALES"] } } } } },
-      select: { type: true, lines: { select: { debit: true, credit: true, account: { select: { tag: true, type: true } } } } },
-    }),
-    prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, trn: true, emirate: true } }),
-  ]);
-  const r = vatReturn(entries.map((e) => ({ type: e.type, lines: e.lines.map((l) => ({ tag: l.account.tag, accountType: l.account.type, debit: Number(l.debit), credit: Number(l.credit) })) })), branch?.emirate ?? "Dubai", manual);
+  const { r, branch } = await loadVat(branchId, from, asOf, manual);
   const now = new Date();
   const q0 = quarterOf(now), q1 = quarterOf(now, 1);
   const iso0 = from.toISOString().slice(0, 10), iso1 = asOf.toISOString().slice(0, 10);

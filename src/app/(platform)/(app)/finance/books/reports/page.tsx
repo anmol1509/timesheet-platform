@@ -7,6 +7,7 @@ import { accountsWithTotals, aed, fmtDate, getBooksContext, iso } from "../books
 import { readPolicy } from "@/lib/books/accruals";
 import { SetupCard } from "../setup-card";
 import { AccountsView } from "./accounts-view";
+import { ExportBar } from "./export-bar";
 import { AgeingView, CashFlowView, ProjectProfitView, ProvisionsView, VatReturnView } from "./extra-views";
 
 export const metadata = { title: "Accounting reports" };
@@ -44,7 +45,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const asOf = valid(sp.asof) ?? new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
   const open = ctx.branch.booksOpeningDate!;
   const from = valid(sp.from) ?? new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
-  const [cumulative, period] = await Promise.all([accountsWithTotals(ctx.branch.id, asOf), accountsWithTotals(ctx.branch.id, asOf, from)]);
+  const [cumulative, period] = await Promise.all([accountsWithTotals(ctx.branch.id, asOf), accountsWithTotals(ctx.branch.id, asOf, from, true)]);
   const plain = (a: (typeof cumulative)[number]) => ({ id: a.id, code: a.code, name: a.name, type: a.type, debit: a.debit, credit: a.credit });
   const ranged = view === "pnl" || view === "vat" || view === "cash" || view === "project";
   const form = (
@@ -111,5 +112,22 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       </section>
     );
   }
-  return <div className="space-y-5">{header}{switcher}{form}{body}</div>;
+  const keep = new URLSearchParams({ view, from: iso(from), asof: iso(asOf) });
+  for (const k of ["ex", "rs", "re", "ia", "iv"] as const) if (sp[k]) keep.set(k, sp[k] as string);
+  const title = VIEWS.find((v) => v.k === view)?.l ?? "";
+  return (
+    <div className="space-y-5">
+      {header}
+      <div data-print-hide>{switcher}</div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div data-print-hide>{form}</div>
+        <ExportBar query={keep.toString()} canExport={view !== "provisions"} />
+      </div>
+      <div className="hidden print:block">
+        <p className="text-lg font-semibold text-primary">{ctx.branch.name}</p>
+        <p className="text-sm text-secondary">{title}{ranged ? `, ${fmtDate(from)} – ${fmtDate(asOf)}` : ` as of ${fmtDate(asOf)}`}</p>
+      </div>
+      {body}
+    </div>
+  );
 }
