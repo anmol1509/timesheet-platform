@@ -10,6 +10,7 @@ import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
 import { DocumentsView } from "./documents-view";
 import { COMPANY_DOC_TYPES } from "./company-docs";
+import { RecheckExpired } from "./recheck-expired";
 
 
 function prettyType(type: string) {
@@ -132,6 +133,13 @@ export default async function DocumentsPage() {
         meta={<CountPill>{documents.length}</CountPill>}
         description="Every employee document on file, with its expiry status."
       />
+
+      {isAdminRole(user.role) && expiredCount > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-default bg-surface px-3 py-2 text-xs text-muted">
+          <span>{expiredCount} document{expiredCount === 1 ? "" : "s"} show as expired. A date the scanner read wrongly can be checked against the scan.</span>
+          <RecheckExpired ids={documents.filter((d) => complianceStatus(d.expiryDate) === "expired").map((d) => d.id)} />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile href="/documents?tab=all" label="All Documents" value={documents.length} icon={FileText} />
