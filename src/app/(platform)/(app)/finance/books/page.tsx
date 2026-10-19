@@ -6,7 +6,7 @@ import { StatTile } from "@/components/StatTile";
 import { EmptyState } from "@/components/EmptyState";
 import { branchWhere } from "@/lib/branch";
 import { entryFlow } from "@/lib/books/flow";
-import { normalBalance, netProfit } from "@/lib/books/ledger";
+import { isMoneyAccount, normalBalance, netProfit } from "@/lib/books/ledger";
 import { accountsWithTotals, aed, fmtDate, getBooksContext, iso } from "./books-data";
 import { SetupCard } from "./setup-card";
 import { VoucherDialog } from "./voucher-dialog";
@@ -21,7 +21,7 @@ const TYPES = [
 ];
 const TYPE_LABEL: Record<string, string> = { JOURNAL: "Voucher", OPENING: "Opening", SALES: "Sales", RECEIPT: "Receipt", BILL: "Bill", PAYMENT: "Payment", EXPENSE: "Expense", PAYROLL: "Payroll", TRANSFER: "Transfer", CREDIT_NOTE: "Credit note", DEBIT_NOTE: "Debit note" };
 const TYPE_TONE: Record<string, string> = { SALES: "bg-info-soft text-info", RECEIPT: "bg-success-soft text-success", PAYMENT: "bg-warning-soft text-warning", BILL: "bg-warning-soft text-warning", EXPENSE: "bg-warning-soft text-warning", PAYROLL: "bg-warning-soft text-warning", CREDIT_NOTE: "bg-error-soft text-error", DEBIT_NOTE: "bg-error-soft text-error", JOURNAL: "bg-brand-soft text-brand" };
-const isMoney = (a: { type: string; tag: string | null; name: string }) => a.type === "ASSET" && (a.tag === "CASH" || a.tag === "BANK" || /bank|cash/i.test(a.name));
+const isMoney = isMoneyAccount;
 
 export default async function TransactionsPage({ searchParams }: { searchParams: Promise<{ type?: string; q?: string }> }) {
   const ctx = await getBooksContext();
@@ -67,7 +67,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         description={`Everything that moves money, posted automatically from ${fmtDate(ctx.branch.booksOpeningDate!)}${lockedUntil ? ` · locked up to ${fmtDate(lockedUntil)}` : ""}.`}
         actions={ctx.canWrite ? (
           <div className="flex gap-2">
-            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} minDate={minDate} />
+            <ReceivePayment clients={clients} moneyAccounts={moneyAccts.map((a) => ({ id: a.id, label: `${a.code} · ${a.name}` }))} otherAccounts={options.filter((o) => !moneyAccts.some((m) => m.id === o.id))} minDate={minDate} />
             <VoucherDialog accounts={options} minDate={minDate} label="New entry" />
           </div>
         ) : undefined}

@@ -45,3 +45,7 @@ export function netProfit(accounts: AccountTotals[]): number {
 export function isLocked(date: Date, lockedUntil: Date | null): boolean {
   return !!lockedUntil && date.getTime() <= lockedUntil.getTime();
 }
+
+/** A bank or cash account: the system ones, any linked to a company bank, or one named like it. */
+export const isMoneyAccount = (a: { type: string; tag: string | null; name: string; bankId?: string | null }) =>
+  a.type === "ASSET" && (a.tag === "CASH" || a.tag === "BANK" || !!a.bankId || /bank|cash/i.test(a.name));

@@ -18,6 +18,48 @@ export async function ensureChart(branchId: string) {
   });
 }
 
+/** "Emirates NBD · ···1234 (AED)": the ledger name for a company bank account. */
+export function bankLedgerName(b: { bankName: string; accountName: string; accountNo: string | null; ibanNo: string | null; currency: string }) {
+  const digits = (b.accountNo || b.ibanNo || "").replace(/\s/g, "");
+  const tail = digits ? ` · ···${digits.slice(-4)}` : ` · ${b.accountName}`;
+  return `${b.bankName}${tail} (${b.currency})`;
+}
+
+/**
+ * Gives every active company bank account its own ledger account, named after the real bank. The generic
+ * "Bank — main account" (the account the system posts to) is taken over by the first bank, so postings keep working.
+ * Safe to call repeatedly.
+ */
+export async function linkBankAccounts(branchId: string) {
+  const [banks, accounts] = await Promise.all([
+    prisma.bank.findMany({ where: { branchId, status: { not: "INACTIVE" } }, orderBy: [{ bankName: "asc" }, { accountName: "asc" }] }),
+    prisma.account.findMany({ where: { branchId }, select: { id: true, code: true, tag: true, name: true, bankId: true } }),
+  ]);
+  if (!banks.length) return;
+  const byBank = new Map(accounts.filter((a) => a.bankId).map((a) => [a.bankId as string, a]));
+  const main = accounts.find((a) => a.tag === "BANK" && !a.bankId);
+  let mainFree = !!main && !accounts.some((a) => a.tag === "BANK" && a.bankId);
+  let nextCode = Math.max(1100, ...accounts.map((a) => Number(a.code)).filter((n) => n >= 1100 && n < 1200)) + 1;
+  const taken = new Set(accounts.map((a) => a.code));
+  for (const b of banks) {
+    const name = bankLedgerName(b);
+    const have = byBank.get(b.id);
+    if (have) {
+      if (have.name !== name) await prisma.account.update({ where: { id: have.id }, data: { name } });
+      continue;
+    }
+    if (mainFree && main) {
+      mainFree = false;
+      await prisma.account.update({ where: { id: main.id }, data: { bankId: b.id, name } });
+      continue;
+    }
+    while (taken.has(String(nextCode))) nextCode++;
+    if (nextCode >= 1200) break;
+    await prisma.account.create({ data: { branchId, code: String(nextCode), name, type: "ASSET", bankId: b.id } });
+    taken.add(String(nextCode));
+  }
+}
+
 /** The next voucher numbers for a prefix, reserved so two writers never share one. */
 export async function reserveNumbers(branchId: string, prefix: string, count: number): Promise<string[]> {
   if (count <= 0) return [];

@@ -167,6 +167,7 @@ model Bank {
 
   wpsForBranches Branch[]     @relation("BranchWpsPayerBank")
   payrollRuns    PayrollRun[]
+  ledgerAccount  Account?
 }
 
 model User {
@@ -2871,6 +2872,10 @@ model Account {
   branchId       String
   lines          JournalLine[]
   statementLines BankStatementLine[]
+
+  // The company bank account this ledger account stands for, so the books name the real bank.
+  bank   Bank?   @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  bankId String? @unique
 
   @@unique([branchId, code])
   @@index([branchId, type])
