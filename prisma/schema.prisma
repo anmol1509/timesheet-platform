@@ -202,6 +202,11 @@ model User {
   isActive       Boolean        @default(true)
   // Delivery preferences for notifications (in-app always on).
   notifyEmail    Boolean        @default(true)
+  // Appearance and start page (see lib/preferences.ts). Follows the person to any device.
+  preferences    Json?
+  // Sign-ins older than this are no longer valid ("sign out of other devices").
+  sessionsValidAfter DateTime?
+  sessions       UserSession[]
   notifyWhatsapp Boolean        @default(false)
   whatsappNumber String?
   notifications  Notification[]
@@ -3139,4 +3144,20 @@ model ExchangeRate {
   branchId String
 
   @@unique([branchId, currency, date])
+}
+
+/// One sign-in on one device. The session cookie carries this id, so a single sign-in can be ended from "My account".
+model UserSession {
+  id         String    @id @default(cuid())
+  userAgent  String?
+  ip         String?
+  label      String? // "Chrome on Windows"
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@index([userId, revokedAt])
 }

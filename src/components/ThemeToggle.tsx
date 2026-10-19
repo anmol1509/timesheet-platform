@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { THEME_COOKIE, type ThemePreference } from "@/lib/theme-preference";
+import { setThemeAction } from "@/app/(platform)/(app)/profile/actions";
 
 const OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "Match my device", icon: Monitor },
 ];
 
 /** Plain module-level helper (not a component/hook) so the DOM writes it
@@ -18,17 +20,9 @@ function writeThemePreference(next: ThemePreference) {
 }
 
 /**
- * Light/dark switch. `initial` comes from the server (the theme cookie, read
- * in the app layout — same pattern as the sidebar collapse preference), so
- * the first paint already matches and there's no mount effect or flash.
- * Writes both the `data-theme` attribute and the cookie on change.
- *
- * No "System" option: the app defaults to light regardless of the OS/browser
- * preference (see the root layout), so a "follow system" choice couldn't be
- * honored past the current page load anyway — the next server render would
- * see an unset cookie and fall back to light, silently reverting the choice.
- * `ThemePreference`/`isThemePreference` still accept "system" for any old
- * cookies already carrying that value; they're just not offered here.
+ * Light / dark / match-my-device switch. `initial` comes from the server (the theme cookie, read in the app layout, same
+ * pattern as the sidebar collapse preference), so the first paint already matches. It writes the `data-theme` attribute
+ * and the cookie straight away, then saves the choice on the account so it follows the person to other devices.
  */
 export function ThemeToggle({
   initial,
@@ -42,6 +36,7 @@ export function ThemeToggle({
   function apply(next: ThemePreference) {
     setValue(next);
     writeThemePreference(next);
+    void setThemeAction(next);
   }
 
   return (

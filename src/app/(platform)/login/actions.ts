@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { setSessionCookie } from "@/lib/session";
+import { startSession } from "@/lib/userSessions";
+import { parsePreferences } from "@/lib/preferences";
+import { canOpenPage, writePreferenceCookies } from "@/lib/preferenceCookies";
 
 const MAX_FAILURES = 5;
 const LOCK_WINDOW_MS = 15 * 60 * 1000;
@@ -32,7 +35,7 @@ export async function loginAction(
     return { error: "Too many failed attempts. Try again in 15 minutes." };
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { accessRole: { select: { permissions: true } } } });
   if (!user || !verifyPassword(password, user.passwordHash)) {
     await prisma.otpChallenge.create({
       data: { kind: "STAFF_LOGIN", phone: key, codeHash: "-", expiresAt: new Date(Date.now() + LOCK_WINDOW_MS) },
@@ -44,6 +47,11 @@ export async function loginAction(
     return { error: "This account has been suspended. Contact your administrator." };
   }
 
-  await setSessionCookie(user.id, remember);
-  redirect("/");
+  const sid = await startSession(user.id);
+  await setSessionCookie(user.id, remember, sid);
+  // Their own look follows them to this device, and they land where they chose to start.
+  const prefs = parsePreferences(user.preferences);
+  if (user.preferences) await writePreferenceCookies(prefs);
+  const subject = { role: user.role, permissions: user.accessRole?.permissions ?? null };
+  redirect(prefs.startPage !== "/" && canOpenPage(subject, prefs.startPage) ? prefs.startPage : "/");
 }
