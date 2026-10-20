@@ -30,7 +30,7 @@ export default async function MobilisePage({
   });
   if (!request || isOutsideBranch(request.branchId, branchId, isSuperAdmin)) notFound();
 
-  const idleWorkers = await getIdleWorkers(branchId);
+  const idleWorkers = await getIdleWorkers(branchId, { includeBlocked: true });
 
   // Same closed list the demand form offers, so a re-designation can't invent
   // a trade the rest of the module doesn't know about.
@@ -99,6 +99,8 @@ export default async function MobilisePage({
           employeeIdNo: w.employeeIdNo,
           trade: w.trade,
           skillNames: w.skillNames,
+          supplierId: w.supplierId,
+          blocked: w.blocked,
         }))}
         tradeOptions={tradeOptions}
       />

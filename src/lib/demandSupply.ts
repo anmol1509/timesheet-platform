@@ -29,10 +29,17 @@ type IdleWorker = {
   employeeIdNo: string;
   trade: string | null;
   skillNames: string[];
+  /** The supplier behind this worker, when there is one. */
+  supplierId: string | null;
+  /** Why the worker can't be mobilised yet (their supplier isn't approved), or null when they can. */
+  blocked: string | null;
 };
 
-/** Every worker who could be mobilised right now, with their trades. */
-export async function getIdleWorkers(branchId: string | null): Promise<IdleWorker[]> {
+/**
+ * Every worker who could be mobilised right now, with their trades. Workers whose supplier or its labour isn't
+ * approved are left out unless `includeBlocked` is set, in which case they come back with `blocked` saying why.
+ */
+export async function getIdleWorkers(branchId: string | null, opts: { includeBlocked?: boolean } = {}): Promise<IdleWorker[]> {
   const rows = await prisma.employee.findMany({
     where: {
       ...branchWhere(branchId),
@@ -45,26 +52,29 @@ export async function getIdleWorkers(branchId: string | null): Promise<IdleWorke
       name: true,
       employeeIdNo: true,
       trade: true,
-      supplier: { select: { approvalStatus: true, labourApprovalStatus: true } },
+      supplierId: true,
+      supplier: { select: { name: true, approvalStatus: true, labourApprovalStatus: true } },
       skills: { select: { skill: { select: { name: true } } } },
     },
     orderBy: { name: "asc" },
   });
 
-  return rows
-    .filter(
-      (e) =>
-        !e.supplier ||
-        (e.supplier.approvalStatus === "Approved" &&
-          e.supplier.labourApprovalStatus === "Approved")
-    )
-    .map((e) => ({
-      id: e.id,
-      name: e.name,
-      employeeIdNo: e.employeeIdNo,
-      trade: e.trade,
-      skillNames: e.skills.map((s) => s.skill.name),
-    }));
+  const all = rows.map((e) => ({
+    id: e.id,
+    name: e.name,
+    employeeIdNo: e.employeeIdNo,
+    trade: e.trade,
+    skillNames: e.skills.map((s) => s.skill.name),
+    supplierId: e.supplierId,
+    blocked: !e.supplier
+      ? null
+      : e.supplier.approvalStatus !== "Approved"
+        ? `${e.supplier.name} is not approved yet`
+        : e.supplier.labourApprovalStatus !== "Approved"
+          ? `${e.supplier.name} has no labour approval yet`
+          : null,
+  }));
+  return opts.includeBlocked ? all : all.filter((w) => !w.blocked);
 }
 
 /** Case- and space-insensitive, since the two trade sources are typed by hand. */

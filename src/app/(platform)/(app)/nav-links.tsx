@@ -52,6 +52,7 @@ import {
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
+import { pathMatches } from "@/lib/navMatch";
 
 type Item = {
   href: string;
@@ -132,16 +133,17 @@ const NAV: Entry[] = [
     icon: ListChecks,
     category: "Operations",
     children: [
-      { href: "/demand", label: "Demands", icon: ListChecks, exact: true },
+      // A demand's own pages (/demand/<id>, /demand/new) belong here; /demand/<id>/mobilise and /documents are claimed below by their longer patterns.
+      { href: "/demand", label: "Demands", icon: ListChecks, exact: true, alsoMatch: ["/demand/*"] },
       // One row for the mobilise → arrive → demobilise cycle; the three stages
       // are tabs (see SECTION_TABS), so the sidebar doesn't list each one.
       {
         href: "/demand/mobilisation",
         label: "Deployments",
         icon: HardHat,
-        alsoMatch: ["/demand/site-arrival", "/demand/demobilisation"],
+        alsoMatch: ["/demand/site-arrival", "/demand/demobilisation", "/demand/*/mobilise"],
       },
-      { href: "/demand/documents", label: "Generate Doc", icon: FileStack },
+      { href: "/demand/documents", label: "Generate Doc", icon: FileStack, alsoMatch: ["/demand/*/documents"] },
     ],
   },
   {
@@ -298,9 +300,7 @@ function adminGroup(): Entry {
  * `/invoices/client-timesheet` both prefix-match `/invoices/client-timesheet`
  * — only the longer, more specific one should light up). */
 function matchSpecificity(pathname: string, item: Item): number | null {
-  const alsoMatched = item.alsoMatch?.find(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  const alsoMatched = item.alsoMatch?.find((p) => pathMatches(pathname, p));
   if (alsoMatched) return alsoMatched.length;
   if (item.href === "/" || item.exact) {
     return pathname === item.href ? item.href.length : null;
