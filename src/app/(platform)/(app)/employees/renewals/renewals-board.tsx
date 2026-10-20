@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { EmployeeAvatar } from "@/components/Avatar";
+import { scanVerdict } from "@/lib/renewalScan";
 import { Badge } from "@/components/Badge";
 import { SlideOver } from "@/components/motion";
 import { RowMenu } from "@/components/ui/RowMenu";
@@ -354,7 +355,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
                           {item.document}
                         </span>
                       </td>
-                      <td className="tabular px-4 py-3 whitespace-nowrap text-secondary">{fmt(item.expiry)}</td>
+                      <td className="tabular px-4 py-3 whitespace-nowrap text-secondary" onClick={(e) => e.stopPropagation()}>{fmt(item.expiry)}<ScanNote item={item} /></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-1.5 w-20 overflow-hidden rounded-full bg-surface-sunken">
@@ -520,6 +521,7 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange }: { ite
       <dl className="divide-y divide-[var(--border)] rounded-card border border-default">
         <DetailRow icon={FileText} label="Document" value={item.document} />
         <DetailRow icon={CalendarDays} label="Expiry date" value={fmt(item.expiry)} />
+        {item.kind === "employee" && <DetailRow icon={FileText} label="Scan on file" value={<ScanNote item={item} inline />} />}
         {item.kind === "employee" && <DetailRow icon={MapPin} label="Project" value={item.project ?? "Not deployed"} />}
         <DetailRow icon={Building2} label={item.kind === "employee" ? "Company" : "Supplier"} value={item.supplier ?? "—"} />
       </dl>
@@ -547,7 +549,7 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange }: { ite
   );
 }
 
-function DetailRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+function DetailRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <Icon className="h-4 w-4 shrink-0 text-subtle" aria-hidden />
@@ -662,4 +664,18 @@ function ExpiryChart({ items, week, onWeek, onSelect }: { items: RenewalItem[]; 
       )}
     </section>
   );
+}
+
+/** Where the date on the record stands against the uploaded file: agrees, differs (with the file's date), has no date, or no file. */
+function ScanNote({ item, inline = false }: { item: RenewalRow; inline?: boolean }) {
+  if (item.kind !== "employee") return null;
+  const v = scanVerdict(item.expiry, item.scan);
+  const open = (id: string) => (
+    <a href={`/api/documents/${id}`} target="_blank" rel="noreferrer" className="font-medium text-[var(--brand-primary)] hover:underline">open scan</a>
+  );
+  const wrap = (tone: string, children: React.ReactNode) => <span className={cn(inline ? "text-sm" : "mt-0.5 block text-[11px] font-normal", tone)}>{children}</span>;
+  if (v.kind === "none") return wrap("text-subtle", "No scan on file");
+  if (v.kind === "agrees") return wrap("text-muted", <>Scan agrees · {open(v.id)}</>);
+  if (v.kind === "undated") return wrap("text-muted", <>Scan has no date · {open(v.id)}</>);
+  return wrap("text-[var(--warning)]", <>Scan shows {fmt(v.scanExpiry)} · {open(v.id)}</>);
 }

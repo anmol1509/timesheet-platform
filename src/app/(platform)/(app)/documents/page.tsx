@@ -11,6 +11,9 @@ import { complianceStatus } from "@/lib/compliance";
 import { DocumentsView } from "./documents-view";
 import { COMPANY_DOC_TYPES } from "./company-docs";
 import { RecheckExpired } from "./recheck-expired";
+import { getRenewals } from "@/lib/renewals";
+import { scanVerdict } from "@/lib/renewalScan";
+import Link from "next/link";
 
 
 function prettyType(type: string) {
@@ -23,6 +26,10 @@ export default async function DocumentsPage() {
   // filename. Scoped to the caller's branch, and selecting only what the table
   // shows.
   const { user, branchId } = await requireUserWithBranch();
+
+  // Expiries kept on the employee record. The tiles below count the dates on uploaded files, so a record date that no
+  // dated file backs up is past due here without showing as expired, which is what the Renewals page lists.
+  const recordOnly = (await getRenewals(branchId, 0).catch(() => [])).filter((r) => r.kind === "employee" && r.tier === "expired" && scanVerdict(r.expiry, r.scan).kind !== "agrees");
 
   const [documents, employees, activeEmployees, certificates, companySuppliers, companyAttachments] = await Promise.all([
     prisma.document.findMany({
@@ -133,6 +140,13 @@ export default async function DocumentsPage() {
         meta={<CountPill>{documents.length}</CountPill>}
         description="Every employee document on file, with its expiry status."
       />
+
+      {recordOnly.length > 0 && (
+        <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-[var(--warning)]">
+          {recordOnly.length} more expir{recordOnly.length === 1 ? "y is" : "ies are"} past due on employee records without a dated file behind {recordOnly.length === 1 ? "it" : "them"}, so {recordOnly.length === 1 ? "it isn't" : "they aren't"} counted in the tiles below.{" "}
+          <Link href="/employees/renewals" className="font-medium underline">See them in Renewals</Link>
+        </p>
+      )}
 
       {isAdminRole(user.role) && expiredCount > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-default bg-surface px-3 py-2 text-xs text-muted">

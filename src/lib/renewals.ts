@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
+import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
 
 /**
  * The renewal queue.
@@ -42,6 +43,8 @@ export type RenewalItem = {
   tier: RenewalTier;
   supplier: string | null;
   project: string | null;
+  /** The newest uploaded file of this kind for the worker, with the expiry carried on that file. Null for suppliers or when none is filed. */
+  scan: { id: string; expiry: string | null } | null;
 };
 
 export function tierFor(days: number): RenewalTier | null {
@@ -76,8 +79,14 @@ export async function getRenewals(
       drivingLicenceExpiry: true,
       supplier: { select: { name: true } },
       project: { select: { code: true, name: true } },
+      // The files only, never their bytes: just enough to say whether a scan backs each date.
+      documents: { select: { id: true, type: true, expiryDate: true }, orderBy: { uploadedAt: "desc" } },
     },
   });
+
+  // Which stored file types carry each record date (a visa date can come from a visa or a residency issuance page).
+  const typesFor = new Map<string, string[]>();
+  for (const [type, field] of Object.entries(EXPIRY_FIELD.EMPLOYEE)) typesFor.set(field, [...(typesFor.get(field) ?? []), type]);
 
   const items: RenewalItem[] = [];
   for (const e of employees) {
@@ -100,6 +109,11 @@ export async function getRenewals(
         tier,
         supplier: e.supplier?.name ?? null,
         project: e.project ? `${e.project.code} — ${e.project.name}` : null,
+        scan: (() => {
+          const kinds = typesFor.get(field.key) ?? [];
+          const doc = e.documents.find((d) => kinds.includes(d.type));
+          return doc ? { id: doc.id, expiry: doc.expiryDate ? doc.expiryDate.toISOString() : null } : null;
+        })(),
       });
     }
   }
@@ -136,6 +150,7 @@ export async function getRenewals(
       tier,
       supplier: supplier.name,
       project: null,
+      scan: null,
     });
   }
 
@@ -185,6 +200,7 @@ export async function getRenewals(
         tier,
         supplier: supplier.name,
         project: null,
+        scan: null,
       });
     }
   }
