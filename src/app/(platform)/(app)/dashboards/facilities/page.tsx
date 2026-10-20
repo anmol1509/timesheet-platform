@@ -16,6 +16,8 @@ import { BarList, type BarListTone } from "@/components/BarList";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
 import { AlertTriangle as WarnIcon, BedDouble as BedIcon } from "lucide-react";
 
+export const metadata = { title: "Facilities dashboard" };
+
 export default async function FacilitiesDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
   // Camp and Vehicle are branch-scoped; Room/Bed/Route inherit through them.

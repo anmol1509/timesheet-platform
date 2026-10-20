@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { findDivergences } from "@/lib/attendanceTimesheetSync";
 import { SyncReview } from "./sync-review";
 
+export const metadata = { title: "Sync client timesheet" };
+
 /**
  * Where attendance and the client timesheet disagree, and why.
  *

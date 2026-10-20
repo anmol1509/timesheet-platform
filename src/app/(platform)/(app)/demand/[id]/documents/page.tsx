@@ -7,6 +7,8 @@ import { isOutsideBranch } from "@/lib/branch";
 import { templateHtml } from "@/lib/letterHtml";
 import { DocumentTabs } from "./document-tabs";
 
+export const metadata = { title: "Demand documents" };
+
 export default async function DemandDocumentsPage({
   params,
 }: {

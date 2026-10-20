@@ -19,6 +19,8 @@ import { branchWhere } from "@/lib/branch";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
 import { ClipboardList as ListIcon } from "lucide-react";
 
+export const metadata = { title: "Timesheets dashboard" };
+
 function currentMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

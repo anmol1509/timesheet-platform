@@ -7,6 +7,8 @@ import { branchWhere } from "@/lib/branch";
 import { InvoiceHistoryList } from "./invoice-history-list";
 import { listBanks } from "@/lib/books/banks";
 
+export const metadata = { title: "Invoice history" };
+
 function fmt(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

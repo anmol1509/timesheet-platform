@@ -9,6 +9,8 @@ import { AuditLogList } from "./audit-log-list";
 import { ExportDialog } from "./export-dialog";
 import { entityMeta } from "@/lib/auditPresentation";
 
+export const metadata = { title: "Audit log" };
+
 const MAX_ROWS = 500;
 
 function startOfDay() {

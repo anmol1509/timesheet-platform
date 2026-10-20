@@ -10,6 +10,8 @@ import { findDivergences } from "@/lib/attendanceTimesheetSync";
 import { AlertTriangle, FileSearch, Plus } from "lucide-react";
 import { ClientTimesheetGrid } from "./client-timesheet-grid";
 
+export const metadata = { title: "Client timesheets" };
+
 const ALL_CLIENTS = "all";
 
 export default async function ClientTimesheetPage({

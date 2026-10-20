@@ -7,6 +7,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { RouteList } from "./route-list";
 
+export const metadata = { title: "Routes" };
+
 export default async function RoutesPage() {
   const { branchId } = await requireUserWithBranch();
   // A route has no branch of its own — it inherits its vehicle's.

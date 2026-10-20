@@ -8,6 +8,8 @@ import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
 import { deleteNocAction } from "../actions";
 
+export const metadata = { title: "NOC" };
+
 export default async function NocDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

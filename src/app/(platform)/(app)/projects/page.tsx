@@ -8,6 +8,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ProjectList } from "./project-list";
 
+export const metadata = { title: "Projects" };
+
 function daysUntil(d: Date | null) {
   return d ? Math.ceil((d.getTime() - Date.now()) / 86_400_000) : null;
 }

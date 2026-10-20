@@ -12,6 +12,8 @@ import { ViewToggle } from "@/components/ViewToggle";
 import { QUOTATION_COLUMNS, QUOTATION_TRANSITIONS } from "@/lib/salesPipeline";
 import { deleteQuotationAction, moveQuotationAction } from "./actions";
 
+export const metadata = { title: "Quotations" };
+
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   DRAFT: "slate",
   SENT: "amber",

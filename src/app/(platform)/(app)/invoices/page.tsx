@@ -11,6 +11,8 @@ import { StatTile } from "@/components/StatTile";
 import { StatusDonut } from "@/components/Donut";
 import { Insights } from "@/components/ListSummary";
 
+export const metadata = { title: "Invoices" };
+
 export default async function InvoicesPage({
   searchParams,
 }: {

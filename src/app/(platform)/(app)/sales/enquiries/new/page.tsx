@@ -5,6 +5,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NewEnquiryForm } from "./new-enquiry-form";
 
+export const metadata = { title: "New enquiry" };
+
 export default async function NewEnquiryPage() {
   const { branchId } = await requireUserWithBranch();
   const clients = await prisma.client.findMany({

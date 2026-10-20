@@ -6,6 +6,8 @@ import { setBranchApiAccessAction, updateIssuedToAction } from "./actions";
 import { CreateBranchForm } from "./create-branch-form";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
+export const metadata = { title: "Company settings" };
+
 export default async function SettingsPage() {
   const admin = await requireAdmin();
   const isSuperAdmin = admin.role === "SUPER_ADMIN";

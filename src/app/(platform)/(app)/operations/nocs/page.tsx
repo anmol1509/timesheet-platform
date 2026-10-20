@@ -7,6 +7,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NocList } from "./noc-list";
 
+export const metadata = { title: "NOCs" };
+
 function daysUntil(d: Date) {
   return Math.ceil((d.getTime() - Date.now()) / 86_400_000);
 }

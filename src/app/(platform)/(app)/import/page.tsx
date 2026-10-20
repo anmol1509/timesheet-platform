@@ -13,6 +13,8 @@ import { GetStarted } from "@/components/GetStarted";
 import { sampleState } from "@/lib/importer/sample";
 import { SampleCard } from "./sample-card";
 
+export const metadata = { title: "Import data" };
+
 type Tone = "brand" | "info" | "success" | "warning" | "error";
 const TONE: Record<Tone, string> = {
   brand: "bg-brand-soft text-brand",

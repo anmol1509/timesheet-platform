@@ -9,6 +9,8 @@ import { AttachmentUploader } from "@/components/AttachmentUploader";
 import { ActivityPanel } from "../../activity-panel";
 import { LostButton } from "../../lost-button";
 
+export const metadata = { title: "Enquiry" };
+
 const COLOR: Record<string, "green" | "amber" | "red" | "slate"> = { Open: "amber", Quoted: "slate", Lost: "red", Converted: "green" };
 const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 

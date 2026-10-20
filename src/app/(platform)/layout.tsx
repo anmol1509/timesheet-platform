@@ -26,8 +26,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://manpowersync.com"),
   title: {
-    default: "Workforce ERP",
-    template: "%s • Workforce ERP",
+    default: "ManpowerSync",
+    template: "%s • ManpowerSync",
   },
   description:
     "Workforce, projects, timesheets and billing for construction manpower suppliers.",

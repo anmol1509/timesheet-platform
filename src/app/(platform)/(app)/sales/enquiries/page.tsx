@@ -12,6 +12,8 @@ import { ViewToggle } from "@/components/ViewToggle";
 import { ENQUIRY_COLUMNS } from "@/lib/salesPipeline";
 import { deleteEnquiryAction, moveEnquiryAction } from "./actions";
 
+export const metadata = { title: "Enquiries" };
+
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate"> = {
   Open: "amber",
   Quoted: "slate",

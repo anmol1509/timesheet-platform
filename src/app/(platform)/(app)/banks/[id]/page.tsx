@@ -10,6 +10,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { bankState } from "@/lib/bankStatus";
 
+export const metadata = { title: "Bank account" };
+
 export default async function BankDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

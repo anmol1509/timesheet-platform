@@ -13,6 +13,8 @@ import { isOutsideBranch } from "@/lib/branch";
 import { SupplierTabs as PageTabs } from "../../suppliers/[id]/supplier-tabs";
 import { PartyStatement, canSeeStatement } from "../../finance/books/parties/statement";
 
+export const metadata = { title: "Client" };
+
 function toDateInput(d: Date | null) {
   if (!d) return "";
   return new Date(d).toISOString().slice(0, 10);

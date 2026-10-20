@@ -15,6 +15,7 @@ import { getRenewals } from "@/lib/renewals";
 import { scanVerdict } from "@/lib/renewalScan";
 import Link from "next/link";
 
+export const metadata = { title: "Documents" };
 
 function prettyType(type: string) {
   return type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\bId\b/, "ID");

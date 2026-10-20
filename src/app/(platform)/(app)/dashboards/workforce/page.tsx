@@ -23,6 +23,8 @@ import { AlertTriangle, Globe2, HardHat, Users } from "lucide-react";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
 import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
+export const metadata = { title: "Workforce dashboard" };
+
 export default async function WorkforceDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);

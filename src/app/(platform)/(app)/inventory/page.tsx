@@ -8,6 +8,8 @@ import { AddItemDialog } from "./add-item-dialog";
 import { isLowStock } from "./stock";
 import { InventoryList } from "./inventory-list";
 
+export const metadata = { title: "Inventory" };
+
 export default async function InventoryPage() {
   const { branchId } = await requireUserWithBranch();
   const [items, employees] = await Promise.all([prisma.inventoryItem.findMany({

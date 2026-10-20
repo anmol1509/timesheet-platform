@@ -9,6 +9,8 @@ import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { CompanyGrid } from "./company-grid";
 import { Select } from "@/components/ui/Select";
 
+export const metadata = { title: "Companies" };
+
 export default async function CompaniesPage({
   searchParams,
 }: {

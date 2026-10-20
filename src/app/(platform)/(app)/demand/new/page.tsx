@@ -6,6 +6,8 @@ import { branchWhere } from "@/lib/branch";
 import { TRADES } from "@/lib/trades";
 import { DemandRequestForm } from "./demand-request-form";
 
+export const metadata = { title: "New demand" };
+
 export default async function NewDemandRequestPage() {
   const { branchId } = await requireUserWithBranch();
   const [clients, projects] = await Promise.all([

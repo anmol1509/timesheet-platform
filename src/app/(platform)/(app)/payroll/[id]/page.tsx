@@ -21,6 +21,8 @@ import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollContr
 import { buildPayslip } from "@/lib/payslip";
 import { dueDateFor, dueState } from "@/lib/payrollSchedule";
 
+export const metadata = { title: "Payroll run" };
+
 function previousMonth(month: string) {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 2, 1));

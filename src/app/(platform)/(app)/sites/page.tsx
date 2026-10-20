@@ -4,6 +4,8 @@ import { branchWhere } from "@/lib/branch";
 import { canWrite } from "@/lib/permissions";
 import { SitesBoard } from "./sites-board";
 
+export const metadata = { title: "Sites" };
+
 /**
  * Sites, grouped under the project they belong to.
  *

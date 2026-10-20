@@ -8,6 +8,8 @@ import { LOOKUP_CATEGORIES } from "@/lib/lookupCategories";
 import { createLookupValueAction } from "./actions";
 import { LookupValueList } from "./lookup-value-list";
 
+export const metadata = { title: "Reference data" };
+
 export default async function LookupsPage({
   searchParams,
 }: {

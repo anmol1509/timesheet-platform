@@ -14,6 +14,8 @@ import { cn } from "@/lib/cn";
 import { AddVehicleDialog } from "./add-vehicle-dialog";
 import { VehicleBrowser } from "./vehicle-browser";
 
+export const metadata = { title: "Transport" };
+
 const STATUS: Record<string, { label: string; color: "green" | "amber" | "slate" }> = {
   ACTIVE: { label: "In service", color: "green" },
   MAINTENANCE: { label: "Maintenance", color: "amber" },

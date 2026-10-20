@@ -11,6 +11,8 @@ import { ProjectRoutes } from "./project-routes";
 import { RosterManager } from "./roster-manager";
 import { deleteVehicleAction } from "../actions";
 
+export const metadata = { title: "Vehicle" };
+
 const STATUS_COLOR = {
   ACTIVE: "green",
   MAINTENANCE: "amber",

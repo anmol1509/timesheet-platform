@@ -15,6 +15,8 @@ import { SendDialog } from "./send-dialog";
 import { ActivityPanel } from "../../activity-panel";
 import { LostButton } from "../../lost-button";
 
+export const metadata = { title: "Quotation" };
+
 const STATUS_COLOR: Record<string, "green" | "amber" | "red" | "slate" | "blue"> = {
   DRAFT: "slate", SENT: "blue", NEGOTIATION: "amber", APPROVED: "green", ACCEPTED: "green", REJECTED: "red", CONVERTED: "green",
 };

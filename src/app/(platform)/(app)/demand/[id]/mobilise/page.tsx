@@ -10,6 +10,8 @@ import { can } from "@/lib/permissions";
 import { TRADES } from "@/lib/trades";
 import { MobilisationBoard } from "./mobilisation-board";
 
+export const metadata = { title: "Mobilise" };
+
 export default async function MobilisePage({
   params,
 }: {

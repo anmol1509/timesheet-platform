@@ -26,6 +26,8 @@ import { CalendarDays, FileText, UserPlus, Upload as UploadIcon } from "lucide-r
 import { GetStarted } from "@/components/GetStarted";
 import { isAdminRole } from "@/lib/roles";
 
+export const metadata = { title: "Dashboard" };
+
 function greeting() {
   const hour = Number(
     new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Asia/Dubai" }).format(

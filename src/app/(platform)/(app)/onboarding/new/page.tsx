@@ -5,6 +5,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { CandidateForm } from "../candidate-form";
 
+export const metadata = { title: "New candidate" };
+
 export default async function NewCandidatePage() {
   const { branchId } = await requireUserWithBranch();
   const [agencies, agencyContacts, projects, demandRequests, hrUsers] = await Promise.all([

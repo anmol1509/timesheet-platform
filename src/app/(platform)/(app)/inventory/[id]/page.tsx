@@ -9,6 +9,8 @@ import { EditItemForm } from "./edit-form";
 import { EmployeeIssuanceSection } from "./employee-issuance-section";
 import { VariantsSection } from "./variants-section";
 
+export const metadata = { title: "Inventory item" };
+
 export default async function InventoryItemPage({
   params,
   searchParams,

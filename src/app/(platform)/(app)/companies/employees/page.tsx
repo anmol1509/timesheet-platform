@@ -9,6 +9,8 @@ import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { Select } from "@/components/ui/Select";
 import { EmployeeSheetPicker } from "./employee-picker";
 
+export const metadata = { title: "Company employees" };
+
 export default async function EmployeeSheetsPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const params = await searchParams;
   const { user, branchId } = await requireUserWithBranch();

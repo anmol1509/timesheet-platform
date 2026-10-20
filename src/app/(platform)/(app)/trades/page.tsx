@@ -7,6 +7,8 @@ import { mayEditSkill, visibleSkillWhere } from "@/lib/skillScope";
 import { AddTrade } from "./add-trade";
 import { TradeTable } from "./trade-table";
 
+export const metadata = { title: "Trades" };
+
 export default async function SkillsPage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [skills, totalEmployees] = await Promise.all([

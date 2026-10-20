@@ -24,6 +24,8 @@ import { cn } from "@/lib/cn";
 import { createRoomAction, updateCampAction } from "../actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
+export const metadata = { title: "Camps" };
+
 export default async function CampsPage({
   searchParams,
 }: {

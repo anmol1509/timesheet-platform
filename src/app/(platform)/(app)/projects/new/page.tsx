@@ -3,6 +3,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { NewProjectForm } from "./new-project-form";
 
+export const metadata = { title: "New project" };
+
 export default async function NewProjectPage() {
   const { branchId } = await requireUserWithBranch();
   const clients = await prisma.client.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" } });
