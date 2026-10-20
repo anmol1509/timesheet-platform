@@ -19,6 +19,8 @@ import { branchWhere } from "@/lib/branch";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
 import { AlertTriangle as WarnIcon } from "lucide-react";
 
+export const metadata = { title: "Business partners dashboard" };
+
 export default async function BusinessPartnersDashboardPage() {
   const { user, branchId } = await requireUserWithBranch();
   const branchScope = branchWhere(branchId);

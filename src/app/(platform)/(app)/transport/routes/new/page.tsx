@@ -5,6 +5,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { RouteForm } from "../route-form";
 
+export const metadata = { title: "New route" };
+
 export default async function NewRoutePage({
   searchParams,
 }: {

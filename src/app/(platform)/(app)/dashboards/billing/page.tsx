@@ -18,6 +18,8 @@ import { branchWhere } from "@/lib/branch";
 import { AttentionPanel, type AttentionItem } from "@/components/dashboard/AttentionList";
 import { AlertTriangle as WarnIcon, ClipboardList as ListIcon } from "lucide-react";
 
+export const metadata = { title: "Billing dashboard" };
+
 export default async function BillingDashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   const { user, branchId } = await requireUserWithBranch();
   const sp = await searchParams;

@@ -6,6 +6,8 @@ import { groupLookups } from "@/lib/lookups";
 import { PageHeader } from "@/components/PageHeader";
 import { EmployeeWizard } from "./wizard";
 
+export const metadata = { title: "New employee" };
+
 export default async function AddEmployeePage() {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const [projects, suppliers, sponsors, lookupValues] = await Promise.all([

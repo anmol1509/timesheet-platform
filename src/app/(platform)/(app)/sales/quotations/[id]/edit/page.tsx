@@ -8,6 +8,8 @@ import { parseAdjustments } from "@/lib/quotationMath";
 import { QuotationForm } from "../../quotation-form";
 import { isoDay, loadQuotationFormData } from "../../form-data";
 
+export const metadata = { title: "Edit quotation" };
+
 export default async function EditQuotationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

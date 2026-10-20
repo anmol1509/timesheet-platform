@@ -14,6 +14,8 @@ import { JoinPanel } from "../join-panel";
 import { Pipeline } from "../pipeline";
 import { deleteCandidateAction } from "../actions";
 
+export const metadata = { title: "Candidate" };
+
 export default async function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

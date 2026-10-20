@@ -7,6 +7,8 @@ import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSumma
 import { absenceRuleOf, gasRuleOf } from "@/lib/deductions";
 import { ReviewClient } from "./review-client";
 
+export const metadata = { title: "Generate documents" };
+
 export default async function GeneratePage({
   params,
   searchParams,

@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { QuotationForm } from "../quotation-form";
 import { loadQuotationFormData } from "../form-data";
 
+export const metadata = { title: "New quotation" };
+
 export default async function NewQuotationPage({
   searchParams,
 }: {

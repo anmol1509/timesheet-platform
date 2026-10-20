@@ -4,6 +4,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isAdminRole } from "@/lib/roles";
 import { DocumentsWizard } from "./documents-wizard";
 
+export const metadata = { title: "Import documents" };
+
 export default async function ImportDocumentsPage() {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!isAdminRole(user.role)) redirect("/no-access");

@@ -12,6 +12,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { parseAdjustments, parseQuoteSettings, quoteTotals } from "@/lib/quotationMath";
 import { QuoteSettingsDialog } from "./quote-settings";
 
+export const metadata = { title: "Sales pipeline" };
+
 const OPEN = ["DRAFT", "SENT", "NEGOTIATION", "APPROVED"];
 const DAY = 86_400_000;
 const money = (v: number) => `AED ${Math.round(v).toLocaleString()}`;

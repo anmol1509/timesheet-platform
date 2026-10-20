@@ -14,6 +14,8 @@ import { Treemap } from "@/components/Treemap";
 import { Insights } from "@/components/ListSummary";
 import { EmployeeList } from "./employee-list";
 
+export const metadata = { title: "Employees" };
+
 const num = (d: { toString(): string } | null | undefined) => (d == null ? null : Number(d.toString()));
 const STRUCTURE_LABEL: Record<string, string> = { ITEMISED: "Itemised", FLAT: "Flat", HOURLY: "Hourly" };
 /** The pay columns of the sheet: the structure, the one rate that goes with it, and the allowances for itemised pay. */

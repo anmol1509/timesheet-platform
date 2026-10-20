@@ -7,6 +7,8 @@ import { branchWhere } from "@/lib/branch";
 import { EmptyState } from "@/components/EmptyState";
 import { MobilisationList } from "./mobilisation-list";
 
+export const metadata = { title: "Deployments" };
+
 /**
  * Demands waiting to be staffed, and how far each has got.
  *

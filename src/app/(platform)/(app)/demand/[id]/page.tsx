@@ -11,6 +11,8 @@ import { TradeAllocationSection } from "./trade-allocation-section";
 import { getIdleWorkers, supplyForTrade } from "@/lib/demandSupply";
 import { deleteDemandRequestAction } from "../actions";
 
+export const metadata = { title: "Demand request" };
+
 export default async function DemandRequestDetailPage({
   params,
   searchParams,

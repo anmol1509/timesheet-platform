@@ -7,6 +7,8 @@ import { branchWhere } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/EmptyState";
 
+export const metadata = { title: "Generate documents" };
+
 /**
  * Pick a demand to generate paperwork for.
  *

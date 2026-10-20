@@ -6,6 +6,8 @@ import { branchWhere } from "@/lib/branch";
 import { EmptyState } from "@/components/EmptyState";
 import { SiteArrivalBoard } from "./site-arrival-board";
 
+export const metadata = { title: "Site arrival" };
+
 /**
  * Who has been mobilised on paper but not yet confirmed on site.
  *

@@ -29,7 +29,7 @@ export default function GlobalError({
             "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
         }}
       >
-        <title>Something went wrong • Workforce ERP</title>
+        <title>Something went wrong • ManpowerSync</title>
         <main
           style={{
             maxWidth: "26rem",

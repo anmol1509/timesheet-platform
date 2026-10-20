@@ -5,6 +5,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ManualEntryForm } from "./manual-entry-form";
 
+export const metadata = { title: "New client timesheet" };
+
 export default async function NewClientTimesheetEntryPage() {
   const { branchId } = await requireUserWithBranch();
   const [suppliers, clients, projects, sites] = await Promise.all([

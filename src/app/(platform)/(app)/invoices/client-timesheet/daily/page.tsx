@@ -5,6 +5,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { DailyTimesheetForm } from "./daily-timesheet-form";
 
+export const metadata = { title: "Daily client timesheet" };
+
 export default async function DailyTimesheetPage() {
   const { branchId } = await requireUserWithBranch();
 

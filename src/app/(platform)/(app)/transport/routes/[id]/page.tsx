@@ -7,6 +7,8 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { RouteForm } from "../route-form";
 import { deleteRouteAction } from "../actions";
 
+export const metadata = { title: "Route" };
+
 export default async function RouteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { branchId, isSuperAdmin } = await requireUserWithBranch();

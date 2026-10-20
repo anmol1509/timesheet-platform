@@ -10,6 +10,8 @@ import { Users, Clock, BedDouble } from "lucide-react";
 import { CheckInTable } from "./checkin-table";
 import { CheckInHistory } from "./checkin-history";
 
+export const metadata = { title: "Check-in" };
+
 function stayDays(from: Date, to: Date | null) {
   return Math.max(0, Math.floor(((to ?? new Date()).getTime() - from.getTime()) / 86_400_000));
 }

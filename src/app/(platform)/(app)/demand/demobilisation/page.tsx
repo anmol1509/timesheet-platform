@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { ON_WORK_STAGES } from "@/lib/employeeStage";
 import { DemobilisationBoard } from "./demobilisation-board";
 
+export const metadata = { title: "Demobilisation" };
+
 /**
  * Taking workers off a job — the closing half of the mobilisation cycle.
  *

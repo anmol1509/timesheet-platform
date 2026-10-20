@@ -6,6 +6,8 @@ import { RESET_MODULES } from "@/lib/dataReset";
 import { ResetModuleCard } from "./reset-module-card";
 import { ResetAllCard } from "./reset-all-card";
 
+export const metadata = { title: "Data reset" };
+
 export default async function DataResetPage() {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   // Same rule as the actions: a super admin, or a branch admin who belongs to a

@@ -5,6 +5,8 @@ import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 
+export const metadata = { title: "Timesheet upload" };
+
 export default async function UploadDetailPage({
   params,
 }: {

@@ -13,6 +13,8 @@ import {
   type ComplianceStatus,
 } from "@/lib/compliance";
 
+export const metadata = { title: "Instant view" };
+
 const STATUS_COLOR: Record<ComplianceStatus, "green" | "amber" | "red" | "slate"> = {
   valid: "green",
   expiring: "amber",

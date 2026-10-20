@@ -7,6 +7,8 @@ import { getRenewals, summarise } from "@/lib/renewals";
 import { renewalKey, type RenewalRow, type RenewalStatus } from "@/lib/renewalCases";
 import { RenewalsBoard } from "./renewals-board";
 
+export const metadata = { title: "Renewals" };
+
 export default async function RenewalsPage() {
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);

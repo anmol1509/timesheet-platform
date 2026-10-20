@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { AuthShell } from "./auth-shell";
 import { LoginForm } from "./login-form";
 
-// The root layout's title template already appends "• Workforce ERP",
+// The root layout's title template already appends "• ManpowerSync",
 // so this must carry the page name only.
 export const metadata = {
   title: "Login",

@@ -27,6 +27,8 @@ import { NotesSection } from "./notes-section";
 import { InventorySection } from "./inventory-section";
 import { ProfileSummary } from "./profile-summary";
 
+export const metadata = { title: "Employee" };
+
 function formatShortDate(value: Date) {
   return new Date(value).toLocaleDateString("en-GB", {
     day: "2-digit",

@@ -8,6 +8,8 @@ import { DeleteUploadButton } from "./delete-upload-button";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
+export const metadata = { title: "Upload timesheets" };
+
 export default async function UploadPage() {
   const { user, branchId } = await requireUserWithBranch();
   const recentUploads = await prisma.upload.findMany({

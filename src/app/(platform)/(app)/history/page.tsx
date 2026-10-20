@@ -6,6 +6,8 @@ import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 
+export const metadata = { title: "Timesheet history" };
+
 export default async function HistoryPage() {
   const { branchId } = await requireUserWithBranch();
   const sheets = await prisma.generatedSheet.findMany({

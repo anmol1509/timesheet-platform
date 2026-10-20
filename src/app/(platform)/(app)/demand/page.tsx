@@ -10,6 +10,8 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { ProgressBar } from "@/components/ProgressBar";
 import { ViewToggle } from "@/components/ViewToggle";
 
+export const metadata = { title: "Demands" };
+
 function ageInDays(d: Date) {
   return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
 }

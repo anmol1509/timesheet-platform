@@ -9,6 +9,8 @@ import { getAttendanceMonth } from "@/lib/attendanceMonth";
 import { CorrectionRequests } from "./correction-requests";
 import { DayStrip } from "./day-strip";
 
+export const metadata = { title: "Daily attendance" };
+
 export default async function AttendancePage({
   searchParams,
 }: {

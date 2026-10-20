@@ -22,6 +22,8 @@ import { WorkmenCompSection } from "./workmen-comp-section";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
 
+export const metadata = { title: "Supplier" };
+
 function toDateInput(d: Date | null) {
   if (!d) return "";
   return new Date(d).toISOString().slice(0, 10);

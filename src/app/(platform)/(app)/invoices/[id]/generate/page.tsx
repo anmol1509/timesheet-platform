@@ -6,6 +6,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { ReviewInvoice } from "./review-invoice";
 
+export const metadata = { title: "Generate invoice" };
+
 export default async function GenerateInvoicePage({
   params,
   searchParams,

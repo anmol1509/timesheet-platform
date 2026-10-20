@@ -21,6 +21,8 @@ import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { EmployeeAvatar } from "@/components/Avatar";
 import { STAGE_COLOR, STAGE_LABEL } from "@/lib/employeeStage";
 
+export const metadata = { title: "Project" };
+
 const STATUS_COLOR: Record<string, BadgeColor> = {
   ACTIVE: "green",
   PLANNING: "amber",

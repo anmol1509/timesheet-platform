@@ -5,6 +5,8 @@ import { isAdminRole } from "@/lib/roles";
 import { TARGETS, isImportKind } from "@/lib/importer/targets";
 import { ImportWizard } from "../../import-wizard";
 
+export const metadata = { title: "Import data" };
+
 export default async function NewImportPage({ params }: { params: Promise<{ kind: string }> }) {
   const { kind: raw } = await params;
   const kind = raw.toUpperCase();

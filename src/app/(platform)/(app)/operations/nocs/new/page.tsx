@@ -6,6 +6,8 @@ import { branchWhere } from "@/lib/branch";
 import { templateHtml } from "@/lib/letterHtml";
 import { NocForm } from "./noc-form";
 
+export const metadata = { title: "New NOC" };
+
 export default async function NewNocPage({
   searchParams,
 }: {

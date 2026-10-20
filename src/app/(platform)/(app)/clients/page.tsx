@@ -11,6 +11,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { ClientList } from "./client-list";
 
+export const metadata = { title: "Clients" };
+
 export default async function ClientsPage() {
   const { branchId } = await requireUserWithBranch();
   const clients = await prisma.client.findMany({

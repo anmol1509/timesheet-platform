@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatTile } from "@/components/StatTile";
 import { BedAllocationTable } from "./bed-allocation-table";
 
+export const metadata = { title: "Bed allocation" };
+
 export default async function BedAllocationPage() {
   const { user, branchId } = await requireUserWithBranch();
   await settleDueCheckouts(branchId, user);

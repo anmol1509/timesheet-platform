@@ -13,6 +13,8 @@ import { branchWhere } from "@/lib/branch";
 import { groupLookups } from "@/lib/lookups";
 import { SupplierList } from "./supplier-list";
 
+export const metadata = { title: "Suppliers" };
+
 function outstanding(bills: { amount: unknown; vatAmount: unknown; dueDate: Date; payments: { amount: unknown }[] }[]) {
   const today = new Date();
   let balance = 0;
