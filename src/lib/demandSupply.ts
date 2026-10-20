@@ -31,6 +31,7 @@ type IdleWorker = {
   skillNames: string[];
   /** The supplier behind this worker, when there is one. */
   supplierId: string | null;
+  supplierName: string | null;
   /** Why the worker can't be mobilised yet (their supplier isn't approved), or null when they can. */
   blocked: string | null;
 };
@@ -66,6 +67,7 @@ export async function getIdleWorkers(branchId: string | null, opts: { includeBlo
     trade: e.trade,
     skillNames: e.skills.map((s) => s.skill.name),
     supplierId: e.supplierId,
+    supplierName: e.supplier?.name ?? null,
     blocked: !e.supplier
       ? null
       : e.supplier.approvalStatus !== "Approved"

@@ -17,6 +17,7 @@ import type { Fix, Fixable, ImportKind, NewSupplier, SupplierDecision, WorkerCho
 import { PlacementTable, WorkerMatchPanel } from "./worker-match-panel";
 import { ImportBreakdownView } from "./import-breakdown";
 import type { Analysis, BatchStatus, BatchSummary } from "@/lib/importer/wire";
+import { ImportHeldNotice } from "@/components/HeldSuppliers";
 import type { CopilotResult } from "@/lib/importer/copilot";
 
 type Step = "upload" | "map" | "review" | "running" | "done";
@@ -518,6 +519,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           {(status?.summary ?? summary) && (
             <ReportView tiles={tilesFor(kind, (status?.summary ?? summary)!.counts)} rows={(status?.summary ?? summary)!.rows} notes={(status?.summary ?? summary)!.notes} truncated={(status?.summary ?? summary)!.truncated} />
           )}
+          {status?.status === "DONE" && <ImportHeldNotice />}
           {status?.summary?.undo && (
             <p className="text-sm text-secondary">Undone: {status.summary.undo.removed} records removed, {status.summary.undo.restored} restored{status.summary.undo.kept ? `, ${status.summary.undo.kept} kept because other records use them` : ""}.</p>
           )}
