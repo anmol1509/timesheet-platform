@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertOctagon,
   AlertTriangle,
@@ -21,6 +21,9 @@ import {
   X,
 } from "lucide-react";
 import { EmployeeAvatar } from "@/components/Avatar";
+import { ScanUpload } from "../scan-upload";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { setRenewalExpiryAction } from "./actions";
 import { scanVerdict } from "@/lib/renewalScan";
 import { Badge } from "@/components/Badge";
 import { SlideOver } from "@/components/motion";
@@ -391,9 +394,9 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
         onOpenChange={(o) => !o && setSelected(null)}
         title={selected ? `${selected.document} renewal` : ""}
         description={selected ? runwayLabel(selected.days) : undefined}
-        width="28rem"
+        width="34rem"
       >
-        {selected && <RenewalDetail item={selected} owners={owners} currentUserId={currentUserId} canEdit={canEdit} onChange={(patch) => change([selected], patch)} />}
+        {selected && <RenewalDetail item={selected} owners={owners} currentUserId={currentUserId} canEdit={canEdit} onChange={(patch) => change([selected], patch)} onClose={() => setSelected(null)} />}
       </SlideOver>
 
       {canExport && (
@@ -488,7 +491,7 @@ function RenewalKanban({ rows, owners, currentUserId, canEdit, onChange, onOpen 
   );
 }
 
-function RenewalDetail({ item, owners, currentUserId, canEdit, onChange }: { item: RenewalRow; owners: Owner[]; currentUserId: string; canEdit: boolean; onChange: (patch: RenewalPatch) => void }) {
+function RenewalDetail({ item, owners, currentUserId, canEdit, onChange, onClose }: { item: RenewalRow; owners: Owner[]; currentUserId: string; canEdit: boolean; onChange: (patch: RenewalPatch) => void; onClose: () => void }) {
   const t = TIER_BY_KEY.get(item.tier)!;
   const href = subjectHref(item);
   return (
@@ -526,6 +529,9 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange }: { ite
         <DetailRow icon={Building2} label={item.kind === "employee" ? "Company" : "Supplier"} value={item.supplier ?? "—"} />
       </dl>
 
+      {item.kind === "employee" && <DocumentOnFile item={item} />}
+      {item.kind === "employee" && canEdit && <RenewPanel item={item} onDone={onClose} />}
+
       <div className="space-y-3 rounded-card border border-default p-4">
         <p className="eyebrow">Progress</p>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -536,10 +542,13 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange }: { ite
       </div>
 
       <div className="mt-auto grid gap-2">
-        <Link href={href} className="btn btn-primary w-full">
-          <Upload className="h-4 w-4" aria-hidden />
-          {item.kind === "employee" ? "Renew & upload document" : "Update supplier documents"}
-        </Link>
+        {/* A worker's document is renewed in the Renew section above; a supplier's is done on the supplier's page. */}
+        {item.kind === "supplier" && (
+          <Link href={href} className="btn btn-primary w-full">
+            <Upload className="h-4 w-4" aria-hidden />
+            Update supplier documents
+          </Link>
+        )}
         <Link href={href} className="btn btn-secondary w-full">
           {item.kind === "employee" ? <UserRound className="h-4 w-4" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}
           {item.kind === "employee" ? "View employee" : "View supplier"}
@@ -678,4 +687,77 @@ function ScanNote({ item, inline = false }: { item: RenewalRow; inline?: boolean
   if (v.kind === "agrees") return wrap("text-muted", <>Scan agrees · {open(v.id)}</>);
   if (v.kind === "undated") return wrap("text-muted", <>Scan has no date · {open(v.id)}</>);
   return wrap("text-[var(--warning)]", <>Scan shows {fmt(v.scanExpiry)} · {open(v.id)}</>);
+}
+
+/* eslint-disable @next/next/no-img-element -- a stored scan served by the API, not a static asset */
+/** The file behind this renewal, shown in place, so the date can be checked against the paper without leaving the panel. */
+function DocumentOnFile({ item }: { item: RenewalRow }) {
+  const scan = item.scan;
+  if (!scan) return <p className="rounded-card border border-dashed border-default p-4 text-center text-sm text-muted">No {item.document.toLowerCase()} is on file for {item.subjectName}. Upload it below.</p>;
+  const src = `/api/documents/${scan.id}`;
+  const isPdf = scan.mime === "application/pdf";
+  const isImage = /^image\/(jpeg|png|gif|webp)$/.test(scan.mime);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="eyebrow">Document on file</span>
+        <span className="flex items-center gap-3 text-xs">
+          <a href={src} target="_blank" rel="noreferrer" className="font-medium text-[var(--brand-primary)] hover:underline">Open</a>
+          <a href={src} download className="font-medium text-[var(--brand-primary)] hover:underline">Download</a>
+        </span>
+      </div>
+      <div className="flex h-72 items-center justify-center overflow-hidden rounded-card border border-default bg-surface-sunken">
+        {isPdf ? <iframe src={`${src}#toolbar=0&navpanes=0&view=FitH`} title={scan.filename} className="h-full w-full" />
+          : isImage ? <img src={src} alt={scan.filename} className="max-h-full max-w-full object-contain" />
+          : <p className="px-4 text-center text-sm text-muted">No preview for this file type. Use Download.</p>}
+      </div>
+      <p className="truncate text-xs text-muted">{scan.filename}</p>
+    </div>
+  );
+}
+
+/** Renews a worker's document without leaving the renewals queue: upload the new scan (its date is read and put on the record), or just enter the new expiry. */
+function RenewPanel({ item, onDone }: { item: RenewalRow; onDone: () => void }) {
+  const router = useRouter();
+  const [date, setDate] = useState("");
+  const [msg, setMsg] = useState<{ tone: "ok" | "warn"; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (!item.docType || !item.field) return null;
+  const finish = () => { router.refresh(); onDone(); };
+  return (
+    <div className="space-y-3 rounded-card border border-default p-4">
+      <p className="eyebrow">Renew</p>
+      <ScanUpload
+        employeeId={item.subjectId}
+        docType={item.docType}
+        hasPhoto={item.hasPhoto}
+        title={`Upload the new ${item.document.toLowerCase()}`}
+        hint="Drop a file or click. The new expiry is read from it and put on the record."
+        compact
+        onDone={(o) => {
+          if (o.applied.length > 0) { setMsg({ tone: "ok", text: `Saved. ${o.applied.map((a) => `${a.label}: ${fmt(a.value)}`).join(", ")}.` }); setTimeout(finish, 1200); }
+          else setMsg({ tone: "warn", text: o.unread > 0 || o.conflicts.length === 0 ? "The file is saved, but no newer expiry could be read from it. Enter the new date below." : "The file is saved. Its date differs from the record; check it below." });
+        }}
+      />
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          New expiry date
+          <DatePicker value={date} onChange={setDate} ariaLabel={`New expiry for ${item.document}`} placeholder="choose a date" className="w-44" />
+        </label>
+        <button
+          type="button"
+          disabled={!date || pending}
+          onClick={() => startTransition(async () => {
+            const r = await setRenewalExpiryAction({ employeeId: item.subjectId, field: item.field!, expiry: date });
+            if ("error" in r) setMsg({ tone: "warn", text: r.error });
+            else { setMsg({ tone: "ok", text: `Saved. ${item.document} now expires ${fmt(`${date}T00:00:00Z`)}.` }); setTimeout(finish, 1200); }
+          })}
+          className="btn btn-primary btn-sm"
+        >
+          Save date
+        </button>
+      </div>
+      {msg && <p role="status" className={cn("text-xs", msg.tone === "ok" ? "text-[var(--success)]" : "text-[var(--warning)]")}>{msg.text}</p>}
+    </div>
+  );
 }

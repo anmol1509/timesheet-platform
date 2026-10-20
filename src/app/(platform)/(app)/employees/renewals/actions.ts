@@ -6,6 +6,7 @@ import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { RENEWAL_STATUS_KEYS, type RenewalRef } from "@/lib/renewalCases";
+import { COMPLIANCE_FIELDS } from "@/lib/compliance";
 
 export type RenewalPatch = { status?: string; ownerId?: string | null; note?: string | null };
 
@@ -76,4 +77,23 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
   });
   revalidatePath("/employees/renewals");
   return { ok: true, count: targets.length };
+}
+
+/** Sets the new expiry on a worker's record after a renewal, for documents the scanner doesn't read (medical, insurance, ...) or when its date needs correcting. */
+export async function setRenewalExpiryAction(input: { employeeId: string; field: string; expiry: string }): Promise<{ ok: true } | { error: string }> {
+  await requireWrite("workforce.renewals");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const field = COMPLIANCE_FIELDS.find((f) => f.key === input.field);
+  if (!field) return { error: "That isn't a renewable date." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expiry)) return { error: "Choose the new expiry date." };
+  const next = new Date(`${input.expiry}T00:00:00.000Z`);
+  if (Number.isNaN(next.getTime()) || next.getUTCFullYear() < 2000 || next.getUTCFullYear() > 2100) return { error: "That date doesn't look right." };
+  const e = await prisma.employee.findUnique({ where: { id: input.employeeId } });
+  if (!e || isOutsideBranch(e.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this branch." };
+  const before = (e as Record<string, unknown>)[field.key] as Date | null;
+  await prisma.employee.update({ where: { id: e.id }, data: { [field.key]: next } });
+  await logAudit({ entityType: "EMPLOYEE", entityId: e.id, action: "UPDATE", before: { [field.key]: before }, after: { [field.key]: next, source: "renewal" }, userId: user.id, userName: user.name, branchId });
+  revalidatePath("/employees/renewals");
+  revalidatePath(`/employees/${e.id}`);
+  return { ok: true };
 }
