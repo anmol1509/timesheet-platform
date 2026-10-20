@@ -542,10 +542,13 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange, onClose
       </div>
 
       <div className="mt-auto grid gap-2">
-        <Link href={href} className="btn btn-primary w-full">
-          <Upload className="h-4 w-4" aria-hidden />
-          {item.kind === "employee" ? "Renew & upload document" : "Update supplier documents"}
-        </Link>
+        {/* A worker's document is renewed in the Renew section above; a supplier's is done on the supplier's page. */}
+        {item.kind === "supplier" && (
+          <Link href={href} className="btn btn-primary w-full">
+            <Upload className="h-4 w-4" aria-hidden />
+            Update supplier documents
+          </Link>
+        )}
         <Link href={href} className="btn btn-secondary w-full">
           {item.kind === "employee" ? <UserRound className="h-4 w-4" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}
           {item.kind === "employee" ? "View employee" : "View supplier"}
