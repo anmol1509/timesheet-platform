@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { can, type PermissionSubject } from "@/lib/permissions";
 import { billVariance, exceedsApprovalLimit } from "@/lib/financeRules";
+import { heldSuppliers } from "@/lib/supplierHold";
 
 /**
  * Everything waiting for a decision, in one shape. The approvals inbox is built
@@ -169,13 +170,22 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
       where: { ...bw, isOwnCompany: false, OR: SUPPLIER_FLAGS.map(([f]) => ({ [f]: "Pending" })) },
       orderBy: { createdAt: "asc" }, take: LIMIT, select: { id: true, name: true, createdAt: true, approvalStatus: true, labourApprovalStatus: true, invoiceApprovalStatus: true },
     });
+    // Workers of these suppliers are sitting idle until the first two flags are decided; say so on the item.
+    const held = new Map((await heldSuppliers(scope.branchId)).map((h) => [h.id, h]));
     for (const s of rows) {
       for (const [field, label] of SUPPLIER_FLAGS) {
         if ((s as Record<string, unknown>)[field] !== "Pending") continue;
+        const h = field === "invoiceApprovalStatus" ? undefined : held.get(s.id);
+        const chips: Chip[] = h
+          ? [
+              { text: `${h.workers} idle worker${h.workers === 1 ? "" : "s"} waiting`, tone: "warning" },
+              ...h.needs.map((n) => ({ text: `Request #${n.requestNo} needs ${n.remaining} ${n.trade}`, tone: "info" as const })),
+            ]
+          : [];
         out.push({
           key: `SUPPLIER:${s.id}:${field}`, kind: "SUPPLIER", id: s.id, field, title: `${s.name} — ${label} approval`,
           subtitle: field === "approvalStatus" ? "Lets its labour be attached to a project" : field === "labourApprovalStatus" ? "Lets its workers be allocated to a demand" : "Lets a payout sheet be generated for it",
-          requester: null, at: s.createdAt, amount: null, branch: null, href: `/suppliers/${s.id}`, chips: [], inline: true, rejectNeedsReason: false, confirmApprove: false,
+          requester: null, at: s.createdAt, amount: null, branch: null, href: `/suppliers/${s.id}`, chips, inline: true, rejectNeedsReason: false, confirmApprove: false,
         });
       }
     }

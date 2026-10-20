@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { isApproved } from "@/lib/demandApproval";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { getIdleWorkers } from "@/lib/demandSupply";
+import { can } from "@/lib/permissions";
 import { TRADES } from "@/lib/trades";
 import { MobilisationBoard } from "./mobilisation-board";
 
@@ -15,7 +16,7 @@ export default async function MobilisePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
 
   const request = await prisma.demandRequest.findUnique({
     where: { id },
@@ -100,9 +101,11 @@ export default async function MobilisePage({
           trade: w.trade,
           skillNames: w.skillNames,
           supplierId: w.supplierId,
+          supplierName: w.supplierName,
           blocked: w.blocked,
         }))}
         tradeOptions={tradeOptions}
+        canApproveSuppliers={can(subjectOf(user), "partners.suppliers", "approve")}
       />
     </div>
   );

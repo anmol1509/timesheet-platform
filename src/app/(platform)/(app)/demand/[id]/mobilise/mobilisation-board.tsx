@@ -15,6 +15,7 @@ import {
   unallocateEmployeeAction,
 } from "../../actions";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { HeldSuppliersList } from "@/components/HeldSuppliers";
 
 type Line = {
   id: string;
@@ -34,6 +35,7 @@ type Worker = {
   /** Trades from the taxonomy join, checked alongside the `trade` string. */
   skillNames: string[];
   supplierId: string | null;
+  supplierName: string | null;
   /** Set when the worker can't be mobilised yet: the reason, e.g. their supplier isn't approved. */
   blocked: string | null;
 };
@@ -65,10 +67,12 @@ export function MobilisationBoard({
   lines,
   workers,
   tradeOptions,
+  canApproveSuppliers,
 }: {
   lines: Line[];
   workers: Worker[];
   tradeOptions: string[];
+  canApproveSuppliers: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -102,6 +106,21 @@ export function MobilisationBoard({
     () => (activeLine ? available.filter((w) => !holdsTrade(w, activeLine.trade)) : []),
     [available, activeLine]
   );
+
+  // Idle workers held back because their supplier isn't approved, one row per supplier, with how many hold this line's trade.
+  const held = useMemo(() => {
+    const by = new Map<string, { id: string; name: string; workers: number; detail: string; ofTrade: number }>();
+    for (const w of available) {
+      if (!w.blocked || !w.supplierId) continue;
+      const cur = by.get(w.supplierId) ?? { id: w.supplierId, name: w.supplierName ?? "Supplier", workers: 0, detail: w.blocked, ofTrade: 0 };
+      cur.workers++;
+      if (activeLine && holdsTrade(w, activeLine.trade)) cur.ofTrade++;
+      by.set(w.supplierId, cur);
+    }
+    return [...by.values()]
+      .sort((a, b) => b.ofTrade - a.ofTrade || b.workers - a.workers)
+      .map((h) => ({ id: h.id, name: h.name, workers: h.workers, detail: h.detail, needs: h.ofTrade > 0 && activeLine ? [`${h.ofTrade} of them ${h.ofTrade === 1 ? "is" : "are"} ${activeLine.trade}`] : [] }));
+  }, [available, activeLine]);
 
   const q = query.trim().toLowerCase();
   const found = (w: Worker) => !q || [w.name, w.employeeIdNo, w.trade ?? "", ...w.skillNames].some((v) => v.toLowerCase().includes(q));
@@ -171,7 +190,14 @@ export function MobilisationBoard({
     });
   }
 
+  const heldWorkers = held.reduce((n, h) => n + h.workers, 0);
   return (
+    <div className="space-y-4">
+    <HeldSuppliersList
+      rows={held}
+      canApprove={canApproveSuppliers}
+      heading={`${heldWorkers} idle worker${heldWorkers === 1 ? "" : "s"} can't be picked: ${held.length === 1 ? "their supplier isn't" : `${held.length} suppliers aren't`} approved yet.`}
+    />
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[18rem_1fr]">
       {/* Which line is being filled. */}
       <div className="space-y-2">
@@ -396,6 +422,7 @@ export function MobilisationBoard({
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }
