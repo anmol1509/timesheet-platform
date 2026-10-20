@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRightLeft, Check } from "lucide-react";
+import { ArrowRightLeft, Check, Search } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { approvalStateOf, approvedHeadcount } from "@/lib/demandApproval";
@@ -33,6 +33,9 @@ type Worker = {
   trade: string | null;
   /** Trades from the taxonomy join, checked alongside the `trade` string. */
   skillNames: string[];
+  supplierId: string | null;
+  /** Set when the worker can't be mobilised yet: the reason, e.g. their supplier isn't approved. */
+  blocked: string | null;
 };
 
 function sameTrade(a: string | null | undefined, b: string) {
@@ -73,6 +76,7 @@ export function MobilisationBoard({
   const [tab, setTab] = useState<"matching" | "other">("matching");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [retrade, setRetrade] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState("");
   // When the worker is due on site. Recorded per mobilisation, and what moves
   // them from idle to under-mobilisation.
   const [mobilisationDate, setMobilisationDate] = useState(
@@ -99,6 +103,11 @@ export function MobilisationBoard({
     [available, activeLine]
   );
 
+  const q = query.trim().toLowerCase();
+  const found = (w: Worker) => !q || [w.name, w.employeeIdNo, w.trade ?? "", ...w.skillNames].some((v) => v.toLowerCase().includes(q));
+  const shownMatching = matching.filter(found);
+  const shownOthers = others.filter(found);
+
   if (!activeLine) {
     return (
       <p className="card p-6 text-center text-sm text-muted">
@@ -114,6 +123,7 @@ export function MobilisationBoard({
   const locked = approved === 0;
 
   function toggle(id: string) {
+    if (workers.find((w) => w.id === id)?.blocked) return;
     setPicked((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -296,31 +306,49 @@ export function MobilisationBoard({
             </div>
           </div>
 
+          <div className="relative border-b border-default px-4 py-2">
+            <Search className="pointer-events-none absolute top-1/2 left-7 h-3.5 w-3.5 -translate-y-1/2 text-subtle" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, ID or trade"
+              aria-label="Search workers"
+              className="input w-full pl-8"
+            />
+          </div>
+
           {tab === "matching" ? (
-            matching.length === 0 ? (
+            shownMatching.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-muted">
-                No idle worker holds {activeLine.trade}. Use{" "}
-                <span className="font-medium">Other trades</span> to re-designate
-                someone.
+                {q ? (
+                  <>No {activeLine.trade} worker matches &ldquo;{query.trim()}&rdquo;.</>
+                ) : (
+                  <>
+                    No idle worker holds {activeLine.trade}. Use{" "}
+                    <span className="font-medium">Other trades</span> to re-designate
+                    someone.
+                  </>
+                )}
               </p>
             ) : (
               <ul className="divide-y divide-[var(--border)]">
-                {matching.map((w) => (
+                {shownMatching.map((w) => (
                   <li key={w.id} className="flex items-center gap-3 px-4 py-2.5">
                     <Checkbox
                       checked={picked.has(w.id)}
                       onCheckedChange={() => toggle(w.id)}
-                      disabled={locked || (!picked.has(w.id) && picked.size >= remaining)}
+                      disabled={locked || !!w.blocked || (!picked.has(w.id) && picked.size >= remaining)}
                     />
-                    <Link
-                      href={`/employees/${w.id}`}
-                      className="min-w-0 flex-1 text-sm text-primary hover:underline"
-                    >
-                      {w.name}
-                      <span className="tabular ml-2 text-xs text-subtle">
-                        {w.employeeIdNo}
-                      </span>
-                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/employees/${w.id}`} className="text-sm text-primary hover:underline">
+                        {w.name}
+                        <span className="tabular ml-2 text-xs text-subtle">
+                          {w.employeeIdNo}
+                        </span>
+                      </Link>
+                      <Blocked worker={w} />
+                    </div>
                     <span className="text-xs text-muted">{w.trade || "No trade set"}</span>
                   </li>
                 ))}
@@ -328,17 +356,17 @@ export function MobilisationBoard({
             )
           ) : (
             <ul className="divide-y divide-[var(--border)]">
-              {others.map((w) => (
+              {shownOthers.map((w) => (
                 <li key={w.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                  <Link
-                    href={`/employees/${w.id}`}
-                    className="min-w-0 flex-1 text-sm text-primary hover:underline"
-                  >
-                    {w.name}
-                    <span className="tabular ml-2 text-xs text-subtle">
-                      {w.employeeIdNo}
-                    </span>
-                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/employees/${w.id}`} className="text-sm text-primary hover:underline">
+                      {w.name}
+                      <span className="tabular ml-2 text-xs text-subtle">
+                        {w.employeeIdNo}
+                      </span>
+                    </Link>
+                    <Blocked worker={w} />
+                  </div>
                   <span className="text-xs text-muted">{w.trade || "No trade set"}</span>
                   <div className="flex w-56 items-center gap-2">
                     <Select
@@ -359,9 +387,9 @@ export function MobilisationBoard({
                   </div>
                 </li>
               ))}
-              {others.length === 0 && (
+              {shownOthers.length === 0 && (
                 <p className="px-4 py-10 text-center text-sm text-muted">
-                  No other idle workers available.
+                  {q ? <>No other worker matches &ldquo;{query.trim()}&rdquo;.</> : "No other idle workers available."}
                 </p>
               )}
             </ul>
@@ -369,5 +397,20 @@ export function MobilisationBoard({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Why a worker can't be picked yet, with the way to fix it. */
+function Blocked({ worker }: { worker: Worker }) {
+  if (!worker.blocked) return null;
+  return (
+    <p className="mt-0.5 text-xs text-[var(--warning)]">
+      Can&apos;t be mobilised: {worker.blocked}.{" "}
+      {worker.supplierId && (
+        <Link href={`/suppliers/${worker.supplierId}`} className="font-medium underline">
+          Open the supplier to approve
+        </Link>
+      )}
+    </p>
   );
 }
