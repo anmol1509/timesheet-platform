@@ -44,7 +44,10 @@ export type RenewalItem = {
   supplier: string | null;
   project: string | null;
   /** The newest uploaded file of this kind for the worker, with the expiry carried on that file. Null for suppliers or when none is filed. */
-  scan: { id: string; expiry: string | null } | null;
+  scan: { id: string; expiry: string | null; mime: string; filename: string } | null;
+  /** The employee record column this date lives in, and the document type that renews it. Null for suppliers. */
+  field: string | null;
+  docType: string | null;
 };
 
 export function tierFor(days: number): RenewalTier | null {
@@ -80,7 +83,7 @@ export async function getRenewals(
       supplier: { select: { name: true } },
       project: { select: { code: true, name: true } },
       // The files only, never their bytes: just enough to say whether a scan backs each date.
-      documents: { select: { id: true, type: true, expiryDate: true }, orderBy: { uploadedAt: "desc" } },
+      documents: { select: { id: true, type: true, expiryDate: true, mimeType: true, filename: true }, orderBy: { uploadedAt: "desc" } },
     },
   });
 
@@ -112,8 +115,10 @@ export async function getRenewals(
         scan: (() => {
           const kinds = typesFor.get(field.key) ?? [];
           const doc = e.documents.find((d) => kinds.includes(d.type));
-          return doc ? { id: doc.id, expiry: doc.expiryDate ? doc.expiryDate.toISOString() : null } : null;
+          return doc ? { id: doc.id, expiry: doc.expiryDate ? doc.expiryDate.toISOString() : null, mime: doc.mimeType, filename: doc.filename } : null;
         })(),
+        field: field.key,
+        docType: (typesFor.get(field.key) ?? [])[0] ?? null,
       });
     }
   }
@@ -151,6 +156,8 @@ export async function getRenewals(
       supplier: supplier.name,
       project: null,
       scan: null,
+      field: null,
+      docType: null,
     });
   }
 
@@ -201,6 +208,8 @@ export async function getRenewals(
         supplier: supplier.name,
         project: null,
         scan: null,
+        field: null,
+        docType: null,
       });
     }
   }
