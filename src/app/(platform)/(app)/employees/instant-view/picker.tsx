@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Printer } from "lucide-react";
 import { Select } from "@/components/ui/Select";
@@ -29,11 +30,20 @@ export function InstantViewPicker({
   employees: EmployeeOption[];
 }) {
   const router = useRouter();
+  const card = useRef<HTMLDivElement>(null);
   const categoryLabel =
     CATEGORIES.find((c) => c.value === category)?.label ?? "this category";
 
   return (
-    <div className="card p-5 print:hidden">
+    // Focusing the search brings the card to the top first, so the list opens under it rather than from wherever the
+    // page was scrolled to.
+    <div
+      ref={card}
+      onFocusCapture={(e) => {
+        if (e.target instanceof HTMLElement && e.target.closest("[data-picker-search]")) card.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }}
+      className="card scroll-mt-24 p-5 print:hidden"
+    >
       <div className="flex flex-wrap items-end gap-4">
         <fieldset className="flex flex-wrap gap-4">
           <legend className="mb-1 block text-xs font-medium text-muted">Show</legend>
@@ -56,7 +66,7 @@ export function InstantViewPicker({
           ))}
         </fieldset>
 
-        <div className="min-w-[260px] flex-1">
+        <div className="min-w-[260px] flex-1" data-picker-search>
           <span className="mb-1 block text-xs font-medium text-muted">
             Employee ({employees.length})
           </span>
