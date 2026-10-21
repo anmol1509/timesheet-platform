@@ -133,7 +133,7 @@ export default async function InstantViewPage({
             <div className="min-w-0">
               <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-primary">
                 {validEmployee.name}
-                <Badge color={validEmployee.supplierId ? "slate" : validEmployee.category === "STAFF" ? "blue" : "green"}>{rosterLabel(validEmployee)}</Badge>
+                <Badge color={validEmployee.supplierId ? "amber" : validEmployee.category === "STAFF" ? "blue" : "green"}>{rosterLabel(validEmployee)}</Badge>
               </h2>
               <p className="tabular text-sm text-muted">
                 {validEmployee.employeeIdNo}
@@ -211,6 +211,10 @@ export default async function InstantViewPage({
             <div>
               <span className="block text-xs font-medium text-muted">Sponsor Name</span>
               {validEmployee.sponsorName || "—"}
+            </div>
+            <div>
+              <span className="block text-xs font-medium text-muted">Roster</span>
+              <span className="font-semibold text-primary">{rosterLabel(validEmployee)}</span>
             </div>
             <div>
               <span className="block text-xs font-medium text-muted">Nationality</span>
