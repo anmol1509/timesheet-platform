@@ -8,11 +8,11 @@ const post = POSTS.find((p) => p.slug === "labour-card-work-permit-visa-differen
 const URL = `https://manpowersync.com/blog/${post.slug}`;
 
 export const metadata: Metadata = finishMetadata({
-  title: post.title,
+  title: post.seoTitle ?? post.title,
   description: post.description,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
-  openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
+  openGraph: { title: post.seoTitle ?? post.title, description: post.description, url: URL, type: "article" },
 });
 
 export default function Page() {

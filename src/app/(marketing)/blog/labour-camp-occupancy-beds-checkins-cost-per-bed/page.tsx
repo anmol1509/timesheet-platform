@@ -12,7 +12,7 @@ export const metadata: Metadata = finishMetadata({
   title: "Labour Camp Occupancy and Cost per Bed",
   description: post.description,
   alternates: { canonical: URL },
-  openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
+  openGraph: { title: post.seoTitle ?? post.title, description: post.description, url: URL, type: "article" },
 });
 
 const FAQS = [

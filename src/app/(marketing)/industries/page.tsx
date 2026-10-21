@@ -3,6 +3,7 @@ import { finishMetadata } from "@/lib/seo/metadata";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
 import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
 import { SITE } from "@/app/(marketing)/welcome/content";
+import p from "@/app/(marketing)/welcome/prose.module.css";
 import { INDUSTRIES_DATA } from "./industries-data";
 
 const TITLE = "Workforce Software by Industry (UAE)";
@@ -33,6 +34,28 @@ export default function IndustriesIndexPage() {
             body: i.description,
           }))}
         />
+      </Section>
+      <Section surface eyebrow="One platform" title="What stays the same, and what changes.">
+        <div className={p.prose}>
+          <p>
+            Every manpower business in the UAE shares the same core: workers whose hours are approved, paid through the
+            Wage Protection System and, for a supplier, billed to a client. Visas, Emirates IDs and labour cards have to
+            stay valid, and many workers live in company accommodation and travel on company transport. That core is the
+            same in every industry on this page.
+          </p>
+          <p>
+            What changes is the shape of the work. Construction crews move between sites and trades, and facilities
+            management runs many small contracts across scattered locations. Cleaning and hospitality teams turn over
+            quickly on shift patterns, oil and gas deployments need site clearances and medical certification, and
+            security services post guards to fixed sites around the clock. Each page shows how the same records and
+            approvals are set up for that pattern.
+          </p>
+          <p>
+            Not sure where you sit? Start with the closest match and read the{" "}
+            <a href="/manpower-erp-uae">manpower ERP overview</a>, or see the{" "}
+            <a href="/features">full list of modules</a>.
+          </p>
+        </div>
       </Section>
       <CtaBand
         title="Not sure which fits?"

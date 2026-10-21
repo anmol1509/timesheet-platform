@@ -54,7 +54,7 @@ export const INDUSTRIES_DATA = [
   {
     slug: "facilities-management-workforce-software-uae",
     name: "Facilities Management",
-    title: "Workforce Software for Facilities Management Companies in the UAE",
+    title: "Workforce Software for Facilities Management (UAE)",
     description:
       "Cleaners, technicians and support staff spread across many client sites and smaller recurring contracts, tracked and billed per client without a spreadsheet per contract.",
     keywords: ["facilities management workforce software UAE", "FM manpower software UAE", "facilities management staffing software"],
@@ -78,7 +78,7 @@ export const INDUSTRIES_DATA = [
   {
     slug: "cleaning-hospitality-workforce-software-uae",
     name: "Cleaning & Hospitality",
-    title: "Workforce Software for Cleaning & Hospitality Staffing in the UAE",
+    title: "Workforce Software for Cleaning & Hospitality (UAE)",
     description:
       "High-headcount, shift-based staffing with simple worker-facing tools and fast onboarding — built for a workforce that turns over more often than a typical office roster.",
     keywords: ["cleaning company staffing software UAE", "hospitality staffing software UAE", "shift workforce management UAE"],
@@ -102,7 +102,7 @@ export const INDUSTRIES_DATA = [
   {
     slug: "oil-gas-workforce-software-uae",
     name: "Oil & Gas Services",
-    title: "Workforce Software for Oil & Gas Services Companies in the UAE",
+    title: "Workforce Software for Oil & Gas Services (UAE)",
     description:
       "Site clearance, medical and safety certification tracking, and camp accommodation for a workforce deployed to remote and restricted-access sites.",
     keywords: ["oil and gas manpower software UAE", "CICPA workforce tracking software", "oil gas services staffing UAE"],
@@ -126,7 +126,7 @@ export const INDUSTRIES_DATA = [
   {
     slug: "security-services-workforce-software-uae",
     name: "Security Services",
-    title: "Workforce Software for Security Services Companies in the UAE",
+    title: "Workforce Software for Security Services (UAE)",
     description:
       "Guard deployment per client site, shift-based attendance, and licence and certification expiry tracked the same way visas and Emirates IDs are.",
     keywords: ["security services manpower software UAE", "security guard workforce software", "security staffing software UAE"],
