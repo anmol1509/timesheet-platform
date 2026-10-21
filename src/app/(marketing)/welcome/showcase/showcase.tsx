@@ -14,6 +14,14 @@ export type Accent = { accent: string; bright: string; soft: string; ink: string
 
 export const ACCENTS = {
   mint: { accent: "#10b981", bright: "#34d399", soft: "#e7f8ef", ink: "#065f46" },
+  indigo: { accent: "#6366f1", bright: "#818cf8", soft: "#eceefe", ink: "#3730a3" },
+  blue: { accent: "#3b82f6", bright: "#60a5fa", soft: "#e8f0fe", ink: "#1e40af" },
+  amber: { accent: "#f59e0b", bright: "#fbbf24", soft: "#fdf3dc", ink: "#92400e" },
+  rose: { accent: "#f43f5e", bright: "#fb7185", soft: "#fee9ee", ink: "#9f1239" },
+  orange: { accent: "#f97316", bright: "#fb923c", soft: "#fff0e3", ink: "#9a3412" },
+  violet: { accent: "#8b5cf6", bright: "#a78bfa", soft: "#f0eafe", ink: "#5b21b6" },
+  cyan: { accent: "#06b6d4", bright: "#22d3ee", soft: "#e0f7fb", ink: "#155e75" },
+  fuchsia: { accent: "#d946ef", bright: "#e879f9", soft: "#fbe9fd", ink: "#86198f" },
 } satisfies Record<string, Accent>;
 
 export function ShowcaseRoot({ accent = ACCENTS.mint, children }: { accent?: Accent; children: React.ReactNode }) {
@@ -58,7 +66,7 @@ export function ShowcaseHero({
   image: { src: string; width: number; height: number; alt: string };
   badge: { icon: React.ReactNode; title: string; sub: string };
   /** An enlarged piece of the real screen, so the numbers stay readable beside the full screenshot. */
-  slice: { label: string; amount: string; meta: string; steps: { name: string; state: "done" | "now" | "todo" }[]; button: string };
+  slice: { label: string; amount: string; meta: string; steps: { name: string; state: "done" | "now" | "todo" }[]; button: string; icon?: React.ReactNode };
 }) {
   return (
     <section className={x.hero}>
@@ -119,7 +127,7 @@ export function ShowcaseHero({
                 ))}
               </ol>
               <span className={x.sliceBtn}>
-                <Download size={16} aria-hidden /> {slice.button}
+                {slice.icon ?? <Download size={16} aria-hidden />} {slice.button}
               </span>
             </div>
           </div>
@@ -168,7 +176,7 @@ export function Steps({ children }: { children: React.ReactNode }) {
   return <div className={x.steps}>{children}</div>;
 }
 
-export function Step({ n, title, body, children }: { n: number; title: string; body: string; children: React.ReactNode }) {
+export function Step({ n, title, body, children }: { n: number; title: string; body: string; children?: React.ReactNode }) {
   return (
     <article className={x.step}>
       <div className={x.stepBody}>
