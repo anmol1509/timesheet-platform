@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import {
   APPROVAL_COLOR,
@@ -58,13 +58,22 @@ const FULFILMENT = {
 export function MobilisationList({ rows }: { rows: MobilisationRow[] }) {
   const [filter, setFilter] = useState<Fulfilment | "all">("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
 
   const counts = rows.reduce(
     (acc, r) => ({ ...acc, [fulfilmentOf(r)]: acc[fulfilmentOf(r)] + 1 }),
     { open: 0, partial: 0, fulfilled: 0 }
   );
 
-  const visible = filter === "all" ? rows : rows.filter((r) => fulfilmentOf(r) === filter);
+  const q = query.trim().toLowerCase().replace(/^#/, "");
+  const visible = rows.filter(
+    (r) =>
+      (filter === "all" || fulfilmentOf(r) === filter) &&
+      (!q ||
+        `${r.requestNo} ${r.clientName} ${r.projectLabel} ${r.trades.map((t) => `${t.trade} ${t.code ?? ""}`).join(" ")}`
+          .toLowerCase()
+          .includes(q))
+  );
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -77,6 +86,17 @@ export function MobilisationList({ rows }: { rows: MobilisationRow[] }) {
 
   return (
     <div className="space-y-4">
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search request no., client, project or trade"
+          aria-label="Search demand"
+          className="w-full rounded-control border border-default bg-surface py-2 pr-3 pl-9 text-sm"
+        />
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {(
           [
@@ -156,7 +176,7 @@ export function MobilisationList({ rows }: { rows: MobilisationRow[] }) {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <Link
                         href={`/demand/${d.id}/mobilise`}
-                        className="text-xs font-medium text-[var(--brand-primary)] hover:underline"
+                        className={cn("btn btn-sm", state === "fulfilled" ? "btn-secondary" : "btn-primary")}
                       >
                         {state === "fulfilled" ? "Review" : "Mobilise"}
                       </Link>
