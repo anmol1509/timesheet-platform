@@ -8,11 +8,11 @@ const post = POSTS.find((p) => p.slug === "eosb-gratuity-calculation-uae")!;
 const URL = `https://manpowersync.com/blog/${post.slug}`;
 
 export const metadata: Metadata = finishMetadata({
-  title: post.title,
+  title: post.seoTitle ?? post.title,
   description: post.description,
   alternates: { canonical: URL },
   robots: { index: true, follow: true },
-  openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
+  openGraph: { title: post.seoTitle ?? post.title, description: post.description, url: URL, type: "article" },
 });
 
 export default function Page() {
@@ -72,6 +72,10 @@ export default function Page() {
           record, turns EOSB from a manual recalculation into a number the system already has.
         </p>
         <p>Want a number now? Use the free <a href="/tools/gratuity-calculator-uae">UAE gratuity calculator</a>. Gratuity accrues every month, so it belongs inside payroll rather than in a spreadsheet at exit: see how <a href="/wps-payroll-software-uae">WPS payroll software</a> applies it automatically, and read about <a href="/blog/uae-overtime-rules-construction-workers">UAE overtime rules</a> for the other big pay variable.</p>
+      <p>
+          More on the surrounding rules: <a href="/blog/uae-gratuity-rules-eligibility">UAE gratuity rules and eligibility</a>,
+          and <a href="/blog/final-settlement-uae-labour-law">what a final settlement includes</a>.
+        </p>
       </PostLayout>
     </ContentShell>
   );

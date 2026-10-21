@@ -5,9 +5,9 @@ export const TOOLS = [
   {
     slug: "gratuity-calculator-uae",
     label: "UAE gratuity calculator",
-    title: "UAE Gratuity Calculator (End of Service)",
+    title: "UAE Gratuity Calculator (Dubai, Abu Dhabi)",
     description:
-      "Free UAE end-of-service gratuity calculator. Enter basic salary and service dates for the amount under Federal Decree-Law 33 of 2021, with the working shown.",
+      "Free UAE gratuity and end-of-service calculator for Dubai, Abu Dhabi and the other emirates. Enter basic salary and dates for the amount under Decree-Law 33 of 2021.",
     updated: "2026-10-14",
   },
   {

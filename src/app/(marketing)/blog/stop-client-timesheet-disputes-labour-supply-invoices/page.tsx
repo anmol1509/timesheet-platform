@@ -12,7 +12,7 @@ export const metadata: Metadata = finishMetadata({
   title: "How to Stop Client Timesheet Disputes",
   description: post.description,
   alternates: { canonical: URL },
-  openGraph: { title: post.title, description: post.description, url: URL, type: "article" },
+  openGraph: { title: post.seoTitle ?? post.title, description: post.description, url: URL, type: "article" },
 });
 
 const FAQS = [

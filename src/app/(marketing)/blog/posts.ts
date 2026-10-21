@@ -3,6 +3,8 @@ import type { ClusterSlug } from "./clusters";
 export type Post = {
   slug: string;
   title: string;
+  /** Shorter title for the <title> tag and share cards, when the headline passes about 60 characters. */
+  seoTitle?: string;
   description: string;
   /** Publish date (ISO). */
   date: string;
@@ -27,6 +29,7 @@ export const POSTS: readonly Post[] = [
   {
     slug: "visa-emirates-id-expiry-compliance-checklist",
     cluster: "compliance",
+    seoTitle: "Visa, Emirates ID & Labour Card Expiry Checklist (UAE)",
     title: "A Practical Checklist for Visa, Emirates ID and Labour Card Expiries",
     description:
       "How manpower suppliers in the UAE keep ahead of visa, Emirates ID, labour card and passport renewals across a large workforce, without finding out about a lapse from a fine.",
@@ -43,6 +46,7 @@ export const POSTS: readonly Post[] = [
   {
     slug: "uae-overtime-rules-construction-workers",
     cluster: "payroll-wps",
+    seoTitle: "UAE Overtime Rules for Construction Workers",
     title: "UAE Overtime Rules for Construction and Manpower Workers, Explained",
     description:
       "Daily and weekly working-hour limits, overtime rates, night-shift premiums and rest-day pay under UAE labour law — and how to apply them consistently across a large workforce.",
@@ -51,6 +55,7 @@ export const POSTS: readonly Post[] = [
   {
     slug: "labour-card-work-permit-visa-difference-uae",
     cluster: "compliance",
+    seoTitle: "Labour Card vs Work Permit vs Visa in the UAE",
     title: "Labour Card vs Work Permit vs Visa: What's the Difference in the UAE?",
     description:
       "Three different documents, each tracked separately, each with its own expiry and its own consequence if it lapses — a plain-language guide for anyone managing a UAE workforce.",
@@ -96,6 +101,23 @@ export const POSTS: readonly Post[] = [
       "How to measure labour camp occupancy and cost per occupied bed, what records to keep, and the gaps that quietly inflate accommodation costs.",
     date: "2026-10-14",
   },
+  {
+    slug: "uae-gratuity-rules-eligibility",
+    cluster: "payroll-wps",
+    title: "UAE Gratuity Rules and Eligibility, Explained",
+    description:
+      "Who is entitled to end-of-service gratuity in the UAE: the one-year rule, what counts as basic salary, the cap, when it is paid and how free zones differ.",
+    date: "2026-10-21",
+  },
+  {
+    slug: "final-settlement-uae-labour-law",
+    cluster: "payroll-wps",
+    title: "Final Settlement in the UAE: What an Employee Is Owed",
+    description:
+      "What a final settlement in the UAE includes, from unpaid wages and gratuity to unused leave and notice pay, how to work it out and when it must be paid.",
+    date: "2026-10-21",
+  },
 ];
+
 
 
