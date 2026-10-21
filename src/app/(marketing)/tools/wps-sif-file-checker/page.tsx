@@ -1,8 +1,8 @@
+import { FileCheck2 } from "lucide-react";
+import { ACCENTS } from "@/app/(marketing)/welcome/showcase/showcase";
+import { ToolPage } from "../tool-page";
 import type { Metadata } from "next";
-import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
-import { CtaBand, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
-import p from "@/app/(marketing)/welcome/prose.module.css";
-import { JsonLd, faqLd, webApplicationLd } from "@/lib/seo/jsonld";
+import { faqLd, webApplicationLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
@@ -28,21 +28,25 @@ const FAQS = [
 
 export default function SifCheckerPage() {
   return (
-    <ContentShell>
-      <JsonLd data={[webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "FinanceApplication" }), faqLd(FAQS)]} />
-      <PageHero
-        eyebrow="Free tool"
-        title="WPS SIF file checker"
-        lead="Find the problems in a UAE salary file before your bank does: totals that do not tie, bad IBANs, duplicate IDs, malformed dates and more."
-        cta={false}
-      />
-
-      <Section>
-        <SifChecker />
-      </Section>
-
-      <Section surface>
-        <div className={p.prose}>
+    <ToolPage
+      slug="wps-sif-file-checker"
+      accent={ACCENTS.mint}
+      hero={{
+        pill: "Free tool",
+        pillIcon: <FileCheck2 size={14} aria-hidden />,
+        title: <>WPS <em>SIF file checker</em></>,
+        lead: "Find the problems in a UAE salary file before your bank does: totals that do not tie, bad IBANs, duplicate IDs, malformed dates and more.",
+        badges: ["Free, no sign-up", "Checked in your browser", "Nothing uploaded or stored"],
+      }}
+      ld={[webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "FinanceApplication" }), faqLd(FAQS)]}
+      tool={<SifChecker />}
+      how={[
+        { title: "Paste or upload", body: "Drop in your .SIF file, or paste its lines." },
+{ title: "See what's wrong", body: "Totals, IBANs, dates and IDs checked line by line." },
+{ title: "Fix and re-check", body: "Correct the file and run it again until it's clean." },
+      ]}
+      article={
+        <>
           <h2>What the checker looks at</h2>
           <ul>
             <li><strong>The control record.</strong> Exactly one SCR line, with the right number of fields, a valid date, time and salary month (MMYYYY), AED as the currency, and a valid payer IBAN.</li>
@@ -71,21 +75,10 @@ export default function SifCheckerPage() {
             stored bank details of each employee and approved payroll, so these errors can&rsquo;t creep in, and the guide to{" "}
             <a href="/guides/run-payroll-export-wps-file">running payroll and exporting a WPS file</a> shows how.
           </p>
-
-          <h2>Frequently asked questions</h2>
-          {FAQS.map((f) => (
-            <div key={f.q}>
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <CtaBand
-        title="Never build a SIF file by hand again."
-        lead="ManpowerSync exports the WPS file from approved payroll, with totals that tie by construction."
-      />
-    </ContentShell>
+        </>
+      }
+      next={{ title: "Never build a SIF file by hand again.", body: "WPS payroll software exports the file from approved payroll and each employee's stored bank details, so the totals tie by construction.", href: "/wps-payroll-software-uae", label: "See WPS payroll software" }}
+      faqs={FAQS}
+    />
   );
 }

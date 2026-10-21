@@ -1,8 +1,8 @@
+import { Landmark } from "lucide-react";
+import { ACCENTS } from "@/app/(marketing)/welcome/showcase/showcase";
+import { ToolPage } from "../tool-page";
 import type { Metadata } from "next";
-import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
-import { CtaBand, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
-import p from "@/app/(marketing)/welcome/prose.module.css";
-import { JsonLd, faqLd, webApplicationLd } from "@/lib/seo/jsonld";
+import { faqLd, webApplicationLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
@@ -28,21 +28,25 @@ const FAQS = [
 
 export default function IbanValidatorPage() {
   return (
-    <ContentShell>
-      <JsonLd data={[webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "FinanceApplication" }), faqLd(FAQS)]} />
-      <PageHero
-        eyebrow="Free tool"
-        title="UAE IBAN validator"
-        lead="Check a UAE IBAN in a second, see exactly what is wrong if it is not valid, or check a whole payroll column at once."
-        cta={false}
-      />
-
-      <Section>
-        <IbanValidator />
-      </Section>
-
-      <Section surface>
-        <div className={p.prose}>
+    <ToolPage
+      slug="uae-iban-validator"
+      accent={ACCENTS.blue}
+      hero={{
+        pill: "Free tool",
+        pillIcon: <Landmark size={14} aria-hidden />,
+        title: <>UAE <em>IBAN validator</em></>,
+        lead: "Check a UAE IBAN in a second, see exactly what is wrong if it is not valid, or check a whole payroll column at once.",
+        badges: ["Free, no sign-up", "Checked in your browser", "Bulk check a whole list"],
+      }}
+      ld={[webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "FinanceApplication" }), faqLd(FAQS)]}
+      tool={<IbanValidator />}
+      how={[
+        { title: "Type or paste", body: "One IBAN, or a whole column from your payroll sheet." },
+{ title: "Instant result", body: "Length, AE format and check digits, with the exact mistake." },
+{ title: "Fix before the bank sees it", body: "Correct bad IBANs before the salary file is uploaded." },
+      ]}
+      article={
+        <>
           <h2>What a UAE IBAN looks like</h2>
           <p>A UAE IBAN is always 23 characters:</p>
           <table>
@@ -77,21 +81,10 @@ export default function IbanValidatorPage() {
             Better still, keep each worker&rsquo;s bank details on one employee record and build the file from it, so
             nothing is retyped. That is how <a href="/wps-payroll-software-uae">WPS payroll software</a> avoids the problem.
           </p>
-
-          <h2>Frequently asked questions</h2>
-          {FAQS.map((f) => (
-            <div key={f.q}>
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <CtaBand
-        title="Stop retyping bank details every month."
-        lead="ManpowerSync builds the WPS file from each employee's stored bank details."
-      />
-    </ContentShell>
+        </>
+      }
+      next={{ title: "Stop retyping bank details every month.", body: "Keep each worker's bank details on one employee record and build the WPS file from it, so there is nothing to retype or mistype.", href: "/wps-payroll-software-uae", label: "See WPS payroll software" }}
+      faqs={FAQS}
+    />
   );
 }
