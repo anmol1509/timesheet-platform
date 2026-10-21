@@ -20,7 +20,7 @@ type Tab = { key: string; label: string; count: number };
 type Filters = { type: string; q: string; age: string; min: string; from: string };
 
 const KIND_LABEL: Record<string, string> = {
-  EXPENSE: "Expense", BILL: "Supplier bill", PAYROLL: "Payroll", ADVANCE: "Advance", WORKER: "New worker", CHANGE: "Detail change", SUPPLIER: "Supplier", DEMAND: "Demand", TIMESHEET: "Timesheet", CORRECTION: "Attendance",
+  EXPENSE: "Expense", BILL: "Supplier bill", PAYROLL: "Payroll", ADVANCE: "Advance", WORKER: "New worker", CHANGE: "Detail change", SUPPLIER: "Supplier", DEMAND: "Demand", TIMESHEET: "Timesheet", CORRECTION: "Attendance", DEPLOYMENT: "Assignment",
 };
 // One icon + tint per kind, so the queue scans by type before reading a word.
 const KIND_ICON: Record<string, { icon: React.ComponentType<{ className?: string }>; tint: string }> = {
@@ -34,6 +34,7 @@ const KIND_ICON: Record<string, { icon: React.ComponentType<{ className?: string
   DEMAND: { icon: ListChecks, tint: "bg-[#fdf2f8] text-[#be185d]" },
   TIMESHEET: { icon: FileSpreadsheet, tint: "bg-[#eef2ff] text-[#4338ca]" },
   CORRECTION: { icon: CalendarCheck, tint: "bg-[#f0fdfa] text-[#0f766e]" },
+  DEPLOYMENT: { icon: ListChecks, tint: "bg-[#f5f3ff] text-[#6d28d9]" },
 };
 function KindIcon({ kind, size = "sm" }: { kind: string; size?: "sm" | "lg" }) {
   const k = KIND_ICON[kind] ?? { icon: Inbox, tint: "bg-surface-sunken text-muted" };

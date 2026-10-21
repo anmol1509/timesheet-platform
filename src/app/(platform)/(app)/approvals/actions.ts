@@ -14,6 +14,7 @@ import { setTradeApprovalAction } from "../demand/actions";
 import { approveTimesheetAction, rejectTimesheetAction } from "../invoices/client-timesheet/actions";
 import { reviewCorrectionRequestAction } from "../attendance/actions";
 import { sendEmail } from "@/lib/notifications/email";
+import { approveProjectAssignment, rejectProjectAssignment } from "@/lib/projectAssignment";
 
 type State = { error: string | null; ok?: boolean };
 type Input = { kind: ApprovalKind; id: string; ids?: string[]; field?: string; decision: "APPROVE" | "REJECT"; note?: string };
@@ -115,6 +116,13 @@ export async function decideApprovalAction(input: Input): Promise<State> {
           );
         }
       }
+      break;
+    }
+    case "DEPLOYMENT": {
+      const r = approve ? await approveProjectAssignment(input.id, { id: user.id, name: user.name }) : await rejectProjectAssignment(input.id, { name: user.name }, note);
+      if (r.error) return { error: r.error };
+      revalidatePath("/employees");
+      revalidatePath("/demand/site-arrival");
       break;
     }
     case "TIMESHEET": {

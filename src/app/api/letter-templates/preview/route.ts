@@ -8,13 +8,15 @@ import { SAMPLE_VALUES, SAMPLE_WORKERS } from "@/lib/letterSample";
 import { EMPLOYEE_MERGE_FIELDS } from "@/lib/letterFields";
 import { ASK_PREFIX, substituteInHtml, tokensIn } from "@/lib/letterHtml";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
+import { generateCheckInPdf } from "@/lib/generateCheckInPdf";
+import { fillCheckInWording } from "@/lib/checkInList";
 
 // A real PDF of the template with sample data, so what's printed can be checked
 // before any letter is issued. Nothing is stored.
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user || user.role === "STAFF") return NextResponse.json({ error: "Admins only." }, { status: 403 });
-  const { title, html, audience } = (await request.json().catch(() => ({}))) as { title?: string; html?: string; audience?: string };
+  const { title, html, audience, category } = (await request.json().catch(() => ({}))) as { title?: string; html?: string; audience?: string; category?: string };
   if (!html || html.length > 40_000) return NextResponse.json({ error: "Nothing to preview." }, { status: 400 });
   const clean = sanitizeLetterHtml(html);
 
@@ -25,6 +27,20 @@ export async function POST(request: Request) {
     buffer = await generateEmployeeLetterPdf({
       letterhead: { name: SAMPLE_VALUES.COMPANYNAME, addressLines: ["Business Bay", "Dubai"], phone: "+971 4 123 4567", fax: null, email: "office@example.com", poBox: "12345", trn: "100000000000003", logo: await loadLogoDataUri() },
       refNo: values.REFNO, date: values.DATE, title: (title || "Letter").slice(0, 120), bodyHtml: substituteInHtml(clean, values), layout: { ...PLAIN_LAYOUT, modern: true, margins: { top: 25, bottom: 25, left: 25, right: 25 } },
+    });
+  } else if (category === "Check-in List") {
+    const sample = [
+      ["Ajay Kumar", "India", "Palm Villas Phase 2", "Example Manpower LLC", "Bed Allocated"],
+      ["Arbaj Ali", "Pakistan", "Business Bay Mall Fit-out", "Example Manpower LLC", "Bed Allocated"],
+      ["Narendra BK", "Nepal", "Creek Harbour Tower 3", "Gulf Manpower Services", "Checked In"],
+    ];
+    buffer = await generateCheckInPdf({
+      letterhead: { name: SAMPLE_VALUES.COMPANYNAME, addressLines: ["Business Bay", "Dubai"], phone: "+971 4 123 4567", fax: null, email: "office@example.com", poBox: "12345", trn: "100000000000003", logo: await loadLogoDataUri() },
+      title: (title || "Check-in List").slice(0, 120),
+      date: SAMPLE_VALUES.DATE,
+      campName: SAMPLE_VALUES.CAMPNAME,
+      bodyHtml: fillCheckInWording(clean, { companyName: SAMPLE_VALUES.COMPANYNAME, campName: SAMPLE_VALUES.CAMPNAME, campType: SAMPLE_VALUES.CAMPTYPE, checkInDate: SAMPLE_VALUES.CHECKINDATE, count: sample.length, date: SAMPLE_VALUES.DATE }),
+      rows: sample.map((r, i) => ({ slNo: i + 1, checkInNo: `CHK-0010${i + 1}`, employeeName: r[0], nationality: r[1], projectName: r[2], supplierName: r[3], coordinator: "A. Rahman", status: r[4] })),
     });
   } else {
     buffer = await generateLetterPdf({

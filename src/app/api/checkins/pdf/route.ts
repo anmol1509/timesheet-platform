@@ -3,6 +3,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { generateCheckInPdf } from "@/lib/generateCheckInPdf";
+import { buildLetterhead } from "@/lib/letterhead";
+import { checkInListWording, fillCheckInWording } from "@/lib/checkInList";
 
 const CAMP_TYPE_LABEL: Record<string, string> = { OWN: "Own", SUPPLIER: "Supplier", CLIENT: "Client" };
 const STATUS_LABEL: Record<string, string> = {
@@ -35,12 +37,27 @@ export async function GET(request: Request) {
   const letterheadBranchId = branchId ?? visible[0].branchId ?? visible[0].employee.branchId;
   const branch = letterheadBranchId ? await prisma.branch.findUnique({ where: { id: letterheadBranchId } }) : null;
 
+  const campName = visible[0].camp.name;
+  const campType = CAMP_TYPE_LABEL[visible[0].camp.ownerType] ?? visible[0].camp.ownerType;
+  const checkInDate = visible[0].checkInDate.toLocaleDateString("en-GB");
+  const wording = await checkInListWording(letterheadBranchId);
+  const letterhead = branch
+    ? await buildLetterhead(branch)
+    : { name: "Workforce ERP", addressLines: [], phone: null, fax: null, email: null, poBox: null, trn: null, logo: null };
+
   const buffer = await generateCheckInPdf({
-    branchName: branch?.name ?? "Workforce ERP",
-    branchAddress: branch?.address ?? null,
-    campName: visible[0].camp.name,
-    campType: CAMP_TYPE_LABEL[visible[0].camp.ownerType] ?? visible[0].camp.ownerType,
-    date: visible[0].checkInDate.toLocaleDateString("en-GB"),
+    letterhead,
+    title: wording.title,
+    date: checkInDate,
+    campName,
+    bodyHtml: fillCheckInWording(wording.html, {
+      companyName: letterhead.name,
+      campName,
+      campType,
+      checkInDate,
+      count: visible.length,
+      date: new Date().toLocaleDateString("en-GB"),
+    }),
     rows: visible.map((c, i) => ({
       slNo: i + 1,
       checkInNo: `CHK-${String(c.checkInNo).padStart(5, "0")}`,
@@ -60,7 +77,7 @@ export async function GET(request: Request) {
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="check-in-list-${visible[0].camp.name.replace(/\s+/g, "-")}.pdf"`,
+      "Content-Disposition": `attachment; filename="check-in-list-${visible[0].camp.name.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || "camp"}.pdf"`,
     },
   });
 }

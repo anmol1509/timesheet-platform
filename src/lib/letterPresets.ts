@@ -21,7 +21,7 @@ export type LetterPreset = {
   afterTable?: string;
 };
 
-export const SITE_CATEGORIES = ["No Objection Letter", "Mobilization Letter", "Undertaking Letter", "Supplier Undertaking"] as const;
+export const SITE_CATEGORIES = ["No Objection Letter", "Mobilization Letter", "Undertaking Letter", "Supplier Undertaking", "Check-in List"] as const;
 export const EMPLOYEE_CATEGORIES = ["Salary Certificate", "Employment Certificate", "Experience Certificate", "Warning Letter", "Leave Approval Letter", "Advance Letter", "Salary Revision Letter", "Final Settlement Statement", "Salary Deduction Notice", "Salary Transfer Letter", "General Letter"] as const;
 /** Kept for older imports. */
 export const LETTER_CATEGORIES = SITE_CATEGORIES;
@@ -72,6 +72,21 @@ export const LETTER_PRESETS: LetterPreset[] = [
       "- To be solely responsible for any claims arising from our workers' employment.",
     ]),
     afterTable: "This undertaking is given on %%DATE%% and remains valid for the duration of the assignment.",
+  },
+  {
+    key: "checkin-list", audience: "SITE", name: "Camp Check-in List", category: "Check-in List", title: "Check-in List",
+    blurb: "The list handed to the camp when workers are checked in: who, from which company and project, and their bed status.",
+    body: J([
+      "This list records the workers checked in to **%%CAMPNAME%%** on %%CHECKINDATE%%.",
+      "| **Camp**{34%} | %%CAMPNAME%% |",
+      "| **Camp type** | %%CAMPTYPE%% |",
+      "| **Check-in date** | %%CHECKINDATE%% |",
+      "| **Workers checked in** | %%CHECKINCOUNT%% |",
+    ]),
+    afterTable: J([
+      "Each worker listed above has been checked in to the camp named on this list. Please keep it with the camp records.",
+      "Issued by %%COMPANYNAME%% on %%DATE%%.",
+    ]),
   },
   {
     key: "supplier-undertaking-standard", audience: "SITE", name: "Standard Supplier Undertaking", category: "Supplier Undertaking", title: "Supplier Undertaking",

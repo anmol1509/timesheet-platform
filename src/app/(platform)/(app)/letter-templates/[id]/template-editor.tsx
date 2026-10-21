@@ -59,7 +59,7 @@ export function TemplateEditor(p: Props) {
     setPdfBusy(true);
     setNote(null);
     try {
-      const res = await fetch("/api/letter-templates/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: title || category, html, audience: p.audience }) });
+      const res = await fetch("/api/letter-templates/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: title || category, html, audience: p.audience, category }) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Couldn't build the PDF.");
       window.open(URL.createObjectURL(await res.blob()), "_blank");
     } catch (e) {
