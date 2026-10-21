@@ -64,9 +64,12 @@ function MenuPanel({ entry, onNavigate }: { entry: Extract<NavEntry, { columns: 
       exit={{ opacity: 0, y: -8, scale: 0.985, transition: { duration: 0.14, ease: "easeIn" } }}
       transition={{ duration: 0.22, ease: EASE_PREMIUM }}
     >
-      <div className={s.megaCols} style={{ gridTemplateColumns: `repeat(${entry.columns.length}, minmax(0, 1fr))` }}>
+      <div
+        className={s.megaCols}
+        style={{ gridTemplateColumns: entry.layout ?? `repeat(${entry.columns.length}, minmax(0, 1fr))` }}
+      >
         {entry.columns.map((col, ci) => (
-          <div key={`${col.title}-${ci}`}>
+          <div key={`${col.title}-${ci}`} className={col.tint ? s.megaTint : undefined}>
             <p className={s.megaColTitle}>{col.title}</p>
             <ul className={s.megaList}>
               {col.items.map((item) => {
@@ -80,7 +83,10 @@ function MenuPanel({ entry, onNavigate }: { entry: Extract<NavEntry, { columns: 
                         </span>
                       )}
                       <span className={s.megaCopy}>
-                        <span className={s.megaLabel}>{item.label}</span>
+                        <span className={s.megaLabel}>
+                          {item.label}
+                          {item.tag && <span className={s.megaTag}>{item.tag}</span>}
+                        </span>
                         {item.description && <span className={s.megaDesc}>{item.description}</span>}
                       </span>
                     </a>
@@ -90,11 +96,43 @@ function MenuPanel({ entry, onNavigate }: { entry: Extract<NavEntry, { columns: 
             </ul>
           </div>
         ))}
+        {entry.featured && (
+          <div className={s.megaFeat}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- static, pre-optimised WebP from /public */}
+            <img src={entry.featured.image.src} width={entry.featured.image.width} height={entry.featured.image.height} alt={entry.featured.image.alt} loading="lazy" decoding="async" />
+            <strong>{entry.featured.title}</strong>
+            <span>{entry.featured.body}</span>
+            <BookDemoButton className={`${s.btn} ${s.btnPrimary} ${s.megaFeatBtn}`} onClick={onNavigate}>
+              Book a demo
+            </BookDemoButton>
+          </div>
+        )}
+        {entry.latest && (
+          <div>
+            <p className={s.megaColTitle}>Latest</p>
+            <a href={entry.latest.href} className={s.megaPost} onClick={onNavigate}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- static, pre-optimised WebP from /public */}
+              <img src={entry.latest.cover} width={1200} height={630} alt={entry.latest.alt} loading="lazy" decoding="async" />
+              <span className={s.megaPostBody}>
+                <strong>{entry.latest.title}</strong>
+                <small>{entry.latest.meta}</small>
+              </span>
+            </a>
+          </div>
+        )}
       </div>
-      <a href={entry.viewAll.href} className={s.megaFoot} onClick={onNavigate}>
-        {entry.viewAll.label}
-        <ICONS.arrow size={15} strokeWidth={2} />
-      </a>
+      <div className={s.megaFootRow}>
+        <a href={entry.viewAll.href} className={s.megaFoot} onClick={onNavigate}>
+          {entry.viewAll.label}
+          <ICONS.arrow size={15} strokeWidth={2} />
+        </a>
+        {entry.alsoViewAll && (
+          <a href={entry.alsoViewAll.href} className={s.megaFoot} onClick={onNavigate}>
+            {entry.alsoViewAll.label}
+            <ICONS.arrow size={15} strokeWidth={2} />
+          </a>
+        )}
+      </div>
     </m.div>
   );
 }
