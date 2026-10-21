@@ -14,6 +14,7 @@ import { PAY_STRUCTURES } from "@/lib/payroll";
 import { logAudit } from "@/lib/audit";
 import { clampSkillLevel } from "@/lib/skillLevel";
 import { recordProjectChange } from "@/lib/employeeAssignment";
+import { requestProjectAssignment } from "@/lib/projectAssignment";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import {
   isAcceptedPhotoType,
@@ -50,7 +51,7 @@ function numberOrNull(value: FormDataEntryValue | null) {
   return Number.isFinite(n) ? n : null;
 }
 
-export async function updateEmployeeAction(formData: FormData): Promise<{ error?: string; warnings?: string[] } | void> {
+export async function updateEmployeeAction(formData: FormData): Promise<{ error?: string; warnings?: string[]; pendingProject?: string } | void> {
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("employeeId") || "");
@@ -292,6 +293,16 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (warnings.length > 0) return { warnings };
   }
 
+  // Picking a project here is not a mobilisation (no demand, no agreed quantity, no letters), so it is held for approval
+  // and the worker keeps their current project until someone approves it in the inbox.
+  let pendingProject: string | null = null;
+  if (before && data.projectId && data.projectId !== before.projectId) {
+    const { projectName } = await requestProjectAssignment({ employeeId: id, projectId: data.projectId, siteId: data.siteId ?? null, by: { id: user.id, name: user.name }, branchId });
+    pendingProject = projectName;
+    data.projectId = before.projectId;
+    data.siteId = before.siteId;
+  }
+
   await prisma.employee.update({ where: { id }, data });
 
   // A change to what the worker is paid each month is kept as a dated revision, so pay history can be shown and arrears worked out.
@@ -340,6 +351,8 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
   revalidatePath(`/employees/${id}`);
   revalidatePath("/employees");
   revalidatePath("/demand/site-arrival");
+  revalidatePath("/approvals");
+  return pendingProject ? { pendingProject } : undefined;
 }
 
 export async function bulkImportEmployeesAction(rows: Record<string, string>[]) {

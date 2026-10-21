@@ -25,7 +25,7 @@ type Tab = "for-you" | "compliance" | "all";
 const RENEWABLE = new Set(["visaExpiry", "laborCardExpiry", "medicalExpiry", "passportExpiry", "emiratesIdExpiry"]);
 const fieldKey = (label: string) => COMPLIANCE_FIELDS.find((f) => f.label === label)?.key;
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-const KIND_CODE: Record<string, string> = { EXPENSE: "EX", BILL: "BL", PAYROLL: "PY", ADVANCE: "AD", WORKER: "NW", CHANGE: "CH", SUPPLIER: "SU", DEMAND: "DM", TIMESHEET: "TS", CORRECTION: "AT" };
+const KIND_CODE: Record<string, string> = { EXPENSE: "EX", BILL: "BL", PAYROLL: "PY", ADVANCE: "AD", WORKER: "NW", CHANGE: "CH", SUPPLIER: "SU", DEMAND: "DM", TIMESHEET: "TS", CORRECTION: "AT", DEPLOYMENT: "PA" };
 const age = (d: number) => (d <= 0 ? "today" : d === 1 ? "1 day" : `${d} days`);
 const aed = (n: number) => n.toLocaleString("en-AE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

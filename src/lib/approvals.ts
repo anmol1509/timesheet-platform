@@ -10,7 +10,7 @@ import { heldSuppliers } from "@/lib/supplierHold";
  * lets someone decide them, and the page never needs to know how any of the
  * underlying modules work.
  */
-export type ApprovalKind = "EXPENSE" | "BILL" | "PAYROLL" | "ADVANCE" | "WORKER" | "CHANGE" | "SUPPLIER" | "DEMAND" | "TIMESHEET" | "CORRECTION";
+export type ApprovalKind = "EXPENSE" | "BILL" | "PAYROLL" | "ADVANCE" | "WORKER" | "CHANGE" | "SUPPLIER" | "DEMAND" | "TIMESHEET" | "CORRECTION" | "DEPLOYMENT";
 
 export const APPROVAL_KINDS: { kind: ApprovalKind; label: string; module: string; action: "approve" | "edit" }[] = [
   { kind: "EXPENSE", label: "Expenses", module: "finance", action: "approve" },
@@ -23,6 +23,7 @@ export const APPROVAL_KINDS: { kind: ApprovalKind; label: string; module: string
   { kind: "DEMAND", label: "Demand quantities", module: "demand", action: "approve" },
   { kind: "TIMESHEET", label: "Timesheets", module: "timesheets", action: "approve" },
   { kind: "CORRECTION", label: "Attendance corrections", module: "timesheets", action: "approve" },
+  { kind: "DEPLOYMENT", label: "Project assignments", module: "demand", action: "approve" },
 ];
 
 export const kindLabel = (k: ApprovalKind) => APPROVAL_KINDS.find((x) => x.kind === k)!.label;
@@ -165,6 +166,18 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     }
   }
 
+  if (has("DEPLOYMENT")) {
+    const rows = await prisma.projectAssignmentRequest.findMany({ where: { ...bw, status: "PENDING" }, orderBy: { requestedAt: "asc" }, take: LIMIT });
+    for (const r of rows) {
+      out.push({
+        key: `DEPLOYMENT:${r.id}`, kind: "DEPLOYMENT", id: r.id, title: `${r.employeeName} (${r.employeeIdNo}) to ${r.projectName}`,
+        subtitle: r.fromProjectName ? `Project picked on the profile, moving from ${r.fromProjectName}` : "Project picked on the profile, not through a demand",
+        requester: r.requestedByName, at: r.requestedAt, amount: null, branch: null, href: `/employees/${r.employeeId}`,
+        chips: [{ text: "Not from a demand", tone: "warning" }], inline: true, rejectNeedsReason: true, confirmApprove: false,
+      });
+    }
+  }
+
   if (has("SUPPLIER")) {
     const rows = await prisma.supplier.findMany({
       where: { ...bw, isOwnCompany: false, OR: SUPPLIER_FLAGS.map(([f]) => ({ [f]: "Pending" })) },
@@ -266,6 +279,7 @@ export async function countPendingApprovals(scope: ApprovalScope): Promise<numbe
     has("DEMAND") ? prisma.demandRequest.count({ where: { ...bw, status: { notIn: ["Closed", "Rejected"] }, trades: { some: { approvedQuantity: null } } } }) : 0,
     has("TIMESHEET") ? prisma.timesheetEntry.groupBy({ by: ["supplierId", "clientId", "month"], where: { ...bw, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } }).then((g) => g.length) : 0,
     has("CORRECTION") ? prisma.attendanceCorrectionRequest.count({ where: { status: "PENDING", attendance: bw } }) : 0,
+    has("DEPLOYMENT") ? prisma.projectAssignmentRequest.count({ where: { ...bw, status: "PENDING" } }) : 0,
   ]);
   return n.reduce((a, b) => a + b, 0);
 }

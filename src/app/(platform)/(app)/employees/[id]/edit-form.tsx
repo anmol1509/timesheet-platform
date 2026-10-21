@@ -204,6 +204,7 @@ export function EditForm({
   const [sponsorSel, setSponsorSel] = useState(employee.sponsorSupplierId || "");
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [pendingProject, setPendingProject] = useState<string | null>(null);
   // ~100 fields sit in this form; leaving the page used to bin every edit
   // without a word.
   const [dirty, setDirty] = useState(false);
@@ -292,6 +293,7 @@ export function EditForm({
         }}
         action={(formData) => {
           setSaved(false);
+          setPendingProject(null);
           setError(null);
           setWarnings(null);
           lastForm.current = formData;
@@ -306,6 +308,11 @@ export function EditForm({
             } else {
               setDirty(false);
               setSaved(true);
+              if (result?.pendingProject) {
+                // The new project is held for approval, so the worker keeps the one they have until it is decided.
+                setPendingProject(result.pendingProject);
+                setProjectId(employee.projectId || "");
+              }
             }
           });
         }}
@@ -865,7 +872,9 @@ export function EditForm({
             <span className="text-sm text-[var(--warning)]">Unsaved changes</span>
           )}
           {saved && !pending && (
-            <span className="text-sm text-[var(--success)]">Saved.</span>
+            <span className="text-sm text-[var(--success)]">
+              Saved.{pendingProject && <> The move to <strong>{pendingProject}</strong> was sent for approval, and the project changes once it is approved.</>}
+            </span>
           )}
           {error && !pending && (
             <span className="text-sm text-[var(--error)]">{error}</span>

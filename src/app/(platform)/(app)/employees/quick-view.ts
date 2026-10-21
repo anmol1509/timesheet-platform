@@ -11,6 +11,7 @@ import { assertContactsValid } from "@/lib/validators";
 import { checkEmployee } from "@/lib/dataChecks";
 import { employeeDuplicates } from "@/lib/duplicateCheck";
 import { recordProjectChange } from "@/lib/employeeAssignment";
+import { requestProjectAssignment } from "@/lib/projectAssignment";
 import { BLOOD_GROUPS } from "./quick-view-fields";
 import { TRADES } from "@/lib/trades";
 import { getOrCreateSkill } from "@/lib/skillScope";
@@ -183,6 +184,13 @@ export async function saveEmployeeFieldAction(input: { id: string; field: string
         : [];
     const warnings = [...checkEmployee(nextFacts, wasFacts), ...dups];
     if (warnings.length > 0) return { warnings };
+  }
+
+  // Picking a project is held for approval (see the profile form): the worker keeps their project until it is approved.
+  if (field === "projectId" && value && value !== before.projectId) {
+    const { projectName } = await requestProjectAssignment({ employeeId: id, projectId: value as string, siteId: null, by: { id: user.id, name: user.name }, branchId });
+    revalidatePath("/approvals");
+    return { error: `Sent for approval. ${before.name} moves to ${projectName} once it is approved.` };
   }
 
   const data: Record<string, unknown> = { [field]: value };

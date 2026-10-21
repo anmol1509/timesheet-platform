@@ -48,6 +48,7 @@ export default async function EmployeeDetailPage({
   const canEditPay = can(subjectOf(user), "payroll", "edit");
   // Free any bed whose scheduled checkout date has arrived before reading this worker.
   await settleDueCheckouts(branchId, user);
+  const pendingAssignment = await prisma.projectAssignmentRequest.findFirst({ where: { employeeId: id, status: "PENDING" }, orderBy: { requestedAt: "desc" } });
   const [employee, projects, sites, vehicles, vacantBeds, sponsors, suppliers, lookupValues, inventoryItems] = await Promise.all([
     prisma.employee.findUnique({
       where: { id },
@@ -248,6 +249,11 @@ export default async function EmployeeDetailPage({
                   <Link href={`/projects/${employee.project.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:text-primary">
                     <MapPin className="h-3.5 w-3.5 text-subtle" aria-hidden />
                     {employee.project.name}
+                  </Link>
+                )}
+                {pendingAssignment && (
+                  <Link href="/approvals?type=DEPLOYMENT" className="inline-flex items-center gap-1 rounded-full bg-[var(--warning-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--warning)]" title={`Requested by ${pendingAssignment.requestedByName ?? "someone"}`}>
+                    Awaiting approval: move to {pendingAssignment.projectName}
                   </Link>
                 )}
                 {employee.status === "UNDER_MOBILISATION" && employee.mobilisationDate && (

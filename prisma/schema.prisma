@@ -3161,3 +3161,28 @@ model UserSession {
 
   @@index([userId, revokedAt])
 }
+
+// A project chosen for a worker from their profile or quick view. Mobilising someone normally goes through a
+// demand; picking a project directly is held here until someone with approval rights agrees, and only then does the
+// worker's project (and placement history) change. Plain columns, like the audit log, so the worker or project can go.
+model ProjectAssignmentRequest {
+  id              String    @id @default(cuid())
+  status          String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  employeeId      String
+  employeeName    String
+  employeeIdNo    String
+  projectId       String
+  projectName     String
+  siteId          String?
+  fromProjectName String?
+  requestedById   String?
+  requestedByName String?
+  requestedAt     DateTime  @default(now())
+  decidedByName   String?
+  decidedAt       DateTime?
+  decisionNote    String?
+  branchId        String?
+
+  @@index([branchId, status])
+  @@index([employeeId, status])
+}
