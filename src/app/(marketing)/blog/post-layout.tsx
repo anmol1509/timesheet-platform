@@ -117,7 +117,7 @@ export function PostLayout({ post, children }: { post: Post; children: React.Rea
         <div className={b.callout}>
           <NextStep
             title="The product behind this topic."
-            body={`${pillar.label}: see how ManpowerSync handles: ${cluster.label}.`}
+            body={`${pillar.label}: see how ManpowerSync handles ${cluster.label}.`}
             href={pillar.href}
             label={`Explore ${pillar.label}`}
           />
