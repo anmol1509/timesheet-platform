@@ -1434,7 +1434,7 @@ export function EmployeeWizard({
                     ariaLabel={`${skill.name} level`}
                   />
 
-                  {skill.isActive && (
+                  {(
                     <div className="mt-2.5 flex flex-wrap items-end gap-2 border-t border-default pt-2.5">
                       <label className="w-36">
                         <span className="mb-1 block text-xs font-medium text-muted">

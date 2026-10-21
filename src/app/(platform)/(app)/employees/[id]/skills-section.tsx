@@ -10,7 +10,7 @@ import {
 } from "@/lib/skillLevel";
 import { Slider } from "@/components/ui/Slider";
 import { Select } from "@/components/ui/Select";
-import { TRADES } from "@/lib/trades";
+import { TRADES, RATE_TYPES } from "@/lib/trades";
 import { addSkillAction, removeSkillAction } from "./actions";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -19,6 +19,7 @@ type SkillRow = {
   name: string;
   proficiencyPercent: number | null;
   rate: number | null;
+  rateType?: string | null;
 };
 
 export function SkillsSection({
@@ -31,6 +32,7 @@ export function SkillsSection({
   const [pending, startTransition] = useTransition();
   const [trade, setTrade] = useState("");
   const [level, setLevel] = useState(DEFAULT_SKILL_LEVEL);
+  const [rateType, setRateType] = useState("");
   const rateRef = useRef<HTMLInputElement>(null);
   const [resetKey, setResetKey] = useState(0);
 
@@ -42,11 +44,13 @@ export function SkillsSection({
     formData.append("skillName", name);
     formData.append("proficiencyPercent", String(level));
     if (rateRef.current?.value) formData.append("rate", rateRef.current.value);
+    if (rateType) formData.append("rateType", rateType);
     startTransition(() => {
       addSkillAction(formData);
     });
     setTrade("");
     setLevel(DEFAULT_SKILL_LEVEL);
+    setRateType("");
     setResetKey((k) => k + 1);
     if (rateRef.current) rateRef.current.value = "";
   }
@@ -79,6 +83,10 @@ export function SkillsSection({
             onChange={setLevel}
             ariaLabel="Trade level"
           />
+          <div className="w-36">
+            <span className="mb-1 block text-xs font-medium text-muted">Rate type</span>
+            <Select value={rateType} onChange={setRateType} searchable={false} placeholder="Hourly or fixed" options={RATE_TYPES.map((r) => ({ value: r.value, label: r.label }))} />
+          </div>
           <div className="w-28">
             <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
             <NumberInput key={resetKey} step={0.01} inputRef={rateRef} className="w-full" />
@@ -123,7 +131,7 @@ export function SkillsSection({
                       )}
                     </td>
                     <td className="px-3 py-2 text-right text-secondary">
-                      {s.rate != null ? `AED ${s.rate.toFixed(2)}` : "—"}
+                      {s.rate != null ? `AED ${s.rate.toFixed(2)}${s.rateType === "FIXED" ? " / month" : s.rateType === "HOURLY" ? " / hour" : ""}` : "—"}
                     </td>
                     <td className="px-3 py-2 text-right">
                       <form action={removeSkillAction} className="inline">

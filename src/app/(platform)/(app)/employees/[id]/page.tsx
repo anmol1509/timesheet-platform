@@ -319,6 +319,7 @@ export default async function EmployeeDetailPage({
                 name: s.skill.name,
                 proficiencyPercent: s.proficiencyPercent,
                 rate: s.rate,
+                rateType: s.rateType,
               }))}
             />
           </>

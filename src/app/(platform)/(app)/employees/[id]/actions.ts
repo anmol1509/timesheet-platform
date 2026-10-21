@@ -587,6 +587,8 @@ export async function addSkillAction(formData: FormData) {
   const skillName = String(formData.get("skillName") || "").trim();
   const proficiencyPercent = numberOrNull(formData.get("proficiencyPercent"));
   const rate = numberOrNull(formData.get("rate"));
+  const rawRateType = String(formData.get("rateType") || "");
+  const rateType = rawRateType === "HOURLY" || rawRateType === "FIXED" ? rawRateType : null;
   if (!employeeId || !skillName) return;
   const skillOwner = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true } });
   if (!skillOwner || isOutsideBranch(skillOwner.branchId, branchId, isSuperAdmin)) return;
@@ -600,6 +602,7 @@ export async function addSkillAction(formData: FormData) {
     proficiencyPercent:
       proficiencyPercent != null ? clampSkillLevel(proficiencyPercent) : null,
     rate,
+    rateType,
   };
   await prisma.employeeSkill.upsert({
     where: { employeeId_skillId: { employeeId, skillId: skill.id } },
