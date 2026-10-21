@@ -362,7 +362,7 @@ export function CampView({
                       <span className="block truncate text-sm font-semibold text-primary">{occ.name}</span>
                       <span className="tabular block text-xs text-muted">{occ.employeeIdNo}</span>
                     </span>
-                    <Link href={`/employees/${bed.employeeId}`} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Profile</Link>
+                    <Link href={`/employees/${bed.employeeId}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline"><ExternalLink className="h-3 w-3" aria-hidden />Profile</Link>
                   </div>
                   {stays[occ.id]?.planned && <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-xs text-secondary">Leaving on <span className="font-medium text-primary">{new Date(`${stays[occ.id].planned!.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> &mdash; {stays[occ.id].planned!.reason}.</p>}
                   <p className="text-xs text-muted">To move them to another bed, drag them there, or check them out first.</p>

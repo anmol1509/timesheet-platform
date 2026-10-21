@@ -168,7 +168,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
             <ul className="mt-1 space-y-0.5 text-secondary">
               {gapRows.slice(0, 8).map(({ l, gaps }) => (
                 <li key={l.employeeId}>
-                  <Link href={`/employees/${l.employee.id}`} className="text-[var(--brand-primary)] hover:underline">{l.employee.name}</Link> — missing {gaps.join(", ")}
+                  <Link href={`/employees/${l.employee.id}`} target="_blank" rel="noopener noreferrer" className="text-[var(--brand-primary)] hover:underline">{l.employee.name}</Link> — missing {gaps.join(", ")}
                   {can(subject, "payroll.payroll", "edit") && !run.submittedAt && <BankFix runId={run.id} employeeId={l.employee.id} name={l.employee.name} defaults={{ personCode: l.personCode ?? "", routingCode: l.routingCode ?? "", iban: l.account ?? "", bankName: l.bankName ?? "" }} />}
                 </li>
               ))}
@@ -261,7 +261,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                       <div className="flex items-center gap-3">
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
-                          <Link href={`/employees/${l.employee.id}`} className="font-medium text-primary hover:underline">{l.employee.name}</Link>
+                          <Link href={`/employees/${l.employee.id}`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{l.employee.name}</Link>
                           <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employee.supplier && run.company && l.employee.supplier.name !== run.company.name && <span className="text-muted"> · Employer {l.employee.supplier.name}</span>}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <DaysButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} /><span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
                         </div>
                       </div>

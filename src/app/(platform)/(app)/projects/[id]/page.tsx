@@ -262,7 +262,7 @@ export default async function ProjectDetailPage({
                 {project.employees.map((e) => (
                   <tr key={e.id} className="transition-colors hover:bg-surface-subtle">
                     <td className="px-4 py-3">
-                      <Link href={`/employees/${e.id}`} className="group flex items-center gap-3">
+                      <Link href={`/employees/${e.id}`} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-3">
                         <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={!!e.photoMimeType} size="md" />
                         <span className="min-w-0">
                           <span className="block truncate font-medium text-primary group-hover:underline">{e.name}</span>

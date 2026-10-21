@@ -153,7 +153,7 @@ export function EmployeeIssuanceSection({
                 {assignments.map((a) => (
                   <tr key={a.id}>
                     <td className="px-3 py-2 font-medium text-primary">
-                      <Link href={`/employees/${a.employee.id}`} className="hover:underline">
+                      <Link href={`/employees/${a.employee.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                         {a.employee.name}
                       </Link>
                       <span className="tabular ml-2 text-xs text-subtle">{a.employee.employeeIdNo}</span>

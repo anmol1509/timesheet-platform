@@ -97,7 +97,7 @@ export function RosterManager({
                 {roster.map((e) => (
                   <tr key={e.id}>
                     <td className="px-4 py-3 font-medium text-primary">
-                      <Link href={`/employees/${e.id}`}>{e.name}</Link>
+                      <Link href={`/employees/${e.id}`} target="_blank" rel="noopener noreferrer">{e.name}</Link>
                     </td>
                     <td className="px-4 py-3 text-muted">{e.employeeIdNo}</td>
                     <td className="px-4 py-3 text-secondary">{e.trade || "—"}</td>

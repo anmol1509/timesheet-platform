@@ -200,7 +200,7 @@ export function SupplierEmployeePanel({
                     {panel.employees.map((e) => (
                       <li key={e.id} className="flex items-center gap-2.5 px-3 py-2">
                         <Link
-                          href={`/employees/${e.id}`}
+                          href={`/employees/${e.id}`} target="_blank" rel="noopener noreferrer"
                           className="min-w-0 flex-1 truncate text-sm text-primary hover:underline"
                         >
                           {e.name}

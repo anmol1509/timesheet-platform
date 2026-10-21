@@ -256,7 +256,7 @@ export function MobilisationBoard({
                 return (
                   <li key={a.id} className="flex items-center justify-between py-2">
                     <Link
-                      href={`/employees/${a.employeeId}`}
+                      href={`/employees/${a.employeeId}`} target="_blank" rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline"
                     >
                       {a.name}
@@ -367,7 +367,7 @@ export function MobilisationBoard({
                       disabled={locked || !!w.blocked || (!picked.has(w.id) && picked.size >= remaining)}
                     />
                     <div className="min-w-0 flex-1">
-                      <Link href={`/employees/${w.id}`} className="text-sm text-primary hover:underline">
+                      <Link href={`/employees/${w.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
                         {w.name}
                         <span className="tabular ml-2 text-xs text-subtle">
                           {w.employeeIdNo}
@@ -385,7 +385,7 @@ export function MobilisationBoard({
               {shownOthers.map((w) => (
                 <li key={w.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <Link href={`/employees/${w.id}`} className="text-sm text-primary hover:underline">
+                    <Link href={`/employees/${w.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
                       {w.name}
                       <span className="tabular ml-2 text-xs text-subtle">
                         {w.employeeIdNo}
@@ -434,7 +434,7 @@ function Blocked({ worker }: { worker: Worker }) {
     <p className="mt-0.5 text-xs text-[var(--warning)]">
       Can&apos;t be mobilised: {worker.blocked}.{" "}
       {worker.supplierId && (
-        <Link href={`/suppliers/${worker.supplierId}`} className="font-medium underline">
+        <Link href={`/suppliers/${worker.supplierId}`} target="_blank" rel="noopener noreferrer" className="font-medium underline">
           Open the supplier to approve
         </Link>
       )}
