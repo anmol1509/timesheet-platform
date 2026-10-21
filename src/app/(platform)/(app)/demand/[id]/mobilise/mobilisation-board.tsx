@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRightLeft, Check, Search } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
+import { NumberInput } from "@/components/ui/NumberInput";
+import { RATE_TYPES } from "@/lib/trades";
 import { approvalStateOf, approvedHeadcount } from "@/lib/demandApproval";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { cn } from "@/lib/cn";
@@ -66,12 +68,10 @@ function holdsTrade(worker: Worker, trade: string) {
 export function MobilisationBoard({
   lines,
   workers,
-  tradeOptions,
   canApproveSuppliers,
 }: {
   lines: Line[];
   workers: Worker[];
-  tradeOptions: string[];
   canApproveSuppliers: boolean;
 }) {
   const router = useRouter();
@@ -79,7 +79,9 @@ export function MobilisationBoard({
   const [activeLineId, setActiveLineId] = useState(lines[0]?.id ?? "");
   const [tab, setTab] = useState<"matching" | "other">("matching");
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [retrade, setRetrade] = useState<Record<string, string>>({});
+  // The worker being switched to this line's trade, and the pay asked for when they are.
+  const [retrade, setRetrade] = useState<string | null>(null);
+  const [pay, setPay] = useState<{ rateType: string; rate: string }>({ rateType: "", rate: "" });
   const [query, setQuery] = useState("");
   // When the worker is due on site. Recorded per mobilisation, and what moves
   // them from idle to under-mobilisation.
@@ -174,18 +176,16 @@ export function MobilisationBoard({
   }
 
   function applyRetrade(employeeId: string) {
-    const trade = retrade[employeeId];
-    if (!trade) return;
+    if (!activeLine || !pay.rateType || pay.rate === "") return;
     const body = new FormData();
     body.append("employeeId", employeeId);
-    body.append("trade", trade);
+    body.append("trade", activeLine.trade);
+    body.append("rateType", pay.rateType);
+    body.append("rate", pay.rate);
     startTransition(async () => {
       await changeEmployeeTradeAction(body);
-      setRetrade((prev) => {
-        const next = { ...prev };
-        delete next[employeeId];
-        return next;
-      });
+      setRetrade(null);
+      setPay({ rateType: "", rate: "" });
       router.refresh();
     });
   }
@@ -394,23 +394,42 @@ export function MobilisationBoard({
                     <Blocked worker={w} />
                   </div>
                   <span className="text-xs text-muted">{w.trade || "No trade set"}</span>
-                  <div className="flex w-56 items-center gap-2">
-                    <Select
-                      value={retrade[w.id] ?? ""}
-                      onChange={(v) => setRetrade((prev) => ({ ...prev, [w.id]: v }))}
-                      placeholder="Change trade to…"
-                      options={tradeOptions.map((name) => ({ value: name, label: name }))}
-                    />
+                  {retrade === w.id ? (
+                    <div className="flex w-full flex-wrap items-end gap-2 border-t border-default pt-2.5">
+                      <span className="mr-auto text-xs text-muted">
+                        Switch to <span className="font-medium text-primary">{activeLine?.trade}</span>. How are they paid?
+                      </span>
+                      <label className="w-36">
+                        <span className="mb-1 block text-xs font-medium text-muted">Pay type</span>
+                        <Select
+                          value={pay.rateType}
+                          onChange={(v) => setPay((p) => ({ ...p, rateType: v }))}
+                          placeholder="Hourly or fixed"
+                          searchable={false}
+                          options={RATE_TYPES.map((r) => ({ value: r.value, label: r.label }))}
+                        />
+                      </label>
+                      <label className="w-32">
+                        <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
+                        <NumberInput value={pay.rate} onChange={(v) => setPay((p) => ({ ...p, rate: String(v) }))} min={0} step={0.01} placeholder={pay.rateType === "FIXED" ? "Per month" : "Per hour"} className="w-full" />
+                      </label>
+                      <button type="button" disabled={locked || pending || !pay.rateType || pay.rate === ""} onClick={() => applyRetrade(w.id)} className="btn btn-primary btn-sm">
+                        Switch trade
+                      </button>
+                      <button type="button" onClick={() => setRetrade(null)} className="btn btn-secondary btn-sm">Cancel</button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      disabled={locked || pending || !retrade[w.id]}
-                      onClick={() => applyRetrade(w.id)}
+                      disabled={locked || pending}
+                      onClick={() => { setRetrade(w.id); setPay({ rateType: "", rate: "" }); }}
                       title="Updates the worker's profile, not just this demand"
-                      className="shrink-0 rounded-control border border-default p-1.5 text-subtle transition hover:bg-surface-hover hover:text-secondary disabled:opacity-40"
+                      className="btn btn-secondary btn-sm shrink-0"
                     >
                       <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
+                      Switch to {activeLine?.trade}
                     </button>
-                  </div>
+                  )}
                 </li>
               ))}
               {shownOthers.length === 0 && (

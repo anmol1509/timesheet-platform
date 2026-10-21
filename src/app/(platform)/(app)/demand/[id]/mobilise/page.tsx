@@ -7,7 +7,6 @@ import { isOutsideBranch } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { getIdleWorkers } from "@/lib/demandSupply";
 import { can } from "@/lib/permissions";
-import { TRADES } from "@/lib/trades";
 import { MobilisationBoard } from "./mobilisation-board";
 
 export const metadata = { title: "Mobilise" };
@@ -37,7 +36,6 @@ export default async function MobilisePage({
 
   // Same closed list the demand form offers, so a re-designation can't invent
   // a trade the rest of the module doesn't know about.
-  const tradeOptions = [...TRADES];
 
   const totalNeeded = request.trades.reduce((sum, t) => sum + t.quantity, 0);
   const totalAssigned = request.trades.reduce((sum, t) => sum + t.allocations.length, 0);
@@ -106,7 +104,6 @@ export default async function MobilisePage({
           supplierName: w.supplierName,
           blocked: w.blocked,
         }))}
-        tradeOptions={tradeOptions}
         canApproveSuppliers={can(subjectOf(user), "partners.suppliers", "approve")}
       />
     </div>

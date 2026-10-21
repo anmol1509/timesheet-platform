@@ -385,6 +385,11 @@ export async function changeEmployeeTradeAction(
   const employeeId = String(formData.get("employeeId") || "");
   const trade = String(formData.get("trade") || "").trim();
   if (!employeeId || !trade) return;
+  // How the worker is paid in the new trade; asked for when the trade is switched from the mobilisation screen.
+  const rawType = String(formData.get("rateType") || "");
+  const rateType = rawType === "HOURLY" || rawType === "FIXED" ? rawType : null;
+  const rateValue = formData.get("rate");
+  const rate = rateValue !== null && String(rateValue).trim() !== "" && Number.isFinite(Number(rateValue)) && Number(rateValue) >= 0 ? Number(rateValue) : null;
 
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId },
@@ -403,10 +408,13 @@ export async function changeEmployeeTradeAction(
   });
 
   // Record it against the worker too, so the taxonomy join stops being empty.
+  // The switched-to trade becomes the one they are deployed as, with the pay that goes with it.
+  const pay = { isActive: true, ...(rateType ? { rateType } : {}), ...(rate !== null ? { rate } : {}) };
+  await prisma.employeeSkill.updateMany({ where: { employeeId, NOT: { skillId: skill.id } }, data: { isActive: false } });
   await prisma.employeeSkill.upsert({
     where: { employeeId_skillId: { employeeId, skillId: skill.id } },
-    update: {},
-    create: { employeeId, skillId: skill.id },
+    update: pay,
+    create: { employeeId, skillId: skill.id, ...pay },
   });
 
   await logAudit({
@@ -414,7 +422,7 @@ export async function changeEmployeeTradeAction(
     entityId: employeeId,
     action: "UPDATE",
     before: { trade: employee.trade },
-    after: { trade },
+    after: { trade, rateType, rate },
     userId: user.id,
     userName: user.name,
     branchId,
