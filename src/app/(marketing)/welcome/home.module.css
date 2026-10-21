@@ -4,46 +4,99 @@
 /* ---------- Comparison strip ---------- */
 .cmpWrap {
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid var(--hairline);
-  border-radius: 22px;
+  padding: 18px 0 6px;
 }
 .cmp {
   width: 100%;
-  min-width: 720px;
-  border-collapse: collapse;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 15px;
+  background: #fff;
+  border: 1px solid var(--hairline);
+  border-radius: 22px;
 }
 .cmp th,
 .cmp td {
   padding: 16px 20px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   border-bottom: 1px solid var(--hairline-soft);
   color: var(--slate);
 }
 .cmp thead th {
   font-family: var(--font-jakarta), system-ui, sans-serif;
   font-size: 15px;
+  font-weight: 700;
   color: var(--ink);
   background: #fafbff;
+}
+.cmp thead th:first-child {
+  border-top-left-radius: 21px;
 }
 .cmp tbody th {
   font-weight: 600;
   color: var(--ink);
   white-space: nowrap;
 }
-.cmp .cmpUs {
-  color: var(--ink);
-  background: var(--x-soft);
-}
-.cmp thead .cmpUs {
-  color: var(--x-ink);
-  background: var(--x-soft);
-}
 .cmp tbody tr:last-child th,
 .cmp tbody tr:last-child td {
   border-bottom: 0;
+}
+.cmp .cmpUs {
+  position: relative;
+  color: var(--ink);
+  background: var(--x-soft);
+  box-shadow: inset 2px 0 0 var(--x-accent), inset -2px 0 0 var(--x-accent);
+}
+.cmp thead .cmpUs {
+  padding-top: 26px;
+  color: #fff;
+  background: var(--x-accent);
+  border-top-right-radius: 21px;
+  box-shadow: none;
+}
+.cmp tbody tr:last-child .cmpUs {
+  box-shadow: inset 2px 0 0 var(--x-accent), inset -2px 0 0 var(--x-accent), inset 0 -2px 0 var(--x-accent);
+  border-bottom-right-radius: 21px;
+}
+.cmpRec {
+  position: absolute;
+  top: 8px;
+  left: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  border-radius: 50%;
+}
+.markYes {
+  color: #146c43;
+  background: #d9f3e5;
+}
+.markNo {
+  color: #b42318;
+  background: #fde4e4;
+}
+.markMid {
+  color: #7a5b00;
+  background: #fdf0c9;
 }
 
 /* ---------- Pricing teaser ---------- */

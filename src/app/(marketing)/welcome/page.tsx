@@ -122,6 +122,23 @@ const CMP_ROWS = [
   ["Who changed what", "Hard to trace", "Varies by product", "Every change in the audit log"],
 ] as const;
 
+/** A table cell with a status mark: a tick for what ManpowerSync does, a cross where the other option falls short, a dash where it depends on the product. */
+function Cell({ text, good }: { text: string; good?: boolean }) {
+  const mixed = !good && /^(Varies|Often)/.test(text);
+  const mark = good ? h.markYes : mixed ? h.markMid : h.markNo;
+  return (
+    <span className={h.cell}>
+      <i className={`${h.mark} ${mark}`} aria-hidden>
+        {good ? "✓" : mixed ? "–" : "✕"}
+      </i>
+      <span>
+        <span className="sr-only">{good ? "Yes: " : mixed ? "Depends: " : "No: "}</span>
+        {text}
+      </span>
+    </span>
+  );
+}
+
 const LATEST = [...POSTS].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
 const link = { fontWeight: 600, color: "var(--primary)" } as const;
 const more = { ...link, display: "inline-flex", alignItems: "center", gap: 6 } as const;
@@ -322,6 +339,7 @@ export default function WelcomePage() {
                     <th scope="col">Excel</th>
                     <th scope="col">General HRMS</th>
                     <th scope="col" className={h.cmpUs}>
+                      <span className={h.cmpRec}>Recommended</span>
                       {SITE.name}
                     </th>
                   </tr>
@@ -330,9 +348,15 @@ export default function WelcomePage() {
                   {CMP_ROWS.map(([need, a, b, c]) => (
                     <tr key={need}>
                       <th scope="row">{need}</th>
-                      <td>{a}</td>
-                      <td>{b}</td>
-                      <td className={h.cmpUs}>{c}</td>
+                      <td>
+                        <Cell text={a} />
+                      </td>
+                      <td>
+                        <Cell text={b} />
+                      </td>
+                      <td className={h.cmpUs}>
+                        <Cell text={c} good />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
