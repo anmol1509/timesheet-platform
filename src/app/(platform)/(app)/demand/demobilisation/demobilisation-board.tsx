@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Search } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Select } from "@/components/ui/Select";
@@ -81,12 +82,19 @@ export function DemobilisationBoard({
   const [outcome, setOutcome] = useState<"BENCH" | "OFF_BOOKS">("BENCH");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const visibleProjects = useMemo(
     () => (clientId ? projects.filter((p) => p.clientId === clientId) : projects),
     [projects, clientId]
   );
-  const allPicked = deployed.length > 0 && deployed.every((r) => picked.has(r.id));
+  // The search narrows what is listed, never what is picked: a worker ticked and then
+  // searched away stays selected, and the button count says so.
+  const needle = query.trim().toLowerCase();
+  const matches = (...parts: (string | null)[]) => !needle || parts.some((p) => p?.toLowerCase().includes(needle));
+  const shownDeployed = useMemo(() => deployed.filter((r) => matches(r.name, r.employeeIdNo, r.trade)), [deployed, needle]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shownRecent = useMemo(() => recent.filter((r) => matches(r.name, r.employeeIdNo, r.trade)), [recent, needle]); // eslint-disable-line react-hooks/exhaustive-deps
+  const allPicked = shownDeployed.length > 0 && shownDeployed.every((r) => picked.has(r.id));
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams.toString());
@@ -131,27 +139,40 @@ export function DemobilisationBoard({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1.5">
-        {(
-          [
-            ["deployed", `Deployed (${deployed.length})`],
-            ["recent", `Recently demobilised (${recent.length})`],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={cn(
-              "rounded-control border px-3 py-1.5 text-xs font-medium transition",
-              tab === key
-                ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
-                : "border-default bg-surface text-secondary hover:bg-surface-hover"
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                ["deployed", `Deployed (${deployed.length})`],
+                ["recent", `Recently demobilised (${recent.length})`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={cn(
+                  "rounded-control border px-3 py-1.5 text-xs font-medium transition",
+                  tab === key
+                    ? "border-[var(--brand-primary)] bg-brand-soft text-[var(--brand-primary)]"
+                    : "border-default bg-surface text-secondary hover:bg-surface-hover"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-subtle" aria-hidden />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, ID or trade"
+            aria-label="Search workers"
+            className="input h-9 w-full py-0 pl-9 text-sm"
+          />
+        </div>
       </div>
 
       {tab === "deployed" && (
@@ -239,7 +260,7 @@ export function DemobilisationBoard({
                       <Checkbox
                         checked={allPicked}
                         onCheckedChange={() =>
-                          setPicked(allPicked ? new Set() : new Set(deployed.map((r) => r.id)))
+                          setPicked(allPicked ? new Set() : new Set(shownDeployed.map((r) => r.id)))
                         }
                         ariaLabel="Select everyone deployed"
                       />
@@ -254,7 +275,7 @@ export function DemobilisationBoard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {deployed.map((r) => {
+                  {shownDeployed.map((r) => {
                     const days = daysOn(r.since);
                     return (
                       <tr key={r.id}>
@@ -303,9 +324,9 @@ export function DemobilisationBoard({
                 </tbody>
               </table>
             </div>
-            {deployed.length === 0 && (
+            {shownDeployed.length === 0 && (
               <p className="px-4 py-10 text-center text-sm text-muted">
-                Nobody is deployed under these filters.
+                {needle ? `No deployed worker matches “${query.trim()}”.` : "Nobody is deployed under these filters."}
               </p>
             )}
           </div>
@@ -328,7 +349,7 @@ export function DemobilisationBoard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {recent.map((r) => (
+                {shownRecent.map((r) => (
                   <tr key={r.id}>
                     <td className="px-4 py-3">
                       <Link
@@ -365,9 +386,9 @@ export function DemobilisationBoard({
               </tbody>
             </table>
           </div>
-          {recent.length === 0 && (
+          {shownRecent.length === 0 && (
             <p className="px-4 py-10 text-center text-sm text-muted">
-              Nothing has been demobilised yet.
+              {needle ? `No demobilised worker matches “${query.trim()}”.` : "Nothing has been demobilised yet."}
             </p>
           )}
           {/* No undo: putting someone back on a job is a mobilisation, and it
