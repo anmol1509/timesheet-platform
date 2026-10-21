@@ -30,6 +30,8 @@ export function StatTile({
   tone = "default",
   hero = false,
   href,
+  onClick,
+  active = false,
 }: {
   label: string;
   value: React.ReactNode;
@@ -41,6 +43,10 @@ export function StatTile({
   hero?: boolean;
   /** When set, the whole tile links there — used to jump to the source page. */
   href?: string;
+  /** When set, the tile is a button that filters something on the same page. */
+  onClick?: () => void;
+  /** Marks the tile whose filter is currently applied. */
+  active?: boolean;
 }) {
   const isWarning = tone === "warning";
   // Numbers (and "N%" strings, the one other shape every call site passes)
@@ -144,9 +150,19 @@ export function StatTile({
       : isWarning
         ? "border-[var(--warning-border)] bg-[var(--warning-soft)]"
         : "border-default bg-surface",
-    href && "transition hover:-translate-y-px hover:border-strong hover:shadow-md",
+    (href || onClick) && "transition hover:-translate-y-px hover:border-strong hover:shadow-md",
+    onClick && "w-full cursor-pointer text-left",
+    active && "!border-[var(--brand-primary)] ring-2 ring-[var(--brand-primary)] ring-offset-2 ring-offset-[var(--canvas)]",
     href && hero && "hover:brightness-110"
   );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-pressed={active} className={className}>
+        {content}
+      </button>
+    );
+  }
 
   return href ? (
     <Link href={href} className={className}>

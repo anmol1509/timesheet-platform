@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Printer } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 
-type EmployeeOption = { id: string; employeeIdNo: string; name: string };
+type EmployeeOption = { id: string; employeeIdNo: string; name: string; roster: string };
 
 /**
  * "All" leads and is the default. The category used to default to Site Staff
@@ -75,7 +75,8 @@ export function InstantViewPicker({
             }
             options={employees.map((e) => ({
               value: e.id,
-              label: `${e.employeeIdNo} · ${e.name}`,
+              // In the mixed lists the roster is part of the label, so a site worker and an office colleague can be told apart.
+              label: category === "ALL" ? `${e.employeeIdNo} · ${e.name} · ${e.roster}` : `${e.employeeIdNo} · ${e.name}`,
             }))}
           />
         </div>

@@ -601,7 +601,7 @@ export function AttendanceForm({
                           onChange={(ev) => setNormalHours((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                           type="number"
                           min={0}
-                          step="0.5"
+                          step="0.25"
                           className="input w-20 px-2 py-1.5 disabled:opacity-50"
                         />
                       </td>
@@ -612,7 +612,7 @@ export function AttendanceForm({
                           onChange={(ev) => setOtHours((prev) => ({ ...prev, [e.id]: ev.target.value }))}
                           type="number"
                           min={0}
-                          step="0.5"
+                          step="0.25"
                           className="input w-20 px-2 py-1.5 disabled:opacity-50"
                         />
                       </td>
