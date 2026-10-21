@@ -241,6 +241,9 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "Compare options", href: "/compare" },
       { label: "Gratuity calculator", href: "/tools/gratuity-calculator-uae" },
       { label: "Hourly rate calculator", href: "/tools/manpower-hourly-rate-calculator" },
+      { label: "WPS SIF file checker", href: "/tools/wps-sif-file-checker" },
+      { label: "UAE IBAN validator", href: "/tools/uae-iban-validator" },
+      { label: "Timesheet template", href: "/tools/construction-timesheet-template" },
     ],
   },
   {

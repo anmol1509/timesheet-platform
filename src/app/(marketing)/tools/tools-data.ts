@@ -18,6 +18,30 @@ export const TOOLS = [
       "Free calculator for the hourly rate to charge for UAE manpower supply: salary, visa, camp, transport, gratuity, overhead and margin, spread over billable hours.",
     updated: "2026-10-14",
   },
+  {
+    slug: "wps-sif-file-checker",
+    label: "WPS SIF file checker",
+    title: "WPS SIF File Checker (Free, UAE)",
+    description:
+      "Free WPS SIF file checker for UAE payroll. Paste or upload a salary file and see totals, IBAN, date and format problems before your bank rejects it.",
+    updated: "2026-10-21",
+  },
+  {
+    slug: "uae-iban-validator",
+    label: "UAE IBAN validator",
+    title: "UAE IBAN Validator (Free Checker)",
+    description:
+      "Check a UAE IBAN instantly: length, AE format and check digits, with the exact mistake if it is wrong. Validate a whole list of IBANs for a payroll file at once.",
+    updated: "2026-10-21",
+  },
+  {
+    slug: "construction-timesheet-template",
+    label: "Labour supply timesheet template",
+    title: "Labour Supply Timesheet Template (Excel & PDF)",
+    description:
+      "Free construction and labour supply timesheet template for the UAE, in Excel and PDF: roster, attendance codes, trade summary, VAT and sign-off blocks.",
+    updated: "2026-10-21",
+  },
 ] as const;
 
 export type Tool = (typeof TOOLS)[number];

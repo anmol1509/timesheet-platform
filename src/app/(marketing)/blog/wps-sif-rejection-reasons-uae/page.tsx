@@ -78,7 +78,7 @@ export default function Page() {
           before export, removes most of the manual re-entry that causes these mismatches in the
           first place.
         </p>
-        <p>Catching these before upload is what <a href="/wps-payroll-software-uae">WPS payroll software</a> is for; our <a href="/guides/run-payroll-export-wps-file">guide to running payroll and exporting a WPS file</a> walks through it step by step. Related: <a href="/blog/eosb-gratuity-calculation-uae">how end-of-service gratuity is calculated</a>.</p>
+        <p>Check a file now with the free <a href="/tools/wps-sif-file-checker">WPS SIF file checker</a>, and validate account numbers with the <a href="/tools/uae-iban-validator">UAE IBAN validator</a>. Catching these before upload is what <a href="/wps-payroll-software-uae">WPS payroll software</a> is for; our <a href="/guides/run-payroll-export-wps-file">guide to running payroll and exporting a WPS file</a> walks through it step by step. Related: <a href="/blog/eosb-gratuity-calculation-uae">how end-of-service gratuity is calculated</a>.</p>
       </PostLayout>
     </ContentShell>
   );

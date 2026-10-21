@@ -137,6 +137,11 @@ export default function Page() {
           attached, and how missing hours should be reported.
         </p>
 
+        <p>
+          Want a head start? Download the free{" "}
+          <a href="/tools/construction-timesheet-template">labour supply timesheet template</a> (Excel and PDF), built to this layout.
+        </p>
+
         <h2>Mistakes that cause invoice disputes</h2>
         <ul>
           <li>Hours entered without a worker ID, so two people with similar names are merged.</li>
