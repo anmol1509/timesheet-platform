@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
+import { approvedHeadcount } from "@/lib/demandApproval";
 import { billTotals } from "@/lib/payables";
 import { APPROVAL_KINDS, countByKind, loadApprovals, type ApprovalKind, type ApprovalScope } from "@/lib/approvals";
 
@@ -104,7 +105,10 @@ export async function getDemandFill(branchId: string | null): Promise<DemandFill
   for (const r of requests) {
     let requestShort = false;
     for (const t of r.trades) {
-      const want = t.approvedQuantity ?? t.quantity;
+      // Same rule as the Demand dashboard and the mobilisation queue: only the agreed headcount counts, and a line
+      // nobody has approved yet isn't a shortfall.
+      const want = approvedHeadcount(t);
+      if (want === 0) continue;
       const have = Math.min(want, t._count.allocations);
       needed += want;
       filled += have;
