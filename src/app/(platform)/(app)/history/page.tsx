@@ -1,5 +1,6 @@
 import { History } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { TableSearch } from "@/components/TableSearch";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
@@ -36,7 +37,7 @@ export default async function HistoryPage() {
           </p>
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <TableSearch placeholder="Search history…"><div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
@@ -92,7 +93,7 @@ export default async function HistoryPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </div></TableSearch>
       )}
     </div>
   );

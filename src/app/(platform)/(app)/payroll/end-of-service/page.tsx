@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { PageHeader } from "@/components/PageHeader";
+import { TableSearch } from "@/components/TableSearch";
 import { gratuity, yearsOfService } from "@/lib/gratuity";
 import { round2 } from "@/lib/payroll";
 
@@ -54,7 +55,7 @@ export default async function EndOfServicePage() {
       {rows.length === 0 ? (
         <div className="empty-state"><p className="text-sm text-muted">No employees with a pay structure yet.</p></div>
       ) : (
-        <div className="card overflow-x-auto">
+        <TableSearch placeholder="Search employees…"><div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
@@ -77,7 +78,7 @@ export default async function EndOfServicePage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </div></TableSearch>
       )}
     </div>
   );
