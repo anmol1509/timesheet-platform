@@ -4,20 +4,15 @@ import { useRef } from "react";
 import { m, useScroll, useSpring } from "motion/react";
 import {
   ArrowRight,
-  BedDouble,
   Check,
   FileSpreadsheet,
   HardHat,
-  IdCard,
-  Mail,
-  TrendingDown,
   Plus,
   Receipt,
   Wallet,
 } from "lucide-react";
 import {
   CAPABILITIES,
-  CHALLENGES,
   DEEP_DIVES,
   FACTS,
   FAQS,
@@ -45,62 +40,6 @@ import { shot } from "./showcase/showcase-page";
 import s from "./welcome.module.css";
 import h from "./home.module.css";
 
-
-const CHALLENGE_ICONS = {
-  sheet: FileSpreadsheet,
-  id: IdCard,
-  wallet: Wallet,
-  leak: TrendingDown,
-  bed: BedDouble,
-  mail: Mail,
-};
-
-const CHALLENGE_CONVERGE = [
-  ["Excel", "Paper", "Photo"],
-  ["Visa", "Emirates ID", "Passport"],
-  ["Overtime", "Loans", "Deductions"],
-  ["Approved hrs", "Invoice"],
-  ["Camp", "Bus route", "Site"],
-  ["Email", "Spreadsheet"],
-] as const;
-
-/** Small chips fading/sliding toward the card's icon once in view — the
- * "scattered inputs converging on one system" metaphor, reused across every
- * challenge card with its own real labels rather than six bespoke illustrations. */
-function ChallengeConverge({ items }: { items: readonly string[] }) {
-  return (
-    <m.div
-      className={s.convergeRow}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, amount: 0.6 }}
-      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } } }}
-    >
-      {items.map((label, i) => (
-        <m.span
-          key={label}
-          className={s.convergeChip}
-          variants={{
-            hidden: { opacity: 0, x: i % 2 ? 10 : -10 },
-            show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE_PREMIUM } },
-          }}
-        >
-          {label}
-        </m.span>
-      ))}
-      <m.span
-        className={s.convergeArrow}
-        variants={{
-          hidden: { opacity: 0, scale: 0.6 },
-          show: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: EASE_PREMIUM } },
-        }}
-        aria-hidden
-      >
-        <ArrowRight size={13} />
-      </m.span>
-    </m.div>
-  );
-}
 
 /** The "How it works" scroll-linked signature: a track that fills as the
  * user scrolls past the three steps, plus each step's number lighting up
@@ -288,37 +227,6 @@ export default function WelcomePage() {
           </div>
         </section>
         <div className={s.heroSpacer} aria-hidden />
-
-        <section id="challenges" className={`${s.section} ${s.sectionSurface}`} aria-labelledby="challenges-title">
-          <div className={s.container}>
-            <div className={s.sectionHead}>
-              <span className={s.eyebrow}>Sound familiar?</span>
-              <h2 id="challenges-title" className={s.h2}>
-                Spreadsheets weren&rsquo;t built to run a workforce.
-              </h2>
-              <p className={s.lead}>
-                Supplying hundreds of workers to client sites is a different business from employing them in one
-                office. Most HRMS and ERP tools stop at employee records and payroll, so everything else ends up in
-                spreadsheets, WhatsApp groups and inboxes.
-              </p>
-            </div>
-            <RevealGroup className={s.challengeGrid} stagger={0.08}>
-              {CHALLENGES.map((ch, i) => {
-                const Icon = CHALLENGE_ICONS[ch.icon];
-                return (
-                  <RevealItem key={ch.title} as="article" className={s.challenge}>
-                    <span className={s.challengeIcon}>
-                      <Icon size={20} aria-hidden />
-                    </span>
-                    <h3 className={s.h5}>{ch.title}</h3>
-                    <p>{ch.body}</p>
-                    <ChallengeConverge items={CHALLENGE_CONVERGE[i]} />
-                  </RevealItem>
-                );
-              })}
-            </RevealGroup>
-          </div>
-        </section>
 
         <div id="product">
           <ShowcaseRoot accent={ACCENTS.indigo}>

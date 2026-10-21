@@ -50,8 +50,8 @@ function prepare(children: ReactNode) {
 const ARTICLE_CLASS = [
   "text-[17px] leading-[1.7] text-[var(--charcoal)]",
   "[&>p]:my-5",
-  "[&_h2]:mt-12 [&_h2]:mb-3 [&_h2]:text-[clamp(24px,3vw,30px)] [&_h2]:font-semibold [&_h2]:leading-[1.25] [&_h2]:tracking-[-0.4px] [&_h2]:text-[var(--ink)]",
-  "[&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-[19px] [&_h3]:font-semibold [&_h3]:text-[var(--ink)]",
+  "[&_h2]:mt-12 [&_h2]:mb-3 [&_h2]:text-[clamp(24px,3vw,30px)] [&_h2]:font-extrabold [&_h2]:leading-[1.25] [&_h2]:tracking-[-0.4px] [&_h2]:text-[var(--ink)]",
+  "[&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-[19px] [&_h3]:font-bold [&_h3]:text-[var(--ink)]",
   "[&_ul]:my-5 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6",
   "[&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6",
   "[&_li]:text-[var(--slate)]",
