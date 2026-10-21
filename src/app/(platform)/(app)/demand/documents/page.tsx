@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
+import { TableSearch } from "@/components/TableSearch";
 import Link from "next/link";
 import { FileStack } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -50,7 +51,7 @@ export default async function DemandDocumentsIndexPage() {
           description="Raise a demand and mobilise workers against it first."
         />
       ) : (
-        <div className="card overflow-hidden">
+        <TableSearch placeholder="Search request, client or project…"><div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[46rem] text-sm">
               <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
@@ -94,7 +95,7 @@ export default async function DemandDocumentsIndexPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </div></TableSearch>
       )}
     </div>
   );

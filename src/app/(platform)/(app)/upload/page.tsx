@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Upload } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { TableSearch } from "@/components/TableSearch";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { UploadForm } from "./upload-form";
@@ -45,7 +46,7 @@ export default async function UploadPage() {
           <h2 className="mb-3 text-sm font-semibold text-primary">
             Recent uploads
           </h2>
-          <div className="card overflow-hidden">
+          <TableSearch placeholder="Search uploads…"><div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                 <tr>
@@ -112,7 +113,7 @@ export default async function UploadPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div></TableSearch>
         </div>
       )}
     </div>
