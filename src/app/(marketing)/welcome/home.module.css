@@ -1,218 +1,5 @@
-/* Homepage-only blocks: walkthrough, live numbers, day in the life, comparison strip, pricing, sticky demo bar.
+/* Homepage blocks added to the original layout: demo screenshots, comparison strip, pricing, latest guides.
    Colours and --x-* come from the marketing tokens and ShowcaseRoot. */
-
-/* ---------- Walkthrough ---------- */
-.walk {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
-  gap: 36px;
-  align-items: center;
-}
-.walkTabs {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.walkTab {
-  position: relative;
-  width: 100%;
-  padding: 18px 20px 20px;
-  overflow: hidden;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  background: #fff;
-  border: 1px solid var(--hairline);
-  border-radius: 18px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-.walkTab:hover {
-  border-color: var(--x-accent);
-}
-.walkTab:focus-visible {
-  outline: 3px solid var(--x-accent);
-  outline-offset: 2px;
-}
-.walkTabOn {
-  border-color: var(--x-accent);
-  background: var(--x-soft);
-  box-shadow: 0 18px 36px -26px rgba(10, 21, 48, 0.5);
-}
-.walkTab strong {
-  display: block;
-  font-family: var(--font-jakarta), system-ui, sans-serif;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
-}
-.walkTab span {
-  display: block;
-  margin-top: 4px;
-  font-size: 14.5px;
-  line-height: 1.5;
-  color: var(--slate);
-}
-.walkBar {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 3px;
-  width: 0;
-  background: var(--x-accent);
-}
-.walkBarRun {
-  animation: walkfill var(--walk-ms, 6000ms) linear forwards;
-}
-.walkTabOn .walkBarStill {
-  width: 100%;
-}
-.walkPaused .walkBarRun {
-  animation-play-state: paused;
-}
-@keyframes walkfill {
-  from { width: 0; }
-  to { width: 100%; }
-}
-.walkStage {
-  display: grid;
-}
-.walkShot {
-  grid-area: 1 / 1;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-  pointer-events: none;
-}
-.walkShot img {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1400 / 940;
-  object-fit: cover;
-  object-position: top left;
-  background: var(--x-soft);
-}
-.walkShotOn {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* ---------- Live numbers ---------- */
-.live {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: 48px;
-  align-items: center;
-}
-.liveGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.liveTile {
-  padding: 22px 22px 20px;
-  background: #fff;
-  border: 1px solid var(--hairline);
-  border-radius: 20px;
-  box-shadow: 0 24px 44px -34px rgba(10, 21, 48, 0.4);
-}
-.liveLabel {
-  font-size: 14px;
-  color: var(--slate);
-}
-.liveValue {
-  display: block;
-  margin: 6px 0 4px;
-  font-family: var(--font-jakarta), system-ui, sans-serif;
-  font-size: 38px;
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -1px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.liveNote {
-  font-size: 13.5px;
-  color: var(--steel);
-}
-.liveWarn {
-  color: #b45309;
-}
-.liveCap {
-  grid-column: 1 / -1;
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--steel);
-}
-.liveText p {
-  margin: 14px 0 0;
-  font-size: 18px;
-  line-height: 1.6;
-  color: var(--slate);
-}
-
-/* ---------- Day in the life ---------- */
-.days {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
-}
-.day {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid var(--hairline);
-  border-radius: 24px;
-}
-.dayShot {
-  height: 210px;
-  overflow: hidden;
-  background: var(--x-soft);
-  border-bottom: 1px solid var(--hairline);
-}
-.dayShot img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top left;
-}
-.dayShotPhone img {
-  width: auto;
-  height: 100%;
-  margin: 0 auto;
-  object-fit: contain;
-  object-position: top center;
-}
-.dayBody {
-  padding: 22px 24px 26px;
-}
-.dayWho {
-  display: inline-block;
-  margin-bottom: 8px;
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--x-ink);
-}
-.dayBody h3 {
-  margin: 0 0 8px;
-  font-family: var(--font-jakarta), system-ui, sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--ink);
-}
-.dayBody p {
-  margin: 0;
-  font-size: 15.5px;
-  line-height: 1.6;
-  color: var(--slate);
-}
 
 /* ---------- Comparison strip ---------- */
 .cmpWrap {
@@ -332,67 +119,7 @@
   color: var(--primary);
 }
 
-/* ---------- Sticky demo bar (phones) ---------- */
-.bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-  background: rgba(255, 255, 255, 0.94);
-  border-top: 1px solid var(--hairline);
-  backdrop-filter: blur(10px);
-  transform: translateY(110%);
-  transition: transform 0.3s ease;
-}
-.barShow {
-  transform: none;
-}
-.bar span {
-  font-size: 14px;
-  line-height: 1.3;
-  color: var(--slate);
-}
-.bar strong {
-  display: block;
-  color: var(--ink);
-}
 
-@media (max-width: 1023px) {
-  .walk,
-  .live {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-  }
-  .days,
-  .price {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 767px) {
-  .bar {
-    display: flex;
-  }
-}
-@media (max-width: 520px) {
-  .liveGrid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .walkShot,
-  .bar {
-    transition: none;
-  }
-}
-.bar:not(.barShow) {
-  visibility: hidden;
-}
 .guides {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -405,6 +132,33 @@
 }
 @media (max-width: 640px) {
   .guides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.stepShot {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+.heroShot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.diveShot {
+  min-width: 0;
+}
+.diveShot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@media (max-width: 1023px) {
+  .price {
     grid-template-columns: minmax(0, 1fr);
   }
 }
