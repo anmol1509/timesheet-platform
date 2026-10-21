@@ -138,7 +138,7 @@ export function ShowcaseHero({
 }
 
 /** Compact hero for a tool page: no screenshot, the tool itself sits right below it. */
-export function ToolHero({ pill, pillIcon, title, lead, badges }: { pill: string; pillIcon: React.ReactNode; title: React.ReactNode; lead: string; badges: string[] }) {
+export function ToolHero({ pill, pillIcon, title, lead, badges, plain }: { pill: string; pillIcon: React.ReactNode; title: React.ReactNode; lead: string; badges: string[]; /** Show the badges as plain text, without tick icons (for dates and meta). */ plain?: boolean }) {
   return (
     <section className={`${x.hero} ${x.toolHero}`}>
       <div className={x.heroBg} aria-hidden />
@@ -156,7 +156,7 @@ export function ToolHero({ pill, pillIcon, title, lead, badges }: { pill: string
           <ul className={x.toolBadges}>
             {badges.map((b) => (
               <li key={b}>
-                <Check size={17} strokeWidth={2.6} className={x.tick} aria-hidden />
+                {!plain && <Check size={17} strokeWidth={2.6} className={x.tick} aria-hidden />}
                 {b}
               </li>
             ))}
