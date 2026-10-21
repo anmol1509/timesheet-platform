@@ -51,7 +51,7 @@ const stateChip = (s: TemplateCard["state"]) => (
 );
 
 /** Where "Use letter" goes: an employee letter opens the Letters screen with it chosen; a NOC starts a new NOC. Other client letters are made from a demand. */
-const startHref = (c: TemplateCard) => (c.audience === "EMPLOYEE" ? `/letters?template=${encodeURIComponent(c.name)}` : c.category === "No Objection Letter" ? "/operations/nocs/new" : null);
+const startHref = (c: TemplateCard) => (c.audience === "EMPLOYEE" ? `/letters?template=${encodeURIComponent(c.name)}` : c.category === "No Objection Letter" ? "/operations/nocs/new" : c.category === "Check-in List" ? "/accommodation/checkin" : null);
 
 function Duplicate({ id, children }: { id: string; children: React.ReactNode }) {
   return <form action={duplicateTemplateAction}><input type="hidden" name="id" value={id} />{children}</form>;

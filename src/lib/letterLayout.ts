@@ -28,6 +28,11 @@ export const LETTER_MERGE_FIELDS: MergeField[] = [
   { key: "MOBILIZEDATE", label: "Mobilisation date", example: "27-07-2026" },
   { key: "DATE", label: "Today's date", example: "27-07-2026" },
   { key: "WORKERCOUNT", label: "Number of workers listed", example: "10" },
+  // Filled only on check-in lists (Accommodation › Check-in); on any other letter they print blank.
+  { key: "CAMPNAME", label: "Camp: name (check-in lists)", example: "Camp A — Al Quoz" },
+  { key: "CAMPTYPE", label: "Camp: own, supplier or client (check-in lists)", example: "Own" },
+  { key: "CHECKINDATE", label: "Check-in date (check-in lists)", example: "27-07-2026" },
+  { key: "CHECKINCOUNT", label: "Workers checked in (check-in lists)", example: "10" },
 ];
 
 /**

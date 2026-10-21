@@ -25,12 +25,13 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
   ]);
   // Which kind of letter each template is, for the tabs.
   const kindOf = (t: { audience: string; category: string | null }): string =>
-    t.audience === "EMPLOYEE" ? "employee" : t.category === "No Objection Letter" ? "noc" : t.category === "Undertaking Letter" || t.category === "Supplier Undertaking" ? "undertaking" : "other";
+    t.audience === "EMPLOYEE" ? "employee" : t.category === "Check-in List" ? "checkin" : t.category === "No Objection Letter" ? "noc" : t.category === "Undertaking Letter" || t.category === "Supplier Undertaking" ? "undertaking" : "other";
   const TABS = [
     { key: "all", label: "All" },
     { key: "employee", label: "Employee letters" },
     { key: "noc", label: "NOC" },
     { key: "undertaking", label: "Undertaking" },
+    { key: "checkin", label: "Check-in list" },
     { key: "other", label: "Other" },
   ];
   const counts = new Map<string, number>(TABS.map((x) => [x.key, x.key === "all" ? templates.length : templates.filter((t) => kindOf(t) === x.key).length]));
