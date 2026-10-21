@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
-import { CtaBand, LinkCardGrid, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
+import { Wrench } from "lucide-react";
+import { ACCENTS, Band, HowStrip, LinkCards, SectionHead, ShowcaseCta, ShowcaseRoot, ToolHero } from "@/app/(marketing)/welcome/showcase/showcase";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "./tools-data";
 
 const TITLE = "Free UAE Payroll & Manpower Tools";
 const DESCRIPTION =
-  "Free calculators for UAE manpower suppliers: end-of-service gratuity and the hourly rate to charge for labour supply. No sign-up, and nothing you type leaves your browser.";
+  "Free tools for UAE manpower suppliers: a WPS SIF file checker, UAE IBAN validator, gratuity and hourly rate calculators, and a labour supply timesheet template. No sign-up, and nothing you type leaves your browser.";
 
 export const metadata: Metadata = finishMetadata({
   title: TITLE,
@@ -18,16 +19,34 @@ export const metadata: Metadata = finishMetadata({
 export default function ToolsIndexPage() {
   return (
     <ContentShell>
-      <PageHero eyebrow="Free tools" title="Calculators for UAE manpower suppliers." lead={DESCRIPTION} cta={false} />
-      <Section eyebrow="Calculators" title="Free, and private.">
-        <LinkCardGrid
-          cards={TOOLS.map((t) => ({ href: `/tools/${t.slug}`, title: t.label, body: t.description }))}
+      <ShowcaseRoot accent={ACCENTS.indigo}>
+        <ToolHero
+          pill="Free tools"
+          pillIcon={<Wrench size={14} aria-hidden />}
+          title={
+            <>
+              Free <em>tools</em> for UAE manpower suppliers
+            </>
+          }
+          lead={DESCRIPTION}
+          badges={["Free, no sign-up", "Runs in your browser", "Built on the rules the product uses"]}
         />
-      </Section>
-      <CtaBand
-        title="Run payroll, gratuity and billing from one system."
-        lead="The same rules these calculators use are built into ManpowerSync's payroll and invoicing."
-      />
+        <Band>
+          <SectionHead eyebrow="Pick a tool" title="Check a file, price a worker, run the numbers." />
+          <LinkCards cards={TOOLS.map((t) => ({ href: `/tools/${t.slug}`, title: t.label, body: t.description }))} />
+        </Band>
+        <Band soft>
+          <SectionHead eyebrow="Why free" title="Private by design." />
+          <HowStrip
+            steps={[
+              { title: "Nothing is uploaded", body: "Files and figures are checked in your browser. We never see or store a salary file or an IBAN." },
+              { title: "Same rules as the product", body: "The calculators use the same code ManpowerSync runs for payroll, gratuity and pricing." },
+              { title: "No account needed", body: "Open a tool and use it. If you later want it automated, the platform does it every month." },
+            ]}
+          />
+        </Band>
+        <ShowcaseCta title="Run payroll, gratuity and billing from one system." lead="The same rules these tools use are built into ManpowerSync's payroll and invoicing." />
+      </ShowcaseRoot>
     </ContentShell>
   );
 }

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
-import { CtaBand, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
-import p from "@/app/(marketing)/welcome/prose.module.css";
+import { Download, FileSpreadsheet } from "lucide-react";
+import { ACCENTS } from "@/app/(marketing)/welcome/showcase/showcase";
+import { ToolPage } from "../tool-page";
 import w from "@/app/(marketing)/welcome/welcome.module.css";
-import { JsonLd, faqLd } from "@/lib/seo/jsonld";
+import { faqLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
@@ -29,33 +29,46 @@ const FAQS = [
 
 export default function TimesheetTemplatePage() {
   return (
-    <ContentShell>
-      <JsonLd data={faqLd(FAQS)} />
-      <PageHero
-        eyebrow="Free template"
-        title="Labour supply timesheet template"
-        lead="A client-ready monthly timesheet for construction and manpower supply in the UAE: roster, attendance codes, trade summary and three sign-offs, in Excel and PDF."
-        cta={false}
-      />
-
-      <Section>
-        <div className={p.prose}>
-          <h2>Download</h2>
-          <p>
-            The Excel version fills in dates and weekdays from the period you enter and adds up hours, absences and
-            amounts for you. The PDF is a blank to print and fill in by hand on site.
+    <ToolPage
+      slug="construction-timesheet-template"
+      accent={ACCENTS.blue}
+      hero={{
+        pill: "Free template",
+        pillIcon: <FileSpreadsheet size={14} aria-hidden />,
+        title: (
+          <>
+            <em>Labour supply timesheet</em> template
+          </>
+        ),
+        lead: "A client-ready monthly timesheet for construction and manpower supply in the UAE: roster, attendance codes, trade summary and three sign-offs, in Excel and PDF.",
+        badges: ["Free, no sign-up", "Excel and PDF", "Dates fill in from the period"],
+      }}
+      ld={faqLd(FAQS)}
+      tool={
+        <div className={s.panel}>
+          <h2 className={s.panelTitle}>Download the template</h2>
+          <p className={s.panelHint}>
+            The Excel version fills in dates and weekdays from the period you enter and adds up hours, absences and amounts for you. The PDF is a blank to print and fill in by hand on site.
           </p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- static, pre-optimised WebP from /public */}
+          <img src="/brand-assets/tool-timesheet.webp" width={1250} height={420} alt="The timesheet template filled in for September: header with supplier, client and period, a roster with a day-by-day grid of hours, W for weekly off, H for a holiday, and totals per worker and per day." style={{ width: "100%", height: "auto", border: "1px solid var(--hairline)", borderRadius: 12 }} loading="eager" decoding="async" />
+          <div className={s.downloads}>
+            <a href="/tools/construction-timesheet-template/download/xlsx" download className={`${w.btn} ${w.btnPrimary} ${w.btnLg}`}>
+              <Download size={16} aria-hidden /> Download Excel (.xlsx)
+            </a>
+            <a href="/tools/construction-timesheet-template/download/pdf" download className={`${w.btn} ${w.btnGhost} ${w.btnLg}`}>
+              Download PDF (print)
+            </a>
+          </div>
         </div>
-        {/* Outside .prose so the article link styling doesn't restyle the buttons. */}
-        <div className={s.downloads} style={{ maxWidth: 720, margin: "22px auto 0" }}>
-          <a href="/tools/construction-timesheet-template/download/xlsx" download className={`${w.btn} ${w.btnPrimary} ${w.btnLg}`}>
-            Download Excel (.xlsx)
-          </a>
-          <a href="/tools/construction-timesheet-template/download/pdf" download className={`${w.btn} ${w.btnGhost} ${w.btnLg}`}>
-            Download PDF (print)
-          </a>
-        </div>
-        <div className={p.prose}>
+      }
+      how={[
+        { title: "Download", body: "Pick the Excel version to fill in on a computer, or the PDF to print." },
+        { title: "Enter the period and workers", body: "Dates and weekdays fill in from the period; list each worker once with a unique ID." },
+        { title: "Record hours, then sign off", body: "Hours or codes daily, trade totals on the second sheet, then prepared, verified and approved." },
+      ]}
+      article={
+        <>
           <h2>What is in it</h2>
           <ul>
             <li><strong>Header:</strong> supplier, client, project or site, the period covered, who prepared it and the client reference or LPO.</li>
@@ -89,21 +102,10 @@ export default function TimesheetTemplatePage() {
             <a href="/compare/manpowersync-vs-excel">ManpowerSync with Excel</a>. Working out what rate to put on the summary?
             Try the <a href="/tools/manpower-hourly-rate-calculator">manpower hourly rate calculator</a>.
           </p>
-
-          <h2>Frequently asked questions</h2>
-          {FAQS.map((f) => (
-            <div key={f.q}>
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <CtaBand
-        title="Stop rebuilding this sheet every month."
-        lead="ManpowerSync produces the timesheet, the payroll and the invoice from the same approved hours."
-      />
-    </ContentShell>
+        </>
+      }
+      next={{ title: "Stop rebuilding this sheet every month.", body: "Timesheet software produces the timesheet, the payroll and the invoice from the same approved hours, with nothing retyped.", href: "/timesheet-software-construction-uae", label: "See timesheet software" }}
+      faqs={FAQS}
+    />
   );
 }

@@ -1,11 +1,11 @@
+import { Percent } from "lucide-react";
+import { ACCENTS } from "@/app/(marketing)/welcome/showcase/showcase";
+import { ToolPage } from "../tool-page";
 import type { Metadata } from "next";
-import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
-import { CtaBand, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
-import { JsonLd, faqLd, webApplicationLd } from "@/lib/seo/jsonld";
+import { faqLd, webApplicationLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
-import p from "@/app/(marketing)/welcome/prose.module.css";
 import { RateCalculator } from "./rate-calculator";
 
 const tool = TOOLS.find((t) => t.slug === "manpower-hourly-rate-calculator")!;
@@ -39,26 +39,25 @@ const FAQS = [
 
 export default function HourlyRateCalculatorPage() {
   return (
-    <ContentShell>
-      <JsonLd
-        data={[
-          webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "BusinessApplication" }),
-          faqLd(FAQS),
-        ]}
-      />
-      <PageHero
-        eyebrow="Free tool"
-        title="Manpower supply hourly rate calculator"
-        lead="Turn a worker's real monthly cost into the hourly rate you need to charge, with overhead, margin and unbilled hours included."
-        cta={false}
-      />
-
-      <Section>
-        <RateCalculator />
-      </Section>
-
-      <Section surface>
-        <div className={p.prose}>
+    <ToolPage
+      slug="manpower-hourly-rate-calculator"
+      accent={ACCENTS.amber}
+      hero={{
+        pill: "Free calculator",
+        pillIcon: <Percent size={14} aria-hidden />,
+        title: <>Manpower supply <em>hourly rate calculator</em></>,
+        lead: "Turn a worker's real monthly cost into the hourly rate you need to charge, with overhead, margin and unbilled hours included.",
+        badges: ["Free, no sign-up", "Overhead and margin included", "Nothing leaves your browser"],
+      }}
+      ld={[webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "BusinessApplication" }), faqLd(FAQS)]}
+      tool={<RateCalculator />}
+      how={[
+        { title: "Enter the costs", body: "Salary, visa, camp, transport, gratuity and the rest." },
+{ title: "Add overhead and margin", body: "As percentages of direct and total cost." },
+{ title: "Get the hourly rate", body: "Spread over billable hours, not paid hours." },
+      ]}
+      article={
+        <>
           <h2>How the rate is built</h2>
           <ol>
             <li><strong>Direct cost:</strong> salary and allowances, visa and permit costs spread over their validity, accommodation, transport, food and consumables, and provisions for gratuity, annual leave and the air ticket.</li>
@@ -94,21 +93,10 @@ export default function HourlyRateCalculatorPage() {
             <a href="/construction-invoicing-software-uae">VAT invoicing software</a> bills approved hours at each
             client&rsquo;s own rate.
           </p>
-
-          <h2>Frequently asked questions</h2>
-          {FAQS.map((f) => (
-            <div key={f.q}>
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <CtaBand
-        title="Compare the rate you quote with what each trade really costs."
-        lead="ManpowerSync puts salaries, camp costs and billed hours in one system, so you can check your rates against real numbers."
-      />
-    </ContentShell>
+        </>
+      }
+      next={{ title: "Compare the rate you quote with what each trade really costs.", body: "VAT invoicing software bills approved hours at each client's own rate, and shows margin per invoice, so you can check your pricing against real numbers.", href: "/construction-invoicing-software-uae", label: "See VAT invoicing software" }}
+      faqs={FAQS}
+    />
   );
 }

@@ -1,13 +1,13 @@
+import { Calculator } from "lucide-react";
+import { ACCENTS } from "@/app/(marketing)/welcome/showcase/showcase";
+import { ToolPage } from "../tool-page";
 import type { Metadata } from "next";
-import { ContentShell } from "@/app/(marketing)/welcome/content-shell";
-import { CtaBand, PageHero, Section } from "@/app/(marketing)/welcome/content-blocks";
 import { gratuityBreakdown } from "@/lib/gratuity";
-import { JsonLd, faqLd, webApplicationLd } from "@/lib/seo/jsonld";
+import { faqLd, webApplicationLd } from "@/lib/seo/jsonld";
 import { finishMetadata } from "@/lib/seo/metadata";
 import { SITE_URL } from "@/lib/seo/site";
 import { TOOLS } from "../tools-data";
 import { aed } from "../calc-ui";
-import p from "@/app/(marketing)/welcome/prose.module.css";
 import { GratuityCalculator } from "./gratuity-calculator";
 
 const tool = TOOLS.find((t) => t.slug === "gratuity-calculator-uae")!;
@@ -48,26 +48,25 @@ const EXAMPLES = [3, 5, 8].map((years) => ({ years, b: gratuityBreakdown(3000, y
 
 export default function GratuityCalculatorPage() {
   return (
-    <ContentShell>
-      <JsonLd
-        data={[
-          webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "FinanceApplication" }),
-          faqLd(FAQS),
-        ]}
-      />
-      <PageHero
-        eyebrow="Free tool"
-        title="UAE gratuity calculator"
-        lead="Work out end-of-service gratuity from basic salary and service dates, with every step of the calculation shown."
-        cta={false}
-      />
-
-      <Section>
-        <GratuityCalculator />
-      </Section>
-
-      <Section surface>
-        <div className={p.prose}>
+    <ToolPage
+      slug="gratuity-calculator-uae"
+      accent={ACCENTS.violet}
+      hero={{
+        pill: "Free calculator",
+        pillIcon: <Calculator size={14} aria-hidden />,
+        title: <>UAE <em>gratuity calculator</em></>,
+        lead: "Work out end-of-service gratuity from basic salary and service dates, with every step of the calculation shown.",
+        badges: ["Free, no sign-up", "Working shown step by step", "Nothing leaves your browser"],
+      }}
+      ld={[webApplicationLd({ path: PATH, name: tool.title, description: tool.description, category: "FinanceApplication" }), faqLd(FAQS)]}
+      tool={<GratuityCalculator />}
+      how={[
+        { title: "Enter basic salary", body: "Last basic only: allowances and overtime aren't part of the base." },
+{ title: "Add the service dates", body: "Joining and last working day; part years count in proportion." },
+{ title: "Read the working", body: "The amount, with 21-day and 30-day years shown separately." },
+      ]}
+      article={
+        <>
           <h2>How UAE gratuity is calculated</h2>
           <p>
             Under Article 51 of Federal Decree-Law No. 33 of 2021, an employee who has completed at least
@@ -134,21 +133,10 @@ export default function GratuityCalculatorPage() {
             see how gratuity feeds your price in{" "}
             <a href="/tools/manpower-hourly-rate-calculator">the manpower hourly rate calculator</a>.
           </p>
-
-          <h2>Frequently asked questions</h2>
-          {FAQS.map((f) => (
-            <div key={f.q}>
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <CtaBand
-        title="Have gratuity calculated for every leaver."
-        lead="ManpowerSync keeps basic salary, joining date and gratuity on the same employee record as payroll."
-      />
-    </ContentShell>
+        </>
+      }
+      next={{ title: "Have gratuity calculated for every leaver.", body: "WPS payroll software keeps basic salary and joining date on the employee record, so the same formula applies automatically and the figure is known before anyone leaves.", href: "/wps-payroll-software-uae", label: "See WPS payroll software" }}
+      faqs={FAQS}
+    />
   );
 }

@@ -137,6 +137,74 @@ export function ShowcaseHero({
   );
 }
 
+/** Compact hero for a tool page: no screenshot, the tool itself sits right below it. */
+export function ToolHero({ pill, pillIcon, title, lead, badges, plain }: { pill: string; pillIcon: React.ReactNode; title: React.ReactNode; lead: string; badges: string[]; /** Show the badges as plain text, without tick icons (for dates and meta). */ plain?: boolean }) {
+  return (
+    <section className={`${x.hero} ${x.toolHero}`}>
+      <div className={x.heroBg} aria-hidden />
+      <div className={x.wrap}>
+        <div className={x.toolHeroInner}>
+          <div className={x.crumbs}>
+            <Breadcrumbs />
+          </div>
+          <span className={x.pill}>
+            <span className={x.pillIcon}>{pillIcon}</span>
+            {pill}
+          </span>
+          <h1 className={x.h1}>{title}</h1>
+          <p className={x.lead}>{lead}</p>
+          <ul className={x.toolBadges}>
+            {badges.map((b) => (
+              <li key={b}>
+                {!plain && <Check size={17} strokeWidth={2.6} className={x.tick} aria-hidden />}
+                {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** The tool, lifted so it overlaps the hero's bottom edge. */
+export function ToolStage({ children }: { children: React.ReactNode }) {
+  return (
+    <section className={x.toolStage}>
+      <div className={x.wrap}>{children}</div>
+    </section>
+  );
+}
+
+export function HowStrip({ steps }: { steps: { title: string; body: string }[] }) {
+  return (
+    <ol className={x.how}>
+      {steps.map((s, i) => (
+        <li key={s.title} className={x.howItem}>
+          <span className={x.howNum}>{i + 1}</span>
+          <h3>{s.title}</h3>
+          <p>{s.body}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** Mid-page conversion block: what to do once the tool has answered the question. */
+export function NextStep({ title, body, href, label }: { title: string; body: string; href: string; label: string }) {
+  return (
+    <div className={x.next}>
+      <div>
+        <h2>{title}</h2>
+        <p>{body}</p>
+      </div>
+      <a href={href} className={`${w.btn} ${w.btnPrimary} ${w.btnLg} ${x.nextBtn}`}>
+        {label} <ArrowRight size={16} aria-hidden />
+      </a>
+    </div>
+  );
+}
+
 export function ProofStrip({ items }: { items: { value: string; label: string }[] }) {
   return (
     <section className={x.proofSection}>
