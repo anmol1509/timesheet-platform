@@ -239,6 +239,7 @@ export default async function InstantViewPage({
                     <th className="py-2">Mobilized Date</th>
                     <th className="py-2">Demobilized Date</th>
                     <th className="py-2">Status</th>
+                    <th className="py-2">Demobilisation note</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
@@ -249,6 +250,10 @@ export default async function InstantViewPage({
                       <td className="py-2">{formatDate(h.mobilizedDate)}</td>
                       <td className="py-2">{formatDate(h.demobilizedDate)}</td>
                       <td className="py-2">{h.demobilizedDate ? "Demobilized" : "Mobilized"}</td>
+                      <td className="py-2 text-secondary">
+                        {h.demobilizationReason || "—"}
+                        {h.demobilizedByName && h.demobilizationReason && <span className="block text-xs text-subtle">by {h.demobilizedByName}</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

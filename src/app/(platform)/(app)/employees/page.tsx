@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, UserPlus, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, FileSearch, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
@@ -153,6 +153,10 @@ export default async function EmployeesPage({
         }
         actions={
           <>
+            <Button href="/employees/instant-view" size="sm" variant="secondary">
+              <FileSearch className="h-3.5 w-3.5" aria-hidden />
+              Instant view
+            </Button>
             <Button href="/data-health" size="sm" variant="secondary">
               Data health
             </Button>

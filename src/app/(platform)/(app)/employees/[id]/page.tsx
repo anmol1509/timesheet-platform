@@ -274,6 +274,10 @@ export default async function EmployeeDetailPage({
         </div>
       </section>
 
+      <div className="flex justify-end">
+        <Link href={`/employees/instant-view?employeeId=${employee.id}`} className="btn btn-secondary text-sm">Instant view</Link>
+      </div>
+
       {canViewPay && employee.supplier?.isOwnCompany && (
         <div className="flex justify-end">
           <Link href={`/letters?employee=${employee.id}&template=salary`} className="btn btn-secondary text-sm">Salary certificate</Link>
