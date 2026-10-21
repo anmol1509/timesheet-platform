@@ -9,6 +9,22 @@ import { cn } from "@/lib/cn";
 
 export type SelectOption = { value: string; label: string; icon?: React.ReactNode };
 
+/**
+ * Every word typed has to appear in the option, ranked by where: the start of the text, the start of a word, then
+ * anywhere. The default fuzzy match let "sur" find anything with an s, u and r scattered through it, which buried the
+ * person being looked for among unrelated workers.
+ */
+function matchScore(label: string, search: string) {
+  const text = label.toLowerCase();
+  let score = 1;
+  for (const word of search.toLowerCase().split(/\s+/).filter(Boolean)) {
+    const at = text.indexOf(word);
+    if (at < 0) return 0;
+    score = Math.min(score, at === 0 ? 1 : text[at - 1] === " " || text[at - 1] === "·" || text[at - 1] === "-" ? 0.8 : 0.4);
+  }
+  return score;
+}
+
 export function Select({
   name,
   value: controlledValue,
@@ -111,7 +127,7 @@ export function Select({
           sideOffset={4}
           className="rx-popover z-50 w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-control border border-default bg-surface shadow-popover"
         >
-          <Command loop>
+          <Command loop filter={matchScore}>
             {searchable && (
               <CommandInput
                 autoFocus
