@@ -267,7 +267,7 @@ export function DemobilisationBoard({
                         </td>
                         <td className="px-4 py-3">
                           <Link
-                            href={`/employees/${r.id}`}
+                            href={`/employees/${r.id}`} target="_blank" rel="noopener noreferrer"
                             className="font-medium text-primary hover:underline"
                           >
                             {r.name}
@@ -332,7 +332,7 @@ export function DemobilisationBoard({
                   <tr key={r.id}>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/employees/${r.employeeId}`}
+                        href={`/employees/${r.employeeId}`} target="_blank" rel="noopener noreferrer"
                         className="font-medium text-primary hover:underline"
                       >
                         {r.name}

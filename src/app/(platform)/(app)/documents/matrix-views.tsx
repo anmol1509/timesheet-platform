@@ -183,7 +183,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
         <td className={cn("px-4 py-2.5", indent && "pl-11")}>
           <span className="flex items-center gap-2.5">
             <EmployeeAvatar employeeId={e.id} name={e.name} hasPhoto={e.hasPhoto} size="sm" />
-            <span className="min-w-0"><Link href={`/employees/${e.id}`} className="block truncate font-medium text-primary hover:underline">{e.name}</Link><span className="text-xs text-subtle">{e.employeeIdNo}{view === "employee" && e.supplierName ? ` · ${e.supplierName}` : ""}</span></span>
+            <span className="min-w-0"><Link href={`/employees/${e.id}`} target="_blank" rel="noopener noreferrer" className="block truncate font-medium text-primary hover:underline">{e.name}</Link><span className="text-xs text-subtle">{e.employeeIdNo}{view === "employee" && e.supplierName ? ` · ${e.supplierName}` : ""}</span></span>
           </span>
         </td>
         {[...MATRIX_TYPES, "WC" as const].map((t) => (
@@ -277,7 +277,7 @@ export function MatrixViews({ view, documents, employees, policies, companySuppl
                       <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                         {g.id === "none" ? <span className="text-xs text-subtle">—</span> : (() => {
                           const cell = g.wc.cell;
-                          return <Link href={`/suppliers/${g.id}`} className="inline-block"><CellBox cell={cell} label={`${g.name} workmen compensation`} /><span className="mt-1 block text-[10px] text-muted">{coverageKnown.has(g.id) ? `${covered} of ${g.workers.length} named` : g.wc.policies > 0 ? "list not read" : ""}</span></Link>;
+                          return <Link href={`/suppliers/${g.id}`} target="_blank" rel="noopener noreferrer" className="inline-block"><CellBox cell={cell} label={`${g.name} workmen compensation`} /><span className="mt-1 block text-[10px] text-muted">{coverageKnown.has(g.id) ? `${covered} of ${g.workers.length} named` : g.wc.policies > 0 ? "list not read" : ""}</span></Link>;
                         })()}
                       </td>
                       <td className="px-4 py-3 text-right"><b className="text-primary">{Math.round(pct(g) * 100)}%</b><span className="block text-[10px] text-muted">complete</span></td>

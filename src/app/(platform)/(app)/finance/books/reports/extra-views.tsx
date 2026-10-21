@@ -192,7 +192,7 @@ export async function ProvisionsView({ branchId, asOf, on, policy }: { branchId:
             <tbody className="divide-y divide-default">
               {facts.map((r) => (
                 <tr key={r.e.id}>
-                  <td className="px-4 py-1.5"><Link href={`/employees/${r.e.id}`} className="font-medium text-primary hover:underline">{r.e.name}</Link><span className="ml-2 font-mono text-xs text-muted">{r.e.employeeIdNo}</span></td>
+                  <td className="px-4 py-1.5"><Link href={`/employees/${r.e.id}`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{r.e.name}</Link><span className="ml-2 font-mono text-xs text-muted">{r.e.employeeIdNo}</span></td>
                   <td className="px-3 py-1.5 text-secondary">{r.f.joinDate ? fmtDate(r.f.joinDate) : ""}</td>
                   {PROVISIONS.map((p) => <td key={p.key} className="tabular px-3 py-1.5 text-right">{dash(r.a[p.key])}</td>)}{perPerson.map((x) => <td key={x.id} className="tabular px-3 py-1.5 text-right">{dash(ruleAmount(x, r.f))}</td>)}
                 </tr>

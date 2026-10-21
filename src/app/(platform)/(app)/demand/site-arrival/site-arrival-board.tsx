@@ -253,7 +253,7 @@ export function SiteArrivalBoard({
                     )}
                     <td className="px-4 py-3">
                       <Link
-                        href={`/employees/${r.id}`}
+                        href={`/employees/${r.id}`} target="_blank" rel="noopener noreferrer"
                         className="font-medium text-primary hover:underline"
                       >
                         {r.name}

@@ -29,6 +29,12 @@ function categoryWhere(category: string) {
   return { supplierId: null, category: "SITE_STAFF" as const };
 }
 
+/** Which roster someone is on: their own site staff, office staff, or a supplier's worker. */
+function rosterLabel(e: { category: string | null; supplierId: string | null }): string {
+  if (e.supplierId) return "Supplier worker";
+  return e.category === "STAFF" ? "Staff" : "Site staff";
+}
+
 function formatDate(d: Date | null) {
   return d
     ? new Date(d).toLocaleDateString("en-GB", {
@@ -54,7 +60,7 @@ export default async function InstantViewPage({
 
   const employees = await prisma.employee.findMany({
     where: { ...branchWhere(branchId), ...categoryWhere(category) },
-    select: { id: true, employeeIdNo: true, name: true },
+    select: { id: true, employeeIdNo: true, name: true, category: true, supplierId: true },
     orderBy: { name: "asc" },
   });
 
@@ -99,7 +105,7 @@ export default async function InstantViewPage({
         description={<>A printable snapshot of an employee&rsquo;s current status plus work and accommodation history.</>}
       />
 
-      <InstantViewPicker category={category} employeeId={employeeId ?? ""} employees={employees} />
+      <InstantViewPicker category={category} employeeId={employeeId ?? ""} employees={employees.map((e) => ({ id: e.id, employeeIdNo: e.employeeIdNo, name: e.name, roster: rosterLabel(e) }))} />
 
       {validEmployee && (
         <div className="card space-y-6 p-6 print:hidden">
@@ -125,7 +131,10 @@ export default async function InstantViewPage({
               )}
             </span>
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-primary">{validEmployee.name}</h2>
+              <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-primary">
+                {validEmployee.name}
+                <Badge color={validEmployee.supplierId ? "slate" : validEmployee.category === "STAFF" ? "blue" : "green"}>{rosterLabel(validEmployee)}</Badge>
+              </h2>
               <p className="tabular text-sm text-muted">
                 {validEmployee.employeeIdNo}
                 {validEmployee.trade ? ` · ${validEmployee.trade}` : ""}

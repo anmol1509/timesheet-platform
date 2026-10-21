@@ -63,7 +63,7 @@ export function RunVariance({ prevMonth, total, prevTotal, count, prevCount, row
         <ul className="mt-3 divide-y divide-[var(--border)] text-sm">
           {notable.map((r) => (
             <li key={r.employeeId} className="flex items-center justify-between gap-3 py-1.5">
-              <Link href={`/employees/${r.employeeId}`} className="truncate text-primary hover:underline">{r.name}</Link>
+              <Link href={`/employees/${r.employeeId}`} target="_blank" rel="noopener noreferrer" className="truncate text-primary hover:underline">{r.name}</Link>
               <span className="tabular shrink-0 text-xs text-secondary">
                 {r.before === null ? <span className="text-[var(--info)]">New this month · AED {aed(r.now ?? 0)}</span> : r.now === null ? <span className="text-[var(--warning)]">Not in this run (was AED {aed(r.before)})</span> : <>AED {aed(r.before)} → <span className="font-medium text-primary">{aed(r.now)}</span></>}
               </span>

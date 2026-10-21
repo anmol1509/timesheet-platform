@@ -1,9 +1,41 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronRight, Home } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { getNavPages } from "@/app/(platform)/(app)/nav-links";
 
 export type Crumb = { label: string; href?: string };
+
+const looksLikeId = (seg: string) => /\d/.test(seg) && seg.length >= 6;
+const prettify = (seg: string) => seg.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+/**
+ * Breadcrumbs for a page that doesn't set its own: the sidebar section and page it lives under, any detail level in
+ * between, then the page itself. Top-level pages (the sidebar entry itself) get none.
+ */
+function autoCrumbs(pathname: string, title: string): Crumb[] {
+  const pages = getNavPages(true, true);
+  let best: (typeof pages)[number] | null = null;
+  for (const p of pages) {
+    if (p.href === "/") continue;
+    if ((pathname === p.href || pathname.startsWith(p.href + "/")) && (!best || p.href.length > best.href.length)) best = p;
+  }
+  if (!best || pathname === best.href) return [];
+  const crumbs: Crumb[] = [];
+  if (best.group !== best.label) crumbs.push({ label: best.group });
+  crumbs.push({ label: best.label, href: best.href });
+  const rest = pathname.slice(best.href.length).split("/").filter(Boolean);
+  let prefix = best.href;
+  rest.slice(0, -1).forEach((seg) => {
+    prefix += "/" + seg;
+    crumbs.push(looksLikeId(seg) ? { label: "Details", href: prefix } : { label: prettify(seg) });
+  });
+  crumbs.push({ label: title });
+  return crumbs;
+}
 
 /**
  * Standard page masthead: optional breadcrumbs, title, one-line context, and a
@@ -31,6 +63,8 @@ export function PageHeader({
   icon?: LucideIcon;
   className?: string;
 }) {
+  const pathname = usePathname();
+  breadcrumbs = breadcrumbs ?? autoCrumbs(pathname, title);
   return (
     <div className={cn("space-y-3", className)}>
       {breadcrumbs && breadcrumbs.length > 0 && (

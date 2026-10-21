@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertOctagon,
@@ -142,6 +142,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
   // The filters live in the address, so a filtered list can be shared or reloaded.
   const params = useSearchParams();
   const list = (k: string) => (params.get(k) ?? "").split("|").filter(Boolean);
+  const tableRef = useRef<HTMLDivElement>(null);
   const [tier, setTier] = useState<RenewalTier | "all">((TIERS.some((t) => t.key === params.get("tier")) ? params.get("tier") : "all") as RenewalTier | "all");
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [docs, setDocs] = useState<string[]>(list("doc"));
@@ -216,12 +217,16 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
             <button
               key={t.key}
               type="button"
-              onClick={() => setTier(active ? "all" : t.key)}
+              onClick={() => {
+                setTier(active ? "all" : t.key);
+                // Picking a box filters the table below, so take the reader to it.
+                if (!active) requestAnimationFrame(() => tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+              }}
               aria-pressed={active}
               className={cn(
                 "group rounded-card border p-4 text-left shadow-card transition hover:-translate-y-px hover:shadow-md",
                 t.card,
-                active && "ring-2 ring-[var(--brand-primary)] ring-offset-2 ring-offset-[var(--canvas)]"
+                active && "!border-[var(--brand-primary)] ring-2 ring-[var(--brand-primary)] ring-offset-2 ring-offset-[var(--canvas)]"
               )}
             >
               <div className="flex items-center justify-between gap-2">
@@ -261,7 +266,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
         <ExpiryChart items={rowsNoWeek} week={week} onWeek={setWeek} onSelect={setSelected} />
       )}
 
-      <div className="card overflow-hidden">
+      <div ref={tableRef} className="card scroll-mt-4 overflow-hidden">
         {saveError && <p role="alert" className="border-b border-[var(--error-border)] bg-[var(--error-soft)] px-4 py-2 text-sm text-[var(--error)]">{saveError}</p>}
         {view === "list" && canEdit && pickedRows.length > 0 && (
           <BulkBar count={pickedRows.length} owners={owners} currentUserId={currentUserId} canExport={canExport} onStatus={(s) => change(pickedRows, { status: s })} onOwner={(id) => change(pickedRows, { ownerId: id })} onExport={() => { setExportError(null); setExportOpen(true); }} onClear={() => setPicked(new Set())} />

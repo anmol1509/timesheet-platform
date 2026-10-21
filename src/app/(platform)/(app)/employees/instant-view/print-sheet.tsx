@@ -9,6 +9,7 @@ type Row = { id: string };
 type Employee = {
   id: string; name: string; employeeIdNo: string; previousId: string | null; trade: string | null; mobileNumber: string | null;
   nationality: string | null; passportNumber: string | null; sponsorName: string | null; active: boolean; photoData: unknown;
+  category: string | null; supplierId: string | null;
   supplier: { name: string } | null; project: { name: string } | null;
   branch: { name: string; address: string | null; phone: string | null; trn: string | null; logoId: string | null } | null;
   assignmentHistory: (Row & { branchName: string | null; projectName: string | null; mobilizedDate: Date | null; demobilizedDate: Date | null })[];
@@ -103,6 +104,7 @@ export function InstantPrintSheet({ employee: e, printedBy, printedAt }: { emplo
                     <p className="text-[10pt] text-[#475467]">{[e.employeeIdNo, e.trade, e.supplier?.name].filter(Boolean).join("  ·  ")}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                    <Fact label="Roster" value={e.supplierId ? "Supplier worker" : e.category === "STAFF" ? "Staff" : "Site staff"} />
                     <Fact label="Nationality" value={e.nationality} />
                     <Fact label="Mobile" value={e.mobileNumber} />
                     <Fact label="Passport no." value={e.passportNumber} />

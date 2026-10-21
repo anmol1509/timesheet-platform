@@ -1348,43 +1348,17 @@ export function EmployeeWizard({
             </Field>
           </Group>
 
-          <Group
-            title="Salary"
-            description="Used for payroll. Allowances can be added later in the employee's pay settings."
-          >
-            {fields.category === "STAFF" ? (
-              // Office/corporate roster is always paid a fixed monthly salary — no hourly option.
+          {/* Site staff are paid by trade rate; only the office roster has a salary to set here. */}
+          {fields.category === "STAFF" && (
+            <Group
+              title="Salary"
+              description="Used for payroll. Allowances can be added later in the employee's pay settings."
+            >
               <Field label="Basic salary (AED)">
                 <NumberInput value={fields.salaryRate} onChange={(v) => { set("salaryRate", String(v)); set("salaryType", "BASIC"); }} step={0.01} className="w-full" />
               </Field>
-            ) : (
-              <>
-                <Field label="Salary type">
-                  <Select
-                    value={fields.salaryType}
-                    onChange={(v) => set("salaryType", v)}
-                    placeholder="Not set"
-                    searchable={false}
-                    options={[
-                      { value: "BASIC", label: "Basic salary" },
-                      { value: "HOURLY", label: "Hourly rate" },
-                    ]}
-                  />
-                </Field>
-                {fields.salaryType && (
-                  <Field
-                    label={
-                      fields.salaryType === "HOURLY"
-                        ? "Hourly rate (AED)"
-                        : "Basic salary (AED)"
-                    }
-                  >
-                    <NumberInput value={fields.salaryRate} onChange={(v) => set("salaryRate", String(v))} step={0.01} className="w-full" />
-                  </Field>
-                )}
-              </>
-            )}
-          </Group>
+            </Group>
+          )}
         </div>
       )}
 

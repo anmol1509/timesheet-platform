@@ -68,7 +68,7 @@ export default async function EndOfServicePage() {
             <tbody className="divide-y divide-[var(--border)]">
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-4 py-3"><Link href={`/employees/${r.id}`} className="font-medium text-primary hover:underline">{r.name}</Link><p className="text-xs text-muted">{r.employeeIdNo}</p></td>
+                  <td className="px-4 py-3"><Link href={`/employees/${r.id}`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{r.name}</Link><p className="text-xs text-muted">{r.employeeIdNo}</p></td>
                   <td className="px-4 py-3 text-secondary">{r.joinDate ? r.joinDate.toLocaleDateString("en-GB") : <span className="text-subtle">Not set</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-secondary">{r.years == null ? "—" : `${r.years.toFixed(1)} yrs`}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-secondary">{r.basic > 0 ? aed(r.basic) : "—"}</td>

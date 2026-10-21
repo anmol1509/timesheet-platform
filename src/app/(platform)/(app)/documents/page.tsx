@@ -2,11 +2,11 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isAdminRole } from "@/lib/roles";
 import { branchWhere } from "@/lib/branch";
-import { StatTile } from "@/components/StatTile";
+import { DocStatTiles } from "./doc-stat-tiles";
 import { Insights } from "@/components/ListSummary";
 import { TypeStatusBars, type TypeStatusRow } from "./type-status-bars";
 import { PageHeader, CountPill } from "@/components/PageHeader";
-import { FileText, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FileText } from "lucide-react";
 import { complianceStatus } from "@/lib/compliance";
 import { DocumentsView } from "./documents-view";
 import { COMPANY_DOC_TYPES } from "./company-docs";
@@ -156,12 +156,7 @@ export default async function DocumentsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile href="/documents?tab=all" label="All Documents" value={documents.length} icon={FileText} />
-        <StatTile href="/documents?tab=valid" label="Valid" value={validCount} icon={CheckCircle2} />
-        <StatTile href="/documents?tab=expiring" label="Expiring Soon" value={expiringCount} icon={AlertTriangle} tone={expiringCount > 0 ? "warning" : "default"} />
-        <StatTile href="/documents?tab=expired" label="Expired" value={expiredCount} icon={AlertTriangle} tone={expiredCount > 0 ? "warning" : "default"} />
-      </div>
+      <DocStatTiles total={documents.length} valid={validCount} expiring={expiringCount} expired={expiredCount} />
 
       {documents.length > 0 && (
         <Insights id="documents" title="Documents by type and status">
