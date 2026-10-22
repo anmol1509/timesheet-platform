@@ -125,25 +125,25 @@ model Branch {
 
   // Books: the date the ledger starts (earlier history lives as opening balances), the date up to which
   // entries are locked, and when automatic postings were last brought up to date.
-  booksOpeningDate DateTime?      @db.Date
-  booksLockedUntil DateTime?      @db.Date
-  booksSyncedAt    DateTime?
+  booksOpeningDate     DateTime?        @db.Date
+  booksLockedUntil     DateTime?        @db.Date
+  booksSyncedAt        DateTime?
   // Which staff provisions the books accrue each month (end-of-service gratuity, annual leave, air tickets).
-  accrueGratuity   Boolean   @default(false)
-  accrueLeave      Boolean   @default(false)
-  accrueTickets    Boolean   @default(false)
+  accrueGratuity       Boolean          @default(false)
+  accrueLeave          Boolean          @default(false)
+  accrueTickets        Boolean          @default(false)
   // The company's rules for those provisions (gratuity days and cap, leave cap, default ticket); see lib/books/accruals.ts.
-  provisionPolicy  Json?
+  provisionPolicy      Json?
   // Which company bank receipts and payments use when none is chosen.
   defaultReceiptBankId String?
   defaultPaymentBankId String?
-  accounts         Account[]
-  journalEntries   JournalEntry[]
-  provisionRules   ProvisionRule[]
-  fixedAssets      FixedAsset[]
-  cheques          Cheque[]
-  recurringEntries RecurringEntry[]
-  exchangeRates    ExchangeRate[]
+  accounts             Account[]
+  journalEntries       JournalEntry[]
+  provisionRules       ProvisionRule[]
+  fixedAssets          FixedAsset[]
+  cheques              Cheque[]
+  recurringEntries     RecurringEntry[]
+  exchangeRates        ExchangeRate[]
 }
 
 // Company bank-account master, needed before Payroll/WPS can pay from a
@@ -197,22 +197,22 @@ model User {
 
   // Profile. `isActive` lets an admin suspend a sub-user without deleting
   // them (deleting fails anyway once they own uploads/documents).
-  phone          String?
-  jobTitle       String?
-  isActive       Boolean        @default(true)
+  phone              String?
+  jobTitle           String?
+  isActive           Boolean        @default(true)
   // Delivery preferences for notifications (in-app always on).
-  notifyEmail    Boolean        @default(true)
+  notifyEmail        Boolean        @default(true)
   // Appearance and start page (see lib/preferences.ts). Follows the person to any device.
-  preferences    Json?
+  preferences        Json?
   // Sign-ins older than this are no longer valid ("sign out of other devices").
   sessionsValidAfter DateTime?
-  sessions       UserSession[]
-  notifyWhatsapp Boolean        @default(false)
-  whatsappNumber String?
-  notifications  Notification[]
-  drafts         Draft[]
-  avatar         StoredImage?   @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
-  avatarId       String?
+  sessions           UserSession[]
+  notifyWhatsapp     Boolean        @default(false)
+  whatsappNumber     String?
+  notifications      Notification[]
+  drafts             Draft[]
+  avatar             StoredImage?   @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
+  avatarId           String?
 
   // Fine-grained permissions. Null = legacy behaviour driven by `role` alone
   // (admins do everything, STAFF everything except Administration), so every
@@ -564,7 +564,35 @@ model ClientInvoice {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
+  // E-invoicing: what was sent to the accredited service provider and what came back. All null until it is sent.
+  einvoiceProvider String?
+  einvoiceRef      String? // the provider's id for this invoice
+  einvoiceStatus   String? // "PENDING" | "ACCEPTED" | "REJECTED" | "FAILED"
+  einvoiceError    String?
+  einvoiceSentAt   DateTime?
+
+  lines ClientInvoiceLine[]
+
   @@index([month, clientId])
+}
+
+// One billed line, kept as issued. An e-invoice needs quantity, unit price and VAT per line, and the total alone
+// can't be turned back into those.
+model ClientInvoiceLine {
+  id           String  @id @default(cuid())
+  description  String
+  employeeIdNo String?
+  trade        String?
+  quantity     Float // hours
+  unitPrice    Float // AED per hour
+  netAmount    Float
+  vatRate      Float // 0.05 standard
+  vatAmount    Float
+
+  invoice   ClientInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId String
+
+  @@index([invoiceId])
 }
 
 model ClientContact {
@@ -679,65 +707,65 @@ enum EmployeeCategory {
 // supplier) and manually enriched here (photo, compliance dates, etc). The
 // upload flow never touches the manually-owned fields.
 model Employee {
-  id                 String              @id @default(cuid())
+  id                   String              @id @default(cuid())
   // Pay structure for payroll. ITEMISED = basic + allowances; FLAT = one
   // monthly rate; HOURLY = normal hours x hourly rate. Overtime is paid on top,
   // at (basic|flat)/240 x multiplier, or hourly rate x multiplier for HOURLY.
-  payStructure       String? // "ITEMISED" | "FLAT" | "HOURLY"
-  basicSalary        Decimal?            @db.Decimal(12, 2)
-  housingAllowance   Decimal?            @db.Decimal(12, 2)
-  foodAllowance      Decimal?            @db.Decimal(12, 2)
-  transportAllowance Decimal?            @db.Decimal(12, 2)
-  otherAllowance     Decimal?            @db.Decimal(12, 2)
-  flatMonthlyRate    Decimal?            @db.Decimal(12, 2)
-  hourlyRate         Decimal?            @db.Decimal(12, 2)
-  paysOvertime       Boolean             @default(true)
+  payStructure         String? // "ITEMISED" | "FLAT" | "HOURLY"
+  basicSalary          Decimal?            @db.Decimal(12, 2)
+  housingAllowance     Decimal?            @db.Decimal(12, 2)
+  foodAllowance        Decimal?            @db.Decimal(12, 2)
+  transportAllowance   Decimal?            @db.Decimal(12, 2)
+  otherAllowance       Decimal?            @db.Decimal(12, 2)
+  flatMonthlyRate      Decimal?            @db.Decimal(12, 2)
+  hourlyRate           Decimal?            @db.Decimal(12, 2)
+  paysOvertime         Boolean             @default(true)
   // Contract terms the books can accrue (all optional; blank means "not part of this person's contract").
   leaveDaysPerYear     Int?
   airTicketAmount      Decimal?            @db.Decimal(12, 2)
   airTicketEveryMonths Int?
   // Not entitled to gratuity (for example a limited-term contract), so none is set aside.
   skipGratuity         Boolean             @default(false)
-  otMultiplier       Decimal             @default(1.25) @db.Decimal(4, 2)
+  otMultiplier         Decimal             @default(1.25) @db.Decimal(4, 2)
   // Working pattern: hours beyond dailyHours on a working day are overtime at
   // otMultiplier; hours on a weekly off day (0=Sun..6=Sat) or a HOLIDAY/OFF day
   // are paid at restOtMultiplier. Overtime rate = basic / 30 / dailyHours.
-  dailyHours         Decimal             @default(8) @db.Decimal(4, 2)
-  weeklyOffDays      Int[]               @default([]) // empty = follow the client's off days
-  restOtMultiplier   Decimal             @default(1.5) @db.Decimal(4, 2)
-  payrollLines       PayrollLine[]
-  loans              EmployeeLoan[]
-  salaryRevisions    SalaryRevision[]
-  settlements        FinalSettlement[]
-  payAdjustments     PayrollAdjustment[]
-  issuedLetters      IssuedLetter[]
+  dailyHours           Decimal             @default(8) @db.Decimal(4, 2)
+  weeklyOffDays        Int[]               @default([]) // empty = follow the client's off days
+  restOtMultiplier     Decimal             @default(1.5) @db.Decimal(4, 2)
+  payrollLines         PayrollLine[]
+  loans                EmployeeLoan[]
+  salaryRevisions      SalaryRevision[]
+  settlements          FinalSettlement[]
+  payAdjustments       PayrollAdjustment[]
+  issuedLetters        IssuedLetter[]
   // Self-service portal sign-in (phone + one-time code). On by default; an admin
   // can switch it off per employee.
-  essEnabled         Boolean             @default(true)
-  employeeIdNo       String              @unique
-  name               String
-  trade              String?
+  essEnabled           Boolean             @default(true)
+  employeeIdNo         String              @unique
+  name                 String
+  trade                String?
   // Kept alongside the legacy `active` boolean during the transition — existing
   // dashboard/list queries still read `active`; new code should prefer `status`.
-  status             EmployeeStatus      @default(ACTIVE)
-  category           EmployeeCategory    @default(SITE_STAFF)
-  photoData          Bytes?
-  photoMimeType      String?
-  nationality        String?
-  position           String?
+  status               EmployeeStatus      @default(ACTIVE)
+  category             EmployeeCategory    @default(SITE_STAFF)
+  photoData            Bytes?
+  photoMimeType        String?
+  nationality          String?
+  position             String?
   // Office/corporate roster only (category = STAFF) — "which team", where
   // `trade` is the equivalent field for the field/manpower roster.
-  department         String?
-  passportNumber     String?
-  emiratesId         String?
-  emiratesIdExpiry   DateTime?
-  visaExpiry         DateTime?
-  laborCardExpiry    DateTime?
-  medicalExpiry      DateTime?
-  passportExpiry     DateTime?
-  salaryType         String? // "BASIC" | "HOURLY" — reference only
-  salaryRate         Float? // reference only, pairs with salaryType
-  notes              String?
+  department           String?
+  passportNumber       String?
+  emiratesId           String?
+  emiratesIdExpiry     DateTime?
+  visaExpiry           DateTime?
+  laborCardExpiry      DateTime?
+  medicalExpiry        DateTime?
+  passportExpiry       DateTime?
+  salaryType           String? // "BASIC" | "HOURLY" — reference only
+  salaryRate           Float? // reference only, pairs with salaryType
+  notes                String?
 
   dateOfBirth           DateTime?
   gender                String? // "MALE" | "FEMALE"
@@ -2937,17 +2965,17 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id          String  @id @default(cuid())
-  debit       Decimal @default(0) @db.Decimal(14, 2)
-  credit      Decimal @default(0) @db.Decimal(14, 2)
-  description String?
+  id            String   @id @default(cuid())
+  debit         Decimal  @default(0) @db.Decimal(14, 2)
+  credit        Decimal  @default(0) @db.Decimal(14, 2)
+  description   String?
   // Who it is for (a client, supplier or employee), and which project it belongs to, so ledgers and
   // profit can be cut by party and by project.
-  partyType   String?
-  partyId     String?
-  projectId   String?
+  partyType     String?
+  partyId       String?
+  projectId     String?
   // For a line in a foreign currency: the currency and the amount in it (always positive; the side is debit or credit).
-  currency    String?
+  currency      String?
   foreignAmount Decimal? @db.Decimal(14, 2)
 
   entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
@@ -3068,20 +3096,20 @@ model ProvisionRule {
 
 /// An item the company owns and writes off over its useful life (vehicle, camp furniture, equipment).
 model FixedAsset {
-  id           String    @id @default(cuid())
-  name         String
-  category     String?
-  cost         Decimal   @db.Decimal(14, 2)
-  salvage      Decimal   @default(0) @db.Decimal(14, 2)
-  purchaseDate DateTime  @db.Date
-  lifeMonths   Int
+  id                String    @id @default(cuid())
+  name              String
+  category          String?
+  cost              Decimal   @db.Decimal(14, 2)
+  salvage           Decimal   @default(0) @db.Decimal(14, 2)
+  purchaseDate      DateTime  @db.Date
+  lifeMonths        Int
   // Set when the purchase should be posted too (paid from this account); blank when it is already in the books.
   paidFromAccountId String?
-  disposedOn   DateTime? @db.Date
-  disposalAmount Decimal? @db.Decimal(14, 2)
+  disposedOn        DateTime? @db.Date
+  disposalAmount    Decimal?  @db.Decimal(14, 2)
   disposalAccountId String?
-  notes        String?
-  createdAt    DateTime  @default(now())
+  notes             String?
+  createdAt         DateTime  @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -3091,22 +3119,22 @@ model FixedAsset {
 
 /// A cheque received or issued. Nothing reaches the books until it clears; post-dated ones sit here until their date.
 model Cheque {
-  id          String    @id @default(cuid())
-  direction   String // RECEIVED | ISSUED
-  number      String
-  chequeDate  DateTime  @db.Date
-  amount      Decimal   @db.Decimal(14, 2)
-  partyType   String // CLIENT | SUPPLIER | OTHER
-  partyId     String?
-  partyName   String
+  id               String    @id @default(cuid())
+  direction        String // RECEIVED | ISSUED
+  number           String
+  chequeDate       DateTime  @db.Date
+  amount           Decimal   @db.Decimal(14, 2)
+  partyType        String // CLIENT | SUPPLIER | OTHER
+  partyId          String?
+  partyName        String
   // The company bank account it is drawn on (issued) or will be deposited in (received).
-  bankId      String?
+  bankId           String?
   // For OTHER parties: the account the other side of the entry goes to.
   counterAccountId String?
-  narration   String?
-  status      String    @default("PENDING") // PENDING | CLEARED | BOUNCED | CANCELLED
-  clearedOn   DateTime? @db.Date
-  createdAt   DateTime  @default(now())
+  narration        String?
+  status           String    @default("PENDING") // PENDING | CLEARED | BOUNCED | CANCELLED
+  clearedOn        DateTime? @db.Date
+  createdAt        DateTime  @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
@@ -3116,16 +3144,16 @@ model Cheque {
 
 /// An entry that repeats (rent, insurance, a loan instalment): debit one account and credit another on a schedule.
 model RecurringEntry {
-  id         String    @id @default(cuid())
-  name       String
-  frequency  String // MONTHLY | QUARTERLY | YEARLY
-  startDate  DateTime  @db.Date
-  endDate    DateTime? @db.Date
+  id              String    @id @default(cuid())
+  name            String
+  frequency       String // MONTHLY | QUARTERLY | YEARLY
+  startDate       DateTime  @db.Date
+  endDate         DateTime? @db.Date
   debitAccountId  String
   creditAccountId String
-  amount     Decimal   @db.Decimal(14, 2)
-  active     Boolean   @default(true)
-  createdAt  DateTime  @default(now())
+  amount          Decimal   @db.Decimal(14, 2)
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
 
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
