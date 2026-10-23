@@ -11,6 +11,7 @@ export const metadata = { title: "Document types" };
 const GROUPS = [
   { appliesTo: "SUPPLIER", title: "Company documents", hint: "Filed against a supplier company, including your own." },
   { appliesTo: "SUPPLIER_PARTY", title: "Owner & sponsor documents", hint: "Filed against the owner, sponsor, partner or manager of a company." },
+  { appliesTo: "VEHICLE", title: "Vehicle documents", hint: "Filed against a vehicle: Mulkiya, insurance, passing test, permits and more." },
 ] as const;
 
 export default async function DocumentTypesPage() {
@@ -28,7 +29,7 @@ export default async function DocumentTypesPage() {
       <HeroHeader
         icon={FileText}
         title="Document types"
-        subtitle="Choose which documents each company, owner and sponsor can hold, which are required, and when to remind you before they expire."
+        subtitle="Choose which documents each company, owner, sponsor and vehicle can hold, which are required, and when to remind you before they expire."
         pills={[
           { label: "Types", value: String(all.filter((t) => t.isActive).length) },
           { label: "Custom", value: String(all.filter((t) => !t.builtIn).length) },

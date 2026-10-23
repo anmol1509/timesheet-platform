@@ -842,8 +842,10 @@ model Employee {
   site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
   siteId String?
 
-  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicle   Vehicle? @relation("VehicleRoster", fields: [vehicleId], references: [id])
   vehicleId String?
+  /// Vehicles this employee is the assigned driver of.
+  drivenVehicles Vehicle[] @relation("VehicleDriver")
 
   // The supplier's workmen compensation certificate (an Attachment) this worker was named on when it was read.
   // Plain id, not a relation: a deleted certificate just stops covering anyone.
@@ -1527,7 +1529,24 @@ model Vehicle {
   notes              String?
   createdAt          DateTime  @default(now())
 
-  employees Employee[]
+  make               String?
+  model              String?
+  year               Int?
+  colour             String?
+  chassisNumber      String? // VIN
+  engineNumber       String?
+  trafficFileNumber  String?
+  plateEmirate       String?
+  plateCategory      String? // e.g. "Private", "Commercial", "Transport"
+  fuelType           String?
+  ownership          String    @default("OWNED") // "OWNED" | "LEASED" | "RENTED"
+  lessor             String? // the leasing or rental company, when not owned
+  odometerKm         Int?
+  // The employee who drives it; driverName/driverPhone are copied from them on save, or typed for an outside driver.
+  driver             Employee? @relation("VehicleDriver", fields: [driverEmployeeId], references: [id], onDelete: SetNull)
+  driverEmployeeId   String?
+
+  employees Employee[] @relation("VehicleRoster")
   projects  VehicleProject[]
   routes    Route[]
 
@@ -1537,6 +1556,7 @@ model Vehicle {
 
   @@unique([branchId, plateNumber])
   @@index([branchId])
+  @@index([driverEmployeeId])
 }
 
 // A named, recurring pickup route driven by a Vehicle — not branch-scoped,
@@ -3217,7 +3237,7 @@ model SupplierParty {
 /// a custom type. Attachment.docType holds the key.
 model DocumentType {
   id           String   @id @default(cuid())
-  /// What the document is filed against: "SUPPLIER" (the company) or "SUPPLIER_PARTY" (an owner or sponsor).
+  /// What the document is filed against: "SUPPLIER" (the company), "SUPPLIER_PARTY" (an owner or sponsor) or "VEHICLE".
   appliesTo    String
   key          String
   label        String

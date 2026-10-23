@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin, resolveSuperAdminBranchId } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { BUILT_IN_DOC_TYPES, docTypeKey, parseReminderDays } from "@/lib/documentTypes";
+import { BUILT_IN_DOC_TYPES, DOC_TARGETS, docTypeKey, parseReminderDays } from "@/lib/documentTypes";
 
 async function branchOf() {
   const admin = await requireAdmin();
@@ -12,7 +12,7 @@ async function branchOf() {
   return { admin, branchId };
 }
 
-const TARGETS = new Set(["SUPPLIER", "SUPPLIER_PARTY"]);
+const TARGETS = new Set<string>(DOC_TARGETS);
 const REQUIRED = new Set(["NO", "YES", "OWN_COMPANY"]);
 
 /** Creates a custom type, or saves the branch's changes to a built-in one (the row is created on first edit). */
@@ -27,7 +27,7 @@ export async function saveDocumentTypeAction(formData: FormData): Promise<{ erro
   if (!TARGETS.has(appliesTo)) return { error: "Choose what the document is for." };
   if (!label) return { error: "Enter a name." };
   if (!REQUIRED.has(required)) return { error: "Choose whether it is required." };
-  if (appliesTo === "SUPPLIER_PARTY" && required === "OWN_COMPANY") return { error: "Only company documents can be required for own companies." };
+  if (appliesTo !== "SUPPLIER" && required === "OWN_COMPANY") return { error: "Only company documents can be required for own companies." };
 
   const existingKey = String(formData.get("key") || "");
   const key = existingKey || docTypeKey(label);

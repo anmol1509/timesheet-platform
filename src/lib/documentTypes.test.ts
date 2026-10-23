@@ -59,3 +59,13 @@ test("key and reminder parsing", () => {
   assert.equal(docTypeKey(" Pest control cert. "), "PEST_CONTROL_CERT");
   assert.deepEqual(parseReminderDays("30, 90 7 7 abc -5"), [90, 30, 7]);
 });
+
+test("vehicle types: Mulkiya and insurance are required, and the registry scopes them to vehicles", () => {
+  const v = resolveDocTypes([], "VEHICLE");
+  assert.equal(v.find((t) => t.key === "VEHICLE_REGISTRATION")?.required, "YES");
+  assert.equal(v.find((t) => t.key === "VEHICLE_INSURANCE")?.required, "YES");
+  assert.equal(v.some((t) => t.key === "PASSPORT"), false);
+  assert.equal(resolveDocTypes([], "SUPPLIER").some((t) => t.key === "VEHICLE_INSURANCE"), false);
+  const custom = resolveDocTypes([{ appliesTo: "VEHICLE", key: "GPS_CERT", label: "GPS tracker certificate", hasExpiry: true, required: "NO", reminderDays: [30], sortOrder: 0, isActive: true }], "VEHICLE");
+  assert.equal(custom.at(-1)?.key, "GPS_CERT");
+});

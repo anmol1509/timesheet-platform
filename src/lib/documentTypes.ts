@@ -3,7 +3,8 @@
  * a branch changes a built-in type, or adds its own, with DocumentType rows (see `resolveDocTypes`). An Attachment
  * stores the type's key in `docType`.
  */
-export type DocAppliesTo = "SUPPLIER" | "SUPPLIER_PARTY";
+export type DocAppliesTo = "SUPPLIER" | "SUPPLIER_PARTY" | "VEHICLE";
+export const DOC_TARGETS: readonly DocAppliesTo[] = ["SUPPLIER", "SUPPLIER_PARTY", "VEHICLE"];
 export type DocRequired = "NO" | "YES" | "OWN_COMPANY";
 
 export type DocTypeDef = {
@@ -54,6 +55,20 @@ const PARTY: Seed[] = [
   ["OTHER", "Other", true],
 ];
 
+const VEHICLE: Seed[] = [
+  ["VEHICLE_REGISTRATION", "Registration (Mulkiya)", true, "YES"],
+  ["VEHICLE_INSURANCE", "Vehicle insurance", true, "YES"],
+  ["VEHICLE_PASSING", "Annual passing / fitness test", true],
+  ["TRANSPORT_PERMIT", "Transport / route permit", true],
+  ["LEASE_CONTRACT", "Purchase or lease contract", true],
+  ["WARRANTY", "Warranty", true],
+  ["MAINTENANCE_RECORD", "Maintenance / service record", false],
+  ["OTHER", "Other", true],
+];
+
+/** Vehicle document types whose latest expiry also keeps the vehicle's own date fields current. */
+export const VEHICLE_EXPIRY_FIELD = { VEHICLE_REGISTRATION: "registrationExpiry", VEHICLE_INSURANCE: "insuranceExpiry" } as const;
+
 function seeds(appliesTo: DocAppliesTo, list: Seed[]): DocTypeDef[] {
   return list.map(([key, label, hasExpiry, required], i) => ({
     appliesTo,
@@ -68,7 +83,7 @@ function seeds(appliesTo: DocAppliesTo, list: Seed[]): DocTypeDef[] {
   }));
 }
 
-export const BUILT_IN_DOC_TYPES: DocTypeDef[] = [...seeds("SUPPLIER", COMPANY), ...seeds("SUPPLIER_PARTY", PARTY)];
+export const BUILT_IN_DOC_TYPES: DocTypeDef[] = [...seeds("SUPPLIER", COMPANY), ...seeds("SUPPLIER_PARTY", PARTY), ...seeds("VEHICLE", VEHICLE)];
 
 export type DocTypeRow = {
   appliesTo: string;
@@ -86,10 +101,10 @@ export function resolveDocTypes(rows: DocTypeRow[], appliesTo?: DocAppliesTo): D
   const out = new Map<string, DocTypeDef>();
   for (const d of BUILT_IN_DOC_TYPES) out.set(`${d.appliesTo}|${d.key}`, d);
   for (const r of rows) {
-    if (r.appliesTo !== "SUPPLIER" && r.appliesTo !== "SUPPLIER_PARTY") continue;
+    if (!(DOC_TARGETS as readonly string[]).includes(r.appliesTo)) continue;
     const id = `${r.appliesTo}|${r.key}`;
     out.set(id, {
-      appliesTo: r.appliesTo,
+      appliesTo: r.appliesTo as DocAppliesTo,
       key: r.key,
       label: r.label,
       hasExpiry: r.hasExpiry,

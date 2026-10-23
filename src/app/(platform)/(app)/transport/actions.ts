@@ -83,12 +83,40 @@ export async function updateVehicleAction(formData: FormData): Promise<{ error: 
     if (taken) return { error: `Another vehicle already has the plate ${plate}.` };
   }
 
+  // An employee driver supplies the name and phone; otherwise they are typed for an outside driver.
+  const driverEmployeeId = stringOrNull(formData.get("driverEmployeeId"));
+  let driverName = stringOrNull(formData.get("driverName"));
+  let driverPhone = stringOrNull(formData.get("driverPhone"));
+  if (driverEmployeeId) {
+    const emp = await prisma.employee.findUnique({ where: { id: driverEmployeeId }, select: { name: true, mobileNumber: true, branchId: true } });
+    if (!emp || isOutsideBranch(emp.branchId, branchId, isSuperAdmin)) return { error: "That driver wasn't found." };
+    driverName = emp.name;
+    driverPhone = emp.mobileNumber ?? driverPhone;
+  }
+  const ownership = String(formData.get("ownership") || "OWNED");
+  const year = numberOrNull(formData.get("year"));
+  if (year !== null && (!Number.isInteger(year) || year < 1950 || year > new Date().getFullYear() + 1)) return { error: "Enter a valid model year." };
+
   const data = {
     plateNumber: plate,
     type: stringOrNull(formData.get("type")),
     capacity: numberOrNull(formData.get("capacity")),
-    driverName: stringOrNull(formData.get("driverName")),
-    driverPhone: stringOrNull(formData.get("driverPhone")),
+    driverName,
+    driverPhone,
+    driverEmployeeId,
+    make: stringOrNull(formData.get("make")),
+    model: stringOrNull(formData.get("model")),
+    year,
+    colour: stringOrNull(formData.get("colour")),
+    chassisNumber: stringOrNull(formData.get("chassisNumber")),
+    engineNumber: stringOrNull(formData.get("engineNumber")),
+    trafficFileNumber: stringOrNull(formData.get("trafficFileNumber")),
+    plateEmirate: stringOrNull(formData.get("plateEmirate")),
+    plateCategory: stringOrNull(formData.get("plateCategory")),
+    fuelType: stringOrNull(formData.get("fuelType")),
+    ownership: ["OWNED", "LEASED", "RENTED"].includes(ownership) ? ownership : "OWNED",
+    lessor: stringOrNull(formData.get("lessor")),
+    odometerKm: numberOrNull(formData.get("odometerKm")),
     registrationExpiry: dateOrNull(formData.get("registrationExpiry")),
     insuranceExpiry: dateOrNull(formData.get("insuranceExpiry")),
     status: String(formData.get("status") || "ACTIVE"),
@@ -131,6 +159,7 @@ export async function deleteVehicleAction(formData: FormData) {
     where: { vehicleId: id },
     data: { vehicleId: null },
   });
+  await prisma.attachment.deleteMany({ where: { entityType: "VEHICLE", entityId: id } });
   await prisma.vehicle.delete({ where: { id } });
 
   if (existing) {

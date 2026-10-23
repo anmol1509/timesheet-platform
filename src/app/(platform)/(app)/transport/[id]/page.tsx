@@ -2,7 +2,11 @@ import { Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { AttachmentUploader } from "@/components/AttachmentUploader";
+import { DocumentChecklist } from "@/components/DocumentChecklist";
+import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { Badge } from "@/components/Badge";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -30,8 +34,8 @@ export default async function VehicleDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const [vehicle, allProjects, allEmployees] = await Promise.all([
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const [vehicle, allProjects, allEmployees, files] = await Promise.all([
     prisma.vehicle.findUnique({
       where: { id },
       include: {
@@ -60,8 +64,19 @@ export default async function VehicleDetailPage({
       },
       orderBy: { name: "asc" },
     }),
+    prisma.attachment.findMany({
+      where: { entityType: "VEHICLE", entityId: id },
+      orderBy: { uploadedAt: "desc" },
+      select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
+    }),
   ]);
   if (!vehicle || isOutsideBranch(vehicle.branchId, branchId, isSuperAdmin)) notFound();
+
+  const typeRows = vehicle.branchId ? await prisma.documentType.findMany({ where: { branchId: vehicle.branchId } }) : [];
+  const types = resolveDocTypes(typeRows, "VEHICLE");
+  const docFiles = files.map((a) => ({ id: a.id, docType: a.docType, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, uploadedAt: a.uploadedAt.toISOString() }));
+  const known = new Set(types.map((t) => t.key));
+  const canEdit = can(subjectOf(user), "facilities.transport", "edit");
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -90,7 +105,7 @@ export default async function VehicleDetailPage({
           />
         </div>
         <p className="mt-1 text-sm text-muted">
-          {vehicle.type || "No type set"} · {vehicle.employees.length}
+          {[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(" ") || vehicle.type || "No type set"} · {vehicle.employees.length}
           {vehicle.capacity ? ` / ${vehicle.capacity}` : ""} on roster
         </p>
       </div>
@@ -107,8 +122,46 @@ export default async function VehicleDetailPage({
           insuranceExpiry: toDateInput(vehicle.insuranceExpiry),
           status: vehicle.status,
           notes: vehicle.notes,
+          driverEmployeeId: vehicle.driverEmployeeId,
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          colour: vehicle.colour,
+          chassisNumber: vehicle.chassisNumber,
+          engineNumber: vehicle.engineNumber,
+          trafficFileNumber: vehicle.trafficFileNumber,
+          plateEmirate: vehicle.plateEmirate,
+          plateCategory: vehicle.plateCategory,
+          fuelType: vehicle.fuelType,
+          ownership: vehicle.ownership,
+          lessor: vehicle.lessor,
+          odometerKm: vehicle.odometerKm,
         }}
+        drivers={allEmployees.map((e) => ({ id: e.id, name: e.name, employeeIdNo: e.employeeIdNo }))}
       />
+
+      <div className="card space-y-4 p-6">
+        <div>
+          <h2 className="text-sm font-semibold text-primary">Documents</h2>
+          <p className="mt-1 text-sm text-muted">
+            Mulkiya, insurance, passing test, permits and the lease contract. The Mulkiya and insurance expiry dates above follow the latest file uploaded.
+          </p>
+        </div>
+        <DocumentChecklist items={buildChecklist(types, docFiles, false)} />
+        {canEdit && (
+          <AttachmentUploader
+            entityType="VEHICLE"
+            entityId={vehicle.id}
+            entityBranchId={vehicle.branchId}
+            revalidate={`/transport/${vehicle.id}`}
+            docTypeOptions={[
+              ...activeDocTypes(types).map((t) => ({ value: t.key, label: t.label })),
+              ...[...new Set(docFiles.map((a) => a.docType))].filter((k) => !known.has(k)).map((k) => ({ value: k, label: k })),
+            ]}
+            attachments={docFiles}
+          />
+        )}
+      </div>
 
       <ProjectRoutes
         vehicleId={vehicle.id}
