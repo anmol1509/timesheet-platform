@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { resolveDocTypes } from "@/lib/documentTypes";
 
 /**
  * The record types a generic attachment may be filed against, each with a lookup
@@ -13,6 +14,7 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
  */
 const ATTACHABLE: Record<string, (id: string) => Promise<{ branchId: string | null } | null>> = {
   SUPPLIER: (id) => prisma.supplier.findUnique({ where: { id }, select: { branchId: true } }),
+  SUPPLIER_PARTY: (id) => prisma.supplierParty.findUnique({ where: { id }, select: { branchId: true } }),
   SUPPLIER_BILL: (id) => prisma.supplierBill.findUnique({ where: { id }, select: { branchId: true } }),
   EXPENSE: (id) => prisma.expense.findUnique({ where: { id }, select: { branchId: true } }),
   QUOTATION: (id) => prisma.quotation.findUnique({ where: { id }, select: { branchId: true } }),
@@ -54,6 +56,14 @@ export async function uploadAttachmentAction(
     return { error: "That record belongs to another branch." };
   }
   const entityBranchId = entity.branchId;
+  // Company and owner/sponsor files must be one of the branch's document types (built-in or its own).
+  if (entityType === "SUPPLIER" || entityType === "SUPPLIER_PARTY") {
+    const rows = await prisma.documentType.findMany({ where: { branchId: entityBranchId ?? undefined } });
+    const known = resolveDocTypes(rows, entityType).find((t) => t.key === docType);
+    // Older files used types the registry doesn't list (e.g. WORKMEN_COMPENSATION_INSURANCE), so SUPPLIER keeps those.
+    if (entityType === "SUPPLIER_PARTY" && !known) return { error: "Choose one of the listed document types." };
+    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this branch.` };
+  }
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file to upload." };
   }

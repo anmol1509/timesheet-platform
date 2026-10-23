@@ -45,6 +45,13 @@ export default async function LookupsPage({
         ]}
       />
 
+      <p className="text-sm text-muted">
+        Looking for supplier, owner and sponsor documents?{" "}
+        <Link href="/settings/document-types" className="font-medium text-[var(--brand-primary)] hover:underline">
+          Manage document types
+        </Link>
+      </p>
+
       <div className="grid gap-5 lg:grid-cols-[250px_1fr]">
         <nav aria-label="Lookup lists" className="card h-fit min-w-0 p-2 lg:sticky lg:top-4">
           <ul className="flex gap-1 overflow-x-auto lg:max-h-[70vh] lg:flex-col lg:overflow-y-auto">
