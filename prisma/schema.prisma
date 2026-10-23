@@ -3255,3 +3255,16 @@ model DocumentType {
 
   @@unique([branchId, appliesTo, key])
 }
+
+/// One reminder sent for one document at one step (e.g. 30 days out). refKey names the document and its expiry date, so a
+/// renewed document (a new date) starts afresh. Written by the expiry sweep, which sends only reminders not yet recorded.
+model DocumentReminder {
+  id        String   @id @default(cuid())
+  refKey    String
+  threshold Int
+  sentAt    DateTime @default(now())
+  branchId  String
+
+  @@unique([refKey, threshold])
+  @@index([branchId])
+}

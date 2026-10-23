@@ -16,6 +16,7 @@ import {
   MapPin,
   Search,
   ShieldCheck,
+  Truck,
   Upload,
   UserRound,
   X,
@@ -76,7 +77,27 @@ function runwayPct(days: number) {
 }
 
 function subjectHref(item: RenewalItem) {
+  if (item.href) return item.href;
   return item.kind === "employee" ? `/employees/${item.subjectId}` : `/suppliers/${item.subjectId}`;
+}
+
+type Kind = RenewalItem["kind"];
+const KINDS: Kind[] = ["employee", "supplier", "party", "vehicle"];
+const KIND_FILTER = [
+  { value: "", label: "Everyone" },
+  { value: "employee", label: "Employees" },
+  { value: "supplier", label: "Suppliers" },
+  { value: "party", label: "Owners & sponsors" },
+  { value: "vehicle", label: "Vehicles" },
+];
+const VIEW_LABEL: Record<Kind, string> = { employee: "View employee", supplier: "View supplier", party: "View supplier", vehicle: "View vehicle" };
+const UPDATE_LABEL: Record<Kind, string> = { employee: "", supplier: "Update supplier documents", party: "Update owner & sponsor documents", vehicle: "Update vehicle documents" };
+/** The line under a name: suppliers are marked as such; owners and vehicles already say what they are. */
+const subjectLine = (item: RenewalItem) => (item.kind === "supplier" ? `Supplier · ${item.subjectRef}` : item.subjectRef);
+function KindIcon({ kind, className }: { kind: Kind; className: string }) {
+  if (kind === "vehicle") return <Truck className={className} aria-hidden />;
+  if (kind === "party" || kind === "employee") return <UserRound className={className} aria-hidden />;
+  return <Building2 className={className} aria-hidden />;
 }
 
 function SubjectAvatar({ item, size = "md" }: { item: RenewalItem; size?: "md" | "xl" }) {
@@ -85,7 +106,7 @@ function SubjectAvatar({ item, size = "md" }: { item: RenewalItem; size?: "md" |
   }
   return (
     <span className={cn("flex shrink-0 items-center justify-center rounded-full bg-surface-sunken text-muted ring-2 ring-[var(--surface)]", size === "xl" ? "h-16 w-16" : "h-9 w-9")}>
-      <Building2 className={size === "xl" ? "h-7 w-7" : "h-4 w-4"} aria-hidden />
+      <KindIcon kind={item.kind} className={size === "xl" ? "h-7 w-7" : "h-4 w-4"} />
     </span>
   );
 }
@@ -148,7 +169,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
   const [docs, setDocs] = useState<string[]>(list("doc"));
   const [suppliers, setSuppliers] = useState<string[]>(list("supplier"));
   const [projects, setProjects] = useState<string[]>(list("project"));
-  const [kind, setKind] = useState<"" | "employee" | "supplier">(params.get("who") === "employee" || params.get("who") === "supplier" ? (params.get("who") as "employee" | "supplier") : "");
+  const [kind, setKind] = useState<"" | Kind>(KINDS.includes(params.get("who") as Kind) ? (params.get("who") as Kind) : "");
   const [sort, setSort] = useState<"soonest" | "name" | "document">((["soonest", "name", "document"].includes(params.get("sort") ?? "") ? params.get("sort") : "soonest") as "soonest" | "name" | "document");
   const wp = params.get("week");
   const [week, setWeek] = useState<WeekKey | null>(wp === "overdue" ? "overdue" : wp !== null && /^\d+$/.test(wp) && Number(wp) < WEEKS ? Number(wp) : null);
@@ -285,7 +306,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
           <div className="w-44"><MultiSelect values={suppliers} onChange={setSuppliers} options={supplierOptions} placeholder="All suppliers" noun="suppliers" /></div>
           <div className="w-44"><MultiSelect values={projects} onChange={setProjects} options={projectOptions} placeholder="All projects" noun="projects" /></div>
           <div className="w-36">
-            <Select value={kind} onChange={(v) => setKind(v as typeof kind)} searchable={false} placeholder="Everyone" options={[{ value: "", label: "Everyone" }, { value: "employee", label: "Employees" }, { value: "supplier", label: "Suppliers" }]} />
+            <Select value={kind} onChange={(v) => setKind(v as typeof kind)} searchable={false} placeholder="Everyone" options={KIND_FILTER} />
           </div>
           <div className="w-40">
             <Select value={sort} onChange={(v) => setSort(v as typeof sort)} searchable={false} options={[{ value: "soonest", label: "Soonest first" }, { value: "name", label: "Name A–Z" }, { value: "document", label: "By document" }]} />
@@ -352,7 +373,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
                           <div className="min-w-0">
                             <p className="truncate font-medium text-primary">{item.subjectName}</p>
                             <p className="tabular truncate text-xs text-subtle">
-                              {item.kind === "supplier" ? `Supplier · ${item.subjectRef}` : item.subjectRef}
+                              {subjectLine(item)}
                             </p>
                           </div>
                         </div>
@@ -505,7 +526,7 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange, onClose
         <SubjectAvatar item={item} size="xl" />
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-primary">{item.subjectName}</p>
-          <p className="tabular text-sm text-muted">{item.kind === "supplier" ? `Supplier · ${item.subjectRef}` : item.subjectRef}</p>
+          <p className="tabular text-sm text-muted">{subjectLine(item)}</p>
           <div className="mt-2">
             <Badge color={t.badge} dot>{t.label}</Badge>
           </div>
@@ -531,7 +552,7 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange, onClose
         <DetailRow icon={CalendarDays} label="Expiry date" value={fmt(item.expiry)} />
         {item.kind === "employee" && <DetailRow icon={FileText} label="Scan on file" value={<ScanNote item={item} inline />} />}
         {item.kind === "employee" && <DetailRow icon={MapPin} label="Project" value={item.project ?? "Not deployed"} />}
-        <DetailRow icon={Building2} label={item.kind === "employee" ? "Company" : "Supplier"} value={item.supplier ?? "—"} />
+        <DetailRow icon={Building2} label={item.kind === "employee" ? "Company" : item.kind === "vehicle" ? "Company" : "Supplier"} value={item.supplier ?? "—"} />
       </dl>
 
       {item.kind === "employee" && <DocumentOnFile item={item} />}
@@ -548,15 +569,15 @@ function RenewalDetail({ item, owners, currentUserId, canEdit, onChange, onClose
 
       <div className="mt-auto grid gap-2">
         {/* A worker's document is renewed in the Renew section above; a supplier's is done on the supplier's page. */}
-        {item.kind === "supplier" && (
+        {item.kind !== "employee" && (
           <Link href={href} className="btn btn-primary w-full">
             <Upload className="h-4 w-4" aria-hidden />
-            Update supplier documents
+            {UPDATE_LABEL[item.kind]}
           </Link>
         )}
         <Link href={href} className="btn btn-secondary w-full">
-          {item.kind === "employee" ? <UserRound className="h-4 w-4" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}
-          {item.kind === "employee" ? "View employee" : "View supplier"}
+          <KindIcon kind={item.kind} className="h-4 w-4" />
+          {VIEW_LABEL[item.kind]}
         </Link>
       </div>
     </div>

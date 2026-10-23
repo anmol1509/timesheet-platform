@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { daysUntil, COMPLIANCE_FIELDS } from "@/lib/compliance";
 import { EXPIRY_FIELD } from "@/lib/importer/documentRead";
+import { registryExpiries } from "@/lib/docExpiry";
 
 /**
  * The renewal queue.
@@ -28,7 +29,7 @@ export type RenewalItem = {
    * in the same queue as a worker's own papers rather than in a separate one
    * nobody opens.
    */
-  kind: "employee" | "supplier";
+  kind: "employee" | "supplier" | "party" | "vehicle";
   /** Employee or supplier id, for linking through. */
   subjectId: string;
   subjectName: string;
@@ -48,6 +49,11 @@ export type RenewalItem = {
   /** The employee record column this date lives in, and the document type that renews it. Null for suppliers. */
   field: string | null;
   docType: string | null;
+  /** Where to open the record. Set for owners/sponsors and vehicles, whose id alone doesn't say. */
+  href?: string;
+  /** The uploaded file behind a registry document, and the reminder steps its type sets. */
+  attachmentId?: string | null;
+  reminderDays?: number[];
 };
 
 export function tierFor(days: number): RenewalTier | null {
@@ -212,6 +218,51 @@ export async function getRenewals(
         docType: null,
       });
     }
+  }
+
+  // Documents filed through the document type registry: supplier companies', owners' and sponsors', and vehicles'.
+  const scope = branchId ? { branchId } : {};
+  const [files, suppliers, parties, vehicles, typeRows] = await Promise.all([
+    prisma.attachment.findMany({
+      where: { entityType: { in: ["SUPPLIER", "SUPPLIER_PARTY", "VEHICLE"] }, expiryDate: { not: null }, ...scope },
+      select: { id: true, entityType: true, entityId: true, docType: true, filename: true, expiryDate: true, branchId: true },
+    }),
+    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true, isOwnCompany: true, _count: { select: { employees: true } } } }),
+    prisma.supplierParty.findMany({ where: scope, select: { id: true, role: true, name: true, supplierId: true, supplier: { select: { name: true } } } }),
+    prisma.vehicle.findMany({ where: scope, select: { id: true, plateNumber: true, make: true, model: true, type: true, status: true, registrationExpiry: true, insuranceExpiry: true } }),
+    prisma.documentType.findMany({ where: scope }),
+  ]);
+  const registry = registryExpiries({
+    files: files.map((f) => ({ ...f, entityType: f.entityType as "SUPPLIER" | "SUPPLIER_PARTY" | "VEHICLE", expiryDate: f.expiryDate! })),
+    suppliers: suppliers.map((s) => ({ id: s.id, name: s.name, isOwnCompany: s.isOwnCompany, workers: s._count.employees })),
+    parties: parties.map((p) => ({ id: p.id, role: p.role, name: p.name, supplierId: p.supplierId, supplierName: p.supplier.name })),
+    vehicles: vehicles.map((v) => ({ id: v.id, plateNumber: v.plateNumber, label: [v.make, v.model].filter(Boolean).join(" ") || v.type || "Vehicle", status: v.status, registrationExpiry: v.registrationExpiry, insuranceExpiry: v.insuranceExpiry })),
+    typeRows,
+  });
+  for (const r of registry) {
+    const days = daysUntil(r.expiry);
+    if (days > horizonDays) continue;
+    const tier = tierFor(days);
+    if (!tier) continue;
+    items.push({
+      kind: r.kind,
+      subjectId: r.subjectId,
+      subjectName: r.subjectName,
+      subjectRef: r.subjectRef,
+      hasPhoto: false,
+      document: r.document,
+      expiry: r.expiry.toISOString(),
+      days,
+      tier,
+      supplier: r.supplier,
+      project: null,
+      scan: null,
+      field: null,
+      docType: r.docType,
+      href: r.href,
+      attachmentId: r.attachmentId,
+      reminderDays: r.reminderDays,
+    });
   }
 
   items.sort((a, b) => a.days - b.days);

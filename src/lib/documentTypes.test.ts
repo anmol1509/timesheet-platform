@@ -57,7 +57,7 @@ test("an inactive type is hidden unless it holds a file", () => {
 
 test("key and reminder parsing", () => {
   assert.equal(docTypeKey(" Pest control cert. "), "PEST_CONTROL_CERT");
-  assert.deepEqual(parseReminderDays("30, 90 7 7 abc -5"), [90, 30, 7]);
+  assert.deepEqual(parseReminderDays("30, 90 7 7 abc -5 120"), [90, 30, 7]);
 });
 
 test("vehicle types: Mulkiya and insurance are required, and the registry scopes them to vehicles", () => {

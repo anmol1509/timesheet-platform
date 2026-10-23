@@ -20,6 +20,8 @@ export type DocTypeDef = {
   builtIn: boolean;
 };
 
+/** The renewal queue looks 90 days ahead, so a reminder set further out would never fire. */
+export const MAX_REMINDER_DAYS = 90;
 export const DEFAULT_REMINDER_DAYS = [90, 60, 30, 7];
 
 export const PARTY_ROLES = [
@@ -176,6 +178,6 @@ export function docTypeKey(raw: string): string {
 }
 
 export function parseReminderDays(raw: string): number[] {
-  const days = raw.split(/[\s,]+/).map((s) => Number(s)).filter((n) => Number.isInteger(n) && n > 0 && n <= 730);
+  const days = raw.split(/[\s,]+/).map((s) => Number(s)).filter((n) => Number.isInteger(n) && n > 0 && n <= MAX_REMINDER_DAYS);
   return [...new Set(days)].sort((a, b) => b - a).slice(0, 8);
 }

@@ -5,6 +5,9 @@ import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can, canWrite } from "@/lib/permissions";
 import { getRenewals, summarise } from "@/lib/renewals";
 import { renewalKey, type RenewalRow, type RenewalStatus } from "@/lib/renewalCases";
+import type { RenewalItem } from "@/lib/renewals";
+
+type RenewalKind = RenewalItem["kind"];
 import { RenewalsBoard } from "./renewals-board";
 
 export const metadata = { title: "Renewals" };
@@ -22,7 +25,7 @@ export default async function RenewalsPage() {
         include: { owner: { select: { name: true } } },
       })
     : [];
-  const caseOf = new Map(cases.map((c) => [renewalKey({ kind: c.kind as "employee" | "supplier", subjectId: c.subjectId, document: c.document, expiry: c.expiry.toISOString() }), c]));
+  const caseOf = new Map(cases.map((c) => [renewalKey({ kind: c.kind as RenewalKind, subjectId: c.subjectId, document: c.document, expiry: c.expiry.toISOString() }), c]));
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
   const rows: RenewalRow[] = items.map((i) => {
@@ -43,7 +46,7 @@ export default async function RenewalsPage() {
         icon={CalendarClock}
         breadcrumbs={[{ label: "Workforce", href: "/employees" }, { label: "Renewals" }]}
         meta={<CountPill>{items.length}</CountPill>}
-        description="Visas, labour cards, passports, Emirates IDs, medicals, and suppliers' trade licences and workmen's compensation falling due in the next 90 days — worst first, so long-lead renewals start in time."
+        description="Every document falling due in the next 90 days — workers' visas, labour cards, passports and IDs; suppliers' licences, insurance and permits; owners' and sponsors' papers; and vehicle Mulkiya and insurance — worst first, so long-lead renewals start in time."
       />
       <RenewalsBoard items={rows} counts={counts} owners={owners} currentUserId={user.id} canEdit={canWrite(subject, "workforce.renewals")} canExport={can(subject, "workforce.renewals", "export")} />
     </div>
