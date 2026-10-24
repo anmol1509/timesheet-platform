@@ -11,6 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { PARTY_ROLES, resolveDocTypes } from "@/lib/documentTypes";
+import { OWNER_ROLE, isValidShare, ownershipProblem, ownershipSummary } from "@/lib/ownership";
 import { contactsError } from "@/lib/validators";
 
 const str = (v: FormDataEntryValue | null) => String(v ?? "").trim() || null;
@@ -22,8 +23,11 @@ const date = (v: FormDataEntryValue | null) => {
 };
 const ROLES = new Set<string>(PARTY_ROLES.map((r) => r.value));
 
-type PartyInput = { role: string; name: string; nationality?: string; phone?: string; email?: string };
-export type CreateCompanyResult = { error: string | null; id?: string; partyIds?: string[] };
+/** A person the form is adding, keyed so the links in the same request can refer to them. */
+type PersonIn = { key: string; name: string; nationality?: string; phone?: string; email?: string };
+/** What a person is to the company: an existing person (partyId) or one just described (personKey). Owners carry a share. */
+type LinkIn = { role: string; partyId?: string; personKey?: string; percent?: number };
+export type CreateCompanyResult = { error: string | null; id?: string; /** New people's ids, by the key the form gave them. */ personIds?: Record<string, string> };
 
 /**
  * Adds one of your own companies from the Add company page: its details, logo, and owners/sponsors. The documents follow
@@ -54,15 +58,36 @@ export async function createOwnCompanyWizardAction(formData: FormData): Promise<
       if (!parent || !parent.isOwnCompany || parent.branchId !== branchId || parent.parentSupplierId) return { error: "Pick one of your own primary companies as the parent." };
     }
 
-    let parties: PartyInput[] = [];
+    let people: PersonIn[] = [];
+    let links: LinkIn[] = [];
     try {
-      const raw = JSON.parse(String(formData.get("parties") || "[]"));
-      if (Array.isArray(raw)) parties = raw.slice(0, 20);
+      const rawPeople = JSON.parse(String(formData.get("people") || "[]"));
+      const rawLinks = JSON.parse(String(formData.get("links") || "[]"));
+      if (Array.isArray(rawPeople)) people = rawPeople.slice(0, 20);
+      if (Array.isArray(rawLinks)) links = rawLinks.slice(0, 30);
     } catch {
       return { error: "The owners and sponsors couldn't be read. Try again." };
     }
-    parties = parties.filter((p) => p && typeof p.name === "string" && p.name.trim());
-    if (parties.some((p) => !ROLES.has(p.role))) return { error: "Choose a role for each owner or sponsor." };
+    const keys = new Set(people.map((p) => p?.key));
+    if (people.some((p) => !p || typeof p.key !== "string" || typeof p.name !== "string" || !p.name.trim())) return { error: "Enter a name for each new person." };
+    if (keys.size !== people.length) return { error: "The owners and sponsors couldn't be read. Try again." };
+    for (const l of links) {
+      if (!l || !ROLES.has(l.role)) return { error: "Choose a role for each owner or sponsor." };
+      if (!!l.partyId === !!l.personKey) return { error: "Choose a person for each owner or sponsor." };
+      if (l.personKey && !keys.has(l.personKey)) return { error: "Choose a person for each owner or sponsor." };
+    }
+    const subjects = links.map((l) => `${l.partyId ?? `new:${l.personKey}`}|${l.role}`);
+    if (new Set(subjects).size !== subjects.length) return { error: "The same person is listed twice in the same role." };
+    // Owners hold the shares; they must add up to exactly 100.
+    const owners = links.filter((l) => l.role === OWNER_ROLE);
+    if (owners.some((l) => !isValidShare(l.percent))) return { error: "Choose a share from 1% to 100% for each owner." };
+    const ownerProblem = ownershipProblem(ownershipSummary(owners.map((l) => l.percent)));
+    if (ownerProblem) return { error: ownerProblem };
+    const existingIds = [...new Set(links.flatMap((l) => (l.partyId ? [l.partyId] : [])))];
+    if (existingIds.length) {
+      const found = await prisma.supplierParty.count({ where: { id: { in: existingIds }, branchId } });
+      if (found !== existingIds.length) return { error: "One of the people you chose wasn't found." };
+    }
 
     const logo = formData.get("logo");
     if (logo instanceof File && logo.size > 0) {
@@ -93,20 +118,25 @@ export async function createOwnCompanyWizardAction(formData: FormData): Promise<
           contactEmail: str(formData.get("contactEmail")),
         },
       });
-      const partyIds: string[] = [];
-      for (const p of parties) {
+      const personIds: Record<string, string> = {};
+      for (const p of people) {
         const row = await tx.supplierParty.create({
-          data: { supplierId: company.id, branchId, role: p.role, name: p.name.trim().slice(0, 120), nationality: str(p.nationality ?? null)?.slice(0, 60) ?? null, phone: str(p.phone ?? null)?.slice(0, 40) ?? null, email: str(p.email ?? null)?.slice(0, 120) ?? null },
+          data: { branchId, name: p.name.trim().slice(0, 120), nationality: str(p.nationality ?? null)?.slice(0, 60) ?? null, phone: str(p.phone ?? null)?.slice(0, 40) ?? null, email: str(p.email ?? null)?.slice(0, 120) ?? null },
         });
-        partyIds.push(row.id);
+        personIds[p.key] = row.id;
       }
-      return { company, partyIds };
+      for (const l of links) {
+        await tx.supplierPartyLink.create({
+          data: { supplierId: company.id, partyId: l.partyId ?? personIds[l.personKey!], role: l.role, ownershipPercent: l.role === OWNER_ROLE ? l.percent! : null, branchId },
+        });
+      }
+      return { company, personIds };
     });
 
-    await logAudit({ entityType: "SUPPLIER", entityId: created.company.id, action: "CREATE", after: { name, code, isOwnCompany: true, owners: parties.length }, userId: user.id, userName: user.name, branchId });
+    await logAudit({ entityType: "SUPPLIER", entityId: created.company.id, action: "CREATE", after: { name, code, isOwnCompany: true, owners: owners.length, people: links.length }, userId: user.id, userName: user.name, branchId });
     revalidatePath("/my-companies");
     revalidatePath("/suppliers");
-    return { error: null, id: created.company.id, partyIds: created.partyIds };
+    return { error: null, id: created.company.id, personIds: created.personIds };
   } catch (e) {
     await deleteImage(logoId);
     if (e && typeof e === "object" && "digest" in e && String((e as { digest: unknown }).digest).startsWith("NEXT_")) throw e;
@@ -143,7 +173,7 @@ export async function attachCompanyFileAction(formData: FormData): Promise<{ err
 
   if (partyId) {
     if (!canViewSensitive(subject)) return { error: "Adding owner and sponsor documents needs the Sensitive documents permission." };
-    const party = await prisma.supplierParty.findFirst({ where: { id: partyId, supplierId: company.id }, select: { id: true } });
+    const party = await prisma.supplierPartyLink.findFirst({ where: { partyId, supplierId: company.id }, select: { id: true } });
     if (!party) return { error: "That owner or sponsor wasn't found." };
   }
 

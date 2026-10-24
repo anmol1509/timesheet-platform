@@ -10,7 +10,8 @@ import { canMyCompanies } from "@/lib/permissions";
 import { buildChecklist, resolveDocTypes, type ChecklistItem } from "@/lib/documentTypes";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { CompanyTable, type CompanyRow } from "./company-table";
+import { CompanyTable, type CompanyRow, type DocSummary } from "./company-table";
+import { OWNER_ROLE, ownershipSummary } from "@/lib/ownership";
 
 export const metadata = { title: "My Companies" };
 
@@ -32,11 +33,11 @@ export default async function MyCompaniesPage() {
 
   const companies = await prisma.supplier.findMany({
     where: { ...branchWhere(branchId), isOwnCompany: true },
-    select: { id: true, name: true, code: true, fullName: true, status: true, branchId: true, parentSupplierId: true, _count: { select: { employees: true } }, parties: { select: { id: true } } },
+    select: { id: true, name: true, code: true, fullName: true, status: true, branchId: true, parentSupplierId: true, _count: { select: { employees: true } }, partyLinks: { select: { partyId: true, role: true, ownershipPercent: true } } },
     orderBy: { name: "asc" },
   });
   const ids = companies.map((c) => c.id);
-  const partyIds = companies.flatMap((c) => c.parties.map((p) => p.id));
+  const partyIds = [...new Set(companies.flatMap((c) => c.partyLinks.map((l) => l.partyId)))];
   const [typeRows, files, partyFiles] = await Promise.all([
     prisma.documentType.findMany({ where: branchWhere(branchId) }),
     ids.length ? prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: { in: ids } }, select: { id: true, entityId: true, docType: true, filename: true, expiryDate: true, uploadedAt: true } }) : [],
@@ -44,28 +45,37 @@ export default async function MyCompaniesPage() {
   ]);
   const iso = (f: (typeof files)[number]) => ({ id: f.id, docType: f.docType, filename: f.filename, expiryDate: f.expiryDate ? f.expiryDate.toISOString() : null, uploadedAt: f.uploadedAt.toISOString() });
 
+  // A person's document status is worked out once, whichever companies they serve.
+  const partyTypesFor = (branch: string) => resolveDocTypes(typeRows.filter((r) => r.branchId === branch), "SUPPLIER_PARTY");
+  const personStatus = new Map<string, ReturnType<typeof summarise>>();
+  for (const c of companies) {
+    for (const l of c.partyLinks) {
+      if (personStatus.has(l.partyId)) continue;
+      personStatus.set(l.partyId, summarise(buildChecklist(partyTypesFor(c.branchId), partyFiles.filter((f) => f.entityId === l.partyId).map(iso), false)));
+    }
+  }
+  const add = (a: DocSummary, b: DocSummary): DocSummary => ({ missing: a.missing + b.missing, expired: a.expired + b.expired, expiring: a.expiring + b.expiring });
+  const none: DocSummary = { missing: 0, expired: 0, expiring: 0 };
+
   const built = companies.map((c) => {
     const rows = typeRows.filter((r) => r.branchId === c.branchId);
     const own = summarise(buildChecklist(resolveDocTypes(rows, "SUPPLIER"), files.filter((f) => f.entityId === c.id).map(iso), true));
-    const partyTypes = resolveDocTypes(rows, "SUPPLIER_PARTY");
-    const owners = c.parties.reduce(
-      (acc, p) => {
-        const s = summarise(buildChecklist(partyTypes, partyFiles.filter((f) => f.entityId === p.id).map(iso), false));
-        return { missing: acc.missing + s.missing, expired: acc.expired + s.expired, expiring: acc.expiring + s.expiring };
-      },
-      { missing: 0, expired: 0, expiring: 0 },
-    );
-    return { c, own, owners };
+    const people = [...new Set(c.partyLinks.map((l) => l.partyId))];
+    const owners = people.reduce((acc, id) => add(acc, personStatus.get(id) ?? none), none);
+    const ownership = ownershipSummary(c.partyLinks.filter((l) => l.role === OWNER_ROLE).map((l) => l.ownershipPercent));
+    return { c, own, owners, people: people.length, ownership };
   });
 
   // A parent, then its subsidiaries just beneath it.
   const known = new Set(companies.map((c) => c.id));
-  const toRow = (x: (typeof built)[number], sub: boolean): CompanyRow => ({ id: x.c.id, name: x.c.name, code: x.c.code, fullName: x.c.fullName, status: x.c.status, employees: x.c._count.employees, people: x.c.parties.length, own: x.own, owners: x.owners, sub });
+  const toRow = (x: (typeof built)[number], sub: boolean): CompanyRow => ({ id: x.c.id, name: x.c.name, code: x.c.code, fullName: x.c.fullName, status: x.c.status, employees: x.c._count.employees, people: x.people, own: x.own, owners: x.owners, ownership: { owners: x.ownership.owners, total: x.ownership.total, ok: x.ownership.ok }, sub });
   const rows: CompanyRow[] = built
     .filter((x) => !x.c.parentSupplierId || !known.has(x.c.parentSupplierId))
     .flatMap((x) => [toRow(x, false), ...built.filter((y) => y.c.parentSupplierId === x.c.id).map((y) => toRow(y, true))]);
 
-  const totals = rows.reduce((t, r) => ({ missing: t.missing + r.own.missing + r.owners.missing, expired: t.expired + r.own.expired + r.owners.expired, expiring: t.expiring + r.own.expiring + r.owners.expiring, employees: t.employees + r.employees }), { missing: 0, expired: 0, expiring: 0, employees: 0 });
+  // Tiles count each person once, even when they serve several companies.
+  const people = [...personStatus.values()].reduce(add, none);
+  const totals = { missing: built.reduce((n, x) => n + x.own.missing, 0) + people.missing, expired: built.reduce((n, x) => n + x.own.expired, 0) + people.expired, expiring: built.reduce((n, x) => n + x.own.expiring, 0) + people.expiring, employees: rows.reduce((n, r) => n + r.employees, 0) };
 
   return (
     <div className="space-y-5">

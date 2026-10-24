@@ -6,9 +6,15 @@ import { CornerDownRight, Search } from "lucide-react";
 import { Badge } from "@/components/Badge";
 
 export type DocSummary = { missing: number; expired: number; expiring: number };
-export type CompanyRow = { id: string; name: string; code: string | null; fullName: string | null; status: string; employees: number; people: number; own: DocSummary; owners: DocSummary; sub: boolean };
+export type CompanyRow = { id: string; name: string; code: string | null; fullName: string | null; status: string; employees: number; people: number; own: DocSummary; owners: DocSummary; ownership: { owners: number; total: number; ok: boolean }; sub: boolean };
 
 const attention = (s: DocSummary) => s.missing + s.expired + s.expiring > 0;
+
+/** Owners hold shares that add up to 100; anything else needs fixing. */
+function Ownership({ o }: { o: CompanyRow["ownership"] }) {
+  if (o.owners === 0) return <span className="text-muted">No owners</span>;
+  return o.ok ? <Badge color="green">100%</Badge> : <Badge color="amber">{o.total}% set</Badge>;
+}
 
 /** One compact status per area: what needs doing, worst first, or "In order". */
 function Status({ s }: { s: DocSummary }) {
@@ -27,7 +33,7 @@ export function CompanyTable({ rows }: { rows: CompanyRow[] }) {
   const [onlyIssues, setOnlyIssues] = useState(false);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter((r) => (!q || [r.name, r.code, r.fullName].some((v) => v?.toLowerCase().includes(q))) && (!onlyIssues || attention(r.own) || attention(r.owners)));
+    return rows.filter((r) => (!q || [r.name, r.code, r.fullName].some((v) => v?.toLowerCase().includes(q))) && (!onlyIssues || attention(r.own) || attention(r.owners) || (r.ownership.owners > 0 && !r.ownership.ok)));
   }, [rows, query, onlyIssues]);
 
   return (
@@ -49,6 +55,7 @@ export function CompanyTable({ rows }: { rows: CompanyRow[] }) {
               <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3 text-right">Employees</th>
               <th className="px-4 py-3 text-right">Owners &amp; sponsors</th>
+              <th className="px-4 py-3">Ownership</th>
               <th className="px-4 py-3">Company documents</th>
               <th className="px-4 py-3">Owner &amp; sponsor documents</th>
               <th className="px-4 py-3">Status</th>
@@ -56,7 +63,7 @@ export function CompanyTable({ rows }: { rows: CompanyRow[] }) {
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
             {shown.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">No companies match.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted">No companies match.</td></tr>
             )}
             {shown.map((r) => (
               <tr key={r.id} className="hover:bg-surface-hover">
@@ -70,6 +77,7 @@ export function CompanyTable({ rows }: { rows: CompanyRow[] }) {
                 </td>
                 <td className="tabular px-4 py-3 text-right text-secondary">{r.employees}</td>
                 <td className="tabular px-4 py-3 text-right text-secondary">{r.people}</td>
+                <td className="px-4 py-3"><Ownership o={r.ownership} /></td>
                 <td className="px-4 py-3"><Status s={r.own} /></td>
                 <td className="px-4 py-3">{r.people === 0 ? <span className="text-muted">None added</span> : <Status s={r.owners} />}</td>
                 <td className="px-4 py-3"><Badge color={r.status === "ACTIVE" ? "green" : "red"}>{r.status}</Badge></td>

@@ -6,6 +6,7 @@ import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
 import { activeDocTypes, isRequired, resolveDocTypes } from "@/lib/documentTypes";
 import { CompanyWizard } from "./wizard";
+import { personLabel } from "../../suppliers/[id]/parties-section";
 
 export const metadata = { title: "Add company" };
 
@@ -14,12 +15,14 @@ export default async function AddCompanyPage() {
   const subject = subjectOf(user);
   if (!canMyCompanies(subject, "create")) redirect("/my-companies");
 
-  const [typeRows, parents] = await Promise.all([
+  const [typeRows, parents, people] = await Promise.all([
     branchId ? prisma.documentType.findMany({ where: { branchId } }) : Promise.resolve([]),
     branchId ? prisma.supplier.findMany({ where: { branchId, isOwnCompany: true, parentSupplierId: null }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    // Everyone already on file, so a person who serves another company is picked here instead of typed again.
+    branchId ? prisma.supplierParty.findMany({ where: { branchId }, select: { id: true, name: true, links: { select: { role: true, supplier: { select: { name: true } } } } }, orderBy: { name: "asc" } }) : Promise.resolve([]),
   ]);
   const company = activeDocTypes(resolveDocTypes(typeRows, "SUPPLIER"));
-  const people = activeDocTypes(resolveDocTypes(typeRows, "SUPPLIER_PARTY"));
+  const partyKinds = activeDocTypes(resolveDocTypes(typeRows, "SUPPLIER_PARTY"));
   const slim = (t: { key: string; label: string; hasExpiry: boolean }) => ({ key: t.key, label: t.label, hasExpiry: t.hasExpiry });
 
   return (
@@ -41,8 +44,9 @@ export default async function AddCompanyPage() {
         <CompanyWizard
           companyTypes={company.map(slim)}
           requiredCompanyTypes={company.filter((t) => isRequired(t, true)).map((t) => t.key)}
-          partyTypes={people.map(slim)}
-          requiredPartyTypes={people.filter((t) => isRequired(t, false)).map((t) => t.key)}
+          partyTypes={partyKinds.map(slim)}
+          requiredPartyTypes={partyKinds.filter((t) => isRequired(t, false)).map((t) => t.key)}
+          existingPeople={people.map((p) => ({ id: p.id, label: personLabel(p.name, p.links) }))}
           parents={parents}
           canAddPersonalDocs={canViewSensitive(subject)}
         />

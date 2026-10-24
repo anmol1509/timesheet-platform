@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import { deleteOrphanParties } from "@/lib/partyLinks";
 
 /**
  * Bulk per-module delete, for clearing out test data on the live database —
@@ -235,6 +236,8 @@ export const RESET_MODULES: ResetModule[] = [
       await db.employee.updateMany({ where: { sponsorSupplierId: { in: supplierIds } }, data: { sponsorSupplierId: null } });
       await db.attendance.updateMany({ where: { supplierId: { in: supplierIds } }, data: { supplierId: null } });
       const deleted = await db.supplier.deleteMany({ where });
+      // Their owners and sponsors go with them, unless another company still uses the person.
+      await deleteOrphanParties(db, branchId);
       return { suppliers: deleted.count };
     },
   },
