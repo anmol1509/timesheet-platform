@@ -108,6 +108,8 @@ model Branch {
   skills               Skill[]
   banks                Bank[]
   lookupValues         LookupValue[]
+  documentTypes        DocumentType[]
+  supplierParties      SupplierParty[]
   demandRequests       DemandRequest[]
   letterTemplates      LetterTemplate[]
   documentEdits        DocumentEdit[]
@@ -442,6 +444,7 @@ model Supplier {
   bills                SupplierBill[]
   candidateOnboardings CandidateOnboarding[]
   agencyContacts       AgencyContact[]
+  parties              SupplierParty[]
 
   // Unique within a branch, not across the platform: two companies can each have a
   // supplier called "ABC Manpower", and adding one must not reveal that another has it.
@@ -839,8 +842,10 @@ model Employee {
   site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
   siteId String?
 
-  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicle   Vehicle? @relation("VehicleRoster", fields: [vehicleId], references: [id])
   vehicleId String?
+  /// Vehicles this employee is the assigned driver of.
+  drivenVehicles Vehicle[] @relation("VehicleDriver")
 
   // The supplier's workmen compensation certificate (an Attachment) this worker was named on when it was read.
   // Plain id, not a relation: a deleted certificate just stops covering anyone.
@@ -1524,7 +1529,24 @@ model Vehicle {
   notes              String?
   createdAt          DateTime  @default(now())
 
-  employees Employee[]
+  make               String?
+  model              String?
+  year               Int?
+  colour             String?
+  chassisNumber      String? // VIN
+  engineNumber       String?
+  trafficFileNumber  String?
+  plateEmirate       String?
+  plateCategory      String? // e.g. "Private", "Commercial", "Transport"
+  fuelType           String?
+  ownership          String    @default("OWNED") // "OWNED" | "LEASED" | "RENTED"
+  lessor             String? // the leasing or rental company, when not owned
+  odometerKm         Int?
+  // The employee who drives it; driverName/driverPhone are copied from them on save, or typed for an outside driver.
+  driver             Employee? @relation("VehicleDriver", fields: [driverEmployeeId], references: [id], onDelete: SetNull)
+  driverEmployeeId   String?
+
+  employees Employee[] @relation("VehicleRoster")
   projects  VehicleProject[]
   routes    Route[]
 
@@ -1534,6 +1556,7 @@ model Vehicle {
 
   @@unique([branchId, plateNumber])
   @@index([branchId])
+  @@index([driverEmployeeId])
 }
 
 // A named, recurring pickup route driven by a Vehicle — not branch-scoped,
@@ -3185,4 +3208,63 @@ model ProjectAssignmentRequest {
 
   @@index([branchId, status])
   @@index([employeeId, status])
+}
+
+/// A people-or-company behind a supplier: the licence owner (often a local national) and the sponsor who runs it day to
+/// day. A supplier can have several of each. Their documents are Attachments filed under entityType "SUPPLIER_PARTY".
+model SupplierParty {
+  id          String   @id @default(cuid())
+  /// "OWNER" | "SPONSOR" | "PARTNER" | "MANAGER"
+  role        String
+  name        String
+  nationality String?
+  phone       String?
+  email       String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  branch     Branch   @relation(fields: [branchId], references: [id])
+  branchId   String
+
+  @@index([supplierId])
+  @@index([branchId])
+}
+
+/// A branch's own document types, and its changes to the built-in ones (src/lib/documentTypes.ts holds the built-ins).
+/// A row whose key matches a built-in type overrides its label, expiry, required and reminder settings; any other key is
+/// a custom type. Attachment.docType holds the key.
+model DocumentType {
+  id           String   @id @default(cuid())
+  /// What the document is filed against: "SUPPLIER" (the company), "SUPPLIER_PARTY" (an owner or sponsor) or "VEHICLE".
+  appliesTo    String
+  key          String
+  label        String
+  hasExpiry    Boolean  @default(true)
+  /// "NO" | "YES" | "OWN_COMPANY" (required only for the branch's own companies)
+  required     String   @default("NO")
+  /// Days before expiry at which a reminder is raised, e.g. 90,60,30,7.
+  reminderDays Int[]
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  branch   Branch @relation(fields: [branchId], references: [id])
+  branchId String
+
+  @@unique([branchId, appliesTo, key])
+}
+
+/// One reminder sent for one document at one step (e.g. 30 days out). refKey names the document and its expiry date, so a
+/// renewed document (a new date) starts afresh. Written by the expiry sweep, which sends only reminders not yet recorded.
+model DocumentReminder {
+  id        String   @id @default(cuid())
+  refKey    String
+  threshold Int
+  sentAt    DateTime @default(now())
+  branchId  String
+
+  @@unique([refKey, threshold])
+  @@index([branchId])
 }

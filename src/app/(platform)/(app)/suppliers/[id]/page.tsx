@@ -21,6 +21,9 @@ import { PartyStatement, canSeeStatement } from "../../finance/books/parties/sta
 import { WorkmenCompSection } from "./workmen-comp-section";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
+import { DocumentChecklist } from "@/components/DocumentChecklist";
+import { SupplierPartiesSection } from "./parties-section";
+import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 
 export const metadata = { title: "Supplier" };
 
@@ -60,7 +63,8 @@ export default async function SupplierDetailPage({
   const siblings = supplier.parent ? supplier.parent.subsidiaries : supplier.subsidiaries;
 
   const WC_TYPES = ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"];
-  const [attachments, parentOptions, coveredBy, workerCount] = await Promise.all([
+  const [typeRows, attachments, parentOptions, coveredBy, workerCount] = await Promise.all([
+    prisma.documentType.findMany({ where: { branchId: supplier.branchId } }),
     prisma.attachment.findMany({
       where: { entityType: "SUPPLIER", entityId: supplier.id },
       orderBy: { uploadedAt: "desc" },
@@ -79,6 +83,15 @@ export default async function SupplierDetailPage({
     .map((a) => ({ id: a.id, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, covered: coveredBy.find((c) => c.wcAttachmentId === a.id)?._count ?? 0 }));
 
   const showStatement = await canSeeStatement();
+  const canEdit = can(subjectOf(user), "partners.suppliers", "edit");
+  const companyTypes = resolveDocTypes(typeRows, "SUPPLIER");
+  const partyTypes = resolveDocTypes(typeRows, "SUPPLIER_PARTY");
+  const companyFiles = attachments
+    .filter((a) => !WC_TYPES.includes(a.docType))
+    .map((a) => ({ id: a.id, docType: a.docType, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, uploadedAt: a.uploadedAt.toISOString() }));
+  // Types a file was filed under before the registry (or that a branch has since removed) still need a label in the list.
+  const known = new Set(companyTypes.map((t) => t.key));
+  const legacyOptions = [...new Set(companyFiles.map((a) => a.docType))].filter((k) => !known.has(k) && !WC_TYPES.includes(k)).map((k) => ({ value: k, label: k }));
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -172,35 +185,31 @@ export default async function SupplierDetailPage({
                   <WorkmenCompSection supplierId={supplier.id} policies={wcPolicies} workers={workerCount} canEdit={can(subjectOf(user), "partners.suppliers", "edit")} />
                 </section>
                 <section>
-                  <h2 className="mb-3 text-sm font-semibold text-primary">Documents</h2>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">Company documents</h2>
                   <p className="mb-3 text-sm text-muted">
-                    Trade licence and MOHRE permit first — those decide whether this
-                    supplier can be used at all.
+                    Trade licence, establishment card, VAT certificate and the rest. Required ones show in red until a file is uploaded.
+                    {supplier.isOwnCompany && " This is your own company, so the tenancy agreement is required too."}
                   </p>
-                  <AttachmentUploader
-                    entityType="SUPPLIER"
-                    entityId={supplier.id}
-                    entityBranchId={supplier.branchId}
-                    revalidate={`/suppliers/${supplier.id}`}
-                    docTypeOptions={[
-                      { value: "LETTERHEAD", label: "Letterhead (blank, for letters)" },
-                      { value: "TRADE_LICENSE", label: "Trade Licence" },
-                      { value: "MOHRE_PERMIT", label: "MOHRE Permit" },
-                      { value: "ESTABLISHMENT_CARD", label: "MOHRE Establishment Card" },
-                      { value: "EJARI_TENANCY", label: "Ejari / Tenancy Contract" },
-                      { value: "CHAMBER_OF_COMMERCE", label: "Chamber of Commerce Certificate" },
-                      { value: "SPONSORSHIP_AGREEMENT", label: "Sponsorship Agreement" },
-                      { value: "CONTRACT", label: "Contract" },
-                      { value: "OTHER", label: "Other" },
-                    ]}
-                    attachments={attachments.filter((a) => !WC_TYPES.includes(a.docType)).map((a) => ({
-                      id: a.id,
-                      docType: a.docType,
-                      filename: a.filename,
-                      expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null,
-                      uploadedAt: a.uploadedAt.toISOString(),
-                    }))}
-                  />
+                  <div className="space-y-4">
+                    <DocumentChecklist items={buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany)} />
+                    {canEdit && (
+                      <AttachmentUploader
+                        entityType="SUPPLIER"
+                        entityId={supplier.id}
+                        entityBranchId={supplier.branchId}
+                        revalidate={`/suppliers/${supplier.id}`}
+                        docTypeOptions={[...activeDocTypes(companyTypes).map((t) => ({ value: t.key, label: t.label })), ...legacyOptions]}
+                        attachments={companyFiles}
+                      />
+                    )}
+                  </div>
+                </section>
+                <section>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">Owner &amp; sponsor</h2>
+                  <p className="mb-3 text-sm text-muted">
+                    The licence owner and the sponsor who runs the company day to day, each with their own passport, Emirates ID, visa, insurance and other documents.
+                  </p>
+                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} />
                 </section>
                 <section>
                   <h2 className="mb-1 text-sm font-semibold text-primary">Signatory, signature &amp; stamp</h2>

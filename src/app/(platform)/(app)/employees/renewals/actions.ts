@@ -25,14 +25,23 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
   const note = patch.note === undefined ? undefined : (patch.note ?? "").trim().slice(0, 300) || null;
 
   // Each renewal's branch comes from the person or supplier it belongs to, never from what the browser sent.
-  const clean = refs.filter((r) => (r.kind === "employee" || r.kind === "supplier") && typeof r.subjectId === "string" && typeof r.document === "string" && /^\d{4}-\d{2}-\d{2}/.test(r.expiry));
+  const clean = refs.filter((r) => ["employee", "supplier", "party", "vehicle"].includes(r.kind) && typeof r.subjectId === "string" && typeof r.document === "string" && /^\d{4}-\d{2}-\d{2}/.test(r.expiry));
   const employeeIds = [...new Set(clean.filter((r) => r.kind === "employee").map((r) => r.subjectId))];
   const supplierIds = [...new Set(clean.filter((r) => r.kind === "supplier").map((r) => r.subjectId))];
-  const [employees, suppliers] = await Promise.all([
+  const partyIds = [...new Set(clean.filter((r) => r.kind === "party").map((r) => r.subjectId))];
+  const vehicleIds = [...new Set(clean.filter((r) => r.kind === "vehicle").map((r) => r.subjectId))];
+  const [employees, suppliers, parties, vehicles] = await Promise.all([
     prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, branchId: true } }),
     prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, branchId: true } }),
+    prisma.supplierParty.findMany({ where: { id: { in: partyIds } }, select: { id: true, branchId: true } }),
+    prisma.vehicle.findMany({ where: { id: { in: vehicleIds }, branchId: { not: null } }, select: { id: true, branchId: true } }),
   ]);
-  const branchOf = new Map<string, string>([...employees.map((e) => [`employee|${e.id}`, e.branchId] as const), ...suppliers.map((s) => [`supplier|${s.id}`, s.branchId] as const)]);
+  const branchOf = new Map<string, string>([
+    ...employees.map((e) => [`employee|${e.id}`, e.branchId] as const),
+    ...suppliers.map((s) => [`supplier|${s.id}`, s.branchId] as const),
+    ...parties.map((p) => [`party|${p.id}`, p.branchId] as const),
+    ...vehicles.map((v) => [`vehicle|${v.id}`, v.branchId!] as const),
+  ]);
   const targets = clean.filter((r) => {
     const b = branchOf.get(`${r.kind}|${r.subjectId}`);
     return b && !isOutsideBranch(b, branchId, isSuperAdmin);

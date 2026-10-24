@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { resolveDocTypes, VEHICLE_EXPIRY_FIELD } from "@/lib/documentTypes";
 
 /**
  * The record types a generic attachment may be filed against, each with a lookup
@@ -13,6 +14,8 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
  */
 const ATTACHABLE: Record<string, (id: string) => Promise<{ branchId: string | null } | null>> = {
   SUPPLIER: (id) => prisma.supplier.findUnique({ where: { id }, select: { branchId: true } }),
+  VEHICLE: (id) => prisma.vehicle.findUnique({ where: { id }, select: { branchId: true } }),
+  SUPPLIER_PARTY: (id) => prisma.supplierParty.findUnique({ where: { id }, select: { branchId: true } }),
   SUPPLIER_BILL: (id) => prisma.supplierBill.findUnique({ where: { id }, select: { branchId: true } }),
   EXPENSE: (id) => prisma.expense.findUnique({ where: { id }, select: { branchId: true } }),
   QUOTATION: (id) => prisma.quotation.findUnique({ where: { id }, select: { branchId: true } }),
@@ -47,6 +50,7 @@ export async function uploadAttachmentAction(
   // Every rejection used to be a bare `return`, so an oversize file looked
   // exactly like a broken button. Say what went wrong instead.
   if (!entityType || !entityId) return { error: "Nothing to attach this file to." };
+  if (entityType === "VEHICLE") await requireWrite("facilities.transport");
   const lookup = ATTACHABLE[entityType];
   if (!lookup) return { error: "Files can't be attached to that kind of record." };
   const entity = await lookup(entityId);
@@ -54,6 +58,14 @@ export async function uploadAttachmentAction(
     return { error: "That record belongs to another branch." };
   }
   const entityBranchId = entity.branchId;
+  // Company and owner/sponsor files must be one of the branch's document types (built-in or its own).
+  if (entityType === "SUPPLIER" || entityType === "SUPPLIER_PARTY" || entityType === "VEHICLE") {
+    const rows = entityBranchId ? await prisma.documentType.findMany({ where: { branchId: entityBranchId } }) : [];
+    const known = resolveDocTypes(rows, entityType).find((t) => t.key === docType);
+    // Older files used types the registry doesn't list (e.g. WORKMEN_COMPENSATION_INSURANCE), so SUPPLIER keeps those.
+    if (entityType !== "SUPPLIER" && !known) return { error: "Choose one of the listed document types." };
+    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this branch.` };
+  }
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file to upload." };
   }
@@ -78,6 +90,7 @@ export async function uploadAttachmentAction(
     },
   });
 
+  if (entityType === "VEHICLE") await syncVehicleExpiries(entityId);
   if (revalidate) revalidatePath(revalidate);
 }
 
@@ -87,9 +100,29 @@ export async function deleteAttachmentAction(formData: FormData) {
   const revalidate = String(formData.get("revalidate") || "");
   if (!id) return;
 
-  const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true } });
+  const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true, entityType: true, entityId: true } });
   if (!attachment || isOutsideBranch(attachment.branchId, branchId, isSuperAdmin)) return;
 
+  if (attachment.entityType === "VEHICLE") await requireWrite("facilities.transport");
   await prisma.attachment.delete({ where: { id } });
+  if (attachment.entityType === "VEHICLE") await syncVehicleExpiries(attachment.entityId);
   if (revalidate) revalidatePath(revalidate);
+}
+
+/**
+ * A vehicle's Mulkiya and insurance dates feed the dashboards and the renewal queue, which read them off the vehicle.
+ * Once a file with an expiry is filed for one, the vehicle's date follows the latest file. A vehicle with no such file
+ * keeps whatever was typed in by hand.
+ */
+async function syncVehicleExpiries(vehicleId: string) {
+  const data: Record<string, Date> = {};
+  for (const [docType, field] of Object.entries(VEHICLE_EXPIRY_FIELD)) {
+    const latest = await prisma.attachment.findFirst({
+      where: { entityType: "VEHICLE", entityId: vehicleId, docType, expiryDate: { not: null } },
+      orderBy: { expiryDate: "desc" },
+      select: { expiryDate: true },
+    });
+    if (latest?.expiryDate) data[field] = latest.expiryDate;
+  }
+  if (Object.keys(data).length) await prisma.vehicle.update({ where: { id: vehicleId }, data });
 }

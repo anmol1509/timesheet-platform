@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { getRenewals } from "@/lib/renewals";
+import { getRenewals, type RenewalItem } from "@/lib/renewals";
 import { renewalKey, renewalStatusLabel, type RenewalRef } from "@/lib/renewalCases";
 
 const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
@@ -13,6 +13,8 @@ const dmy = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice
  * is already in hand. The renewals are looked up again here from the keys sent, so only this branch's current
  * renewals can appear and the details always come from the records, not from the browser.
  */
+const KIND_LABEL: Record<RenewalItem["kind"], string> = { employee: "Employee", supplier: "Supplier", party: "Owner / sponsor", vehicle: "Vehicle" };
+
 export async function POST(request: Request) {
   const { user, branchId } = await requireUserWithBranch();
   if (!can(subjectOf(user), "workforce.renewals", "export")) return NextResponse.json({ error: "You don't have permission to export renewals." }, { status: 403 });
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
   ]);
   const emp = new Map(employees.map((e) => [e.id, e]));
   const sup = new Map(suppliers.map((s) => [s.id, s]));
-  const caseOf = new Map(cases.map((c) => [renewalKey({ kind: c.kind as "employee" | "supplier", subjectId: c.subjectId, document: c.document, expiry: c.expiry.toISOString() }), c]));
+  const caseOf = new Map(cases.map((c) => [renewalKey({ kind: c.kind as RenewalItem["kind"], subjectId: c.subjectId, document: c.document, expiry: c.expiry.toISOString() }), c]));
 
   const docNumber = (i: (typeof items)[number]) => {
     if (i.kind === "supplier") return sup.get(i.subjectId)?.tradeLicenseNumber ?? "";
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
   const sorted = [...items].sort((a, b) => a.document.localeCompare(b.document) || a.days - b.days);
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Renewals");
-  const columns: [string, number][] = [["Document", 20], ["Name", 28], ["ID", 14], ["Employee / supplier", 12], ["Nationality", 16], ["Passport no.", 16], ["Emirates ID", 22], ["Document no.", 20], ["Expires", 13], ["Days left", 10], ["Status", 14], ["Owner", 18], ["Note", 36], ["Project", 30], ["Supplier", 26], ["Mobile", 16]];
+  const columns: [string, number][] = [["Document", 20], ["Name", 28], ["ID", 14], ["Belongs to", 14], ["Nationality", 16], ["Passport no.", 16], ["Emirates ID", 22], ["Document no.", 20], ["Expires", 13], ["Days left", 10], ["Status", 14], ["Owner", 18], ["Note", 36], ["Project", 30], ["Supplier", 26], ["Mobile", 16]];
   const head = ws.addRow(columns.map(([h]) => h));
   head.font = { bold: true };
   head.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEDEBFB" } }; });
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
     const s = i.kind === "supplier" ? sup.get(i.subjectId) : undefined;
     const c = caseOf.get(renewalKey(i));
     const row = ws.addRow([
-      i.document, i.subjectName, i.kind === "employee" ? i.subjectRef : "", i.kind === "employee" ? "Employee" : "Supplier", e?.nationality ?? "", e?.passportNumber ?? "", e?.emiratesId ?? "",
+      i.document, i.subjectName, i.kind === "employee" ? i.subjectRef : "", KIND_LABEL[i.kind], e?.nationality ?? "", e?.passportNumber ?? "", e?.emiratesId ?? "",
       docNumber(i), dmy(i.expiry), i.days, renewalStatusLabel(c?.status ?? "NOT_STARTED"), c?.owner?.name ?? "", c?.note ?? "", i.project ?? "", i.supplier ?? "", e?.mobileNumber ?? s?.contactPhone ?? "",
     ]);
     if (i.days < 0) row.getCell(10).font = { color: { argb: "FFB42318" }, bold: true };

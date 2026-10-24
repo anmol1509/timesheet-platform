@@ -3,6 +3,8 @@ import { emitWebhookEvent, hasSubscribers, processDue, purgeOldDeliveries } from
 import { prisma } from "@/lib/db";
 import { getRenewals, summarise } from "@/lib/renewals";
 import { notifyUsers } from "@/lib/notifications/notify";
+import { dueReminder } from "@/lib/docExpiry";
+import { renewalKey } from "@/lib/renewalCases";
 
 /**
  * Daily sweep for documents falling due.
@@ -34,6 +36,7 @@ export async function GET(request: Request) {
   });
 
   const digest = [];
+  let reminded = 0;
   for (const branch of branches) {
     const items = await getRenewals(branch.id);
     const counts = summarise(items);
@@ -62,6 +65,10 @@ export async function GET(request: Request) {
     console.info(
       `[expiry-sweep] ${branch.code}: ${counts.expired} expired, ${counts.urgent} within 7d, ${counts.soon} within 30d, ${counts.planned} within 60d, ${counts.horizon} within 90d`
     );
+
+    // Documents filed through the document type registry carry their own reminder steps (say 90, 60, 30 and 7 days).
+    // Each step is sent once per document and expiry date, to the branch's admins and to whoever owns the renewal.
+    reminded += await sendStepReminders(branch.id, branch.name, items);
 
     // Nothing due beyond the 90-day horizon means nothing worth a message.
     if (actionable.length === 0) continue;
@@ -92,5 +99,52 @@ export async function GET(request: Request) {
   const retried = await processDue({ limit: 200 });
   const purged = await purgeOldDeliveries();
 
-  return NextResponse.json({ ranAt: new Date().toISOString(), digest, webhooks: { retried, purged } });
+  return NextResponse.json({ ranAt: new Date().toISOString(), digest, reminded, webhooks: { retried, purged } });
+}
+
+type Item = Awaited<ReturnType<typeof getRenewals>>[number];
+
+async function sendStepReminders(branchId: string, branchName: string, items: Item[]): Promise<number> {
+  const due = items.flatMap((i) => {
+    const step = i.reminderDays ? dueReminder(i.days, i.reminderDays) : null;
+    return step === null ? [] : [{ item: i, step, refKey: renewalKey(i) }];
+  });
+  if (due.length === 0) return 0;
+
+  const sent = await prisma.documentReminder.findMany({ where: { branchId, refKey: { in: due.map((d) => d.refKey) } }, select: { refKey: true, threshold: true } });
+  const done = new Set(sent.map((r) => `${r.refKey}|${r.threshold}`));
+  const fresh = due.filter((d) => !done.has(`${d.refKey}|${d.step}`));
+  if (fresh.length === 0) return 0;
+
+  // Record first: if the notification then fails the reminder is skipped, which beats the same one being sent every day.
+  const written = await prisma.documentReminder.createMany({ data: fresh.map((d) => ({ branchId, refKey: d.refKey, threshold: d.step })), skipDuplicates: true });
+  if (written.count === 0) return 0;
+
+  const line = (d: (typeof fresh)[number]) =>
+    `${d.item.document} — ${d.item.subjectName} (${d.item.subjectRef}): ${d.item.days < 0 ? `expired ${-d.item.days} day${d.item.days === -1 ? "" : "s"} ago` : d.item.days === 0 ? "expires today" : `${d.item.days} day${d.item.days === 1 ? "" : "s"} left`}`;
+  const body = (rows: typeof fresh) => rows.slice(0, 8).map(line).join("\n") + (rows.length > 8 ? `\n…and ${rows.length - 8} more` : "");
+  const title = (n: number) => `${n} document${n === 1 ? "" : "s"} reaching a reminder date — ${branchName}`;
+
+  const [admins, cases] = await Promise.all([
+    prisma.user.findMany({ where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId }] }, select: { id: true } }),
+    prisma.renewalCase.findMany({
+      where: { branchId, ownerId: { not: null }, OR: fresh.map((d) => ({ kind: d.item.kind, subjectId: d.item.subjectId, document: d.item.document, expiry: new Date(`${d.item.expiry.slice(0, 10)}T00:00:00Z`) })) },
+      select: { kind: true, subjectId: true, document: true, expiry: true, ownerId: true },
+    }),
+  ]);
+  const adminIds = new Set(admins.map((a) => a.id));
+  await notifyUsers({ userIds: [...adminIds], kind: "DOCUMENT_REMINDER", title: title(fresh.length), body: body(fresh), href: "/employees/renewals" });
+
+  // Someone who owns a renewal hears about it even when they aren't an admin.
+  const byOwner = new Map<string, typeof fresh>();
+  for (const c of cases) {
+    if (!c.ownerId || adminIds.has(c.ownerId)) continue;
+    const key = renewalKey({ kind: c.kind as Item["kind"], subjectId: c.subjectId, document: c.document, expiry: c.expiry.toISOString() });
+    const d = fresh.find((x) => x.refKey === key);
+    if (d) byOwner.set(c.ownerId, [...(byOwner.get(c.ownerId) ?? []), d]);
+  }
+  for (const [ownerId, rows] of byOwner) {
+    await notifyUsers({ userIds: [ownerId], kind: "DOCUMENT_REMINDER", title: title(rows.length), body: body(rows), href: "/employees/renewals" });
+  }
+  return written.count;
 }

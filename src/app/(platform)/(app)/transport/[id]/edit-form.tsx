@@ -20,12 +20,32 @@ type Vehicle = {
   insuranceExpiry: string;
   status: string;
   notes: string | null;
+  driverEmployeeId: string | null;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  colour: string | null;
+  chassisNumber: string | null;
+  engineNumber: string | null;
+  trafficFileNumber: string | null;
+  plateEmirate: string | null;
+  plateCategory: string | null;
+  fuelType: string | null;
+  ownership: string;
+  lessor: string | null;
+  odometerKm: number | null;
 };
 
-export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
+const EMIRATES = ["Abu Dhabi", "Dubai", "Sharjah", "Ajman", "Umm Al Quwain", "Ras Al Khaimah", "Fujairah"];
+const FUEL = ["Petrol", "Diesel", "Hybrid", "Electric", "CNG"];
+const CATEGORIES = ["Private", "Commercial", "Transport", "Heavy vehicle", "Taxi"];
+
+export function EditVehicleForm({ vehicle, drivers }: { vehicle: Vehicle; drivers: { id: string; name: string; employeeIdNo: string | null }[] }) {
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ownership, setOwnership] = useState(vehicle.ownership);
+  const [driverId, setDriverId] = useState(vehicle.driverEmployeeId ?? "");
 
   return (
     <form
@@ -50,20 +70,80 @@ export function EditVehicleForm({ vehicle }: { vehicle: Vehicle }) {
         <Field label="Capacity (seats)">
           <NumberInput name="capacity" defaultValue={vehicle.capacity ?? ""} min={0} className="w-full" />
         </Field>
-        <Field label="Driver name">
-          <input
-            name="driverName"
-            defaultValue={vehicle.driverName || ""}
-            className="input w-full"
+        <Field label="Driver (employee)">
+          <Select
+            name="driverEmployeeId"
+            value={driverId}
+            onChange={setDriverId}
+            placeholder="Outside driver / none"
+            options={[{ value: "", label: "Outside driver / none" }, ...drivers.map((d) => ({ value: d.id, label: d.employeeIdNo ? `${d.name} · ${d.employeeIdNo}` : d.name }))]}
           />
         </Field>
-        <Field label="Driver phone">
-          <PhoneField name="driverPhone" defaultValue={vehicle.driverPhone} />
+        {!driverId && (
+          <>
+            <Field label="Driver name">
+              <input name="driverName" defaultValue={vehicle.driverName || ""} className="input w-full" />
+            </Field>
+            <Field label="Driver phone">
+              <PhoneField name="driverPhone" defaultValue={vehicle.driverPhone} />
+            </Field>
+          </>
+        )}
+        <Field label="Make">
+          <input name="make" defaultValue={vehicle.make ?? ""} className="input w-full" placeholder="Toyota" />
         </Field>
-        <Field label="Registration (Mulkiya) expiry">
+        <Field label="Model">
+          <input name="model" defaultValue={vehicle.model ?? ""} className="input w-full" placeholder="Hiace" />
+        </Field>
+        <Field label="Model year">
+          <NumberInput name="year" defaultValue={vehicle.year ?? ""} min={1950} className="w-full" />
+        </Field>
+        <Field label="Colour">
+          <input name="colour" defaultValue={vehicle.colour ?? ""} className="input w-full" />
+        </Field>
+        <Field label="Chassis / VIN">
+          <input name="chassisNumber" defaultValue={vehicle.chassisNumber ?? ""} maxLength={40} className="input w-full uppercase" />
+        </Field>
+        <Field label="Engine number">
+          <input name="engineNumber" defaultValue={vehicle.engineNumber ?? ""} maxLength={40} className="input w-full uppercase" />
+        </Field>
+        <Field label="Plate emirate">
+          <ComboSelect name="plateEmirate" options={EMIRATES} defaultValue={vehicle.plateEmirate} />
+        </Field>
+        <Field label="Plate category">
+          <ComboSelect name="plateCategory" options={CATEGORIES} defaultValue={vehicle.plateCategory} />
+        </Field>
+        <Field label="Traffic file number">
+          <input name="trafficFileNumber" defaultValue={vehicle.trafficFileNumber ?? ""} className="input w-full" />
+        </Field>
+        <Field label="Fuel type">
+          <ComboSelect name="fuelType" options={FUEL} defaultValue={vehicle.fuelType} />
+        </Field>
+        <Field label="Odometer (km)">
+          <NumberInput name="odometerKm" defaultValue={vehicle.odometerKm ?? ""} min={0} className="w-full" />
+        </Field>
+        <Field label="Ownership">
+          <Select
+            name="ownership"
+            value={ownership}
+            onChange={setOwnership}
+            searchable={false}
+            options={[
+              { value: "OWNED", label: "Owned" },
+              { value: "LEASED", label: "Leased" },
+              { value: "RENTED", label: "Rented" },
+            ]}
+          />
+        </Field>
+        {ownership !== "OWNED" && (
+          <Field label={ownership === "LEASED" ? "Leasing company" : "Rental company"}>
+            <input name="lessor" defaultValue={vehicle.lessor ?? ""} className="input w-full" />
+          </Field>
+        )}
+        <Field label="Registration (Mulkiya) expiry — follows the uploaded Mulkiya">
           <DatePicker name="registrationExpiry" defaultValue={vehicle.registrationExpiry} className="w-full" />
         </Field>
-        <Field label="Insurance expiry">
+        <Field label="Insurance expiry — follows the uploaded policy">
           <DatePicker name="insuranceExpiry" defaultValue={vehicle.insuranceExpiry} className="w-full" />
         </Field>
         <Field label="Status">
