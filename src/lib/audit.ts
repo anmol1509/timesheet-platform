@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { emitFromAudit } from "@/lib/webhooks/fromAudit";
 
-type AuditAction = "CREATE" | "UPDATE" | "DELETE";
+type AuditAction = "CREATE" | "UPDATE" | "DELETE" | "VIEW";
 
 function diffFields(
   before: Record<string, unknown>,

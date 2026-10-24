@@ -121,7 +121,7 @@ export function AuditLogList({ entries, now, canSeePay }: { entries: Entry[]; no
       <div className="flex flex-wrap items-center gap-2">
         <input value={query} onChange={(e) => { setQuery(e.target.value); reset(); }} placeholder="Search a person, employee, client or field…" aria-label="Search" className="input w-full max-w-xs" />
         <Select value={user} onChange={(v) => { setUser(v); reset(); }} options={[{ value: "all", label: "Everyone" }, ...users.map((u) => ({ value: u, label: u }))]} />
-        <Select value={action} onChange={(v) => { setAction(v); reset(); }} searchable={false} options={[{ value: "all", label: "Any action" }, { value: "CREATE", label: "Created" }, { value: "UPDATE", label: "Updated" }, { value: "DELETE", label: "Deleted" }]} />
+        <Select value={action} onChange={(v) => { setAction(v); reset(); }} searchable={false} options={[{ value: "all", label: "Any action" }, { value: "CREATE", label: "Created" }, { value: "UPDATE", label: "Updated" }, { value: "DELETE", label: "Deleted" }, { value: "VIEW", label: "Opened" }]} />
         <div className="ml-auto inline-flex rounded-lg bg-surface-sunken p-0.5" role="group" aria-label="Time range">
           {RANGES.map((r) => (
             <button key={r.key} type="button" onClick={() => { setRange(r.key); reset(); }} aria-pressed={range === r.key}

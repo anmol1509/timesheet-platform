@@ -72,7 +72,7 @@ export function entityMeta(type: string): Meta {
 
 export const AUDIT_MODULES = [...new Set(Object.values(ENTITY_META).map((m) => m.module))].sort();
 
-const VERB: Record<string, string> = { CREATE: "created", UPDATE: "updated", DELETE: "deleted" };
+const VERB: Record<string, string> = { CREATE: "created", UPDATE: "updated", DELETE: "deleted", VIEW: "opened" };
 export const auditVerb = (action: string) => VERB[action] ?? action.toLowerCase();
 
 /** "employeeIdNo" -> "Employee id no" */

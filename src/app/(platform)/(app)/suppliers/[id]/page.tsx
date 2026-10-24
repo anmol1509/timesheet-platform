@@ -12,7 +12,7 @@ import { SupplierContactPaymentForm } from "./contact-payment-form";
 import { SupplierApprovals } from "./supplier-approvals";
 import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canViewSensitive } from "@/lib/permissions";
 import { PortalAccessCard } from "./portal-access";
 import { isOutsideBranch } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
@@ -209,7 +209,7 @@ export default async function SupplierDetailPage({
                   <p className="mb-3 text-sm text-muted">
                     The licence owner and the sponsor who runs the company day to day, each with their own passport, Emirates ID, visa, insurance and other documents.
                   </p>
-                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} />
+                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} canOpen={canViewSensitive(subjectOf(user))} />
                 </section>
                 <section>
                   <h2 className="mb-1 text-sm font-semibold text-primary">Signatory, signature &amp; stamp</h2>

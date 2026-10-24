@@ -10,7 +10,7 @@ const STATE: Record<ChecklistItem["state"], { label: string; color: BadgeColor }
 };
 
 /** One row per document type: its status, the expiry of the file that stands for it, and a link to open it. */
-export function DocumentChecklist({ items }: { items: ChecklistItem[] }) {
+export function DocumentChecklist({ items, canOpen = true }: { items: ChecklistItem[]; canOpen?: boolean }) {
   return (
     <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-2xl border border-default bg-surface">
       {items.map((r) => {
@@ -22,7 +22,8 @@ export function DocumentChecklist({ items }: { items: ChecklistItem[] }) {
               <span className="font-medium text-primary">{r.type.label}</span>
               {r.required && <span className="ml-2 text-xs text-muted">Required</span>}
             </span>
-            {r.current && (
+            {r.current && !canOpen && <span className="text-xs text-muted">On file · restricted</span>}
+            {r.current && canOpen && (
               <a href={`/api/attachments/${r.current.id}`} target="_blank" rel="noreferrer" className="max-w-[16rem] truncate text-xs text-[var(--brand-primary)] hover:underline">
                 {r.current.filename}
               </a>

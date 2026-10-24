@@ -44,6 +44,9 @@ export type PermissionModule = {
   actions: readonly PermissionAction[];
 };
 
+/** The permission module that guards personal identity documents. */
+export const SENSITIVE_MODULE = "sensitive";
+
 const CORE: readonly PermissionAction[] = ["view", "create", "edit", "delete", "export"];
 const WITH_APPROVE: readonly PermissionAction[] = ["view", "create", "edit", "delete", "approve", "export"];
 
@@ -171,6 +174,14 @@ const DEFS: ModuleDef[] = [
     ],
   },
   {
+    // Opt-in only: see canViewSensitive. A module-wide "view all" or a legacy role does not include it.
+    key: "sensitive",
+    label: "Sensitive documents",
+    description: "Open owners' and sponsors' passports, Emirates IDs and other personal documents",
+    actions: ["view"],
+    pages: [],
+  },
+  {
     key: "onboarding",
     label: "Candidate onboarding",
     description: "Candidates from agencies, offer through joining",
@@ -270,6 +281,16 @@ export function canViewPath(subject: PermissionSubject, pathname: string): boole
   return target === null || can(subject, target, "view");
 }
 
+/**
+ * Whether the subject may open owners' and sponsors' personal documents (passports, Emirates IDs, visas).
+ * Admins always may. Staff may only when their role names "sensitive:view": no other grant covers it, and
+ * staff with no role (who otherwise get every operational module) don't get it either.
+ */
+export function canViewSensitive(subject: PermissionSubject): boolean {
+  if (subject.role === "SUPER_ADMIN" || subject.role === "BRANCH_ADMIN") return true;
+  return !!subject.permissions?.includes(permissionKey(SENSITIVE_MODULE, "view"));
+}
+
 export const WRITE_ACTIONS: readonly PermissionAction[] = ["create", "edit", "delete", "approve"];
 
 export function canWrite(subject: PermissionSubject, target: string): boolean {
@@ -307,7 +328,7 @@ export const ROLE_PRESETS: { name: string; description: string; permissions: str
   {
     name: "Viewer",
     description: "Read-only access to every module.",
-    permissions: MODULES.map((m) => permissionKey(m.key, "view")),
+    permissions: MODULES.filter((m) => m.key !== SENSITIVE_MODULE).map((m) => permissionKey(m.key, "view")),
   },
   {
     name: "Site supervisor",

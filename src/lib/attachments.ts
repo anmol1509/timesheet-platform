@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
+import { canViewSensitive } from "@/lib/permissions";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { resolveDocTypes, VEHICLE_EXPIRY_FIELD } from "@/lib/documentTypes";
@@ -51,6 +52,7 @@ export async function uploadAttachmentAction(
   // exactly like a broken button. Say what went wrong instead.
   if (!entityType || !entityId) return { error: "Nothing to attach this file to." };
   if (entityType === "VEHICLE") await requireWrite("facilities.transport");
+  if (entityType === "SUPPLIER_PARTY" && !canViewSensitive(subjectOf(user))) return { error: "You don't have permission to add owner and sponsor documents." };
   const lookup = ATTACHABLE[entityType];
   if (!lookup) return { error: "Files can't be attached to that kind of record." };
   const entity = await lookup(entityId);
@@ -95,7 +97,7 @@ export async function uploadAttachmentAction(
 }
 
 export async function deleteAttachmentAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("attachmentId") || "");
   const revalidate = String(formData.get("revalidate") || "");
   if (!id) return;
@@ -104,6 +106,7 @@ export async function deleteAttachmentAction(formData: FormData) {
   if (!attachment || isOutsideBranch(attachment.branchId, branchId, isSuperAdmin)) return;
 
   if (attachment.entityType === "VEHICLE") await requireWrite("facilities.transport");
+  if (attachment.entityType === "SUPPLIER_PARTY" && !canViewSensitive(subjectOf(user))) return;
   await prisma.attachment.delete({ where: { id } });
   if (attachment.entityType === "VEHICLE") await syncVehicleExpiries(attachment.entityId);
   if (revalidate) revalidatePath(revalidate);
