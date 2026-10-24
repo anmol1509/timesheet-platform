@@ -228,14 +228,14 @@ export async function getRenewals(
       select: { id: true, entityType: true, entityId: true, docType: true, filename: true, expiryDate: true, branchId: true },
     }),
     prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true, isOwnCompany: true, _count: { select: { employees: true } } } }),
-    prisma.supplierParty.findMany({ where: scope, select: { id: true, role: true, name: true, supplierId: true, supplier: { select: { name: true } } } }),
+    prisma.supplierParty.findMany({ where: scope, select: { id: true, name: true, links: { select: { role: true, supplierId: true, supplier: { select: { name: true } } }, orderBy: { createdAt: "asc" } } } }),
     prisma.vehicle.findMany({ where: scope, select: { id: true, plateNumber: true, make: true, model: true, type: true, status: true, registrationExpiry: true, insuranceExpiry: true } }),
     prisma.documentType.findMany({ where: scope }),
   ]);
   const registry = registryExpiries({
     files: files.map((f) => ({ ...f, entityType: f.entityType as "SUPPLIER" | "SUPPLIER_PARTY" | "VEHICLE", expiryDate: f.expiryDate! })),
     suppliers: suppliers.map((s) => ({ id: s.id, name: s.name, isOwnCompany: s.isOwnCompany, workers: s._count.employees })),
-    parties: parties.map((p) => ({ id: p.id, role: p.role, name: p.name, supplierId: p.supplierId, supplierName: p.supplier.name })),
+    parties: parties.map((p) => ({ id: p.id, name: p.name, links: p.links.map((l) => ({ role: l.role, supplierId: l.supplierId, supplierName: l.supplier.name })) })),
     vehicles: vehicles.map((v) => ({ id: v.id, plateNumber: v.plateNumber, label: [v.make, v.model].filter(Boolean).join(" ") || v.type || "Vehicle", status: v.status, registrationExpiry: v.registrationExpiry, insuranceExpiry: v.insuranceExpiry })),
     typeRows,
   });

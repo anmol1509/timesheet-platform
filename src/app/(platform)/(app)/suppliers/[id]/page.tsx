@@ -227,7 +227,7 @@ export default async function SupplierDetailPage({
                   <p className="mb-3 text-sm text-muted">
                     The licence owner and the sponsor who runs the company day to day, each with their own passport, Emirates ID, visa, insurance and other documents.
                   </p>
-                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} canOpen={canViewSensitive(subjectOf(user))} />
+                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit && !restricted} canOpen={canViewSensitive(subjectOf(user))} />
                 </section>
                 {supplier.isOwnCompany && (
                   <section>

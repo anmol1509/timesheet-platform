@@ -34,12 +34,14 @@ export async function GET(
     if (!canViewSensitive(subjectOf(user))) {
       return NextResponse.json({ error: "You don't have permission to open owner and sponsor documents." }, { status: 403 });
     }
-    const party = await prisma.supplierParty.findUnique({ where: { id: attachment.entityId }, select: { name: true, role: true, supplierId: true } });
+    // A person can serve several companies; the entry is filed under the first one, naming the person and their role there.
+    const party = await prisma.supplierParty.findUnique({ where: { id: attachment.entityId }, select: { name: true, links: { select: { role: true, supplierId: true }, orderBy: { createdAt: "asc" }, take: 1 } } });
+    const first = party?.links[0];
     await logAudit({
       entityType: "SUPPLIER",
-      entityId: party?.supplierId ?? attachment.entityId,
+      entityId: first?.supplierId ?? attachment.entityId,
       action: "VIEW",
-      after: { document: `${attachment.docType.toLowerCase().replace(/_/g, " ")} (${attachment.filename})`, party: party ? `${party.name} (${party.role.toLowerCase()})` : null },
+      after: { document: `${attachment.docType.toLowerCase().replace(/_/g, " ")} (${attachment.filename})`, party: party ? `${party.name}${first ? ` (${first.role.toLowerCase()})` : ""}` : null },
       userId: user.id,
       userName: user.name,
       branchId: attachment.branchId,

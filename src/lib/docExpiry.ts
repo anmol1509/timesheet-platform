@@ -6,7 +6,9 @@ import { PARTY_ROLE_LABEL, resolveDocTypes, VEHICLE_EXPIRY_FIELD, type DocApplie
  */
 export type ExpiryFile = { id: string; entityType: DocAppliesTo; entityId: string; docType: string; filename: string; expiryDate: Date; branchId: string | null };
 export type ExpirySupplier = { id: string; name: string; isOwnCompany: boolean; workers: number };
-export type ExpiryParty = { id: string; role: string; name: string; supplierId: string; supplierName: string };
+export type ExpiryPartyLink = { role: string; supplierId: string; supplierName: string };
+/** A person and every company they are linked to: their passport expires once, whichever company it is renewed for. */
+export type ExpiryParty = { id: string; name: string; links: ExpiryPartyLink[] };
 export type ExpiryVehicle = { id: string; plateNumber: string; label: string; status: string; registrationExpiry: Date | null; insuranceExpiry: Date | null };
 
 export type RegistryExpiry = {
@@ -28,6 +30,12 @@ export type RegistryExpiry = {
 const HANDLED_ELSEWHERE = new Set(["TRADE_LICENSE", "TRADE_LICENCE", "WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"]);
 /** Types where one supplier can hold several unrelated files, each with its own date. */
 const NEVER_COLLAPSED = new Set(["OTHER", "CONTRACT"]);
+
+/** "Owner · Al Noor", or "Owner · Al Noor, Sponsor · Gulf Skills" when the same person serves several companies. */
+export function describeLinks(links: ExpiryPartyLink[]): string {
+  const parts = links.slice(0, 2).map((l) => `${PARTY_ROLE_LABEL[l.role] ?? l.role} · ${l.supplierName}`);
+  return links.length > 2 ? `${parts.join(", ")} +${links.length - 2} more` : parts.join(", ");
+}
 
 export function registryExpiries(input: {
   files: ExpiryFile[];
@@ -65,7 +73,8 @@ export function registryExpiries(input: {
     }
     if (f.entityType === "SUPPLIER_PARTY") {
       const p = partyOf.get(f.entityId);
-      return p ? { kind: "party", subjectId: p.id, subjectName: p.name, subjectRef: `${PARTY_ROLE_LABEL[p.role] ?? p.role} · ${p.supplierName}`, supplier: p.supplierName, href: `/suppliers/${p.supplierId}` } : null;
+      if (!p || p.links.length === 0) return null;
+      return { kind: "party", subjectId: p.id, subjectName: p.name, subjectRef: describeLinks(p.links), supplier: p.links[0].supplierName, href: `/suppliers/${p.links[0].supplierId}` };
     }
     const v = vehicleOf.get(f.entityId);
     return v ? { kind: "vehicle", subjectId: v.id, subjectName: v.plateNumber, subjectRef: v.label, supplier: null, href: `/transport/${v.id}` } : null;

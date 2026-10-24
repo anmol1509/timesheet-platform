@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { dueReminder, registryExpiries, type ExpiryFile } from "./docExpiry";
+import { describeLinks, dueReminder, registryExpiries, type ExpiryFile } from "./docExpiry";
 
 const d = (n: number) => new Date(Date.UTC(2026, 9, 23) + n * 86400000);
 const sup = [{ id: "s1", name: "ABC Manpower", isOwnCompany: false, workers: 3 }];
-const parties = [{ id: "p1", role: "OWNER", name: "Khalid", supplierId: "s1", supplierName: "ABC Manpower" }];
+const parties = [{ id: "p1", name: "Khalid", links: [{ role: "OWNER", supplierId: "s1", supplierName: "ABC Manpower" }] }];
 const veh = [{ id: "v1", plateNumber: "A 12345", label: "Toyota Hiace", status: "ACTIVE", registrationExpiry: d(20), insuranceExpiry: d(40) }];
 const f = (o: Partial<ExpiryFile> & Pick<ExpiryFile, "id" | "entityType" | "entityId" | "docType">): ExpiryFile => ({ filename: o.id, expiryDate: d(30), branchId: "b", ...o });
 const run = (files: ExpiryFile[], extra: Partial<Parameters<typeof registryExpiries>[0]> = {}) =>
@@ -56,4 +56,19 @@ test("dueReminder: the step a document has reached", () => {
   assert.equal(dueReminder(7, [90, 60, 30, 7]), 7);
   assert.equal(dueReminder(-1, [90, 60, 30, 7]), 0);
   assert.equal(dueReminder(10, []), null);
+});
+
+test("one person serving several companies has one renewal, naming every company", () => {
+  const shared = [{ id: "p1", name: "Khalid", links: [{ role: "OWNER", supplierId: "s1", supplierName: "ABC Manpower" }, { role: "SPONSOR", supplierId: "s2", supplierName: "Gulf Skills" }, { role: "OWNER", supplierId: "s3", supplierName: "Horizon" }] }];
+  const r = run([f({ id: "pp", entityType: "SUPPLIER_PARTY", entityId: "p1", docType: "PASSPORT", expiryDate: d(45) })], { parties: shared }).filter((x) => x.kind === "party");
+  assert.equal(r.length, 1);
+  assert.equal(r[0].subjectRef, "Owner · ABC Manpower, Sponsor · Gulf Skills +1 more");
+  assert.equal(r[0].href, "/suppliers/s1");
+  assert.equal(r[0].supplier, "ABC Manpower");
+});
+
+test("a person with no company left has no renewal", () => {
+  const r = run([f({ id: "pp", entityType: "SUPPLIER_PARTY", entityId: "p1", docType: "PASSPORT" })], { parties: [{ id: "p1", name: "Khalid", links: [] }] });
+  assert.equal(r.filter((x) => x.kind === "party").length, 0);
+  assert.equal(describeLinks([]), "");
 });
