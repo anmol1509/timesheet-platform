@@ -866,18 +866,18 @@ export async function saveSupplierLetterheadMarginsAction(formData: FormData) {
 
 
 // ---- Letters issued on this company's letterhead: signatory, signature, stamp -----------------
-const SUPPLIER_LETTER_IMAGES = { signature: { column: "signatureId", label: "signature" }, stamp: { column: "stampId", label: "stamp" } } as const;
+const SUPPLIER_LETTER_IMAGES = { signature: { column: "signatureId", label: "signature" }, stamp: { column: "stampId", label: "stamp" }, logo: { column: "logoId", label: "logo" } } as const;
 type SupplierLetterImage = keyof typeof SUPPLIER_LETTER_IMAGES;
 
 async function loadLetterSupplier(formData: FormData) {
   await requireWrite("partners.suppliers");
   await requirePermission("partners.suppliers", "edit");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, signatureId: true, stampId: true, signatoryName: true, signatoryTitle: true } });
+  const supplier = await prisma.supplier.findUnique({ where: { id: String(formData.get("supplierId") || "") }, select: { id: true, branchId: true, signatureId: true, stampId: true, logoId: true, signatoryName: true, signatoryTitle: true } });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return null;
   return { user, supplier };
 }
-const imageKind = (v: FormDataEntryValue | null): SupplierLetterImage | null => (v === "signature" || v === "stamp" ? v : null);
+const imageKind = (v: FormDataEntryValue | null): SupplierLetterImage | null => (v === "signature" || v === "stamp" || v === "logo" ? v : null);
 
 export async function uploadSupplierLetterImageAction(formData: FormData) {
   const ctx = await loadLetterSupplier(formData);

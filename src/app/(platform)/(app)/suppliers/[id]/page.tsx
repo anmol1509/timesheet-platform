@@ -24,6 +24,7 @@ import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
 import { SupplierPartiesSection } from "./parties-section";
+import { CompanyHeaderPreview } from "./header-preview";
 import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 
 export const metadata = { title: "Supplier" };
@@ -228,8 +229,18 @@ export default async function SupplierDetailPage({
                   </p>
                   <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} canOpen={canViewSensitive(subjectOf(user))} />
                 </section>
+                {supplier.isOwnCompany && (
+                  <section>
+                    <h2 className="mb-1 text-sm font-semibold text-primary">Timesheet header</h2>
+                    <p className="mb-3 text-sm text-muted">What heads a timesheet when this company is picked under &ldquo;Issued by&rdquo; while generating timesheets.</p>
+                    <CompanyHeaderPreview
+                      company={{ name: supplier.name, fullName: supplier.fullName, location: supplier.location, emirate: supplier.emirate, country: supplier.country, phone: supplier.phone, contactEmail: supplier.contactEmail, poBox: supplier.poBox, trn: supplier.trn, logoId: supplier.logoId }}
+                      canEditDetails={mayOpenOwn}
+                    />
+                  </section>
+                )}
                 <section>
-                  <h2 className="mb-1 text-sm font-semibold text-primary">Signatory, signature &amp; stamp</h2>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">{supplier.isOwnCompany ? "Logo, signatory, signature & stamp" : "Signatory, signature & stamp"}</h2>
                   <p className="mb-3 text-sm text-muted">Used on employee letters issued for this company (as the visa or supplier company), when you tick them on the letter. Upload the letterhead itself under Documents, as type Letterhead.</p>
                   <SupplierLettersSection
                     supplierId={supplier.id}
@@ -237,6 +248,8 @@ export default async function SupplierDetailPage({
                     signatoryTitle={supplier.signatoryTitle ?? ""}
                     signatureUrl={supplier.signatureId ? `/api/images/${supplier.signatureId}` : null}
                     stampUrl={supplier.stampId ? `/api/images/${supplier.stampId}` : null}
+                    logoUrl={supplier.logoId ? `/api/images/${supplier.logoId}` : null}
+                    showLogo={supplier.isOwnCompany}
                   />
                 </section>
                 {attachments.some((a) => a.docType === "LETTERHEAD") && (

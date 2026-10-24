@@ -7,6 +7,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { CompanyGrid } from "./company-grid";
+import { getIssuerOptions } from "@/lib/issuer";
 import { Select } from "@/components/ui/Select";
 
 export const metadata = { title: "Companies" };
@@ -79,6 +80,7 @@ export default async function CompaniesPage({
 
       {suppliers.length > 0 && (
         <CompanyGrid
+          issuer={await getIssuerOptions(branchId, user.id)}
           month={selectedMonth!}
           companies={suppliers.map((s) => ({
             id: s.id,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireUserWithBranch } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
-import { buildLetterhead } from "@/lib/letterhead";
+import { resolveIssuer } from "@/lib/issuer";
 import { generateHoursReportPdf, generateHoursReportXlsx, type HoursRow } from "@/lib/generateHoursReport";
 
 export const maxDuration = 60;
@@ -14,14 +14,16 @@ const bodySchema = z.object({
   show: z.object({ supplier: z.boolean(), project: z.boolean(), client: z.boolean() }),
   groupBySupplier: z.boolean().default(false),
   format: z.enum(["pdf", "xlsx"]).default("pdf"),
+  /** The own company whose header and logo the PDF carries; absent or null = the branch's own details. */
+  issuerId: z.string().max(80).nullish(),
 });
 
 /** One working-hours sheet for the picked employees, with optional supplier / project / client columns. */
 export async function POST(request: Request) {
-  const { user, branchId } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { employeeIds, month, show, groupBySupplier, format } = parsed.data;
+  const { employeeIds, month, show, groupBySupplier, format, issuerId } = parsed.data;
   if (!branchId) return NextResponse.json({ error: "Pick a branch from the switcher first." }, { status: 400 });
 
   const entries = await prisma.timesheetEntry.findMany({
@@ -53,11 +55,9 @@ export async function POST(request: Request) {
     merged.set(key, row);
   }
 
-  const branch = await prisma.branch.findUnique({ where: { id: branchId } });
-  const letterhead = await buildLetterhead({
-    name: branch?.name ?? "", address: branch?.address ?? null, emirate: branch?.emirate ?? null, country: branch?.country ?? null,
-    phone: branch?.phone ?? null, fax: branch?.fax ?? null, email: branch?.email ?? null, poBox: branch?.poBox ?? null, trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
-  });
+  const issuer = await resolveIssuer({ branchId, isSuperAdmin, companyId: issuerId });
+  if ("error" in issuer) return NextResponse.json({ error: issuer.error }, { status: 400 });
+  const letterhead = issuer.letterhead;
   const input = { letterhead, monthLabel: monthLabelFromKey(month), dayCount, rows: [...merged.values()], show, groupBySupplier, preparedBy: user.name };
   const buffer = format === "xlsx" ? await generateHoursReportXlsx(input) : await generateHoursReportPdf(input);
   return new NextResponse(buffer as unknown as BodyInit, {

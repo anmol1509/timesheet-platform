@@ -1,9 +1,12 @@
 import ExcelJS from "exceljs";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
+import { addSheetLogo } from "@/lib/xlsxLogo";
 
 export type GenerateInput = {
   /** A company's own heading for the sheet. */
   titleText?: string;
+  /** PNG/JPEG data URI printed at the top left. */
+  logo?: string | null;
   fullName: string;
   monthLabel: string;
   issuedTo: string;
@@ -68,6 +71,7 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   titleCell.font = { name: FONT, bold: true, size: 14 };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   sheet.getRow(r).height = 22;
+  if (addSheetLogo(wb, sheet, input.logo, { col: 0, row: 0, width: 90, height: 48 })) sheet.getRow(r).height = 50;
   r += 2;
 
   sheet.mergeCells(r, 1, r, LAST_COL);
