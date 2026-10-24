@@ -119,6 +119,9 @@ export function parsePayCells(cells: { structure?: string | null; rate?: string 
 
 // ---- Working terms typed into a sheet: daily hours, overtime, gas -----------------------------------------------------
 
+/** The highest overtime multiplier accepted (a multiple of the normal hourly rate). Night, holiday and special rates can run well above 3. */
+export const MAX_OT_MULTIPLIER = 10;
+
 export type WorkTerms = { dailyHours?: number; paysOvertime?: boolean; otMultiplier?: number; restOtMultiplier?: number; gasWaived?: boolean };
 
 /** Yes / No in the ways people write them. Blank is null (leave alone); anything else is undefined (not understood). */
@@ -149,7 +152,7 @@ export function parseWorkTerms(cells: { dailyHours?: string | null; overtime?: s
   for (const [key, text, label] of [["otMultiplier", cells.otMultiplier, "Overtime multiplier"], ["restOtMultiplier", cells.restOtMultiplier, "Rest-day overtime multiplier"]] as const) {
     const m = parseMoneyCell(text);
     if (m === null) continue;
-    if (Number.isNaN(m) || m < 1 || m > 3) return { error: `${label} must be a number from 1 to 3.` };
+    if (Number.isNaN(m) || m < 1 || m > MAX_OT_MULTIPLIER) return { error: `${label} must be a number from 1 to ${MAX_OT_MULTIPLIER}.` };
     terms[key] = m;
   }
   const gas = parseYesNo(cells.gasWaived);

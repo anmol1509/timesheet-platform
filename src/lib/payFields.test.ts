@@ -102,7 +102,9 @@ test("working terms are read with the same limits as the employee form", () => {
   assert.deepEqual(parseWorkTerms({ dailyHours: "9", overtime: "Yes", otMultiplier: "1.25", restOtMultiplier: "1.5", gasWaived: "No" }), { terms: { dailyHours: 9, paysOvertime: true, otMultiplier: 1.25, restOtMultiplier: 1.5, gasWaived: false } });
   assert.deepEqual(parseWorkTerms({ overtime: "No" }), { terms: { paysOvertime: false } });
   assert.match((parseWorkTerms({ dailyHours: "20" }) as { error: string }).error, /1 to 16/);
-  assert.match((parseWorkTerms({ otMultiplier: "5" }) as { error: string }).error, /1 to 3/);
+  assert.deepEqual(parseWorkTerms({ otMultiplier: "4.16" }), { terms: { otMultiplier: 4.16 } });
+  assert.match((parseWorkTerms({ otMultiplier: "11" }) as { error: string }).error, /1 to 10/);
+  assert.match((parseWorkTerms({ restOtMultiplier: "0.5" }) as { error: string }).error, /1 to 10/);
   assert.match((parseWorkTerms({ overtime: "sometimes" }) as { error: string }).error, /Yes or No/);
   assert.match((parseWorkTerms({ gasWaived: "x" }) as { error: string }).error, /Yes or No/);
 });

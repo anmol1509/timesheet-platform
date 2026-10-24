@@ -24,7 +24,7 @@ import {
 import { assertContactsValid } from "@/lib/validators";
 import { checkEmployee } from "@/lib/dataChecks";
 import { employeeDuplicates } from "@/lib/duplicateCheck";
-import { parsePayCells, parseWorkTerms, payColumns, payFieldsFor, payRevision, type WorkTerms } from "@/lib/payFields";
+import { MAX_OT_MULTIPLIER, parsePayCells, parseWorkTerms, payColumns, payFieldsFor, payRevision, type WorkTerms } from "@/lib/payFields";
 
 // Every nested mutation (documents, skills, photo) takes an employeeId
 // rather than looking the employee up itself, so this is the one place
@@ -117,7 +117,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
     if (structure === "ITEMISED" && !parsed.basicSalary) return { error: "Enter a basic salary for an itemised pay structure." };
     if (structure === "FLAT" && !parsed.flatMonthlyRate) return { error: "Enter the monthly rate for a flat pay structure." };
     const mult = numberOrNull(formData.get("otMultiplier")) ?? 1.25;
-    if (mult < 1 || mult > 3) return { error: "Overtime multiplier must be between 1 and 3." };
+    if (mult < 1 || mult > MAX_OT_MULTIPLIER) return { error: `Overtime multiplier must be between 1 and ${MAX_OT_MULTIPLIER}.` };
     const whole = (k: string, max: number) => {
       const v = numberOrNull(formData.get(k));
       return v === null ? null : v >= 0 && v <= max && Number.isInteger(v) ? v : "bad";
