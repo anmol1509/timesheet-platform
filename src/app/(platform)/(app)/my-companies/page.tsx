@@ -8,7 +8,8 @@ import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { canMyCompanies } from "@/lib/permissions";
 import { buildChecklist, resolveDocTypes, type ChecklistItem } from "@/lib/documentTypes";
-import { AddCompanyDialog } from "./add-company-dialog";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { CompanyTable, type CompanyRow } from "./company-table";
 
 export const metadata = { title: "My Companies" };
@@ -73,7 +74,14 @@ export default async function MyCompaniesPage() {
         icon={Landmark}
         meta={<CountPill>{rows.length}</CountPill>}
         description="The companies you own: their documents, owners and sponsors, logo and bank details. Third-party suppliers stay under Business Partners."
-        actions={canMyCompanies(subject, "create") ? <AddCompanyDialog /> : undefined}
+        actions={
+          canMyCompanies(subject, "create") ? (
+            <Button href="/my-companies/new" size="sm">
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Add company
+            </Button>
+          ) : undefined
+        }
       />
       {rows.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -88,6 +96,7 @@ export default async function MyCompaniesPage() {
           icon={Landmark}
           title="No own companies yet"
           description="Add the companies you own to keep their documents, owners and sponsors together. You can also tick “Own company” on an existing supplier's Company tab and it will appear here."
+          action={canMyCompanies(subject, "create") ? <Button href="/my-companies/new" size="sm">Add company</Button> : undefined}
         />
       ) : (
         <CompanyTable rows={rows} />
