@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, isBlockedByPermissions, resolveSuperAdminBranchId } from "@/lib/auth";
+import { getCurrentUser, isBlockedByPermissions, resolveSuperAdminBranchId, subjectOf } from "@/lib/auth";
+import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { ownDocIsConfidential } from "@/lib/ownCompany";
+import { logAudit } from "@/lib/audit";
 import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 
@@ -18,6 +21,29 @@ export async function GET(
   const attachment = await prisma.attachment.findUnique({ where: { id } });
   if (!attachment || isOutsideBranch(attachment.branchId, branchId, isSuperAdmin)) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
+  // An own company's confidential files (licences, tenancy, contracts...) open only for My Companies access.
+  if (attachment.entityType === "SUPPLIER" && ownDocIsConfidential(attachment.docType) && !canMyCompanies(subjectOf(user))) {
+    const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true } });
+    if (owner?.isOwnCompany) return NextResponse.json({ error: "You don't have permission to open your own companies' documents." }, { status: 403 });
+  }
+
+  // An owner's or sponsor's personal documents open only for people granted "Sensitive documents", and each opening is logged.
+  if (attachment.entityType === "SUPPLIER_PARTY") {
+    if (!canViewSensitive(subjectOf(user))) {
+      return NextResponse.json({ error: "You don't have permission to open owner and sponsor documents." }, { status: 403 });
+    }
+    const party = await prisma.supplierParty.findUnique({ where: { id: attachment.entityId }, select: { name: true, role: true, supplierId: true } });
+    await logAudit({
+      entityType: "SUPPLIER",
+      entityId: party?.supplierId ?? attachment.entityId,
+      action: "VIEW",
+      after: { document: `${attachment.docType.toLowerCase().replace(/_/g, " ")} (${attachment.filename})`, party: party ? `${party.name} (${party.role.toLowerCase()})` : null },
+      userId: user.id,
+      userName: user.name,
+      branchId: attachment.branchId,
+    });
   }
 
   return new NextResponse(new Uint8Array(attachment.fileData), {

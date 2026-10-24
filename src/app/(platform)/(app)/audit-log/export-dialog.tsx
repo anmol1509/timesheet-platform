@@ -20,7 +20,7 @@ export function ExportDialog({ triggerClassName }: { triggerClassName?: string }
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">To</span><DatePicker name="to" className="w-full" /></label>
           </div>
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Action</span>
-            <Select name="action" searchable={false} options={[{ value: "", label: "All" }, { value: "CREATE", label: "Create" }, { value: "UPDATE", label: "Update" }, { value: "DELETE", label: "Delete" }]} triggerClassName="w-full" /></label>
+            <Select name="action" searchable={false} options={[{ value: "", label: "All" }, { value: "CREATE", label: "Create" }, { value: "UPDATE", label: "Update" }, { value: "DELETE", label: "Delete" }, { value: "VIEW", label: "Opened" }]} triggerClassName="w-full" /></label>
           <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Record type</span>
             <Select name="entity" defaultValue="" options={[{ value: "", label: "All record types" }, ...Object.entries(ENTITY_META).map(([k, v]) => ({ value: k, label: `${v.label} — ${v.module}` }))]} /></label>
           <DialogFooter>

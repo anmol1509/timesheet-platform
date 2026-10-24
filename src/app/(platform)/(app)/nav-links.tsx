@@ -58,6 +58,8 @@ type Item = {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Opt-in module: shown only to admins and to roles that name it, never by default (see OPT_IN_MODULES). */
+  needs?: string;
   /**
    * Match this path only, not its descendants. Needed where one entry's href is
    * a prefix of its siblings' — /demand would otherwise light up alongside
@@ -216,6 +218,7 @@ const NAV: Entry[] = [
       { href: "/sales/quotations", label: "Quotations", icon: FileSignature },
     ],
   },
+  { type: "link", category: "Commercial", item: { href: "/my-companies", label: "My Companies", icon: Landmark, needs: "mycompanies" } },
   {
     type: "group",
     label: "Business Partners",
@@ -250,7 +253,7 @@ export function getNavPages(
   isSuperAdmin: boolean,
   allowedModules: string[] | null = null
 ): NavPage[] {
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules, isAdmin);
   const pages: NavPage[] = [];
   for (const entry of entries) {
     if (entry.type === "link") {
@@ -266,9 +269,11 @@ export function getNavPages(
 
 /** Drops nav rows whose module the user can't open (allowed = null → no restriction),
  * and any group left empty. Rows outside every module (dashboard, admin) always stay. */
-function visibleEntries(entries: Entry[], allowed: string[] | null): Entry[] {
-  if (!allowed) return entries;
+function visibleEntries(entries: Entry[], allowed: string[] | null, isAdmin: boolean): Entry[] {
+  const optIn = (item: Item) => !item.needs || isAdmin || !!allowed?.includes(item.needs);
   const ok = (item: Item) => {
+    if (!optIn(item)) return false;
+    if (!allowed) return true;
     const m = moduleForPath(item.href);
     return m === null || allowed.includes(m);
   };
@@ -406,7 +411,7 @@ export function NavLinks({
   badges?: Record<string, number>;
 }) {
   const pathname = usePathname();
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules);
+  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules, isAdmin);
 
   // One winner across the *whole* nav, not per group — fixes two rows (in
   // different groups, or a group row and a top-level item) lighting up for

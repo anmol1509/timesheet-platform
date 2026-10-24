@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requireWrite, subjectOf } from "@/lib/auth";
+import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { ownDocIsConfidential } from "@/lib/ownCompany";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { resolveDocTypes, VEHICLE_EXPIRY_FIELD } from "@/lib/documentTypes";
@@ -51,6 +53,7 @@ export async function uploadAttachmentAction(
   // exactly like a broken button. Say what went wrong instead.
   if (!entityType || !entityId) return { error: "Nothing to attach this file to." };
   if (entityType === "VEHICLE") await requireWrite("facilities.transport");
+  if (entityType === "SUPPLIER_PARTY" && !canViewSensitive(subjectOf(user))) return { error: "You don't have permission to add owner and sponsor documents." };
   const lookup = ATTACHABLE[entityType];
   if (!lookup) return { error: "Files can't be attached to that kind of record." };
   const entity = await lookup(entityId);
@@ -58,6 +61,10 @@ export async function uploadAttachmentAction(
     return { error: "That record belongs to another branch." };
   }
   const entityBranchId = entity.branchId;
+  if (entityType === "SUPPLIER" && ownDocIsConfidential(docType) && !canMyCompanies(subjectOf(user), "edit")) {
+    const owner = await prisma.supplier.findUnique({ where: { id: entityId }, select: { isOwnCompany: true } });
+    if (owner?.isOwnCompany) return { error: "Adding your own companies' documents needs My Companies access." };
+  }
   // Company and owner/sponsor files must be one of the branch's document types (built-in or its own).
   if (entityType === "SUPPLIER" || entityType === "SUPPLIER_PARTY" || entityType === "VEHICLE") {
     const rows = entityBranchId ? await prisma.documentType.findMany({ where: { branchId: entityBranchId } }) : [];
@@ -95,15 +102,20 @@ export async function uploadAttachmentAction(
 }
 
 export async function deleteAttachmentAction(formData: FormData) {
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const id = String(formData.get("attachmentId") || "");
   const revalidate = String(formData.get("revalidate") || "");
   if (!id) return;
 
-  const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true, entityType: true, entityId: true } });
+  const attachment = await prisma.attachment.findUnique({ where: { id }, select: { branchId: true, entityType: true, entityId: true, docType: true } });
   if (!attachment || isOutsideBranch(attachment.branchId, branchId, isSuperAdmin)) return;
 
   if (attachment.entityType === "VEHICLE") await requireWrite("facilities.transport");
+  if (attachment.entityType === "SUPPLIER_PARTY" && !canViewSensitive(subjectOf(user))) return;
+  if (attachment.entityType === "SUPPLIER" && ownDocIsConfidential(attachment.docType) && !canMyCompanies(subjectOf(user), "edit")) {
+    const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true } });
+    if (owner?.isOwnCompany) return;
+  }
   await prisma.attachment.delete({ where: { id } });
   if (attachment.entityType === "VEHICLE") await syncVehicleExpiries(attachment.entityId);
   if (revalidate) revalidatePath(revalidate);

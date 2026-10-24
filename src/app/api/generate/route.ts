@@ -8,7 +8,7 @@ import { generateSupplierXlsx } from "@/lib/generateXlsx";
 import {
   generateTimesheetPdf,
 } from "@/lib/generateTimesheetPdf";
-import { buildLetterhead } from "@/lib/letterhead";
+import { resolveIssuer } from "@/lib/issuer";
 import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf, generateTemplatedXlsx } from "@/lib/generateTemplatedTimesheet";
 
@@ -19,6 +19,8 @@ const bodySchema = z.object({
   template: z.string().max(80).default("standard"),
   gasDeductions: z.record(z.string(), z.number()),
   deductions: z.record(z.string(), z.number()),
+  /** The own company whose header and logo the sheet carries; absent or null = the branch's own details. */
+  issuerId: z.string().max(80).nullish(),
 });
 
 export async function POST(request: Request) {
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { supplierId, month, format, template: templateValue, gasDeductions, deductions } = parsed.data;
+  const { supplierId, month, format, template: templateValue, gasDeductions, deductions, issuerId } = parsed.data;
   const gasDeduction = Object.values(gasDeductions).reduce((s, v) => s + (v || 0), 0);
 
   const supplier = await prisma.supplier.findUnique({
@@ -89,8 +91,9 @@ export async function POST(request: Request) {
   // the Excel, the branch it bills is "Issued To", and the PDF's sub-contractor
   // is the main (parent) supplier, or the supplier itself when it has no parent.
   const fullName = supplier.fullName || supplier.name;
-  const issuer = await prisma.branch.findUnique({ where: { id: supplier.branchId }, select: { name: true, issuedTo: true } });
-  const issuedTo = issuer?.issuedTo || issuer?.name || fullName;
+  const issuer = await resolveIssuer({ branchId, isSuperAdmin, companyId: issuerId, fallbackName: fullName });
+  if ("error" in issuer) return NextResponse.json({ error: issuer.error }, { status: 400 });
+  const issuedTo = issuer.issuedTo;
   const mainSupplier = supplier.parent ?? supplier;
   const subContractor = mainSupplier.fullName || mainSupplier.name;
 
@@ -130,24 +133,14 @@ export async function POST(request: Request) {
   let buffer: Buffer;
   let contentType: string;
   if (template !== "standard") {
-    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
     const [year, monthNo] = month.split("-").map(Number);
     const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
     const dmy = (day: number) => `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
     const input = {
       template,
       config: cfg,
-      letterhead: await buildLetterhead({
-        name: branch?.name ?? fullName,
-        address: branch?.address ?? null,
-        emirate: branch?.emirate ?? null,
-        country: branch?.country ?? null,
-        phone: branch?.phone ?? null,
-        fax: branch?.fax ?? null,
-        email: branch?.email ?? null,
-        poBox: branch?.poBox ?? null,
-        trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
-      }),
+      letterhead: issuer.letterhead,
+      xlsxLogo: issuer.xlsxLogo,
       subContractor,
       monthLabel,
       periodFrom: dmy(1),
@@ -166,30 +159,19 @@ export async function POST(request: Request) {
       contentType = "application/pdf";
     }
   } else if (format === "xlsx") {
-    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined });
+    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined, logo: issuer.xlsxLogo });
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   } else {
     // The PDF now follows the letterhead format the client's contractors issue
     // and accept; the XLSX above is unchanged.
-    const branch = await prisma.branch.findUnique({ where: { id: branchId } });
     const [year, monthNo] = month.split("-").map(Number);
     const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
     const dmy = (day: number) =>
       `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
 
     buffer = await generateTimesheetPdf({
-      letterhead: maskLetterhead(await buildLetterhead({
-        name: branch?.name ?? fullName,
-        address: branch?.address ?? null,
-        emirate: branch?.emirate ?? null,
-        country: branch?.country ?? null,
-        phone: branch?.phone ?? null,
-        fax: branch?.fax ?? null,
-        email: branch?.email ?? null,
-        poBox: branch?.poBox ?? null,
-        trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
-      }), cfg),
+      letterhead: maskLetterhead(issuer.letterhead, cfg),
       subContractor,
       subContractorCode: mainSupplier.mohrePermitNumber ?? null,
       periodFrom: dmy(1),
@@ -225,6 +207,7 @@ export async function POST(request: Request) {
       gasDeduction,
       issuedTo,
       supplierId,
+      issuedCompanyId: issuer.companyId,
       generatedById: user.id,
       branchId,
     },

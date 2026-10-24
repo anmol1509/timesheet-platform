@@ -3,15 +3,17 @@
 import { useMemo, useState } from "react";
 import { FileArchive, Loader2 } from "lucide-react";
 import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
+import { IssuerPicker, type IssuerPickerData } from "@/components/IssuerPicker";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 type Row = { employeeIdNo: string; name: string; trade: string | null; hours: number; companyId: string; company: string; approved: boolean };
 
-export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[] }) {
+export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; rows: Row[]; issuer: IssuerPickerData }) {
   const [query, setQuery] = useState("");
   const [company, setCompany] = useState("");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [template, setTemplate] = useState<string>("standard");
+  const [issuerId, setIssuerId] = useState<string>(issuer.defaultId ?? "");
   const [layout, setLayout] = useState<"company" | "person" | "all">("company");
   const [waiveGas, setWaiveGas] = useState(false);
   const [kind, setKind] = useState<"hours" | "invoice">("hours");
@@ -55,7 +57,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
       const res = await fetch("/api/generate/hours", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employeeIds: [...picked], month, show, groupBySupplier, format }),
+        body: JSON.stringify({ employeeIds: [...picked], month, show, groupBySupplier, format, issuerId: issuerId || null }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -85,7 +87,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
       const res = await fetch("/api/generate/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplierIds, month, gasWaived, template, employeeIds: chosen.map((r) => r.employeeIdNo), perEmployee: layout === "person", combined: layout === "all" }),
+        body: JSON.stringify({ supplierIds, month, gasWaived, template, issuerId: issuerId || null, employeeIds: chosen.map((r) => r.employeeIdNo), perEmployee: layout === "person", combined: layout === "all" }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -172,6 +174,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
               <Checkbox checked={show.client} onCheckedChange={(v) => setShow((x) => ({ ...x, client: v }))} label={<span className="text-sm">Client</span>} />
               <Checkbox checked={groupBySupplier} onCheckedChange={setGroupBySupplier} label={<span className="text-sm">Group by supplier, with subtotals</span>} />
             </div>
+            <IssuerPicker data={issuer} value={issuerId} onChange={setIssuerId} compact />
             <div className="flex flex-wrap items-center gap-3">
               <button type="button" className="btn btn-primary flex gap-1.5" disabled={picked.size === 0 || busy} onClick={() => generateHours("pdf")}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileArchive className="h-4 w-4" />}
@@ -184,6 +187,7 @@ export function EmployeeSheetPicker({ month, rows }: { month: string; rows: Row[
         ) : (
           <>
         <TemplatePicker value={template} onChange={setTemplate} compact />
+        <IssuerPicker data={issuer} value={issuerId} onChange={setIssuerId} compact />
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <label className="flex items-center gap-2"><input type="radio" checked={layout === "company"} onChange={() => setLayout("company")} /> One sheet per company (selected people only)</label>
           <label className="flex items-center gap-2"><input type="radio" checked={layout === "all"} onChange={() => setLayout("all")} /> One sheet for all selected employees</label>

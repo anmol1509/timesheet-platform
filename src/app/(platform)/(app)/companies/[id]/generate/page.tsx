@@ -5,6 +5,7 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { absenceRuleOf, gasRuleOf } from "@/lib/deductions";
+import { getIssuerOptions } from "@/lib/issuer";
 import { ReviewClient } from "./review-client";
 
 export const metadata = { title: "Generate documents" };
@@ -19,12 +20,12 @@ export default async function GeneratePage({
   const { id } = await params;
   const { month } = await searchParams;
 
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({ where: { id } });
   // A guessed URL must not open another branch's supplier sheet.
   if (!supplier || !month || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) notFound();
 
-  const entries = await getSupplierMonthEntries(id, month);
+  const [entries, issuer] = await Promise.all([getSupplierMonthEntries(id, month), getIssuerOptions(supplier.branchId, user.id)]);
 
   if (entries.length === 0) notFound();
 
@@ -52,6 +53,7 @@ export default async function GeneratePage({
         </p>
       )}
       <ReviewClient
+      issuer={issuer}
       supplier={{ id: supplier.id, name: supplier.name, fullName: supplier.fullName }}
       absenceRule={absenceRuleOf(supplier)}
       gasRule={gasRuleOf(supplier)}

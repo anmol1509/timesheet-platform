@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { can } from "@/lib/permissions";
+import { can, canViewSensitive } from "@/lib/permissions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
@@ -42,6 +42,8 @@ export async function deleteSupplierPartyAction(formData: FormData): Promise<voi
   if (!party) return;
   const g = await guard(party.supplierId);
   if ("error" in g) return;
+  // Removing a party removes their personal documents with them, so it needs the same permission as opening them.
+  if (!canViewSensitive(subjectOf(g.ctx.user))) return;
   // Their files hang off the party by id, with no foreign key, so remove them with it.
   await prisma.$transaction([
     prisma.attachment.deleteMany({ where: { entityType: "SUPPLIER_PARTY", entityId: party.id } }),

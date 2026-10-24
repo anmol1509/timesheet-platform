@@ -264,6 +264,7 @@ model StoredImage {
   branchLetterheads  Branch[]   @relation("BranchLetterhead")
   supplierSignatures Supplier[] @relation("SupplierSignature")
   supplierStamps     Supplier[] @relation("SupplierStamp")
+  supplierLogos      Supplier[] @relation("SupplierLogo")
 }
 
 // A named bundle of "module:action" permission keys (see src/lib/permissions.ts)
@@ -389,6 +390,11 @@ model Supplier {
   signatureId           String?
   stamp                 StoredImage? @relation("SupplierStamp", fields: [stampId], references: [id], onDelete: SetNull)
   stampId               String?
+  // Own companies: the logo printed at the head of timesheets issued by this company.
+  logo                  StoredImage? @relation("SupplierLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  logoId                String?
+  // Timesheets generated for this supplier, and the ones issued on this own company's header.
+  issuedSheets          GeneratedSheet[] @relation("SheetIssuer")
   // Pay rules for this company's own workers. Absences up to absentFreeDays a
   // month cost nothing; every day after that deducts absentDeductionPerDay.
   // Gas is charged per day from the worker's check-in date, up to a monthly cap.
@@ -418,7 +424,7 @@ model Supplier {
   ownedCamps Camp[] @relation("CampOwner")
 
   entries         TimesheetEntry[]
-  generatedSheets GeneratedSheet[]
+  generatedSheets GeneratedSheet[] @relation("SheetSupplier")
   employees       Employee[]
   attendance      Attendance[]
 
@@ -640,8 +646,12 @@ model GeneratedSheet {
   issuedTo     String
   generatedAt  DateTime @default(now())
 
-  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  supplier   Supplier @relation("SheetSupplier", fields: [supplierId], references: [id])
   supplierId String
+
+  // The own company whose header and logo the sheet carries; null = the branch's own details.
+  issuedCompany   Supplier? @relation("SheetIssuer", fields: [issuedCompanyId], references: [id], onDelete: SetNull)
+  issuedCompanyId String?
 
   generatedBy   User   @relation(fields: [generatedById], references: [id])
   generatedById String
@@ -650,6 +660,7 @@ model GeneratedSheet {
   branchId String
 
   @@index([month, supplierId])
+  @@index([generatedById, generatedAt])
 }
 
 model Settings {

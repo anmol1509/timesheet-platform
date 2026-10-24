@@ -105,6 +105,11 @@ export function auditSentence(e: AuditLike, name: string | null, opts: { canSeeP
   const noun = who ? `${label} ${who}` : label;
   if (e.action === "CREATE") return `added ${noun}`;
   if (e.action === "DELETE") return `deleted ${noun}`;
+  if (e.action === "VIEW") {
+    const c = (e.changes ?? {}) as Record<string, unknown>;
+    const doc = typeof c.document === "string" ? c.document : "a document";
+    return `opened ${doc}${typeof c.party === "string" ? ` of ${c.party}` : ""} on ${noun}`;
+  }
   const { shown, hiddenPay } = auditFields(e, opts);
   // "for Rahul Khan" names the employee a record belongs to, so the record can't take a possessive.
   const about = !!who && who.startsWith("for ");

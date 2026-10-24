@@ -6,6 +6,7 @@ import type { DailyHourCell } from "@/lib/parseTimesheet";
 import { calculateAbsentDeduction, calculateGasDeduction, type AbsenceRule, type GasRule } from "@/lib/deductions";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { TemplatePicker } from "@/components/TimesheetTemplatePicker";
+import { IssuerPicker, type IssuerPickerData } from "@/components/IssuerPicker";
 
 type Entry = {
   id: string;
@@ -28,6 +29,7 @@ export function ReviewClient({
   entries,
   absenceRule,
   gasRule,
+  issuer,
 }: {
   absenceRule: AbsenceRule;
   gasRule: GasRule;
@@ -35,6 +37,7 @@ export function ReviewClient({
   month: string;
   monthLabel: string;
   entries: Entry[];
+  issuer: IssuerPickerData;
 }) {
   const defaultAbsentDeductions = useMemo(
     () =>
@@ -60,6 +63,7 @@ export function ReviewClient({
   );
   const [generating, setGenerating] = useState<"xlsx" | "pdf" | null>(null);
   const [template, setTemplate] = useState<string>("standard");
+  const [issuerId, setIssuerId] = useState<string>(issuer.defaultId ?? "");
   const [error, setError] = useState<string | null>(null);
 
   function resetRow(id: string) {
@@ -133,6 +137,7 @@ export function ReviewClient({
           month,
           format,
           template,
+          issuerId: issuerId || null,
           gasDeductions,
           deductions,
         }),
@@ -196,6 +201,7 @@ export function ReviewClient({
           <p className="mb-2 text-xs font-medium text-muted">Layout</p>
           <TemplatePicker value={template} onChange={setTemplate} />
           <Link href="/timesheet-templates" className="mt-1.5 inline-block text-xs text-[var(--brand-primary)] hover:underline">See all templates</Link>
+          <IssuerPicker data={issuer} value={issuerId} onChange={setIssuerId} />
         </div>
         {error && (
           <div className="mt-3 rounded-lg bg-[var(--error-soft)] px-3 py-2 text-sm text-[var(--error)]">

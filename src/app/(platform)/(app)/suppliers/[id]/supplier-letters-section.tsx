@@ -5,7 +5,7 @@ import { ImageUpload } from "@/components/ImageUpload";
 import { removeSupplierLetterImageAction, saveSupplierSignatoryAction, uploadSupplierLetterImageAction } from "../actions";
 
 /** Who signs letters issued for this company, and the signature and stamp printed when ticked on a letter. */
-export function SupplierLettersSection({ supplierId, signatoryName, signatoryTitle, signatureUrl, stampUrl }: { supplierId: string; signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null }) {
+export function SupplierLettersSection({ supplierId, signatoryName, signatoryTitle, signatureUrl, stampUrl, logoUrl, showLogo = false }: { supplierId: string; signatoryName: string; signatoryTitle: string; signatureUrl: string | null; stampUrl: string | null; logoUrl?: string | null; /** Own companies only: the logo that heads timesheets issued by this company. */ showLogo?: boolean }) {
   const [name, setName] = useState(signatoryName);
   const [title, setTitle] = useState(signatoryTitle);
   const [pending, start] = useTransition();
@@ -44,6 +44,20 @@ export function SupplierLettersSection({ supplierId, signatoryName, signatoryTit
         <button type="button" className="btn btn-secondary" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save signatory"}</button>
         {message && <span role="status" className={`text-sm ${message.ok ? "text-[var(--success)]" : "text-[var(--error)]"}`}>{message.text}</span>}
       </div>
+      {showLogo && (
+        <ImageUpload
+          currentUrl={logoUrl ?? null}
+          fallback={<span className="text-xs text-subtle">Logo</span>}
+          label="Company logo"
+          hint="PNG or JPEG, square or wide. Printed at the top of timesheets issued by this company. Transparent PNGs keep their transparency."
+          shape="square"
+          format="image/png"
+          maxPx={512}
+          uploadAction={uploadSupplierLetterImageAction}
+          removeAction={removeSupplierLetterImageAction}
+          extraFields={extra("logo")}
+        />
+      )}
       <ImageUpload
         currentUrl={signatureUrl}
         fallback={<span className="text-xs text-subtle">Signature</span>}

@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import ExcelJS from "exceljs";
+import { addSheetLogo, rightEdgeColumn } from "@/lib/xlsxLogo";
 import type { DailyHourCell } from "@/lib/parseTimesheet";
 import type { Letterhead } from "@/lib/letterhead";
 import type { TimesheetTemplateKey } from "@/lib/timesheetTemplates";
@@ -22,6 +23,8 @@ export type TemplatedInput = {
   preparedBy: string | null;
   /** A company's own version of the layout. Missing = the layout exactly as shipped. */
   config?: TemplateConfig | null;
+  /** PNG/JPEG data URI for Excel sheets; PDFs read the letterhead's own logo. Printed top right when the layout shows the logo. */
+  xlsxLogo?: string | null;
 };
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -306,6 +309,7 @@ export async function generateTemplatedXlsx(input: TemplatedInput): Promise<Buff
   };
   const L = input.letterhead;
   put(1, L.name, { name: "Arial", bold: true, size: 14, color: { argb: "FF2B3187" } });
+  if ((!h || h.logo) && addSheetLogo(wb, ws, input.xlsxLogo, { col: rightEdgeColumn(cols.map((x) => x.width), 100), row: 0, width: 96, height: 48 })) ws.getRow(1).height = 36;
   put(2, [...(h && !h.address ? [] : L.addressLines), h && !h.trn ? "" : L.trn ? `TRN: ${L.trn}` : "", h?.poBox && L.poBox ? `P.O. Box ${L.poBox}` : "", !h || h.phone ? (L.phone ? `Tel: ${L.phone}` : "") : "", !h || h.email ? (L.email ?? "") : ""].filter(Boolean).join("  ·  "), { name: "Arial", size: 9 });
   put(4, title, { name: "Arial", bold: true, size: 12 });
   ws.getCell(4, 1).alignment = { horizontal: "center" };

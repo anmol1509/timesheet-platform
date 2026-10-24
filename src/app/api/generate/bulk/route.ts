@@ -6,7 +6,7 @@ import { isOutsideBranch } from "@/lib/branch";
 import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateTimesheetPdf } from "@/lib/generateTimesheetPdf";
-import { buildLetterhead } from "@/lib/letterhead";
+import { resolveIssuer } from "@/lib/issuer";
 import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf } from "@/lib/generateTemplatedTimesheet";
 import { calculateGasDeduction, gasRuleOf } from "@/lib/deductions";
@@ -25,6 +25,8 @@ const bodySchema = z.object({
   perEmployee: z.boolean().default(false),
   /** With employeeIds: one sheet holding every selected person, across all their companies. */
   combined: z.boolean().default(false),
+  /** The own company whose header and logo the sheets carry; absent or null = the branch's own details. */
+  issuerId: z.string().max(80).nullish(),
 });
 
 /**
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  const { supplierIds, month, gasWaived, template: templateValue, employeeIds, perEmployee, combined } = parsed.data;
+  const { supplierIds, month, gasWaived, template: templateValue, employeeIds, perEmployee, combined, issuerId } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
       { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned — contact an admin." },
@@ -51,28 +53,19 @@ export async function POST(request: Request) {
   const template = chosen.base;
   const cfg = chosen.config;
 
-  const [suppliers, branch] = await Promise.all([
+  const [suppliers, issuer] = await Promise.all([
     prisma.supplier.findMany({ where: { id: { in: supplierIds } }, include: { parent: { select: { name: true, fullName: true, mohrePermitNumber: true } } }, orderBy: { name: "asc" } }),
-    prisma.branch.findUnique({ where: { id: branchId } }),
+    resolveIssuer({ branchId, isSuperAdmin, companyId: issuerId }),
   ]);
+  if ("error" in issuer) return NextResponse.json({ error: issuer.error }, { status: 400 });
   const mine = suppliers.filter((s) => !isOutsideBranch(s.branchId, branchId, isSuperAdmin));
   if (mine.length === 0) return NextResponse.json({ error: "Companies not found." }, { status: 404 });
 
   const [year, monthNo] = month.split("-").map(Number);
   const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
   const dmy = (day: number) => `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
-  const letterhead = await buildLetterhead({
-    name: branch?.name ?? "",
-    address: branch?.address ?? null,
-    emirate: branch?.emirate ?? null,
-    country: branch?.country ?? null,
-    phone: branch?.phone ?? null,
-    fax: branch?.fax ?? null,
-    email: branch?.email ?? null,
-    poBox: branch?.poBox ?? null,
-    trn: branch?.trn ?? null, logoId: branch?.logoId ?? null,
-  });
-  const issuedTo = branch?.issuedTo || branch?.name || "";
+  const letterhead = issuer.letterhead;
+  const issuedTo = issuer.issuedTo;
   const monthLabel = monthLabelFromKey(month);
 
   type Entry = Awaited<ReturnType<typeof getSupplierMonthEntries>>[number];
@@ -177,7 +170,7 @@ export async function POST(request: Request) {
       usedNames.add(base);
       zip.file(`${base}.pdf`, pdf);
       await prisma.generatedSheet.create({
-        data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: supplier.id, generatedById: user.id, branchId },
+        data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: supplier.id, issuedCompanyId: issuer.companyId, generatedById: user.id, branchId },
       });
     }
   }
@@ -197,7 +190,7 @@ export async function POST(request: Request) {
     usedNames.add("selected");
     zip.file(`timesheet-selected-employees-${month}.pdf`, pdf);
     await prisma.generatedSheet.create({
-      data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: combinedParts[0].supplier.id, generatedById: user.id, branchId },
+      data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: combinedParts[0].supplier.id, issuedCompanyId: issuer.companyId, generatedById: user.id, branchId },
     });
   }
 

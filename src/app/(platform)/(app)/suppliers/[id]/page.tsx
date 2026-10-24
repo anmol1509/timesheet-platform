@@ -12,7 +12,8 @@ import { SupplierContactPaymentForm } from "./contact-payment-form";
 import { SupplierApprovals } from "./supplier-approvals";
 import { deleteSupplierAction } from "../actions";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { ownDocIsConfidential } from "@/lib/ownCompany";
 import { PortalAccessCard } from "./portal-access";
 import { isOutsideBranch } from "@/lib/branch";
 import { AttachmentUploader } from "@/components/AttachmentUploader";
@@ -23,6 +24,7 @@ import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
 import { SupplierPartiesSection } from "./parties-section";
+import { CompanyHeaderPreview } from "./header-preview";
 import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 
 export const metadata = { title: "Supplier" };
@@ -84,6 +86,10 @@ export default async function SupplierDetailPage({
 
   const showStatement = await canSeeStatement();
   const canEdit = can(subjectOf(user), "partners.suppliers", "edit");
+  // An own company's documents and bank details need My Companies access; the rest of its page (pay rules, hierarchy,
+  // letters) stays open to the people who run payroll and letters.
+  const mayOpenOwn = canMyCompanies(subjectOf(user));
+  const restricted = supplier.isOwnCompany && !mayOpenOwn;
   const companyTypes = resolveDocTypes(typeRows, "SUPPLIER");
   const partyTypes = resolveDocTypes(typeRows, "SUPPLIER_PARTY");
   const companyFiles = attachments
@@ -91,14 +97,21 @@ export default async function SupplierDetailPage({
     .map((a) => ({ id: a.id, docType: a.docType, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, uploadedAt: a.uploadedAt.toISOString() }));
   // Types a file was filed under before the registry (or that a branch has since removed) still need a label in the list.
   const known = new Set(companyTypes.map((t) => t.key));
+  const shownFiles = restricted ? companyFiles.filter((a) => !ownDocIsConfidential(a.docType)) : companyFiles;
   const legacyOptions = [...new Set(companyFiles.map((a) => a.docType))].filter((k) => !known.has(k) && !WC_TYPES.includes(k)).map((k) => ({ value: k, label: k }));
 
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/suppliers" className="text-sm text-muted hover:underline">
-          ← Suppliers
-        </Link>
+        {supplier.isOwnCompany && mayOpenOwn ? (
+          <Link href="/my-companies" className="text-sm text-muted hover:underline">
+            ← My Companies
+          </Link>
+        ) : (
+          <Link href="/suppliers" className="text-sm text-muted hover:underline">
+            ← Suppliers
+          </Link>
+        )}
       </div>
 
       <div>
@@ -190,16 +203,21 @@ export default async function SupplierDetailPage({
                     Trade licence, establishment card, VAT certificate and the rest. Required ones show in red until a file is uploaded.
                     {supplier.isOwnCompany && " This is your own company, so the tenancy agreement is required too."}
                   </p>
+                  {restricted && (
+                    <p className="mb-3 rounded-lg border border-default bg-surface-sunken px-3 py-2 text-sm text-muted">
+                      This is one of your own companies, so its documents are restricted. You can see what is on file and when it expires, and you can still add the letterhead. Opening the rest needs &ldquo;My Companies&rdquo; access from an administrator.
+                    </p>
+                  )}
                   <div className="space-y-4">
-                    <DocumentChecklist items={buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany)} />
+                    <DocumentChecklist items={buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany)} canOpen={!restricted} />
                     {canEdit && (
                       <AttachmentUploader
                         entityType="SUPPLIER"
                         entityId={supplier.id}
                         entityBranchId={supplier.branchId}
                         revalidate={`/suppliers/${supplier.id}`}
-                        docTypeOptions={[...activeDocTypes(companyTypes).map((t) => ({ value: t.key, label: t.label })), ...legacyOptions]}
-                        attachments={companyFiles}
+                        docTypeOptions={restricted ? [{ value: "LETTERHEAD", label: "Letterhead (blank, for letters)" }] : [...activeDocTypes(companyTypes).map((t) => ({ value: t.key, label: t.label })), ...legacyOptions]}
+                        attachments={shownFiles}
                       />
                     )}
                   </div>
@@ -209,10 +227,20 @@ export default async function SupplierDetailPage({
                   <p className="mb-3 text-sm text-muted">
                     The licence owner and the sponsor who runs the company day to day, each with their own passport, Emirates ID, visa, insurance and other documents.
                   </p>
-                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} />
+                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit} canOpen={canViewSensitive(subjectOf(user))} />
                 </section>
+                {supplier.isOwnCompany && (
+                  <section>
+                    <h2 className="mb-1 text-sm font-semibold text-primary">Timesheet header</h2>
+                    <p className="mb-3 text-sm text-muted">What heads a timesheet when this company is picked under &ldquo;Issued by&rdquo; while generating timesheets.</p>
+                    <CompanyHeaderPreview
+                      company={{ name: supplier.name, fullName: supplier.fullName, location: supplier.location, emirate: supplier.emirate, country: supplier.country, phone: supplier.phone, contactEmail: supplier.contactEmail, poBox: supplier.poBox, trn: supplier.trn, logoId: supplier.logoId }}
+                      canEditDetails={mayOpenOwn}
+                    />
+                  </section>
+                )}
                 <section>
-                  <h2 className="mb-1 text-sm font-semibold text-primary">Signatory, signature &amp; stamp</h2>
+                  <h2 className="mb-1 text-sm font-semibold text-primary">{supplier.isOwnCompany ? "Logo, signatory, signature & stamp" : "Signatory, signature & stamp"}</h2>
                   <p className="mb-3 text-sm text-muted">Used on employee letters issued for this company (as the visa or supplier company), when you tick them on the letter. Upload the letterhead itself under Documents, as type Letterhead.</p>
                   <SupplierLettersSection
                     supplierId={supplier.id}
@@ -220,6 +248,8 @@ export default async function SupplierDetailPage({
                     signatoryTitle={supplier.signatoryTitle ?? ""}
                     signatureUrl={supplier.signatureId ? `/api/images/${supplier.signatureId}` : null}
                     stampUrl={supplier.stampId ? `/api/images/${supplier.stampId}` : null}
+                    logoUrl={supplier.logoId ? `/api/images/${supplier.logoId}` : null}
+                    showLogo={supplier.isOwnCompany}
                   />
                 </section>
                 {attachments.some((a) => a.docType === "LETTERHEAD") && (
@@ -300,7 +330,7 @@ export default async function SupplierDetailPage({
               </div>
             ),
           },
-          {
+          ...(restricted ? [] : [{
             id: "contact-payment",
             label: "Contact & Payment",
             content: (
@@ -328,8 +358,8 @@ export default async function SupplierDetailPage({
                 }}
               />
             ),
-          },
-          ...(showStatement ? [{ id: "statement", label: "Statement", content: <PartyStatement type="SUPPLIER" id={supplier.id} /> }] : []),
+          }]),
+          ...(showStatement && !restricted ? [{ id: "statement", label: "Statement", content: <PartyStatement type="SUPPLIER" id={supplier.id} /> }] : []),
         ]}
       />
     </div>

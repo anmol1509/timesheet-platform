@@ -8,6 +8,7 @@ import { branchWhere } from "@/lib/branch";
 import { monthLabelFromKey } from "@/lib/timesheetSummary";
 import { Select } from "@/components/ui/Select";
 import { EmployeeSheetPicker } from "./employee-picker";
+import { getIssuerOptions } from "@/lib/issuer";
 
 export const metadata = { title: "Company employees" };
 
@@ -46,6 +47,7 @@ export default async function EmployeeSheetsPage({ searchParams }: { searchParam
         <div className="empty-state"><p className="text-sm text-muted">No timesheet data yet. <Link href="/upload" className="font-medium text-primary underline">Upload a time sheet</Link> to get started.</p></div>
       ) : (
         <EmployeeSheetPicker
+          issuer={await getIssuerOptions(branchId, user.id)}
           month={month!}
           rows={entries.map((e) => ({
             employeeIdNo: e.employeeIdNo, name: e.employeeName, trade: e.trade, hours: e.totalHours,

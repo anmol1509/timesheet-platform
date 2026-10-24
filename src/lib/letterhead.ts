@@ -101,6 +101,8 @@ export async function buildLetterhead(branch: {
   trn: string | null;
   /** Uploaded company logo (Company profile). Wins over the static fallback file. */
   logoId?: string | null;
+  /** An own company with no logo prints none, rather than the branch's or the placeholder (another company's brand). */
+  strictLogo?: boolean;
 }): Promise<Letterhead> {
   let logo: string | null = null;
   if (branch.logoId) {
@@ -120,6 +122,6 @@ export async function buildLetterhead(branch: {
     // as "P.O. Box P.O. Box 26403".
     poBox: branch.poBox ? branch.poBox.replace(/^\s*P\.?\s*O\.?\s*Box\s*/i, "").trim() : null,
     trn: branch.trn,
-    logo: logo ?? (await loadLogoDataUri()),
+    logo: logo ?? (branch.strictLogo ? null : await loadLogoDataUri()),
   };
 }

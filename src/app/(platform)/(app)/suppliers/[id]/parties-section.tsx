@@ -7,7 +7,7 @@ import { AddPartyForm } from "./add-party-form";
 import { deleteSupplierPartyAction } from "./party-actions";
 
 /** The owners and sponsors behind a supplier, each with their own document checklist and uploader. */
-export async function SupplierPartiesSection({ supplierId, branchId, types, canEdit }: { supplierId: string; branchId: string | null; types: DocTypeDef[]; canEdit: boolean }) {
+export async function SupplierPartiesSection({ supplierId, branchId, types, canEdit, canOpen }: { supplierId: string; branchId: string | null; types: DocTypeDef[]; canEdit: boolean; /** May open and add the personal documents (the "Sensitive documents" permission). */ canOpen: boolean }) {
   const parties = await prisma.supplierParty.findMany({ where: { supplierId }, orderBy: [{ role: "asc" }, { createdAt: "asc" }] });
   const files = parties.length
     ? await prisma.attachment.findMany({
@@ -20,6 +20,11 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
 
   return (
     <div className="space-y-5">
+      {!canOpen && (
+        <p className="rounded-lg border border-default bg-surface-sunken px-3 py-2 text-sm text-muted">
+          Owner and sponsor documents are restricted. You can see which are on file and when they expire, but opening or adding them needs the &ldquo;Sensitive documents&rdquo; permission from an administrator.
+        </p>
+      )}
       {parties.length === 0 && <p className="text-sm text-muted">No owner or sponsor added yet.</p>}
       {parties.map((p) => {
         const mine = files
@@ -34,7 +39,7 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
                 </p>
                 <p className="text-xs text-muted">{[p.nationality, p.phone, p.email].filter(Boolean).join(" · ") || "No contact details"}</p>
               </div>
-              {canEdit && (
+              {canEdit && canOpen && (
                 <DeleteButton
                   action={deleteSupplierPartyAction}
                   hiddenFields={{ partyId: p.id }}
@@ -43,8 +48,8 @@ export async function SupplierPartiesSection({ supplierId, branchId, types, canE
                 />
               )}
             </div>
-            <DocumentChecklist items={buildChecklist(types, mine, false)} />
-            {canEdit && (
+            <DocumentChecklist items={buildChecklist(types, mine, false)} canOpen={canOpen} />
+            {canEdit && canOpen && (
               <AttachmentUploader
                 entityType="SUPPLIER_PARTY"
                 entityId={p.id}
