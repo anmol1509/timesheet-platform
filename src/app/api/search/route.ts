@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, resolveSuperAdminBranchId, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { can } from "@/lib/permissions";
+import { can, canMyCompanies } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 
 const RESULT_LIMIT = 5;
@@ -67,6 +67,8 @@ export async function GET(request: Request) {
     canPartners ? prisma.supplier.findMany({
       where: {
         ...scope,
+        // Own companies appear only for people who may open them.
+        ...(canMyCompanies(subject) ? {} : { isOwnCompany: false }),
         OR: [
           { name: { contains: q, mode: "insensitive" } },
           { code: { contains: q, mode: "insensitive" } },

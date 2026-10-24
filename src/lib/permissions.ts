@@ -46,6 +46,10 @@ export type PermissionModule = {
 
 /** The permission module that guards personal identity documents. */
 export const SENSITIVE_MODULE = "sensitive";
+/** The permission module for the My Companies area. */
+export const MY_COMPANIES_MODULE = "mycompanies";
+/** Modules nobody gets by default: not through a "view everything" role, a starter role, or having no role at all. */
+export const OPT_IN_MODULES: readonly string[] = [SENSITIVE_MODULE, MY_COMPANIES_MODULE];
 
 const CORE: readonly PermissionAction[] = ["view", "create", "edit", "delete", "export"];
 const WITH_APPROVE: readonly PermissionAction[] = ["view", "create", "edit", "delete", "approve", "export"];
@@ -174,6 +178,14 @@ const DEFS: ModuleDef[] = [
     ],
   },
   {
+    // Opt-in only: see canMyCompanies. Admins always have it; staff only when their role names it.
+    key: "mycompanies",
+    label: "My Companies",
+    description: "Your own companies: their documents, owners and sponsors, and bank details",
+    actions: ["view", "create", "edit", "delete"],
+    pages: [],
+  },
+  {
     // Opt-in only: see canViewSensitive. A module-wide "view all" or a legacy role does not include it.
     key: "sensitive",
     label: "Sensitive documents",
@@ -291,6 +303,16 @@ export function canViewSensitive(subject: PermissionSubject): boolean {
   return !!subject.permissions?.includes(permissionKey(SENSITIVE_MODULE, "view"));
 }
 
+/**
+ * Whether the subject may use the My Companies area (and the confidential parts of an own company's page).
+ * Admins always may. Staff may only when their role names "mycompanies:<action>": a "view everything" role, "Business
+ * partners" access, or having no role at all does not include it.
+ */
+export function canMyCompanies(subject: PermissionSubject, action: PermissionAction = "view"): boolean {
+  if (subject.role === "SUPER_ADMIN" || subject.role === "BRANCH_ADMIN") return true;
+  return !!subject.permissions?.includes(permissionKey(MY_COMPANIES_MODULE, action));
+}
+
 export const WRITE_ACTIONS: readonly PermissionAction[] = ["create", "edit", "delete", "approve"];
 
 export function canWrite(subject: PermissionSubject, target: string): boolean {
@@ -328,7 +350,7 @@ export const ROLE_PRESETS: { name: string; description: string; permissions: str
   {
     name: "Viewer",
     description: "Read-only access to every module.",
-    permissions: MODULES.filter((m) => m.key !== SENSITIVE_MODULE).map((m) => permissionKey(m.key, "view")),
+    permissions: MODULES.filter((m) => !OPT_IN_MODULES.includes(m.key)).map((m) => permissionKey(m.key, "view")),
   },
   {
     name: "Site supervisor",

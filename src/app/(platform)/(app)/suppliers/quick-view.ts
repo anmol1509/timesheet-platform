@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
-import { canWrite, can } from "@/lib/permissions";
+import { canWrite, can, canMyCompanies } from "@/lib/permissions";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { assertContactsValid } from "@/lib/validators";
@@ -48,6 +48,7 @@ export async function loadSupplierQuickViewAction(id: string): Promise<SupplierQ
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const s = await prisma.supplier.findUnique({ where: { id }, include: { parent: { select: { name: true } } } });
   if (!s || isOutsideBranch(s.branchId, branchId, isSuperAdmin)) return null;
+  if (s.isOwnCompany && !canMyCompanies(subjectOf(user))) return null;
   const attachments = await prisma.attachment.findMany({
     where: { entityType: "SUPPLIER", entityId: id },
     select: { id: true, docType: true, filename: true, expiryDate: true },

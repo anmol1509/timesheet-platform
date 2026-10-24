@@ -6,7 +6,8 @@ import { applySuppliers } from "@/lib/importer/apply/suppliers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch, requirePermission, requireView, requireWrite } from "@/lib/auth";
+import { requireUserWithBranch, requirePermission, requireView, requireWrite, subjectOf } from "@/lib/auth";
+import { canMyCompanies } from "@/lib/permissions";
 import { branchWhere, isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
@@ -168,6 +169,10 @@ export async function updateSupplierCompanyAction(formData: FormData): Promise<{
     ? await prisma.supplier.findUnique({ where: { id: existing.parentSupplierId }, select: { isOwnCompany: true } })
     : null;
   const own = parentRow?.isOwnCompany ? true : formData.get("isOwnCompany") === "on";
+  // Moving a company in or out of "own companies" changes who may see its documents, so it is a My Companies decision.
+  if (own !== existing.isOwnCompany && !canMyCompanies(subjectOf(user), "edit")) {
+    return { error: "Only people with My Companies access can mark a company as your own, or take that off." };
+  }
 
   // The name can be corrected here; two suppliers in one company can't share a name.
   const name = String(formData.get("name") ?? "").trim() || existing.name;
@@ -316,6 +321,8 @@ export async function updateSupplierContactPaymentAction(formData: FormData) {
 
   const existing = await prisma.supplier.findUnique({ where: { id } });
   if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return;
+  // An own company's bank and contact details are confidential.
+  if (existing.isOwnCompany && !canMyCompanies(subjectOf(user), "edit")) return;
 
   const data = {
     contactPerson: stringOrNull(formData.get("contactPerson")),

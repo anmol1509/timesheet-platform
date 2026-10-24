@@ -51,8 +51,9 @@ export default async function SuppliersPage({
     }),
   ]);
 
+  // Own companies live under My Companies, so this list is third-party suppliers only.
   const suppliers = await prisma.supplier.findMany({
-    where: branchWhere(branchId),
+    where: { ...branchWhere(branchId), isOwnCompany: false },
     select: {
       id: true,
       name: true,
@@ -112,7 +113,7 @@ export default async function SuppliersPage({
       <PageHeader
         title="Suppliers"
         icon={Truck}
-        description={<>Manage the manpower suppliers/subcontractors referenced across timesheets and employees.</>}
+        description={<>Manage the manpower suppliers/subcontractors referenced across timesheets and employees. Your own companies are under My Companies.</>}
         actions={
           <Button href="/suppliers/new" size="sm">
             <Plus className="h-3.5 w-3.5" aria-hidden />
