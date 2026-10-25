@@ -46,3 +46,9 @@ export const SHARE_OPTIONS = Array.from({ length: 100 }, (_, i) => i + 1);
 export function isValidShare(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 100;
 }
+
+/** What a company's owners list says about itself. Own companies must have an owner; other suppliers only when they list some. */
+export function ownershipIssue(own: boolean, shares: (number | null | undefined)[]): string | null {
+  if (shares.length === 0) return own ? "No owner added." : null;
+  return ownershipProblem(ownershipSummary(shares));
+}

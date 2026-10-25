@@ -39,3 +39,12 @@ test("shares are whole percentages from 1 to 100", () => {
   assert.equal(isValidShare(100), true);
   for (const bad of [0, 101, 33.3, -5, NaN, "50", null, undefined]) assert.equal(isValidShare(bad), false, String(bad));
 });
+
+test("ownershipIssue: own companies need an owner, others only when they list some", async () => {
+  const { ownershipIssue } = await import("./ownership");
+  assert.equal(ownershipIssue(true, []), "No owner added.");
+  assert.equal(ownershipIssue(false, []), null);
+  assert.equal(ownershipIssue(true, [100]), null);
+  assert.equal(ownershipIssue(true, [60, 30]), "Owners' shares add up to 90%, 10% short of 100%.");
+  assert.match(ownershipIssue(false, [50, null]) ?? "", /Choose a share/);
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { Select } from "@/components/ui/Select";
+import { similarPeople } from "@/lib/people";
 
 export type PersonOption = { id: string; label: string };
 export type NewPerson = { name: string; nationality: string; phone: string; email: string };
@@ -23,6 +24,9 @@ export function PersonPicker({ options, choice, onChoice, person, onPerson, hide
   disabled?: boolean;
 }) {
   const value = choice.kind === "existing" ? choice.partyId : choice.kind === "new" ? NEW : "";
+  // Someone already on file with the name being typed: offer them instead, so the same person isn't entered twice.
+  const typed = choice.kind === "new" ? person.name.trim() : "";
+  const matches = typed ? similarPeople(typed, options.map((o) => ({ ...o, name: o.label.split(" — ")[0] }))) : [];
   const shown = options.filter((o) => !hideIds.includes(o.id) || (choice.kind === "existing" && choice.partyId === o.id));
   return (
     <div className="space-y-2">
@@ -41,6 +45,15 @@ export function PersonPicker({ options, choice, onChoice, person, onPerson, hide
           <input className="input w-full" type="email" placeholder="Email" value={person.email} onChange={(e) => onPerson({ ...person, email: e.target.value })} aria-label="Email" />
         </div>
       )}
+      {matches.map((m) => {
+        const taken = hideIds.includes(m.id);
+        return (
+          <p key={m.id} role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
+            <span className="min-w-0 flex-1"><span className="font-medium">{m.label}</span> is already on file{taken ? " and already added here." : "."}</span>
+            {!taken && <button type="button" className="btn btn-secondary btn-sm" onClick={() => onChoice({ kind: "existing", partyId: m.id })}>Use this person</button>}
+          </p>
+        );
+      })}
     </div>
   );
 }
