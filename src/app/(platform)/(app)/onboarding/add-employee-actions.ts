@@ -41,6 +41,7 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
   const candidate = await prisma.candidateOnboarding.findUnique({ where: { id } });
   if (!candidate || isOutsideBranch(candidate.branchId, branchId, isSuperAdmin)) return { error: "You can't add that candidate." };
   if (candidate.joined) return { error: "This candidate has already been added as an employee." };
+  if (candidate.droppedAt) return { error: "This candidate was dropped. Bring them back first if they are joining after all." };
   if (!candidate.readyToJoin && formData.get("earlyConfirm") !== "1") {
     return { error: "This candidate's steps aren't complete yet. Tick the box to confirm you are adding them early." };
   }
@@ -55,6 +56,11 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
   if (!(await refsBelongToBranch(candidate.branchId, { supplier: [supplierId, sponsorSupplierId], project: projectId }))) {
     return { error: "That company, sponsor or project isn't in this branch." };
   }
+
+  // A hire joins, and is sponsored by, one of the branch's own companies: never the agency or another supplier.
+  const ownIds = [supplierId, sponsorSupplierId].filter((v): v is string => !!v);
+  const ownCount = await prisma.supplier.count({ where: { id: { in: ownIds }, isOwnCompany: true, branchId: candidate.branchId } });
+  if (ownCount !== new Set(ownIds).size) return { error: "The company and the visa sponsor must be your own companies. Add one under My Companies if it is missing." };
 
   // Pay is only taken from people allowed to set it; anyone else leaves it for payroll.
   let payFields: Record<string, unknown> = {};

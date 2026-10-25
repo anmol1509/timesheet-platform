@@ -271,7 +271,7 @@ async function getStats(input: Record<string, unknown>, ctx: ToolContext): Promi
       mostUrgent: items.slice(0, 8).map((i) => ({ who: i.subjectName, document: i.document, expires: i.expiry.slice(0, 10), daysLeft: i.days })),
     };
   } else if (metric === "onboarding") {
-    const where = branchWhere(ctx.branchId);
+    const where = { ...branchWhere(ctx.branchId), droppedAt: null }; // dropped candidates are out of the numbers
     const [total, ready, joined] = await Promise.all([
       prisma.candidateOnboarding.count({ where }),
       prisma.candidateOnboarding.count({ where: { ...where, readyToJoin: true, joined: false } }),

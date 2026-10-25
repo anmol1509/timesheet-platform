@@ -70,3 +70,15 @@ test("an unfit medical keeps papers pending, and the other papers never hold the
 test("a labour card marked Issued counts as done", () => {
   assert.equal(papersPending({ ...here({ ...cleared, contractStatus: "Issued" }), joined: true }), false);
 });
+
+test("a dropped candidate is never overdue and reads as Dropped; days pending count from the last stage change", async () => {
+  const { isOverdue, overallStatusLabel, pendingSince } = await import("./onboarding");
+  const old = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const row = { ...Object.fromEntries([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.field, s.statuses[0].value])), candidateType: "OVERSEAS", joined: false, readyToJoin: false } as never as Parameters<typeof isOverdue>[0];
+  assert.equal(isOverdue(row, old), true);
+  assert.equal(isOverdue({ ...row, dropped: true }, old), false);
+  assert.equal(overallStatusLabel({ ...(row as object), dropped: true } as never), "Dropped");
+  const recent = new Date();
+  assert.equal(pendingSince({ lastStageChangeAt: recent, createdAt: old }), recent);
+  assert.equal(pendingSince({ lastStageChangeAt: null, createdAt: old }), old);
+});

@@ -367,17 +367,21 @@ export function daysSince(date: Date): number {
 }
 
 /** A one-line summary of where a candidate stands, for list rows and headers. */
-export function overallStatusLabel(row: OnboardingStatuses & { joined: boolean; readyToJoin: boolean }): string {
+export function overallStatusLabel(row: OnboardingStatuses & { joined: boolean; readyToJoin: boolean; dropped?: boolean }): string {
   if (row.joined) return "Joined";
+  if (row.dropped) return "Dropped";
   if (row.readyToJoin) return "Ready to join";
   const stage = currentStage(row);
   return stage ? `${statusKind(stage, row[stage.field]) === "issue" ? "Blocked at" : "At"} ${stage.label}` : "In progress";
 }
 
+/** Since when a candidate has been at their current stage: their last stage change, or when they were added. Saving the record doesn't move it. */
+export const pendingSince = (row: { lastStageChangeAt?: Date | null; createdAt: Date }): Date => row.lastStageChangeAt ?? row.createdAt;
+
 /** Whether a candidate has been sitting at their current stage longer than
  * that stage's typical turnaround — the dashboard's overdue flag. */
-export function isOverdue(row: OnboardingStatuses & { joined: boolean }, sinceUpdatedAt: Date): boolean {
-  if (row.joined) return false;
+export function isOverdue(row: OnboardingStatuses & { joined: boolean; dropped?: boolean }, sinceUpdatedAt: Date): boolean {
+  if (row.joined || row.dropped) return false;
   const stage = currentStage(row);
   if (!stage) return false;
   return daysSince(sinceUpdatedAt) > stage.slaDays;

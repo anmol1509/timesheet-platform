@@ -12,6 +12,7 @@ import { CandidateForm } from "../candidate-form";
 import { StageRow } from "../stage-row";
 import { JoinPanel } from "../join-panel";
 import { Pipeline } from "../pipeline";
+import { DropPanel } from "../drop-panel";
 import { deleteCandidateAction } from "../actions";
 
 export const metadata = { title: "Candidate" };
@@ -26,9 +27,9 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   });
   if (!candidate || isOutsideBranch(candidate.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [agencies, agencyContacts, projects, demandRequests, hrUsers, history, attachments, tasks] = await Promise.all([
-    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
+  const [agencies, sponsors, agencyContacts, projects, demandRequests, hrUsers, history, attachments, tasks] = await Promise.all([
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isRecruitmentAgency: true, OR: [{ status: "ACTIVE" }, { id: candidate.agencyId ?? "" }] }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: true, status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({ where: branchWhere(branchId), select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
     prisma.demandRequest.findMany({
       where: branchWhere(branchId),
@@ -79,13 +80,14 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           {CANDIDATE_TYPES.find((t) => t.value === asCandidateType(candidate.candidateType))?.label} · {candidate.trade ?? "No trade set"} · {candidate.agency?.name ?? "No agency"}
           {candidate.project ? ` · ${candidate.project.code} · ${candidate.project.name}` : ""}
           {" · "}
-          <span className="font-medium text-secondary">{overallStatusLabel(candidate)}</span>
+          <span className="font-medium text-secondary">{overallStatusLabel({ ...candidate, dropped: candidate.droppedAt !== null })}</span>
         </p>
       </div>
 
       <Pipeline row={candidate} joined={candidate.joined} />
 
-      <JoinPanel candidate={candidate} />
+      {!candidate.droppedAt && <JoinPanel candidate={candidate} />}
+      <DropPanel candidateId={candidate.id} joined={candidate.joined} droppedAt={candidate.droppedAt} droppedReason={candidate.droppedReason} />
 
       <div className="card overflow-hidden">
         <div className="border-b border-default px-4 py-3">
@@ -149,7 +151,7 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
 
       <div>
         <p className="mb-2 text-sm font-medium text-primary">Candidate details</p>
-        <CandidateForm candidate={candidate} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
+        <CandidateForm candidate={candidate} sponsors={sponsors} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
       </div>
 
       <div className="card overflow-x-auto">

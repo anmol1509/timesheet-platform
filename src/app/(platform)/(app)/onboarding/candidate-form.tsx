@@ -23,6 +23,7 @@ type Candidate = {
   trade: string | null;
   nationality: string | null;
   sponsorCompany: string | null;
+  sponsorSupplierId?: string | null;
   joiningTargetDate: Date | null;
   phone: string | null;
   email: string | null;
@@ -66,6 +67,7 @@ function SectionHead({ icon: Icon, title, hint }: { icon: React.ElementType; tit
 
 export function CandidateForm({
   candidate,
+  sponsors,
   agencies,
   agencyContacts,
   projects,
@@ -73,6 +75,8 @@ export function CandidateForm({
   hrUsers,
 }: {
   candidate?: Candidate;
+  /** Your own companies: the only ones that can sponsor a hire. */
+  sponsors: Option[];
   agencies: AgencyOption[];
   agencyContacts: AgencyContactOption[];
   projects: (Option & { code: string })[];
@@ -178,8 +182,17 @@ export function CandidateForm({
             />
           </label>
           <label className="block">
-            <span className={label}>Sponsor company</span>
-            <input name="sponsorCompany" defaultValue={candidate?.sponsorCompany ?? ""} className="input w-full" />
+            <span className={label}>Sponsor company <span className="font-normal">(your own company)</span></span>
+            <Select
+              name="sponsorSupplierId"
+              defaultValue={candidate?.sponsorSupplierId ?? ""}
+              searchable
+              emptyText="No own companies yet. Add one under My Companies."
+              options={[{ value: "", label: "Not set" }, ...sponsors.map((c) => ({ value: c.id, label: c.name }))]}
+            />
+            {candidate?.sponsorCompany && !candidate.sponsorSupplierId && (
+              <span className="mt-1 block text-xs text-[var(--warning)]">Earlier entry &ldquo;{candidate.sponsorCompany}&rdquo; didn&rsquo;t match one of your companies. Choose it from the list.</span>
+            )}
           </label>
           <label className="block">
             <span className={label}>Project</span>

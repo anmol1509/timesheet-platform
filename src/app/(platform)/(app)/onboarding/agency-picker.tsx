@@ -65,11 +65,19 @@ export function AgencyPicker({
         >
           <Building2 className="h-4 w-4" aria-hidden />
         </button>
-        <DialogContent title="Add agency" description="Creates a real Supplier record — the same list used across the app.">
+        <DialogContent title="Add agency" description="Adds a recruitment agency. It also appears in Onboarding → Agencies.">
           <form action={action} className="mt-4 space-y-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Agency name *</span>
               <input name="name" required autoFocus className="input w-full" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Country</span>
+              <input name="country" className="input w-full" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">Licence number</span>
+              <input name="licence" className="input w-full" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium text-muted">Contact phone</span>

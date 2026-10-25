@@ -381,6 +381,8 @@ model Supplier {
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
   isOwnCompany          Boolean      @default(false)
+  // A recruitment agency that puts candidates forward for onboarding. Kept apart from the suppliers that supply labour.
+  isRecruitmentAgency   Boolean      @default(false)
   // Same, for this supplier's own letterhead (used when it sponsors workers). Unset = the standard 65 / 35.
   letterheadTopMm       Int?
   letterheadBottomMm    Int?
@@ -449,7 +451,8 @@ model Supplier {
   notifications        SupplierNotification[]
   portalEnabled        Boolean                @default(false)
   bills                SupplierBill[]
-  candidateOnboardings CandidateOnboarding[]
+  candidateOnboardings CandidateOnboarding[] @relation("CandidateAgency")
+  sponsoredCandidates  CandidateOnboarding[] @relation("CandidateSponsor")
   agencyContacts       AgencyContact[]
   partyLinks           SupplierPartyLink[]
 
@@ -2538,8 +2541,18 @@ model CandidateOnboarding {
 
   remarks String?
 
-  agency   Supplier? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  agency   Supplier? @relation("CandidateAgency", fields: [agencyId], references: [id], onDelete: SetNull)
   agencyId String?
+
+  // The own company that sponsors the visa (and employs them). Replaces the free-text sponsorCompany, kept for older rows.
+  sponsorSupplier   Supplier? @relation("CandidateSponsor", fields: [sponsorSupplierId], references: [id], onDelete: SetNull)
+  sponsorSupplierId String?
+
+  // When the candidate last moved at a stage: what "days pending" and overdue count from (not the last time the record was saved).
+  lastStageChangeAt DateTime?
+  // Withdrawn, rejected or lost: out of the queue and the reminders, but kept for the agency's numbers. Cleared to bring them back.
+  droppedAt     DateTime?
+  droppedReason String?
 
   // The person at the agency handling this candidate — a reusable contact,
   // not free text, since the same coordinator typically handles many
@@ -2567,6 +2580,7 @@ model CandidateOnboarding {
 
   @@index([branchId])
   @@index([agencyId])
+  @@index([sponsorSupplierId])
   @@index([readyToJoin, joined])
   @@index([passportNumber])
   @@index([emiratesId])

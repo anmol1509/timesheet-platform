@@ -29,7 +29,9 @@ type Candidate = {
   trade: string | null;
   readyToJoin: boolean;
   joined: boolean;
-  updatedAt: Date;
+  pendingSince: Date;
+  dropped: boolean;
+  droppedReason?: string | null;
   agency: { name: string } | null;
 } & OnboardingStatuses;
 
@@ -41,7 +43,7 @@ function StatusIcon({ kind }: { kind: StatusKind }) {
 }
 
 export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
-  const [view, setView] = useState<"active" | "ready" | "overdue" | "papers" | "joined" | "all">("active");
+  const [view, setView] = useState<"active" | "ready" | "overdue" | "papers" | "joined" | "dropped" | "all">("active");
   const [layout, setLayout] = useState<"table" | "board">("table");
 
   async function handleImport(rows: Record<string, string>[]): Promise<ImportRowResult[]> {
@@ -51,11 +53,12 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
   const inView = useMemo(
     () =>
       candidates.filter((c) => {
-        if (view === "active") return !c.joined;
-        if (view === "ready") return c.readyToJoin && !c.joined;
-        if (view === "overdue") return !c.joined && isOverdue(c, c.updatedAt);
-        if (view === "papers") return papersPending(c);
+        if (view === "active") return !c.joined && !c.dropped;
+        if (view === "ready") return c.readyToJoin && !c.joined && !c.dropped;
+        if (view === "overdue") return isOverdue(c, c.pendingSince);
+        if (view === "papers") return !c.dropped && papersPending(c);
         if (view === "joined") return c.joined;
+        if (view === "dropped") return c.dropped;
         return true;
       }),
     [candidates, view],
@@ -67,6 +70,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
     { value: "overdue", label: "Overdue" },
     { value: "papers", label: "Papers pending" },
     { value: "joined", label: "Joined" },
+    { value: "dropped", label: "Dropped" },
     { value: "all", label: "All" },
   ];
 
@@ -134,11 +138,12 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
       sortValue: (c) => overallStatusLabel(c),
       csvValue: (c) => overallStatusLabel(c),
       render: (c) => {
-        const overdue = !c.joined && isOverdue(c, c.updatedAt);
+        const overdue = isOverdue(c, c.pendingSince);
         const stage = currentStage(c);
         return (
           <span className={cn("text-xs", overdue ? "font-medium text-[var(--error)]" : "text-secondary")}>
             {overallStatusLabel(c)}
+            {c.dropped && c.droppedReason ? ` — ${c.droppedReason}` : ""}
             {overdue && stage ? ` (overdue for ${stage.label})` : ""}
           </span>
         );
@@ -244,7 +249,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
         { key: "trade", label: "All trades", options: tradeOptions, get: (c) => c.trade },
         { key: "stage", label: "Any current stage", options: stageOptions, get: (c) => currentStage(c)?.key },
       ]}
-      getRowClassName={(c) => (!c.joined && isOverdue(c, c.updatedAt) ? "bg-[var(--error-soft,#fee4e2)]/30" : undefined)}
+      getRowClassName={(c) => (isOverdue(c, c.pendingSince) ? "bg-[var(--error-soft,#fee4e2)]/30" : undefined)}
       emptyState={<p className="px-4 py-8 text-center text-muted">{candidates.length === 0 ? "No candidates yet. Add one to start tracking their onboarding." : "No candidates in this view."}</p>}
     />
   );
