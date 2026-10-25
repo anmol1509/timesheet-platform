@@ -6,7 +6,10 @@ import { StatTile } from "@/components/StatTile";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { canMyCompanies } from "@/lib/permissions";
+import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { duplicateGroups } from "@/lib/people";
+import { PARTY_ROLE_LABEL } from "@/lib/documentTypes";
+import { DuplicatePeople, type DupPerson } from "./duplicate-people";
 import { buildChecklist, resolveDocTypes, type ChecklistItem } from "@/lib/documentTypes";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -77,6 +80,23 @@ export default async function MyCompaniesPage() {
   const people = [...personStatus.values()].reduce(add, none);
   const totals = { missing: built.reduce((n, x) => n + x.own.missing, 0) + people.missing, expired: built.reduce((n, x) => n + x.own.expired, 0) + people.expired, expiring: built.reduce((n, x) => n + x.own.expiring, 0) + people.expiring, employees: rows.reduce((n, r) => n + r.employees, 0) };
 
+  // People on file with the same name: usually one person entered twice. Only those who may merge (and open personal documents) see this.
+  let dupGroups: DupPerson[][] = [];
+  if (canMyCompanies(subject, "edit") && canViewSensitive(subject)) {
+    const everyone = await prisma.supplierParty.findMany({
+      where: branchWhere(branchId),
+      select: { id: true, name: true, links: { select: { role: true, supplier: { select: { name: true } } } } },
+    });
+    const counts = everyone.length
+      ? await prisma.attachment.groupBy({ by: ["entityId"], where: { entityType: "SUPPLIER_PARTY", entityId: { in: everyone.map((p) => p.id) } }, _count: true })
+      : [];
+    const docs = new Map(counts.map((c) => [c.entityId, c._count]));
+    dupGroups = duplicateGroups(everyone).map((g) => g.map((p) => ({
+      id: p.id, name: p.name, docs: docs.get(p.id) ?? 0,
+      where: p.links.slice(0, 3).map((l) => `${PARTY_ROLE_LABEL[l.role] ?? l.role} of ${l.supplier.name}`).join(", "),
+    })));
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -101,6 +121,7 @@ export default async function MyCompaniesPage() {
           <StatTile label="Expiring soon" value={totals.expiring} icon={Clock} tone={totals.expiring > 0 ? "warning" : "default"} hint="inside their reminder window" />
         </div>
       )}
+      {dupGroups.length > 0 && <DuplicatePeople groups={dupGroups} />}
       {rows.length === 0 ? (
         <EmptyState
           icon={Landmark}

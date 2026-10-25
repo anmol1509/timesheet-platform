@@ -23,10 +23,21 @@ export async function GET(
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  // An own company's confidential files (licences, tenancy, contracts...) open only for My Companies access.
-  if (attachment.entityType === "SUPPLIER" && ownDocIsConfidential(attachment.docType) && !canMyCompanies(subjectOf(user))) {
-    const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true } });
-    if (owner?.isOwnCompany) return NextResponse.json({ error: "You don't have permission to open your own companies' documents." }, { status: 403 });
+  // An own company's confidential files (licences, tenancy, contracts...) open only for My Companies access, and each opening is logged.
+  if (attachment.entityType === "SUPPLIER" && ownDocIsConfidential(attachment.docType)) {
+    const owner = await prisma.supplier.findUnique({ where: { id: attachment.entityId }, select: { isOwnCompany: true, name: true } });
+    if (owner?.isOwnCompany) {
+      if (!canMyCompanies(subjectOf(user))) return NextResponse.json({ error: "You don't have permission to open your own companies' documents." }, { status: 403 });
+      await logAudit({
+        entityType: "SUPPLIER",
+        entityId: attachment.entityId,
+        action: "VIEW",
+        after: { document: `${attachment.docType.toLowerCase().replace(/_/g, " ")} (${attachment.filename})`, company: owner.name },
+        userId: user.id,
+        userName: user.name,
+        branchId: attachment.branchId,
+      });
+    }
   }
 
   // An owner's or sponsor's personal documents open only for people granted "Sensitive documents", and each opening is logged.

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { OWNER_ROLE, ownershipIssue } from "@/lib/ownership";
 
 // How complete the worker records are. Not a compliance verdict — a to-do list:
 // which details are missing, for whom, so they can be filled in.
@@ -191,4 +192,25 @@ export async function getModuleHealth(module: HealthModule, branchId: string): P
     select: { id: true, name: true, code: true, contactPerson: true, contactEmail: true, contactPhone: true, trn: true, tradeLicenseNumber: true, tradeLicenseExpiry: true, billingAddress: true, paymentTerms: true, emirate: true },
   });
   return summarize("clients", rows.map((r) => ({ id: r.id, name: r.name, sub: r.code, href: `/clients/${r.id}`, values: r })), CLIENT_FIELDS);
+}
+
+// ---------------------------------------------------------------------------
+// Ownership: each company's owners hold shares that must add up to 100.
+// ---------------------------------------------------------------------------
+
+export type OwnershipIssue = { id: string; name: string; own: boolean; problem: string; href: string };
+
+/** Companies whose owners are missing or whose shares don't add up to 100%, own companies first. */
+export async function getOwnershipIssues(branchId: string): Promise<OwnershipIssue[]> {
+  const rows = await prisma.supplier.findMany({
+    where: { branchId, status: "ACTIVE" },
+    select: { id: true, name: true, isOwnCompany: true, partyLinks: { where: { role: OWNER_ROLE }, select: { ownershipPercent: true } } },
+    orderBy: { name: "asc" },
+  });
+  const issues: OwnershipIssue[] = [];
+  for (const r of rows) {
+    const problem = ownershipIssue(r.isOwnCompany, r.partyLinks.map((l) => l.ownershipPercent));
+    if (problem) issues.push({ id: r.id, name: r.name, own: r.isOwnCompany, problem, href: `/suppliers/${r.id}` });
+  }
+  return issues.sort((a, b) => Number(b.own) - Number(a.own));
 }

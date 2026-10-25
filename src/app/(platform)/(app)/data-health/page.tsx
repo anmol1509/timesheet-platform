@@ -5,7 +5,7 @@ import { HeroHeader } from "@/components/HeroHeader";
 import { Badge } from "@/components/Badge";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isAdminRole } from "@/lib/roles";
-import { HEALTH_MODULES, getModuleHealth, type HealthModule, type ModuleHealth } from "@/lib/dataHealth";
+import { HEALTH_MODULES, getModuleHealth, getOwnershipIssues, type HealthModule, type ModuleHealth } from "@/lib/dataHealth";
 import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Data health" };
@@ -71,7 +71,7 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
     );
   }
 
-  const all = await Promise.all(HEALTH_MODULES.map((m) => getModuleHealth(m.key, branchId)));
+  const [all, ownershipIssues] = await Promise.all([Promise.all(HEALTH_MODULES.map((m) => getModuleHealth(m.key, branchId))), getOwnershipIssues(branchId)]);
   const health = Object.fromEntries(all.map((h) => [h.module, h])) as Record<HealthModule, ModuleHealth>;
   const meta = HEALTH_MODULES.find((m) => m.key === active)!;
   const h = health[active];
@@ -105,6 +105,20 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
           </div>
         );
       })()}
+
+      {ownershipIssues.length > 0 && (
+        <section className="space-y-2 rounded-xl border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3" aria-label="Ownership to fix">
+          <p className="text-sm font-semibold text-primary">Ownership to fix <span className="font-normal text-muted">&middot; {ownershipIssues.length}</span></p>
+          <ul className="space-y-1 text-sm">
+            {ownershipIssues.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-primary"><span className="font-medium">{i.name}</span>{i.own && <span className="text-muted"> (own company)</span>} <span className="text-muted">— {i.problem}</span></span>
+                <Link href={i.href} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Fix</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         {HEALTH_MODULES.map((m) => {
