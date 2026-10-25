@@ -82,3 +82,17 @@ test("a dropped candidate is never overdue and reads as Dropped; days pending co
   assert.equal(pendingSince({ lastStageChangeAt: recent, createdAt: old }), recent);
   assert.equal(pendingSince({ lastStageChangeAt: null, createdAt: old }), old);
 });
+
+test("moving a step forward warns about unfinished earlier steps, but not for pending, issues or optional switch-offs", async () => {
+  const { skippedSteps } = await import("./onboarding");
+  const fresh = Object.fromEntries([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.field, s.statuses[0].value])) as never as Parameters<typeof skippedSteps>[0];
+  const row = { ...fresh, candidateType: "OVERSEAS", joined: false } as Parameters<typeof skippedSteps>[0];
+  // Optional steps start "Not Required" and count as done; the offer is the first real step.
+  assert.deepEqual(skippedSteps({ ...row, hireApprovalStatus: "Not Required", interviewStatus: "Not Required", clientApprovalStatus: "Not Required" }, "OFFER", "Prepared"), []);
+  assert.deepEqual(skippedSteps({ ...row, hireApprovalStatus: "Not Required", interviewStatus: "Not Required", clientApprovalStatus: "Not Required" }, "ENTRY_PERMIT", "Applied"), ["Offer Letter", "WPP Insurance", "Work Permit Payment"]);
+  assert.deepEqual(skippedSteps(row, "ENTRY_PERMIT", "Pending"), []);
+  assert.deepEqual(skippedSteps(row, "ARRIVAL", "No Show"), []);
+  assert.deepEqual(skippedSteps(row, "MEDICAL", "Appointment Booked"), ["Arrival"]);
+  assert.deepEqual(skippedSteps({ ...row, candidateType: "INSIDE_UAE" }, "MEDICAL", "Fit"), ["Permit Transfer"]);
+  assert.deepEqual(skippedSteps({ ...row, arrivalStatus: "Arrived UAE" }, "MEDICAL", "Fit"), []);
+});

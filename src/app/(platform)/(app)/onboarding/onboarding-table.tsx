@@ -31,6 +31,7 @@ type Candidate = {
   joined: boolean;
   pendingSince: Date;
   dropped: boolean;
+  docs: { have: number; required: number; missing: string[] };
   droppedReason?: string | null;
   agency: { name: string } | null;
 } & OnboardingStatuses;
@@ -148,6 +149,18 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
           </span>
         );
       },
+    },
+    {
+      key: "docs",
+      header: "Documents",
+      sortValue: (c) => c.docs.missing.length,
+      csvValue: (c) => (c.docs.required === 0 ? "" : c.docs.missing.length === 0 ? "Complete" : `Missing: ${c.docs.missing.join(", ")}`),
+      render: (c) =>
+        c.docs.required === 0 ? <span className="text-subtle">—</span> : c.docs.missing.length === 0 ? (
+          <span className="text-xs text-[var(--success)]">Complete</span>
+        ) : (
+          <span className="text-xs font-medium text-[var(--warning-text,#92400e)]" title={`Still needed: ${c.docs.missing.join(", ")}`}>{c.docs.have}/{c.docs.required}</span>
+        ),
     },
     ...STAGES.map(
       (st): DataTableColumn<Candidate> => ({

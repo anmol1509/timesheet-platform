@@ -6,6 +6,8 @@ import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { cn } from "@/lib/cn";
 import { STAGES, currentStage, daysSince, isOverdue, papersPending, pendingSince } from "@/lib/onboarding";
+import { candidateDocStatus } from "@/lib/candidateDocs";
+import { resolveDocTypes } from "@/lib/documentTypes";
 import { OnboardingTable } from "./onboarding-table";
 import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
 import { Insights } from "@/components/ListSummary";
@@ -20,8 +22,17 @@ export default async function OnboardingPage() {
     orderBy: { createdAt: "desc" },
     include: { agency: { select: { name: true } } },
   });
+  // The documents each candidate has handed over, against what the branch requires.
+  const [typeRows, files] = await Promise.all([
+    prisma.documentType.findMany({ where: { ...branchWhere(branchId), appliesTo: "CANDIDATE" } }),
+    found.length ? prisma.attachment.findMany({ where: { entityType: "CANDIDATE_ONBOARDING", entityId: { in: found.map((c) => c.id) } }, select: { id: true, entityId: true, docType: true, filename: true, expiryDate: true, uploadedAt: true } }) : [],
+  ]);
+  const docsOf = (c: (typeof found)[number]) => candidateDocStatus(
+    resolveDocTypes(typeRows.filter((r) => r.branchId === c.branchId), "CANDIDATE"),
+    files.filter((f) => f.entityId === c.id).map((f) => ({ ...f, expiryDate: f.expiryDate?.toISOString() ?? null, uploadedAt: f.uploadedAt.toISOString() })),
+  );
   // Days pending count from the last stage change; dropped candidates are out of the queue and the numbers.
-  const candidates = found.map((c) => ({ ...c, pendingSince: pendingSince(c), dropped: c.droppedAt !== null }));
+  const candidates = found.map((c) => ({ ...c, pendingSince: pendingSince(c), dropped: c.droppedAt !== null, docs: docsOf(c) }));
 
   const live = candidates.filter((c) => !c.dropped);
   const total = live.length;

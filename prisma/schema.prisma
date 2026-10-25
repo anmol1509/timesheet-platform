@@ -2577,6 +2577,7 @@ model CandidateOnboarding {
 
   history    CandidateOnboardingHistory[]
   stageTasks CandidateOnboardingStageTask[]
+  costs      CandidateCost[]
 
   @@index([branchId])
   @@index([agencyId])
@@ -3316,5 +3317,26 @@ model DocumentReminder {
   branchId  String
 
   @@unique([refKey, threshold])
+  @@index([branchId])
+}
+
+/// Money spent getting a candidate to the UAE and onto the payroll: the agency's fee, visa and permit fees, medical, the ticket.
+/// Seen by people with Finance access; added up per agency to show what each hire cost.
+model CandidateCost {
+  id         String   @id @default(cuid())
+  /// "AGENCY_FEE" | "VISA" | "MEDICAL" | "INSURANCE" | "TICKET" | "OTHER" (see src/lib/candidateCosts.ts)
+  kind       String
+  amount     Decimal  @db.Decimal(12, 2)
+  incurredOn DateTime @db.Date
+  paid       Boolean  @default(false)
+  note       String?
+  createdAt  DateTime @default(now())
+  createdBy  String?
+
+  onboarding   CandidateOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  onboardingId String
+  branchId     String
+
+  @@index([onboardingId])
   @@index([branchId])
 }

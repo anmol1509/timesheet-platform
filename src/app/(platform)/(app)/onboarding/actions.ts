@@ -9,9 +9,9 @@ import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { contactsError } from "@/lib/validators";
 import { refsBelongToBranch } from "@/lib/refScope";
-import { STAGE_BY_KEY, asCandidateType, computeReadyToJoin, type StageKey } from "@/lib/onboarding";
+import { STAGE_BY_KEY, asCandidateType, computeReadyToJoin, skippedSteps, type StageKey } from "@/lib/onboarding";
 
-type State = { error: string | null; ok?: boolean };
+type State = { error: string | null; ok?: boolean; /** Earlier steps still open: the person is asked to confirm before it is saved. */ skipped?: string[] };
 
 function stringOrNull(v: FormDataEntryValue | null) {
   const s = String(v || "").trim();
@@ -191,6 +191,8 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
   const candidate = await prisma.candidateOnboarding.findUnique({ where: { id } });
   if (!candidate) return { error: "Candidate not found." };
   const oldStatus = candidate[stage.field];
+  const skipped = skippedSteps(candidate, stageKey, newStatus);
+  if (skipped.length > 0 && formData.get("confirmSkip") !== "1") return { error: null, skipped };
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.candidateOnboardingHistory.create({
@@ -209,7 +211,7 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
     entityId: id,
     action: "UPDATE",
     before: { [stage.field]: oldStatus },
-    after: { [stage.field]: newStatus },
+    after: { [stage.field]: newStatus, ...(skipped.length > 0 ? { recordedBeforeEarlierSteps: skipped.join(", ") } : {}) },
     userId: user.id,
     userName: user.name,
     branchId: candidate.branchId,

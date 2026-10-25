@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { can } from "@/lib/permissions";
-import { loadAgencies } from "@/lib/agencySheet";
+import { agencySpend, loadAgencies } from "@/lib/agencySheet";
 import { agencyStats } from "@/lib/agencyStats";
 import { AddExistingAgency } from "./add-existing";
 import { NewAgency } from "./new-agency";
@@ -20,11 +20,12 @@ export default async function AgenciesPage() {
   const { user, branchId } = await requireUserWithBranch();
   const subject = subjectOf(user);
   const canExport = can(subject, "onboarding.tracker", "export");
+  const showCosts = can(subject, "finance", "view"); // amounts of money: only for people with Finance access
   const [agencies, others] = await Promise.all([
     loadAgencies(branchId),
     prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: false, isRecruitmentAgency: false }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
-  const rows = agencies.map((a) => ({ a, s: agencyStats(a.candidateOnboardings) }));
+  const rows = agencies.map((a) => { const s = agencyStats(a.candidateOnboardings); return { a, s, spend: agencySpend(a, s.joined) }; });
 
   return (
     <div className="space-y-5">
@@ -58,11 +59,13 @@ export default async function AgenciesPage() {
                 <th className="px-3 py-3 text-right">Dropped</th>
                 <th className="px-3 py-3 text-right" title="Joined, of those who joined or were dropped">Success</th>
                 <th className="px-3 py-3 text-right" title="From being added to joining">Avg days</th>
+                {showCosts && <th className="px-3 py-3 text-right" title="Everything recorded against this agency's candidates, dropped ones included">Spent</th>}
+                {showCosts && <th className="px-3 py-3 text-right" title="Spent, divided by those who joined">Per hire</th>}
                 <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border)]">
-              {rows.map(({ a, s }) => (
+              {rows.map(({ a, s, spend }) => (
                 <tr key={a.id}>
                   <td className="px-4 py-3">
                     <p className="font-medium text-primary">{a.name} {a.status !== "ACTIVE" && <Badge color="red">Blacklisted</Badge>}</p>
@@ -76,6 +79,8 @@ export default async function AgenciesPage() {
                   <td className={num}>{s.dropped}</td>
                   <td className={num}>{s.successRate === null ? "—" : `${s.successRate}%`}</td>
                   <td className={num}>{s.avgDaysToJoin ?? "—"}</td>
+                  {showCosts && <td className={num} title={spend.outstanding > 0 ? `${spend.outstanding.toLocaleString("en-US")} still owing` : undefined}>{spend.total > 0 ? spend.total.toLocaleString("en-US") : "—"}</td>}
+                  {showCosts && <td className={num}>{spend.perJoined === null ? "—" : spend.perJoined.toLocaleString("en-US")}</td>}
                   <td className="px-3 py-3 text-right">
                     {canExport && <a href={`/api/onboarding/agencies/${a.id}/export`} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Sheet</a>}
                   </td>

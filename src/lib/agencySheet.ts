@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { branchWhere } from "@/lib/branch";
 import { CANDIDATE_TYPES, STAGES, asCandidateType, currentStage, daysSince, overallStatusLabel, pendingSince } from "@/lib/onboarding";
 import { agencyStats } from "@/lib/agencyStats";
+import { costPerJoinedHire, costTotals } from "@/lib/candidateCosts";
 
 const dmy = (d: Date | null | undefined) => (d ? `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}` : "");
 
@@ -14,11 +15,17 @@ export async function loadAgencies(branchId: string | null, onlyId?: string) {
     select: {
       id: true, name: true, code: true, status: true, country: true, tradeLicenseNumber: true, contactPhone: true, contactEmail: true,
       agencyContacts: { select: { name: true, phone: true, email: true }, orderBy: { name: "asc" } },
-      candidateOnboardings: { orderBy: { candidateNo: "asc" } },
+      candidateOnboardings: { orderBy: { candidateNo: "asc" }, include: { costs: { select: { kind: true, amount: true, paid: true } } } },
     },
   });
 }
 export type LoadedAgency = Awaited<ReturnType<typeof loadAgencies>>[number];
+
+/** What came through this agency cost in total, and per hire who joined. Money spent on dropped candidates counts too. */
+export function agencySpend(a: LoadedAgency, joined: number) {
+  const t = costTotals(a.candidateOnboardings.flatMap((c) => c.costs.map((x) => ({ kind: x.kind, amount: Number(x.amount), paid: x.paid }))));
+  return { ...t, perJoined: costPerJoinedHire(t.total, joined) };
+}
 
 const head = (ws: ExcelJS.Worksheet) => {
   const r = ws.getRow(1);
@@ -27,9 +34,9 @@ const head = (ws: ExcelJS.Worksheet) => {
   ws.views = [{ state: "frozen", ySplit: 1 }];
 };
 
-function summarySheet(wb: ExcelJS.Workbook, agencies: LoadedAgency[]) {
+function summarySheet(wb: ExcelJS.Workbook, agencies: LoadedAgency[], showCosts: boolean) {
   const ws = wb.addWorksheet("Agencies");
-  ws.addRow(["Agency", "Status", "Country", "Licence number", "Contacts", "Candidates submitted", "In progress", "Ready to join", "Overdue", "Papers pending", "Joined", "Dropped", "Success rate", "Average days to join"]);
+  ws.addRow(["Agency", "Status", "Country", "Licence number", "Contacts", "Candidates submitted", "In progress", "Ready to join", "Overdue", "Papers pending", "Joined", "Dropped", "Success rate", "Average days to join", ...(showCosts ? ["Spent (AED)", "Owing (AED)", "Cost per joined hire (AED)"] : [])]);
   head(ws);
   for (const a of agencies) {
     const s = agencyStats(a.candidateOnboardings);
@@ -38,6 +45,7 @@ function summarySheet(wb: ExcelJS.Workbook, agencies: LoadedAgency[]) {
       a.agencyContacts.map((c) => [c.name, c.phone, c.email].filter(Boolean).join(" / ")).join("; "),
       s.submitted, s.inProgress, s.ready, s.overdue, s.papersPending, s.joined, s.dropped,
       s.successRate === null ? "" : `${s.successRate}%`, s.avgDaysToJoin ?? "",
+      ...(showCosts ? (() => { const x = agencySpend(a, s.joined); return [x.total, x.outstanding, x.perJoined ?? ""]; })() : []),
     ]);
   }
   ws.columns.forEach((c, i) => { c.width = i === 0 ? 34 : i === 4 ? 44 : 16; });
@@ -68,17 +76,17 @@ function candidateSheet(wb: ExcelJS.Workbook, name: string, agencies: LoadedAgen
 }
 
 /** Every agency with its numbers, plus every candidate, in one workbook: the master sheet. */
-export async function masterWorkbook(agencies: LoadedAgency[]): Promise<Buffer> {
+export async function masterWorkbook(agencies: LoadedAgency[], showCosts = false): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  summarySheet(wb, agencies);
+  summarySheet(wb, agencies, showCosts);
   candidateSheet(wb, "All candidates", agencies, true);
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
 /** One agency's sheet to send back: its numbers and each candidate with where they stand. */
-export async function agencyWorkbook(agency: LoadedAgency): Promise<Buffer> {
+export async function agencyWorkbook(agency: LoadedAgency, showCosts = false): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  summarySheet(wb, [agency]);
+  summarySheet(wb, [agency], showCosts);
   candidateSheet(wb, "Candidates", [agency], false);
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

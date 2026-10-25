@@ -11,6 +11,8 @@ import { refsBelongToBranch } from "@/lib/refScope";
 import { initialsOf, nextEmployeeId } from "@/lib/supplierRequests";
 import { checkEmployee } from "@/lib/dataChecks";
 import { employeeDuplicates } from "@/lib/duplicateCheck";
+import { candidateDocStatus } from "@/lib/candidateDocs";
+import { resolveDocTypes } from "@/lib/documentTypes";
 import { employeeDocType, missingEssentials, payFieldsFor, type PayChoice } from "@/lib/onboardingEmployee";
 
 export type AddEmployeeState = { error: string | null; warnings?: string[]; employeeId?: string; copiedFiles?: number };
@@ -84,7 +86,13 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
       employeeDuplicates({ emiratesId: facts.emiratesId, passportNumber, mobileNumber: facts.mobileNumber }),
       passportNumber ? prisma.candidateOnboarding.findFirst({ where: { branchId: candidate.branchId, id: { not: id }, passportNumber: { equals: passportNumber, mode: "insensitive" } }, select: { candidateName: true } }) : null,
     ]);
+    const [typeRows, handedOver] = await Promise.all([
+      prisma.documentType.findMany({ where: { branchId: candidate.branchId, appliesTo: "CANDIDATE" } }),
+      prisma.attachment.findMany({ where: { entityType: "CANDIDATE_ONBOARDING", entityId: id }, select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true } }),
+    ]);
+    const docs = candidateDocStatus(resolveDocTypes(typeRows, "CANDIDATE"), handedOver.map((f) => ({ ...f, expiryDate: f.expiryDate?.toISOString() ?? null, uploadedAt: f.uploadedAt.toISOString() })));
     const warnings = [
+      ...(docs.missing.length > 0 ? [`Required documents not on file: ${docs.missing.join(", ")}.`] : []),
       ...checkEmployee({ ...facts, basicSalary: null }, null),
       ...dups,
       ...(otherCandidate ? [`Another candidate on the board, ${otherCandidate.candidateName}, has this passport number.`] : []),

@@ -11,5 +11,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [agency] = await loadAgencies(branchId, id);
   if (!agency) return NextResponse.json({ error: "Agency not found." }, { status: 404 });
   const slug = agency.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "agency";
-  return xlsxResponse(await agencyWorkbook(agency), `${slug}-candidates-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  return xlsxResponse(await agencyWorkbook(agency, can(subjectOf(user), "finance", "view")), `${slug}-candidates-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

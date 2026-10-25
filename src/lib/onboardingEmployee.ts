@@ -6,6 +6,8 @@
 /** A candidate's file, filed under the step it was attached to, becomes a worker document of the nearest type. */
 const DOC_TYPE_FOR_STEP: Record<string, string> = {
   PASSPORT: "PASSPORT",
+  EMIRATES_ID: "EMIRATES_ID",
+  PHOTO: "PHOTO",
   ENTRY_PERMIT: "VISA",
   ID_VISA: "VISA",
   MEDICAL: "MEDICAL",

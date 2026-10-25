@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Minus, User, X } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -10,7 +10,7 @@ import { updateStageAction, assignStageTaskAction } from "./actions";
 import { StageAttachments, type StageAttachmentRow } from "./stage-attachments";
 import type { Stage, StatusKind } from "@/lib/onboarding";
 
-type State = { error: string | null; ok?: boolean };
+type State = { error: string | null; ok?: boolean; skipped?: string[] };
 type HrOption = { id: string; name: string };
 type Task = { ownerId: string | null; ownerName: string | null; dueDate: Date | null } | null;
 
@@ -52,10 +52,13 @@ export function StageRow({
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  // What was submitted, kept so "Save anyway" sends the same values (the form clears itself after a submit).
+  const submitted = useRef<FormData | null>(null);
   const [state, action, pending] = useActionState(
     async (_prev: State, fd: FormData) => {
       fd.set("id", candidateId);
       fd.set("stage", stage.key);
+      submitted.current = fd;
       const res = await updateStageAction({ error: null }, fd);
       if (res.ok) {
         setOpen(false);
@@ -155,6 +158,22 @@ export function StageRow({
               </button>
               {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
             </div>
+            {state.skipped && state.skipped.length > 0 && (
+              <div role="status" className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-primary sm:col-span-2">
+                <span className="min-w-0 flex-1"><span className="font-medium">Earlier steps aren&rsquo;t finished:</span> {state.skipped.join(", ")}. Record this one anyway?</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={pending}
+                  onClick={() => {
+                    const fd = new FormData();
+                    for (const [k, v] of submitted.current ?? []) fd.set(k, v);
+                    fd.set("confirmSkip", "1");
+                    startTransition(() => action(fd));
+                  }}
+                >Save anyway</button>
+              </div>
+            )}
           </form>
           <StageAttachments candidateId={candidateId} candidateBranchId={candidateBranchId} stageKey={stage.key} attachments={attachments} />
         </div>
