@@ -170,6 +170,7 @@ function toDateInput(d: Date | null) {
 }
 
 export function EditForm({
+  ownRateOnly = true,
   employee,
   projects,
   sites,
@@ -185,6 +186,8 @@ export function EditForm({
   documentsContent,
   pay,
 }: {
+  /** True when no trade carries a rate, so a rate saved on the worker is the only one and stays editable here. */
+  ownRateOnly?: boolean;
   employee: Employee;
   /** Pay figures as strings; null when the viewer may not see pay. */
   pay: PayFormValues | null;
@@ -711,16 +714,15 @@ export function EditForm({
                   <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
-              {payStructure === "HOURLY" && !isStaff && Number(pay.hourlyRate) > 0 && (
-                <Field label="Trade rate: hourly rate saved on this worker (AED)">
+              {/* The rate comes from Known Trade Details; this box only appears for a worker who has a rate saved here and none on a trade. */}
+              {payStructure === "HOURLY" && !isStaff && ownRateOnly && Number(pay.hourlyRate) > 0 && (
+                <Field label="Hourly rate (AED)">
                   <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
-              {payStructure === "HOURLY" && !isStaff && (
+              {payStructure === "HOURLY" && !isStaff && !(ownRateOnly && Number(pay.hourlyRate) > 0) && (
                 <p className="rounded-lg border border-default bg-surface-subtle px-4 py-2 text-xs text-secondary sm:col-span-2">
-                  {Number(pay.hourlyRate) > 0
-                    ? "Payroll pays the hourly rate saved on this worker first; the rate on the trade (Known Trade Details above) is used only when this is empty."
-                    : "Paid per hour worked at the rate on this worker's trade — set it in Known Trade Details above."}
+                  Paid per hour worked at the rate on this worker&apos;s trade. Set it in Known Trade Details above.
                 </p>
               )}
               {payStructure === "ITEMISED" && (

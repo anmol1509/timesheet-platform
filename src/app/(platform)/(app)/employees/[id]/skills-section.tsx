@@ -163,7 +163,7 @@ export function SkillsSection({
                       {workerTrade ?? "Trade"}
                       <span className="ml-2 rounded-full border border-default px-1.5 py-0.5 text-[10px] font-medium text-muted" title="Saved on this worker under Pay structure. Payroll pays this before any trade rate below.">Paid by payroll</span>
                     </td>
-                    <td className="px-3 py-2 text-right text-secondary">—</td>
+                    <td className="px-3 py-2 text-right text-secondary">{DEFAULT_SKILL_LEVEL}%</td>
                     <td className="px-3 py-2 text-right text-secondary">AED {workerRate.toFixed(2)} / hour</td>
                     <td className="px-3 py-2 text-right">
                       <button type="button" onClick={editWorkerRate} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Edit</button>

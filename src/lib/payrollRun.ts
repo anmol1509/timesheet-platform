@@ -21,14 +21,14 @@ type PayEmployee = {
  * the rate on their trade in Known Trade Details (the trade they are
  * deployed as, then the one matching their designation, then any with a rate).
  */
-/** Where an hourly rate comes from: the one on the employee, else the rate on the trade (skill) they are deployed as. */
+/** Where an hourly rate comes from: the rate on the trade (skill) they are deployed as, else the one saved on the employee. */
 export function hourlyRateSource(e: PayEmployee): { rate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; trade: string | null } {
-  const own = n2(e.hourlyRate);
-  if (own > 0) return { rate: own, source: "EMPLOYEE", trade: null };
   const withRate = (e.skills ?? []).filter((k) => (k.rate ?? 0) > 0);
   const want = (e.trade ?? e.position ?? "").trim().toLowerCase();
   const pick = withRate.find((k) => k.isActive) ?? withRate.find((k) => k.skill.name.trim().toLowerCase() === want) ?? withRate[0];
-  return pick ? { rate: pick.rate ?? 0, source: "TRADE", trade: pick.skill.name } : { rate: 0, source: "NONE", trade: null };
+  if (pick) return { rate: pick.rate ?? 0, source: "TRADE", trade: pick.skill.name };
+  const own = n2(e.hourlyRate);
+  return own > 0 ? { rate: own, source: "EMPLOYEE", trade: null } : { rate: 0, source: "NONE", trade: null };
 }
 function hourlyRateOf(e: PayEmployee): number {
   return hourlyRateSource(e).rate;
