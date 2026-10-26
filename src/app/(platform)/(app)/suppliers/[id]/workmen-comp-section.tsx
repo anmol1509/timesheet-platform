@@ -2,10 +2,12 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { ChevronDown, FileText, Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { deleteWorkmenCompAction, linkWorkmenCompCoverageAction, setWorkmenCompExpiryAction, uploadWorkmenCompAction } from "../actions";
+import { deleteWorkmenCompAction, setWorkmenCompExpiryAction } from "../actions";
+import { ingestWorkmenComp } from "./workmen-comp-ingest";
+import { WorkmenCompWorkers } from "./workmen-comp-workers";
 
 export type WcPolicy = { id: string; filename: string; expiryDate: string | null; covered: number };
 type Progress = { name: string; state: "waiting" | "working" | "done" | "failed"; note?: string };
@@ -24,8 +26,12 @@ function status(iso: string | null) {
  * certificates: for each, the expiry date and the insured names are read from the file, the file is filed, and the
  * workers on this supplier named on it are linked to that certificate.
  */
-export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: { supplierId: string; policies: WcPolicy[]; workers: number; canEdit: boolean }) {
+export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onChanged }: { supplierId: string; policies: WcPolicy[]; workers: number; canEdit: boolean; /** Called after a change instead of refreshing the page (the side panel reloads its own data). */ onChanged?: () => void }) {
   const router = useRouter();
+  const changed = () => (onChanged ? onChanged() : router.refresh());
+  // Policies whose workers are showing; a policy just added opens by itself so who is on it can be checked and linked at once.
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setOpenIds((cur) => { const n = new Set(cur); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<Progress[]>([]);
@@ -38,42 +44,29 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: {
     if (files.length === 0) return;
     setBusy(true);
     setError(null);
+    const added: string[] = [];
     const rows: Progress[] = files.map((f) => ({ name: f.name, state: "waiting" }));
     setProgress(rows);
     const set = (i: number, patch: Partial<Progress>) => setProgress((cur) => cur.map((r, j) => (j === i ? { ...r, ...patch } : r)));
     for (const [i, file] of files.entries()) {
       set(i, { state: "working" });
       try {
-        // The certificate's own expiry date and the names it insures, each read from the file (best effort).
-        let expiry = "";
-        let names: string[] = [];
-        const meta = new FormData();
-        meta.append("file", file);
-        const [c, e] = await Promise.all([
-          fetch("/api/documents/extract-company", { method: "POST", body: meta }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-          fetch("/api/documents/extract-employees", { method: "POST", body: meta }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        ]);
-        expiry = /^\d{4}-\d{2}-\d{2}$/.test(c?.documentExpiry ?? "") ? c.documentExpiry : "";
-        names = ((e?.employees ?? []) as { name: string | null }[]).map((x) => x.name ?? "").filter(Boolean);
-        const form = new FormData();
-        form.append("supplierId", supplierId);
-        form.append("file", file);
-        if (expiry) form.append("expiryDate", expiry);
-        const up = await uploadWorkmenCompAction(form);
-        if (!up.id) { set(i, { state: "failed", note: up.error ?? "Could not upload." }); continue; }
-        const link = names.length > 0 ? await linkWorkmenCompCoverageAction(supplierId, names, up.id) : { linked: 0, unmatched: [] as string[] };
-        const parts = [expiry ? `expires ${expiry}` : "no expiry date found", names.length > 0 ? `${link.linked} of ${names.length} named workers linked` : "no names found on it"];
-        if (link.unmatched.length > 0) parts.push(`${link.unmatched.length} not on this supplier's roster`);
+        const r = await ingestWorkmenComp(supplierId, file);
+        if (!r.id) { set(i, { state: "failed", note: r.error ?? "Could not upload." }); continue; }
+        added.push(r.id);
+        const parts = [r.expiry ? `expires ${r.expiry}` : "no expiry date found", r.names.length > 0 ? `${r.linked} of ${r.names.length} named workers linked` : "no names found on it"];
+        if (r.unmatched.length > 0) parts.push(`${r.unmatched.length} not on this company's roster`);
         set(i, { state: "done", note: parts.join(" · ") });
       } catch {
         set(i, { state: "failed", note: "Could not read or upload this file." });
       }
     }
     setBusy(false);
-    start(() => router.refresh());
+    if (added.length > 0) setOpenIds((cur) => new Set([...cur, ...added]));
+    start(changed);
   }
 
-  const run = (fn: () => Promise<{ error?: string }>) => start(async () => { const r = await fn(); if (r.error) setError(r.error); else router.refresh(); });
+  const run = (fn: () => Promise<{ error?: string }>) => start(async () => { const r = await fn(); if (r.error) setError(r.error); else changed(); });
 
   return (
     <div id="workmen-comp" className="scroll-mt-24 space-y-3">
@@ -87,12 +80,16 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: {
           {policies.map((p) => {
             const st = status(p.expiryDate);
             return (
-              <li key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+              <li key={p.id}>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 <a href={`/api/attachments/${p.id}`} target="_blank" rel="noreferrer" className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-primary hover:underline">
                   <FileText className="h-4 w-4 shrink-0 text-muted" aria-hidden />
                   <span className="truncate">{p.filename}</span>
                 </a>
-                <span className="text-xs text-muted">{p.covered} {p.covered === 1 ? "worker" : "workers"}</span>
+                <button type="button" onClick={() => toggle(p.id)} aria-expanded={openIds.has(p.id)} className="inline-flex items-center gap-1 text-xs font-medium text-[var(--brand-primary)] hover:underline">
+                  {p.covered} {p.covered === 1 ? "worker" : "workers"} · who&rsquo;s on it
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", openIds.has(p.id) && "rotate-180")} aria-hidden />
+                </button>
                 <span className={cn("text-xs font-medium", st.cls)}>{st.text}</span>
                 {canEdit && (
                   <>
@@ -113,6 +110,8 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit }: {
                     </button>
                   </>
                 )}
+              </div>
+              {openIds.has(p.id) && <WorkmenCompWorkers supplierId={supplierId} attachmentId={p.id} filename={p.filename} canEdit={canEdit} onChanged={changed} />}
               </li>
             );
           })}

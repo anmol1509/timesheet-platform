@@ -576,7 +576,7 @@ export async function createEmployeesFromInsuranceAction(
  */
 const WC_TYPES = ["WORKMEN_COMPENSATION_INSURANCE", "WORKMEN_COMPENSATION"];
 
-/** A supplier's workmen compensation certificate, with the same checks every document upload gets. */
+/** A company's workmen compensation certificate, with the same checks every document upload gets. */
 async function ownCertificate(supplierId: string, attachmentId: string) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const cert = await prisma.attachment.findUnique({ where: { id: attachmentId }, select: { id: true, entityType: true, entityId: true, docType: true, branchId: true } });
@@ -584,9 +584,40 @@ async function ownCertificate(supplierId: string, attachmentId: string) {
   return cert;
 }
 
+/** The workers a company's certificates can cover: those it employs and, for an own company, those it sponsors. */
+const wcRoster = (supplierId: string) => ({ OR: [{ supplierId }, { sponsorSupplierId: supplierId }] });
+
 /**
- * Files one workmen compensation certificate against a supplier and returns its id, so the workers named on it
- * can be linked to exactly this certificate. A supplier can hold several: each covers its own workers.
+ * Files a copy of the certificate on each worker's profile (Documents, type Insurance), so it is there without anyone
+ * uploading it again. One copy per worker per certificate: filing again only refreshes the name and expiry.
+ */
+async function fileCertificateOnWorkers(certId: string, employeeIds: string[], userId: string) {
+  if (employeeIds.length === 0) return;
+  const cert = await prisma.attachment.findUnique({ where: { id: certId }, select: { filename: true, fileData: true, mimeType: true, expiryDate: true } });
+  if (!cert) return;
+  const have = await prisma.document.findMany({ where: { sourceAttachmentId: certId, employeeId: { in: employeeIds } }, select: { id: true, employeeId: true } });
+  const haveIds = new Set(have.map((d) => d.employeeId));
+  if (have.length > 0) await prisma.document.updateMany({ where: { id: { in: have.map((d) => d.id) } }, data: { filename: cert.filename, expiryDate: cert.expiryDate } });
+  for (const employeeId of employeeIds.filter((id) => !haveIds.has(id))) {
+    await prisma.document.create({ data: { employeeId, type: "INSURANCE", filename: cert.filename, fileData: cert.fileData, mimeType: cert.mimeType, expiryDate: cert.expiryDate, uploadedById: userId, sourceAttachmentId: certId } });
+  }
+}
+
+/** Points workers at this certificate: any earlier certificate's copy comes off their profile, this one's goes on. */
+async function linkWorkersToCertificate(certId: string, employeeIds: string[], userId: string) {
+  if (employeeIds.length === 0) return;
+  await prisma.document.deleteMany({ where: { employeeId: { in: employeeIds }, sourceAttachmentId: { not: null, notIn: [certId] } } });
+  await prisma.employee.updateMany({ where: { id: { in: employeeIds } }, data: { wcAttachmentId: certId } });
+  await fileCertificateOnWorkers(certId, employeeIds, userId);
+}
+
+/** Cleans a list of names read off a file for storing: trimmed, no blanks or repeats, a sensible cap. */
+const cleanNames = (names: unknown): string[] => (Array.isArray(names) ? [...new Set(names.map((n) => String(n ?? "").trim()).filter(Boolean))].slice(0, 500) : []);
+
+/**
+ * Files one workmen compensation certificate against a company and returns its id, so the workers named on it
+ * can be linked to exactly this certificate. A company can hold several: each covers its own workers. The names read
+ * off the file (`names`, a JSON list) are kept with it so who is on the policy can be shown later.
  */
 export async function uploadWorkmenCompAction(formData: FormData): Promise<{ id?: string; error?: string }> {
   await requireWrite("partners.suppliers");
@@ -594,6 +625,8 @@ export async function uploadWorkmenCompAction(formData: FormData): Promise<{ id?
   const supplierId = String(formData.get("supplierId") || "");
   const file = formData.get("file");
   const expiryRaw = String(formData.get("expiryDate") || "").trim();
+  let names: string[] = [];
+  try { names = cleanNames(JSON.parse(String(formData.get("names") || "[]"))); } catch { names = []; }
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "That supplier belongs to another branch." };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
@@ -601,23 +634,24 @@ export async function uploadWorkmenCompAction(formData: FormData): Promise<{ id?
   if (!isAcceptedUploadType(file.type)) return { error: "Upload a PDF or a photo of the certificate." };
   const expiryDate = expiryRaw && !Number.isNaN(new Date(expiryRaw).getTime()) ? new Date(expiryRaw) : null;
   const created = await prisma.attachment.create({
-    data: { entityType: "SUPPLIER", entityId: supplierId, docType: "WORKMEN_COMPENSATION_INSURANCE", filename: file.name, fileData: Buffer.from(await file.arrayBuffer()), mimeType: file.type, expiryDate, branchId: supplier.branchId, uploadedById: user.id },
+    data: { entityType: "SUPPLIER", entityId: supplierId, docType: "WORKMEN_COMPENSATION_INSURANCE", filename: file.name, fileData: Buffer.from(await file.arrayBuffer()), mimeType: file.type, expiryDate, branchId: supplier.branchId, uploadedById: user.id, insuredNames: names.length > 0 ? names : undefined },
     select: { id: true },
   });
-  await logAudit({ entityType: "SUPPLIER", entityId: supplierId, action: "UPDATE", after: { workmenCompUploaded: file.name }, userId: user.id, userName: user.name, branchId: supplier.branchId });
+  await logAudit({ entityType: "SUPPLIER", entityId: supplierId, action: "UPDATE", after: { workmenCompUploaded: file.name, namesRead: names.length }, userId: user.id, userName: user.name, branchId: supplier.branchId });
   revalidatePath(`/suppliers/${supplierId}`);
   revalidatePath("/documents");
   return { id: created.id };
 }
 
 /**
- * Records that the workers named on a certificate are covered by it. With `attachmentId` it is that certificate
- * (so several uploaded together each keep their own workers); without, the supplier's newest. Returns how many
- * workers were linked and which names matched nobody on the supplier's roster.
+ * Records that the workers named on a certificate are covered by it, and files the certificate on each of their
+ * profiles. With `attachmentId` it is that certificate (so several uploaded together each keep their own workers);
+ * without, the company's newest. Matching is by name among the company's own workers (and, for an own company, those it
+ * sponsors). Returns how many workers were linked and which names matched nobody.
  */
 export async function linkWorkmenCompCoverageAction(supplierId: string, names: string[], attachmentId?: string): Promise<{ linked: number; unmatched: string[] }> {
   await requireWrite("partners.suppliers");
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { linked: 0, unmatched: [] };
   const certificate = attachmentId
@@ -627,35 +661,124 @@ export async function linkWorkmenCompCoverageAction(supplierId: string, names: s
   const named = names.map((n) => ({ raw: n.trim(), key: nameKey(n) })).filter((n) => n.key);
   if (named.length === 0) return { linked: 0, unmatched: [] };
   const wanted = new Set(named.map((n) => n.key));
-  const workers = await prisma.employee.findMany({ where: { supplierId }, select: { id: true, name: true } });
+  const workers = await prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, name: true } });
   const found = workers.filter((w) => wanted.has(nameKey(w.name)));
   const foundKeys = new Set(found.map((w) => nameKey(w.name)));
   const unmatched = [...new Set(named.filter((n) => !foundKeys.has(n.key)).map((n) => n.raw))];
-  if (found.length > 0) await prisma.employee.updateMany({ where: { id: { in: found.map((w) => w.id) } }, data: { wcAttachmentId: certificate.id } });
+  // Keep the names with the certificate when they were not stored at upload (older panels read them afterwards).
+  const stored = await prisma.attachment.findUnique({ where: { id: certificate.id }, select: { insuredNames: true } });
+  if (stored && stored.insuredNames == null) await prisma.attachment.update({ where: { id: certificate.id }, data: { insuredNames: cleanNames(names) } });
+  await linkWorkersToCertificate(certificate.id, found.map((w) => w.id), user.id);
   revalidatePath("/documents");
   revalidatePath(`/suppliers/${supplierId}`);
   return { linked: found.length, unmatched };
 }
 
-/** Sets or clears the expiry date of one workmen compensation certificate. */
+export type WcWorker = { employeeId: string; employeeIdNo: string; name: string; active: boolean; linkedTo: "this" | "other" | null; otherFile: string | null };
+export type WcNameRow = { name: string; candidates: WcWorker[] };
+export type WcWorkers = {
+  /** The names on the certificate; null when they were not kept (a certificate from before) and can be read again. */
+  names: WcNameRow[] | null;
+  /** Workers linked to this certificate whose name is not among the names (linked by hand, or a different spelling). */
+  alsoLinked: WcWorker[];
+  /** Everyone this certificate could cover, for linking a worker whose name was spelled differently. */
+  roster: WcWorker[];
+};
+
+/** Who is on one certificate: each name read off it with the workers it matches and whether they are linked, here or to another policy. */
+export async function getWorkmenCompWorkersAction(supplierId: string, attachmentId: string): Promise<WcWorkers | { error: string }> {
+  await requireView("partners.suppliers");
+  const cert = await ownCertificate(supplierId, attachmentId);
+  if (!cert) return { error: "Certificate not found." };
+  const [stored, workers, policies] = await Promise.all([
+    prisma.attachment.findUnique({ where: { id: attachmentId }, select: { insuredNames: true } }),
+    prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, employeeIdNo: true, name: true, active: true, wcAttachmentId: true }, orderBy: { name: "asc" } }),
+    prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: supplierId, docType: { in: WC_TYPES } }, select: { id: true, filename: true } }),
+  ]);
+  const file = new Map(policies.map((p) => [p.id, p.filename]));
+  const worker = (w: (typeof workers)[number]): WcWorker => ({
+    employeeId: w.id, employeeIdNo: w.employeeIdNo, name: w.name, active: w.active,
+    linkedTo: w.wcAttachmentId === attachmentId ? "this" : w.wcAttachmentId ? "other" : null,
+    otherFile: w.wcAttachmentId && w.wcAttachmentId !== attachmentId ? file.get(w.wcAttachmentId) ?? "another policy" : null,
+  });
+  const roster = workers.map(worker);
+  const rawNames = Array.isArray(stored?.insuredNames) ? cleanNames(stored.insuredNames) : null;
+  const names: WcNameRow[] | null = rawNames && rawNames.length > 0 ? rawNames.map((name) => ({ name, candidates: roster.filter((w) => nameKey(w.name) === nameKey(name)) })) : null;
+  const matched = new Set((names ?? []).flatMap((n) => n.candidates.map((c) => c.employeeId)));
+  return { names, alsoLinked: roster.filter((w) => w.linkedTo === "this" && !matched.has(w.employeeId)), roster };
+}
+
+/** Links one worker to a certificate (moving them off any other policy) or takes them off it. The file goes on, or comes off, their profile. */
+export async function setWorkmenCompLinkAction(supplierId: string, attachmentId: string, employeeId: string, linked: boolean): Promise<{ error?: string }> {
+  await requireWrite("partners.suppliers");
+  const { user } = await requireUserWithBranch();
+  if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
+  const worker = await prisma.employee.findFirst({ where: { id: employeeId, ...wcRoster(supplierId) }, select: { id: true, name: true, wcAttachmentId: true } });
+  if (!worker) return { error: "That worker isn't one this company employs or sponsors." };
+  if (linked) {
+    await linkWorkersToCertificate(attachmentId, [employeeId], user.id);
+  } else if (worker.wcAttachmentId === attachmentId) {
+    await prisma.$transaction([
+      prisma.employee.update({ where: { id: employeeId }, data: { wcAttachmentId: null } }),
+      prisma.document.deleteMany({ where: { employeeId, sourceAttachmentId: attachmentId } }),
+    ]);
+  }
+  await logAudit({ entityType: "EMPLOYEE", entityId: employeeId, action: "UPDATE", after: { workmenCompensation: linked ? "linked" : "unlinked", worker: worker.name }, userId: user.id, userName: user.name, branchId: (await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } }))?.branchId ?? null });
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath("/documents");
+  return {};
+}
+
+/** Keeps the names read off an older certificate, so its workers can be listed and linked. */
+export async function saveInsuredNamesAction(supplierId: string, attachmentId: string, names: string[]): Promise<{ error?: string }> {
+  await requireWrite("partners.suppliers");
+  if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
+  const clean = cleanNames(names);
+  if (clean.length === 0) return { error: "No names could be read from that certificate." };
+  await prisma.attachment.update({ where: { id: attachmentId }, data: { insuredNames: clean } });
+  revalidatePath(`/suppliers/${supplierId}`);
+  return {};
+}
+
+/** The company's policies for the side panel: each with its expiry and how many workers it covers, and how many workers there are. */
+export async function getWorkmenCompOverviewAction(supplierId: string): Promise<{ policies: { id: string; filename: string; expiryDate: string | null; covered: number }[]; workers: number } | null> {
+  await requireView("partners.suppliers");
+  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return null;
+  const [files, groups, workers] = await Promise.all([
+    prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: supplierId, docType: { in: WC_TYPES } }, orderBy: { uploadedAt: "desc" }, select: { id: true, filename: true, expiryDate: true } }),
+    prisma.employee.groupBy({ by: ["wcAttachmentId"], where: { ...wcRoster(supplierId), wcAttachmentId: { not: null } }, _count: { _all: true } }),
+    prisma.employee.count({ where: wcRoster(supplierId) }),
+  ]);
+  const covered = new Map(groups.map((g) => [g.wcAttachmentId, g._count._all]));
+  return { policies: files.map((f) => ({ id: f.id, filename: f.filename, expiryDate: f.expiryDate ? f.expiryDate.toISOString() : null, covered: covered.get(f.id) ?? 0 })), workers };
+}
+
+/** Sets or clears the expiry date of one workmen compensation certificate (and of the copies on its workers' profiles). */
 export async function setWorkmenCompExpiryAction(supplierId: string, attachmentId: string, date: string | null): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
   if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
   const d = date ? new Date(date) : null;
   if (date && (Number.isNaN(d!.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(date))) return { error: "That date isn't valid." };
-  await prisma.attachment.update({ where: { id: attachmentId }, data: { expiryDate: d } });
+  await prisma.$transaction([
+    prisma.attachment.update({ where: { id: attachmentId }, data: { expiryDate: d } }),
+    prisma.document.updateMany({ where: { sourceAttachmentId: attachmentId }, data: { expiryDate: d } }),
+  ]);
   revalidatePath(`/suppliers/${supplierId}`);
   revalidatePath("/documents");
   return {};
 }
 
-/** Removes one certificate; the workers it covered are no longer recorded as covered by anything. */
+/** Removes one certificate, with the copies on its workers' profiles; the workers it covered are no longer recorded as covered by anything. */
 export async function deleteWorkmenCompAction(supplierId: string, attachmentId: string): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
   const cert = await ownCertificate(supplierId, attachmentId);
   if (!cert) return { error: "Certificate not found." };
   await prisma.$transaction([
     prisma.employee.updateMany({ where: { wcAttachmentId: attachmentId }, data: { wcAttachmentId: null } }),
+    prisma.document.deleteMany({ where: { sourceAttachmentId: attachmentId } }),
     prisma.attachment.delete({ where: { id: attachmentId } }),
   ]);
   revalidatePath(`/suppliers/${supplierId}`);
