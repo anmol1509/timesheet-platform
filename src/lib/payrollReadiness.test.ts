@@ -16,9 +16,9 @@ test("a fully set up worker is ready", () => {
   assert.ok(r.items.every((i) => i.ok));
 });
 
-test("missing bank details block payroll and name what is missing", () => {
+test("missing bank details are flagged and named, but no longer stop a run", () => {
   const r = payrollReadiness({ ...ok, routingCode: null, account: null }, now);
-  assert.equal(r.ready, false);
+  assert.equal(r.ready, true);
   const bank = r.items.find((i) => i.key === "bank")!;
   assert.equal(bank.ok, false);
   assert.match(bank.problem!, /routing code/);

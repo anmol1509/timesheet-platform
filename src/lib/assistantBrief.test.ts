@@ -64,9 +64,9 @@ test("a company that is not an own company goes to its page", () => {
   assert.equal(missingFromPayrollFixes({ ...base, company: { name: "Acme", isOwnCompany: false, payType: null } }, ids)[0].href, "/suppliers/s1");
 });
 
-test("bank-detail gaps go to each worker's Payroll & WPS tab", () => {
-  const f = { status: "DRAFT", submitted: true, lineCount: 2, total: 1, threshold: null, bankGaps: [] };
-  assert.deepEqual(payrollBlockerFixes(f, { id: "r1", label: "Payroll 2026-09" }, [{ employeeId: "e9", name: "Sam Lee" }]), [{ label: "Fix Sam's bank details", href: "/employees/e9?tab=payroll" }]);
+test("missing bank details are not a blocker, so they get no fix button", () => {
+  const f = { status: "DRAFT", submitted: true, lineCount: 2, total: 1, threshold: null, bankGaps: [{ name: "Sam Lee", gaps: ["IBAN / account number"] }] };
+  assert.deepEqual(payrollBlockerFixes(f, { id: "r1", label: "Payroll 2026-09" }, [{ employeeId: "e9", name: "Sam Lee" }]), []);
 });
 
 test("a run never sent gets a Submit button", () => {

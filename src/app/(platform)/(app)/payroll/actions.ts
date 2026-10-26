@@ -191,13 +191,7 @@ export async function approveRunAction(formData: FormData): Promise<State> {
       : "Someone other than the person who prepared this run has to approve it. Ask another approver to sign it off." };
   }
 
-  const blocked = run.lines
-    .map((l) => ({ name: l.employee.name, gaps: wpsGaps(l) }))
-    .filter((x) => x.gaps.length > 0);
-  if (blocked.length > 0) {
-    const list = blocked.slice(0, 4).map((b) => `${b.name} (${b.gaps.join(", ")})`).join("; ");
-    return { error: `Missing bank details for ${blocked.length} employee${blocked.length === 1 ? "" : "s"}: ${list}${blocked.length > 4 ? "…" : ""}. Fix them on the employee's Payroll & WPS tab, then Recalculate.` };
-  }
+  // Bank details are not needed to approve: they are needed to produce the WPS bank file, which says who is missing them.
 
   await prisma.payrollRun.update({ where: { id: run.id }, data: { status: "APPROVED", approvedAt: new Date(), approvedById: user.id } });
   await recordLoanRepayments(run);

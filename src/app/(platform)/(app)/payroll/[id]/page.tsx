@@ -142,9 +142,9 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Not in this run</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">{skipped.length > 0 ? skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ") + (skipped.length > 3 ? "…" : "") : "Everyone is included"}</p></div>
       </div>
 
-      <NextStep status={run.status} submitted={!!run.submittedAt} blocking={draft ? gapRows.length : 0} warnings={issues.filter((i) => i.level === "warn").length} people={run.lines.length} canApprove={can(subject, "payroll.payroll", "approve")} />
+      <NextStep status={run.status} submitted={!!run.submittedAt} blocking={0} warnings={issues.filter((i) => i.level === "warn").length} people={run.lines.length} canApprove={can(subject, "payroll.payroll", "approve")} />
 
-      <RunStepper status={run.status} submitted={!!run.submittedAt} issues={issues.length + gapRows.length} />
+      <RunStepper status={run.status} submitted={!!run.submittedAt} issues={issues.length} />
 
       {prev && variance && (
         <RunVariance prevMonth={prevMonth} total={total} prevTotal={prev.lines.reduce((sum, l) => sum + n(l.net), 0)} count={run.lines.length} prevCount={prev.lines.length} rows={variance} />
@@ -164,7 +164,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card flex gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
           <div>
-            <p className="font-medium text-primary">Needs fixing: {gapRows.length} employee{gapRows.length === 1 ? " needs" : "s need"} their bank details completed</p>
+            <p className="font-medium text-primary">Bank details missing for {gapRows.length} employee{gapRows.length === 1 ? "" : "s"}. This does not stop approval; the WPS bank file needs them</p>
             <ul className="mt-1 space-y-0.5 text-secondary">
               {gapRows.slice(0, 8).map(({ l, gaps }) => (
                 <li key={l.employeeId}>
@@ -173,7 +173,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-xs text-muted">Press “Fix now” beside a name, fill in their details and save. The run updates by itself. If someone is paid in cash, choose “Paid in cash instead”.</p>
+            <p className="mt-1 text-xs text-muted">You can approve without them. Before you download the WPS bank file, press “Fix now” beside a name and fill in their details, or choose “Paid in cash instead”.</p>
           </div>
         </div>
       )}

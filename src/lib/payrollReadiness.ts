@@ -25,7 +25,7 @@ export function payrollReadiness(f: ReadinessFacts, now = new Date()): Readiness
 
   const items: ReadinessItem[] = [
     { key: "pay", label: "Pay set up", ok: payGap === null, problem: payGap ?? undefined, fix: "Trade & pay tab", blocking: true },
-    { key: "bank", label: "Bank and WPS details", ok: bankGaps.length === 0, problem: bankGaps.length ? `missing ${bankGaps.join(", ")}` : undefined, fix: "Payroll & WPS tab (or set the payment mode to Cash)", blocking: true },
+    { key: "bank", label: "Bank and WPS details", ok: bankGaps.length === 0, problem: bankGaps.length ? `missing ${bankGaps.join(", ")}` : undefined, fix: "Payroll & WPS tab (or set the payment mode to Cash). Needed for the WPS bank file, not for approving a run", blocking: false },
     { key: "labour", label: "Labour card valid", ok: !expired(f.laborCardExpiry), problem: "labour card has expired", fix: "Documents: renew and update the expiry date", blocking: false },
     { key: "eid", label: "Emirates ID valid", ok: !expired(f.emiratesIdExpiry), problem: "Emirates ID has expired", fix: "Documents: renew and update the expiry date", blocking: false },
     { key: "visa", label: "Visa valid", ok: !expired(f.visaExpiry), problem: "visa has expired", fix: "Documents: renew and update the expiry date", blocking: false },
