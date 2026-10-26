@@ -132,6 +132,7 @@ const TABS = [
   { id: "trade", label: "Trade & pay" },
   { id: "payroll", label: "Payroll & WPS" },
   { id: "project", label: "Project & Site" },
+  { id: "timesheet", label: "Timesheet" },
   { id: "records", label: "Notes" },
 ];
 
@@ -177,6 +178,7 @@ export function EditForm({
   documents,
   lookups,
   recordsContent,
+  timesheetContent,
   tradesContent,
   siteContent,
   documentsContent,
@@ -197,6 +199,8 @@ export function EditForm({
   // single <form> (nested forms are invalid HTML and silently break).
   // Rendered as a sibling, still switched by the same tab state.
   recordsContent: React.ReactNode;
+  /** Read-only month view; null hides the tab (no access to timesheets). */
+  timesheetContent: React.ReactNode;
   tradesContent: React.ReactNode;
   siteContent: React.ReactNode;
   documentsContent: React.ReactNode;
@@ -257,7 +261,8 @@ export function EditForm({
 
   // Office staff are white-collar: no trade, project or site. Their position (designation + department)
   // sits on Overview, so those tabs go and "Trade & pay" becomes just "Pay".
-  const tabs = isStaff ? TABS.filter((t) => t.id !== "project").map((t) => (t.id === "trade" ? { ...t, label: "Pay" } : t)) : TABS;
+  const visibleTabs = timesheetContent ? TABS : TABS.filter((t) => t.id !== "timesheet");
+  const tabs = isStaff ? visibleTabs.filter((t) => t.id !== "project").map((t) => (t.id === "trade" ? { ...t, label: "Pay" } : t)) : visibleTabs;
 
   return (
     <div>
@@ -701,12 +706,12 @@ export function EditForm({
                 </Field>
               )}
               {payStructure === "HOURLY" && isStaff && (
-                <Field label="Hourly rate (AED)">
+                <Field label="Trade rate: hourly (AED)">
                   <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
               {payStructure === "HOURLY" && !isStaff && Number(pay.hourlyRate) > 0 && (
-                <Field label="Hourly rate saved on this worker (AED)">
+                <Field label="Trade rate: hourly rate saved on this worker (AED)">
                   <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
@@ -849,7 +854,7 @@ export function EditForm({
         </section>
       </div>
 
-      {tab !== "records" && (
+      {tab !== "records" && tab !== "timesheet" && (
         // Sticky: this form is ~100 fields deep, so a correction made at the
         // top used to mean scrolling the whole page to find Save.
         <div className="sticky bottom-0 z-10 mt-8 -mx-4 flex flex-wrap items-center gap-3 border-t border-default bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
@@ -895,6 +900,7 @@ export function EditForm({
       {/* Each of these owns its own <form>, so they sit beside the main form rather than in it. */}
       <div className={tab === "project" ? "mt-8 space-y-8" : "hidden"}>{siteContent}</div>
       <div className={tab === "documents" ? "mt-8 space-y-8" : "hidden"}>{documentsContent}</div>
+      <div className={tab === "timesheet" && timesheetContent ? "space-y-8" : "hidden"}>{timesheetContent}</div>
       <div className={tab === "records" ? "space-y-8" : "hidden"}>
         {recordsContent}
       </div>

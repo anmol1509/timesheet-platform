@@ -26,6 +26,7 @@ import { AccommodationSection } from "./accommodation-section";
 import { NotesSection } from "./notes-section";
 import { InventorySection } from "./inventory-section";
 import { ProfileSummary } from "./profile-summary";
+import { EmployeeTimesheetSection } from "./timesheet-section";
 
 export const metadata = { title: "Employee" };
 
@@ -39,10 +40,13 @@ function formatShortDate(value: Date) {
 
 export default async function EmployeeDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ month?: string }>;
 }) {
   const { id } = await params;
+  const { month: monthParam } = await searchParams;
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const canViewPay = can(subjectOf(user), "payroll", "view");
   const canEditPay = can(subjectOf(user), "payroll", "edit");
@@ -309,11 +313,24 @@ export default async function EmployeeDetailPage({
         suppliers={toPlain(suppliers)}
         documents={employee.documents}
         lookups={lookups}
+        // Read-only month view of attendance beside the client timesheet; only for people who may see timesheets.
+        timesheetContent={
+          can(subjectOf(user), "timesheets", "view") ? (
+            <EmployeeTimesheetSection
+              employee={{ id: employee.id, employeeIdNo: employee.employeeIdNo, branchId: employee.branchId, supplierId: employee.supplierId, joinDate: employee.joinDate, exitDate: employee.exitDate, project: employee.project ? { weeklyOffDays: employee.project.weeklyOffDays } : null }}
+              month={monthParam ?? null}
+              canViewRates={canViewPay}
+              canEditAttendance={can(subjectOf(user), "timesheets.attendance", "edit")}
+            />
+          ) : null
+        }
         tradesContent={
           <>
             {canViewPay && <SalaryHistorySection rows={revisionRows} canAddArrears={canEditPay} />}
             <SkillsSection
               employeeId={employee.id}
+              workerRate={pay ? Number(pay.hourlyRate) || null : null}
+              workerTrade={employee.trade}
               skills={employee.skills.map((s) => ({
                 id: s.skill.id,
                 name: s.skill.name,
