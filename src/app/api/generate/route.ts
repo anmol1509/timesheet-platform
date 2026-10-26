@@ -9,6 +9,8 @@ import {
   generateTimesheetPdf,
 } from "@/lib/generateTimesheetPdf";
 import { resolveIssuer } from "@/lib/issuer";
+import { letterheadContactLine } from "@/lib/letterhead";
+import { absenceRuleOf, clientAbsenceRule, startingAbsentDeduction } from "@/lib/deductions";
 import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf, generateTemplatedXlsx } from "@/lib/generateTemplatedTimesheet";
 
@@ -126,7 +128,7 @@ export async function POST(request: Request) {
       trade: e.trade,
       rate: e.rate,
       dailyHours: e.dailyHours,
-      absentDeduction: deductions[e.id] ?? e.absentDeduction,
+      absentDeduction: deductions[e.id] ?? startingAbsentDeduction(e.absentDeduction, e.absentCount, absenceRuleOf(supplier), clientAbsenceRule(e.client)),
     })),
   };
 
@@ -159,7 +161,7 @@ export async function POST(request: Request) {
       contentType = "application/pdf";
     }
   } else if (format === "xlsx") {
-    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined, logo: issuer.xlsxLogo });
+    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined, logo: issuer.xlsxLogo, contactLine: issuer.companyId ? letterheadContactLine(maskLetterhead(issuer.letterhead, cfg)) : null });
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   } else {

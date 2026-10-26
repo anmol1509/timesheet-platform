@@ -7,6 +7,8 @@ export type GenerateInput = {
   titleText?: string;
   /** PNG/JPEG data URI printed at the top left. */
   logo?: string | null;
+  /** Address, phone, email and TRN of the issuing company, printed in the blank row under "Issued To". Left out for the branch's own sheets. */
+  contactLine?: string | null;
   fullName: string;
   monthLabel: string;
   issuedTo: string;
@@ -85,6 +87,15 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   const issuedCell = sheet.getCell(r, 1);
   issuedCell.value = `Issued To : ${input.issuedTo}.`;
   issuedCell.font = { name: FONT, bold: true, size: 11 };
+  // The issuing company's address, phone, email and TRN go in the blank row under "Issued To", so no row moves.
+  if (input.contactLine) {
+    sheet.mergeCells(r + 1, 1, r + 1, LAST_COL);
+    const contactCell = sheet.getCell(r + 1, 1);
+    contactCell.value = input.contactLine;
+    contactCell.font = { name: FONT, size: 9 };
+    contactCell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+    sheet.getRow(r + 1).height = 26;
+  }
   r += 2;
 
   const WEEKDAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

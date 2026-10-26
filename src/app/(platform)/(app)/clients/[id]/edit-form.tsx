@@ -33,6 +33,8 @@ type Client = {
   billingAddress: string | null;
   paymentTerms: string | null;
   retentionPercent: number | null;
+  absentFreeDays: number;
+  absentDeductionPerDay: number;
   secondContactName: string | null;
   secondContactPhone: string | null;
   secondContactEmail: string | null;
@@ -217,6 +219,13 @@ export function EditClientForm({ client }: { client: Client & CodeProps }) {
         </Field>
         <Field label="Retention (%)">
           <NumberInput name="retentionPercent" defaultValue={client.retentionPercent ?? ""} step={0.1} className="w-full" />
+        </Field>
+        <input type="hidden" name="absencePolicySent" value="1" />
+        <Field label="Days off with no deduction (each month)">
+          <NumberInput name="absentFreeDays" defaultValue={client.absentFreeDays} min={0} max={31} step={1} className="w-full" />
+        </Field>
+        <Field label="Deduction per day off after that (AED)">
+          <NumberInput name="absentDeductionPerDay" defaultValue={client.absentDeductionPerDay} min={0} step={0.5} className="w-full" />
         </Field>
         <Field label="Billing address" className="sm:col-span-2">
           <input

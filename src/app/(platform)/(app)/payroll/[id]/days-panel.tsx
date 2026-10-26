@@ -133,6 +133,21 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               </div>
             )}
             {view.why && <p className="text-xs text-muted">{view.why}</p>}
+            {/* What these days are paid at, so they can be checked here without opening the profile. */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm">
+              <span><span className="text-muted">Trade</span> <span className="font-medium text-primary">{view.rateInfo.trade ?? "Not set"}</span></span>
+              {view.hourly ? (
+                <span>
+                  <span className="text-muted">Trade rate</span>{" "}
+                  <span className={cn("font-medium", view.rateInfo.hourlyRate > 0 ? "text-primary" : "text-[var(--error)]")}>{view.rateInfo.hourlyRate > 0 ? `AED ${aed(view.rateInfo.hourlyRate)} / hour` : "None set"}</span>
+                  <span className="ml-2 text-xs text-muted">
+                    {view.rateInfo.source === "EMPLOYEE" ? "set on the employee" : view.rateInfo.source === "TRADE" ? `from the ${view.rateInfo.rateTrade ?? "trade"} rate, not set on the employee profile` : "add one on the employee or on the trade"}
+                  </span>
+                </span>
+              ) : (
+                <span><span className="text-muted">Monthly pay</span> <span className="font-medium text-primary">AED {aed(view.rateInfo.monthlyBasic)}</span></span>
+              )}
+            </div>
             {view.hourly && view.editable && view.timesheetStatus && view.timesheetStatus !== "DRAFT" && <p className="text-xs text-muted">Changing an hour here changes the timesheet itself ({view.timesheetStatus.toLowerCase().replace("_", " ")}) and is recorded above, so the client&apos;s sheet and your payroll no longer agree. Tell the client if they need to re-approve it.</p>}
 
             <div className="max-h-[50vh] overflow-auto rounded-md border border-default">
@@ -202,7 +217,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                   })}
                 </tbody>
                 <tfoot className="border-t border-default bg-surface-subtle text-sm">
-                  <tr><td className="px-3 py-2 font-medium" colSpan={3}>Total for the days</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td>{showShort(view) && <td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.shortfall, "−")}</td>}<td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
+                  <tr><td className="px-3 py-2 font-medium" colSpan={2}>Total for the days</td><td className="px-3 py-2 text-right font-medium tabular-nums">{view.totals.hours > 0 ? `${Math.round(view.totals.hours * 100) / 100} h` : "—"}</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td>{showShort(view) && <td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.shortfall, "−")}</td>}<td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
                   {view.parts.map((x, i) => (
                     <tr key={`${x.label}-${i}`}><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 7 : 6}>{x.label}{x.note && <span className="ml-2 text-xs text-subtle">{x.note}</span>}</td><td className="px-3 py-1.5 text-right tabular-nums">{x.amount > 0 ? "+" : "−"}{aed(Math.abs(x.amount))}</td><td colSpan={2} /></tr>
                   ))}

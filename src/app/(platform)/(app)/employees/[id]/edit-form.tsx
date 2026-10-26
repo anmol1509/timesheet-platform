@@ -1,6 +1,6 @@
 "use client";
 
-import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
+import { primaryOptions, rootOf, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
@@ -415,7 +415,8 @@ export function EditForm({
               <Select
                 name="sponsorSupplierId"
                 value={sponsorSel}
-                onChange={setSponsorSel}
+                // Picking the sponsor first fills in the supplier (the primary company it belongs under), so it isn't chosen twice.
+                onChange={(v) => { setSponsorSel(v); if (v && !supplierSel) setSupplierSel(rootOf(sponsors, v)); }}
                 placeholder="Not set"
                 options={sponsorOptions(sponsors, supplierSel, employee.sponsorSupplierId).map((s) => ({ value: s.id, label: s.name }))}
               />
@@ -704,9 +705,16 @@ export function EditForm({
                   <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
                 </Field>
               )}
+              {payStructure === "HOURLY" && !isStaff && Number(pay.hourlyRate) > 0 && (
+                <Field label="Hourly rate saved on this worker (AED)">
+                  <NumberInput name="hourlyRate" defaultValue={pay.hourlyRate} min={0} step={0.01} className="w-full" />
+                </Field>
+              )}
               {payStructure === "HOURLY" && !isStaff && (
                 <p className="rounded-lg border border-default bg-surface-subtle px-4 py-2 text-xs text-secondary sm:col-span-2">
-                  Paid per hour worked at the rate on this worker&apos;s trade — set it in Known Trade Details above.
+                  {Number(pay.hourlyRate) > 0
+                    ? "Payroll pays the hourly rate saved on this worker first; the rate on the trade (Known Trade Details above) is used only when this is empty."
+                    : "Paid per hour worked at the rate on this worker's trade — set it in Known Trade Details above."}
                 </p>
               )}
               {payStructure === "ITEMISED" && (

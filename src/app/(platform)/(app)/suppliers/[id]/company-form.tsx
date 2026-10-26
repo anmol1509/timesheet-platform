@@ -199,16 +199,16 @@ export function SupplierCompanyForm({
           </>
         )}
           <input type="hidden" name="ruleSent" value="1" />
-          <Field label="Absent days with no deduction (each month)">
+          <Field label="Payroll: days off with no deduction (each month)">
             <NumberInput name="absentFreeDays" defaultValue={supplier.absentFreeDays} min={0} max={31} step={1} className="w-full" />
           </Field>
-          <Field label="Deduction per absent day after that (AED)">
+          <Field label="Payroll: deduction per day off after that (AED)">
             <NumberInput name="absentDeductionPerDay" defaultValue={supplier.absentDeductionPerDay} min={0} step={0.5} className="w-full" />
           </Field>
-          <Field label="Gas charge per day from check-in (AED)">
+          <Field label="Timesheet gas charge per day from check-in (AED)">
             <NumberInput name="gasPerDay" defaultValue={supplier.gasPerDay} min={0} step={0.5} className="w-full" />
           </Field>
-          <Field label="Gas charge limit per month (AED)">
+          <Field label="Timesheet gas charge limit per month (AED)">
             <NumberInput name="gasMonthlyCap" defaultValue={supplier.gasMonthlyCap} min={0} step={1} className="w-full" />
           </Field>
           <Field label="Short hours on a present day">
