@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { payrollScopeWhere } from "@/lib/payrollCompany";
 import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
-import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure } from "@/lib/payroll";
+import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure, reconcileDeductionItems, readDeductionItems } from "@/lib/payroll";
 
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
@@ -245,7 +245,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, shortfallHours: shortfall > 0 ? short.hours : 0, shortfallDeduction: shortfall, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
-      manualDeduction, deductionNote: old?.deductionNote ?? null, deductionItems: manualDeduction > 0 && old?.deductionItems ? (old.deductionItems as object) : undefined, bankCharge, bankChargeWaived,
+      manualDeduction, deductionNote: old?.deductionNote ?? null, deductionItems: reconcileDeductionItems(readDeductionItems(old?.deductionItems), manualDeduction, old?.deductionNote ?? null) ?? undefined, bankCharge, bankChargeWaived,
       advanceNote: advanceManual ? old?.advanceNote ?? null : loanNote || null, advanceManual,
       otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction, items: ex.items.length > 0 ? ex.items : undefined,
       net: netPayWithExtras(r, adjustment, { ...recurring, loanDeduction, manualDeduction }),
