@@ -332,3 +332,16 @@ export function monthBounds(month: string): { start: Date; end: Date; days: numb
   const end = new Date(Date.UTC(y, mo, 0));
   return { start, end, days: end.getUTCDate() };
 }
+
+/** One typed deduction on a pay line: what it is for, how much, and whether the payslip lists it by name. */
+export type DeductionItem = { label: string; amount: number; show: boolean };
+
+/** Reads the stored list back, dropping anything that isn't a named, positive amount. */
+export function readDeductionItems(value: unknown): DeductionItem[] | null {
+  if (!Array.isArray(value)) return null;
+  const items = value
+    .map((v) => (v && typeof v === "object" ? (v as Record<string, unknown>) : null))
+    .filter((v): v is Record<string, unknown> => !!v && Number.isFinite(Number(v.amount)) && Number(v.amount) > 0)
+    .map((v) => ({ label: String(v.label ?? "").trim().slice(0, 100), amount: round2(Number(v.amount)), show: v.show !== false }));
+  return items.length > 0 ? items : null;
+}

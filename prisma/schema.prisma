@@ -1957,6 +1957,8 @@ model PayrollLine {
   // month. Each carries its own note. Both reduce net pay.
   manualDeduction    Decimal   @default(0) @db.Decimal(12, 2)
   deductionNote      String?
+  // The typed deductions one by one, [{label, amount, show}]; manualDeduction is their sum and deductionNote their labels.
+  deductionItems     Json?
   advanceNote        String?
   advanceManual      Boolean   @default(false) // true once someone has typed the advance, so a recalculation keeps it
   idleDays           Int       @default(0)

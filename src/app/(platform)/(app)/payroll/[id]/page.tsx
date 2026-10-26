@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { can } from "@/lib/permissions";
-import { isCashMode, wpsGaps } from "@/lib/payroll";
+import { isCashMode, readDeductionItems, wpsGaps } from "@/lib/payroll";
 import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
@@ -252,7 +252,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 const gaps = wpsGaps(l);
                 const slip = buildPayslip({
                   payStructure: l.payStructure, basic: n(l.basic), allowances: n(l.allowances), overtimePay: n(l.overtimePay), deductions: n(l.deductions), adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote,
-                  otherEarnings: n(l.otherEarnings), otherDeductions: n(l.otherDeductions), manualDeduction: n(l.manualDeduction), deductionNote: l.deductionNote, loanDeduction: n(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: n(l.gasCharge), bankCharge: l.bankChargeWaived ? 0 : n(l.bankCharge), shortfallHours: n(l.shortfallHours), shortfallDeduction: n(l.shortfallDeduction),
+                  otherEarnings: n(l.otherEarnings), otherDeductions: n(l.otherDeductions), manualDeduction: n(l.manualDeduction), deductionNote: l.deductionNote, deductionItems: readDeductionItems(l.deductionItems), loanDeduction: n(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: n(l.gasCharge), bankCharge: l.bankChargeWaived ? 0 : n(l.bankCharge), shortfallHours: n(l.shortfallHours), shortfallDeduction: n(l.shortfallDeduction),
                   absentDays: n(l.absentDays), unpaidLeaveDays: 0, otHours: n(l.otHours), restHours: 0, normalHours: 0, employedDays: l.employedDays, daysInMonth: l.daysInMonth ?? 30, net: n(l.net),
                 });
                 const editable = draft && !run.submittedAt && can(subject, "payroll.payroll", "edit");

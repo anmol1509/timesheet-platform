@@ -93,7 +93,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     }),
     prisma.payrollLine.findMany({
       where: { runId: run.id },
-      select: { employeeId: true, adjustment: true, adjustmentNote: true, manualDeduction: true, deductionNote: true, advanceNote: true, advanceManual: true, loanDeduction: true, bankCharge: true, bankChargeWaived: true },
+      select: { employeeId: true, adjustment: true, adjustmentNote: true, manualDeduction: true, deductionNote: true, deductionItems: true, advanceNote: true, advanceManual: true, loanDeduction: true, bankCharge: true, bankChargeWaived: true },
     }),
     prisma.payrollAdjustment.findMany({
       where: { branchId: run.branchId, active: true, startMonth: { lte: run.month } },
@@ -245,7 +245,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, shortfallHours: shortfall > 0 ? short.hours : 0, shortfallDeduction: shortfall, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
-      manualDeduction, deductionNote: old?.deductionNote ?? null, bankCharge, bankChargeWaived,
+      manualDeduction, deductionNote: old?.deductionNote ?? null, deductionItems: manualDeduction > 0 && old?.deductionItems ? (old.deductionItems as object) : undefined, bankCharge, bankChargeWaived,
       advanceNote: advanceManual ? old?.advanceNote ?? null : loanNote || null, advanceManual,
       otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction, items: ex.items.length > 0 ? ex.items : undefined,
       net: netPayWithExtras(r, adjustment, { ...recurring, loanDeduction, manualDeduction }),

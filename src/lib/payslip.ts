@@ -8,7 +8,7 @@ import { round2 } from "@/lib/payroll";
 export type PayslipLine = {
   payStructure: string;
   basic: number; allowances: number; overtimePay: number; deductions: number; adjustment: number; adjustmentNote: string | null;
-  otherEarnings: number; otherDeductions: number; manualDeduction: number; deductionNote: string | null; loanDeduction: number; advanceNote: string | null; gasCharge: number; bankCharge?: number; shortfallHours?: number; shortfallDeduction?: number;
+  otherEarnings: number; otherDeductions: number; manualDeduction: number; deductionNote: string | null; deductionItems?: { label: string; amount: number; show: boolean }[] | null; loanDeduction: number; advanceNote: string | null; gasCharge: number; bankCharge?: number; shortfallHours?: number; shortfallDeduction?: number;
   absentDays: number; unpaidLeaveDays: number; otHours: number; restHours: number; normalHours: number; employedDays: number | null; daysInMonth: number; net: number;
   items?: { kind: string; label: string; amount: number }[] | null;
 };
@@ -39,7 +39,16 @@ export function buildPayslip(l: PayslipLine): Payslip {
   const dedItems = (l.items ?? []).filter((i) => i.kind === "DEDUCTION");
   if (dedItems.length > 0) for (const i of dedItems) add(deductions, i.label, i.amount, undefined, "deductionItem");
   else add(deductions, "Other deductions", l.otherDeductions, undefined, "otherDeductions");
-  add(deductions, l.deductionNote || "Deduction", l.manualDeduction, undefined, "manual");
+  // Typed deductions are listed one by one; any left unticked for the payslip still come off, inside "Other deductions".
+  const typed = (l.deductionItems ?? []).filter((i) => i.amount > 0);
+  if (typed.length > 0) for (const i of typed) { if (i.show) add(deductions, i.label || "Deduction", i.amount, undefined, "manual"); }
+  else add(deductions, l.deductionNote || "Deduction", l.manualDeduction, undefined, "manual");
+  const tucked = round2(typed.filter((i) => !i.show).reduce((s, i) => s + i.amount, 0));
+  if (tucked > 0) {
+    const other = deductions.find((r) => r.key === "otherDeductions");
+    if (other) other.amount = round2(other.amount + tucked);
+    else deductions.push({ label: "Other deductions", amount: tucked, key: "otherDeductions" });
+  }
   add(deductions, l.advanceNote || "Loan or advance recovery", l.loanDeduction, undefined, "loan");
   add(deductions, l.adjustmentNote || "Adjustment", pos(-l.adjustment), undefined, "adjustmentDeduction");
 
