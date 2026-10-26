@@ -667,6 +667,10 @@ model GeneratedSheet {
   branch   Branch @relation(fields: [branchId], references: [id])
   branchId String
 
+  // The running number printed on the sheet, e.g. TS-2026-0001: one per file generated, counted per branch and year.
+  sheetNo String?
+
+  @@index([branchId, sheetNo])
   @@index([month, supplierId])
   @@index([generatedById, generatedAt])
 }
@@ -1958,6 +1962,10 @@ model PayrollLine {
   idleDays           Int       @default(0)
   sickDays           Int       @default(0)
   gasCharge          Decimal   @default(0) @db.Decimal(12, 2)
+  // Typed on the run per worker: what the bank charges to pay them, taken off net pay unless waived. The amount is kept
+  // when waived so un-waiving restores it; bankChargeWaived true means nothing is taken.
+  bankCharge         Decimal   @default(0) @db.Decimal(12, 2)
+  bankChargeWaived   Boolean   @default(false)
   shortfallHours     Float     @default(0) // hours short on present working days that were counted
   shortfallDeduction Decimal   @default(0) @db.Decimal(12, 2)
   timesheetHours     Float     @default(0) // hours taken from the timesheet (hourly companies)
@@ -3354,4 +3362,13 @@ model CandidateCost {
 
   @@index([onboardingId])
   @@index([branchId])
+}
+
+/// The last timesheet number given out in a branch for a year. Bumped atomically so two people generating at once never share one.
+model SheetCounter {
+  branchId String
+  year     Int
+  last     Int    @default(0)
+
+  @@id([branchId, year])
 }

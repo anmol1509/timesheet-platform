@@ -98,7 +98,11 @@ export async function saveLineAction(formData: FormData): Promise<State> {
   const deduction = amount("deduction");
   const advance = amount("advance");
   const adjustment = amount("adjustment");
-  if (![deduction, advance, adjustment].every(Number.isFinite) || Math.abs(adjustment) > 1_000_000 || deduction < 0 || advance < 0 || deduction > 1_000_000 || advance > 1_000_000) {
+  // The bank charge and its waive tick are only changed when the form sent them (the other editors leave them as they are).
+  const bankSent = formData.get("bankSent") === "1";
+  const bankCharge = bankSent ? amount("bankCharge") : Number(line.bankCharge.toString());
+  const bankWaived = bankSent ? formData.get("bankWaived") === "1" : line.bankChargeWaived;
+  if (![deduction, advance, adjustment, bankCharge].every(Number.isFinite) || bankCharge < 0 || bankCharge > 1_000_000 || Math.abs(adjustment) > 1_000_000 || deduction < 0 || advance < 0 || deduction > 1_000_000 || advance > 1_000_000) {
     return { error: "Enter valid amounts. Deduction and advance can't be negative." };
   }
   if (deduction > 0 && !note("deductionNote")) return { error: "Add a note saying what the deduction is for." };
@@ -106,18 +110,19 @@ export async function saveLineAction(formData: FormData): Promise<State> {
 
   const n = (d: { toString(): string }) => Number(d.toString());
   const base = n(line.basic) + n(line.allowances) - n(line.deductions) + n(line.overtimePay) + adjustment + n(line.otherEarnings) - n(line.otherDeductions) - n(line.gasCharge) - n(line.shortfallDeduction);
-  if (round2(base - deduction - advance) < 0) {
-    return { error: `Deduction plus advance (AED ${round2(deduction + advance).toFixed(2)}) is more than the pay available (AED ${round2(Math.max(0, base)).toFixed(2)}).` };
+  const bank = bankWaived ? 0 : bankCharge;
+  if (round2(base - deduction - advance - bank) < 0) {
+    return { error: `Deduction, advance and bank charge (AED ${round2(deduction + advance + bank).toFixed(2)}) are more than the pay available (AED ${round2(Math.max(0, base)).toFixed(2)}).` };
   }
-  const net = round2(base - deduction - advance);
+  const net = round2(base - deduction - advance - bank);
   await prisma.payrollLine.update({
     where: { id: lineId },
-    data: { adjustment, adjustmentNote: note("adjustmentNote"), manualDeduction: deduction, deductionNote: deduction > 0 ? note("deductionNote") : null, loanDeduction: advance, advanceNote: advance > 0 ? note("advanceNote") : null, advanceManual: true, net },
+    data: { adjustment, adjustmentNote: note("adjustmentNote"), manualDeduction: deduction, deductionNote: deduction > 0 ? note("deductionNote") : null, loanDeduction: advance, advanceNote: advance > 0 ? note("advanceNote") : null, advanceManual: true, bankCharge, bankChargeWaived: bankWaived, net },
   });
   await logAudit({
     entityType: "PAYROLL_LINE", entityId: lineId, action: "UPDATE",
-    before: { adjustment: n(line.adjustment), deduction: n(line.manualDeduction), advance: n(line.loanDeduction) },
-    after: { adjustment, deduction, advance, deductionNote: note("deductionNote"), advanceNote: note("advanceNote"), employee: line.employee.name },
+    before: { adjustment: n(line.adjustment), deduction: n(line.manualDeduction), advance: n(line.loanDeduction), bankCharge: n(line.bankCharge), bankChargeWaived: line.bankChargeWaived },
+    after: { adjustment, deduction, advance, bankCharge, bankChargeWaived: bankWaived, deductionNote: note("deductionNote"), advanceNote: note("advanceNote"), employee: line.employee.name },
     userId: user.id, userName: user.name, branchId: run.branchId,
   });
   revalidatePath(`/payroll/${run.id}`);

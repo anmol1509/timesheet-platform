@@ -41,6 +41,7 @@ export default async function HistoryPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
               <tr>
+                <th className="px-4 py-3">Timesheet no.</th>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Month</th>
                 <th className="px-4 py-3">Format</th>
@@ -54,6 +55,7 @@ export default async function HistoryPage() {
             <tbody className="divide-y divide-[var(--border)]">
               {sheets.map((s) => (
                 <tr key={s.id}>
+                  <td className="tabular px-4 py-3 text-secondary">{s.sheetNo ?? "—"}</td>
                   <td className="px-4 py-3 font-medium text-primary">
                     {s.supplier.name}
                   </td>

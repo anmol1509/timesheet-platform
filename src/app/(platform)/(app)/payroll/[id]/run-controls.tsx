@@ -139,17 +139,19 @@ function AmountCell({ label, amount, note, onAmount, onNote, placeholder, requir
  * asks for a note once it is filled in. One Save writes all three and recomputes net pay.
  */
 export function LineAdjustCells({
-  lineId, deduction, deductionNote, advance, advanceNote, adjustment, adjustmentNote, disabled,
+  lineId, deduction, deductionNote, advance, advanceNote, adjustment, adjustmentNote, bankCharge, bankWaived, disabled,
 }: {
-  lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; disabled: boolean;
+  lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; bankCharge: number; bankWaived: boolean; disabled: boolean;
 }) {
   const [pending, start] = useTransition();
   const [v, setV] = useState({ deduction: String(deduction || ""), deductionNote, advance: String(advance || ""), advanceNote, adjustment: String(adjustment || ""), adjustmentNote });
+  // The bank charge for paying this worker, typed here; the tick waives it (the amount is kept so un-ticking brings it back).
+  const [bank, setBank] = useState({ amount: String(bankCharge || ""), waived: bankWaived });
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const dirty =
     Number(v.deduction || 0) !== deduction || v.deductionNote !== deductionNote || Number(v.advance || 0) !== advance || v.advanceNote !== advanceNote ||
-    Number(v.adjustment || 0) !== adjustment || v.adjustmentNote !== adjustmentNote;
+    Number(v.adjustment || 0) !== adjustment || v.adjustmentNote !== adjustmentNote || Number(bank.amount || 0) !== bankCharge || bank.waived !== bankWaived;
   const amount = (k: "deduction" | "advance" | "adjustment") => (val: string) => { setSaved(false); setV((p) => ({ ...p, [k]: val })); };
   const note = (k: "deductionNote" | "advanceNote" | "adjustmentNote"): ChangeHandler => (e) => { setSaved(false); setV((p) => ({ ...p, [k]: e.target.value })); };
 
@@ -159,6 +161,9 @@ export function LineAdjustCells({
       const fd = new FormData();
       fd.set("lineId", lineId);
       for (const [k, val] of Object.entries(v)) fd.set(k, val);
+      fd.set("bankSent", "1");
+      fd.set("bankCharge", bank.amount);
+      fd.set("bankWaived", bank.waived ? "1" : "0");
       const res = await saveLineAction(fd);
       if (res.error) setError(res.error); else setSaved(true);
     });
@@ -169,6 +174,17 @@ export function LineAdjustCells({
       <AmountCell label="Deduction" amount={v.deduction} note={v.deductionNote} onAmount={amount("deduction")} onNote={note("deductionNote")} placeholder="What for? (fine, damage…)" required disabled={disabled} sign="−" />
       <AmountCell label="Advance" amount={v.advance} note={v.advanceNote} onAmount={amount("advance")} onNote={note("advanceNote")} placeholder="Note (advance taken on…)" required disabled={disabled} sign="−" />
       <AmountCell label="Adjustment" amount={v.adjustment} note={v.adjustmentNote} onAmount={amount("adjustment")} onNote={note("adjustmentNote")} placeholder="Bonus / correction (− to deduct)" required={false} disabled={disabled} sign="±" />
+      {disabled ? (
+        <td className={`${TD} text-right tabular-nums text-secondary`}>
+          {bankCharge > 0 ? (bankWaived ? <span title="Waived: nothing is taken" className="text-muted line-through">{bankCharge.toFixed(2)}</span> : <>−{bankCharge.toFixed(2)}</>) : "—"}
+          {bankCharge > 0 && bankWaived && <span className="block text-xs text-subtle">Waived</span>}
+        </td>
+      ) : (
+        <td className={TD}>
+          <NumberInput step={0.01} value={bank.amount} onChange={(val) => { setSaved(false); setBank((b) => ({ ...b, amount: String(val) })); }} ariaLabel="Bank charge (AED)" inputClassName={`h-8 w-24 text-right tabular-nums ${bank.waived ? "line-through opacity-60" : ""}`} />
+          <label className="mt-1 flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" checked={bank.waived} onChange={(e) => { setSaved(false); setBank((b) => ({ ...b, waived: e.target.checked })); }} /> Waive</label>
+        </td>
+      )}
       {!disabled && (
         <td className={TD}>
           {dirty && <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>}

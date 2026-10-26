@@ -389,7 +389,7 @@ async function explainPayrollLine(input: Record<string, unknown>, ctx: ToolConte
     daysInMonth: l.daysInMonth, absentDays: l.absentDays, unpaidLeaveDays: l.unpaidLeaveDays, idleDays: l.idleDays, sickDays: l.sickDays,
     normalHours: l.normalHours, overtimeHours: l.otHours, restDayHours: l.restHours, timesheetHours: l.timesheetHours,
     basicOrFlat: n(l.basic), allowances: n(l.allowances), overtimePay: n(l.overtimePay), absenceAndUnpaidLeaveDeductions: n(l.deductions),
-    gasCharge: n(l.gasCharge), shortHoursDeduction: n(l.shortfallDeduction), shortHours: l.shortfallHours, loanRecovery: n(l.loanDeduction), recurringEarnings: n(l.otherEarnings), recurringDeductions: n(l.otherDeductions),
+    gasCharge: n(l.gasCharge), bankCharge: l.bankChargeWaived ? 0 : n(l.bankCharge), shortHoursDeduction: n(l.shortfallDeduction), shortHours: l.shortfallHours, loanRecovery: n(l.loanDeduction), recurringEarnings: n(l.otherEarnings), recurringDeductions: n(l.otherDeductions),
     manualDeduction: n(l.manualDeduction), manualDeductionNote: l.deductionNote, adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote, net: n(l.net),
   };
   return { content: JSON.stringify(data), links: [{ href: `/payroll/${l.run.id}`, label: `Payroll ${l.run.month}`, group: "Payroll" }] };

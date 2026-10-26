@@ -43,6 +43,8 @@ export type TimesheetPdfInput = {
   subContractor: string;
   subContractorCode: string | null;
   periodFrom: string;
+  /** The running number of this sheet (TS-2026-0001), printed beside the period. */
+  sheetNo?: string | null;
   periodTo: string;
   entries: TimesheetEntry[];
   additions: number;
@@ -308,7 +310,7 @@ export async function generateTimesheetPdf(input: TimesheetPdfInput): Promise<Bu
         {input.subContractor.toUpperCase()}
       </Text>
       <Text style={s.period}>
-        {input.titleText ? `${input.titleText}  ·  ` : "Time Sheet "}{input.titleText ? "" : "Period From "}{input.periodFrom} to {input.periodTo}
+        {input.titleText ? `${input.titleText}  ·  ` : "Time Sheet "}{input.titleText ? "" : "Period From "}{input.periodFrom} to {input.periodTo}{input.sheetNo ? `  ·  Timesheet No: ${input.sheetNo}` : ""}
       </Text>
     </View>
   );

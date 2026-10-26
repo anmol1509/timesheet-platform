@@ -26,7 +26,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ status: "PRESENT", normalHours: "", otHours: "" });
-  const [adj, setAdj] = useState<{ deduction: string; deductionNote: string; advance: string; advanceNote: string; adjustment: string; adjustmentNote: string } | null>(null);
+  const [adj, setAdj] = useState<{ deduction: string; deductionNote: string; advance: string; advanceNote: string; adjustment: string; adjustmentNote: string; bankCharge: string; bankWaived: string } | null>(null);
   const [saved, setSaved] = useState(false);
 
   function load(open: boolean) {
@@ -55,6 +55,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       const fd = new FormData();
       fd.set("lineId", view.adjust.lineId);
       for (const [k, v] of Object.entries(adj)) fd.set(k, v);
+      fd.set("bankSent", "1");
       const res = await saveLineAction(fd);
       if (res.error) { setError(res.error); return; }
       const r = await loadPayDaysAction(runId, employeeId);
@@ -75,7 +76,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       router.refresh();
     });
   }
-  const adjDirty = !!view && !!adj && (Number(adj.deduction || 0) !== view.adjust.deduction || adj.deductionNote !== view.adjust.deductionNote || Number(adj.advance || 0) !== view.adjust.advance || adj.advanceNote !== view.adjust.advanceNote || Number(adj.adjustment || 0) !== view.adjust.adjustment || adj.adjustmentNote !== view.adjust.adjustmentNote);
+  const adjDirty = !!view && !!adj && (Number(adj.deduction || 0) !== view.adjust.deduction || adj.deductionNote !== view.adjust.deductionNote || Number(adj.advance || 0) !== view.adjust.advance || adj.advanceNote !== view.adjust.advanceNote || Number(adj.adjustment || 0) !== view.adjust.adjustment || adj.adjustmentNote !== view.adjust.adjustmentNote || Number(adj.bankCharge || 0) !== view.adjust.bankCharge || (adj.bankWaived === "1") !== view.adjust.bankChargeWaived);
   const setA = (k: keyof NonNullable<typeof adj>) => (e: React.ChangeEvent<HTMLInputElement>) => { setSaved(false); setAdj((p) => (p ? { ...p, [k]: e.target.value } : p)); };
   const save = (date: string) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); for (const [k, v] of Object.entries(draft)) fd.set(k, v); return saveDayAction(fd); });
   const align = (date: string) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); return alignDayAction(fd); });
@@ -251,6 +252,11 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                         <input className="input h-8 text-xs" value={adj[`${k}Note` as const]} onChange={setA(`${k}Note` as const)} placeholder={ph} aria-label={`${label} note`} />
                       </label>
                     ))}
+                    <label className="grid grid-cols-[6rem_8rem_1fr] items-center gap-2">
+                      <span className="text-xs text-muted">Bank charge</span>
+                      <input className={cn("input h-8 text-right text-xs tabular-nums", adj.bankWaived === "1" && "line-through opacity-60")} type="number" step="0.01" min="0" value={adj.bankCharge} onChange={setA("bankCharge")} aria-label="Bank charge (AED)" />
+                      <span className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={adj.bankWaived === "1"} onChange={(e) => { setSaved(false); setAdj((p) => (p ? { ...p, bankWaived: e.target.checked ? "1" : "0" } : p)); }} /> Waive (take nothing)</span>
+                    </label>
                     <div className="flex items-center gap-3 pt-1">
                       <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending || !adjDirty} onClick={saveAdjustments}>{pending ? "Saving…" : "Save changes"}</button>
                       {saved && !adjDirty && <span className="text-xs text-[var(--success)]">Saved. Net pay is now AED {aed(view.lineNet)}.</span>}
@@ -278,4 +284,4 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
   );
 }
 
-const adjFrom = (v: PayDaysView) => ({ deduction: String(v.adjust.deduction || ""), deductionNote: v.adjust.deductionNote, advance: String(v.adjust.advance || ""), advanceNote: v.adjust.advanceNote, adjustment: String(v.adjust.adjustment || ""), adjustmentNote: v.adjust.adjustmentNote });
+const adjFrom = (v: PayDaysView) => ({ deduction: String(v.adjust.deduction || ""), deductionNote: v.adjust.deductionNote, advance: String(v.adjust.advance || ""), advanceNote: v.adjust.advanceNote, adjustment: String(v.adjust.adjustment || ""), adjustmentNote: v.adjust.adjustmentNote, bankCharge: String(v.adjust.bankCharge || ""), bankWaived: v.adjust.bankChargeWaived ? "1" : "0" });

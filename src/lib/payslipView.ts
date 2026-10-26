@@ -11,6 +11,7 @@ export const PAYSLIP_HIDEABLE: { key: string; label: string; side: "earnings" | 
   { key: "allowances", label: "Allowances", side: "earnings" },
   { key: "absence", label: "Absence", side: "deductions" },
   { key: "gas", label: "Gas charge", side: "deductions" },
+  { key: "bank", label: "Bank charge", side: "deductions" },
   { key: "shortHours", label: "Short-hours deduction", side: "deductions" },
   { key: "loan", label: "Loan or advance recovery", side: "deductions" },
   { key: "manual", label: "Manual deduction", side: "deductions" },

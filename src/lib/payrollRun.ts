@@ -98,7 +98,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     }),
     prisma.payrollLine.findMany({
       where: { runId: run.id },
-      select: { employeeId: true, adjustment: true, adjustmentNote: true, manualDeduction: true, deductionNote: true, advanceNote: true, advanceManual: true, loanDeduction: true },
+      select: { employeeId: true, adjustment: true, adjustmentNote: true, manualDeduction: true, deductionNote: true, advanceNote: true, advanceManual: true, loanDeduction: true, bankCharge: true, bankChargeWaived: true },
     }),
     prisma.payrollAdjustment.findMany({
       where: { branchId: run.branchId, active: true, startMonth: { lte: run.month } },
@@ -217,7 +217,12 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     const shortRule = { mode: isShortfallMode(e.supplier?.shortfallMode) ? e.supplier!.shortfallMode as ShortfallMode : "OFF" as ShortfallMode, halfDayUnder: e.supplier ? num(e.supplier.shortfallHalfDayUnder) : 4 };
     const short = isHourly ? { hours: 0, amount: 0 } : shortfallTotal(shortRule, dailyHours, facts.shorts, { hourly: base / 30 / dailyHours, day: monthlyFixed / 30 });
     const shortfall = Math.min(short.amount, Math.max(0, round2(r.fixed - r.deductions + r.overtimePay - gasCharge)));
-    const recurring = { otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction: 0, manualDeduction: 0, gasCharge, shortfall };
+    const recurring = { otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction: 0, manualDeduction: 0, bankCharge: 0, gasCharge, shortfall };
+    // The bank charge typed on the run survives a recalculation; waived, it is kept but nothing is taken. It never takes pay below zero.
+    const bankChargeWaived = !!old?.bankChargeWaived;
+    const bankTyped = num(old?.bankCharge);
+    const bankCharge = bankChargeWaived ? bankTyped : capToAvailable(bankTyped, netPayWithExtras(r, adjustment, recurring));
+    recurring.bankCharge = bankChargeWaived ? 0 : bankCharge;
 
     // Typed entries can never push net pay below zero: the deduction takes what it
     // can first, then the advance takes what is left of that.
@@ -244,7 +249,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, shortfallHours: shortfall > 0 ? short.hours : 0, shortfallDeduction: shortfall, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
-      manualDeduction, deductionNote: old?.deductionNote ?? null,
+      manualDeduction, deductionNote: old?.deductionNote ?? null, bankCharge, bankChargeWaived,
       advanceNote: advanceManual ? old?.advanceNote ?? null : loanNote || null, advanceManual,
       otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction, items: ex.items.length > 0 ? ex.items : undefined,
       net: netPayWithExtras(r, adjustment, { ...recurring, loanDeduction, manualDeduction }),
