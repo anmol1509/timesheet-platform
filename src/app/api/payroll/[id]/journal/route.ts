@@ -13,14 +13,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const run = await prisma.payrollRun.findUnique({ where: { id }, include: { lines: true, company: { select: { name: true } } } });
   if (!run || isOutsideBranch(run.branchId, branchId, isSuperAdmin)) return NextResponse.json({ error: "Run not found." }, { status: 404 });
-  if (run.status === "DRAFT") return NextResponse.json({ error: "Approve the run before exporting its journal." }, { status: 400 });
+  const draft = run.status === "DRAFT"; // a draft can be exported to check the entry; it is marked as a draft
+  if (run.lines.length === 0) return NextResponse.json({ error: "There is nobody in this run, so there is nothing to journal." }, { status: 400 });
 
   const projectIds = [...new Set(run.lines.map((l) => l.projectId).filter((x): x is string => !!x))];
   const projects = projectIds.length ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, code: true } }) : [];
   const code = new Map(projects.map((p) => [p.id, p.code]));
   const rows = buildJournal(run.lines.map((l) => ({ costCentre: l.projectId ? (code.get(l.projectId) ?? "REMOVED") : "UNASSIGNED", line: lineToPayslipLine(l) })));
   const date = run.approvedAt ?? new Date();
-  const memo = `Payroll ${run.month}${run.company ? ` ${run.company.name}` : ""}`;
-  const csv = ["Date,Reference,Account,Debit,Credit,Cost centre,Memo", ...rows.map((r) => [date.toISOString().slice(0, 10), `PAY-${run.month}`, r.account, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.costCentre, memo].map(csvCell).join(","))].join("\r\n");
-  return new NextResponse(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="payroll-journal-${run.month}.csv"`, "Cache-Control": "private, no-store" } });
+  const memo = `Payroll ${run.month}${run.company ? ` ${run.company.name}` : ""}${draft ? " (DRAFT, not approved)" : ""}`;
+  const csv = ["Date,Reference,Account,Debit,Credit,Cost centre,Memo", ...rows.map((r) => [date.toISOString().slice(0, 10), `PAY-${run.month}${draft ? "-DRAFT" : ""}`, r.account, r.debit ? r.debit.toFixed(2) : "", r.credit ? r.credit.toFixed(2) : "", r.costCentre, memo].map(csvCell).join(","))].join("\r\n");
+  return new NextResponse(csv, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="payroll-journal-${run.month}${draft ? "-draft" : ""}.csv"`, "Cache-Control": "private, no-store" } });
 }

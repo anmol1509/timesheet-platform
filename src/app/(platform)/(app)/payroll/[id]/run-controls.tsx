@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportLink } from "@/components/ExportLink";
 import { useState, useTransition } from "react";
 import { CheckCheck, Download, FileText, RotateCcw, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
@@ -59,9 +60,14 @@ export function RunControls({
           </>
         )}
         {status !== "DRAFT" && canExport && (
-          <a className="btn btn-secondary" href={`/api/payroll/${id}/sif`} title="The salary file your bank needs (WPS / SIF). Upload it in your bank's online portal to pay everyone at once.">
+          <ExportLink className="btn btn-secondary" href={`/api/payroll/${id}/sif`} skipHref={`/api/payroll/${id}/sif?skip=1`} title="The salary file your bank needs (WPS / SIF). Upload it in your bank's online portal to pay everyone at once.">
             <Download className="h-4 w-4" aria-hidden /> Bank file (WPS)
-          </a>
+          </ExportLink>
+        )}
+        {status !== "DRAFT" && canExport && (
+          <ExportLink className="btn btn-secondary" href={`/api/payroll/${id}/c3`} title="The C3 salary-card file: everyone in this run who has a C3 ID, with their net pay.">
+            <Download className="h-4 w-4" aria-hidden /> C3 file
+          </ExportLink>
         )}
         <a className="btn btn-secondary" href={`/payroll/${id}/payslips`} target="_blank" rel="noreferrer">
           <FileText className="h-4 w-4" aria-hidden /> Payslips
@@ -76,19 +82,19 @@ export function RunControls({
                 </button>
               )}
               {canExport && (
-                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/csv`}>
+                <ExportLink className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/csv`}>
                   <Download className="h-4 w-4" aria-hidden /> Download as spreadsheet (CSV)
-                </a>
+                </ExportLink>
               )}
               {canExport && (
-                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/register`}>
+                <ExportLink className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/register`}>
                   <Download className="h-4 w-4" aria-hidden /> Payroll register (Excel)
-                </a>
+                </ExportLink>
               )}
               {canExport && (
-                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/journal`}>
+                <ExportLink className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/journal`}>
                   <Download className="h-4 w-4" aria-hidden /> Accounting journal (CSV)
-                </a>
+                </ExportLink>
               )}
               {status === "DRAFT" && canDelete && (
                 <button type="button" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--error)] hover:bg-surface-hover" disabled={pending} onClick={() => run(deleteRunAction as unknown as (fd: FormData) => Promise<void>)}>

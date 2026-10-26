@@ -88,6 +88,7 @@ type Employee = {
   visaDesignation: string | null;
   visaStampingDate: Date | null;
   molPersonCode: string | null;
+  c3Id: string | null;
 
   passportStatus: string | null;
   passportReleaseDate: Date | null;
@@ -805,6 +806,7 @@ export function EditForm({
             <TextField label="Bank routing code" name="wpsRoutingCode" defaultValue={employee.wpsRoutingCode} hint="ROUTING_CODE" />
             <TextField label="Account holder name" name="wpsAccountHolderName" defaultValue={employee.wpsAccountHolderName} />
             <TextField label="Account number" name="wpsAccountNumber" defaultValue={employee.wpsAccountNumber} />
+            <TextField label="C3 ID (salary card)" name="c3Id" defaultValue={employee.c3Id} />
           </div>
         </section>
       </div>

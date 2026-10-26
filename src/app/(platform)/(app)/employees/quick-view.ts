@@ -108,7 +108,7 @@ export async function loadQuickViewAction(id: string): Promise<QuickView | null>
     visaNumber: e.visaNumber,
     unifiedNo: e.unifiedNo,
     payStructure: viewPay ? e.payStructure : null,
-    skills: e.skills.map((k) => ({ id: k.skillId, name: k.skill.name, level: k.proficiencyPercent, rate: viewPay && k.rate != null ? Number(k.rate.toString()) : null })),
+    skills: e.skills.map((k) => ({ id: k.skillId, name: k.skill.name, level: k.proficiencyPercent ?? DEFAULT_SKILL_LEVEL, rate: viewPay && k.rate != null ? Number(k.rate.toString()) : null })),
     dateOfBirth: iso(e.dateOfBirth),
     joinDate: iso(e.joinDate),
     expiry: {

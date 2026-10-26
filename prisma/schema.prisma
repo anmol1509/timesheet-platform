@@ -790,6 +790,8 @@ model Employee {
   visaDesignation  String?
   visaStampingDate DateTime?
   molPersonCode    String?
+  // C3 card ID, for workers paid through a C3 salary card; listed in the payroll run's C3 export.
+  c3Id             String?
 
   // Passport (passportNumber/passportExpiry above already exist)
   passportStatus      String?

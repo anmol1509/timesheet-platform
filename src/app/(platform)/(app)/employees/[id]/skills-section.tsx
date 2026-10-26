@@ -174,16 +174,10 @@ export function SkillsSection({
                   <tr key={s.id}>
                     <td className="px-3 py-2 font-medium text-primary">{s.name}</td>
                     <td className="px-3 py-2 text-right text-secondary">
-                      {s.proficiencyPercent != null ? (
-                        <>
-                          {s.proficiencyPercent}%
-                          <span className="ml-1.5 text-xs text-subtle">
-                            {skillLevelLabel(s.proficiencyPercent)}
-                          </span>
-                        </>
-                      ) : (
-                        "—"
-                      )}
+                      {s.proficiencyPercent ?? DEFAULT_SKILL_LEVEL}%
+                      <span className="ml-1.5 text-xs text-subtle">
+                        {skillLevelLabel(s.proficiencyPercent ?? DEFAULT_SKILL_LEVEL)}
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-right text-secondary">
                       {s.rate != null ? `AED ${s.rate.toFixed(2)}${s.rateType === "FIXED" ? " / month" : s.rateType === "HOURLY" ? " / hour" : ""}` : "—"}

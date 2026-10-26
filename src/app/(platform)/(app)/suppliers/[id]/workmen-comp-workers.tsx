@@ -96,11 +96,22 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
           <ul className="divide-y divide-[var(--border)] rounded-md border border-default bg-surface">
             {named.map((n, i) => (
               <li key={`${n.name}-${i}`} className="space-y-1 px-3 py-2">
+                {n.candidates.length === 0 && n.suggestions.length > 0 && (
+                  <div className="space-y-1 text-sm">
+                    <p className="text-xs text-muted">Did you mean{n.suggestions.length > 1 ? " one of these" : ""}? Their name is close to &ldquo;{n.name}&rdquo;.</p>
+                    {n.suggestions.map((w) => (
+                      <div key={w.employeeId} className="flex flex-wrap items-center gap-2">
+                        {workerLine(w)}
+                        {action(w)}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {n.candidates.length === 0 ? (
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-primary">{n.name}</span>
                     <Badge color="red">Not on this company&rsquo;s roster</Badge>
-                    <span className="text-xs text-muted">Add them from Employees &amp; insurance, or pick the right worker below if the name is spelled differently.</span>
+                    {n.suggestions.length === 0 && <span className="text-xs text-muted">Add them from Employees &amp; insurance, or pick the right worker below if the name is spelled differently.</span>}
                   </div>
                 ) : (
                   n.candidates.map((w) => (
