@@ -40,6 +40,36 @@ export function SkillsSection({
   const [rateType, setRateType] = useState("");
   const rateRef = useRef<HTMLInputElement>(null);
   const [resetKey, setResetKey] = useState(0);
+  // The trade being edited: the add form is filled with its values and saves over it (adding an existing trade updates it).
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editRate, setEditRate] = useState<number | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  function startEdit(s: SkillRow) {
+    setTrade(s.name);
+    setLevel(s.proficiencyPercent ?? DEFAULT_SKILL_LEVEL);
+    setRateType(s.rateType ?? "");
+    setEditRate(s.rate);
+    setEditing(s.name);
+    setResetKey((k) => k + 1);
+    formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  function cancelEdit() {
+    setEditing(null);
+    setEditRate(null);
+    setTrade("");
+    setLevel(DEFAULT_SKILL_LEVEL);
+    setRateType("");
+    setResetKey((k) => k + 1);
+  }
+  // The rate saved on the worker lives in Pay structure below; Edit takes you to that field.
+  function editWorkerRate() {
+    const input = document.querySelector<HTMLInputElement>('input[name="hourlyRate"]');
+    if (!input) return;
+    input.scrollIntoView({ block: "center", behavior: "smooth" });
+    input.focus();
+    input.select();
+  }
 
   function handleAdd() {
     const name = trade.trim();
@@ -56,6 +86,8 @@ export function SkillsSection({
     setTrade("");
     setLevel(DEFAULT_SKILL_LEVEL);
     setRateType("");
+    setEditing(null);
+    setEditRate(null);
     setResetKey((k) => k + 1);
     if (rateRef.current) rateRef.current.value = "";
   }
@@ -64,7 +96,7 @@ export function SkillsSection({
     <section>
       <h2 className="mb-3 text-sm font-semibold text-primary">Known Trade Details</h2>
       <div className="card p-5">
-        <div className="flex flex-wrap items-end gap-2">
+        <div ref={formRef} className="flex flex-wrap items-end gap-2">
           <div className="min-w-[180px] flex-1">
             <span className="mb-1 block text-xs font-medium text-muted">Trade</span>
             <Select
@@ -94,7 +126,7 @@ export function SkillsSection({
           </div>
           <div className="w-28">
             <span className="mb-1 block text-xs font-medium text-muted">Rate (AED)</span>
-            <NumberInput key={resetKey} step={0.01} inputRef={rateRef} className="w-full" />
+            <NumberInput key={resetKey} step={0.01} inputRef={rateRef} defaultValue={editRate ?? ""} className="w-full" />
           </div>
           <button
             type="button"
@@ -102,18 +134,16 @@ export function SkillsSection({
             disabled={pending}
             className="btn btn-primary"
           >
-            Add
+            {editing ? "Save changes" : "Add"}
           </button>
+          {editing && (
+            <button type="button" onClick={cancelEdit} className="btn btn-secondary">
+              Cancel
+            </button>
+          )}
         </div>
 
-        {workerRate != null && workerRate > 0 && (
-          <p className="mt-4 rounded-lg border border-default bg-surface-subtle px-4 py-2.5 text-sm text-secondary">
-            <span className="font-medium text-primary">Trade rate: AED {workerRate.toFixed(2)} / hour{workerTrade ? ` (${workerTrade})` : ""}.</span>{" "}
-            Saved on this worker under Pay structure below; payroll pays this before any rate on the trades listed here.
-          </p>
-        )}
-
-        {skills.length === 0 ? (
+        {skills.length === 0 && !(workerRate != null && workerRate > 0) ? (
           <p className="mt-4 text-sm text-subtle">No known trades added yet.</p>
         ) : (
           <div className="mt-4 overflow-hidden rounded-2xl border border-default">
@@ -127,6 +157,19 @@ export function SkillsSection({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
+                {workerRate != null && workerRate > 0 && (
+                  <tr className="bg-brand-soft/40">
+                    <td className="px-3 py-2 font-medium text-primary">
+                      {workerTrade ?? "Trade"}
+                      <span className="ml-2 rounded-full border border-default px-1.5 py-0.5 text-[10px] font-medium text-muted" title="Saved on this worker under Pay structure. Payroll pays this before any trade rate below.">Paid by payroll</span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-secondary">—</td>
+                    <td className="px-3 py-2 text-right text-secondary">AED {workerRate.toFixed(2)} / hour</td>
+                    <td className="px-3 py-2 text-right">
+                      <button type="button" onClick={editWorkerRate} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Edit</button>
+                    </td>
+                  </tr>
+                )}
                 {skills.map((s) => (
                   <tr key={s.id}>
                     <td className="px-3 py-2 font-medium text-primary">{s.name}</td>
@@ -146,6 +189,7 @@ export function SkillsSection({
                       {s.rate != null ? `AED ${s.rate.toFixed(2)}${s.rateType === "FIXED" ? " / month" : s.rateType === "HOURLY" ? " / hour" : ""}` : "—"}
                     </td>
                     <td className="px-3 py-2 text-right">
+                      <button type="button" onClick={() => startEdit(s)} className="mr-3 text-xs font-medium text-[var(--brand-primary)] hover:underline">Edit</button>
                       <form action={removeSkillAction} className="inline">
                         <input type="hidden" name="employeeId" value={employeeId} />
                         <input type="hidden" name="skillId" value={s.id} />
@@ -162,6 +206,9 @@ export function SkillsSection({
               </tbody>
             </table>
           </div>
+        )}
+        {workerRate != null && workerRate > 0 && skills.some((k) => (k.rate ?? 0) > 0) && (
+          <p className="mt-2 text-xs text-muted">Payroll pays the rate marked “Paid by payroll”; the rates on the other trades are used only when that one is empty.</p>
         )}
       </div>
     </section>

@@ -51,10 +51,6 @@ export function approvalBlockers(f: BlockerFacts): string[] {
   if (f.status !== "DRAFT") return [`The run is already ${f.status.toLowerCase()}, so there is nothing to approve.`];
   if (f.lineCount === 0) out.push("The run has no workers in it. Check each worker has a pay structure on their Trade & pay tab, then press More › Recalculate.");
   if (!f.submitted) out.push("It has not been sent for approval. Open the run and press Submit for approval; approvers only see submitted runs in Approvals.");
-  if (f.bankGaps.length > 0) {
-    const list = f.bankGaps.slice(0, 5).map((b) => `${b.name} (${b.gaps.join(", ")})`).join("; ");
-    out.push(`${f.bankGaps.length} worker${f.bankGaps.length === 1 ? " has" : "s have"} incomplete bank details: ${list}${f.bankGaps.length > 5 ? "…" : ""}. Fix them on the worker's Payroll & WPS tab, then press More › Recalculate.`);
-  }
   if (f.threshold !== null && f.total > f.threshold) out.push(`The run total (AED ${f.total.toLocaleString("en-AE", { minimumFractionDigits: 2 })}) is over the branch's approval limit (AED ${f.threshold.toLocaleString("en-AE")}), so someone other than the person who created it has to approve it.`);
   return out;
 }
@@ -81,7 +77,7 @@ export function missingFromPayrollFixes(
   return out;
 }
 
-/** The fix for each blocker `approvalBlockers` can name; bank-detail gaps get one button per worker (first three). */
+/** The fix for each blocker `approvalBlockers` can name; bank-detail gaps are not a blocker any more, so there is none for them. */
 export function payrollBlockerFixes(
   f: BlockerFacts,
   run: { id: string; label: string },
@@ -90,6 +86,6 @@ export function payrollBlockerFixes(
   if (f.status !== "DRAFT") return [];
   const out: AssistantAction[] = [];
   if (f.lineCount === 0 || !f.submitted) out.push({ label: f.lineCount === 0 ? `Open ${run.label}` : "Submit for approval", href: `/payroll/${run.id}` });
-  for (const w of workers.slice(0, 3)) out.push({ label: `Fix ${w.name.split(/\s+/)[0]}'s bank details`, href: `/employees/${w.employeeId}?tab=payroll` });
+  void workers; // missing bank details no longer block approval, so they get no fix button here
   return out;
 }

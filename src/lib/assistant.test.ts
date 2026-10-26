@@ -59,10 +59,10 @@ test("missing from payroll: with nothing wrong on the record it says to recalcul
 
 test("approval blockers come in the order to deal with them", () => {
   const r = approvalBlockers({ status: "DRAFT", submitted: false, lineCount: 2, total: 9000, threshold: 5000, bankGaps: [{ name: "Ravi", gaps: ["IBAN / account number"] }] });
-  assert.equal(r.length, 3);
+  // Missing bank details no longer block approval (Ravi has none), so only the other two are listed.
+  assert.equal(r.length, 2);
   assert.match(r[0], /not been sent for approval/);
-  assert.match(r[1], /Ravi/);
-  assert.match(r[2], /approval limit/);
+  assert.match(r[1], /approval limit/);
   assert.deepEqual(approvalBlockers({ status: "DRAFT", submitted: true, lineCount: 2, total: 100, threshold: null, bankGaps: [] }), []);
   assert.match(approvalBlockers({ status: "APPROVED", submitted: true, lineCount: 1, total: 1, threshold: null, bankGaps: [] })[0], /already approved/);
 });
