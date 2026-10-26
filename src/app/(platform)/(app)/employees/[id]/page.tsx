@@ -304,6 +304,7 @@ export default async function EmployeeDetailPage({
       {canViewPay && <ReadinessCard employeeId={employee.id} />}
 
       <EditForm
+        ownRateOnly={!employee.skills.some((s) => (Number(s.rate) || 0) > 0)}
         employee={toPlain(employee)}
         pay={pay}
         projects={projects}
@@ -329,7 +330,7 @@ export default async function EmployeeDetailPage({
             {canViewPay && <SalaryHistorySection rows={revisionRows} canAddArrears={canEditPay} />}
             <SkillsSection
               employeeId={employee.id}
-              workerRate={pay ? Number(pay.hourlyRate) || null : null}
+              workerRate={pay && !employee.skills.some((s) => (Number(s.rate) || 0) > 0) ? Number(pay.hourlyRate) || null : null}
               workerTrade={employee.trade}
               skills={employee.skills.map((s) => ({
                 id: s.skill.id,
