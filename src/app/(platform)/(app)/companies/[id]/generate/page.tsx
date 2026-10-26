@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
-import { absenceRuleOf, gasRuleOf } from "@/lib/deductions";
+import { absenceRuleOf, clientAbsenceRule, gasRuleOf, startingAbsentDeduction } from "@/lib/deductions";
 import { getIssuerOptions } from "@/lib/issuer";
 import { ReviewClient } from "./review-client";
 
@@ -55,7 +55,6 @@ export default async function GeneratePage({
       <ReviewClient
       issuer={issuer}
       supplier={{ id: supplier.id, name: supplier.name, fullName: supplier.fullName }}
-      absenceRule={absenceRuleOf(supplier)}
       gasRule={gasRuleOf(supplier)}
       month={month}
       monthLabel={monthLabelFromKey(month)}
@@ -67,7 +66,9 @@ export default async function GeneratePage({
         rate: e.rate,
         totalHours: e.totalHours,
         absentCount: e.absentCount,
-        absentDeduction: e.absentDeduction,
+        // The client's terms (default 2 free days, then AED 25); a figure someone typed in is kept as typed.
+        absentDeduction: startingAbsentDeduction(e.absentDeduction, e.absentCount, absenceRuleOf(supplier), clientAbsenceRule(e.client)),
+        absenceRule: clientAbsenceRule(e.client),
         dailyHours: e.dailyHours,
         clientName: e.client?.name ?? null,
         checkIn: checkIn.get(e.employeeIdNo) ?? null,

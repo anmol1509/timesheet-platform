@@ -17,6 +17,8 @@ type Entry = {
   totalHours: number;
   absentCount: number;
   absentDeduction: number;
+  /** The client's absence terms, which "calculated" means for this row. */
+  absenceRule: AbsenceRule;
   dailyHours: DailyHourCell[];
   clientName: string | null;
   checkIn: string | null;
@@ -27,11 +29,9 @@ export function ReviewClient({
   month,
   monthLabel,
   entries,
-  absenceRule,
   gasRule,
   issuer,
 }: {
-  absenceRule: AbsenceRule;
   gasRule: GasRule;
   supplier: { id: string; name: string; fullName: string | null };
   month: string;
@@ -42,9 +42,9 @@ export function ReviewClient({
   const defaultAbsentDeductions = useMemo(
     () =>
       Object.fromEntries(
-        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount, absenceRule)])
+        entries.map((e) => [e.id, calculateAbsentDeduction(e.absentCount, e.absenceRule)])
       ),
-    [entries, absenceRule]
+    [entries]
   );
   const [gasWaived, setGasWaived] = useState(false);
   const defaultGasDeductions = useMemo(

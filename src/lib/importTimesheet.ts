@@ -6,7 +6,7 @@ import { looseMatch } from "@/lib/looseName";
 import { normalizeNationality } from "@/lib/nationality";
 import { loadTradeCanon } from "@/lib/canon";
 import type { ParsedMonth, SkippedRow } from "@/lib/parseTimesheet";
-import { calculateAbsentDeduction, absenceRuleOf } from "@/lib/deductions";
+import { calculateAbsentDeduction, clientAbsenceRule } from "@/lib/deductions";
 import type { Db, NewSupplier, SupplierDecision } from "@/lib/importer/types";
 import { cellToAttendance, newAttendanceStats, writeAttendanceFromEntry } from "@/lib/importer/attendance";
 
@@ -272,6 +272,8 @@ export async function importParsedMonths(
       }
 
       let clientId: string | null = null;
+      // The client's absence terms (default 2 free days, then AED 25) set the deduction a new row starts with.
+      let clientRule = clientAbsenceRule(null);
       if (entry.clientName) {
         const clientKey = normalizeKey(entry.clientName);
         let client = clientByKey.get(clientKey);
@@ -314,6 +316,7 @@ export async function importParsedMonths(
           stats.clientsCreated++;
         }
         clientId = client?.id ?? null;
+        clientRule = clientAbsenceRule(client);
       }
 
       let sheetProjectId: string | null = null;
@@ -363,7 +366,7 @@ export async function importParsedMonths(
           dailyHours: JSON.stringify(entry.dailyHours),
           totalHours: entry.totalHours,
           absentCount: entry.absentCount,
-          absentDeduction: calculateAbsentDeduction(entry.absentCount, absenceRuleOf(supplier)),
+          absentDeduction: calculateAbsentDeduction(entry.absentCount, clientRule),
           invoiceValue: entry.invoiceValue,
           branchId,
           supplierId: supplier.id,

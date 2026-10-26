@@ -9,7 +9,7 @@ import { generateTimesheetPdf } from "@/lib/generateTimesheetPdf";
 import { resolveIssuer } from "@/lib/issuer";
 import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf } from "@/lib/generateTemplatedTimesheet";
-import { calculateGasDeduction, gasRuleOf } from "@/lib/deductions";
+import { absenceRuleOf, calculateGasDeduction, clientAbsenceRule, gasRuleOf, startingAbsentDeduction } from "@/lib/deductions";
 
 export const maxDuration = 60;
 
@@ -133,7 +133,10 @@ export async function POST(request: Request) {
       continue;
     }
     const allEntries = await getSupplierMonthEntries(supplier.id, month);
-    const entries = employeeIds ? allEntries.filter((e) => employeeIds.includes(e.employeeIdNo)) : allEntries;
+    // Each row's absence deduction follows its client's terms (default 2 free days, then AED 25); a figure typed in by hand is kept.
+    const supplierRule = absenceRuleOf(supplier);
+    const withTerms = allEntries.map((e) => ({ ...e, absentDeduction: startingAbsentDeduction(e.absentDeduction, e.absentCount, supplierRule, clientAbsenceRule(e.client)) }));
+    const entries = employeeIds ? withTerms.filter((e) => employeeIds.includes(e.employeeIdNo)) : withTerms;
     if (entries.length === 0) {
       skipped.push(`${supplier.name} — ${employeeIds ? "none of the selected employees have hours this month" : "no employees this month"}`);
       continue;

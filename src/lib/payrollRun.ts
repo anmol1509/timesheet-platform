@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { payrollScopeWhere } from "@/lib/payrollCompany";
 import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
-import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, gasChargeFor, effectivePay, type PayStructure } from "@/lib/payroll";
+import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure } from "@/lib/payroll";
 
 /** The first moment after a pay month, so an advance handed over later than the month is not recovered in it. */
 const monthAfter = (month: string) => {
@@ -26,13 +26,17 @@ type PayEmployee = {
  * the rate on their trade in Known Trade Details (the trade they are
  * deployed as, then the one matching their designation, then any with a rate).
  */
-function hourlyRateOf(e: PayEmployee): number {
+/** Where an hourly rate comes from: the one on the employee, else the rate on the trade (skill) they are deployed as. */
+export function hourlyRateSource(e: PayEmployee): { rate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; trade: string | null } {
   const own = n2(e.hourlyRate);
-  if (own > 0) return own;
+  if (own > 0) return { rate: own, source: "EMPLOYEE", trade: null };
   const withRate = (e.skills ?? []).filter((k) => (k.rate ?? 0) > 0);
   const want = (e.trade ?? e.position ?? "").trim().toLowerCase();
   const pick = withRate.find((k) => k.isActive) ?? withRate.find((k) => k.skill.name.trim().toLowerCase() === want) ?? withRate[0];
-  return pick?.rate ?? 0;
+  return pick ? { rate: pick.rate ?? 0, source: "TRADE", trade: pick.skill.name } : { rate: 0, source: "NONE", trade: null };
+}
+function hourlyRateOf(e: PayEmployee): number {
+  return hourlyRateSource(e).rate;
 }
 
 export async function loadPayOf(_branchId: string, _employees: PayEmployee[]) {
@@ -204,11 +208,8 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     const old = prev.get(e.id);
     const adjustment = num(old?.adjustment);
     const ex = extras.get(e.id) ?? { earn: 0, deduct: 0, items: [] };
-    // Gas never takes pay below zero: it can only take what is left after deductions.
-    const gasCharge = Math.min(
-      gasChargeFor({ checkIn: e.siteArrivalDate, monthStart: start, daysInMonth: days, perDay: e.supplier ? num(e.supplier.gasPerDay) : 1, cap: e.supplier ? num(e.supplier.gasMonthlyCap) : 30, waived: e.gasWaived }),
-      Math.max(0, round2(r.fixed - r.deductions + r.overtimePay))
-    );
+    // Payroll takes no gas charge: gas is a timesheet charge only. The column stays (older runs hold amounts) and is always 0 here.
+    const gasCharge = 0;
     // Short hours (salaried staff only): the company's rule applied to each short present day, never taking more than is left.
     const dailyHours = pf.dailyHours > 0 ? pf.dailyHours : 8;
     const base = pf.payStructure === "FLAT" ? pf.flatMonthlyRate : pf.basicSalary;

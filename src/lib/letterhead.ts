@@ -125,3 +125,8 @@ export async function buildLetterhead(branch: {
     logo: logo ?? (branch.strictLogo ? null : await loadLogoDataUri()),
   };
 }
+
+/** The one-line contact details under a company's name: address, phone, email, P.O. Box and TRN, whichever it has. */
+export function letterheadContactLine(l: Pick<Letterhead, "addressLines" | "phone" | "email" | "poBox" | "trn">): string {
+  return [...l.addressLines, l.phone ? `Tel: ${l.phone}` : "", l.email ?? "", l.poBox ? `P.O. Box ${l.poBox}` : "", l.trn ? `TRN: ${l.trn}` : ""].filter(Boolean).join("  ·  ");
+}

@@ -38,7 +38,7 @@ import {
 import { DatePicker } from "@/components/ui/DatePicker";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { CountrySelect } from "@/components/ui/CountrySelect";
-import { primaryOptions, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
+import { primaryOptions, rootOf, sponsorFits, sponsorOptions } from "@/lib/supplierOptions";
 import { MaskedInput } from "@/components/ui/MaskedInput";
 
 type Project = { id: string; name: string; code: string };
@@ -933,7 +933,8 @@ export function EmployeeWizard({
             <Field label="Sponsorship company">
               <Select
                 value={fields.sponsorshipCompanyId}
-                onChange={(v) => set("sponsorshipCompanyId", v)}
+                // Picking the sponsor first fills in the supplier (the primary company it belongs under), so it isn't chosen twice.
+                onChange={(v) => { set("sponsorshipCompanyId", v); if (v && !fields.supplierId) set("supplierId", rootOf(sponsors, v)); }}
                 placeholder="Not set"
                 options={sponsorOptions(sponsors, fields.supplierId, fields.sponsorshipCompanyId).map((s) => ({ value: s.id, label: s.name }))}
               />
@@ -1610,7 +1611,7 @@ export function EmployeeWizard({
             <ReviewRow label="Sponsorship company">
               <Select
                 value={fields.sponsorshipCompanyId}
-                onChange={(v) => set("sponsorshipCompanyId", v)}
+                onChange={(v) => { set("sponsorshipCompanyId", v); if (v && !fields.supplierId) set("supplierId", rootOf(sponsors, v)); }}
                 placeholder="Not set"
                 options={sponsorOptions(sponsors, fields.supplierId, fields.sponsorshipCompanyId).map((s) => ({ value: s.id, label: s.name }))}
               />

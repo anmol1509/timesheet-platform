@@ -484,6 +484,10 @@ model Client {
   billingAddress     String?
   paymentTerms       String? // e.g. "Net 30"
   retentionPercent   Float?
+  // The client's absence terms on timesheets: the first absentFreeDays days off a month cost nothing, each one after that
+  // takes absentDeductionPerDay off the sheet. Payroll uses the worker's own company policy instead (Supplier.absent*).
+  absentFreeDays        Int     @default(2)
+  absentDeductionPerDay Decimal @default(25) @db.Decimal(10, 2)
   secondContactName  String? // accounts payable contact, if different
   secondContactPhone String?
   secondContactEmail String?

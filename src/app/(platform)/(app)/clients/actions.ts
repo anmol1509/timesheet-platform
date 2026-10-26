@@ -160,6 +160,13 @@ export async function updateClientAction(formData: FormData): Promise<{ error: s
     billingAddress: stringOrNull(formData.get("billingAddress")),
     paymentTerms: stringOrNull(formData.get("paymentTerms")),
     retentionPercent: numberOrNull(formData.get("retentionPercent")),
+    // Absence terms on this client's timesheets; only changed when the edit form sent them, so other callers can't reset them.
+    ...(formData.get("absencePolicySent") === "1"
+      ? {
+          absentFreeDays: Math.min(31, Math.max(0, Math.trunc(numberOrNull(formData.get("absentFreeDays")) ?? 2))),
+          absentDeductionPerDay: Math.max(0, numberOrNull(formData.get("absentDeductionPerDay")) ?? 25),
+        }
+      : {}),
     secondContactName: stringOrNull(formData.get("secondContactName")),
     secondContactPhone: stringOrNull(formData.get("secondContactPhone")),
     secondContactEmail: stringOrNull(formData.get("secondContactEmail")),
