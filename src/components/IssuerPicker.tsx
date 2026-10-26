@@ -4,15 +4,24 @@ import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 
-export type IssuerPickerData = { companies: { id: string; name: string; gaps: string[] }[]; branchName: string; defaultId: string | null };
+export type IssuerPickerData = { companies: { id: string; name: string; gaps: string[] }[]; branchName: string; defaultId: string | null; reason?: "ok" | "no-branch" | "none" };
 
 /**
  * "Issued by": which of your own companies a timesheet is issued by, and so whose name, address, TRN and logo head it.
- * Not shown when there are no own companies, so a single-company setup looks exactly as before. An own company that is
- * missing something the header uses says so here, with a link to complete it.
+ * With no branch chosen (a super admin viewing every branch) or no own company in the branch, it says why there is
+ * nothing to pick instead of disappearing. An own company that is missing something the header uses says so here, with a
+ * link to complete it.
  */
 export function IssuerPicker({ data, value, onChange, compact = false }: { data: IssuerPickerData; value: string; onChange: (id: string) => void; compact?: boolean }) {
-  if (data.companies.length === 0) return null;
+  if (data.companies.length === 0) {
+    const note =
+      data.reason === "no-branch" ? (
+        "Issued by: choose a branch from the switcher (top right) to pick which of your companies issues the sheets."
+      ) : data.reason === "none" ? (
+        <>Issued by: no own company in this branch yet, so sheets print with the branch details. <Link href="/my-companies" className="font-medium underline">Add one under My Companies</Link>.</>
+      ) : null;
+    return note ? <p className={`text-xs text-muted ${compact ? "" : "mt-4"}`}>{note}</p> : null;
+  }
   const chosen = data.companies.find((c) => c.id === value) ?? null;
   return (
     <div className={compact ? "" : "mt-4"}>
