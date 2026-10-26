@@ -910,6 +910,8 @@ model EmployeeNote {
   id        String   @id @default(cuid())
   remarks   String
   createdAt DateTime @default(now())
+  // The day the note is about, chosen when it is added; null on older notes (they show the day they were written).
+  noteDate  DateTime?
 
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String

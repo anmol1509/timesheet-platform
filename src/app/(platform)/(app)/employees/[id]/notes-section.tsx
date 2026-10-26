@@ -6,12 +6,14 @@ import { FileText, Plus } from "lucide-react";
 import { DeleteButton } from "@/components/DeleteButton";
 import { UPLOAD_ACCEPT_ATTR } from "@/lib/uploads";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { addEmployeeNoteAction, deleteEmployeeNoteAction } from "./actions";
 
 type NoteRow = {
   id: string;
   remarks: string;
   createdAt: string;
+  noteDate: string;
   createdByName: string;
   documents: { id: string; filename: string }[];
 };
@@ -34,12 +36,14 @@ export function NotesSection({
   const [pending, startTransition] = useTransition();
   const [adding, setAdding] = useState(false);
   const [remarks, setRemarks] = useState("");
+  const [noteDate, setNoteDate] = useState(() => new Date().toISOString().slice(0, 10));
   const fileRef = useRef<HTMLInputElement>(null);
 
   function submit() {
     const body = new FormData();
     body.set("employeeId", employeeId);
     body.set("remarks", remarks);
+    body.set("noteDate", noteDate);
     for (const file of fileRef.current?.files ?? []) body.append("files", file);
 
     startTransition(async () => {
@@ -72,6 +76,10 @@ export function NotesSection({
       <div className="card p-5">
         {adding && (
           <div className="mb-4 rounded-card border border-default p-4">
+            <label className="mb-3 block w-48">
+              <span className="field-label">Date</span>
+              <DatePicker value={noteDate} onChange={setNoteDate} />
+            </label>
             <label className="block">
               <span className="field-label">Remarks</span>
               <textarea
@@ -146,11 +154,9 @@ export function NotesSection({
                     </ul>
                   )}
                   <p className="mt-1 text-xs text-subtle">
-                    {new Date(note.createdAt).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}{" "}
+                    <span className="font-medium text-secondary">
+                      {new Date(`${note.noteDate}T00:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}
+                    </span>{" "}
                     · {note.createdByName}
                   </p>
                 </div>

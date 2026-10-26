@@ -78,7 +78,7 @@ export default async function EmployeeDetailPage({
         labourCardApplications: { orderBy: { createdAt: "desc" } },
         bed: { include: { room: { include: { camp: true } } } },
         noteEntries: {
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ noteDate: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
           include: {
             createdBy: { select: { name: true } },
             documents: { select: { id: true, filename: true } },
@@ -349,6 +349,7 @@ export default async function EmployeeDetailPage({
                 id: note.id,
                 remarks: note.remarks,
                 createdAt: note.createdAt.toISOString(),
+                noteDate: (note.noteDate ?? note.createdAt).toISOString().slice(0, 10),
                 createdByName: note.createdBy.name,
                 documents: note.documents,
               }))}
