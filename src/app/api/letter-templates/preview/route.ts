@@ -30,9 +30,9 @@ export async function POST(request: Request) {
     });
   } else if (category === "Check-in List") {
     const sample = [
-      ["Ajay Kumar", "India", "Palm Villas Phase 2", "Example Manpower LLC", "Bed Allocated"],
-      ["Arbaj Ali", "Pakistan", "Business Bay Mall Fit-out", "Example Manpower LLC", "Bed Allocated"],
-      ["Narendra BK", "Nepal", "Creek Harbour Tower 3", "Gulf Manpower Services", "Checked In"],
+      ["Ajay Kumar", "India", "Carpenter", "Example Manpower LLC", "Bed Allocated"],
+      ["Arbaj Ali", "Pakistan", "Mason", "Example Manpower LLC", "Bed Allocated"],
+      ["Narendra BK", "Nepal", "Steel Fixer", "Gulf Manpower Services", "Issued"],
     ];
     buffer = await generateCheckInPdf({
       letterhead: { name: SAMPLE_VALUES.COMPANYNAME, addressLines: ["Business Bay", "Dubai"], phone: "+971 4 123 4567", fax: null, email: "office@example.com", poBox: "12345", trn: "100000000000003", logo: await loadLogoDataUri() },
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       date: SAMPLE_VALUES.DATE,
       campName: SAMPLE_VALUES.CAMPNAME,
       bodyHtml: fillCheckInWording(clean, { companyName: SAMPLE_VALUES.COMPANYNAME, campName: SAMPLE_VALUES.CAMPNAME, campType: SAMPLE_VALUES.CAMPTYPE, checkInDate: SAMPLE_VALUES.CHECKINDATE, count: sample.length, date: SAMPLE_VALUES.DATE }),
-      rows: sample.map((r, i) => ({ slNo: i + 1, checkInNo: `CHK-0010${i + 1}`, employeeName: r[0], nationality: r[1], projectName: r[2], supplierName: r[3], coordinator: "A. Rahman", status: r[4] })),
+      rows: sample.map((r, i) => ({ slNo: i + 1, checkInNo: `CHK-0010${i + 1}`, employeeName: r[0], employeeCode: `EMP${100 + i}`, nationality: r[1], trade: r[2], supplierName: r[3], coordinator: "A. Rahman", status: r[4] })),
     });
   } else {
     buffer = await generateLetterPdf({

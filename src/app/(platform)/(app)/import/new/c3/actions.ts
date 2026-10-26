@@ -45,7 +45,7 @@ export async function previewC3Action(formData: FormData): Promise<C3Preview> {
   if (/\.xls$/i.test(file.name)) return { error: "Old .xls files can't be read. Open it in Excel and Save As .xlsx (or .csv), then upload that." };
   if (file.size > 5_000_000) return { error: "That file is too big (limit 5 MB)." };
 
-  let grid: string[][] = [];
+  const grid: string[][] = [];
   try {
     const wb = await loadWorkbook(Buffer.from(await file.arrayBuffer()), file.name);
     const ws = wb.worksheets[0];

@@ -53,7 +53,7 @@ type CampOption = {
   vacant: VacantBed[];
 };
 
-type Filter = "all" | "not_checked_in" | "awaiting_bed";
+type Filter = "all" | "not_checked_in" | "checked_in" | "awaiting_bed";
 
 function campLabel(c: CampOption) {
   const type = c.ownerType === "SUPPLIER" ? `Supplier${c.supplierName ? ` — ${c.supplierName}` : ""}` : "Own";
@@ -78,12 +78,13 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
   const counts = {
     all: rows.length,
     not_checked_in: rows.filter((r) => !r.checkInId).length,
+    checked_in: rows.filter((r) => !!r.checkInId).length,
     awaiting_bed: rows.filter((r) => !!r.checkInId && r.campKind === "OWN").length,
   };
   const q = query.trim().toLowerCase();
   const visible = rows.filter(
     (r) =>
-      (filter === "all" || (filter === "not_checked_in" ? !r.checkInId : !!r.checkInId && r.campKind === "OWN")) &&
+      (filter === "all" || (filter === "not_checked_in" ? !r.checkInId : filter === "checked_in" ? !!r.checkInId : !!r.checkInId && r.campKind === "OWN")) &&
       (!project || r.projectName === project) &&
       (!supplier || r.supplierName === supplier) &&
       (!nationality || r.nationality === nationality) &&
@@ -127,6 +128,7 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
           [
             ["all", `All (${counts.all})`],
             ["not_checked_in", `Not checked in (${counts.not_checked_in})`],
+            ["checked_in", `Check-in done (${counts.checked_in})`],
             ["awaiting_bed", `Waiting for a bed (${counts.awaiting_bed})`],
           ] as const
         ).map(([key, label]) => (
@@ -142,6 +144,9 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
             {label}
           </button>
         ))}
+        {filter === "checked_in" && visible.length > 0 && new Set(visible.map((r) => r.campId)).size === 1 && (
+          <a href={`/api/checkins/pdf?ids=${visible.map((r) => r.checkInId).join(",")}`} className="ml-auto text-xs font-medium text-[var(--brand-primary)] hover:underline">Download the check-in document for these {visible.length}</a>
+        )}
       </div>
 
       <div className="card overflow-hidden">
@@ -221,6 +226,9 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {r.checkInId && (
+                      <a href={`/api/checkins/pdf?ids=${r.checkInId}`} className="mr-3 text-xs font-medium text-[var(--brand-primary)] hover:underline" title="Download this worker's check-in document again">Download</a>
+                    )}
                     {r.checkInId && (
                       <button type="button" onClick={() => setSwitchRow(r)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">
                         Switch Camp
