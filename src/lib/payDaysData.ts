@@ -30,7 +30,7 @@ export type PayDaysView = {
   /** Part of "other items" that no stored component explains: the line is out of date and needs a recalculation. */
   unexplained: number;
   /** The typed-in amounts for this line, for editing from here. */
-  adjust: { lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string };
+  adjust: { lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; bankCharge: number; bankChargeWaived: boolean };
 };
 
 /** Every day of one employee's pay in a run, with the client timesheet beside it. Scoping to the branch is the caller's job. */
@@ -109,6 +109,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
   }
   if (num(line.gasCharge) !== 0) parts.push({ label: "Gas charge", amount: -round2(num(line.gasCharge)), note: e.gasWaived ? "Waived" : null });
   if (num(line.loanDeduction) !== 0) parts.push({ label: "Advance / loan instalment", amount: -round2(num(line.loanDeduction)), note: line.advanceNote });
+  if (num(line.bankCharge) !== 0) parts.push({ label: "Bank charge", amount: line.bankChargeWaived ? 0 : -round2(num(line.bankCharge)), note: line.bankChargeWaived ? "Waived" : null });
   if (num(line.manualDeduction) !== 0) parts.push({ label: "Deduction", amount: -round2(num(line.manualDeduction)), note: line.deductionNote });
   if (num(line.adjustment) !== 0) parts.push({ label: "Adjustment", amount: round2(num(line.adjustment)), note: line.adjustmentNote });
   const unexplained = round2(other - parts.reduce((t, x) => t + x.amount, 0));
@@ -121,7 +122,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
       edits, shortRule,
       mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),
       other, lineNet: num(line.net), parts, unexplained, canAdjust: draft && (opts.canEditPayroll ?? opts.canEditAttendance),
-      adjust: { lineId: line.id, deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "" },
+      adjust: { lineId: line.id, deduction: num(line.manualDeduction), deductionNote: line.deductionNote ?? "", advance: num(line.loanDeduction), advanceNote: line.advanceNote ?? "", adjustment: num(line.adjustment), adjustmentNote: line.adjustmentNote ?? "", bankCharge: num(line.bankCharge), bankChargeWaived: line.bankChargeWaived },
     },
   };
 }

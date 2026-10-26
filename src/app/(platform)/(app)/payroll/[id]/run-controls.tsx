@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportLink } from "@/components/ExportLink";
 import { useState, useTransition } from "react";
 import { CheckCheck, Download, FileText, RotateCcw, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
@@ -59,9 +60,14 @@ export function RunControls({
           </>
         )}
         {status !== "DRAFT" && canExport && (
-          <a className="btn btn-secondary" href={`/api/payroll/${id}/sif`} title="The salary file your bank needs (WPS / SIF). Upload it in your bank's online portal to pay everyone at once.">
+          <ExportLink className="btn btn-secondary" href={`/api/payroll/${id}/sif`} skipHref={`/api/payroll/${id}/sif?skip=1`} title="The salary file your bank needs (WPS / SIF). Upload it in your bank's online portal to pay everyone at once.">
             <Download className="h-4 w-4" aria-hidden /> Bank file (WPS)
-          </a>
+          </ExportLink>
+        )}
+        {status !== "DRAFT" && canExport && (
+          <ExportLink className="btn btn-secondary" href={`/api/payroll/${id}/c3`} title="The C3 salary-card file: everyone in this run who has a C3 ID, with their net pay.">
+            <Download className="h-4 w-4" aria-hidden /> C3 file
+          </ExportLink>
         )}
         <a className="btn btn-secondary" href={`/payroll/${id}/payslips`} target="_blank" rel="noreferrer">
           <FileText className="h-4 w-4" aria-hidden /> Payslips
@@ -76,19 +82,19 @@ export function RunControls({
                 </button>
               )}
               {canExport && (
-                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/csv`}>
+                <ExportLink className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/csv`}>
                   <Download className="h-4 w-4" aria-hidden /> Download as spreadsheet (CSV)
-                </a>
+                </ExportLink>
               )}
               {canExport && (
-                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/register`}>
+                <ExportLink className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/register`}>
                   <Download className="h-4 w-4" aria-hidden /> Payroll register (Excel)
-                </a>
+                </ExportLink>
               )}
               {canExport && (
-                <a className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/journal`}>
+                <ExportLink className="flex items-center gap-2 rounded px-3 py-2 text-sm hover:bg-surface-hover" href={`/api/payroll/${id}/journal`}>
                   <Download className="h-4 w-4" aria-hidden /> Accounting journal (CSV)
-                </a>
+                </ExportLink>
               )}
               {status === "DRAFT" && canDelete && (
                 <button type="button" className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-[var(--error)] hover:bg-surface-hover" disabled={pending} onClick={() => run(deleteRunAction as unknown as (fd: FormData) => Promise<void>)}>
@@ -133,17 +139,19 @@ function AmountCell({ label, amount, note, onAmount, onNote, placeholder, requir
  * asks for a note once it is filled in. One Save writes all three and recomputes net pay.
  */
 export function LineAdjustCells({
-  lineId, deduction, deductionNote, advance, advanceNote, adjustment, adjustmentNote, disabled,
+  lineId, deduction, deductionNote, advance, advanceNote, adjustment, adjustmentNote, bankCharge, bankWaived, disabled,
 }: {
-  lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; disabled: boolean;
+  lineId: string; deduction: number; deductionNote: string; advance: number; advanceNote: string; adjustment: number; adjustmentNote: string; bankCharge: number; bankWaived: boolean; disabled: boolean;
 }) {
   const [pending, start] = useTransition();
   const [v, setV] = useState({ deduction: String(deduction || ""), deductionNote, advance: String(advance || ""), advanceNote, adjustment: String(adjustment || ""), adjustmentNote });
+  // The bank charge for paying this worker, typed here; the tick waives it (the amount is kept so un-ticking brings it back).
+  const [bank, setBank] = useState({ amount: String(bankCharge || ""), waived: bankWaived });
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const dirty =
     Number(v.deduction || 0) !== deduction || v.deductionNote !== deductionNote || Number(v.advance || 0) !== advance || v.advanceNote !== advanceNote ||
-    Number(v.adjustment || 0) !== adjustment || v.adjustmentNote !== adjustmentNote;
+    Number(v.adjustment || 0) !== adjustment || v.adjustmentNote !== adjustmentNote || Number(bank.amount || 0) !== bankCharge || bank.waived !== bankWaived;
   const amount = (k: "deduction" | "advance" | "adjustment") => (val: string) => { setSaved(false); setV((p) => ({ ...p, [k]: val })); };
   const note = (k: "deductionNote" | "advanceNote" | "adjustmentNote"): ChangeHandler => (e) => { setSaved(false); setV((p) => ({ ...p, [k]: e.target.value })); };
 
@@ -153,6 +161,9 @@ export function LineAdjustCells({
       const fd = new FormData();
       fd.set("lineId", lineId);
       for (const [k, val] of Object.entries(v)) fd.set(k, val);
+      fd.set("bankSent", "1");
+      fd.set("bankCharge", bank.amount);
+      fd.set("bankWaived", bank.waived ? "1" : "0");
       const res = await saveLineAction(fd);
       if (res.error) setError(res.error); else setSaved(true);
     });
@@ -163,6 +174,17 @@ export function LineAdjustCells({
       <AmountCell label="Deduction" amount={v.deduction} note={v.deductionNote} onAmount={amount("deduction")} onNote={note("deductionNote")} placeholder="What for? (fine, damage…)" required disabled={disabled} sign="−" />
       <AmountCell label="Advance" amount={v.advance} note={v.advanceNote} onAmount={amount("advance")} onNote={note("advanceNote")} placeholder="Note (advance taken on…)" required disabled={disabled} sign="−" />
       <AmountCell label="Adjustment" amount={v.adjustment} note={v.adjustmentNote} onAmount={amount("adjustment")} onNote={note("adjustmentNote")} placeholder="Bonus / correction (− to deduct)" required={false} disabled={disabled} sign="±" />
+      {disabled ? (
+        <td className={`${TD} text-right tabular-nums text-secondary`}>
+          {bankCharge > 0 ? (bankWaived ? <span title="Waived: nothing is taken" className="text-muted line-through">{bankCharge.toFixed(2)}</span> : <>−{bankCharge.toFixed(2)}</>) : "—"}
+          {bankCharge > 0 && bankWaived && <span className="block text-xs text-subtle">Waived</span>}
+        </td>
+      ) : (
+        <td className={TD}>
+          <NumberInput step={0.01} value={bank.amount} onChange={(val) => { setSaved(false); setBank((b) => ({ ...b, amount: String(val) })); }} ariaLabel="Bank charge (AED)" inputClassName={`h-8 w-24 text-right tabular-nums ${bank.waived ? "line-through opacity-60" : ""}`} />
+          <label className="mt-1 flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" checked={bank.waived} onChange={(e) => { setSaved(false); setBank((b) => ({ ...b, waived: e.target.checked })); }} /> Waive</label>
+        </td>
+      )}
       {!disabled && (
         <td className={TD}>
           {dirty && <button type="button" className="btn btn-primary h-8 px-3 text-xs" disabled={pending} onClick={save}>{pending ? "Saving…" : "Save"}</button>}

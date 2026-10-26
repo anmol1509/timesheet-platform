@@ -7,10 +7,11 @@ import { isCashMode, monthBounds, wpsGaps } from "@/lib/payroll";
 import { buildSif } from "@/lib/wps";
 import { logAudit } from "@/lib/audit";
 
-const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
+const fail = (error: string, status = 400, extra: Record<string, unknown> = {}) => NextResponse.json({ error, ...extra }, { status });
 
 // WPS salary file for an approved run. Cash-paid workers are left out (they
-// aren't paid through the bank), everything else must have complete details.
+// aren't paid through the bank). A worker without complete bank details stops the file, with their names, unless
+// ?skip=1 is given: then the file is made without them and the names are returned in the X-Left-Out header.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!can(subjectOf(user), "payroll.payroll", "export")) return fail("You don't have permission to export payroll.", 403);
@@ -35,18 +36,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // ?only=resubmit sends just the lines the bank bounced and whose details have since been fixed.
   const onlyResubmit = new URL(req.url).searchParams.get("only") === "resubmit";
   const bankLines = run.lines.filter((l) => !isCashMode(l.paymentMode) && (!onlyResubmit || l.paymentStatus === "RESUBMIT"));
+  const skip = new URL(req.url).searchParams.get("skip") === "1";
   const problems = bankLines.filter((l) => wpsGaps(l).length > 0);
-  if (problems.length > 0) {
-    return fail(`Incomplete bank details for: ${problems.slice(0, 5).map((l) => l.employee.name).join(", ")}${problems.length > 5 ? "…" : ""}.`);
+  if (problems.length > 0 && !skip) {
+    return fail(`${problems.length} worker${problems.length === 1 ? " has" : "s have"} incomplete bank details: ${problems.slice(0, 5).map((l) => l.employee.name).join(", ")}${problems.length > 5 ? "…" : ""}. Fix them on the worker's Payroll & WPS tab (or set them to cash), or download the file without them.`, 400, { incomplete: problems.map((l) => l.employee.name) });
   }
-  if (bankLines.length === 0) return fail("No bank-paid employees in this run.");
+  const sending = bankLines.filter((l) => wpsGaps(l).length === 0);
+  if (sending.length === 0) return fail(problems.length > 0 ? "Nobody in this run has complete bank details yet." : "No bank-paid employees in this run.");
 
   const sif = buildSif({
     establishmentId,
     payerRoutingCode: bank.routingCode,
     payerIban,
     month: run.month,
-    lines: bankLines.map((l) => ({
+    lines: sending.map((l) => ({
       personCode: l.personCode!,
       routingCode: l.routingCode!.trim(),
       account: l.account!,
@@ -65,7 +68,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     entityType: "PAYROLL_RUN",
     entityId: run.id,
     action: "UPDATE",
-    after: { exported: "WPS SIF", file: sif.filename, employees: sif.count, total: sif.total },
+    after: { exported: "WPS SIF", file: sif.filename, employees: sif.count, total: sif.total, leftOut: problems.length > 0 ? problems.map((l) => l.employee.name) : undefined },
     userId: user.id,
     userName: user.name,
     branchId: run.branchId,
@@ -75,6 +78,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       "Content-Type": "text/plain; charset=utf-8",
       "Content-Disposition": `attachment; filename="${sif.filename}"`,
       "Cache-Control": "no-store",
+      ...(problems.length > 0 ? { "X-Left-Out": encodeURIComponent(problems.map((l) => l.employee.name).join(", ")) } : {}),
     },
   });
 }

@@ -18,6 +18,7 @@ import { matchTrade } from "@/lib/trades";
 import { checkPartner } from "@/lib/dataChecks";
 import { partnerDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid, contactsError } from "@/lib/validators";
+import { nearPeople, sameName } from "@/lib/people";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -660,11 +661,10 @@ export async function linkWorkmenCompCoverageAction(supplierId: string, names: s
   if (!certificate) return { linked: 0, unmatched: [] };
   const named = names.map((n) => ({ raw: n.trim(), key: nameKey(n) })).filter((n) => n.key);
   if (named.length === 0) return { linked: 0, unmatched: [] };
-  const wanted = new Set(named.map((n) => n.key));
   const workers = await prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, name: true } });
-  const found = workers.filter((w) => wanted.has(nameKey(w.name)));
-  const foundKeys = new Set(found.map((w) => nameKey(w.name)));
-  const unmatched = [...new Set(named.filter((n) => !foundKeys.has(n.key)).map((n) => n.raw))];
+  // Same name in any word order ("Khan Ali" / "Ali Khan"), ignoring case, titles and punctuation.
+  const found = workers.filter((w) => named.some((n) => sameName(n.raw, w.name)));
+  const unmatched = [...new Set(named.filter((n) => !workers.some((w) => sameName(n.raw, w.name))).map((n) => n.raw))];
   // Keep the names with the certificate when they were not stored at upload (older panels read them afterwards).
   const stored = await prisma.attachment.findUnique({ where: { id: certificate.id }, select: { insuredNames: true } });
   if (stored && stored.insuredNames == null) await prisma.attachment.update({ where: { id: certificate.id }, data: { insuredNames: cleanNames(names) } });
@@ -675,7 +675,7 @@ export async function linkWorkmenCompCoverageAction(supplierId: string, names: s
 }
 
 export type WcWorker = { employeeId: string; employeeIdNo: string; name: string; active: boolean; linkedTo: "this" | "other" | null; otherFile: string | null };
-export type WcNameRow = { name: string; candidates: WcWorker[] };
+export type WcNameRow = { name: string; candidates: WcWorker[]; /** Workers with a close but not identical name, offered when nobody matches exactly. */ suggestions: WcWorker[] };
 export type WcWorkers = {
   /** The names on the certificate; null when they were not kept (a certificate from before) and can be read again. */
   names: WcNameRow[] | null;
@@ -703,7 +703,12 @@ export async function getWorkmenCompWorkersAction(supplierId: string, attachment
   });
   const roster = workers.map(worker);
   const rawNames = Array.isArray(stored?.insuredNames) ? cleanNames(stored.insuredNames) : null;
-  const names: WcNameRow[] | null = rawNames && rawNames.length > 0 ? rawNames.map((name) => ({ name, candidates: roster.filter((w) => nameKey(w.name) === nameKey(name)) })) : null;
+  const names: WcNameRow[] | null = rawNames && rawNames.length > 0
+    ? rawNames.map((name) => {
+        const candidates = roster.filter((w) => sameName(name, w.name));
+        return { name, candidates, suggestions: candidates.length === 0 ? nearPeople(name, roster) : [] };
+      })
+    : null;
   const matched = new Set((names ?? []).flatMap((n) => n.candidates.map((c) => c.employeeId)));
   return { names, alsoLinked: roster.filter((w) => w.linkedTo === "this" && !matched.has(w.employeeId)), roster };
 }

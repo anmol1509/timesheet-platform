@@ -12,7 +12,7 @@ import { can } from "@/lib/permissions";
 import { subjectOf } from "@/lib/auth";
 import { PAY_STRUCTURES } from "@/lib/payroll";
 import { logAudit } from "@/lib/audit";
-import { clampSkillLevel } from "@/lib/skillLevel";
+import { DEFAULT_SKILL_LEVEL, clampSkillLevel } from "@/lib/skillLevel";
 import { recordProjectChange } from "@/lib/employeeAssignment";
 import { requestProjectAssignment } from "@/lib/projectAssignment";
 import { MAX_UPLOAD_BYTES } from "@/lib/constants";
@@ -215,6 +215,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       visaNumber: stringOrNull(formData.get("visaNumber")),
       visaStatus: stringOrNull(formData.get("visaStatus")),
       molPersonCode: stringOrNull(formData.get("molPersonCode")),
+      c3Id: stringOrNull(formData.get("c3Id")),
 
 
       laborCardPersonalNo: stringOrNull(formData.get("laborCardPersonalNo")),
@@ -599,8 +600,8 @@ export async function addSkillAction(formData: FormData) {
   const skill = await getOrCreateSkill(skillName, skillOwner.branchId);
 
   const detail = {
-    proficiencyPercent:
-      proficiencyPercent != null ? clampSkillLevel(proficiencyPercent) : null,
+    // No level typed means a full 100%, so a trade never shows a dash.
+    proficiencyPercent: clampSkillLevel(proficiencyPercent ?? DEFAULT_SKILL_LEVEL),
     rate,
     rateType,
   };

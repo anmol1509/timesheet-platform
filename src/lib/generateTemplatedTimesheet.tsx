@@ -17,6 +17,8 @@ export type TemplatedInput = {
   periodFrom: string;
   periodTo: string;
   issuedTo: string;
+  /** The running number of this sheet (TS-2026-0001). */
+  sheetNo?: string | null;
   entries: { employeeIdNo: string; employeeName: string; trade: string; rate: number; projectCode: string | null; dailyHours: DailyHourCell[]; absentDeduction: number }[];
   gasDeduction: number;
   vatPercent: number;
@@ -246,6 +248,7 @@ export async function generateTemplatedPdf(input: TemplatedInput): Promise<Buffe
             {(!h || h.issuedTo) && <Text style={s.metaText}>Issued to: {input.issuedTo}</Text>}
           </View>
           <View>
+            {input.sheetNo && <Text style={[s.metaText, { textAlign: "right" }]}>Timesheet No: {input.sheetNo}</Text>}
             <Text style={[s.metaText, { textAlign: "right" }]}>Month: {input.monthLabel}</Text>
             {(!h || h.period) && <Text style={[s.metaText, { textAlign: "right" }]}>Period: {input.periodFrom} – {input.periodTo}</Text>}
           </View>
@@ -316,6 +319,7 @@ export async function generateTemplatedXlsx(input: TemplatedInput): Promise<Buff
   let meta = 5;
   if (!h || h.subContractor) put(meta++, `Sub-contractor: ${input.subContractor}`, { name: "Arial", size: 10 });
   if (!h || h.issuedTo) put(meta++, `Issued to: ${input.issuedTo}`, { name: "Arial", size: 10 });
+  if (input.sheetNo) put(meta++, `Timesheet No: ${input.sheetNo}`, { name: "Arial", size: 10 });
   put(meta++, `Month: ${input.monthLabel}${!h || h.period ? `   Period: ${input.periodFrom} – ${input.periodTo}` : ""}`, { name: "Arial", size: 10 });
 
   const hr = meta + 1;

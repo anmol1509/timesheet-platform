@@ -235,14 +235,14 @@ export function effectivePay(own: PayFigures & { payOverride: boolean }, trade: 
 export const netPay = (r: PayResult, adjustment: number) => round2(r.fixed - r.deductions + r.overtimePay + adjustment);
 
 /** Standing earnings/deductions and loan recovery layered on top of computePay. */
-export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number; gasCharge?: number; shortfall?: number };
+export type PayExtras = { otherEarnings: number; otherDeductions: number; loanDeduction: number; manualDeduction?: number; bankCharge?: number; gasCharge?: number; shortfall?: number };
 
 /**
  * Net pay including recurring items, the advance recovered (loanDeduction) and
  * the deduction typed on the run (manualDeduction).
  */
 export const netPayWithExtras = (r: PayResult, adjustment: number, x: PayExtras) =>
-  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0) - (x.gasCharge ?? 0) - (x.shortfall ?? 0));
+  round2(r.fixed - r.deductions + r.overtimePay + adjustment + x.otherEarnings - x.otherDeductions - x.loanDeduction - (x.manualDeduction ?? 0) - (x.bankCharge ?? 0) - (x.gasCharge ?? 0) - (x.shortfall ?? 0));
 
 /** How a company pays everyone in it. */
 export const PAY_TYPES = ["BASIC", "HOURLY"] as const;

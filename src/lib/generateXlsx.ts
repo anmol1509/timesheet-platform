@@ -9,6 +9,8 @@ export type GenerateInput = {
   logo?: string | null;
   /** Address, phone, email and TRN of the issuing company, printed in the blank row under "Issued To". Left out for the branch's own sheets. */
   contactLine?: string | null;
+  /** The running number of this sheet (TS-2026-0001), printed under the heading. */
+  sheetNo?: string | null;
   fullName: string;
   monthLabel: string;
   issuedTo: string;
@@ -74,6 +76,13 @@ export async function generateSupplierXlsx(input: GenerateInput): Promise<Buffer
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   sheet.getRow(r).height = 22;
   if (addSheetLogo(wb, sheet, input.logo, { col: 0, row: 0, width: 90, height: 48 })) sheet.getRow(r).height = 50;
+  if (input.sheetNo) {
+    sheet.mergeCells(r + 1, 1, r + 1, LAST_COL);
+    const noCell = sheet.getCell(r + 1, 1);
+    noCell.value = `Timesheet No: ${input.sheetNo}`;
+    noCell.font = { name: FONT, size: 9, bold: true };
+    noCell.alignment = { horizontal: "center" };
+  }
   r += 2;
 
   sheet.mergeCells(r, 1, r, LAST_COL);

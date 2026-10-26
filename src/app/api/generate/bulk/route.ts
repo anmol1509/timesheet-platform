@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { getSupplierMonthEntries, monthLabelFromKey } from "@/lib/timesheetSummary";
 import { generateTimesheetPdf } from "@/lib/generateTimesheetPdf";
 import { resolveIssuer } from "@/lib/issuer";
+import { nextSheetNo } from "@/lib/sheetNo";
 import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
 import { generateTemplatedPdf } from "@/lib/generateTemplatedTimesheet";
 import { absenceRuleOf, calculateGasDeduction, clientAbsenceRule, gasRuleOf, startingAbsentDeduction } from "@/lib/deductions";
@@ -69,9 +70,10 @@ export async function POST(request: Request) {
   const monthLabel = monthLabelFromKey(month);
 
   type Entry = Awaited<ReturnType<typeof getSupplierMonthEntries>>[number];
-  const makePdf = async (a: { list: Entry[]; gasTotal: number; subContractor: string; subContractorCode: string | null; projectById: Map<string, string>; issuedToName: string }) => {
-    const { list, gasTotal, subContractor, subContractorCode, projectById, issuedToName } = a;
+  const makePdf = async (a: { sheetNo: string; list: Entry[]; gasTotal: number; subContractor: string; subContractorCode: string | null; projectById: Map<string, string>; issuedToName: string }) => {
+    const { sheetNo, list, gasTotal, subContractor, subContractorCode, projectById, issuedToName } = a;
     return template !== "standard" ? await generateTemplatedPdf({
+      sheetNo,
       template,
       config: cfg,
       letterhead,
@@ -93,6 +95,7 @@ export async function POST(request: Request) {
       vatPercent: 5,
       preparedBy: user.name,
     }) : await generateTimesheetPdf({
+      sheetNo,
       letterhead: maskLetterhead(letterhead, cfg),
       // The main (parent) supplier, or the supplier itself when it has none.
       subContractor,
@@ -155,8 +158,9 @@ export async function POST(request: Request) {
       waived ? 0 : list.reduce((sum, e) => sum + calculateGasDeduction(e.dailyHours, gasRuleOf(supplier), { checkIn: checkInById.get(e.employeeIdNo) ?? null, month }), 0);
     const render = async (list: typeof entries) => {
       const gasTotal = gasFor(list);
-      const pdf = await makePdf({ list, gasTotal, subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name, subContractorCode: (supplier.parent ?? supplier).mohrePermitNumber ?? null, projectById, issuedToName });
-      return { pdf, gasTotal };
+      const sheetNo = await nextSheetNo(branchId);
+      const pdf = await makePdf({ sheetNo, list, gasTotal, subContractor: (supplier.parent ?? supplier).fullName || (supplier.parent ?? supplier).name, subContractorCode: (supplier.parent ?? supplier).mohrePermitNumber ?? null, projectById, issuedToName });
+      return { pdf, gasTotal, sheetNo };
     };
 
     if (combined && employeeIds) {
@@ -167,13 +171,13 @@ export async function POST(request: Request) {
 
     const groups = employeeIds && perEmployee ? entries.map((e) => ({ list: [e], tag: e.employeeIdNo })) : [{ list: entries, tag: "" }];
     for (const g of groups) {
-      const { pdf, gasTotal } = await render(g.list);
+      const { pdf, gasTotal, sheetNo } = await render(g.list);
       let base = `${supplier.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "company"}-${month}${g.tag ? `-${g.tag.replace(/[^a-z0-9]+/gi, "-")}` : ""}`;
       for (let n = 2; usedNames.has(base); n++) base = `${base.replace(/-\d+$/, "")}-${n}`;
       usedNames.add(base);
       zip.file(`${base}.pdf`, pdf);
       await prisma.generatedSheet.create({
-        data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: supplier.id, issuedCompanyId: issuer.companyId, generatedById: user.id, branchId },
+        data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: supplier.id, issuedCompanyId: issuer.companyId, generatedById: user.id, branchId, sheetNo },
       });
     }
   }
@@ -183,8 +187,9 @@ export async function POST(request: Request) {
     const distinct = [...new Set(names)];
     const list = combinedParts.flatMap((p) => p.list).sort((x, y) => x.employeeName.localeCompare(y.employeeName));
     const gasTotal = combinedParts.reduce((sum, p) => sum + p.gasTotal, 0);
+    const combinedNo = await nextSheetNo(branchId);
     const pdf = await makePdf({
-      list, gasTotal,
+      sheetNo: combinedNo, list, gasTotal,
       subContractor: distinct.length === 1 ? distinct[0] : `Selected employees (${distinct.length} suppliers)`,
       subContractorCode: distinct.length === 1 ? (combinedParts[0].supplier.parent ?? combinedParts[0].supplier).mohrePermitNumber ?? null : null,
       projectById: combinedProjects,
@@ -193,7 +198,7 @@ export async function POST(request: Request) {
     usedNames.add("selected");
     zip.file(`timesheet-selected-employees-${month}.pdf`, pdf);
     await prisma.generatedSheet.create({
-      data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: combinedParts[0].supplier.id, issuedCompanyId: issuer.companyId, generatedById: user.id, branchId },
+      data: { month, monthLabel, format: "pdf", gasDeduction: gasTotal, issuedTo, supplierId: combinedParts[0].supplier.id, issuedCompanyId: issuer.companyId, generatedById: user.id, branchId, sheetNo: combinedNo },
     });
   }
 

@@ -9,6 +9,7 @@ import {
   generateTimesheetPdf,
 } from "@/lib/generateTimesheetPdf";
 import { resolveIssuer } from "@/lib/issuer";
+import { nextSheetNo } from "@/lib/sheetNo";
 import { letterheadContactLine } from "@/lib/letterhead";
 import { absenceRuleOf, clientAbsenceRule, startingAbsentDeduction } from "@/lib/deductions";
 import { resolveTemplate, maskLetterhead, standardExtras } from "@/lib/timesheetTemplateApply";
@@ -117,6 +118,8 @@ export async function POST(request: Request) {
   );
 
   const monthLabel = monthLabelFromKey(month);
+  // Every file generated carries its own running number, kept in the history.
+  const sheetNo = await nextSheetNo(branchId);
   const genInput = {
     fullName,
     monthLabel,
@@ -139,6 +142,7 @@ export async function POST(request: Request) {
     const lastDay = new Date(Date.UTC(year, monthNo, 0)).getUTCDate();
     const dmy = (day: number) => `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
     const input = {
+      sheetNo,
       template,
       config: cfg,
       letterhead: issuer.letterhead,
@@ -161,7 +165,7 @@ export async function POST(request: Request) {
       contentType = "application/pdf";
     }
   } else if (format === "xlsx") {
-    buffer = await generateSupplierXlsx({ ...genInput, titleText: cfg?.title || undefined, logo: issuer.xlsxLogo, contactLine: issuer.companyId ? letterheadContactLine(maskLetterhead(issuer.letterhead, cfg)) : null });
+    buffer = await generateSupplierXlsx({ ...genInput, sheetNo, titleText: cfg?.title || undefined, logo: issuer.xlsxLogo, contactLine: issuer.companyId ? letterheadContactLine(maskLetterhead(issuer.letterhead, cfg)) : null });
     contentType =
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   } else {
@@ -173,6 +177,7 @@ export async function POST(request: Request) {
       `${String(day).padStart(2, "0")}/${String(monthNo).padStart(2, "0")}/${year}`;
 
     buffer = await generateTimesheetPdf({
+      sheetNo,
       letterhead: maskLetterhead(issuer.letterhead, cfg),
       subContractor,
       subContractorCode: mainSupplier.mohrePermitNumber ?? null,
@@ -212,6 +217,7 @@ export async function POST(request: Request) {
       issuedCompanyId: issuer.companyId,
       generatedById: user.id,
       branchId,
+      sheetNo,
     },
   });
 
@@ -222,6 +228,7 @@ export async function POST(request: Request) {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${filename}"`,
+      "X-Sheet-No": sheetNo,
     },
   });
 }

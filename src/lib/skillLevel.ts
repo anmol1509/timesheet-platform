@@ -10,7 +10,7 @@
 export const SKILL_LEVEL_MIN = 10;
 export const SKILL_LEVEL_MAX = 100;
 export const SKILL_LEVEL_STEP = 10;
-export const DEFAULT_SKILL_LEVEL = 50;
+export const DEFAULT_SKILL_LEVEL = 100;
 
 /** Plain-language band, so the number isn't the only thing carrying meaning. */
 export function skillLevelLabel(level: number) {
