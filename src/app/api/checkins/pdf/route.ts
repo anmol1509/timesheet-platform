@@ -8,7 +8,7 @@ import { checkInListWording, fillCheckInWording } from "@/lib/checkInList";
 
 const CAMP_TYPE_LABEL: Record<string, string> = { OWN: "Own", SUPPLIER: "Supplier", CLIENT: "Client" };
 const STATUS_LABEL: Record<string, string> = {
-  CHECKED_IN: "Checked In",
+  CHECKED_IN: "Check-in Issued",
   BED_ALLOCATED: "Bed Allocated",
   CHECKED_OUT: "Checked Out",
 };
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const checkIns = await prisma.campCheckIn.findMany({
     where: { id: { in: ids } },
     include: {
-      employee: { select: { name: true, nationality: true, branchId: true, supplier: true, project: { select: { code: true, name: true } } } },
+      employee: { select: { name: true, employeeIdNo: true, trade: true, nationality: true, branchId: true, supplier: true } },
       camp: { select: { name: true, ownerType: true } },
     },
     orderBy: { checkInNo: "asc" },
@@ -62,13 +62,10 @@ export async function GET(request: Request) {
       slNo: i + 1,
       checkInNo: `CHK-${String(c.checkInNo).padStart(5, "0")}`,
       employeeName: c.employee.name,
+      employeeCode: c.employee.employeeIdNo,
       nationality: c.employee.nationality,
-      projectName: c.employee.project
-        ? `${c.employee.project.name}${c.employee.project.code ? ` (${c.employee.project.code})` : ""}`
-        : null,
-      supplierName: c.employee.supplier
-        ? `${c.employee.supplier.name}${c.employee.supplier.code ? ` (${c.employee.supplier.code})` : ""}`
-        : null,
+      trade: c.employee.trade,
+      supplierName: c.employee.supplier?.name ?? null,
       coordinator: c.employee.supplier?.coordinatorName ?? null,
       status: STATUS_LABEL[c.status] ?? c.status,
     })),

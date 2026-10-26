@@ -19,6 +19,7 @@ import { checkPartner } from "@/lib/dataChecks";
 import { partnerDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 import { nearPeople, sameName } from "@/lib/people";
+import { generateEmployeeIdAction } from "@/app/(platform)/(app)/employees/new/actions";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -733,6 +734,37 @@ export async function setWorkmenCompLinkAction(supplierId: string, attachmentId:
   revalidatePath(`/employees/${employeeId}`);
   revalidatePath("/documents");
   return {};
+}
+
+/**
+ * Adds a name from the certificate as a worker of this company, with nothing else filled in, and links them to the policy.
+ * They show as Incomplete on the Employees page until their details are added there.
+ */
+export async function addWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, name: string): Promise<{ error?: string; employeeId?: string }> {
+  await requireWrite("partners.suppliers");
+  await requireWrite("workforce.employees");
+  const { user } = await requireUserWithBranch();
+  const cert = await ownCertificate(supplierId, attachmentId);
+  if (!cert) return { error: "Certificate not found." };
+  const clean = name.replace(/\s+/g, " ").trim().slice(0, 120);
+  if (!clean) return { error: "There is no name to add." };
+  const company = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  if (!company?.branchId) return { error: "Company not found." };
+  // Someone already on the roster under this name is linked instead of added twice.
+  const roster = await prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, name: true } });
+  const existing = roster.find((w) => sameName(w.name, clean));
+  let employeeId = existing?.id;
+  if (!existing) {
+    const gen = await generateEmployeeIdAction(supplierId, null);
+    if (!gen.id) return { error: gen.error ?? "Could not make an employee ID." };
+    const created = await prisma.employee.create({ data: { employeeIdNo: gen.id, name: clean, supplierId, branchId: company.branchId } });
+    employeeId = created.id;
+    await logAudit({ entityType: "EMPLOYEE", entityId: created.id, action: "CREATE", after: { name: clean, employeeIdNo: gen.id, via: "workmen compensation certificate" }, userId: user.id, userName: user.name, branchId: company.branchId });
+  }
+  await linkWorkersToCertificate(attachmentId, [employeeId!], user.id);
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/employees");
+  return { employeeId };
 }
 
 /** Keeps the names read off an older certificate, so its workers can be listed and linked. */

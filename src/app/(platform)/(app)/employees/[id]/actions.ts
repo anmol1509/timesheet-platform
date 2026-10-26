@@ -925,8 +925,10 @@ export async function addEmployeeNoteAction(formData: FormData) {
     );
   if (!remarks && files.length === 0) return;
 
+  const day = String(formData.get("noteDate") || "").trim();
+  const noteDate = /^\d{4}-\d{2}-\d{2}$/.test(day) && !Number.isNaN(Date.parse(day)) ? new Date(`${day}T00:00:00.000Z`) : null;
   const note = await prisma.employeeNote.create({
-    data: { employeeId, remarks, createdById: user.id },
+    data: { employeeId, remarks, noteDate, createdById: user.id },
   });
 
   for (const file of files) {

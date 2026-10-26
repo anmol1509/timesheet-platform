@@ -31,8 +31,8 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { name: "Emaar Properties", code: "CEP", contactPerson: "Sara Ahmed", contactPhone: "+971 4 555 0100", contactEmail: "sara@client.example", trn: "100987654300003", tradeLicenseNumber: "TL-778899", billingAddress: "Downtown Dubai", paymentTerms: "30 days" },
   ],
   WORKERS: [
-    { employeeIdNo: "AN-101", name: "Ravi Kumar", trade: "Carpenter", supplier: "Al Noor Manpower Supply", sponsor: "Al Noor Manpower Supply", nationality: "India", mobileNumber: "+971 50 111 2233", gender: "Male", dateOfBirth: "14/03/1990", joinDate: "01/02/2025", passportNumber: "N1234567", passportExpiry: "20/08/2028", emiratesId: "784-1990-1234567-1", emiratesIdExpiry: "15/06/2027", visaExpiry: "10/12/2026", laborCardNumber: "LC-55123", laborCardExpiry: "10/12/2026", payStructure: "Itemised", payRate: "1500", housing: "500", food: "", transport: "200", otherAllowance: "", dailyHours: "8", overtime: "Yes", otMultiplier: "1.25", restOtMultiplier: "1.5", gasWaived: "No" },
-    { employeeIdNo: "AN-102", name: "Ali Khan", trade: "Steel Fixer", supplier: "Al Noor Manpower Supply", sponsor: "", nationality: "Pakistan", mobileNumber: "", gender: "Male", dateOfBirth: "", joinDate: "", passportNumber: "", passportExpiry: "", emiratesId: "", emiratesIdExpiry: "", visaExpiry: "", laborCardNumber: "", laborCardExpiry: "", payStructure: "Hourly", payRate: "15", housing: "", food: "", transport: "", otherAllowance: "", dailyHours: "", overtime: "", otMultiplier: "", restOtMultiplier: "", gasWaived: "" },
+    { employeeIdNo: "AN-101", name: "Ravi Kumar", trade: "Carpenter", supplier: "Al Noor Manpower Supply", sponsor: "Al Noor Manpower Supply", nationality: "India", mobileNumber: "+971 50 111 2233", gender: "Male", dateOfBirth: "14/03/1990", joinDate: "01/02/2025", passportNumber: "N1234567", passportExpiry: "20/08/2028", emiratesId: "784-1990-1234567-1", emiratesIdExpiry: "15/06/2027", visaExpiry: "10/12/2026", laborCardNumber: "LC-55123", c3Id: "C3-778899", laborCardExpiry: "10/12/2026", payStructure: "Itemised", payRate: "1500", housing: "500", food: "", transport: "200", otherAllowance: "", dailyHours: "8", overtime: "Yes", otMultiplier: "1.25", restOtMultiplier: "1.5", gasWaived: "No" },
+    { employeeIdNo: "AN-102", name: "Ali Khan", trade: "Steel Fixer", supplier: "Al Noor Manpower Supply", sponsor: "", nationality: "Pakistan", mobileNumber: "", gender: "Male", dateOfBirth: "", joinDate: "", passportNumber: "", passportExpiry: "", emiratesId: "", emiratesIdExpiry: "", visaExpiry: "", laborCardNumber: "", c3Id: "", laborCardExpiry: "", payStructure: "Hourly", payRate: "15", housing: "", food: "", transport: "", otherAllowance: "", dailyHours: "", overtime: "", otMultiplier: "", restOtMultiplier: "", gasWaived: "" },
   ],
 };
 
@@ -56,6 +56,7 @@ const HELP: Record<string, string> = {
   food: "Itemised only. Optional.",
   transport: "Itemised only. Optional.",
   otherAllowance: "Itemised only. Optional.",
+  c3Id: "The worker's C3 salary-card ID. Used in the payroll C3 file. Optional.",
   trade: "e.g. Carpenter, Steel Fixer. Matched to the trades you already have.",
   camp: "The camp's name. Repeat it on every room row; the camp is created once. A row with only a camp name makes an empty camp.",
   campType: "Own, Supplier or Client: who provides the camp. Blank = Own.",

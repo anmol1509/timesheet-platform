@@ -26,6 +26,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
   const [pending, start] = useTransition();
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ status: "PRESENT", normalHours: "", otHours: "" });
+  const [rows, setRows] = useState<{ label: string; amount: string; show: boolean }[]>([]);
   const [adj, setAdj] = useState<{ deduction: string; deductionNote: string; advance: string; advanceNote: string; adjustment: string; adjustmentNote: string; bankCharge: string; bankWaived: string } | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -34,7 +35,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
     setError(null);
     start(async () => {
       const r = await loadPayDaysAction(runId, employeeId);
-      if (r.error || !r.view) setError(r.error ?? "Could not load the days."); else { setView(r.view); setAdj(adjFrom(r.view)); setSaved(false); }
+      if (r.error || !r.view) setError(r.error ?? "Could not load the days."); else { setView(r.view); setAdj(adjFrom(r.view)); setRows(rowsOf(r.view)); setSaved(false); }
     });
   }
   function apply(fn: () => Promise<{ error: string | null; view?: PayDaysView }>) {
@@ -42,7 +43,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
     start(async () => {
       const r = await fn();
       if (r.error) { setError(r.error); return; }
-      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); }
+      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); setRows(rowsOf(r.view)); }
       setEditing(null);
       router.refresh();
     });
@@ -56,10 +57,11 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       fd.set("lineId", view.adjust.lineId);
       for (const [k, v] of Object.entries(adj)) fd.set(k, v);
       fd.set("bankSent", "1");
+      fd.set("deductionItems", JSON.stringify(cleanRows(rows)));
       const res = await saveLineAction(fd);
       if (res.error) { setError(res.error); return; }
       const r = await loadPayDaysAction(runId, employeeId);
-      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); }
+      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); setRows(rowsOf(r.view)); }
       setSaved(true);
       router.refresh();
     });
@@ -72,11 +74,11 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
       const res = await recomputeRunAction(fd);
       if (res.error) { setError(res.error); return; }
       const r = await loadPayDaysAction(runId, employeeId);
-      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); }
+      if (r.view) { setView(r.view); setAdj(adjFrom(r.view)); setRows(rowsOf(r.view)); }
       router.refresh();
     });
   }
-  const adjDirty = !!view && !!adj && (Number(adj.deduction || 0) !== view.adjust.deduction || adj.deductionNote !== view.adjust.deductionNote || Number(adj.advance || 0) !== view.adjust.advance || adj.advanceNote !== view.adjust.advanceNote || Number(adj.adjustment || 0) !== view.adjust.adjustment || adj.adjustmentNote !== view.adjust.adjustmentNote || Number(adj.bankCharge || 0) !== view.adjust.bankCharge || (adj.bankWaived === "1") !== view.adjust.bankChargeWaived);
+  const adjDirty = !!view && !!adj && (JSON.stringify(cleanRows(rows)) !== JSON.stringify(cleanRows(rowsOf(view))) || Number(adj.advance || 0) !== view.adjust.advance || adj.advanceNote !== view.adjust.advanceNote || Number(adj.adjustment || 0) !== view.adjust.adjustment || adj.adjustmentNote !== view.adjust.adjustmentNote || Number(adj.bankCharge || 0) !== view.adjust.bankCharge || (adj.bankWaived === "1") !== view.adjust.bankChargeWaived);
   const setA = (k: keyof NonNullable<typeof adj>) => (e: React.ChangeEvent<HTMLInputElement>) => { setSaved(false); setAdj((p) => (p ? { ...p, [k]: e.target.value } : p)); };
   const save = (date: string) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); for (const [k, v] of Object.entries(draft)) fd.set(k, v); return saveDayAction(fd); });
   const align = (date: string) => apply(() => { const fd = new FormData(); fd.set("runId", runId); fd.set("employeeId", employeeId); fd.set("date", date); return alignDayAction(fd); });
@@ -134,21 +136,13 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               </div>
             )}
             {view.why && <p className="text-xs text-muted">{view.why}</p>}
-            {/* What these days are paid at, so they can be checked here without opening the profile. */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm">
-              <span><span className="text-muted">Trade</span> <span className="font-medium text-primary">{view.rateInfo.trade ?? "Not set"}</span></span>
-              {view.hourly ? (
-                <span>
-                  <span className="text-muted">Trade rate</span>{" "}
-                  <span className={cn("font-medium", view.rateInfo.hourlyRate > 0 ? "text-primary" : "text-[var(--error)]")}>{view.rateInfo.hourlyRate > 0 ? `AED ${aed(view.rateInfo.hourlyRate)} / hour` : "None set"}</span>
-                  <span className="ml-2 text-xs text-muted">
-                    {view.rateInfo.source === "EMPLOYEE" ? "set on the employee" : view.rateInfo.source === "TRADE" ? `from the ${view.rateInfo.rateTrade ?? "trade"} rate, not set on the employee profile` : "add one on the employee or on the trade"}
-                  </span>
-                </span>
-              ) : (
-                <span><span className="text-muted">Monthly pay</span> <span className="font-medium text-primary">AED {aed(view.rateInfo.monthlyBasic)}</span></span>
-              )}
-            </div>
+            {/* The Trade and Rate columns below show what each day is paid at; only a missing rate, or monthly pay, needs saying up here. */}
+            {view.hourly && view.rateInfo.hourlyRate <= 0 && (
+              <p className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">No hourly rate is set for {view.rateInfo.trade ?? "this worker"}: add one on the employee or on the trade.</p>
+            )}
+            {!view.hourly && (
+              <p className="rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm"><span className="text-muted">Monthly pay</span> <span className="font-medium text-primary">AED {aed(view.rateInfo.monthlyBasic)}</span></p>
+            )}
             {view.hourly && view.editable && view.timesheetStatus && view.timesheetStatus !== "DRAFT" && <p className="text-xs text-muted">Changing an hour here changes the timesheet itself ({view.timesheetStatus.toLowerCase().replace("_", " ")}) and is recorded above, so the client&apos;s sheet and your payroll no longer agree. Tell the client if they need to re-approve it.</p>}
 
             <div className="max-h-[50vh] overflow-auto rounded-md border border-default">
@@ -156,7 +150,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                 <thead className="sticky top-0 bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                   <tr>
                     <th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Trade</th><th className="px-3 py-2 text-right">Rate</th><th className="px-3 py-2 text-right">Hours</th><th className="px-3 py-2 text-right">Salary</th>
-                    <th className="px-3 py-2 text-right">Overtime</th><th className="px-3 py-2 text-right">Absence</th>{showShort(view) && <th className="px-3 py-2 text-right">Short hours</th>}<th className="px-3 py-2 text-right">Day total</th>
+                    <th className="px-3 py-2 text-right">Overtime</th><th className="px-3 py-2 text-right" title="Fine for absent days beyond the free days">Absent fine</th>{showShort(view) && <th className="px-3 py-2 text-right">Short hours</th>}<th className="px-3 py-2 text-right">Day total</th>
                     <th className="px-3 py-2">Timesheet<Hint term="TIMESHEET" /></th><th className="px-3 py-2" />
                   </tr>
                 </thead>
@@ -241,11 +235,23 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
 
             {adj && (
               <div className="rounded-md border border-default p-3">
-                <h3 className="text-sm font-semibold text-primary">Deduction, advance and adjustment</h3>
+                <h3 className="text-sm font-semibold text-primary">Deductions, advance and adjustment</h3>
                 <p className="mb-2 text-xs text-muted">Typed against this person for this month. Each needs a note. Net pay updates when you save.</p>
                 {view.canAdjust ? (
                   <div className="space-y-1.5">
-                    {([["deduction", "Deduction", "What for? (fine, damage…)"], ["advance", "Advance", "Note (advance taken on…)"], ["adjustment", "Adjustment", "Bonus / correction (− to deduct)"]] as const).map(([k, label, ph]) => (
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted">Deductions <span className="font-normal">(each one is named; untick &ldquo;Payslip&rdquo; to keep it off the payslip&apos;s own line — it is then counted in &ldquo;Other deductions&rdquo;)</span></p>
+                      {rows.map((r, i) => (
+                        <div key={i} className="grid grid-cols-[8rem_1fr_auto_auto] items-center gap-2">
+                          <input className="input h-8 text-right text-xs tabular-nums" type="number" step="0.01" min="0" value={r.amount} onChange={(e) => { setSaved(false); setRows((p) => p.map((x, k) => (k === i ? { ...x, amount: e.target.value } : x))); }} aria-label={`Deduction ${i + 1} amount (AED)`} />
+                          <input className="input h-8 text-xs" value={r.label} onChange={(e) => { setSaved(false); setRows((p) => p.map((x, k) => (k === i ? { ...x, label: e.target.value } : x))); }} placeholder="What for? (fine, damage, visa cost…)" aria-label={`Deduction ${i + 1} name`} />
+                          <label className="flex items-center gap-1 text-xs text-muted"><input type="checkbox" checked={r.show} onChange={(e) => { setSaved(false); setRows((p) => p.map((x, k) => (k === i ? { ...x, show: e.target.checked } : x))); }} /> Payslip</label>
+                          <button type="button" className="text-xs text-[var(--error)] hover:underline" onClick={() => { setSaved(false); setRows((p) => p.filter((_, k) => k !== i)); }} aria-label={`Remove deduction ${i + 1}`}>Remove</button>
+                        </div>
+                      ))}
+                      <button type="button" className="text-xs font-medium text-[var(--brand-primary)] hover:underline" onClick={() => { setSaved(false); setRows((p) => [...p, { label: "", amount: "", show: true }]); }}>+ Add deduction</button>
+                    </div>
+                    {([["advance", "Advance", "Note (advance taken on…)"], ["adjustment", "Adjustment", "Bonus / correction (− to deduct)"]] as const).map(([k, label, ph]) => (
                       <label key={k} className="grid grid-cols-[6rem_8rem_1fr] items-center gap-2">
                         <span className="text-xs text-muted">{label}</span>
                         <input className="input h-8 text-right text-xs tabular-nums" type="number" step="0.01" value={adj[k]} onChange={setA(k)} aria-label={`${label} (AED)`} />
@@ -283,5 +289,9 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
     </div>
   );
 }
+
+const rowsOf = (v: PayDaysView) => v.adjust.deductionItems.map((d) => ({ label: d.label, amount: String(d.amount), show: d.show }));
+/** The rows as they will be saved: blank rows dropped, amounts as numbers. */
+const cleanRows = (rows: { label: string; amount: string; show: boolean }[]) => rows.filter((r) => Number(r.amount || 0) > 0 || r.label.trim()).map((r) => ({ label: r.label.trim(), amount: Number(r.amount || 0), show: r.show }));
 
 const adjFrom = (v: PayDaysView) => ({ deduction: String(v.adjust.deduction || ""), deductionNote: v.adjust.deductionNote, advance: String(v.adjust.advance || ""), advanceNote: v.adjust.advanceNote, adjustment: String(v.adjust.adjustment || ""), adjustmentNote: v.adjust.adjustmentNote, bankCharge: String(v.adjust.bankCharge || ""), bankWaived: v.adjust.bankChargeWaived ? "1" : "0" });

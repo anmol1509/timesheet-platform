@@ -5,10 +5,11 @@ import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollContr
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { requireUserWithBranch, requirePermission, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
-import { monthBounds, round2, wpsGaps } from "@/lib/payroll";
+import { monthBounds, readDeductionItems, round2, wpsGaps, type DeductionItem } from "@/lib/payroll";
 import { isUsableBank } from "@/lib/bankStatus";
 import { approverIds, notifyUsers } from "@/lib/notifications/notify";
 import { rebuildRunLines, recordLoanRepayments, reverseLoanRepayments } from "@/lib/payrollRun";
@@ -95,7 +96,24 @@ export async function saveLineAction(formData: FormData): Promise<State> {
 
   const amount = (k: string) => { const raw = String(formData.get(k) || "0").trim(); return round2(Number(raw === "" ? 0 : raw)); };
   const note = (k: string) => String(formData.get(k) || "").trim().slice(0, 200) || null;
-  const deduction = amount("deduction");
+  // The deductions can arrive as a list, each named, with whether it shows on the payslip; otherwise as the one amount and note.
+  let items: DeductionItem[] | null = null;
+  const rawItems = formData.get("deductionItems");
+  if (typeof rawItems === "string") {
+    try {
+      const parsed = JSON.parse(rawItems) as unknown[];
+      const listed = (Array.isArray(parsed) ? parsed : []).filter((i) => i && typeof i === "object" && Number((i as { amount?: unknown }).amount) > 0);
+      if (listed.some((i) => !String((i as { label?: unknown }).label ?? "").trim())) return { error: "Say what each deduction is for." };
+      items = readDeductionItems(listed);
+    } catch {
+      return { error: "Couldn't read the deductions." };
+    }
+  }
+  const deduction = items ? round2(items.reduce((s, i) => s + i.amount, 0)) : amount("deduction");
+  const deductionLabel = items ? items.map((i) => i.label).join(", ").slice(0, 200) : note("deductionNote");
+  // The inline editor on the run sends one amount and note: if that is the list already saved, the list stays as it is.
+  const kept = !items ? readDeductionItems(line.deductionItems) : null;
+  if (kept && round2(kept.reduce((s, i) => s + i.amount, 0)) === deduction && (note("deductionNote") ?? "") === (line.deductionNote ?? "")) items = kept;
   const advance = amount("advance");
   const adjustment = amount("adjustment");
   // The bank charge and its waive tick are only changed when the form sent them (the other editors leave them as they are).
@@ -105,7 +123,7 @@ export async function saveLineAction(formData: FormData): Promise<State> {
   if (![deduction, advance, adjustment, bankCharge].every(Number.isFinite) || bankCharge < 0 || bankCharge > 1_000_000 || Math.abs(adjustment) > 1_000_000 || deduction < 0 || advance < 0 || deduction > 1_000_000 || advance > 1_000_000) {
     return { error: "Enter valid amounts. Deduction and advance can't be negative." };
   }
-  if (deduction > 0 && !note("deductionNote")) return { error: "Add a note saying what the deduction is for." };
+  if (deduction > 0 && !deductionLabel) return { error: "Add a note saying what the deduction is for." };
   if (advance > 0 && !note("advanceNote")) return { error: "Add a note for the advance." };
 
   const n = (d: { toString(): string }) => Number(d.toString());
@@ -117,12 +135,12 @@ export async function saveLineAction(formData: FormData): Promise<State> {
   const net = round2(base - deduction - advance - bank);
   await prisma.payrollLine.update({
     where: { id: lineId },
-    data: { adjustment, adjustmentNote: note("adjustmentNote"), manualDeduction: deduction, deductionNote: deduction > 0 ? note("deductionNote") : null, loanDeduction: advance, advanceNote: advance > 0 ? note("advanceNote") : null, advanceManual: true, bankCharge, bankChargeWaived: bankWaived, net },
+    data: { adjustment, adjustmentNote: note("adjustmentNote"), manualDeduction: deduction, deductionNote: deduction > 0 ? deductionLabel : null, deductionItems: deduction > 0 ? (items ?? [{ label: deductionLabel ?? "", amount: deduction, show: true }]) : Prisma.DbNull, loanDeduction: advance, advanceNote: advance > 0 ? note("advanceNote") : null, advanceManual: true, bankCharge, bankChargeWaived: bankWaived, net },
   });
   await logAudit({
     entityType: "PAYROLL_LINE", entityId: lineId, action: "UPDATE",
     before: { adjustment: n(line.adjustment), deduction: n(line.manualDeduction), advance: n(line.loanDeduction), bankCharge: n(line.bankCharge), bankChargeWaived: line.bankChargeWaived },
-    after: { adjustment, deduction, advance, bankCharge, bankChargeWaived: bankWaived, deductionNote: note("deductionNote"), advanceNote: note("advanceNote"), employee: line.employee.name },
+    after: { adjustment, deduction, advance, bankCharge, bankChargeWaived: bankWaived, deductionNote: deductionLabel, deductionItems: items ?? undefined, advanceNote: note("advanceNote"), employee: line.employee.name },
     userId: user.id, userName: user.name, branchId: run.branchId,
   });
   revalidatePath(`/payroll/${run.id}`);

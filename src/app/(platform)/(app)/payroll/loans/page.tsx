@@ -27,6 +27,7 @@ export default async function LoansPage() {
   ]);
 
   const n = (d: { toString(): string }) => Number(d.toString());
+  const proofs = await prisma.attachment.findMany({ where: { entityType: "EMPLOYEE_LOAN", entityId: { in: loans.map((l) => l.id) } }, select: { id: true, entityId: true, filename: true }, orderBy: { uploadedAt: "asc" } });
   const people = await prisma.user.findMany({ where: { id: { in: [...new Set(loans.flatMap((l) => [l.createdById, l.approvedById].filter((x): x is string => !!x)))] } }, select: { id: true, name: true } });
   const nameOf = new Map(people.map((u) => [u.id, u.name]));
   const aed = (v: number) => v.toLocaleString("en-AE", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -38,7 +39,9 @@ export default async function LoansPage() {
     return {
       id: l.id, ref: advanceRef(l.refNo), employeeId: l.employeeId, employee: l.employee.name, employeeIdNo: l.employee.employeeIdNo, type: l.type, principal, repaid: n(l.repaid), instalment: n(l.instalment), startMonth: l.startMonth,
       reason: l.reason, stateKey: state.key, stateLabel: state.label,
-      plan: plan.length === 1 ? `AED ${aed(plan[0].amount)} in ${plan[0].month}` : schedule ? `${plan.length} months: ${plan.slice(0, 3).map((p) => `${p.month} ${aed(p.amount)}`).join(", ")}${plan.length > 3 ? "…" : ""}` : `AED ${aed(n(l.instalment))} a month from ${l.startMonth}`,
+      planPending: l.planPending, repaidAny: n(l.repaid) > 0,
+      files: proofs.filter((p) => p.entityId === l.id).map((p) => ({ id: p.id, name: p.filename })),
+      plan: l.planPending ? "Month to be chosen" : plan.length === 1 ? `AED ${aed(plan[0].amount)} in ${plan[0].month}` : schedule ? `${plan.length} months: ${plan.slice(0, 3).map((p) => `${p.month} ${aed(p.amount)}`).join(", ")}${plan.length > 3 ? "…" : ""}` : `AED ${aed(n(l.instalment))} a month from ${l.startMonth}`,
       givenDate: l.givenDate ? l.givenDate.toISOString().slice(0, 10) : null,
       approvedBy: l.approvedById ? nameOf.get(l.approvedById) ?? null : null, decisionNote: l.decisionNote,
       requestedBy: nameOf.get(l.createdById) ?? "—", requestedOn: l.createdAt.toISOString().slice(0, 10), mine: l.createdById === user.id,

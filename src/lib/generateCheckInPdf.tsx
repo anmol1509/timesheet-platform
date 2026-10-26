@@ -7,8 +7,9 @@ export type CheckInPdfRow = {
   slNo: number;
   checkInNo: string;
   employeeName: string;
+  employeeCode: string;
   nationality: string | null;
-  projectName: string | null;
+  trade: string | null;
   supplierName: string | null;
   coordinator: string | null;
   status: string;
@@ -61,8 +62,9 @@ const COLS: { key: keyof CheckInPdfRow; label: string; flex: number }[] = [
   { key: "slNo", label: "No.", flex: 0.4 },
   { key: "checkInNo", label: "Check-in no.", flex: 0.95 },
   { key: "employeeName", label: "Employee", flex: 1.7 },
+  { key: "employeeCode", label: "Emp code", flex: 0.9 },
+  { key: "trade", label: "Trade", flex: 1.2 },
   { key: "nationality", label: "Nationality", flex: 0.9 },
-  { key: "projectName", label: "Project", flex: 1.5 },
   { key: "supplierName", label: "Company", flex: 1.5 },
   { key: "coordinator", label: "Coordinator", flex: 1.2 },
   { key: "status", label: "Status", flex: 0.95 },

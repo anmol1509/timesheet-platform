@@ -93,7 +93,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     }),
     prisma.payrollLine.findMany({
       where: { runId: run.id },
-      select: { employeeId: true, adjustment: true, adjustmentNote: true, manualDeduction: true, deductionNote: true, advanceNote: true, advanceManual: true, loanDeduction: true, bankCharge: true, bankChargeWaived: true },
+      select: { employeeId: true, adjustment: true, adjustmentNote: true, manualDeduction: true, deductionNote: true, deductionItems: true, advanceNote: true, advanceManual: true, loanDeduction: true, bankCharge: true, bankChargeWaived: true },
     }),
     prisma.payrollAdjustment.findMany({
       where: { branchId: run.branchId, active: true, startMonth: { lte: run.month } },
@@ -102,7 +102,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
     prisma.employeeLoan.findMany({
       // Only advances that are approved and handed over are recovered. The plan's months decide when: salary is often paid
       // weeks after its month, so an advance given in October can be taken from July pay.
-      where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null }, startMonth: { lte: run.month } },
+      where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", planPending: false, givenDate: { not: null }, startMonth: { lte: run.month } },
       select: { id: true, employeeId: true, principal: true, repaid: true, instalment: true, schedule: true, refNo: true, type: true, givenDate: true },
       orderBy: { createdAt: "asc" },
     }),
@@ -245,7 +245,7 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       absentDays: facts.absent, idleDays: facts.idle, sickDays: facts.sick, gasCharge, shortfallHours: shortfall > 0 ? short.hours : 0, shortfallDeduction: shortfall, unpaidLeaveDays: 0, normalHours: isHourly ? hours : facts.normal, otHours: isHourly ? 0 : facts.ot, restHours: isHourly ? 0 : facts.rest, timesheetHours: hours,
       basic: r.basic, allowances: r.allowances, overtimePay: r.overtimePay, deductions: r.deductions,
       adjustment, adjustmentNote: old?.adjustmentNote ?? null,
-      manualDeduction, deductionNote: old?.deductionNote ?? null, bankCharge, bankChargeWaived,
+      manualDeduction, deductionNote: old?.deductionNote ?? null, deductionItems: manualDeduction > 0 && old?.deductionItems ? (old.deductionItems as object) : undefined, bankCharge, bankChargeWaived,
       advanceNote: advanceManual ? old?.advanceNote ?? null : loanNote || null, advanceManual,
       otherEarnings: ex.earn, otherDeductions: ex.deduct, loanDeduction, items: ex.items.length > 0 ? ex.items : undefined,
       net: netPayWithExtras(r, adjustment, { ...recurring, loanDeduction, manualDeduction }),
@@ -269,7 +269,7 @@ export async function recordLoanRepayments(run: { id: string; branchId: string; 
   const lines = await prisma.payrollLine.findMany({ where: { runId: run.id, loanDeduction: { gt: 0 } }, select: { id: true, employeeId: true, loanDeduction: true } });
   if (lines.length === 0) return;
   const loans = await prisma.employeeLoan.findMany({
-    where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null }, startMonth: { lte: run.month }, employeeId: { in: lines.map((l) => l.employeeId) } },
+    where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", planPending: false, givenDate: { not: null }, startMonth: { lte: run.month }, employeeId: { in: lines.map((l) => l.employeeId) } },
     orderBy: { createdAt: "asc" },
   });
   await prisma.$transaction(async (tx) => {

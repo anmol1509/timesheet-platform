@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
 import { buildLetterhead, type Letterhead } from "@/lib/letterhead";
 import { applyPayslipView, parseHidden } from "@/lib/payslipView";
+import { readDeductionItems } from "@/lib/payroll";
 import { buildPayslip, yearToDate, type Payslip, type PayslipLine } from "@/lib/payslip";
 
 const n = (d: { toString(): string }) => Number(d.toString());
 
 type LineRow = {
   payStructure: string; basic: unknown; allowances: unknown; overtimePay: unknown; deductions: unknown; adjustment: unknown; adjustmentNote: string | null;
-  otherEarnings: unknown; otherDeductions: unknown; manualDeduction: unknown; deductionNote: string | null; loanDeduction: unknown; advanceNote: string | null; gasCharge: unknown; bankCharge?: unknown; bankChargeWaived?: boolean; shortfallHours?: unknown; shortfallDeduction?: unknown;
+  otherEarnings: unknown; otherDeductions: unknown; manualDeduction: unknown; deductionNote: string | null; deductionItems?: unknown; loanDeduction: unknown; advanceNote: string | null; gasCharge: unknown; bankCharge?: unknown; bankChargeWaived?: boolean; shortfallHours?: unknown; shortfallDeduction?: unknown;
   absentDays: number; unpaidLeaveDays: number; otHours: unknown; restHours: unknown; normalHours: unknown; employedDays: number | null; daysInMonth: number; net: unknown; items: unknown;
 };
 const num = (v: unknown) => (v == null ? 0 : n(v as { toString(): string }));
@@ -16,7 +17,7 @@ export function lineToPayslipLine(l: LineRow): PayslipLine {
   const items = Array.isArray(l.items) ? (l.items as { kind: string; label: string; amount: number }[]) : null;
   return {
     payStructure: l.payStructure, basic: num(l.basic), allowances: num(l.allowances), overtimePay: num(l.overtimePay), deductions: num(l.deductions), adjustment: num(l.adjustment), adjustmentNote: l.adjustmentNote,
-    otherEarnings: num(l.otherEarnings), otherDeductions: num(l.otherDeductions), manualDeduction: num(l.manualDeduction), deductionNote: l.deductionNote, loanDeduction: num(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: num(l.gasCharge), bankCharge: l.bankChargeWaived ? 0 : num(l.bankCharge), shortfallHours: num(l.shortfallHours), shortfallDeduction: num(l.shortfallDeduction),
+    otherEarnings: num(l.otherEarnings), otherDeductions: num(l.otherDeductions), manualDeduction: num(l.manualDeduction), deductionNote: l.deductionNote, deductionItems: readDeductionItems(l.deductionItems), loanDeduction: num(l.loanDeduction), advanceNote: l.advanceNote, gasCharge: num(l.gasCharge), bankCharge: l.bankChargeWaived ? 0 : num(l.bankCharge), shortfallHours: num(l.shortfallHours), shortfallDeduction: num(l.shortfallDeduction),
     absentDays: l.absentDays, unpaidLeaveDays: l.unpaidLeaveDays, otHours: num(l.otHours), restHours: num(l.restHours), normalHours: num(l.normalHours), employedDays: l.employedDays, daysInMonth: l.daysInMonth, net: num(l.net), items,
   };
 }

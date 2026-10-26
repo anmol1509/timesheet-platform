@@ -910,6 +910,8 @@ model EmployeeNote {
   id        String   @id @default(cuid())
   remarks   String
   createdAt DateTime @default(now())
+  // The day the note is about, chosen when it is added; null on older notes (they show the day they were written).
+  noteDate  DateTime?
 
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
@@ -1957,6 +1959,8 @@ model PayrollLine {
   // month. Each carries its own note. Both reduce net pay.
   manualDeduction    Decimal   @default(0) @db.Decimal(12, 2)
   deductionNote      String?
+  // The typed deductions one by one, [{label, amount, show}]; manualDeduction is their sum and deductionNote their labels.
+  deductionItems     Json?
   advanceNote        String?
   advanceManual      Boolean   @default(false) // true once someone has typed the advance, so a recalculation keeps it
   idleDays           Int       @default(0)
@@ -2045,6 +2049,8 @@ model EmployeeLoan {
   // [{ month: "YYYY-MM", amount }] when recovery follows a plan month by month; null = a fixed instalment.
   schedule       Json?
   refNo          Int       @unique @default(autoincrement())
+  // Approved before anyone chose which month(s) to deduct it in: payroll leaves it alone until a plan is set.
+  planPending    Boolean   @default(false)
 
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId String
