@@ -6,7 +6,8 @@ import { StatTile } from "@/components/StatTile";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
-import { canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { can, canMyCompanies, canViewSensitive } from "@/lib/permissions";
+import { groupLookups } from "@/lib/lookups";
 import { duplicateGroups } from "@/lib/people";
 import { PARTY_ROLE_LABEL } from "@/lib/documentTypes";
 import { DuplicatePeople, type DupPerson } from "./duplicate-people";
@@ -36,9 +37,19 @@ export default async function MyCompaniesPage() {
 
   const companies = await prisma.supplier.findMany({
     where: { ...branchWhere(branchId), isOwnCompany: true },
-    select: { id: true, name: true, code: true, fullName: true, status: true, branchId: true, parentSupplierId: true, _count: { select: { employees: true } }, partyLinks: { select: { partyId: true, role: true, ownershipPercent: true } } },
+    select: { id: true, name: true, code: true, fullName: true, status: true, branchId: true, parentSupplierId: true, parent: { select: { name: true } }, _count: { select: { employees: true } }, partyLinks: { select: { partyId: true, role: true, ownershipPercent: true } } },
     orderBy: { name: "asc" },
   });
+  // The side panel and the employee panel are the Suppliers tools, so they need that permission and its reference data.
+  const canSuppliers = can(subject, "partners.suppliers", "view");
+  const [projects, allSuppliers, lookupValues] = canSuppliers
+    ? await Promise.all([
+        prisma.project.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" }, select: { id: true, name: true, code: true, clientId: true } }),
+        prisma.supplier.findMany({ where: branchWhere(branchId), orderBy: { name: "asc" }, select: { id: true, name: true } }),
+        prisma.lookupValue.findMany({ where: { ...branchWhere(branchId), isActive: true }, orderBy: [{ sortOrder: "asc" }, { value: "asc" }], select: { category: true, value: true } }),
+      ])
+    : [[], [], []];
+  const wizardData = { projects, suppliers: allSuppliers, sponsors: allSuppliers, lookups: groupLookups(lookupValues) };
   const ids = companies.map((c) => c.id);
   const partyIds = [...new Set(companies.flatMap((c) => c.partyLinks.map((l) => l.partyId)))];
   const [typeRows, files, partyFiles] = await Promise.all([
@@ -71,7 +82,7 @@ export default async function MyCompaniesPage() {
 
   // A parent, then its subsidiaries just beneath it.
   const known = new Set(companies.map((c) => c.id));
-  const toRow = (x: (typeof built)[number], sub: boolean): CompanyRow => ({ id: x.c.id, name: x.c.name, code: x.c.code, fullName: x.c.fullName, status: x.c.status, employees: x.c._count.employees, people: x.people, own: x.own, owners: x.owners, ownership: { owners: x.ownership.owners, total: x.ownership.total, ok: x.ownership.ok }, sub });
+  const toRow = (x: (typeof built)[number], sub: boolean): CompanyRow => ({ branchId: x.c.branchId, parentId: sub ? x.c.parentSupplierId : null, parentName: x.c.parent?.name ?? null, id: x.c.id, name: x.c.name, code: x.c.code, fullName: x.c.fullName, status: x.c.status, employees: x.c._count.employees, people: x.people, own: x.own, owners: x.owners, ownership: { owners: x.ownership.owners, total: x.ownership.total, ok: x.ownership.ok }, sub });
   const rows: CompanyRow[] = built
     .filter((x) => !x.c.parentSupplierId || !known.has(x.c.parentSupplierId))
     .flatMap((x) => [toRow(x, false), ...built.filter((y) => y.c.parentSupplierId === x.c.id).map((y) => toRow(y, true))]);
@@ -130,7 +141,7 @@ export default async function MyCompaniesPage() {
           action={canMyCompanies(subject, "create") ? <Button href="/my-companies/new" size="sm">Add company</Button> : undefined}
         />
       ) : (
-        <CompanyTable rows={rows} />
+        <CompanyTable rows={rows} canSuppliers={canSuppliers} wizardData={wizardData} />
       )}
     </div>
   );

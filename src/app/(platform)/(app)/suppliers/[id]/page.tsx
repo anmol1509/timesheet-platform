@@ -77,8 +77,8 @@ export default async function SupplierDetailPage({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
-    prisma.employee.groupBy({ by: ["wcAttachmentId"], where: { supplierId: supplier.id, wcAttachmentId: { not: null } }, _count: true }),
-    prisma.employee.count({ where: { supplierId: supplier.id, active: true } }),
+    prisma.employee.groupBy({ by: ["wcAttachmentId"], where: { OR: [{ supplierId: supplier.id }, { sponsorSupplierId: supplier.id }], wcAttachmentId: { not: null } }, _count: true }),
+    prisma.employee.count({ where: { OR: [{ supplierId: supplier.id }, { sponsorSupplierId: supplier.id }], active: true } }),
   ]);
   const wcPolicies = attachments
     .filter((a) => WC_TYPES.includes(a.docType))

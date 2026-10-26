@@ -1028,9 +1028,14 @@ model Document {
   // Set when the file was attached to a note rather than filed on its own.
   note         EmployeeNote? @relation(fields: [noteId], references: [id], onDelete: Cascade)
   noteId       String?
+  // Set when this is a copy of a company's workmen compensation certificate filed on each covered worker; it follows
+  // the certificate (expiry changes, and goes when the worker is unlinked or the certificate deleted).
+  sourceAttachmentId String?
 
   visaApplications       VisaApplication[]
   labourCardApplications LabourCardApplication[]
+
+  @@index([sourceAttachmentId])
 }
 
 model Project {
@@ -1671,6 +1676,10 @@ model Attachment {
   uploadedBy           User?   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
   uploadedById         String?
   uploadedBySupplierId String?
+
+  // Workmen compensation certificates: the names read off the file, so who is on a policy can be shown (and linked) later
+  // without reading the file again. A JSON array of strings; null for other documents and for certificates from before.
+  insuredNames Json?
 
   @@index([entityType, entityId])
   @@index([branchId, docType])

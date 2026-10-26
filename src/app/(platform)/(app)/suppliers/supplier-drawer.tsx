@@ -6,6 +6,8 @@ import { CompanyDrawer, type CompanyAdapter, type CompanyGap, type CompanyView }
 import { Pill } from "@/components/quick-view/fields";
 import { uploadAttachmentAction } from "@/lib/attachments";
 import { cn } from "@/lib/cn";
+import { WorkmenCompPanel } from "./[id]/workmen-comp-panel";
+import { ingestWorkmenComp } from "./[id]/workmen-comp-ingest";
 import { applySupplierScanAction, loadSupplierQuickViewAction, saveSupplierFieldAction, type SupplierQuickView } from "./quick-view";
 
 /** What the list already knows about a supplier: the header and the figures that are read, not edited, here. */
@@ -52,6 +54,11 @@ export function SupplierDrawer({ id, order, people, onNavigate, onClose, initial
     save: saveSupplierFieldAction,
     applyScan: applySupplierScanAction,
     storeFile: async (sid, file, docType, expiry) => {
+      // A workmen compensation certificate is read and its workers linked, the same as on the company's own page.
+      if (docType.startsWith("WORKMEN_COMPENSATION")) {
+        const r = await ingestWorkmenComp(sid, file, expiry);
+        return r.id ? null : (r.error ?? "Could not upload that certificate.");
+      }
       const form = new FormData();
       form.append("entityType", "SUPPLIER");
       form.append("entityId", sid);
@@ -87,6 +94,7 @@ export function SupplierDrawer({ id, order, people, onNavigate, onClose, initial
       const approvals = d.approvals as { project: string; labour: string; invoicing: string };
       const pending = Object.values(approvals).filter((v) => v === "Pending").length;
       return (
+        <>
         <div>
           <h3 className="mb-2 text-xs font-semibold text-primary">Approvals {pending > 0 && <span className="font-normal text-muted">· {pending} waiting</span>}</h3>
           <div className="flex flex-wrap gap-2 rounded-[14px] border border-default px-3 py-2.5 text-sm">
@@ -96,6 +104,11 @@ export function SupplierDrawer({ id, order, people, onNavigate, onClose, initial
           </div>
           {pending > 0 && <Link href="/approvals?type=SUPPLIER" className="mt-1.5 block text-xs font-medium text-[var(--brand-primary)] hover:underline">Decide in Approvals</Link>}
         </div>
+        <div>
+          <h3 className="mb-2 text-xs font-semibold text-primary">Workmen compensation</h3>
+          <WorkmenCompPanel key={d.id} supplierId={d.id} canEdit={d.canEdit} />
+        </div>
+        </>
       );
     },
   }), [people]);
