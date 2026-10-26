@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const sample = [
       ["Ajay Kumar", "India", "Carpenter", "Example Manpower LLC", "Bed Allocated"],
       ["Arbaj Ali", "Pakistan", "Mason", "Example Manpower LLC", "Bed Allocated"],
-      ["Narendra BK", "Nepal", "Steel Fixer", "Gulf Manpower Services", "Issued"],
+      ["Narendra BK", "Nepal", "Steel Fixer", "Gulf Manpower Services", "Check-in Issued"],
     ];
     buffer = await generateCheckInPdf({
       letterhead: { name: SAMPLE_VALUES.COMPANYNAME, addressLines: ["Business Bay", "Dubai"], phone: "+971 4 123 4567", fax: null, email: "office@example.com", poBox: "12345", trn: "100000000000003", logo: await loadLogoDataUri() },

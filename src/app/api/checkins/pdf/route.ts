@@ -8,7 +8,7 @@ import { checkInListWording, fillCheckInWording } from "@/lib/checkInList";
 
 const CAMP_TYPE_LABEL: Record<string, string> = { OWN: "Own", SUPPLIER: "Supplier", CLIENT: "Client" };
 const STATUS_LABEL: Record<string, string> = {
-  CHECKED_IN: "Issued",
+  CHECKED_IN: "Check-in Issued",
   BED_ALLOCATED: "Bed Allocated",
   CHECKED_OUT: "Checked Out",
 };

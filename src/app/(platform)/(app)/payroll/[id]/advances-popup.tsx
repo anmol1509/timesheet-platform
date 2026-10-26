@@ -38,7 +38,10 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
     if (!advances) return;
     setError(null); setDone(false);
     start(async () => {
-      const res = await applyRunAdvancesAction(runId, employeeId, advances.map((a) => ({ loanId: a.id, amount: Number(amounts[a.id] || 0) })));
+      // Only the advances whose amount was changed are touched, so one with its own plan keeps it unless it is overwritten here.
+      const changed = advances.filter((a) => Number(amounts[a.id] || 0) !== a.planned).map((a) => ({ loanId: a.id, amount: Number(amounts[a.id] || 0) }));
+      if (changed.length === 0) { setError("Change an amount first."); return; }
+      const res = await applyRunAdvancesAction(runId, employeeId, changed);
       if (res.error) { setError(res.error); return; }
       setDone(true);
       const r = await loadRunAdvancesAction(runId, employeeId);
@@ -69,6 +72,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
                 </div>
                 <p className="mt-1 text-xs text-muted">AED {aed(a.principal)} given · AED {aed(a.repaid)} recovered · <span className="font-medium text-primary">AED {aed(a.balance)} still owed</span></p>
                 <p className="text-xs text-muted">Plan: {a.plan}</p>
+                {!a.planPending && a.planned === 0 && <p className="text-xs text-muted">Nothing is planned for {month}. Type an amount to deduct it now anyway.</p>}
                 {canApply && (
                   <label className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-muted">Deduct this month (AED)</span>
@@ -82,7 +86,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
               <div className="flex flex-wrap items-center gap-3">
                 <button type="button" className="btn btn-primary" disabled={pending} onClick={apply}>{pending ? "Applying…" : "Apply"}</button>
                 {done && <span className="text-xs text-[var(--success)]">Applied. This worker&apos;s pay has been worked out again.</span>}
-                <span className="w-full text-xs text-muted">The amount is set for this month. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</span>
+                <span className="w-full text-xs text-muted">Whatever you type replaces what the advance's plan had for this month, even if a month was already chosen; its other months stay as planned. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</span>
               </div>
             ) : <p className="text-xs text-muted">This run is no longer a draft, so nothing can be changed here.</p>}
             {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}

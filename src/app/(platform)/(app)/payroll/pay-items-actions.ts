@@ -294,7 +294,7 @@ export async function loadRunAdvancesAction(runId: string, employeeId: string): 
       return {
         id: l.id, ref: advanceRef(l.refNo), type: l.type, principal, repaid, balance: Math.round((principal - repaid) * 100) / 100, givenDate: l.givenDate!.toISOString().slice(0, 10), planPending: l.planPending,
         planned: l.planPending || l.startMonth > run.month ? 0 : Math.min(Math.round((principal - repaid) * 100) / 100, loanInstalmentFor({ instalment: Number(l.instalment), schedule }, run.month)),
-        plan: l.planPending ? "Months not chosen yet" : rows.length === 1 ? `AED ${rows[0].amount.toFixed(2)} in ${rows[0].month}` : `${rows.length} months from ${rows[0]?.month ?? l.startMonth}`,
+        plan: l.planPending ? "Months not chosen yet" : rows.slice(0, 6).map((r) => `${r.month}: AED ${r.amount.toFixed(2)}`).join(" · ") + (rows.length > 6 ? ` · +${rows.length - 6} more` : ""),
       };
     })
     .filter((a) => a.balance > 0);
