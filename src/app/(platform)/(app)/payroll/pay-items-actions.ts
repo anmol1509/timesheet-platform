@@ -124,7 +124,7 @@ export async function rejectAdvanceAction(formData: FormData): Promise<State> {
   return { error: null, ok: true };
 }
 
-/** Records the day the money was actually handed over, and how. Recovery from payroll starts from here. */
+/** Records the day the money was actually handed over, and how. Recovery from payroll follows the plan's months, whatever day this is. */
 export async function markAdvanceGivenAction(formData: FormData): Promise<State> {
   await requireWrite("payroll.payroll");
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }

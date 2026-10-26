@@ -3,11 +3,6 @@ import { payrollScopeWhere } from "@/lib/payrollCompany";
 import { advanceRef, loanInstalmentFor, readSchedule } from "@/lib/advances";
 import { isShortfallMode, shortDayWorked, shortfallTotal, type ShortfallMode, paidHourly, appliesToMonth, capToAvailable, computePay, employmentWindow, isPayType, monthBounds, netPayWithExtras, payDataGap, planLoanRecovery, round2, splitDayHours, effectivePay, type PayStructure } from "@/lib/payroll";
 
-/** The first moment after a pay month, so an advance handed over later than the month is not recovered in it. */
-const monthAfter = (month: string) => {
-  const [y, m] = month.split("-").map(Number);
-  return new Date(Date.UTC(y, m, 1));
-};
 const num = (d: { toString(): string } | null | undefined) => (d == null ? 0 : Number(d.toString()));
 
 export type RunScope = { id: string; branchId: string; month: string; companyId: string | null; payType: string | null };
@@ -105,8 +100,9 @@ export async function rebuildRunLines(run: RunScope): Promise<{ count: number; s
       select: { employeeId: true, kind: true, amount: true, startMonth: true, endMonth: true, label: true, category: true },
     }),
     prisma.employeeLoan.findMany({
-      // Only advances that are approved and handed over are recovered.
-      where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null, lt: monthAfter(run.month) }, startMonth: { lte: run.month } },
+      // Only advances that are approved and handed over are recovered. The plan's months decide when: salary is often paid
+      // weeks after its month, so an advance given in October can be taken from July pay.
+      where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null }, startMonth: { lte: run.month } },
       select: { id: true, employeeId: true, principal: true, repaid: true, instalment: true, schedule: true, refNo: true, type: true, givenDate: true },
       orderBy: { createdAt: "asc" },
     }),
@@ -273,7 +269,7 @@ export async function recordLoanRepayments(run: { id: string; branchId: string; 
   const lines = await prisma.payrollLine.findMany({ where: { runId: run.id, loanDeduction: { gt: 0 } }, select: { id: true, employeeId: true, loanDeduction: true } });
   if (lines.length === 0) return;
   const loans = await prisma.employeeLoan.findMany({
-    where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null, lt: monthAfter(run.month) }, startMonth: { lte: run.month }, employeeId: { in: lines.map((l) => l.employeeId) } },
+    where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null }, startMonth: { lte: run.month }, employeeId: { in: lines.map((l) => l.employeeId) } },
     orderBy: { createdAt: "asc" },
   });
   await prisma.$transaction(async (tx) => {
