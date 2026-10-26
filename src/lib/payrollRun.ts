@@ -21,14 +21,22 @@ type PayEmployee = {
  * the rate on their trade in Known Trade Details (the trade they are
  * deployed as, then the one matching their designation, then any with a rate).
  */
-/** Where an hourly rate comes from: the rate on the trade (skill) they are deployed as, else the one saved on the employee. */
+/**
+ * Where an hourly rate comes from: the rate on the trade (skill) the worker is, else the one saved on the employee.
+ * With several trades that carry a rate, the one named like the worker's own trade is paid, then the active one, then
+ * the first by name, so the same worker always gets the same rate.
+ */
 export function hourlyRateSource(e: PayEmployee): { rate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; trade: string | null } {
-  const withRate = (e.skills ?? []).filter((k) => (k.rate ?? 0) > 0);
+  const withRate = (e.skills ?? []).filter((k) => (k.rate ?? 0) > 0).sort((a, b) => a.skill.name.localeCompare(b.skill.name));
   const want = (e.trade ?? e.position ?? "").trim().toLowerCase();
-  const pick = withRate.find((k) => k.isActive) ?? withRate.find((k) => k.skill.name.trim().toLowerCase() === want) ?? withRate[0];
+  const pick = withRate.find((k) => k.skill.name.trim().toLowerCase() === want) ?? withRate.find((k) => k.isActive) ?? withRate[0];
   if (pick) return { rate: pick.rate ?? 0, source: "TRADE", trade: pick.skill.name };
   const own = n2(e.hourlyRate);
   return own > 0 ? { rate: own, source: "EMPLOYEE", trade: null } : { rate: 0, source: "NONE", trade: null };
+}
+/** The other trades a worker has a rate for, beside the one being paid (to say so where the pay is checked). */
+export function otherTradeRates(e: PayEmployee, paidTrade: string | null): { trade: string; rate: number }[] {
+  return (e.skills ?? []).filter((k) => (k.rate ?? 0) > 0 && k.skill.name !== paidTrade).map((k) => ({ trade: k.skill.name, rate: k.rate ?? 0 })).sort((a, b) => a.trade.localeCompare(b.trade));
 }
 function hourlyRateOf(e: PayEmployee): number {
   return hourlyRateSource(e).rate;

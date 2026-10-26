@@ -15,3 +15,12 @@ test("a rate on the worker's trade is paid before one saved on the worker", () =
   const e = { hourlyRate: 5.3, skills: [{ rate: 6, isActive: true, skill: { name: "Painter" } }] } as Parameters<typeof hourlyRateSource>[0];
   assert.deepEqual(hourlyRateSource(e), { rate: 6, source: "TRADE", trade: "Painter" });
 });
+
+test("with several trades that carry a rate, the one named like the worker's trade is paid", () => {
+  const skills = [{ rate: 7, isActive: true, skill: { name: "Painter" } }, { rate: 5, isActive: false, skill: { name: "Mason" } }, { rate: 6, isActive: false, skill: { name: "Carpenter" } }];
+  assert.deepEqual(hourlyRateSource(emp({ trade: "Mason", skills })), { rate: 5, source: "TRADE", trade: "Mason" });
+  // No trade matches: the active one, then the first by name, the same every time.
+  assert.deepEqual(hourlyRateSource(emp({ trade: "Welder", skills })), { rate: 7, source: "TRADE", trade: "Painter" });
+  assert.deepEqual(hourlyRateSource(emp({ trade: "Welder", skills: skills.map((s) => ({ ...s, isActive: false })) })), { rate: 6, source: "TRADE", trade: "Carpenter" });
+  assert.deepEqual(hourlyRateSource(emp({ trade: "Welder", skills: [...skills].reverse().map((s) => ({ ...s, isActive: false })) })), { rate: 6, source: "TRADE", trade: "Carpenter" });
+});
