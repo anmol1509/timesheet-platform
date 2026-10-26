@@ -154,7 +154,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
                   <tr>
-                    <th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-right">Hours</th><th className="px-3 py-2 text-right">Salary</th>
+                    <th className="px-3 py-2">Date</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Trade</th><th className="px-3 py-2 text-right">Rate</th><th className="px-3 py-2 text-right">Hours</th><th className="px-3 py-2 text-right">Salary</th>
                     <th className="px-3 py-2 text-right">Overtime</th><th className="px-3 py-2 text-right">Absence</th>{showShort(view) && <th className="px-3 py-2 text-right">Short hours</th>}<th className="px-3 py-2 text-right">Day total</th>
                     <th className="px-3 py-2">Timesheet<Hint term="TIMESHEET" /></th><th className="px-3 py-2" />
                   </tr>
@@ -172,6 +172,8 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                             </select>
                           ) : <span className={cn(r.kind === "absent" && "font-medium text-[var(--error)]", r.kind === "unrecorded" && "text-subtle")}>{r.label}</span>}
                         </td>
+                        <td className="px-3 py-1.5 text-secondary">{view.rateInfo.trade ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-secondary" title={view.rateInfo.source === "TRADE" ? `From the ${view.rateInfo.rateTrade ?? "trade"} rate` : view.rateInfo.source === "EMPLOYEE" ? "Set on the employee" : undefined}>{view.hourly && view.rateInfo.hourlyRate > 0 && r.hours > 0 ? `${aed(view.rateInfo.hourlyRate)} /h` : "—"}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums">
                           {editing === r.date && draft.status === "PRESENT" ? (
                             <span className="inline-flex items-center gap-1">
@@ -217,21 +219,21 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                   })}
                 </tbody>
                 <tfoot className="border-t border-default bg-surface-subtle text-sm">
-                  <tr><td className="px-3 py-2 font-medium" colSpan={2}>Total for the days</td><td className="px-3 py-2 text-right font-medium tabular-nums">{view.totals.hours > 0 ? `${Math.round(view.totals.hours * 100) / 100} h` : "—"}</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td>{showShort(view) && <td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.shortfall, "−")}</td>}<td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
+                  <tr><td className="px-3 py-2 font-medium" colSpan={4}>Total for the days</td><td className="px-3 py-2 text-right font-medium tabular-nums">{view.totals.hours > 0 ? `${Math.round(view.totals.hours * 100) / 100} h` : "—"}</td><td className="px-3 py-2 text-right tabular-nums">{aed(view.totals.salary)}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.otPay, "+")}</td><td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.deduction, "−")}</td>{showShort(view) && <td className="px-3 py-2 text-right tabular-nums">{dash(view.totals.shortfall, "−")}</td>}<td className="px-3 py-2 text-right font-medium tabular-nums">{aed(view.totals.net)}</td><td colSpan={2} /></tr>
                   {view.parts.map((x, i) => (
-                    <tr key={`${x.label}-${i}`}><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 7 : 6}>{x.label}{x.note && <span className="ml-2 text-xs text-subtle">{x.note}</span>}</td><td className="px-3 py-1.5 text-right tabular-nums">{x.amount > 0 ? "+" : "−"}{aed(Math.abs(x.amount))}</td><td colSpan={2} /></tr>
+                    <tr key={`${x.label}-${i}`}><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 9 : 8}>{x.label}{x.note && <span className="ml-2 text-xs text-subtle">{x.note}</span>}</td><td className="px-3 py-1.5 text-right tabular-nums">{x.amount > 0 ? "+" : "−"}{aed(Math.abs(x.amount))}</td><td colSpan={2} /></tr>
                   ))}
-                  {view.parts.length === 0 && view.unexplained === 0 && <tr><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 7 : 6}>No gas charge, advances, deductions or adjustments</td><td className="px-3 py-1.5 text-right tabular-nums">—</td><td colSpan={2} /></tr>}
+                  {view.parts.length === 0 && view.unexplained === 0 && <tr><td className="px-3 py-1.5 text-secondary" colSpan={showShort(view) ? 9 : 8}>No gas charge, advances, deductions or adjustments</td><td className="px-3 py-1.5 text-right tabular-nums">—</td><td colSpan={2} /></tr>}
                   {view.unexplained !== 0 && (
                     <tr className="bg-[var(--warning-soft)]/50">
-                      <td className="px-3 py-2 text-xs text-[var(--warning)]" colSpan={showShort(view) ? 7 : 6}>
+                      <td className="px-3 py-2 text-xs text-[var(--warning)]" colSpan={showShort(view) ? 9 : 8}>
                         The saved pay is out of date: it is {aed(Math.abs(view.unexplained))} {view.unexplained > 0 ? "above" : "below"} what these days add up to.
                         {view.canAdjust && <button type="button" disabled={pending} className="ml-2 font-medium underline" onClick={recalculate}>{pending ? "Recalculating…" : "Recalculate"}</button>}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-[var(--warning)]">{view.unexplained > 0 ? "+" : "−"}{aed(Math.abs(view.unexplained))}</td><td colSpan={2} />
                     </tr>
                   )}
-                  <tr><td className="px-3 py-2 font-semibold text-primary" colSpan={showShort(view) ? 7 : 6}>Net pay</td><td className="px-3 py-2 text-right font-semibold tabular-nums text-primary">{aed(view.lineNet)}</td><td colSpan={2} /></tr>
+                  <tr><td className="px-3 py-2 font-semibold text-primary" colSpan={showShort(view) ? 9 : 8}>Net pay</td><td className="px-3 py-2 text-right font-semibold tabular-nums text-primary">{aed(view.lineNet)}</td><td colSpan={2} /></tr>
                 </tfoot>
               </table>
             </div>
