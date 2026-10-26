@@ -56,8 +56,8 @@ export type IssuerOption = { id: string; name: string; gaps: string[] };
  * What the "Issued by" picker offers: the branch's own companies (empty when there are none, in which case the picker is
  * not shown), the name the branch's own details print under, and the person's last choice so repeat runs are one click.
  */
-export async function getIssuerOptions(branchId: string | null, userId: string): Promise<{ companies: IssuerOption[]; branchName: string; defaultId: string | null }> {
-  if (!branchId) return { companies: [], branchName: "", defaultId: null };
+export async function getIssuerOptions(branchId: string | null, userId: string): Promise<{ companies: IssuerOption[]; branchName: string; defaultId: string | null; /** Why there is nothing to pick, so the screen can say so instead of hiding the picker. */ reason: "ok" | "no-branch" | "none" }> {
+  if (!branchId) return { companies: [], branchName: "", defaultId: null, reason: "no-branch" };
   const [branch, companies, last] = await Promise.all([
     prisma.branch.findUnique({ where: { id: branchId }, select: { name: true, issuedTo: true } }),
     prisma.supplier.findMany({
@@ -72,5 +72,6 @@ export async function getIssuerOptions(branchId: string | null, userId: string):
     companies: options,
     branchName: branch?.issuedTo || branch?.name || "Branch details",
     defaultId: last?.issuedCompanyId && options.some((o) => o.id === last.issuedCompanyId) ? last.issuedCompanyId : null,
+    reason: options.length > 0 ? "ok" : "none",
   };
 }
