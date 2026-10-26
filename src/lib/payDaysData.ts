@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { PAY_EMPLOYEE_SELECT, hourlyRateSource, loadPayOf } from "@/lib/payrollRun";
+import { PAY_EMPLOYEE_SELECT, hourlyRateSource, loadPayOf, otherTradeRates } from "@/lib/payrollRun";
 import { employmentWindow, isShortfallMode, monthBounds, readDeductionItems, round2, type ShortfallMode } from "@/lib/payroll";
 import { buildDays, type DayInput, type DayRow } from "@/lib/payDays";
 import { cellsDiffer, parseDailyHours } from "@/lib/timesheetCells";
@@ -18,7 +18,7 @@ export type PayDaysView = {
   shortRule: { mode: ShortfallMode; halfDayUnder: number };
   other: number; lineNet: number;
   /** The trade and the hourly rate this person is paid at, and where the rate comes from, so the days can be checked against the profile. */
-  rateInfo: { trade: string | null; hourlyRate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; rateTrade: string | null; monthlyBasic: number };
+  rateInfo: { trade: string | null; hourlyRate: number; source: "EMPLOYEE" | "TRADE" | "NONE"; rateTrade: string | null; monthlyBasic: number; /** Other trades with a rate that are not being paid. */ others: { trade: string; rate: number }[] };
   /** What the "other items" figure is made of, signed (+ adds to pay, − takes off). */
   /** Timesheet days changed from payroll after the sheet was made, against the first value they had. */
   edits: { date: string; weekday: string; from: string; to: string; by: string; at: string }[];
@@ -119,7 +119,7 @@ export async function loadPayDays(runId: string, employeeId: string, opts: { can
     branchId: line.run.branchId,
     view: {
       lineId: line.id, runId: line.runId, month: line.run.month, employee: { id: e.id, name: e.name, idNo: e.employeeIdNo }, hourly, why, editable: why === null, canAlign: why === null && !!entry && !hourly,
-      rateInfo: { trade: e.trade ?? e.position ?? null, hourlyRate: rate.rate, source: rate.source, rateTrade: rate.trade, monthlyBasic: monthlyFixed },
+      rateInfo: { trade: e.trade ?? e.position ?? null, hourlyRate: rate.rate, source: rate.source, rateTrade: rate.trade, monthlyBasic: monthlyFixed, others: otherTradeRates(e, rate.trade) },
       hasTimesheet: !!entry, timesheetStatus: entry?.status ?? null, dailyHours, rows, totals,
       edits, shortRule,
       mismatches: rows.filter((r) => r.kind !== "outside" && r.sync === "differs").map((r) => ({ date: r.date, weekday: r.weekday, attendance: r.hasAttendance ? `${r.label}${r.hours > 0 ? ` ${r.hours} h` : ""}` : "No record", sheet: r.ts?.trim() ? r.ts : "blank" })),

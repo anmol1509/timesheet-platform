@@ -746,7 +746,7 @@ export async function addWorkmenCompEmployeeAction(supplierId: string, attachmen
   const { user } = await requireUserWithBranch();
   const cert = await ownCertificate(supplierId, attachmentId);
   if (!cert) return { error: "Certificate not found." };
-  const clean = name.replace(/\s+/g, " ").trim().slice(0, 120);
+  const clean = name.replace(/\s+/g, " ").trim().slice(0, 120).toUpperCase();
   if (!clean) return { error: "There is no name to add." };
   const company = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
   if (!company?.branchId) return { error: "Company not found." };

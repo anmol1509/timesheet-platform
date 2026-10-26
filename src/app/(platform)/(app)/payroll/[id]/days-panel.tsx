@@ -140,6 +140,9 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
             {view.hourly && view.rateInfo.hourlyRate <= 0 && (
               <p className="rounded-md border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">No hourly rate is set for {view.rateInfo.trade ?? "this worker"}: add one on the employee or on the trade.</p>
             )}
+            {view.hourly && view.rateInfo.source === "TRADE" && view.rateInfo.others.length > 0 && (
+              <p className="rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm text-secondary">Paid at the <span className="font-medium text-primary">{view.rateInfo.rateTrade}</span> rate (AED {aed(view.rateInfo.hourlyRate)} / hour). This worker also has a rate for {view.rateInfo.others.map((o) => `${o.trade} (AED ${aed(o.rate)})`).join(", ")}; the one that matches the worker&apos;s own trade is used.</p>
+            )}
             {!view.hourly && (
               <p className="rounded-md border border-default bg-surface-subtle px-3 py-2 text-sm"><span className="text-muted">Monthly pay</span> <span className="font-medium text-primary">AED {aed(view.rateInfo.monthlyBasic)}</span></p>
             )}
