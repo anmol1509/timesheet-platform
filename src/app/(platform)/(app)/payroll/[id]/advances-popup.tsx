@@ -20,12 +20,13 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
   const [advances, setAdvances] = useState<RunAdvance[] | null>(null);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   function load(open: boolean) {
     if (!open) return;
-    setError(null); setDone(false);
+    setError(null); setDone(null);
     start(async () => {
       const r = await loadRunAdvancesAction(runId, employeeId);
       if (r.error || !r.advances) { setError(r.error ?? "Could not load the advances."); return; }
@@ -34,18 +35,21 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
     });
   }
 
-  function apply() {
-    if (!advances) return;
-    setError(null); setDone(false);
+  // Each advance has its own Apply: it sets this month's amount for that advance alone and works the pay out again.
+  function apply(a: RunAdvance) {
+    setError(null); setDone(null);
+    const amount = Number(amounts[a.id] || 0);
+    if (amount === a.planned) { setError(`${a.ref}: change the amount first.`); return; }
+    setBusyId(a.id);
     start(async () => {
-      // Only the advances whose amount was changed are touched, so one with its own plan keeps it unless it is overwritten here.
-      const changed = advances.filter((a) => Number(amounts[a.id] || 0) !== a.planned).map((a) => ({ loanId: a.id, amount: Number(amounts[a.id] || 0) }));
-      if (changed.length === 0) { setError("Change an amount first."); return; }
-      const res = await applyRunAdvancesAction(runId, employeeId, changed);
+      const res = await applyRunAdvancesAction(runId, employeeId, [{ loanId: a.id, amount }]);
+      setBusyId(null);
       if (res.error) { setError(res.error); return; }
-      setDone(true);
+      setDone(a.id);
       const r = await loadRunAdvancesAction(runId, employeeId);
-      if (r.advances) { setAdvances(r.advances); setAmounts(Object.fromEntries(r.advances.map((a) => [a.id, a.planned ? String(a.planned) : ""]))); }
+      if (r.advances) setAdvances(r.advances);
+      // The other rows keep what was typed in them; this one shows what is now planned.
+      setAmounts((p) => ({ ...p, [a.id]: amount > 0 ? String(amount) : "" }));
       router.refresh();
     });
   }
@@ -76,18 +80,16 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
                 {canApply && (
                   <label className="mt-2 flex items-center gap-2">
                     <span className="text-xs text-muted">Deduct this month (AED)</span>
-                    <input className="input h-8 w-32 text-right text-xs tabular-nums" type="number" step="0.01" min="0" max={a.balance} value={amounts[a.id] ?? ""} onChange={(e) => { setDone(false); setAmounts((p) => ({ ...p, [a.id]: e.target.value })); }} aria-label={`Amount to deduct for ${a.ref}`} />
-                    <button type="button" className="text-xs text-[var(--brand-primary)] hover:underline" onClick={() => { setDone(false); setAmounts((p) => ({ ...p, [a.id]: String(a.balance) })); }}>All of it</button>
+                    <input className="input h-8 w-32 text-right text-xs tabular-nums" type="number" step="0.01" min="0" max={a.balance} value={amounts[a.id] ?? ""} onChange={(e) => { setDone(null); setAmounts((p) => ({ ...p, [a.id]: e.target.value })); }} aria-label={`Amount to deduct for ${a.ref}`} />
+                    <button type="button" className="text-xs text-[var(--brand-primary)] hover:underline" onClick={() => { setDone(null); setAmounts((p) => ({ ...p, [a.id]: String(a.balance) })); }}>All of it</button>
+                    <button type="button" className="btn btn-primary ml-auto h-8 px-3 text-xs" disabled={pending} onClick={() => apply(a)}>{busyId === a.id ? "Applying…" : "Apply"}</button>
                   </label>
                 )}
+                {done === a.id && <p className="mt-1 text-xs text-[var(--success)]">Applied. This worker&apos;s pay has been worked out again.</p>}
               </div>
             ))}
             {canApply ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <button type="button" className="btn btn-primary" disabled={pending} onClick={apply}>{pending ? "Applying…" : "Apply"}</button>
-                {done && <span className="text-xs text-[var(--success)]">Applied. This worker&apos;s pay has been worked out again.</span>}
-                <span className="w-full text-xs text-muted">Whatever you type replaces what the advance&apos;s plan had for this month, even if a month was already chosen; its other months stay as planned. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</span>
-              </div>
+              <p className="text-xs text-muted">Whatever you type replaces what the advance&apos;s plan had for this month, even if a month was already chosen; its other months stay as planned. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</p>
             ) : <p className="text-xs text-muted">This run is no longer a draft, so nothing can be changed here.</p>}
             {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
           </div>
