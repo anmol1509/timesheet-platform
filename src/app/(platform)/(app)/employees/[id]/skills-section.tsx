@@ -25,9 +25,14 @@ type SkillRow = {
 export function SkillsSection({
   employeeId,
   skills,
+  workerRate = null,
+  workerTrade = null,
 }: {
   employeeId: string;
   skills: SkillRow[];
+  /** The hourly rate saved on the worker (what payroll pays first); null when not set or the viewer may not see pay. */
+  workerRate?: number | null;
+  workerTrade?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [trade, setTrade] = useState("");
@@ -100,6 +105,13 @@ export function SkillsSection({
             Add
           </button>
         </div>
+
+        {workerRate != null && workerRate > 0 && (
+          <p className="mt-4 rounded-lg border border-default bg-surface-subtle px-4 py-2.5 text-sm text-secondary">
+            <span className="font-medium text-primary">Trade rate: AED {workerRate.toFixed(2)} / hour{workerTrade ? ` (${workerTrade})` : ""}.</span>{" "}
+            Saved on this worker under Pay structure below; payroll pays this before any rate on the trades listed here.
+          </p>
+        )}
 
         {skills.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">No known trades added yet.</p>
