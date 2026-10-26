@@ -86,7 +86,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
               <div className="flex flex-wrap items-center gap-3">
                 <button type="button" className="btn btn-primary" disabled={pending} onClick={apply}>{pending ? "Applying…" : "Apply"}</button>
                 {done && <span className="text-xs text-[var(--success)]">Applied. This worker&apos;s pay has been worked out again.</span>}
-                <span className="w-full text-xs text-muted">Whatever you type replaces what the advance's plan had for this month, even if a month was already chosen; its other months stay as planned. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</span>
+                <span className="w-full text-xs text-muted">Whatever you type replaces what the advance&apos;s plan had for this month, even if a month was already chosen; its other months stay as planned. An advance that had no month yet keeps taking this amount in later months until it is cleared, unless you change its months under Loans &amp; advances.</span>
               </div>
             ) : <p className="text-xs text-muted">This run is no longer a draft, so nothing can be changed here.</p>}
             {error && <p role="alert" className="text-sm text-[var(--error)]">{error}</p>}
