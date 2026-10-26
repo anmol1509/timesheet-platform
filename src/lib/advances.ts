@@ -135,3 +135,15 @@ export function advanceState(l: { approvalStatus: string; status: string; givenD
   if (l.status === "CLEARED" || l.repaid >= l.principal) return { key: "CLEARED", label: "Cleared" };
   return { key: "RECOVERING", label: "Recovering" };
 }
+
+/**
+ * The plan after setting what one pay month takes: the month's amount is put into the schedule (replacing what was
+ * planned for it, 0 to skip it), the other months stay. A fixed-instalment advance is first written out as a schedule.
+ * An advance with no plan yet starts from an empty one.
+ */
+export function withMonthAmount(l: { principal: number; instalment: number; startMonth: string; schedule: ScheduleRow[] | null; planPending: boolean }, month: string, amount: number): { startMonth: string; instalment: number; schedule: ScheduleRow[] } {
+  const base = l.planPending ? [] : planRows(l);
+  const rows = [...base.filter((r) => r.month !== month), { month, amount: round2(amount) }].sort((a, b) => a.month.localeCompare(b.month));
+  const last = [...rows].reverse().find((r) => r.amount > 0) ?? rows[rows.length - 1];
+  return { startMonth: rows[0].month, instalment: last.amount > 0 ? last.amount : round2(l.instalment), schedule: rows };
+}

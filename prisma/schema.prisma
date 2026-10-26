@@ -2047,6 +2047,8 @@ model EmployeeLoan {
   // [{ month: "YYYY-MM", amount }] when recovery follows a plan month by month; null = a fixed instalment.
   schedule       Json?
   refNo          Int       @unique @default(autoincrement())
+  // Approved before anyone chose which month(s) to deduct it in: payroll leaves it alone until a plan is set.
+  planPending    Boolean   @default(false)
 
   employee   Employee @relation(fields: [employeeId], references: [id])
   employeeId String

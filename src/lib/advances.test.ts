@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addMonths, advanceRef, advanceState, amountInWords, buildRecoveryPlan, loanInstalmentFor, planRows, readSchedule } from "./advances";
+import { addMonths, advanceRef, advanceState, amountInWords, buildRecoveryPlan, loanInstalmentFor, planRows, readSchedule, withMonthAmount } from "./advances";
 
 test("a recovery plan in one month takes the whole amount in that month", () => {
   assert.deepEqual(buildRecoveryPlan({ mode: "ONE_MONTH", principal: 1000, month: "2026-11" }), { startMonth: "2026-11", instalment: 1000, schedule: null });
@@ -62,4 +62,14 @@ test("an advance's state, and its reference", () => {
   assert.equal(advanceState({ ...base, repaid: 1000, status: "CLEARED" }).key, "CLEARED");
   assert.equal(advanceState({ ...base, approvalStatus: "REJECTED" }).key, "REJECTED");
   assert.equal(advanceRef(7), "ADV-0007");
+});
+
+test("setting a month on an advance with no plan yet starts a plan", () => {
+  const r = withMonthAmount({ principal: 500, instalment: 500, startMonth: "2026-10", schedule: null, planPending: true }, "2026-07", 500);
+  assert.deepEqual(r.schedule, [{ month: "2026-07", amount: 500 }]);
+  assert.equal(r.startMonth, "2026-07");
+});
+test("setting a month on a fixed instalment advance keeps the other months", () => {
+  const r = withMonthAmount({ principal: 300, instalment: 100, startMonth: "2026-07", schedule: null, planPending: false }, "2026-08", 50);
+  assert.deepEqual(r.schedule, [{ month: "2026-07", amount: 100 }, { month: "2026-08", amount: 50 }, { month: "2026-09", amount: 100 }]);
 });

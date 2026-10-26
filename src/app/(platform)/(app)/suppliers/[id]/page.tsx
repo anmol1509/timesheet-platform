@@ -222,13 +222,15 @@ export default async function SupplierDetailPage({
                     )}
                   </div>
                 </section>
-                <section>
-                  <h2 className="mb-1 text-sm font-semibold text-primary">Owner &amp; sponsor</h2>
-                  <p className="mb-3 text-sm text-muted">
-                    The licence owner and the sponsor who runs the company day to day, each with their own passport, Emirates ID, visa, insurance and other documents.
-                  </p>
-                  <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit && !restricted} canOpen={canViewSensitive(subjectOf(user))} />
-                </section>
+                {supplier.isOwnCompany && (
+                  <section>
+                    <h2 className="mb-1 text-sm font-semibold text-primary">Owner &amp; sponsor</h2>
+                    <p className="mb-3 text-sm text-muted">
+                      The licence owner and the sponsor who runs the company day to day, each with their own passport, Emirates ID, visa, insurance and other documents.
+                    </p>
+                    <SupplierPartiesSection supplierId={supplier.id} branchId={supplier.branchId} types={partyTypes} canEdit={canEdit && !restricted} canOpen={canViewSensitive(subjectOf(user))} />
+                  </section>
+                )}
                 {supplier.isOwnCompany && (
                   <section>
                     <h2 className="mb-1 text-sm font-semibold text-primary">Timesheet header</h2>

@@ -14,6 +14,7 @@ import { PaymentCell } from "./payment-cell";
 import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
 import { DaysButton } from "./days-panel";
+import { AdvancesButton } from "./advances-popup";
 import { BankFix } from "./bank-fix";
 import { FixPayPanel, type FixRow } from "./fix-pay-panel";
 import { Hint } from "@/components/Hint";
@@ -54,6 +55,21 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
     },
   });
   if (!run || isOutsideBranch(run.branchId, branchId, isSuperAdmin)) notFound();
+
+  // Who in this run still owes an advance or loan: shown beside their name, and totalled above the table so it is not missed at month end.
+  const openLoans = await prisma.employeeLoan.findMany({
+    where: { branchId: run.branchId, status: "ACTIVE", approvalStatus: "APPROVED", givenDate: { not: null }, employeeId: { in: run.lines.map((l) => l.employeeId) } },
+    select: { employeeId: true, principal: true, repaid: true, planPending: true },
+  });
+  const owedBy = new Map<string, { count: number; owed: number; unscheduled: boolean }>();
+  for (const l of openLoans) {
+    const left = Math.round((Number(l.principal) - Number(l.repaid)) * 100) / 100;
+    if (left <= 0) continue;
+    const cur = owedBy.get(l.employeeId) ?? { count: 0, owed: 0, unscheduled: false };
+    owedBy.set(l.employeeId, { count: cur.count + 1, owed: Math.round((cur.owed + left) * 100) / 100, unscheduled: cur.unscheduled || l.planPending });
+  }
+  const owedTotal = Math.round([...owedBy.values()].reduce((t, x) => t + x.owed, 0) * 100) / 100;
+  const owedUnscheduled = [...owedBy.values()].filter((x) => x.unscheduled).length;
 
   // Employees of this company who are not in the run because they lack the pay details its type needs.
   const skipped = await runSkipped(run);
@@ -225,6 +241,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         <div className="card p-10 text-center text-sm text-muted">No employees have a pay structure yet. Set one on each employee&apos;s Payroll &amp; WPS tab, then Recalculate.</div>
       ) : (
         <DetailView>
+        {owedBy.size > 0 && (
+          <div className={`rounded-lg border px-4 py-3 text-sm ${owedUnscheduled > 0 ? "border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning)]" : "border-default bg-surface-subtle text-secondary"}`}>
+            <span className="font-medium">AED {aed(owedTotal)} of advances and loans is still owed by {owedBy.size} worker{owedBy.size === 1 ? "" : "s"} in this run.</span>{" "}
+            {owedUnscheduled > 0 ? `${owedUnscheduled} of them ${owedUnscheduled === 1 ? "has" : "have"} an advance with no month chosen, so nothing is taken. ` : ""}
+            Open <span className="font-medium">Advances</span> beside a worker&apos;s name to see them and set what to deduct this month.
+          </div>
+        )}
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
@@ -263,7 +286,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                         <EmployeeAvatar employeeId={l.employee.id} name={l.employee.name} hasPhoto={!!l.employee.photoMimeType} size="md" />
                         <div className="min-w-0">
                           <Link href={`/employees/${l.employee.id}`} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{l.employee.name}</Link>
-                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employee.supplier && run.company && l.employee.supplier.name !== run.company.name && <span className="text-muted"> · Employer {l.employee.supplier.name}</span>}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <DaysButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} /><span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
+                          <p className="text-xs text-muted">{l.employee.employeeIdNo}{l.employee.supplier && run.company && l.employee.supplier.name !== run.company.name && <span className="text-muted"> · Employer {l.employee.supplier.name}</span>}{l.employedDays != null && <span className="font-medium text-[var(--warning)]"> · {l.employedDays} of {l.daysInMonth} days</span>} · <DaysButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} />{owedBy.has(l.employee.id) && <> · <AdvancesButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} count={owedBy.get(l.employee.id)!.count} owed={owedBy.get(l.employee.id)!.owed} unscheduled={owedBy.get(l.employee.id)!.unscheduled} /></>}<span className={DETAIL_INLINE}><br />{l.payStructure === "FLAT" ? "Fixed monthly rate" : l.payStructure === "HOURLY" ? "Paid by the hour" : "Basic + allowances"} · <Link href={`/letters?employee=${l.employee.id}&template=salary`} className="hover:underline">Salary certificate</Link></span></p>
                         </div>
                       </div>
                     </td>
