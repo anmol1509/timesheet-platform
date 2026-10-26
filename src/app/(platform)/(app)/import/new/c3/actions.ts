@@ -42,22 +42,32 @@ export async function previewC3Action(formData: FormData): Promise<C3Preview> {
   if (!branchId) return { error: "Pick a specific branch from the switcher first." };
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file." };
-  if (/\.xls$/i.test(file.name)) return { error: "Old .xls files can't be read. Open it in Excel and Save As .xlsx (or .csv), then upload that." };
   if (file.size > 5_000_000) return { error: "That file is too big (limit 5 MB)." };
 
   const grid: string[][] = [];
   try {
-    const wb = await loadWorkbook(Buffer.from(await file.arrayBuffer()), file.name);
-    const ws = wb.worksheets[0];
-    if (!ws) return { error: "The file has no sheet." };
-    for (let r = 1; r <= ws.rowCount; r++) {
-      const row = ws.getRow(r);
-      const out: string[] = [];
-      for (let c = 1; c <= ws.columnCount; c++) out.push(cell(row.getCell(c).value));
-      grid.push(out);
+    const bytes = Buffer.from(await file.arrayBuffer());
+    if (/\.xls$/i.test(file.name)) {
+      // The older Excel format: read with the xls reader (loaded only here), first sheet, every cell as text.
+      const XLSX = await import("@e965/xlsx");
+      const book = XLSX.read(bytes, { type: "buffer", cellDates: true });
+      const sheet = book.Sheets[book.SheetNames[0]];
+      if (!sheet) return { error: "The file has no sheet." };
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" });
+      for (const r of rows) grid.push(r.map((v) => String(v ?? "").trim()));
+    } else {
+      const wb = await loadWorkbook(bytes, file.name);
+      const ws = wb.worksheets[0];
+      if (!ws) return { error: "The file has no sheet." };
+      for (let r = 1; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const out: string[] = [];
+        for (let c = 1; c <= ws.columnCount; c++) out.push(cell(row.getCell(c).value));
+        grid.push(out);
+      }
     }
   } catch {
-    return { error: "Couldn't read that file. Use an .xlsx or .csv." };
+    return { error: "Couldn't read that file. Use an .xls, .xlsx or .csv." };
   }
 
   // The header is the first row (within the top 15) that has both a name-like and a C3-like heading.

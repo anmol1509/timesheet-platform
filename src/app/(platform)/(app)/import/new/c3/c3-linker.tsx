@@ -40,8 +40,8 @@ export function C3Linker() {
     <div className="space-y-4">
       <form action={read} className="card flex flex-wrap items-end gap-3 p-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Sheet (.xlsx or .csv) with a name column and a C3 ID column</span>
-          <input type="file" name="file" accept=".xlsx,.csv" className="input" required />
+          <span className="mb-1 block text-xs font-medium text-muted">Sheet (.xls, .xlsx or .csv) with a name column and a C3 ID column</span>
+          <input type="file" name="file" accept=".xls,.xlsx,.csv" className="input" required />
         </label>
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Reading…" : "Read sheet"}</button>
       </form>
