@@ -114,7 +114,7 @@ function GivenForm({ row, onDone }: { row: LoanRow; onDone: () => void }) {
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Day it was handed over *</span><DatePicker name="givenDate" defaultValue={today()} /></label>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">How was it paid?</span><Select name="method" defaultValue="CASH" searchable={false} options={ADVANCE_METHODS.map(([value, label]) => ({ value, label }))} /></label>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Reference (voucher or transfer number, optional)</span><input name="reference" className="input w-full" maxLength={80} /></label>
-      <p className="text-xs text-muted">Deduction from payroll starts from the plan once this is recorded. It cannot be changed afterwards.</p>
+      <p className="text-xs text-muted">Deduction from payroll follows the plan&apos;s months once this is recorded, even for an earlier pay month (salary paid late). The day cannot be changed afterwards.</p>
       <div className="flex items-center gap-3">
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Record as given"}</button>
         {state.error && <p role="alert" className="text-sm text-[var(--error)]">{state.error}</p>}
