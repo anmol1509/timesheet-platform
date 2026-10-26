@@ -6,7 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import { getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
+import { addWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
 
 /**
  * Who is on one policy. Every name read off the certificate is listed with the workers it matches, and whether each is
@@ -32,6 +32,15 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
       const r = await setWorkmenCompLinkAction(supplierId, attachmentId, employeeId, linked);
       setBusy(null);
       if (r.error) setError(r.error); else { load(); onChanged(); }
+    });
+  }
+
+  function addWorker(name: string) {
+    setBusy(`add:${name}`);
+    start(async () => {
+      const r = await addWorkmenCompEmployeeAction(supplierId, attachmentId, name);
+      setBusy(null);
+      if (r.error) setError(r.error); else { setError(null); load(); onChanged(); }
     });
   }
 
@@ -111,7 +120,8 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-primary">{n.name}</span>
                     <Badge color="red">Not on this company&rsquo;s roster</Badge>
-                    {n.suggestions.length === 0 && <span className="text-xs text-muted">Add them from Employees &amp; insurance, or pick the right worker below if the name is spelled differently.</span>}
+                    {canEdit && <button type="button" disabled={busy !== null} onClick={() => addWorker(n.name)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">{busy === `add:${n.name}` ? "Adding…" : "Add as employee"}</button>}
+                    {n.suggestions.length === 0 && <span className="text-xs text-muted">Adds them to this company with just the name and links the certificate. Fill in their details later on Employees (shown as Incomplete). Or pick the right worker below if the name is spelled differently.</span>}
                   </div>
                 ) : (
                   n.candidates.map((w) => (

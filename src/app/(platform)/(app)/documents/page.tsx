@@ -73,8 +73,6 @@ export default async function DocumentsPage() {
   ]);
 
   // Every certificate, since a supplier can hold several (each covering its own workers).
-  const certIdsBySupplier = new Map<string, Set<string>>();
-  for (const c of certificates) certIdsBySupplier.set(c.entityId, (certIdsBySupplier.get(c.entityId) ?? new Set()).add(c.id));
   const policies = certificates.map((c) => ({ supplierId: c.entityId, expiryDate: c.expiryDate ? c.expiryDate.toISOString().slice(0, 10) : null, attachmentId: c.id }));
   const certsInUse = [...new Set(activeEmployees.map((e) => e.wcAttachmentId).filter((x): x is string => !!x))];
   const companyRows = companySuppliers.map((s) => ({ id: s.id, name: s.name, trn: s.trn, tradeLicenseExpiry: s.tradeLicenseExpiry ? s.tradeLicenseExpiry.toISOString().slice(0, 10) : null }));
@@ -88,7 +86,7 @@ export default async function DocumentsPage() {
     supplierName: e.supplier?.name ?? null,
     projectId: e.projectId,
     projectName: e.project ? `${e.project.code} — ${e.project.name}` : null,
-    wcCovered: !!(e.supplierId && e.wcAttachmentId && certIdsBySupplier.get(e.supplierId)?.has(e.wcAttachmentId)),
+    wcCovered: !!(e.supplierId && e.wcAttachmentId && certificates.some((c) => c.id === e.wcAttachmentId)),
     wcAttachmentId: e.wcAttachmentId,
   }));
   const suppliers = [...new Map([...documents.filter((d) => d.employee.supplierId).map((d) => [d.employee.supplierId!, d.employee.supplier!.name] as [string, string]), ...activeEmployees.filter((e) => e.supplierId).map((e) => [e.supplierId!, e.supplier!.name] as [string, string])]).entries()]

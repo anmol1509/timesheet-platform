@@ -32,6 +32,14 @@ export function span(iso: string | null, now: number) {
   return d < 60 ? `${d} d` : d < 730 ? `${Math.round(d / 30)} mo` : `${Math.round(d / 365)} y`;
 }
 
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** A certificate's expiry as a date and how far off it is, "12 Mar 2027 (14 mo)": a policy needs the actual day. */
+export function dated(iso: string | null, now: number) {
+  if (!iso) return "No expiry date";
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()} (${span(iso, now)})`;
+}
+
 export function stateOf(iso: string | null, now: number): "valid" | "expiring" | "expired" {
   if (!iso) return "valid";
   const days = Math.round((new Date(iso).getTime() - now) / DAY);
@@ -50,6 +58,7 @@ export function buildCells(employees: MatrixEmployee[], documents: DocRow[], pol
     if (!cur || rank(d) > rank(cur)) best.set(key, d);
   }
   const policiesBy = policiesBySupplier(policies);
+  const allPolicies = new Map(policies.filter((p) => p.attachmentId).map((p) => [p.attachmentId as string, p]));
   // A supplier whose certificates have never been read has no worker marked covered: say nothing about who is covered.
   const coverageKnown = new Set(employees.filter((e) => e.wcCovered && e.supplierId).map((e) => e.supplierId!));
 
@@ -60,7 +69,10 @@ export function buildCells(employees: MatrixEmployee[], documents: DocRow[], pol
       const d = best.get(`${e.id}|${t}`);
       row[t] = d ? { state: stateOf(d.expiryDate, now), label: "", sub: span(d.expiryDate, now), docId: d.id } : { state: "missing", label: "", sub: "—" };
     }
-    row.WC = workerWcCell(e, e.supplierId ? policiesBy.get(e.supplierId) ?? [] : [], coverageKnown, now);
+    // The certificate a worker is linked to counts wherever it is held: a worker of one company can be covered by their sponsor's policy.
+    const mine = e.supplierId ? policiesBy.get(e.supplierId) ?? [] : [];
+    const own = e.wcAttachmentId ? allPolicies.get(e.wcAttachmentId) : undefined;
+    row.WC = workerWcCell(e, own && !mine.includes(own) ? [...mine, own] : mine, coverageKnown, now);
     for (const k of Object.keys(row) as (MatrixType | "WC")[]) row[k].label = LABEL[row[k].state];
     cells.set(e.id, row);
   }
@@ -95,13 +107,13 @@ const SEVERITY: Record<CellState, number> = { expired: 4, missing: 3, notlisted:
  */
 export function workerWcCell(e: { supplierId: string | null; wcAttachmentId?: string | null }, list: Policy[], coverageKnown: Set<string>, now: number): Cell {
   const make = (state: CellState, sub: string, attachmentId?: string): Cell => ({ state, label: LABEL[state], sub, attachmentId });
+  const own = e.wcAttachmentId ? list.find((p) => p.attachmentId === e.wcAttachmentId) : undefined;
+  if (own) return make(stateOf(own.expiryDate, now), dated(own.expiryDate, now), own.attachmentId);
   if (!e.supplierId) return make("missing", "No supplier");
   if (list.length === 0) return make("missing", "No policy");
-  const own = e.wcAttachmentId ? list.find((p) => p.attachmentId === e.wcAttachmentId) : undefined;
-  if (own) return make(stateOf(own.expiryDate, now), span(own.expiryDate, now), own.attachmentId);
   if (coverageKnown.has(e.supplierId)) return make("notlisted", "Not on policy");
   const best = bestPolicy(list) as Policy;
-  return make(stateOf(best.expiryDate, now), span(best.expiryDate, now), best.attachmentId);
+  return make(stateOf(best.expiryDate, now), dated(best.expiryDate, now), best.attachmentId);
 }
 
 /**
@@ -116,7 +128,7 @@ export function supplierWcCell(workerCells: Cell[], list: Policy[], now: number)
   const states: CellState[] = pool.map((p) => stateOf(p.expiryDate, now));
   const worst = states.reduce((w, st) => (SEVERITY[st] > SEVERITY[w] ? st : w), "valid" as CellState);
   const worstPolicy = pool[states.indexOf(worst)];
-  const sub = pool.length > 1 ? `${pool.length} policies` : span(worstPolicy.expiryDate, now);
+  const sub = pool.length > 1 ? `${pool.length} policies` : dated(worstPolicy.expiryDate, now);
   return { cell: make(worst, sub), policies: pool.length };
 }
 
@@ -124,7 +136,7 @@ export function supplierWcCell(workerCells: Cell[], list: Policy[], now: number)
 export function policyCell(policy: Policy | undefined, now: number): Cell {
   if (!policy) return { state: "missing", label: LABEL.missing, sub: "No policy" };
   const state = stateOf(policy.expiryDate, now);
-  return { state, label: LABEL[state], sub: span(policy.expiryDate, now) };
+  return { state, label: LABEL[state], sub: dated(policy.expiryDate, now) };
 }
 
 /** Every document kind a worker's print can include: the five they hold, plus their supplier's workmen compensation certificate. */
