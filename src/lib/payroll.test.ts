@@ -186,3 +186,12 @@ test("net pay takes the short-hours deduction off", () => {
   const x = { otherEarnings: 0, otherDeductions: 0, loanDeduction: 0 };
   assert.equal(netPayWithExtras(r, 0, { ...x, shortfall: 25 }), netPayWithExtras(r, 0, x) - 25);
 });
+
+import { reconcileDeductionItems } from "./payroll";
+test("typed deductions are kept while they add up, and folded into one when the deduction was cut", () => {
+  const items = [{ label: "Fine", amount: 40, show: true }, { label: "Visa", amount: 25, show: false }];
+  assert.deepEqual(reconcileDeductionItems(items, 65, "Fine, Visa"), items);
+  assert.deepEqual(reconcileDeductionItems(items, 30, "Fine, Visa"), [{ label: "Fine, Visa", amount: 30, show: true }]);
+  assert.equal(reconcileDeductionItems(items, 0, null), null);
+  assert.equal(reconcileDeductionItems(null, 30, "x"), null);
+});

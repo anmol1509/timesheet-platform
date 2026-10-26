@@ -345,3 +345,16 @@ export function readDeductionItems(value: unknown): DeductionItem[] | null {
     .map((v) => ({ label: String(v.label ?? "").trim().slice(0, 100), amount: round2(Number(v.amount)), show: v.show !== false }));
   return items.length > 0 ? items : null;
 }
+
+/**
+ * The typed deductions to keep after a run is worked out again. They stay as typed while they still add up to the
+ * deduction that applies; if the pay was too low and the deduction was cut, they are folded into one line for the
+ * smaller amount, so a payslip never lists more than was taken.
+ */
+export function reconcileDeductionItems(items: DeductionItem[] | null, applied: number, note: string | null): DeductionItem[] | null {
+  if (applied <= 0) return null;
+  if (!items) return null;
+  const sum = round2(items.reduce((s, i) => s + i.amount, 0));
+  if (sum === round2(applied)) return items;
+  return [{ label: note || "Deduction", amount: round2(applied), show: items.some((i) => i.show) }];
+}
