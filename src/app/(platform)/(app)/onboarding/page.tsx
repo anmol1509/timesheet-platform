@@ -1,11 +1,13 @@
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { Plus, ListChecks } from "lucide-react";
+import { Plus, ListChecks, Handshake } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
 import { branchWhere } from "@/lib/branch";
 import { cn } from "@/lib/cn";
-import { STAGES, currentStage, daysSince, isOverdue, papersPending } from "@/lib/onboarding";
+import { STAGES, currentStage, daysSince, isOverdue, papersPending, pendingSince } from "@/lib/onboarding";
+import { candidateDocStatus } from "@/lib/candidateDocs";
+import { resolveDocTypes } from "@/lib/documentTypes";
 import { OnboardingTable } from "./onboarding-table";
 import { DeploymentPipelineFunnel } from "@/components/DeploymentPipelineFunnel";
 import { Insights } from "@/components/ListSummary";
@@ -15,18 +17,30 @@ export const metadata = { title: "Candidate onboarding" };
 export default async function OnboardingPage() {
   const { branchId } = await requireUserWithBranch();
 
-  const candidates = await prisma.candidateOnboarding.findMany({
+  const found = await prisma.candidateOnboarding.findMany({
     where: branchWhere(branchId),
     orderBy: { createdAt: "desc" },
     include: { agency: { select: { name: true } } },
   });
+  // The documents each candidate has handed over, against what the branch requires.
+  const [typeRows, files] = await Promise.all([
+    prisma.documentType.findMany({ where: { ...branchWhere(branchId), appliesTo: "CANDIDATE" } }),
+    found.length ? prisma.attachment.findMany({ where: { entityType: "CANDIDATE_ONBOARDING", entityId: { in: found.map((c) => c.id) } }, select: { id: true, entityId: true, docType: true, filename: true, expiryDate: true, uploadedAt: true } }) : [],
+  ]);
+  const docsOf = (c: (typeof found)[number]) => candidateDocStatus(
+    resolveDocTypes(typeRows.filter((r) => r.branchId === c.branchId), "CANDIDATE"),
+    files.filter((f) => f.entityId === c.id).map((f) => ({ ...f, expiryDate: f.expiryDate?.toISOString() ?? null, uploadedAt: f.uploadedAt.toISOString() })),
+  );
+  // Days pending count from the last stage change; dropped candidates are out of the queue and the numbers.
+  const candidates = found.map((c) => ({ ...c, pendingSince: pendingSince(c), dropped: c.droppedAt !== null, docs: docsOf(c) }));
 
-  const total = candidates.length;
-  const active = candidates.filter((c) => !c.joined);
+  const live = candidates.filter((c) => !c.dropped);
+  const total = live.length;
+  const active = live.filter((c) => !c.joined);
   const readyCount = active.filter((c) => c.readyToJoin).length;
-  const joinedCount = candidates.filter((c) => c.joined).length;
-  const overdueCount = active.filter((c) => isOverdue(c, c.updatedAt)).length;
-  const papersCount = candidates.filter((c) => papersPending(c)).length;
+  const joinedCount = live.filter((c) => c.joined).length;
+  const overdueCount = active.filter((c) => isOverdue(c, c.pendingSince)).length;
+  const papersCount = live.filter((c) => papersPending(c)).length;
 
   const stagePending: Record<string, number> = {};
   for (const stage of STAGES) stagePending[stage.key] = 0;
@@ -35,7 +49,7 @@ export default async function OnboardingPage() {
     const stage = currentStage(c);
     if (!stage) continue;
     stagePending[stage.key]++;
-    workQueue.push({ id: c.id, name: c.candidateName, agency: c.agency?.name ?? null, stageLabel: stage.label, days: daysSince(c.updatedAt), overdue: isOverdue(c, c.updatedAt) });
+    workQueue.push({ id: c.id, name: c.candidateName, agency: c.agency?.name ?? null, stageLabel: stage.label, days: daysSince(c.pendingSince), overdue: isOverdue(c, c.pendingSince) });
   }
   workQueue.sort((a, b) => b.days - a.days);
 
@@ -47,9 +61,14 @@ export default async function OnboardingPage() {
           icon={ListChecks}
           description={<>From agency submission through to joining — one status per stage, dated and referenced.</>}
         />
-        <Link href="/onboarding/new" className="btn btn-primary">
-          <Plus className="h-4 w-4" aria-hidden /> Add candidate
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/onboarding/agencies" className="btn btn-secondary">
+            <Handshake className="h-4 w-4" aria-hidden /> Agencies
+          </Link>
+          <Link href="/onboarding/new" className="btn btn-primary">
+            <Plus className="h-4 w-4" aria-hidden /> Add candidate
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">

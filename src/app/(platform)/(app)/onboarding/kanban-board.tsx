@@ -13,7 +13,9 @@ type Candidate = {
   trade: string | null;
   readyToJoin: boolean;
   joined: boolean;
-  updatedAt: Date;
+  pendingSince: Date;
+  dropped: boolean;
+  droppedReason?: string | null;
   agency: { name: string } | null;
 } & OnboardingStatuses;
 
@@ -22,7 +24,8 @@ type ColumnKey = StageKey | "READY" | "JOINED";
 /** Groups candidates by where they currently sit in the pipeline. No drag
  * and drop (this app has no dnd dependency yet) — each card links straight
  * to the candidate page, where the actual stage/status editing happens. */
-export function KanbanBoard({ candidates }: { candidates: Candidate[] }) {
+export function KanbanBoard({ candidates: all }: { candidates: Candidate[] }) {
+  const candidates = all.filter((c) => !c.dropped); // dropped candidates have no stage to sit in
   const columns: { key: ColumnKey; label: string }[] = [
     ...STAGES.map((s) => ({ key: s.key as ColumnKey, label: s.short })),
     { key: "READY", label: "Ready to join" },
@@ -55,7 +58,7 @@ export function KanbanBoard({ candidates }: { candidates: Candidate[] }) {
             </div>
             <div className="flex flex-col gap-2">
               {items.map((c) => {
-                const overdue = !c.joined && isOverdue(c, c.updatedAt);
+                const overdue = isOverdue(c, c.pendingSince);
                 return (
                   <Link
                     key={c.id}
@@ -78,7 +81,7 @@ export function KanbanBoard({ candidates }: { candidates: Candidate[] }) {
                         <CheckCircle2 className="h-3.5 w-3.5 text-[var(--success)]" aria-hidden />
                       ) : (
                         <span className={cn("text-[11px]", overdue ? "font-medium text-[var(--error)]" : "text-subtle")}>
-                          {daysSince(c.updatedAt)}d
+                          {daysSince(c.pendingSince)}d
                         </span>
                       )}
                     </div>

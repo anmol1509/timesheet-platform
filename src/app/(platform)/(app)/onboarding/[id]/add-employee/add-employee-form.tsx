@@ -40,12 +40,14 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedId, suppliers, projects, files, initial }: {
-  candidateId: string; ready: boolean; canEditPay: boolean; proposedId: string; suppliers: Opt[]; projects: Opt[]; files: FileRow[]; initial: Initial;
+export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedIds, suppliers, projects, files, initial }: {
+  candidateId: string; ready: boolean; canEditPay: boolean; /** The next employee ID each company would give, by company id. */ proposedIds: Record<string, string>; suppliers: Opt[]; projects: Opt[]; files: FileRow[]; initial: Initial;
 }) {
   const [state, action, pending] = useActionState(async (_p: AddEmployeeState, fd: FormData) => addCandidateAsEmployeeAction(_p, fd), { error: null } as AddEmployeeState);
   const formRef = useRef<HTMLFormElement>(null);
   const [payChoice, setPayChoice] = useState("LATER");
+  const [company, setCompany] = useState(initial.supplierId);
+  const proposedId = proposedIds[company] ?? "";
   const [dismissed, setDismissed] = useState<unknown>(null);
 
   if (state.employeeId) {
@@ -89,8 +91,8 @@ export function AddEmployeeForm({ candidateId, ready, canEditPay, proposedId, su
       </Section>
 
       <Section title="Work" hint="where they will be paid from and placed">
-        <label className="block"><span className={lbl}>Company *</span><Select name="supplierId" defaultValue={initial.supplierId} searchable placeholder="Choose the company" options={suppliers.map((s) => ({ value: s.id, label: s.name }))} /></label>
-        <label className="block"><span className={lbl}>Visa sponsor <span className="font-normal">(if different)</span></span><Select name="sponsorSupplierId" defaultValue="" searchable placeholder="Same as the company" options={[{ value: "", label: "Same as the company" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]} /></label>
+        <label className="block"><span className={lbl}>Company * <span className="font-normal">(one of your own companies)</span></span><><input type="hidden" name="supplierId" value={company} /><Select value={company} onChange={setCompany} searchable placeholder="Choose the company" emptyText="No own companies yet. Add one under My Companies." options={suppliers.map((s) => ({ value: s.id, label: s.name }))} /></></label>
+        <label className="block"><span className={lbl}>Visa sponsor <span className="font-normal">(if different)</span></span><Select name="sponsorSupplierId" defaultValue="" searchable placeholder="Same as the company" emptyText="No own companies yet." options={[{ value: "", label: "Same as the company" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]} /></label>
         <label className="block"><span className={lbl}>Trade</span><Select name="trade" defaultValue={initial.trade} searchable options={TRADE_OPTIONS} /></label>
         <label className="block"><span className={lbl}>Project</span><Select name="projectId" defaultValue={initial.projectId} searchable placeholder="Not placed yet" options={[{ value: "", label: "Not placed yet" }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} /></label>
         <label className="block"><span className={lbl}>Joining date</span><DatePicker name="joinDate" defaultValue={initial.joinDate} className="w-full" /></label>

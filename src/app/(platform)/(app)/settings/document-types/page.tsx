@@ -11,6 +11,7 @@ export const metadata = { title: "Document types" };
 const GROUPS = [
   { appliesTo: "SUPPLIER", title: "Company documents", hint: "Filed against a supplier company, including your own." },
   { appliesTo: "SUPPLIER_PARTY", title: "Owner & sponsor documents", hint: "Filed against the owner, sponsor, partner or manager of a company." },
+  { appliesTo: "CANDIDATE", title: "Candidate documents", hint: "Handed over by a candidate before joining: passport copy, photo, certificates. Required ones are checked before adding them as an employee." },
   { appliesTo: "VEHICLE", title: "Vehicle documents", hint: "Filed against a vehicle: Mulkiya, insurance, passing test, permits and more." },
 ] as const;
 

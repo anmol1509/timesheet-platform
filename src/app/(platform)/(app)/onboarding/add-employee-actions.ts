@@ -11,6 +11,8 @@ import { refsBelongToBranch } from "@/lib/refScope";
 import { initialsOf, nextEmployeeId } from "@/lib/supplierRequests";
 import { checkEmployee } from "@/lib/dataChecks";
 import { employeeDuplicates } from "@/lib/duplicateCheck";
+import { candidateDocStatus } from "@/lib/candidateDocs";
+import { resolveDocTypes } from "@/lib/documentTypes";
 import { employeeDocType, missingEssentials, payFieldsFor, type PayChoice } from "@/lib/onboardingEmployee";
 
 export type AddEmployeeState = { error: string | null; warnings?: string[]; employeeId?: string; copiedFiles?: number };
@@ -41,6 +43,7 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
   const candidate = await prisma.candidateOnboarding.findUnique({ where: { id } });
   if (!candidate || isOutsideBranch(candidate.branchId, branchId, isSuperAdmin)) return { error: "You can't add that candidate." };
   if (candidate.joined) return { error: "This candidate has already been added as an employee." };
+  if (candidate.droppedAt) return { error: "This candidate was dropped. Bring them back first if they are joining after all." };
   if (!candidate.readyToJoin && formData.get("earlyConfirm") !== "1") {
     return { error: "This candidate's steps aren't complete yet. Tick the box to confirm you are adding them early." };
   }
@@ -55,6 +58,11 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
   if (!(await refsBelongToBranch(candidate.branchId, { supplier: [supplierId, sponsorSupplierId], project: projectId }))) {
     return { error: "That company, sponsor or project isn't in this branch." };
   }
+
+  // A hire joins, and is sponsored by, one of the branch's own companies: never the agency or another supplier.
+  const ownIds = [supplierId, sponsorSupplierId].filter((v): v is string => !!v);
+  const ownCount = await prisma.supplier.count({ where: { id: { in: ownIds }, isOwnCompany: true, branchId: candidate.branchId } });
+  if (ownCount !== new Set(ownIds).size) return { error: "The company and the visa sponsor must be your own companies. Add one under My Companies if it is missing." };
 
   // Pay is only taken from people allowed to set it; anyone else leaves it for payroll.
   let payFields: Record<string, unknown> = {};
@@ -78,7 +86,13 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
       employeeDuplicates({ emiratesId: facts.emiratesId, passportNumber, mobileNumber: facts.mobileNumber }),
       passportNumber ? prisma.candidateOnboarding.findFirst({ where: { branchId: candidate.branchId, id: { not: id }, passportNumber: { equals: passportNumber, mode: "insensitive" } }, select: { candidateName: true } }) : null,
     ]);
+    const [typeRows, handedOver] = await Promise.all([
+      prisma.documentType.findMany({ where: { branchId: candidate.branchId, appliesTo: "CANDIDATE" } }),
+      prisma.attachment.findMany({ where: { entityType: "CANDIDATE_ONBOARDING", entityId: id }, select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true } }),
+    ]);
+    const docs = candidateDocStatus(resolveDocTypes(typeRows, "CANDIDATE"), handedOver.map((f) => ({ ...f, expiryDate: f.expiryDate?.toISOString() ?? null, uploadedAt: f.uploadedAt.toISOString() })));
     const warnings = [
+      ...(docs.missing.length > 0 ? [`Required documents not on file: ${docs.missing.join(", ")}.`] : []),
       ...checkEmployee({ ...facts, basicSalary: null }, null),
       ...dups,
       ...(otherCandidate ? [`Another candidate on the board, ${otherCandidate.candidateName}, has this passport number.`] : []),

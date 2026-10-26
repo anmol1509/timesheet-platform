@@ -73,6 +73,12 @@ export async function uploadAttachmentAction(
     if (entityType !== "SUPPLIER" && !known) return { error: "Choose one of the listed document types." };
     if (known && !known.isActive) return { error: `"${known.label}" is switched off for this branch.` };
   }
+  // A candidate's file is a listed candidate document or a stage's own paper (offer, entry permit...); only a switched-off type is refused.
+  if (entityType === "CANDIDATE_ONBOARDING") {
+    const rows = entityBranchId ? await prisma.documentType.findMany({ where: { branchId: entityBranchId } }) : [];
+    const known = resolveDocTypes(rows, "CANDIDATE").find((t) => t.key === docType);
+    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this branch.` };
+  }
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file to upload." };
   }

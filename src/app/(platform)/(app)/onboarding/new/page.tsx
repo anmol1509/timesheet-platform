@@ -9,9 +9,9 @@ export const metadata = { title: "New candidate" };
 
 export default async function NewCandidatePage() {
   const { branchId } = await requireUserWithBranch();
-  const [agencies, agencyContacts, projects, demandRequests, hrUsers] = await Promise.all([
-    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
+  const [agencies, sponsors, agencyContacts, projects, demandRequests, hrUsers] = await Promise.all([
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isRecruitmentAgency: true, OR: [{ status: "ACTIVE" }] }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: true, status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({ where: branchWhere(branchId), select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
     prisma.demandRequest.findMany({
       where: branchWhere(branchId),
@@ -29,7 +29,7 @@ export default async function NewCandidatePage() {
         icon={FilePlus2}
         description={<>Start tracking a candidate an agency has put forward. Nothing here creates an Employee record — that happens once they join.</>}
       />
-      <CandidateForm agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
+      <CandidateForm sponsors={sponsors} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
     </div>
   );
 }

@@ -367,17 +367,21 @@ export function daysSince(date: Date): number {
 }
 
 /** A one-line summary of where a candidate stands, for list rows and headers. */
-export function overallStatusLabel(row: OnboardingStatuses & { joined: boolean; readyToJoin: boolean }): string {
+export function overallStatusLabel(row: OnboardingStatuses & { joined: boolean; readyToJoin: boolean; dropped?: boolean }): string {
   if (row.joined) return "Joined";
+  if (row.dropped) return "Dropped";
   if (row.readyToJoin) return "Ready to join";
   const stage = currentStage(row);
   return stage ? `${statusKind(stage, row[stage.field]) === "issue" ? "Blocked at" : "At"} ${stage.label}` : "In progress";
 }
 
+/** Since when a candidate has been at their current stage: their last stage change, or when they were added. Saving the record doesn't move it. */
+export const pendingSince = (row: { lastStageChangeAt?: Date | null; createdAt: Date }): Date => row.lastStageChangeAt ?? row.createdAt;
+
 /** Whether a candidate has been sitting at their current stage longer than
  * that stage's typical turnaround — the dashboard's overdue flag. */
-export function isOverdue(row: OnboardingStatuses & { joined: boolean }, sinceUpdatedAt: Date): boolean {
-  if (row.joined) return false;
+export function isOverdue(row: OnboardingStatuses & { joined: boolean; dropped?: boolean }, sinceUpdatedAt: Date): boolean {
+  if (row.joined || row.dropped) return false;
   const stage = currentStage(row);
   if (!stage) return false;
   return daysSince(sinceUpdatedAt) > stage.slaDays;
@@ -397,4 +401,24 @@ export function pendingPapers(row: OnboardingStatuses): Stage[] {
 /** True when the person is here (or already an employee) but their medical, visa or labour card isn't finished. */
 export function papersPending(row: OnboardingStatuses & { joined: boolean }): boolean {
   return papersApply(row) && pendingPapers(row).length > 0;
+}
+
+/**
+ * Earlier steps that are not finished when a later one is being moved forward, so the screen can ask "are you sure?" before a
+ * step is recorded out of order (arrived without an entry permit, medical done before the offer). Moving a step back to its
+ * first status, switching an optional step off, or recording a problem (rejected, no-show) never warns. Arrival papers warn
+ * when the person has not arrived or had their permit transferred yet.
+ */
+export function skippedSteps(row: OnboardingStatuses & { joined: boolean }, stageKey: StageKey, newStatus: string): string[] {
+  const stage = STAGE_BY_KEY[stageKey];
+  if (!stage) return [];
+  const kind = statusKind(stage, newStatus);
+  if (kind === "pending" || kind === "issue" || newStatus === "Not Required" || newStatus === "Not Needed") return [];
+  const pipeline = stagesFor(row.candidateType);
+  const at = pipeline.findIndex((s) => s.key === stageKey);
+  if (at >= 0) return pipeline.slice(0, at).filter((s) => !isStageDone(s, row[s.field])).map((s) => s.label);
+  if (AFTER_ARRIVAL_STAGES.some((s) => s.key === stageKey) && !papersApply(row)) {
+    return [asCandidateType(row.candidateType) === "INSIDE_UAE" ? "Permit Transfer" : "Arrival"];
+  }
+  return [];
 }

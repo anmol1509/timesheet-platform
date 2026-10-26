@@ -262,8 +262,8 @@ export async function getOperationsSnapshot(
       : null,
     allow.onboarding
       ? Promise.all([
-          prisma.candidateOnboarding.count({ where: { ...bw, joined: false } }),
-          prisma.candidateOnboarding.count({ where: { ...bw, joined: false, readyToJoin: true } }),
+          prisma.candidateOnboarding.count({ where: { ...bw, joined: false, droppedAt: null } }),
+          prisma.candidateOnboarding.count({ where: { ...bw, joined: false, readyToJoin: true, droppedAt: null } }),
         ]).then(([inProgress, readyToJoin]) => ({ inProgress, readyToJoin }))
       : null,
     allow.employees

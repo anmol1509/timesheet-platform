@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireUserWithBranch } from "@/lib/auth";
+import { requireUserWithBranch, subjectOf } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { DocumentChecklist } from "@/components/DocumentChecklist";
+import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
+import { CostPanel } from "../cost-panel";
 import { branchWhere } from "@/lib/branch";
 import { isOutsideBranch } from "@/lib/branch";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -12,13 +16,15 @@ import { CandidateForm } from "../candidate-form";
 import { StageRow } from "../stage-row";
 import { JoinPanel } from "../join-panel";
 import { Pipeline } from "../pipeline";
+import { DropPanel } from "../drop-panel";
 import { deleteCandidateAction } from "../actions";
 
 export const metadata = { title: "Candidate" };
 
 export default async function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const showCosts = can(subjectOf(user), "finance", "view");
 
   const candidate = await prisma.candidateOnboarding.findUnique({
     where: { id },
@@ -26,9 +32,9 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
   });
   if (!candidate || isOutsideBranch(candidate.branchId, branchId, isSuperAdmin)) notFound();
 
-  const [agencies, agencyContacts, projects, demandRequests, hrUsers, history, attachments, tasks] = await Promise.all([
-    prisma.supplier.findMany({ where: branchWhere(branchId), select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
+  const [agencies, sponsors, agencyContacts, projects, demandRequests, hrUsers, history, attachments, tasks, typeRows, costs] = await Promise.all([
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isRecruitmentAgency: true, OR: [{ status: "ACTIVE" }, { id: candidate.agencyId ?? "" }] }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.supplier.findMany({ where: { ...branchWhere(branchId), isOwnCompany: true, status: "ACTIVE" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),    prisma.agencyContact.findMany({ where: branchWhere(branchId), select: { id: true, name: true, agencyId: true }, orderBy: { name: "asc" } }),
     prisma.project.findMany({ where: branchWhere(branchId), select: { id: true, name: true, code: true }, orderBy: { name: "asc" } }),
     prisma.demandRequest.findMany({
       where: branchWhere(branchId),
@@ -51,7 +57,12 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
       where: { onboardingId: id },
       include: { owner: { select: { name: true } } },
     }),
+    prisma.documentType.findMany({ where: { branchId: candidate.branchId, appliesTo: "CANDIDATE" } }),
+    showCosts ? prisma.candidateCost.findMany({ where: { onboardingId: id }, orderBy: { incurredOn: "desc" } }) : [],
   ]);
+  const docTypes = resolveDocTypes(typeRows, "CANDIDATE");
+  const checklist = buildChecklist(docTypes, attachments.map((a) => ({ ...a, expiryDate: a.expiryDate?.toISOString() ?? null, uploadedAt: a.uploadedAt.toISOString() })), false);
+  const stageDocOptions = [...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => ({ value: s.key, label: `${s.label} (step paper)` }));
   const taskByStage = new Map(tasks.map((t) => [t.stage, { ownerId: t.ownerId, ownerName: t.owner?.name ?? null, dueDate: t.dueDate }]));
   const attachmentsByStage = new Map([...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => [s.key, attachments.filter((a) => a.docType === s.key).map((a) => ({ id: a.id, filename: a.filename }))]));
 
@@ -79,13 +90,14 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
           {CANDIDATE_TYPES.find((t) => t.value === asCandidateType(candidate.candidateType))?.label} · {candidate.trade ?? "No trade set"} · {candidate.agency?.name ?? "No agency"}
           {candidate.project ? ` · ${candidate.project.code} · ${candidate.project.name}` : ""}
           {" · "}
-          <span className="font-medium text-secondary">{overallStatusLabel(candidate)}</span>
+          <span className="font-medium text-secondary">{overallStatusLabel({ ...candidate, dropped: candidate.droppedAt !== null })}</span>
         </p>
       </div>
 
       <Pipeline row={candidate} joined={candidate.joined} />
 
-      <JoinPanel candidate={candidate} />
+      {!candidate.droppedAt && <JoinPanel candidate={candidate} />}
+      <DropPanel candidateId={candidate.id} joined={candidate.joined} droppedAt={candidate.droppedAt} droppedReason={candidate.droppedReason} />
 
       <div className="card overflow-hidden">
         <div className="border-b border-default px-4 py-3">
@@ -136,20 +148,32 @@ export default async function CandidateDetailPage({ params }: { params: Promise<
       </details>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-primary">Documents</p>
+        <p className="mb-2 text-sm font-medium text-primary">Candidate documents</p>
+        <DocumentChecklist items={checklist} />
+      </div>
+
+      {showCosts && (
+        <CostPanel
+          candidateId={candidate.id}
+          costs={costs.map((c) => ({ id: c.id, kind: c.kind, amount: Number(c.amount), incurredOn: c.incurredOn.toISOString().slice(0, 10), paid: c.paid, note: c.note }))}
+        />
+      )}
+
+      <div>
+        <p className="mb-2 text-sm font-medium text-primary">All files</p>
         <AttachmentUploader
           entityType="CANDIDATE_ONBOARDING"
           entityId={candidate.id}
           entityBranchId={candidate.branchId}
           revalidate={`/onboarding/${candidate.id}`}
-          docTypeOptions={[...[...STAGES, ...AFTER_ARRIVAL_STAGES].map((s) => ({ value: s.key, label: s.label })), { value: "PASSPORT", label: "Passport copy" }, { value: "OTHER", label: "Other" }]}
+          docTypeOptions={[...activeDocTypes(docTypes).map((t) => ({ value: t.key, label: t.label })), ...stageDocOptions]}
           attachments={attachments.map((a) => ({ ...a, expiryDate: a.expiryDate?.toISOString() ?? null, uploadedAt: a.uploadedAt.toISOString() }))}
         />
       </div>
 
       <div>
         <p className="mb-2 text-sm font-medium text-primary">Candidate details</p>
-        <CandidateForm candidate={candidate} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
+        <CandidateForm candidate={candidate} sponsors={sponsors} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
       </div>
 
       <div className="card overflow-x-auto">

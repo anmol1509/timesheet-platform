@@ -3,8 +3,8 @@
  * a branch changes a built-in type, or adds its own, with DocumentType rows (see `resolveDocTypes`). An Attachment
  * stores the type's key in `docType`.
  */
-export type DocAppliesTo = "SUPPLIER" | "SUPPLIER_PARTY" | "VEHICLE";
-export const DOC_TARGETS: readonly DocAppliesTo[] = ["SUPPLIER", "SUPPLIER_PARTY", "VEHICLE"];
+export type DocAppliesTo = "SUPPLIER" | "SUPPLIER_PARTY" | "VEHICLE" | "CANDIDATE";
+export const DOC_TARGETS: readonly DocAppliesTo[] = ["SUPPLIER", "SUPPLIER_PARTY", "VEHICLE", "CANDIDATE"];
 export type DocRequired = "NO" | "YES" | "OWN_COMPANY";
 
 export type DocTypeDef = {
@@ -68,6 +68,17 @@ const VEHICLE: Seed[] = [
   ["OTHER", "Other", true],
 ];
 
+/** What a candidate hands over before joining. Stage papers (offer, entry permit...) are filed under the stage's own key, not here. */
+const CANDIDATE: Seed[] = [
+  ["PASSPORT", "Passport copy", true, "YES"],
+  ["PHOTO", "Passport-size photo", false, "YES"],
+  ["EMIRATES_ID", "Emirates ID (inside-UAE hires)", true],
+  ["EDUCATION_CERT", "Education certificate", false],
+  ["TRADE_CERT", "Trade / skill certificate", false],
+  ["POLICE_CLEARANCE", "Police clearance", true],
+  ["OTHER", "Other", true],
+];
+
 /** Vehicle document types whose latest expiry also keeps the vehicle's own date fields current. */
 export const VEHICLE_EXPIRY_FIELD = { VEHICLE_REGISTRATION: "registrationExpiry", VEHICLE_INSURANCE: "insuranceExpiry" } as const;
 
@@ -85,7 +96,7 @@ function seeds(appliesTo: DocAppliesTo, list: Seed[]): DocTypeDef[] {
   }));
 }
 
-export const BUILT_IN_DOC_TYPES: DocTypeDef[] = [...seeds("SUPPLIER", COMPANY), ...seeds("SUPPLIER_PARTY", PARTY), ...seeds("VEHICLE", VEHICLE)];
+export const BUILT_IN_DOC_TYPES: DocTypeDef[] = [...seeds("SUPPLIER", COMPANY), ...seeds("SUPPLIER_PARTY", PARTY), ...seeds("VEHICLE", VEHICLE), ...seeds("CANDIDATE", CANDIDATE)];
 
 export type DocTypeRow = {
   appliesTo: string;

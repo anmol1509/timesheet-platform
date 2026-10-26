@@ -381,6 +381,8 @@ model Supplier {
   // distinction drives whose letterhead a document is issued on and who is
   // being billed rather than paid.
   isOwnCompany          Boolean      @default(false)
+  // A recruitment agency that puts candidates forward for onboarding. Kept apart from the suppliers that supply labour.
+  isRecruitmentAgency   Boolean      @default(false)
   // Same, for this supplier's own letterhead (used when it sponsors workers). Unset = the standard 65 / 35.
   letterheadTopMm       Int?
   letterheadBottomMm    Int?
@@ -449,7 +451,8 @@ model Supplier {
   notifications        SupplierNotification[]
   portalEnabled        Boolean                @default(false)
   bills                SupplierBill[]
-  candidateOnboardings CandidateOnboarding[]
+  candidateOnboardings CandidateOnboarding[] @relation("CandidateAgency")
+  sponsoredCandidates  CandidateOnboarding[] @relation("CandidateSponsor")
   agencyContacts       AgencyContact[]
   partyLinks           SupplierPartyLink[]
 
@@ -2538,8 +2541,18 @@ model CandidateOnboarding {
 
   remarks String?
 
-  agency   Supplier? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  agency   Supplier? @relation("CandidateAgency", fields: [agencyId], references: [id], onDelete: SetNull)
   agencyId String?
+
+  // The own company that sponsors the visa (and employs them). Replaces the free-text sponsorCompany, kept for older rows.
+  sponsorSupplier   Supplier? @relation("CandidateSponsor", fields: [sponsorSupplierId], references: [id], onDelete: SetNull)
+  sponsorSupplierId String?
+
+  // When the candidate last moved at a stage: what "days pending" and overdue count from (not the last time the record was saved).
+  lastStageChangeAt DateTime?
+  // Withdrawn, rejected or lost: out of the queue and the reminders, but kept for the agency's numbers. Cleared to bring them back.
+  droppedAt     DateTime?
+  droppedReason String?
 
   // The person at the agency handling this candidate — a reusable contact,
   // not free text, since the same coordinator typically handles many
@@ -2564,9 +2577,11 @@ model CandidateOnboarding {
 
   history    CandidateOnboardingHistory[]
   stageTasks CandidateOnboardingStageTask[]
+  costs      CandidateCost[]
 
   @@index([branchId])
   @@index([agencyId])
+  @@index([sponsorSupplierId])
   @@index([readyToJoin, joined])
   @@index([passportNumber])
   @@index([emiratesId])
@@ -3302,5 +3317,26 @@ model DocumentReminder {
   branchId  String
 
   @@unique([refKey, threshold])
+  @@index([branchId])
+}
+
+/// Money spent getting a candidate to the UAE and onto the payroll: the agency's fee, visa and permit fees, medical, the ticket.
+/// Seen by people with Finance access; added up per agency to show what each hire cost.
+model CandidateCost {
+  id         String   @id @default(cuid())
+  /// "AGENCY_FEE" | "VISA" | "MEDICAL" | "INSURANCE" | "TICKET" | "OTHER" (see src/lib/candidateCosts.ts)
+  kind       String
+  amount     Decimal  @db.Decimal(12, 2)
+  incurredOn DateTime @db.Date
+  paid       Boolean  @default(false)
+  note       String?
+  createdAt  DateTime @default(now())
+  createdBy  String?
+
+  onboarding   CandidateOnboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+  onboardingId String
+  branchId     String
+
+  @@index([onboardingId])
   @@index([branchId])
 }

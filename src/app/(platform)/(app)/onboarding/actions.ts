@@ -8,9 +8,10 @@ import { requireUserWithBranch, requireWrite } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
 import { logAudit } from "@/lib/audit";
 import { contactsError } from "@/lib/validators";
-import { STAGE_BY_KEY, asCandidateType, computeReadyToJoin, type StageKey } from "@/lib/onboarding";
+import { refsBelongToBranch } from "@/lib/refScope";
+import { STAGE_BY_KEY, asCandidateType, computeReadyToJoin, skippedSteps, type StageKey } from "@/lib/onboarding";
 
-type State = { error: string | null; ok?: boolean };
+type State = { error: string | null; ok?: boolean; /** Earlier steps still open: the person is asked to confirm before it is saved. */ skipped?: string[] };
 
 function stringOrNull(v: FormDataEntryValue | null) {
   const s = String(v || "").trim();
@@ -32,7 +33,7 @@ function profileFields(formData: FormData) {
     candidateName: stringOrNull(formData.get("candidateName")) ?? "",
     trade: stringOrNull(formData.get("trade")),
     nationality: stringOrNull(formData.get("nationality")),
-    sponsorCompany: stringOrNull(formData.get("sponsorCompany")),
+    sponsorSupplierId: stringOrNull(formData.get("sponsorSupplierId")),
     joiningTargetDate: dateOrNull(formData.get("joiningTargetDate")),
     phone: stringOrNull(formData.get("phone")),
     email: stringOrNull(formData.get("email")),
@@ -48,6 +49,24 @@ function profileFields(formData: FormData) {
     assignedHrId: stringOrNull(formData.get("assignedHrId")),
     remarks: stringOrNull(formData.get("remarks")),
   };
+}
+
+/**
+ * The agency must be a recruitment agency (and not blacklisted, unless it is the one the candidate already has), and the
+ * sponsor one of the branch's own companies. Returns the problem, or null.
+ */
+async function linkProblem(branchId: string, agencyId: string | null, sponsorSupplierId: string | null, keep?: { agencyId: string | null; sponsorSupplierId: string | null }): Promise<string | null> {
+  if (!(await refsBelongToBranch(branchId, { supplier: [agencyId, sponsorSupplierId] }))) return "That agency or company isn't in this branch.";
+  if (agencyId && agencyId !== keep?.agencyId) {
+    const a = await prisma.supplier.findUnique({ where: { id: agencyId }, select: { isRecruitmentAgency: true, status: true } });
+    if (!a?.isRecruitmentAgency) return "That isn't a recruitment agency. Add it under Onboarding → Agencies first.";
+    if (a.status !== "ACTIVE") return "That agency is blacklisted, so no new candidates can be added through it.";
+  }
+  if (sponsorSupplierId && sponsorSupplierId !== keep?.sponsorSupplierId) {
+    const c = await prisma.supplier.findUnique({ where: { id: sponsorSupplierId }, select: { isOwnCompany: true } });
+    if (!c?.isOwnCompany) return "The sponsor must be one of your own companies.";
+  }
+  return null;
 }
 
 /** A candidate with the same passport or Emirates ID already tracked (as
@@ -85,8 +104,10 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
   }
   const dupError = await findDuplicate(branchId, fields.passportNumber, fields.emiratesId);
   if (dupError) return { error: dupError };
+  const bad = await linkProblem(branchId, fields.agencyId, fields.sponsorSupplierId);
+  if (bad) return { error: bad };
 
-  const data = { ...fields, branchId };
+  const data = { ...fields, branchId, lastStageChangeAt: new Date() };
   const candidate = await prisma.candidateOnboarding.create({ data });
   await logAudit({
     entityType: "CANDIDATE_ONBOARDING",
@@ -119,6 +140,8 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
   if (!before) return { error: "Candidate not found." };
   const dupError = await findDuplicate(before.branchId, fields.passportNumber, fields.emiratesId, id);
   if (dupError) return { error: dupError };
+  const bad = await linkProblem(before.branchId, fields.agencyId, fields.sponsorSupplierId, before);
+  if (bad) return { error: bad };
 
   const updatedRow = await prisma.candidateOnboarding.update({ where: { id }, data: fields });
   // A different kind of hire has different steps, so whether they are ready to join has to be worked out again.
@@ -133,6 +156,7 @@ export async function updateCandidateAction(_prev: State, formData: FormData): P
       candidateType: before.candidateType,
       candidateName: before.candidateName, trade: before.trade, nationality: before.nationality, sponsorCompany: before.sponsorCompany,
       phone: before.phone, email: before.email, passportNumber: before.passportNumber, emiratesId: before.emiratesId, remarks: before.remarks,
+      agencyId: before.agencyId, sponsorSupplierId: before.sponsorSupplierId,
     },
     after: fields,
     userId: user.id,
@@ -167,12 +191,14 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
   const candidate = await prisma.candidateOnboarding.findUnique({ where: { id } });
   if (!candidate) return { error: "Candidate not found." };
   const oldStatus = candidate[stage.field];
+  const skipped = skippedSteps(candidate, stageKey, newStatus);
+  if (skipped.length > 0 && formData.get("confirmSkip") !== "1") return { error: null, skipped };
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.candidateOnboardingHistory.create({
       data: { onboardingId: id, stage: stage.key, oldStatus, newStatus, statusDate, referenceNo, expiryDate, remarks, updatedById: user.id },
     });
-    return tx.candidateOnboarding.update({ where: { id }, data: { [stage.field]: newStatus } });
+    return tx.candidateOnboarding.update({ where: { id }, data: { [stage.field]: newStatus, lastStageChangeAt: new Date() } });
   });
 
   const readyToJoin = computeReadyToJoin(updated);
@@ -185,7 +211,7 @@ export async function updateStageAction(_prev: State, formData: FormData): Promi
     entityId: id,
     action: "UPDATE",
     before: { [stage.field]: oldStatus },
-    after: { [stage.field]: newStatus },
+    after: { [stage.field]: newStatus, ...(skipped.length > 0 ? { recordedBeforeEarlierSteps: skipped.join(", ") } : {}) },
     userId: user.id,
     userName: user.name,
     branchId: candidate.branchId,
@@ -218,23 +244,26 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
   }
 
   const existing = await findSupplierByName(name, branchId);
-  if (existing) return { error: "A supplier with that name already exists — search for it instead." };
+  if (existing) return { error: "A supplier with that name already exists. If it is a recruitment agency, add it from Onboarding → Agencies (Add an existing supplier)." };
 
   const code = await uniqueSupplierCode(name, branchId);
   const contactPhone = stringOrNull(formData.get("phone"));
   const contactEmail = stringOrNull(formData.get("email"));
-  const created = await prisma.supplier.create({ data: { name, code, branchId, contactPhone, contactEmail } });
+  const country = stringOrNull(formData.get("country"));
+  const tradeLicenseNumber = stringOrNull(formData.get("licence"));
+  const created = await prisma.supplier.create({ data: { name, code, branchId, contactPhone, contactEmail, country, tradeLicenseNumber, isRecruitmentAgency: true, category: "Recruitment agency" } });
   await logAudit({
     entityType: "SUPPLIER",
     entityId: created.id,
     action: "CREATE",
-    after: { name, code, contactPhone, contactEmail },
+    after: { name, code, contactPhone, contactEmail, country, tradeLicenseNumber, recruitmentAgency: true },
     userId: user.id,
     userName: user.name,
     branchId,
   });
 
   revalidatePath("/onboarding");
+  revalidatePath("/onboarding/agencies");
   revalidatePath("/suppliers");
   return { error: null, agency: { id: created.id, name: created.name } };
 }
@@ -251,7 +280,7 @@ export async function createAgencyContactAction(_prev: CreateContactResult, form
   } catch (e) {
     return { error: e instanceof Error ? e.message : "That phone number or email doesn't look right." };
   }
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const agencyId = String(formData.get("agencyId") || "");
   const name = stringOrNull(formData.get("name"));
   if (!agencyId) return { error: "Choose an agency first." };
@@ -269,6 +298,7 @@ export async function createAgencyContactAction(_prev: CreateContactResult, form
       branchId: agency.branchId,
     },
   });
+  await logAudit({ entityType: "SUPPLIER", entityId: agencyId, action: "UPDATE", after: { agencyContact: name }, userId: user.id, userName: user.name, branchId: agency.branchId });
   revalidatePath("/onboarding");
   revalidatePath("/onboarding/new");
   return { error: null, contact: { id: contact.id, name: contact.name } };
@@ -314,7 +344,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
 
   const agencyNames = [...new Set(rows.map((r) => (r["Agency"] || "").trim()).filter(Boolean))];
   const agencies = agencyNames.length
-    ? await prisma.supplier.findMany({ where: { name: { in: agencyNames }, ...(isSuperAdmin ? {} : { branchId }) }, select: { id: true, name: true } })
+    ? await prisma.supplier.findMany({ where: { name: { in: agencyNames }, isRecruitmentAgency: true, status: "ACTIVE", ...(isSuperAdmin ? {} : { branchId }) }, select: { id: true, name: true } })
     : [];
   const agencyByName = new Map(agencies.map((a) => [a.name.toLowerCase(), a.id]));
 
@@ -350,7 +380,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
       }
       const agencyRaw = (r["Agency"] || "").trim();
       if (agencyRaw && !agencyByName.has(agencyRaw.toLowerCase())) {
-        results.push({ row: i + 2, status: "error", message: `Agency "${agencyRaw}" not found — add it under Suppliers first.` });
+        results.push({ row: i + 2, status: "error", message: `Agency "${agencyRaw}" isn't a recruitment agency on file — add it under Onboarding → Agencies first.` });
         continue;
       }
       const data = {
@@ -363,6 +393,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
         emiratesId,
         agencyId: agencyRaw ? (agencyByName.get(agencyRaw.toLowerCase()) ?? null) : null,
         branchId,
+        lastStageChangeAt: new Date(),
       };
       const created = await prisma.candidateOnboarding.create({ data });
       await logAudit({ entityType: "CANDIDATE_ONBOARDING", entityId: created.id, action: "CREATE", after: data, userId: user.id, userName: user.name, branchId });
@@ -374,6 +405,40 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
 
   revalidatePath("/onboarding");
   return results;
+}
+
+/** Takes a candidate out of the queue and the reminders (withdrew, was rejected, didn't turn up), keeping them for the agency's numbers. */
+export async function dropCandidateAction(_prev: State, formData: FormData): Promise<State> {
+  await requireWrite("onboarding.tracker");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("id") || "");
+  if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return { error: "You can't edit that candidate." };
+  const reason = stringOrNull(formData.get("reason"));
+  if (!reason) return { error: "Say why — for example withdrew, failed the trade test, or didn't arrive." };
+  const c = await prisma.candidateOnboarding.findUnique({ where: { id }, select: { joined: true, droppedAt: true, branchId: true } });
+  if (!c) return { error: "Candidate not found." };
+  if (c.joined) return { error: "This candidate has already joined as an employee." };
+  await prisma.candidateOnboarding.update({ where: { id }, data: { droppedAt: new Date(), droppedReason: reason.slice(0, 200) } });
+  await logAudit({ entityType: "CANDIDATE_ONBOARDING", entityId: id, action: "UPDATE", before: { dropped: false }, after: { dropped: true, reason }, userId: user.id, userName: user.name, branchId: c.branchId });
+  revalidatePath(`/onboarding/${id}`);
+  revalidatePath("/onboarding");
+  revalidatePath("/onboarding/agencies");
+  return { error: null, ok: true };
+}
+
+/** Brings a dropped candidate back into the queue; the clock restarts from now so they aren't instantly overdue. */
+export async function reinstateCandidateAction(formData: FormData) {
+  await requireWrite("onboarding.tracker");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const id = String(formData.get("id") || "");
+  if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return;
+  const c = await prisma.candidateOnboarding.findUnique({ where: { id }, select: { droppedAt: true, branchId: true } });
+  if (!c?.droppedAt) return;
+  await prisma.candidateOnboarding.update({ where: { id }, data: { droppedAt: null, droppedReason: null, lastStageChangeAt: new Date() } });
+  await logAudit({ entityType: "CANDIDATE_ONBOARDING", entityId: id, action: "UPDATE", before: { dropped: true }, after: { dropped: false }, userId: user.id, userName: user.name, branchId: c.branchId });
+  revalidatePath(`/onboarding/${id}`);
+  revalidatePath("/onboarding");
+  revalidatePath("/onboarding/agencies");
 }
 
 export async function deleteCandidateAction(formData: FormData) {

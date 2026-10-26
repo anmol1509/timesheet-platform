@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { notifyUsers } from "@/lib/notifications/notify";
-import { currentStage, isOverdue } from "@/lib/onboarding";
+import { currentStage, isOverdue, pendingSince } from "@/lib/onboarding";
 
 export const dynamic = "force-dynamic";
 
@@ -24,14 +24,14 @@ export async function GET(request: Request) {
   }
 
   const candidates = await prisma.candidateOnboarding.findMany({
-    where: { joined: false },
+    where: { joined: false, droppedAt: null },
     include: {
       agency: { select: { name: true } },
       stageTasks: { select: { stage: true, ownerId: true } },
     },
   });
 
-  const overdue = candidates.filter((c) => isOverdue(c, c.updatedAt));
+  const overdue = candidates.filter((c) => isOverdue(c, pendingSince(c)));
   if (overdue.length === 0) {
     return NextResponse.json({ ranAt: new Date().toISOString(), overdueCount: 0 });
   }
