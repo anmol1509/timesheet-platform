@@ -7,7 +7,7 @@ import type { ApplyCtx, ApplyResult, Fix, Fixable, ImportNote, MappedRow, NewSup
 import { auditor, clean, parseLooseDate } from "./shared";
 import { parsePayCells, parseWorkTerms, payColumns, payFieldsFor } from "@/lib/payFields";
 
-const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber"] as const;
+const TEXT = ["mobileNumber", "passportNumber", "emiratesId", "laborCardNumber", "c3Id"] as const;
 const DATES: [key: string, label: string][] = [
   ["dateOfBirth", "Date of birth"],
   ["joinDate", "Joining date"],

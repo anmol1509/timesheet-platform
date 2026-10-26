@@ -46,6 +46,7 @@ const WORKERS: FieldDef[] = [
   { key: "emiratesIdExpiry", label: "Emirates ID expiry", aliases: ["eid expiry", "emirates id expiry", "eid exp", "emirates id expiry date"] },
   { key: "visaExpiry", label: "Visa expiry", aliases: ["visa expiry", "visa exp", "visa expiry date", "residence expiry"] },
   { key: "laborCardNumber", label: "Labour card number", aliases: ["labour card", "labor card", "labour card no", "labor card no", "work permit", "work permit no", "mol no"] },
+  { key: "c3Id", label: "C3 ID", aliases: ["c3", "c3 id", "c3 no", "c3 number", "c3 card", "c3 card no", "salary card", "salary card no", "emp id c3", "c3 emp id"] },
   { key: "laborCardExpiry", label: "Labour card expiry", aliases: ["labour card expiry", "labor card expiry", "work permit expiry", "wp expiry"] },
   { key: "payStructure", label: "Pay structure", aliases: ["pay structure", "salary type", "pay type", "salary structure", "structure"] },
   { key: "payRate", label: "Pay rate", aliases: ["pay rate", "rate", "salary", "basic salary", "basic", "monthly salary", "monthly rate", "hourly rate", "wage"] },

@@ -69,6 +69,11 @@ export function RunControls({
             <Download className="h-4 w-4" aria-hidden /> C3 file
           </ExportLink>
         )}
+        {status !== "DRAFT" && canExport && (
+          <ExportLink className="btn btn-secondary" href={`/api/payroll/${id}/wps-sheet`} title="The payroll sheet that goes with the bank file: company, MOL ID, then each worker's work permit, personal number, bank and pay.">
+            <Download className="h-4 w-4" aria-hidden /> WPS payroll sheet
+          </ExportLink>
+        )}
         <a className="btn btn-secondary" href={`/payroll/${id}/payslips`} target="_blank" rel="noreferrer">
           <FileText className="h-4 w-4" aria-hidden /> Payslips
         </a>

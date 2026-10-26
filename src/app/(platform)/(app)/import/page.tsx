@@ -25,7 +25,7 @@ const TONE: Record<Tone, string> = {
 };
 
 /** One tile per thing you can bring in. `kind` is the importer; Documents has its own flow. */
-const TILES: { kind: ImportKind | "DOCUMENTS"; icon: LucideIcon; tone: Tone; label: string; short: string; href: string }[] = [
+const TILES: { kind: ImportKind | "DOCUMENTS" | "C3"; icon: LucideIcon; tone: Tone; label: string; short: string; href: string }[] = [
   { kind: "TIMESHEETS", icon: CalendarClock, tone: "error", label: "Timesheets", short: "Monthly workbook. Reads suppliers, clients, workers and hours.", href: "/import/new/timesheets" },
   { kind: "WORKERS", icon: HardHat, tone: "warning", label: "Workers", short: "Codes, trades, passport, Emirates ID, visa and labour card dates.", href: "/import/new/workers" },
   { kind: "SUPPLIERS", icon: Truck, tone: "success", label: "Suppliers", short: "Manpower suppliers and sub-suppliers, with contacts.", href: "/import/new/suppliers" },
@@ -33,6 +33,7 @@ const TILES: { kind: ImportKind | "DOCUMENTS"; icon: LucideIcon; tone: Tone; lab
   { kind: "CAMPS", icon: Home, tone: "success", label: "Camps", short: "Camps with their rooms and beds. Beds are optional.", href: "/import/new/camps" },
   { kind: "VEHICLES", icon: Bus, tone: "info", label: "Vehicles", short: "Vehicles and drivers, with Mulkiya and insurance dates.", href: "/import/new/vehicles" },
   { kind: "MOBILISATION", icon: Briefcase, tone: "warning", label: "Mobilisation", short: "Where each worker is deployed today: client, project, stage.", href: "/import/new/mobilisation" },
+  { kind: "C3", icon: Zap, tone: "info", label: "C3 IDs", short: "Upload a sheet of worker names and C3 IDs and link them to existing workers.", href: "/import/new/c3" },
   { kind: "DOCUMENTS", icon: FileStack, tone: "brand", label: "Documents", short: "Passports, IDs and visas in bulk. Drop files or a ZIP.", href: "/import/new/documents" },
 ];
 
@@ -100,7 +101,7 @@ export default async function ImportHubPage({ searchParams }: { searchParams: Pr
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {TILES.map((t) => {
-          const n = t.kind === "DOCUMENTS" ? undefined : held[t.kind];
+          const n = t.kind === "DOCUMENTS" || t.kind === "C3" ? undefined : held[t.kind];
           const last = lastOf(t.kind);
           return (
             <Link key={t.kind} href={t.href} className="card group flex flex-col gap-3 p-5 transition hover:border-[var(--brand-primary-border)] hover:shadow-md">
