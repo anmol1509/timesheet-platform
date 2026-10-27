@@ -591,6 +591,19 @@ async function ownCertificate(supplierId: string, attachmentId: string) {
 const wcRoster = (supplierId: string) => ({ OR: [{ supplierId }, { sponsorSupplierId: supplierId }] });
 
 /**
+ * Everyone a certificate of this company can be matched to: the workers of the company, of its parent and of every
+ * subsidiary under that parent (a certificate often names workers who sit under a sister company), and those any of
+ * them sponsor. Counts on the company page still use its own roster; this is for matching and linking names.
+ */
+async function wcFamilyRoster(supplierId: string) {
+  const s = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { parentSupplierId: true } });
+  const rootId = s?.parentSupplierId ?? supplierId;
+  const kids = await prisma.supplier.findMany({ where: { parentSupplierId: rootId }, select: { id: true } });
+  const ids = [...new Set([rootId, supplierId, ...kids.map((k) => k.id)])];
+  return { OR: [{ supplierId: { in: ids } }, { sponsorSupplierId: { in: ids } }] };
+}
+
+/**
  * Files a copy of the certificate on each worker's profile (Documents, type Insurance), so it is there without anyone
  * uploading it again. One copy per worker per certificate: filing again only refreshes the name and expiry.
  */
@@ -663,7 +676,7 @@ export async function linkWorkmenCompCoverageAction(supplierId: string, names: s
   if (!certificate) return { linked: 0, unmatched: [] };
   const named = names.map((n) => ({ raw: n.trim(), key: nameKey(n) })).filter((n) => n.key);
   if (named.length === 0) return { linked: 0, unmatched: [] };
-  const workers = await prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, name: true } });
+  const workers = await prisma.employee.findMany({ where: await wcFamilyRoster(supplierId), select: { id: true, name: true } });
   // Same name in any word order ("Khan Ali" / "Ali Khan"), ignoring case, titles and punctuation.
   const found = workers.filter((w) => named.some((n) => sameName(n.raw, w.name)));
   const unmatched = [...new Set(named.filter((n) => !workers.some((w) => sameName(n.raw, w.name))).map((n) => n.raw))];
@@ -676,7 +689,7 @@ export async function linkWorkmenCompCoverageAction(supplierId: string, names: s
   return { linked: found.length, unmatched };
 }
 
-export type WcWorker = { employeeId: string; employeeIdNo: string; name: string; active: boolean; linkedTo: "this" | "other" | null; otherFile: string | null };
+export type WcWorker = { employeeId: string; employeeIdNo: string; name: string; active: boolean; linkedTo: "this" | "other" | null; otherFile: string | null; trade: string | null; /** The company they sit under (shown when it is not this one). */ company: string | null; /** Whether this company itself employs or sponsors them. */ own: boolean };
 export type WcNameRow = { name: string; candidates: WcWorker[]; /** Workers with a close but not identical name, offered when nobody matches exactly. */ suggestions: WcWorker[]; /** Workers of other companies with the same name, so the same person is not added twice by mistake. */ elsewhere: { name: string; employeeIdNo: string; company: string | null }[] };
 export type WcWorkers = {
   /** The names on the certificate; null when they were not kept (a certificate from before) and can be read again. */
@@ -694,7 +707,7 @@ export async function getWorkmenCompWorkersAction(supplierId: string, attachment
   if (!cert) return { error: "Certificate not found." };
   const [stored, workers, policies] = await Promise.all([
     prisma.attachment.findUnique({ where: { id: attachmentId }, select: { insuredNames: true } }),
-    prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, employeeIdNo: true, name: true, active: true, wcAttachmentId: true }, orderBy: { name: "asc" } }),
+    prisma.employee.findMany({ where: await wcFamilyRoster(supplierId), select: { id: true, employeeIdNo: true, name: true, active: true, wcAttachmentId: true, trade: true, supplierId: true, sponsorSupplierId: true, supplier: { select: { name: true } } }, orderBy: { name: "asc" } }),
     prisma.attachment.findMany({ where: { entityType: "SUPPLIER", entityId: supplierId, docType: { in: WC_TYPES } }, select: { id: true, filename: true } }),
   ]);
   const file = new Map(policies.map((p) => [p.id, p.filename]));
@@ -702,6 +715,7 @@ export async function getWorkmenCompWorkersAction(supplierId: string, attachment
     employeeId: w.id, employeeIdNo: w.employeeIdNo, name: w.name, active: w.active,
     linkedTo: w.wcAttachmentId === attachmentId ? "this" : w.wcAttachmentId ? "other" : null,
     otherFile: w.wcAttachmentId && w.wcAttachmentId !== attachmentId ? file.get(w.wcAttachmentId) ?? "another policy" : null,
+    trade: w.trade, company: w.supplier?.name ?? null, own: w.supplierId === supplierId || w.sponsorSupplierId === supplierId,
   });
   const roster = workers.map(worker);
   const rawNames = Array.isArray(stored?.insuredNames) ? cleanNames(stored.insuredNames) : null;
@@ -726,8 +740,8 @@ export async function setWorkmenCompLinkAction(supplierId: string, attachmentId:
   await requireWrite("partners.suppliers");
   const { user } = await requireUserWithBranch();
   if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
-  const worker = await prisma.employee.findFirst({ where: { id: employeeId, ...wcRoster(supplierId) }, select: { id: true, name: true, wcAttachmentId: true } });
-  if (!worker) return { error: "That worker isn't one this company employs or sponsors." };
+  const worker = await prisma.employee.findFirst({ where: { id: employeeId, ...(await wcFamilyRoster(supplierId)) }, select: { id: true, name: true, wcAttachmentId: true } });
+  if (!worker) return { error: "That worker isn't one of this company's group (the company, its parent or its subsidiaries)." };
   if (linked) {
     await linkWorkersToCertificate(attachmentId, [employeeId], user.id);
   } else if (worker.wcAttachmentId === attachmentId) {
@@ -747,7 +761,7 @@ export async function setWorkmenCompLinkAction(supplierId: string, attachmentId:
  * Adds a name from the certificate as a worker of this company, with nothing else filled in, and links them to the policy.
  * They show as Incomplete on the Employees page until their details are added there.
  */
-export async function addWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, name: string): Promise<{ error?: string; employeeId?: string; created?: boolean }> {
+export async function addWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, name: string, force = false): Promise<{ error?: string; employeeId?: string; created?: boolean; duplicate?: boolean }> {
   await requireWrite("partners.suppliers");
   await requireWrite("workforce.employees");
   const { user } = await requireUserWithBranch();
@@ -758,10 +772,15 @@ export async function addWorkmenCompEmployeeAction(supplierId: string, attachmen
   const company = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true, isOwnCompany: true } });
   if (!company?.branchId) return { error: "Company not found." };
   // Someone already on the roster under this name is linked instead of added twice.
-  const roster = await prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, name: true } });
+  const roster = await prisma.employee.findMany({ where: await wcFamilyRoster(supplierId), select: { id: true, name: true } });
   const existing = roster.find((w) => sameName(w.name, clean));
   let employeeId = existing?.id;
   if (!existing) {
+    // The same name under a company outside this group: say so and let the person decide, instead of adding a second one.
+    if (!force) {
+      const twin = (await prisma.employee.findMany({ where: { branchId: company.branchId, active: true }, select: { name: true, employeeIdNo: true, supplier: { select: { name: true } } } })).find((o) => sameName(o.name, clean));
+      if (twin) return { error: `${twin.name} (${twin.employeeIdNo}${twin.supplier ? `, ${twin.supplier.name}` : ""}) already exists. Match this name to them instead, or add anyway if it is a different person.`, duplicate: true };
+    }
     const gen = await generateEmployeeIdAction(supplierId, null);
     if (!gen.id) return { error: gen.error ?? "Could not make an employee ID." };
     // Under one of your own companies the worker is its employee and sponsored by it, so both are filled in.
@@ -783,7 +802,7 @@ export async function addWorkmenCompEmployeeAction(supplierId: string, attachmen
 export async function undoWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, employeeId: string): Promise<{ error?: string }> {
   await requireWrite("partners.suppliers");
   if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
-  const w = await prisma.employee.findFirst({ where: { id: employeeId, ...wcRoster(supplierId) }, select: { id: true, createdAt: true } });
+  const w = await prisma.employee.findFirst({ where: { id: employeeId, ...(await wcFamilyRoster(supplierId)) }, select: { id: true, createdAt: true } });
   if (!w) return { error: "That worker isn't one this company employs or sponsors." };
   if (Date.now() - w.createdAt.getTime() > 24 * 3600_000) return { error: "This worker was added more than a day ago, so it can't be undone from here. Remove them from Employees if needed." };
   const res = await deleteEmployeesAction([employeeId]);

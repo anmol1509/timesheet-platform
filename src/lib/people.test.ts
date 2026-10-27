@@ -26,3 +26,10 @@ test("near names: a slipped letter or a missing middle name is suggested, a diff
   assert.deepEqual(nearPeople("Khan Mohammed Ali", [{ name: "Mohammed Ali Khan" }]), []); // same words in another order is an exact match
   assert.deepEqual(nearPeople("Omar Farooq", roster), []);
 });
+
+test("initials written apart or together are the same name", () => {
+  assert.equal(sameName("Chandan B K", "CHANDAN BK"), true);
+  assert.equal(sameName("K B Chandan", "Chandan BK"), false); // KB is not BK
+  assert.equal(sameName("Chandan B K", "Chandan Kumar"), false);
+  assert.equal(sameName("Khan Ali", "Ali Khan"), true);
+});

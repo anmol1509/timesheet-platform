@@ -14,8 +14,21 @@ export function normalizeName(name: string): string {
     .trim();
 }
 
-/** Same words in any order too ("Al Mansoori Khalid"), so a swapped family name still counts. */
-const key = (name: string) => normalizeName(name).split(" ").filter(Boolean).sort().join(" ");
+/**
+ * Same words in any order too ("Al Mansoori Khalid"), so a swapped family name still counts; and initials written apart
+ * or together are the same ("Chandan B K" and "Chandan BK").
+ */
+const key = (name: string) => {
+  const words: string[] = [];
+  let initials = "";
+  for (const w of normalizeName(name).split(" ").filter(Boolean)) {
+    if (w.length === 1) { initials += w; continue; }
+    if (initials) { words.push(initials); initials = ""; }
+    words.push(w);
+  }
+  if (initials) words.push(initials);
+  return words.sort().join(" ");
+};
 
 export const sameName = (a: string, b: string) => {
   const ka = key(a);
