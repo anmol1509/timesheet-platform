@@ -280,7 +280,7 @@ async function runForAdvances(runId: string, branchId: string | null, isSuperAdm
 }
 
 /** The advances one worker still owes, with what this run's month is set to take from each (for the Advances popup on a payroll run). */
-export async function loadRunAdvancesAction(runId: string, employeeId: string): Promise<{ error?: string; month?: string; canApply?: boolean; advances?: RunAdvance[] }> {
+export async function loadRunAdvancesAction(runId: string, employeeId: string): Promise<{ error?: string; month?: string; canApply?: boolean; typedAdvance?: number; advances?: RunAdvance[] }> {
   await requireView("payroll.payroll");
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
   const run = await runForAdvances(runId, branchId, isSuperAdmin);
@@ -298,7 +298,10 @@ export async function loadRunAdvancesAction(runId: string, employeeId: string): 
       };
     })
     .filter((a) => a.balance > 0);
-  return { month: run.month, canApply: run.status === "DRAFT" && !run.submittedAt, advances };
+  // An advance typed by hand on the worker's line (not from the plans) is replaced when the plans are applied here.
+  const line = await prisma.payrollLine.findFirst({ where: { runId: run.id, employeeId }, select: { advanceManual: true, loanDeduction: true } });
+  const typedAdvance = line?.advanceManual ? Number(line.loanDeduction) : 0;
+  return { month: run.month, canApply: run.status === "DRAFT" && !run.submittedAt, typedAdvance, advances };
 }
 
 /**

@@ -17,6 +17,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
   const router = useRouter();
   const [month, setMonth] = useState("");
   const [canApply, setCanApply] = useState(false);
+  const [typed, setTyped] = useState(0);
   const [advances, setAdvances] = useState<RunAdvance[] | null>(null);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
     start(async () => {
       const r = await loadRunAdvancesAction(runId, employeeId);
       if (r.error || !r.advances) { setError(r.error ?? "Could not load the advances."); return; }
-      setAdvances(r.advances); setMonth(r.month ?? ""); setCanApply(!!r.canApply);
+      setAdvances(r.advances); setMonth(r.month ?? ""); setCanApply(!!r.canApply); setTyped(r.typedAdvance ?? 0);
       setAmounts(Object.fromEntries(r.advances.map((a) => [a.id, a.planned ? String(a.planned) : ""])));
     });
   }
@@ -40,6 +41,8 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
     setError(null); setDone(null);
     const amount = Number(amounts[a.id] || 0);
     if (amount === a.planned) { setError(`${a.ref}: change the amount first.`); return; }
+    // An advance typed by hand on this worker's line is replaced by the plans once one is applied here.
+    if (typed > 0 && !window.confirm(`${name} has an advance of AED ${aed(typed)} typed by hand on this run. Applying here replaces it with what the advances' plans take. Continue?`)) return;
     setBusyId(a.id);
     start(async () => {
       const res = await applyRunAdvancesAction(runId, employeeId, [{ loanId: a.id, amount }]);
@@ -48,6 +51,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
       setDone(a.id);
       const r = await loadRunAdvancesAction(runId, employeeId);
       if (r.advances) setAdvances(r.advances);
+      setTyped(r.typedAdvance ?? 0);
       // The other rows keep what was typed in them; this one shows what is now planned.
       setAmounts((p) => ({ ...p, [a.id]: amount > 0 ? String(amount) : "" }));
       router.refresh();
