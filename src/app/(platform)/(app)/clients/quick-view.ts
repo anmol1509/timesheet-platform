@@ -75,7 +75,7 @@ export async function saveClientFieldAction(input: { id: string; field: string; 
   const { id, field } = input;
   if (!TEXT.has(field) && !DATES.has(field)) return { error: "That field can't be edited here." };
   const before = await prisma.client.findUnique({ where: { id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That client isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That client isn't in this company." };
 
   const raw = (input.value ?? "").trim();
   let value: string | Date | null = raw || null;
@@ -115,7 +115,7 @@ export async function applyClientScanAction(input: { id: string; fields: Extract
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!canWrite(subjectOf(user), SCOPE)) return { error: "You don't have permission to edit clients." };
   const before = await prisma.client.findUnique({ where: { id: input.id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That client isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That client isn't in this company." };
 
   // A client has no MOHRE permit.
   const { result, data, was } = planCompanyScan(before as Record<string, unknown>, input.fields, ["mohrePermitNumber"]);

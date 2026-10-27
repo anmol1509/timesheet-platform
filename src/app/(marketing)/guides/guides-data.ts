@@ -19,7 +19,7 @@ export const GUIDES = [
     slug: "setting-up-roles-permissions",
     title: "Setting Up Roles and Permissions for Your Team",
     description:
-      "The difference between super admin, branch admin and staff, and how to build a custom access role for exactly what one person should see.",
+      "The difference between super admin, admin and staff, and how to build a custom access role for exactly what one person should see.",
     date: "2026-09-20",
   },
 ] as const;

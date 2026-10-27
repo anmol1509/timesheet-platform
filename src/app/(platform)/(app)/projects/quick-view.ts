@@ -67,7 +67,7 @@ export async function saveProjectFieldAction(input: { id: string; field: string;
   const { id, field } = input;
   if (!FIELDS.has(field)) return { error: "That field can't be edited here." };
   const before = await prisma.project.findUnique({ where: { id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That project isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That project isn't in this company." };
 
   const raw = (input.value ?? "").trim();
   let value: string | number | Date | null = raw || null;
@@ -112,7 +112,7 @@ export async function saveProjectPersonAction(input: { id: string; person: strin
   if (!canWrite(subjectOf(user), SCOPE)) return { error: "You don't have permission to edit projects." };
   if (!PEOPLE.some((p) => p.key === input.person)) return { error: "That contact can't be edited here." };
   const before = await prisma.project.findUnique({ where: { id: input.id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That project isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That project isn't in this company." };
 
   try {
     const f = new FormData();

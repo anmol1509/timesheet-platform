@@ -52,8 +52,8 @@ export async function createSupplierAction(formData: FormData) {
     redirect(
       `/suppliers?error=${encodeURIComponent(
         isSuperAdmin
-          ? "Pick a branch from the switcher before adding a supplier."
-          : "Your account has no branch assigned. Contact an admin."
+          ? "Sign in as a company administrator before adding a supplier."
+          : "Your account has no company assigned. Contact an admin."
       )}`
     );
   }
@@ -420,7 +420,7 @@ export async function bulkImportSuppliersAction(rows: Record<string, string>[]):
   await requireWrite("partners.suppliers");
   const { user, branchId } = await requireUserWithBranch();
   if (!branchId) {
-    return rows.map((_, i) => ({ row: i + 2, status: "error" as const, message: "No branch selected to import into." }));
+    return rows.map((_, i) => ({ row: i + 2, status: "error" as const, message: "No company selected to import into." }));
   }
   const mapped = rows.map((r, i) => {
     const values: Record<string, string> = {};
@@ -505,7 +505,7 @@ export async function createEmployeesFromInsuranceAction(
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const errors: { row: number; message: string }[] = [];
   if (!branchId) {
-    return { created: 0, requested: rows.length, errors: [{ row: 0, message: "No branch selected to import into." }] };
+    return { created: 0, requested: rows.length, errors: [{ row: 0, message: "No company selected to import into." }] };
   }
 
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
@@ -644,7 +644,7 @@ export async function uploadWorkmenCompAction(formData: FormData): Promise<{ id?
   let names: string[] = [];
   try { names = cleanNames(JSON.parse(String(formData.get("names") || "[]"))); } catch { names = []; }
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
-  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "That supplier belongs to another branch." };
+  if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "That supplier belongs to another company." };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
   if (file.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
   if (!isAcceptedUploadType(file.type)) return { error: "Upload a PDF or a photo of the certificate." };

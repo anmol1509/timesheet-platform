@@ -19,7 +19,7 @@ export const metadata = { title: "My account" };
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super admin",
-  BRANCH_ADMIN: "Branch admin",
+  BRANCH_ADMIN: "Admin",
   STAFF: "Staff",
 };
 
@@ -58,7 +58,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <h2 className="mb-3 text-sm font-semibold text-primary">Access</h2>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-muted">Role</dt><dd className="text-primary">{ROLE_LABELS[user.role] ?? user.role}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-muted">Branch</dt><dd className="text-primary">{branch ? `${branch.code} · ${branch.name}` : "All branches"}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-muted">Company</dt><dd className="text-primary">{branch ? `${branch.code} · ${branch.name}` : "All companies"}</dd></div>
             {user.accessRole && <div className="flex justify-between gap-3"><dt className="text-muted">Permission set</dt><dd className="text-primary">{user.accessRole.name}</dd></div>}
           </dl>
           <p className="mt-3 text-xs text-muted">{unrestricted ? "You have access to every module you can see in the sidebar." : "Modules and actions your permission set allows:"}</p>

@@ -140,7 +140,7 @@ async function markFailure(endpointId: string, url: string, branchId: string, co
   const ep = await prisma.webhookEndpoint.update({ where: { id: endpointId }, data: { consecutiveFailures: { increment: 1 }, lastDeliveryAt: new Date(), lastStatusCode: code } });
   if (ep.isActive && ep.consecutiveFailures >= SWITCH_OFF_AFTER) {
     await prisma.webhookEndpoint.update({ where: { id: endpointId }, data: { isActive: false, disabledReason: `Switched off automatically after ${SWITCH_OFF_AFTER} failed deliveries in a row.` } });
-    const admins = await prisma.user.findMany({ where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId }] }, select: { id: true } });
+    const admins = await prisma.user.findMany({ where: { isActive: true, role: "BRANCH_ADMIN", branchId }, select: { id: true } });
     await notifyUsers({
       userIds: admins.map((a) => a.id),
       kind: "WEBHOOK_DISABLED",

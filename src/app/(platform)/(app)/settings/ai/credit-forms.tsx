@@ -14,7 +14,7 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
     <div className="grid gap-4 lg:grid-cols-2">
       <form action={setAction} className="card space-y-3 p-4">
         <h3 className="text-sm font-semibold text-primary">Monthly allowance</h3>
-        <p className="text-xs text-muted">What this branch gets each month. It starts again on the 1st (UAE time).</p>
+        <p className="text-xs text-muted">What this company gets each month. It starts again on the 1st (UAE time).</p>
         <input type="hidden" name="branchId" value={branchId} />
         <label className="block text-xs text-muted">Credits per month
           <input name="credits" inputMode="numeric" defaultValue={allowance} className="input mt-1 h-9 w-full text-sm" />

@@ -33,7 +33,7 @@ export async function createVehicleAction(formData: FormData) {
   const plateNumber = String(formData.get("plateNumber") || "").trim();
   if (!plateNumber) return;
   // A vehicle with no branch would be invisible to every branch-scoped user.
-  if (!branchId) redirect(`/transport?error=${encodeURIComponent("Pick a branch from the switcher first.")}`);
+  if (!branchId) redirect(`/transport?error=${encodeURIComponent("Sign in as a company administrator first.")}`);
   const type = stringOrNull(formData.get("type"));
 
   // Scoped to the branch: checking globally would report a clash with another

@@ -35,7 +35,7 @@ export async function loginAction(
     return { error: "Too many failed attempts. Try again in 15 minutes." };
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, include: { accessRole: { select: { permissions: true } } } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { accessRole: { select: { permissions: true } }, branch: { select: { suspendedAt: true } } } });
   if (!user || !verifyPassword(password, user.passwordHash)) {
     await prisma.otpChallenge.create({
       data: { kind: "STAFF_LOGIN", phone: key, codeHash: "-", expiresAt: new Date(Date.now() + LOCK_WINDOW_MS) },
@@ -45,6 +45,9 @@ export async function loginAction(
   await prisma.otpChallenge.deleteMany({ where: { kind: "STAFF_LOGIN", phone: key } });
   if (!user.isActive) {
     return { error: "This account has been suspended. Contact your administrator." };
+  }
+  if (user.role !== "SUPER_ADMIN" && user.branch?.suspendedAt) {
+    return { error: "Your company's account is suspended. Please contact sales@manpowersync.com." };
   }
 
   // Signing in again on this browser replaces whatever sign-in it already had.

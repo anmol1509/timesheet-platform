@@ -24,7 +24,7 @@ export const metadata: Metadata = finishMetadata({
 const PAGE_FAQS = [
   { q: "What does a manpower ERP include?", a: "Timesheets and attendance, payroll with a WPS export, client billing, projects, sites and demand tracking, documents and compliance, camps and transport, and portals for staff, employees and suppliers, all on one set of records." },
   { q: "Do we have to re-key our existing data?", a: "No. Employees and sites are imported from your existing sheets, and your current timesheet workbook can be uploaded as it is." },
-  { q: "Who can see salary and client data?", a: "Access is controlled by role and branch, so each person only sees the modules they need, and every create, edit and delete is recorded in the audit log." },
+  { q: "Who can see salary and client data?", a: "Access is controlled by role and company, so each person only sees the modules they need, and every create, edit and delete is recorded in the audit log." },
 ] as const;
 
 export default function ManpowerErpUaePage() {
@@ -81,7 +81,7 @@ export default function ManpowerErpUaePage() {
             { tone: "sky", icon: <FileCheck2 size={22} aria-hidden />, title: "A WPS file your bank accepts", body: "Bank details, salary structure and the SIF export come from the record.", list: ["Four-eyes approval", "Re-exportable file"] },
             { tone: "violet", icon: <Users size={22} aria-hidden />, title: "Three portals", body: "Staff, employee and supplier each sign in to their own view.", chips: ["Staff", "Employee", "Supplier"] },
             { span2: true, icon: <BedDouble size={22} aria-hidden />, title: "Camps and transport on the same records", body: "Bed-level occupancy, check-in history, vehicles and pickup routes, planned against the sites crews work at today.", image: { ...shot("sol-beds.webp", 1400, 940, "The bed allocation screen listing each worker with their camp, room and bed."), fade: true } },
-            { span2: true, icon: <ClipboardCheck size={22} aria-hidden />, title: "Roles, branches and a full audit trail", body: "Access is controlled by role and branch, and every create, edit and delete is recorded.", log: [{ what: "Payroll run approved", who: "By a second person" }, { what: "Employee bank details changed", who: "Recorded with who and when" }, { what: "Timesheet rate corrected", who: "Old and new value kept" }] },
+            { span2: true, icon: <ClipboardCheck size={22} aria-hidden />, title: "Roles, companies and a full audit trail", body: "Access is controlled by role and company, and every create, edit and delete is recorded.", log: [{ what: "Payroll run approved", who: "By a second person" }, { what: "Employee bank details changed", who: "Recorded with who and when" }, { what: "Timesheet rate corrected", who: "Old and new value kept" }] },
           ],
         },
         contrast: {

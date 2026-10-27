@@ -44,7 +44,7 @@ export async function resolveIssuer(opts: { branchId: string; isSuperAdmin: bool
 
   const company = await prisma.supplier.findFirst({ where: { id: companyId, isOwnCompany: true } });
   if (!company || company.branchId !== branchId || isOutsideBranch(company.branchId, branchId, isSuperAdmin)) {
-    return { error: "That company isn't one of your own companies in this branch. Pick another under \"Issued by\"." };
+    return { error: "That company isn't one of your own companies in this company. Pick another under \"Issued by\"." };
   }
   const letterhead = await buildLetterhead(companyHeaderFields(company));
   return { companyId: company.id, issuedTo: companyPrintedName(company), letterhead, xlsxLogo: letterhead.logo };
@@ -70,7 +70,7 @@ export async function getIssuerOptions(branchId: string | null, userId: string):
   const options = companies.map((c) => ({ id: c.id, name: companyPrintedName(c), gaps: headerGaps(c) }));
   return {
     companies: options,
-    branchName: branch?.issuedTo || branch?.name || "Branch details",
+    branchName: branch?.issuedTo || branch?.name || "Company details",
     defaultId: last?.issuedCompanyId && options.some((o) => o.id === last.issuedCompanyId) ? last.issuedCompanyId : null,
     reason: options.length > 0 ? "ok" : "none",
   };

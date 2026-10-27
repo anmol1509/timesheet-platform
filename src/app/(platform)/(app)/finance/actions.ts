@@ -17,7 +17,7 @@ import { exceedsApprovalLimit, isDuplicateBill, isDuplicateExpense } from "@/lib
 import { assertContactsValid, contactsError } from "@/lib/validators";
 
 type State = { error: string | null; ok?: boolean };
-const NEED_BRANCH = "Pick a branch from the switcher first.";
+const NEED_BRANCH = "Sign in as a company administrator first.";
 const money = (v: FormDataEntryValue | null) => {
   const n = Number(String(v ?? "").trim() || 0);
   return Number.isFinite(n) ? round2(n) : NaN;
@@ -42,7 +42,7 @@ export async function createExpenseAction(_prev: State, formData: FormData): Pro
   const projectId = str(formData.get("projectId")) || null;
   if (projectId) {
     const project = await prisma.project.findUnique({ where: { id: projectId }, select: { branchId: true } });
-    if (!project || project.branchId !== branchId) return { error: "That project isn't in this branch." };
+    if (!project || project.branchId !== branchId) return { error: "That project isn't in this company." };
   }
 
   // A re-keyed expense is the commonest finance error; ask before saving it twice.

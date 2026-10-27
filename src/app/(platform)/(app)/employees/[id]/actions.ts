@@ -241,7 +241,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       vehicle: changed(data.vehicleId, before.vehicleId),
     }))
   ) {
-    return { error: "That supplier, project or vehicle isn't part of this branch." };
+    return { error: "That supplier, project or vehicle isn't part of this company." };
   }
 
   if (before && data.supplierId && before.supplierId !== data.supplierId) {
@@ -372,13 +372,13 @@ export async function bulkImportEmployeesAction(rows: Record<string, string>[]) 
       continue;
     }
     if (!branchId) {
-      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
+      results.push({ row: i + 2, status: "error", message: "No company selected to import into." });
       continue;
     }
     try {
       const existing = await prisma.employee.findFirst({ where: { employeeIdNo: { equals: employeeIdNo, mode: "insensitive" } } });
       if (existing && isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) {
-        results.push({ row: i + 2, status: "error", message: "That ID belongs to a different branch." });
+        results.push({ row: i + 2, status: "error", message: "That ID belongs to a different company." });
         continue;
       }
       const categoryRaw = (r["Category"] || "").trim().toLowerCase();
@@ -519,7 +519,7 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ error:
   // from our own origin — an HTML or SVG upload would run as first-party
   // script. See src/lib/uploads.ts.
   if (!isAcceptedUploadType(file.type)) return { error: `"${file.name}" is not a supported file type. Use a PDF or an image.` };
-  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return { error: "That employee isn't in this branch." };
+  if (!(await assertEmployeeInBranch(employeeId, branchId, isSuperAdmin))) return { error: "That employee isn't in this company." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const created = await prisma.document.create({
@@ -812,7 +812,7 @@ export async function issueEmployeeInventoryAction(
   // Stock belongs to a branch too: the item and variant must be the employee's
   // own branch's, or one tenant could issue — and use up — another's inventory.
   if (!(await refsBelongToBranch(owner.branchId, { inventoryItem: itemId, inventoryVariant: stringOrNull(formData.get("variantId")) }))) {
-    return { error: "That item isn't part of this branch's inventory." };
+    return { error: "That item isn't part of this company's inventory." };
   }
 
   const quantity = numberOrNull(formData.get("quantity")) ?? 1;

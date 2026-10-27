@@ -154,8 +154,7 @@ export default async function SupplierDetailPage({
         <div className="rounded-b-3xl rounded-tr-3xl border border-default bg-surface p-5">
           {isSuperAdmin && !branchId && (
             <p className="mb-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
-              You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from
-              the switcher (top right) before editing or adding a subsidiary here.
+              You&apos;re viewing every company together. Sign in as a company administrator before editing or adding a subsidiary here.
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">

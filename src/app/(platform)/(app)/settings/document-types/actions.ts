@@ -18,7 +18,7 @@ const REQUIRED = new Set(["NO", "YES", "OWN_COMPANY"]);
 /** Creates a custom type, or saves the branch's changes to a built-in one (the row is created on first edit). */
 export async function saveDocumentTypeAction(formData: FormData): Promise<{ error?: string }> {
   const { admin, branchId } = await branchOf();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const appliesTo = String(formData.get("appliesTo") || "");
   const label = String(formData.get("label") || "").trim();
   const hasExpiry = formData.get("hasExpiry") === "on";

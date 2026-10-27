@@ -52,7 +52,7 @@ export async function recordAiUsage(input: { branchId: string | null | undefined
     const due = warningDue(status, { month: branch.aiWarnedMonth, level: branch.aiWarnedLevel });
     if (!due) return;
     await prisma.branch.update({ where: { id: input.branchId }, data: { aiWarnedMonth: status.month, aiWarnedLevel: due } });
-    const admins = await prisma.user.findMany({ where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId: input.branchId }] }, select: { id: true } });
+    const admins = await prisma.user.findMany({ where: { isActive: true, role: "BRANCH_ADMIN", branchId: input.branchId }, select: { id: true } });
     await notifyUsers({
       userIds: admins.map((a) => a.id),
       kind: "AI_CREDITS",
@@ -63,4 +63,22 @@ export async function recordAiUsage(input: { branchId: string | null | undefined
   } catch (e) {
     console.error("[ai-credits] record failed:", e instanceof Error ? e.message : e);
   }
+}
+
+/** After the total changes, the warnings start again from where the branch now stands, so a later 80% is announced again. */
+async function resetWarning(branchId: string) {
+  const s = await loadCreditStatus(branchId);
+  await prisma.branch.update({ where: { id: branchId }, data: { aiWarnedMonth: s.month, aiWarnedLevel: s.level === "out" ? 100 : s.level === "warn" ? 80 : 0 } });
+}
+
+/** A branch's monthly allowance, in credits. */
+export async function setBranchAllowance(branchId: string, credits: number): Promise<void> {
+  await prisma.branch.update({ where: { id: branchId }, data: { aiMonthlyCredits: credits } });
+  await resetWarning(branchId);
+}
+
+/** Extra credits for the current month, on top of the allowance. */
+export async function grantBranchCredits(branchId: string, credits: number, note: string | null, grantedById: string | null): Promise<void> {
+  await prisma.aiCreditGrant.create({ data: { branchId, credits, note, grantedById } });
+  await resetWarning(branchId);
 }

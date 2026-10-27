@@ -20,7 +20,7 @@ type Result = { error?: string };
 export async function savePartyOpeningAction(type: "CLIENT" | "SUPPLIER", partyId: string, amount: number): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const value = r2(Number(amount) || 0);
   if (value < 0) return { error: "Enter what they owed at the start as a positive amount." };
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
@@ -96,7 +96,7 @@ export type PartyEntryInput = {
 export async function createPartyEntryAction(input: PartyEntryInput): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Choose a date." };
   const date = new Date(`${input.date}T00:00:00.000Z`);
   const amount = r2(Number(input.amount) || 0);

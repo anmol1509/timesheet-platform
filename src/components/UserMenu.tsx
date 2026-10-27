@@ -8,7 +8,7 @@ import type { ThemePreference } from "@/lib/theme-preference";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super admin",
-  BRANCH_ADMIN: "Branch admin",
+  BRANCH_ADMIN: "Admin",
   STAFF: "Staff",
 };
 

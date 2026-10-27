@@ -48,7 +48,7 @@ export async function createBranchAction(
 ): Promise<{ error: string | null; ok?: boolean }> {
   assertContactsValid(formData);
   const admin = await requireAdmin();
-  if (admin.role !== "SUPER_ADMIN") return { error: "Only a super admin can add branches." };
+  if (admin.role !== "SUPER_ADMIN") return { error: "Only a super admin can add companies." };
 
   const code = String(formData.get("code") || "").trim().toUpperCase();
   const name = String(formData.get("name") || "").trim();
@@ -57,7 +57,7 @@ export async function createBranchAction(
   const switchTo = formData.get("switchTo") === "1";
 
   if (!code || !name) {
-    return { error: "Enter a branch code and name." };
+    return { error: "Enter a company code and name." };
   }
   if (!/^[A-Z0-9_-]{2,10}$/.test(code)) {
     return { error: "The code should be 2–10 letters or numbers, e.g. DXB." };
@@ -65,7 +65,7 @@ export async function createBranchAction(
 
   const existing = await prisma.branch.findUnique({ where: { code } });
   if (existing) {
-    return { error: "A branch with that code already exists." };
+    return { error: "A company with that code already exists." };
   }
 
   const created = await prisma.branch.create({ data: { code, name, emirate } });

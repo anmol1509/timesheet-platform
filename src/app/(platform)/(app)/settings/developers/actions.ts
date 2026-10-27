@@ -20,10 +20,10 @@ async function branchFor(admin: Awaited<ReturnType<typeof requireAdmin>>) {
 export async function createApiKeyAction(_prev: State, formData: FormData): Promise<State> {
   const admin = await requireAdmin();
   const branchId = await branchFor(admin);
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
 
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { apiAccess: true, isActive: true } });
-  if (!branch?.isActive) return { error: "That branch is not active." };
+  if (!branch?.isActive) return { error: "That company is not active." };
   if (!branch.apiAccess) return { error: "API access is part of the Pro and Custom plans. Contact us to switch it on." };
 
   const name = String(formData.get("name") || "").trim();
@@ -102,9 +102,9 @@ function readEvents(formData: FormData): string[] | string {
 export async function createWebhookEndpointAction(_prev: HookState, formData: FormData): Promise<HookState> {
   const admin = await requireAdmin();
   const branchId = await branchFor(admin);
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const branch = await prisma.branch.findUnique({ where: { id: branchId }, select: { apiAccess: true, isActive: true } });
-  if (!branch?.isActive) return { error: "That branch is not active." };
+  if (!branch?.isActive) return { error: "That company is not active." };
   if (!branch.apiAccess) return { error: "Webhooks are part of the Pro and Custom plans. Contact us to switch them on." };
 
   const events = readEvents(formData);
@@ -187,7 +187,7 @@ export async function testWebhookAction(formData: FormData): Promise<HookResult>
 export async function resendWebhookDeliveryAction(formData: FormData): Promise<HookResult> {
   const admin = await requireAdmin();
   const branchId = await branchFor(admin);
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const r = await resendDelivery(String(formData.get("id") || ""), branchId);
   revalidatePath("/settings/developers");
   if (!r) return { error: "Delivery not found." };

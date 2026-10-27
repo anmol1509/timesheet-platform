@@ -70,12 +70,12 @@ export async function createProjectAction(
   if (!branchId) {
     return {
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding a project."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before adding a project."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 
-  if (!(await refsBelongToBranch(branchId, { client: clientId }))) return { error: "Choose one of this branch's clients." };
+  if (!(await refsBelongToBranch(branchId, { client: clientId }))) return { error: "Choose one of this company's clients." };
 
   const people = readPeople(formData, ["manager"]);
   if (people.error) return { error: people.error };
@@ -130,7 +130,7 @@ export async function updateProjectAction(formData: FormData): Promise<{ error?:
   // Only a changed client is checked, so a legacy link never blocks an unrelated edit.
   const nextClientId = String(formData.get("clientId") || "");
   if (nextClientId && nextClientId !== before?.clientId && !(await refsBelongToBranch(before?.branchId ?? null, { client: nextClientId }))) {
-    return { error: "Choose one of this branch's clients." };
+    return { error: "Choose one of this company's clients." };
   }
 
   const data = {
@@ -254,7 +254,7 @@ export async function addProjectDocumentAction(formData: FormData): Promise<{ er
   const file = formData.get("file");
   if (!projectId || !(file instanceof File) || file.size === 0) return { error: "Choose a file first." };
   if (file.size > MAX_UPLOAD_BYTES) return { error: `"${file.name}" is too large.` };
-  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return { error: "That project isn't in this branch." };
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return { error: "That project isn't in this company." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const created = await prisma.projectDocument.create({
@@ -748,7 +748,7 @@ export async function bulkImportProjectsAction(rows: Record<string, string>[]): 
   await requirePermission("projects.projects", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
-    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned. Contact an admin.";
+    const message = isSuperAdmin ? "Sign in as a company administrator before importing." : "Your account has no company assigned. Contact an admin.";
     return rows.map((_, i) => rowError(i, undefined, message));
   }
   const existingProjects = await prisma.project.findMany({ where: { branchId } });

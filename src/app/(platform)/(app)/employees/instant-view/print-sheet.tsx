@@ -135,7 +135,7 @@ export function InstantPrintSheet({ employee: e, printedBy, printedAt }: { emplo
 
               {e.assignmentHistory.length > 0 && (
                 <Section title="Work history">
-                  <table className="w-full"><thead><tr><th className={th}>Project</th><th className={th}>Branch</th><th className={th}>Mobilized</th><th className={th}>Demobilized</th><th className={th}>Status</th><th className={th}>Demobilisation note</th></tr></thead>
+                  <table className="w-full"><thead><tr><th className={th}>Project</th><th className={th}>Company</th><th className={th}>Mobilized</th><th className={th}>Demobilized</th><th className={th}>Status</th><th className={th}>Demobilisation note</th></tr></thead>
                     <tbody className="divide-y divide-[#eaecf0]">
                       {e.assignmentHistory.map((h) => (
                         <tr key={h.id}><td className={td}>{h.projectName || "—"}</td><td className={td}>{h.branchName || "—"}</td><td className={td}>{fmt(h.mobilizedDate)}</td><td className={td}>{fmt(h.demobilizedDate)}</td><td className={td}>{h.demobilizedDate ? "Demobilized" : "Mobilized"}</td><td className={td}>{h.demobilizationReason || "—"}{h.demobilizedByName && h.demobilizationReason ? ` (by ${h.demobilizedByName})` : ""}</td></tr>

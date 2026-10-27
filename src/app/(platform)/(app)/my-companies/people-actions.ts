@@ -27,7 +27,7 @@ export async function mergePeopleAction(input: { keepId: string; dropId: string 
     prisma.supplierParty.findUnique({ where: { id: dropId } }),
   ]);
   if (!keep || !drop || isOutsideBranch(keep.branchId, ctx.branchId, ctx.isSuperAdmin) || isOutsideBranch(drop.branchId, ctx.branchId, ctx.isSuperAdmin)) return { error: "That person wasn't found." };
-  if (keep.branchId !== drop.branchId) return { error: "These people belong to different branches." };
+  if (keep.branchId !== drop.branchId) return { error: "These people belong to different companies." };
   if (!sameName(keep.name, drop.name)) return { error: "Only people with the same name can be merged." };
 
   await prisma.$transaction(async (tx) => {

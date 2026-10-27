@@ -18,8 +18,8 @@ export async function demobiliseAction(
   if (!branchId) {
     return {
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before demobilising."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before demobilising."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 

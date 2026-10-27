@@ -41,7 +41,7 @@ export async function createCampWithRoomsAction(
   const { user, branchId } = await requireUserWithBranch();
   // A camp with no branch is invisible to every branch-scoped user, including
   // whoever just created it — so a super admin must pick one first.
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const name = String(formData.get("name") || "").trim();
   // Camps created here are always the company's own; supplier and client camps are recorded at check-in.
   const ownerType = "OWN";

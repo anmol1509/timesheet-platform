@@ -39,7 +39,7 @@ export async function createOwnCompanyWizardAction(formData: FormData): Promise<
   try {
     const { user, branchId } = await requireUserWithBranch();
     if (!canMyCompanies(subjectOf(user), "create")) return { error: "You don't have permission to add a company." };
-    if (!branchId) return { error: "Pick a specific branch from the switcher before adding a company." };
+    if (!branchId) return { error: "Sign in as a company administrator before adding a company." };
     const bad = contactsError(formData);
     if (bad) return { error: bad };
 
@@ -180,7 +180,7 @@ export async function attachCompanyFileAction(formData: FormData): Promise<{ err
   const entityType = partyId ? "SUPPLIER_PARTY" : "SUPPLIER";
   const rows = company.branchId ? await prisma.documentType.findMany({ where: { branchId: company.branchId } }) : [];
   const type = resolveDocTypes(rows, entityType).find((t) => t.key === docType);
-  if (!type || !type.isActive) return { error: `“${docType}” isn't a document type this branch uses.` };
+  if (!type || !type.isActive) return { error: `“${docType}” isn't a document type this company uses.` };
 
   await prisma.attachment.create({
     data: {

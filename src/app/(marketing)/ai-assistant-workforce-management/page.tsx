@@ -22,7 +22,7 @@ export const metadata: Metadata = finishMetadata({
 
 const PAGE_FAQS = [
   { q: "What kind of questions can I ask the assistant?", a: "Plain-language questions about your live records, such as which visas expire this month or how many welders are on a given site." },
-  { q: "Can the assistant show salary data to anyone who asks?", a: "No. It answers within whatever the person asking is already allowed to see, so it cannot surface salary, another branch's data or anything outside their role." },
+  { q: "Can the assistant show salary data to anyone who asks?", a: "No. It answers within whatever the person asking is already allowed to see, so it cannot surface salary, another company's data or anything outside their role." },
   { q: "What can it read from uploaded documents?", a: "Upload a passport, visa or Emirates ID and the key fields are extracted onto the employee record, which avoids the retyping that causes WPS rejections." },
 ] as const;
 
@@ -80,7 +80,7 @@ export default function AiAssistantPage() {
           lead: "Both work on your own records, inside the permissions you already set.",
           tiles: [
             { tone: "dark", span2: true, row2: true, icon: <Bot size={22} aria-hidden />, title: "Ask in plain language, get an answer from live data", body: "Questions are answered directly from your current records, with a link to what the answer is based on and a way to see why it was raised.", list: ["Plain-language questions", "Needs-attention list with Why?", "Open straight to the record"], image: { ...shot("sol-assistant.webp", 1400, 940, "The My Assistant panel."), fade: true } },
-            { tone: "tint", span2: true, icon: <Lock size={22} aria-hidden />, title: "Permission-aware, every time", body: "The assistant answers within whatever a user is already allowed to see. It can't surface salary, another branch's data or anything outside their role, however the question is phrased.", chips: ["Role-based", "Branch-aware", "No extra access"] },
+            { tone: "tint", span2: true, icon: <Lock size={22} aria-hidden />, title: "Permission-aware, every time", body: "The assistant answers within whatever a user is already allowed to see. It can't surface salary, another company's data or anything outside their role, however the question is phrased.", chips: ["Role-based", "Branch-aware", "No extra access"] },
             { tone: "sky", icon: <Search size={22} aria-hidden />, title: "Links to the record", body: "Every answer opens the employee, project or document.", list: ["One click to act", "No dead ends"] },
             { tone: "violet", icon: <FileScan size={22} aria-hidden />, title: "Reads documents", body: "A scan in, a filled-in record out.", chips: ["Passport", "Visa", "Emirates ID"] },
             { span2: true, icon: <FileScan size={22} aria-hidden />, title: "A scan in, a filled-in employee record out", body: "Upload a passport, visa or Emirates ID and the key fields are extracted onto the record, the same data entry that causes WPS rejections when it's retyped by hand.", list: ["AI document extraction", "Expiry alerts", "Fewer retyping errors"] },

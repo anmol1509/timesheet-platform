@@ -72,7 +72,7 @@ export async function saveDemandFieldAction(input: { id: string; field: string; 
   if (!canWrite(subjectOf(user), "demand")) return { error: "You don't have permission to edit demand requests." };
   if (input.field !== "priority" && input.field !== "remarks") return { error: "That field can't be edited here." };
   const before = await prisma.demandRequest.findUnique({ where: { id: input.id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That request isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That request isn't in this company." };
 
   const value = (input.value ?? "").trim() || null;
   if (input.field === "priority" && value && !["Low", "Medium", "High"].includes(value)) return { error: "Choose Low, Medium or High." };

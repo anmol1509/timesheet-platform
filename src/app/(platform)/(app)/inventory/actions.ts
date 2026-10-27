@@ -32,8 +32,8 @@ export async function createInventoryItemAction(
   if (!branchId) {
     return {
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding an item."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before adding an item."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 
@@ -256,7 +256,7 @@ export async function bulkImportInventoryAction(rows: Record<string, string>[]):
   await requirePermission("facilities.inventory", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
-    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned. Contact an admin.";
+    const message = isSuperAdmin ? "Sign in as a company administrator before importing." : "Your account has no company assigned. Contact an admin.";
     return rows.map((_, i) => rowError(i, undefined, message));
   }
   const items = await prisma.inventoryItem.findMany({ where: { branchId }, include: { variants: true } });
@@ -319,7 +319,7 @@ export async function issueInventoryBulkAction(input: { itemId: string; issuedDa
   await requireWrite("facilities.inventory");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const { itemId } = input;
-  if (!(await assertItemInBranch(itemId, branchId, isSuperAdmin))) return { issued: 0, error: "That item isn't part of this branch's inventory." };
+  if (!(await assertItemInBranch(itemId, branchId, isSuperAdmin))) return { issued: 0, error: "That item isn't part of this company's inventory." };
   const lines = input.lines.filter((l) => l.employeeId && Number.isFinite(l.quantity) && l.quantity >= 1).map((l) => ({ ...l, quantity: Math.trunc(l.quantity) }));
   if (lines.length === 0) return { issued: 0, error: "Add at least one worker." };
   if (lines.length > 200) return { issued: 0, error: "Issue to up to 200 workers at a time." };
@@ -332,7 +332,7 @@ export async function issueInventoryBulkAction(input: { itemId: string; issuedDa
 
   const employees = await prisma.employee.findMany({ where: { id: { in: [...new Set(lines.map((l) => l.employeeId))] } }, select: { id: true, branchId: true } });
   const okEmployee = new Set(employees.filter((e) => !isOutsideBranch(e.branchId, branchId, isSuperAdmin)).map((e) => e.id));
-  if (lines.some((l) => !okEmployee.has(l.employeeId))) return { issued: 0, error: "One of those workers isn't in this branch." };
+  if (lines.some((l) => !okEmployee.has(l.employeeId))) return { issued: 0, error: "One of those workers isn't in this company." };
 
   const created: { id: string; employeeId: string; variantId: string | null; quantity: number }[] = [];
   try {

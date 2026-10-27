@@ -178,7 +178,7 @@ export async function checkEmployeeIdAction(
   });
   if (!existing) return { taken: false, name: null };
   const visible = !isOutsideBranch(existing.branchId, branchId, isSuperAdmin);
-  return { taken: true, name: visible ? existing.name : "another branch" };
+  return { taken: true, name: visible ? existing.name : "another company" };
 }
 
 export async function createEmployeeAction(
@@ -197,8 +197,8 @@ export async function createEmployeeAction(
   if (!branchId) {
     return {
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding an employee."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before adding an employee."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 
@@ -238,7 +238,7 @@ export async function createEmployeeAction(
       : Promise.resolve(1),
   ]);
   if (!supplierOk || !sponsorshipOk || !projectOk) {
-    return { error: "That supplier, sponsorship company or project isn't in your branch." };
+    return { error: "That supplier, sponsorship company or project isn't in your company." };
   }
 
   const skillEntries = parseSkills(formData.get("skills"));

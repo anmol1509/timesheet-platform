@@ -28,6 +28,8 @@ model Branch {
   // The month ("2026-10") and highest warning (80 or 100) already sent to the admins, so each is sent once.
   aiWarnedMonth    String?
   aiWarnedLevel    Int               @default(0)
+  // Set when the owner suspends the customer: the company's own people are signed out and can't sign in until it is cleared.
+  suspendedAt      DateTime?
   code             String            @unique
   name             String
   emirate          String?
@@ -3410,4 +3412,99 @@ model AiCreditGrant {
   grantedAt   DateTime @default(now())
 
   @@index([branchId, grantedAt])
+}
+
+/// A customer of the platform, as the owner sees them: who they are, what they pay, where their data lives and how much AI they have.
+/// Lives in the owner's own database only. A customer on this platform (SHARED) is one company here; a DEDICATED customer has its own
+/// database and deployment, reached through the owner API with its own signing secret.
+model Customer {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  /// TRIAL, ACTIVE, SUSPENDED or CHURNED.
+  status           String   @default("TRIAL")
+  /// SHARED (a company on this platform) or DEDICATED (its own database and deployment).
+  hosting          String   @default("SHARED")
+  /// SHARED: the company here that is this customer.
+  branchId         String?  @unique
+  /// DEDICATED: where their deployment lives, and the project references behind it.
+  appUrl           String?
+  supabaseRef      String?
+  vercelProject    String?
+  contactName      String?
+  contactEmail     String
+  contactPhone     String?
+  address          String?
+  trn              String?
+  plan             String   @default("Standard")
+  planPriceAed     Decimal  @default(0) @db.Decimal(12, 2)
+  /// MONTHLY or YEARLY.
+  billingCycle     String   @default("MONTHLY")
+  renewsOn         DateTime?
+  startedOn        DateTime @default(now())
+  /// The monthly AI allowance they are meant to have, in credits.
+  aiMonthlyCredits Int      @default(2500)
+  /// What one credit is worth in AED. Seen by the owner only; customers see credits, never money.
+  aiRateAed        Decimal  @default(0.01) @db.Decimal(8, 4)
+  notes            String?
+  lastSyncAt       DateTime?
+  /// What the last sync read from them (people, employees, last active, AI used), so the list loads without calling every customer.
+  lastStats        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  invoices CustomerInvoice[]
+  payments CustomerPayment[]
+  events   CustomerEvent[]
+}
+
+/// An invoice the owner raises to a customer (plan fee, extra credits, set-up).
+model CustomerInvoice {
+  id          String    @id @default(cuid())
+  number      String    @unique
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  issueDate   DateTime  @default(now())
+  dueDate     DateTime
+  description String
+  subtotal    Decimal   @db.Decimal(12, 2)
+  vat         Decimal   @db.Decimal(12, 2)
+  total       Decimal   @db.Decimal(12, 2)
+  /// DRAFT, SENT, PAID or VOID.
+  status      String    @default("SENT")
+  paidOn      DateTime?
+  createdAt   DateTime  @default(now())
+  payments    CustomerPayment[]
+
+  @@index([customerId, issueDate])
+}
+
+/// Money received from a customer, against an invoice or on account.
+model CustomerPayment {
+  id         String           @id @default(cuid())
+  customerId String
+  customer   Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceId  String?
+  invoice    CustomerInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  amount     Decimal          @db.Decimal(12, 2)
+  receivedOn DateTime         @default(now())
+  method     String           @default("BANK")
+  reference  String?
+  note       String?
+  createdAt  DateTime         @default(now())
+
+  @@index([customerId, receivedOn])
+}
+
+/// What happened with a customer: created, credits added, suspended, invoice raised, a note.
+model CustomerEvent {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  kind       String
+  text       String
+  byName     String?
+  createdAt  DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }

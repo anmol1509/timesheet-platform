@@ -34,7 +34,7 @@ export default async function RenewalsPage() {
     return { ...i, key, status: (c?.status ?? "NOT_STARTED") as RenewalStatus, ownerId: c?.ownerId ?? null, ownerName: c?.owner?.name ?? null, note: c?.note ?? null, recent: !!c && c.updatedAt > weekAgo };
   });
   const owners = await prisma.user.findMany({
-    where: { isActive: true, ...(branchId ? { OR: [{ branchId }, { role: "SUPER_ADMIN" as const }] } : {}) },
+    where: { isActive: true, role: { not: "SUPER_ADMIN" as const }, ...(branchId ? { branchId } : {}) },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });

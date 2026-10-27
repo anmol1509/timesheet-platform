@@ -38,7 +38,7 @@ export type TeamUser = {
   canManage: boolean;
 };
 
-const ROLE_LABELS = { SUPER_ADMIN: "Super admin", BRANCH_ADMIN: "Branch admin", STAFF: "Staff" };
+const ROLE_LABELS = { SUPER_ADMIN: "Super admin", BRANCH_ADMIN: "Admin", STAFF: "Staff" };
 
 function Feedback({ state }: { state: State }) {
   if (state.error) return <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{state.error}</p>;
@@ -71,8 +71,8 @@ function UserForm({
   const editingSelf = user?.isSelf ?? false;
 
   const roleOptions = [
-    ...(isSuperAdmin ? [{ value: "SUPER_ADMIN", label: "Super admin (all branches)" }] : []),
-    { value: "BRANCH_ADMIN", label: "Branch admin: full access to the branch" },
+    ...(isSuperAdmin ? [{ value: "SUPER_ADMIN", label: "Super admin (all companies)" }] : []),
+    { value: "BRANCH_ADMIN", label: "Admin: full access to the company" },
     { value: "STAFF", label: "Staff: limited by a permission set" },
   ];
   // Roles usable for this user: global ones, plus ones scoped to their branch.
@@ -113,7 +113,7 @@ function UserForm({
         )}
         {isSuperAdmin && role !== "SUPER_ADMIN" && !editingSelf && (
           <label className="block sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-muted">Branch</span>
+            <span className="mb-1 block text-xs font-medium text-muted">Company</span>
             <Select
               name="branchId"
               value={branchId}
@@ -220,7 +220,7 @@ export function TeamManager({
             <tr>
               <th className="px-4 py-3">Person</th>
               <th className="px-4 py-3">Access</th>
-              {isSuperAdmin && <th className="px-4 py-3">Branch</th>}
+              {isSuperAdmin && <th className="px-4 py-3">Company</th>}
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3" />
             </tr>

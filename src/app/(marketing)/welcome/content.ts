@@ -161,7 +161,7 @@ export const PORTALS: { tint: Tint; title: string; body: string; href: string; c
     body: "Operations, HR, finance and sales work from one system, each seeing only the modules their role allows.",
     href: appHref("/login"),
     cta: "Staff sign in",
-    points: ["Role-based permissions", "Branch-level access", "Dashboards per team"],
+    points: ["Role-based permissions", "Company-level access", "Dashboards per team"],
   },
   {
     tint: "rose",
@@ -204,7 +204,7 @@ export const FAQS = [
   },
   {
     q: "Who can see salary and client data?",
-    a: "Access is controlled by role and branch, so each person only sees the modules they need. Every create, edit and delete is recorded in the audit log.",
+    a: "Access is controlled by role and company, so each person only sees the modules they need. Every create, edit and delete is recorded in the audit log.",
   },
   {
     q: "How do subcontractors fit in?",

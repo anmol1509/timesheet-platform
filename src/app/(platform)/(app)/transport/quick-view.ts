@@ -66,7 +66,7 @@ export async function saveVehicleFieldAction(input: { id: string; field: string;
   const { id, field } = input;
   if (!FIELDS.has(field)) return { error: "That field can't be edited here." };
   const owner = await vehicleBranch(id, { branchId, isSuperAdmin });
-  if (owner === undefined) return { error: "That vehicle isn't in this branch." };
+  if (owner === undefined) return { error: "That vehicle isn't in this company." };
   const before = await prisma.vehicle.findUnique({ where: { id } });
   if (!before) return { error: "That vehicle no longer exists." };
 
@@ -102,9 +102,9 @@ export async function setRiderAction(input: { vehicleId: string; employeeId: str
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!canWrite(subjectOf(user), SCOPE)) return { error: "You don't have permission to edit vehicles." };
   const owner = await vehicleBranch(input.vehicleId, { branchId, isSuperAdmin });
-  if (owner === undefined) return { error: "That vehicle isn't in this branch." };
+  if (owner === undefined) return { error: "That vehicle isn't in this company." };
   const e = await prisma.employee.findFirst({ where: { id: input.employeeId, ...branchWhere(owner) }, select: { id: true, name: true, vehicleId: true } });
-  if (!e) return { error: "That worker isn't in this branch." };
+  if (!e) return { error: "That worker isn't in this company." };
   if (input.on && e.vehicleId && e.vehicleId !== input.vehicleId) return { error: `${e.name} is already on another vehicle.` };
   if (!input.on && e.vehicleId !== input.vehicleId) return { ok: true };
   await prisma.employee.update({ where: { id: e.id }, data: { vehicleId: input.on ? input.vehicleId : null } });

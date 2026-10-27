@@ -28,7 +28,7 @@ const FAQS = [
   },
   {
     q: "How is access controlled compared with a shared workbook?",
-    a: "A shared workbook is usually all or nothing. ManpowerSync controls access by role and branch, down to the module and action, and records every create, edit and delete in an audit log.",
+    a: "A shared workbook is usually all or nothing. ManpowerSync controls access by role and company, down to the module and action, and records every create, edit and delete in an audit log.",
   },
   {
     q: "What does it cost?",
@@ -42,7 +42,7 @@ const ROWS = [
   ["Payroll and WPS", "Salaries and the SIF file assembled by hand or with macros.", "Payroll from approved hours, with loans and gratuity, exported as a WPS file using each employee's bank and routing details."],
   ["Client invoices", "Hours retyped into an invoice template.", "VAT-ready invoices generated from the same approved hours that drive payroll."],
   ["Visa and ID expiry", "A date column that someone has to remember to check.", "Expiry alerts on each employee record, with key fields read from uploaded scans."],
-  ["Who can see what", "The whole file or nothing.", "Role-based permissions down to module and action, plus branch-level access."],
+  ["Who can see what", "The whole file or nothing.", "Role-based permissions down to module and action, plus company-level access."],
   ["History and audit", "Cells overwritten with no record of who changed what.", "Every create, edit and delete written to an audit log."],
   ["Camps and transport", "Separate sheets that fall out of date as crews move.", "Bed-level camp occupancy, check-in and check-out history, and routes planned against current deployment."],
   ["Subcontractors", "Spreadsheets forwarded by email.", "A supplier portal for demands, workers, timesheets and payments."],

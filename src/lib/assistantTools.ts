@@ -48,7 +48,7 @@ export const TOOLS: Anthropic.Messages.Tool[] = [
   {
     name: "get_stats",
     description:
-      "Headline figures for the user's current branch. metric: workforce (headcount by status and type), document_expiry (documents expired / expiring within 30 days by category), business_partners (clients, suppliers, projects), demands (demand requests by status), deployment (workers deployed to a project vs on the bench, and headcount per project), attendance (today's attendance by status, plus this month's normal and overtime hours), timesheets (timesheet rows by status for a month), invoices (client invoices by status with totals, for a month or all time), camps (beds total / occupied / free per camp), renewals (documents expiring within `days` days, default 60, with the 8 most urgent names), onboarding (candidates by pipeline: ready to join, joined, in progress). `month` (YYYY-MM) applies to timesheets and invoices.",
+      "Headline figures for the user's current company. metric: workforce (headcount by status and type), document_expiry (documents expired / expiring within 30 days by category), business_partners (clients, suppliers, projects), demands (demand requests by status), deployment (workers deployed to a project vs on the bench, and headcount per project), attendance (today's attendance by status, plus this month's normal and overtime hours), timesheets (timesheet rows by status for a month), invoices (client invoices by status with totals, for a month or all time), camps (beds total / occupied / free per camp), renewals (documents expiring within `days` days, default 60, with the 8 most urgent names), onboarding (candidates by pipeline: ready to join, joined, in progress). `month` (YYYY-MM) applies to timesheets and invoices.",
     input_schema: {
       type: "object",
       properties: {
@@ -418,7 +418,7 @@ async function explainMissingFromPayroll(input: Record<string, unknown>, ctx: To
     select: { ...PAY_EMPLOYEE_SELECT, status: true, branchId: true, supplier: { select: { ...PAY_EMPLOYEE_SELECT.supplier.select, name: true, isOwnCompany: true, payType: true } } },
     take: 3,
   });
-  if (found.length === 0) return { content: "No worker matches that name or ID in this branch." };
+  if (found.length === 0) return { content: "No worker matches that name or ID in this company." };
   if (found.length > 1) return { content: JSON.stringify({ ambiguous: true, matches: found.map((e) => `${e.name} (${e.employeeIdNo})`) }) + " Ask which one." };
   const e = found[0];
   const pf = (await loadPayOf(e.branchId, [e]))(e);

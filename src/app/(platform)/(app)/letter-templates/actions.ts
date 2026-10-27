@@ -34,7 +34,7 @@ export async function createFromPresetAction(formData: FormData) {
   assertContactsValid(formData);
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) redirect("/letter-templates?error=" + encodeURIComponent("Pick a branch first."));
+  if (!branchId) redirect("/letter-templates?error=" + encodeURIComponent("Pick a company first."));
   const preset = presetByKey(str(formData.get("presetKey")));
   const audience = preset ? preset.audience : asAudience(str(formData.get("audience")));
   const html = preset ? presetHtml(preset) : "<p>Write your letter here. Use <strong>Insert field</strong> to add details that are filled in automatically.</p>";
@@ -58,7 +58,7 @@ export async function createFromPresetAction(formData: FormData) {
 export async function addMissingDefaultsAction(): Promise<State> {
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const have = await prisma.letterTemplate.findMany({ where: { branchId, presetKey: { not: null } }, select: { presetKey: true } });
   const haveKeys = new Set(have.map((h) => h.presetKey));
   const missing = LETTER_PRESETS.filter((p) => !haveKeys.has(p.key));

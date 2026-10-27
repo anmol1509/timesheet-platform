@@ -35,7 +35,7 @@ export default async function CompanyProfilePage({
     : [];
 
   if (!branch) {
-    return <p className="text-sm text-muted">No company to edit: this account isn&apos;t attached to a branch.</p>;
+    return <p className="text-sm text-muted">No company to edit: this account isn&apos;t attached to a company.</p>;
   }
 
 

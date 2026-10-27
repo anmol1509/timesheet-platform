@@ -130,8 +130,7 @@ export default async function SuppliersPage({
 
       {isSuperAdmin && !branchId && (
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
-          You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the
-          switcher (top right) before adding a supplier.
+          You&apos;re viewing every company together. Sign in as a company administrator before adding a supplier.
         </p>
       )}
 

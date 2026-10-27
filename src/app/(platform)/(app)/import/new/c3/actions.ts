@@ -39,7 +39,7 @@ function cell(v: unknown): string {
 export async function previewC3Action(formData: FormData): Promise<C3Preview> {
   const { user, branchId } = await requireUserWithBranch();
   if (!isAdminRole(user.role)) return { error: "Only admins can import." };
-  if (!branchId) return { error: "Pick a specific branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file." };
   if (file.size > 5_000_000) return { error: "That file is too big (limit 5 MB)." };
@@ -112,7 +112,7 @@ export async function previewC3Action(formData: FormData): Promise<C3Preview> {
 export async function applyC3Action(links: { employeeId: string; c3Id: string }[]): Promise<{ error?: string; saved?: number; replaced?: number }> {
   const { user, branchId } = await requireUserWithBranch();
   if (!isAdminRole(user.role)) return { error: "Only admins can import." };
-  if (!branchId) return { error: "Pick a specific branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const clean = links.filter((l) => l && typeof l.employeeId === "string" && typeof l.c3Id === "string" && l.c3Id.trim()).slice(0, 2000);
   if (clean.length === 0) return { error: "Nothing to save." };
   // The same worker twice in one file would be ambiguous: keep the last.

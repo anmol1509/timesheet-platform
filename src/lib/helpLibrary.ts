@@ -69,7 +69,7 @@ export const HELP_GUIDES: HelpGuide[] = [
     steps: [
       "The run must first be submitted: open it and press Submit for approval. Only submitted drafts appear in Approvals › Payroll.",
       "If it says bank details are missing, fix them on the worker's Payroll & WPS tab (MOL person code, routing code, IBAN or account number), or use the Fix bank details option on the run. Then press More › Recalculate.",
-      "If it says someone other than the person who prepared the run has to approve it, a different approver must do it. Above the branch's approval limit the person who created a run cannot approve it.",
+      "If it says someone other than the person who prepared the run has to approve it, a different approver must do it. Above the company's approval limit the person who created a run cannot approve it.",
       "You need the payroll approve permission. If the Approve button is missing, ask an admin (Settings › Roles).",
     ],
     pages: ["/payroll", "/approvals?type=PAYROLL", "/settings/roles"],

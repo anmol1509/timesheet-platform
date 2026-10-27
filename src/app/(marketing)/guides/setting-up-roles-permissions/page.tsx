@@ -21,12 +21,12 @@ export default function Page() {
       <GuideLayout guide={guide}>
         <h2>The three base roles</h2>
         <ul>
-          <li><strong>Super admin</strong> &mdash; sees and manages every branch, for whoever owns the account.</li>
-          <li><strong>Branch admin</strong> &mdash; full rights, scoped to their own branch only.</li>
-          <li><strong>Staff</strong> &mdash; scoped to their own branch, and further limited to whatever an access role grants them.</li>
+          <li><strong>Super admin</strong> &mdash; sees and manages every company, for whoever owns the account.</li>
+          <li><strong>Admin</strong> &mdash; full rights, scoped to their own company only.</li>
+          <li><strong>Staff</strong> &mdash; scoped to their own company, and further limited to whatever an access role grants them.</li>
         </ul>
         <p>
-          A branch admin or staff member can never see or act on another branch&rsquo;s employees,
+          An admin or staff member can never see or act on another company&rsquo;s employees,
           documents or financial records &mdash; that scoping is enforced everywhere, not just hidden
           in the interface.
         </p>

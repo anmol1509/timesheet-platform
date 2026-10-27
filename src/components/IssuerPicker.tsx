@@ -16,9 +16,9 @@ export function IssuerPicker({ data, value, onChange, compact = false }: { data:
   if (data.companies.length === 0) {
     const note =
       data.reason === "no-branch" ? (
-        "Issued by: choose a branch from the switcher (top right) to pick which of your companies issues the sheets."
+        "Issued by: sign in as a company administrator to pick which of your companies issues the sheets."
       ) : data.reason === "none" ? (
-        <>Issued by: no own company in this branch yet, so sheets print with the branch details. <Link href="/my-companies" className="font-medium underline">Add one under My Companies</Link>.</>
+        <>Issued by: no own company in this company yet, so sheets print with the company details. <Link href="/my-companies" className="font-medium underline">Add one under My Companies</Link>.</>
       ) : null;
     return note ? <p className={`text-xs text-muted ${compact ? "" : "mt-4"}`}>{note}</p> : null;
   }
@@ -30,7 +30,7 @@ export function IssuerPicker({ data, value, onChange, compact = false }: { data:
         value={value}
         onChange={onChange}
         searchable={false}
-        options={[{ value: "", label: `${data.branchName} (branch details)` }, ...data.companies.map((c) => ({ value: c.id, label: c.name }))]}
+        options={[{ value: "", label: `${data.branchName} (company details)` }, ...data.companies.map((c) => ({ value: c.id, label: c.name }))]}
       />
       {chosen && chosen.gaps.length > 0 && (
         <p className="mt-1.5 flex items-start gap-1.5 text-xs text-[var(--warning)]">

@@ -39,7 +39,7 @@ async function createSupplier(formData: FormData): Promise<{ error: string | nul
   const bad = contactsError(formData);
   if (bad) return { error: bad };
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a specific branch from the switcher before adding a supplier." };
+  if (!branchId) return { error: "Sign in as a company administrator before adding a supplier." };
 
   const name = str(formData.get("name"));
   if (!name) return { error: "Enter the supplier name." };

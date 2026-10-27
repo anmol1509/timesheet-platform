@@ -44,7 +44,7 @@ export async function createLoanAction(_prev: State, formData: FormData): Promis
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
 
   const emp = await employeeInBranch(str(formData.get("employeeId")), branchId);
   if (!emp) return { error: "Choose an employee." };
@@ -171,7 +171,7 @@ export async function createAdjustmentAction(_prev: State, formData: FormData): 
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
 
   const emp = await employeeInBranch(str(formData.get("employeeId")), branchId);
   if (!emp) return { error: "Choose an employee." };

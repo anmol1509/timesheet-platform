@@ -95,7 +95,7 @@ export async function renderEmployeeLetter(opts: {
   ]);
   if (!ev) return { ok: false, error: "Employee not found." };
   if (!template || template.audience !== "EMPLOYEE") return { ok: false, error: "Choose an employee letter template." };
-  if (template.branchId !== ev.employee.branchId) return { ok: false, error: "That template belongs to a different branch." };
+  if (template.branchId !== ev.employee.branchId) return { ok: false, error: "That template belongs to a different company." };
 
   const html = templateHtml(template);
   const tokens = new Set(tokensIn(html));

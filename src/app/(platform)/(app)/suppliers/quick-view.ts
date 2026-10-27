@@ -91,7 +91,7 @@ export async function saveSupplierFieldAction(input: { id: string; field: string
   const { id, field } = input;
   if (!TEXT.has(field) && !DATES.has(field)) return { error: "That field can't be edited here." };
   const before = await prisma.supplier.findUnique({ where: { id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That supplier isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That supplier isn't in this company." };
 
   const raw = (input.value ?? "").trim();
   let value: string | Date | null = raw || null;
@@ -141,7 +141,7 @@ export async function applySupplierScanAction(input: { id: string; fields: Extra
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!canWrite(subjectOf(user), SCOPE)) return { error: "You don't have permission to edit suppliers." };
   const before = await prisma.supplier.findUnique({ where: { id: input.id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That supplier isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That supplier isn't in this company." };
 
   const { result, data, was } = planCompanyScan(before as Record<string, unknown>, input.fields, []);
   if (result.applied.length === 0) return result;

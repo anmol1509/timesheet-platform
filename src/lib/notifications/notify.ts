@@ -54,15 +54,15 @@ export async function notifyUsers({ userIds, kind, title, body = null, href = nu
   }
 }
 
-/** Active users in a branch who may approve in a module: admins, plus staff whose
+/** Active users in a company who may approve in a module: its admins, plus staff whose
  * permission set grants "<module>:approve". Legacy unrestricted staff are left out
- * so a request doesn't ping everyone. */
+ * so a request doesn't ping everyone. The platform owner is never one of them: a company
+ * runs its own approvals and nothing waits on, or is sent to, the owner. */
 export async function approverIds(module: string, branchId: string): Promise<string[]> {
   const users = await prisma.user.findMany({
     where: {
       isActive: true,
       OR: [
-        { role: "SUPER_ADMIN" },
         { role: "BRANCH_ADMIN", branchId },
         { role: "STAFF", branchId, accessRole: { permissions: { has: `${module}:approve` } } },
       ],

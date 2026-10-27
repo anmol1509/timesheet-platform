@@ -59,7 +59,7 @@ export async function uploadAttachmentAction(
   if (!lookup) return { error: "Files can't be attached to that kind of record." };
   const entity = await lookup(entityId);
   if (!entity || isOutsideBranch(entity.branchId, branchId, isSuperAdmin)) {
-    return { error: "That record belongs to another branch." };
+    return { error: "That record belongs to another company." };
   }
   const entityBranchId = entity.branchId;
   if (entityType === "SUPPLIER" && ownDocIsConfidential(docType) && !canMyCompanies(subjectOf(user), "edit")) {
@@ -72,13 +72,13 @@ export async function uploadAttachmentAction(
     const known = resolveDocTypes(rows, entityType).find((t) => t.key === docType);
     // Older files used types the registry doesn't list (e.g. WORKMEN_COMPENSATION_INSURANCE), so SUPPLIER keeps those.
     if (entityType !== "SUPPLIER" && !known) return { error: "Choose one of the listed document types." };
-    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this branch.` };
+    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this company.` };
   }
   // A candidate's file is a listed candidate document or a stage's own paper (offer, entry permit...); only a switched-off type is refused.
   if (entityType === "CANDIDATE_ONBOARDING") {
     const rows = entityBranchId ? await prisma.documentType.findMany({ where: { branchId: entityBranchId } }) : [];
     const known = resolveDocTypes(rows, "CANDIDATE").find((t) => t.key === docType);
-    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this branch.` };
+    if (known && !known.isActive) return { error: `"${known.label}" is switched off for this company.` };
   }
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file to upload." };

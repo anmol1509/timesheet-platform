@@ -73,7 +73,7 @@ export default async function EmployeeLettersPage({ searchParams }: { searchPara
       />
 
       {!branchId ? (
-        <p className="text-sm text-muted">Pick a branch from the switcher to make letters.</p>
+        <p className="text-sm text-muted">Sign in as a company administrator to make letters.</p>
       ) : (
         <IssueLetter
           initialEmployeeId={sp.employee}

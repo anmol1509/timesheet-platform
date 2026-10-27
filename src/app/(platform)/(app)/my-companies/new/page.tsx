@@ -36,7 +36,7 @@ export default async function AddCompanyPage() {
         <div className="flex items-start gap-2.5 rounded-card border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
           <p className="text-sm text-secondary">
-            {isSuperAdmin ? "You have All branches selected. Pick a specific branch in the switcher above before adding a company. Otherwise this form can't be saved." : "Your account has no branch assigned, so companies can't be created. Contact an administrator."}
+            {isSuperAdmin ? "You have All companies selected. Sign in as a company administrator before adding a company. Otherwise this form can't be saved." : "Your account has no company assigned, so companies can't be created. Contact an administrator."}
           </p>
         </div>
       )}

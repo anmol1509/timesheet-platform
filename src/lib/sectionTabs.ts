@@ -17,7 +17,7 @@ export const SECTION_TABS: SectionTab[][] = [
   // Administration: the company itself
   [
     { href: "/settings/company", label: "Company profile", match: under("/settings/company") },
-    { href: "/settings", label: "Branches & billing", match: (p) => p === "/settings" },
+    { href: "/settings", label: "Billing", match: (p) => p === "/settings" },
   ],
   // Administration: getting data in, keeping it clean, and wiping it
   [

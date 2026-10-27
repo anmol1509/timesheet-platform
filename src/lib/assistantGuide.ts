@@ -58,16 +58,16 @@ export const HINTS: Record<string, string> = {
   "/finance/bills": "Supplier bills and payments",
   "/finance/books": "Accounting: transactions, bank reconciliation, reports, vouchers, client and supplier statements, settings and import",
   "/settings": "Account and system settings",
-  "/settings/company": "Company profile, branding, branches",
+  "/settings/company": "Company profile, branding, companies",
   "/settings/team": "Users, invitations and access",
   "/settings/roles": "Roles and per-module permissions",
   "/lookups": "Dropdown lists (nationalities, banks, etc.)",
   "/letter-templates": "Edit templates used by Employee Letters",
   "/audit-log": "Who changed what, and when",
   "/settings/emails": "How the emails the app sends look (approvals, reminders, password reset), with a button to send yourself a test",
-  "/settings/ai": "The branch's monthly AI credits: how many are left, what used them, and (for a super admin) the allowance and top-ups",
+  "/settings/ai": "The company's monthly AI credits: how many are left, what used them, and (for a super admin) the allowance and top-ups",
   "/settings/assistant": "Questions My Assistant could not resolve and answers people marked not helpful (admins), to improve its help",
-  "/settings/data-reset": "Bulk-delete test data by module (admins only; a branch admin can only reset their own branch)",
+  "/settings/data-reset": "Bulk-delete test data by module (admins only; an admin can only reset their own company)",
 };
 
 export const EXTRA_PAGES: GuidePage[] = [
@@ -165,7 +165,7 @@ Rules:
 ${GUIDE_INDEX}
 - When a worker is missing from a payroll run, call explain_missing_from_payroll. When a payroll run can't be approved, call explain_payroll_blockers. Quote only what they return, give the fix for each cause, and link the run. The app also shows one-tap fix buttons under your answer for these; you may say "use the buttons below" but never invent buttons or describe their labels.
 - Set needsHuman to true whenever you could not resolve the problem, a tool returned nothing useful, or you are not sure. Say in the answer that they can send it to support with the button below your answer. Otherwise set it to false.
-- To open a specific worker, project, client, supplier or demand, call search_records and link the match. For "how many…" style questions call get_stats (it covers workforce, deployment/bench, attendance, timesheets, invoices, camps and beds, renewals within N days, onboarding, demands and partners). Don't guess numbers. Only report what the tool returned, and say the figures are for the user's current branch. If several records match, list up to 3 and ask which one.
+- To open a specific worker, project, client, supplier or demand, call search_records and link the match. For "how many…" style questions call get_stats (it covers workforce, deployment/bench, attendance, timesheets, invoices, camps and beds, renewals within N days, onboarding, demands and partners). Don't guess numbers. Only report what the tool returned, and say the figures are for the user's current company. If several records match, list up to 3 and ask which one.
 - For lists the user can read as a table (who is absent today, documents expiring, which suppliers haven't sent timesheets, unpaid invoices, work approved by clients but not yet invoiced, workers on the bench) call list_rows. The app shows the table itself, so don't repeat its rows; say in a sentence what it shows, and mention the total. For "what are we missing / where is money waiting" questions, approved_not_invoiced and unpaid_invoices are the ones to use.
 - To explain why a worker's pay is what it is, call explain_payroll_line, then walk through the parts that matter using the pay rules below. Quote only the figures the tool returned; never recalculate or guess a figure.
 - To prepare a letter ("make a salary certificate for Ravi"), call draft_letter and link the result. It only opens the Letters screen with the worker and letter chosen — the user reviews and issues it. Say so.

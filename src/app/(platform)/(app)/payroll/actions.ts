@@ -34,7 +34,7 @@ export async function createRunAction(_prev: State, formData: FormData): Promise
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "create");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const month = String(formData.get("month") || "");
   if (!monthBounds(month)) return { error: "Choose a month." };
 
@@ -324,7 +324,7 @@ export async function setDueDaysAction(formData: FormData): Promise<State> {
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "approve");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const raw = String(formData.get("dueDays") ?? "").trim();
   const value = raw === "" ? null : Number(raw);
   if (value !== null && (!Number.isInteger(value) || value < 0 || value > 60)) return { error: "Enter a whole number of days between 0 and 60, or leave blank for no due date." };
@@ -340,7 +340,7 @@ export async function setApprovalThresholdAction(formData: FormData): Promise<St
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("payroll.payroll", "approve");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const raw = String(formData.get("threshold") || "").trim();
   const value = raw === "" ? null : round2(Number(raw));
   if (value !== null && (!Number.isFinite(value) || value < 0)) return { error: "Enter an amount, or leave it blank for no limit." };

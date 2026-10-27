@@ -41,10 +41,9 @@ export async function GET(request: Request) {
     where: { isActive: true, OR: branchIds.map((branchId) => ({ role: "BRANCH_ADMIN" as const, branchId })) },
     select: { id: true, branchId: true },
   });
-  const superAdmins = await prisma.user.findMany({ where: { isActive: true, role: "SUPER_ADMIN" }, select: { id: true } });
   const adminsByBranch = new Map<string, string[]>();
   for (const branchId of branchIds) {
-    adminsByBranch.set(branchId, [...admins.filter((a) => a.branchId === branchId).map((a) => a.id), ...superAdmins.map((a) => a.id)]);
+    adminsByBranch.set(branchId, admins.filter((a) => a.branchId === branchId).map((a) => a.id));
   }
 
   const startOfDay = new Date();

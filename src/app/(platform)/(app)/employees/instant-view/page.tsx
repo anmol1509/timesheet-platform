@@ -201,7 +201,7 @@ export default async function InstantViewPage({
               {validEmployee.supplier?.name || "—"}
             </div>
             <div>
-              <span className="block text-xs font-medium text-muted">Current Branch</span>
+              <span className="block text-xs font-medium text-muted">Current Company</span>
               {validEmployee.branch?.name || "—"}
             </div>
             <div>
@@ -238,7 +238,7 @@ export default async function InstantViewPage({
               <table className="w-full text-sm">
                 <thead className="border-b border-default text-left text-xs font-medium tracking-wide text-muted uppercase">
                   <tr>
-                    <th className="py-2">Branch Name</th>
+                    <th className="py-2">Company Name</th>
                     <th className="py-2">Project</th>
                     <th className="py-2">Mobilized Date</th>
                     <th className="py-2">Demobilized Date</th>
