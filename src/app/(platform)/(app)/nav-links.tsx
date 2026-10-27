@@ -45,6 +45,7 @@ import {
   type LucideIcon,
   FileOutput,
   Pin,
+  Gauge,
   PinOff, KeyRound,
   TrendingUp,
   BookOpen,
@@ -284,6 +285,19 @@ export function visibleEntries(entries: Entry[], allowed: string[] | null, isAdm
   });
 }
 
+/** The owner's own two pages, shown above everything else on the owner's deployment only. */
+export function ownerEntries(): Entry[] {
+  return [
+    { type: "link", category: "Owner", item: { href: "/owner", label: "Customers", icon: Building2, exact: true } },
+    { type: "link", category: "Owner", item: { href: "/owner/costs", label: "Costs & capacity", icon: Gauge } },
+  ];
+}
+
+/** Every nav entry this person sees, before the module filter. */
+export function allEntries(isAdmin: boolean, isOwner: boolean): Entry[] {
+  return [...(isOwner ? ownerEntries() : []), ...NAV, ...(isAdmin ? [adminGroup()] : [])];
+}
+
 export function adminGroup(): Entry {
   return {
     type: "group",
@@ -400,6 +414,7 @@ export function NavLinks({
   badges = {},
   query = "",
   labels = false,
+  isOwner = false,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -415,9 +430,11 @@ export function NavLinks({
   query?: string;
   /** Icon-rail mode: show each page or group name under its icon. */
   labels?: boolean;
+  /** Show the owner's pages (Customers, Costs & capacity) at the top. */
+  isOwner?: boolean;
 }) {
   const pathname = usePathname();
-  const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules, isAdmin);
+  const entries = visibleEntries(allEntries(isAdmin, isOwner), allowedModules, isAdmin);
   const q = query.trim().toLowerCase();
   const listed: Entry[] = q
     ? entries.flatMap((e): Entry[] =>

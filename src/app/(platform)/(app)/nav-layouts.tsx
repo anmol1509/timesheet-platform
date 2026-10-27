@@ -4,23 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { Briefcase, ChevronDown, LayoutDashboard, LayoutGrid, Receipt, Settings, Users, Wrench, type LucideIcon } from "lucide-react";
+import { Briefcase, ChevronDown, Gauge, LayoutDashboard, LayoutGrid, Receipt, Settings, Users, Wrench, type LucideIcon } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/lib/cn";
-import { ACTIVE, INACTIVE, ROW, adminGroup, groupContainsActive, NAV, resolveActiveHref, visibleEntries, type Entry, type Item } from "./nav-links";
+import { ACTIVE, INACTIVE, ROW, allEntries, groupContainsActive, resolveActiveHref, visibleEntries, type Entry, type Item } from "./nav-links";
 
 /* The alternative menu layouts. They all read the same NAV as the classic sidebar, so a page added there shows up
  * everywhere, and permissions are applied by the same visibleEntries filter. */
 
 type Props = {
   isAdmin: boolean;
+  isOwner?: boolean;
   allowedModules: string[] | null;
   pendingApprovals?: number;
   badges?: Record<string, number>;
 };
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Owner: Gauge,
   Home: LayoutDashboard,
   People: Users,
   Operations: Wrench,
@@ -29,9 +31,9 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Setup: Settings,
 };
 
-function useNavModel({ isAdmin, allowedModules, pendingApprovals = 0, badges = {} }: Props) {
+function useNavModel({ isAdmin, isOwner = false, allowedModules, pendingApprovals = 0, badges = {} }: Props) {
   const pathname = usePathname();
-  const entries = useMemo(() => visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules, isAdmin), [isAdmin, allowedModules]);
+  const entries = useMemo(() => visibleEntries(allEntries(isAdmin, isOwner), allowedModules, isAdmin), [isAdmin, isOwner, allowedModules]);
   const activeHref = resolveActiveHref(pathname, entries);
   const activeEntry = entries.find((e) => (e.type === "link" ? e.item.href === activeHref : groupContainsActive(activeHref, e.children))) ?? null;
   const categories = useMemo(() => [...new Set(entries.map((e) => e.category))], [entries]);
