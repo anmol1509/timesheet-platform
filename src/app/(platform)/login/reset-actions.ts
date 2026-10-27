@@ -3,6 +3,7 @@
 import { brandForBranch } from "@/lib/email/brand";
 import { passwordResetMail } from "@/lib/email/templates";
 import { endSessionsFor } from "@/lib/userSessions";
+import { notifyUsers } from "@/lib/notifications/notify";
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -79,6 +80,7 @@ export async function resetPasswordAction(_prev: State, formData: FormData): Pro
   ]);
   // A reset is the answer to "someone else may have my password": every existing sign-in ends.
   await endSessionsFor(user.id);
+  await notifyUsers({ userIds: [user.id], kind: "SECURITY_PASSWORD_CHANGED", title: "Your password was changed", body: "It was changed with a reset link.\n\nIf you did not do this, tell your administrator straight away.", href: "/profile?tab=security" });
   await logAudit({
     entityType: "USER",
     entityId: user.id,

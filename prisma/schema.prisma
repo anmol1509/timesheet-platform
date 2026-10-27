@@ -211,6 +211,8 @@ model User {
   jobTitle       String?
   isActive       Boolean        @default(true)
   // Delivery preferences for notifications (in-app always on).
+  /// Which emails and when (see src/lib/emailPrefs.ts). Null until the person saves their choices; notifyEmail is the old single switch.
+  emailPrefs Json?
   notifyEmail    Boolean        @default(true)
   // Appearance and start page (see lib/preferences.ts). Follows the person to any device.
   preferences    Json?
@@ -1887,11 +1889,14 @@ model Notification {
   href      String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
+  /// Waiting for the person's next email summary (see emailPrefs). Cleared when the summary is sent or dropped.
+  emailQueued Boolean @default(false)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
   @@index([userId, readAt, createdAt])
+  @@index([emailQueued, userId])
 }
 
 // ---------------------------------------------------------------------------

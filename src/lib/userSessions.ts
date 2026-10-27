@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import { notifyUsers } from "@/lib/notifications/notify";
 import type { VerifiedSession } from "@/lib/session";
 
 /** "Chrome on Windows", "Safari on iPhone": enough for a person to recognise their own devices. */
@@ -17,7 +18,19 @@ export async function startSession(userId: string): Promise<string> {
   const h = await headers();
   const userAgent = (h.get("user-agent") ?? "").slice(0, 300) || null;
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 64) || null;
-  const row = await prisma.userSession.create({ data: { userId, userAgent, ip, label: describeDevice(userAgent) }, select: { id: true } });
+  const label = describeDevice(userAgent);
+  // A kind of device this person has not signed in from recently is worth an email; their very first sign-in is not.
+  const seen = await prisma.userSession.findMany({ where: { userId }, select: { label: true }, take: 50 });
+  const row = await prisma.userSession.create({ data: { userId, userAgent, ip, label }, select: { id: true } });
+  if (seen.length > 0 && !seen.some((x) => x.label === label)) {
+    await notifyUsers({
+      userIds: [userId],
+      kind: "SECURITY_NEW_SIGNIN",
+      title: "New sign-in to your account",
+      body: `${label}${ip ? `, from ${ip}` : ""}.\n\nIf this was you, there is nothing to do. If it was not, change your password now: that signs every other device out.`,
+      href: "/profile?tab=security",
+    });
+  }
   // Old rows (ended, or older than a session can live) are of no use to anyone; tidy them as people sign in.
   await prisma.userSession.deleteMany({ where: { userId, createdAt: { lt: new Date(Date.now() - SESSION_ROW_KEEP_MS) } } }).catch(() => {});
   return row.id;

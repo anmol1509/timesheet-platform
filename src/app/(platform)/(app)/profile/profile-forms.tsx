@@ -3,7 +3,6 @@
 import { PhoneField } from "@/components/ui/PhoneField";
 import { useActionState } from "react";
 import { changePasswordAction, updateProfileAction } from "./actions";
-import { saveNotificationPrefsAction } from "../notifications/actions";
 
 type State = { error: string | null; ok?: boolean };
 const INITIAL: State = { error: null };
@@ -68,26 +67,6 @@ export function PasswordForm() {
           {pending ? "Updating…" : "Change password"}
         </button>
         <Message state={state} success="Password changed." />
-      </div>
-    </form>
-  );
-}
-
-export function NotificationPrefsForm({
-  notifyEmail,
-}: {
-  notifyEmail: boolean;
-}) {
-  const [state, action, pending] = useActionState(saveNotificationPrefsAction, INITIAL);
-  return (
-    <form action={action} className="space-y-3">
-      <p className="text-xs text-muted">In-app notifications are always on. Choose where else to be told.</p>
-      <label className="flex items-center gap-2 text-sm text-secondary">
-        <input type="checkbox" name="notifyEmail" defaultChecked={notifyEmail} /> Email me
-      </label>
-      <div className="flex items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
-        <Message state={state} success="Saved." />
       </div>
     </form>
   );

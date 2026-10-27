@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "./email";
 import { appBaseUrl, brandForBranch, PRODUCT_BRAND } from "@/lib/email/brand";
 import { notificationMail } from "@/lib/email/templates";
+import { parseEmailPrefs, planEmail } from "@/lib/emailPrefs";
 
 export type NotifyInput = {
   userIds: string[];
@@ -27,23 +28,26 @@ export async function notifyUsers({ userIds, kind, title, body = null, href = nu
 
     const users = await prisma.user.findMany({
       where: { id: { in: ids }, isActive: true },
-      select: { id: true, email: true, name: true, notifyEmail: true, branchId: true },
+      select: { id: true, email: true, name: true, notifyEmail: true, emailPrefs: true, branchId: true },
     });
     if (users.length === 0) return;
 
+    // Each person's own email settings decide whether this one is emailed now, held for their next summary, or not emailed.
+    const now = new Date();
+    const plan = new Map(users.map((u) => [u.id, planEmail(parseEmailPrefs(u.emailPrefs, u.notifyEmail), kind, now)] as const));
     await prisma.notification.createMany({
-      data: users.map((u) => ({ userId: u.id, kind, title, body, href })),
+      data: users.map((u) => ({ userId: u.id, kind, title, body, href, emailQueued: plan.get(u.id) === "QUEUE" })),
     });
+    const toEmail = users.filter((u) => plan.get(u.id) === "SEND_NOW");
 
     const appUrl = appBaseUrl();
 
     after(async () => {
       // Each person's email carries their own company's name and logo.
       const brands = new Map<string | null, Awaited<ReturnType<typeof brandForBranch>>>();
-      for (const id of new Set(users.filter((u) => u.notifyEmail).map((u) => u.branchId))) brands.set(id, await brandForBranch(id));
+      for (const id of new Set(toEmail.map((u) => u.branchId))) brands.set(id, await brandForBranch(id));
       const sends: Promise<unknown>[] = [];
-      for (const u of users) {
-        if (!u.notifyEmail) continue;
+      for (const u of toEmail) {
         const mail = notificationMail({ kind, title, body, href, name: u.name, appUrl, brand: brands.get(u.branchId) ?? PRODUCT_BRAND });
         sends.push(sendEmail(u.email, mail.subject, mail.text, { html: mail.html }));
       }
