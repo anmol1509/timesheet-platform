@@ -7,7 +7,9 @@ import { uploadDocumentAction, deleteDocumentAction } from "./actions";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { shrinkImage } from "@/lib/compressImage";
 import { DeleteButton } from "@/components/DeleteButton";
-import { DatePicker } from "@/components/ui/DatePicker";
+import { OtherDocFields } from "@/components/OtherDocFields";
+import { readOtherDoc } from "@/components/otherDocRead";
+import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import { Paperclip, X } from "lucide-react";
 
 type Doc = {
@@ -24,7 +26,7 @@ const STATUS_BADGE = {
   valid: { label: "Valid", color: "green" as const },
   expiring: { label: "Expiring soon", color: "amber" as const },
   expired: { label: "Expired", color: "red" as const },
-  not_set: { label: "No expiry set", color: "slate" as const },
+  not_set: { label: "Not tracked", color: "slate" as const },
 };
 
 // Catch-all for anything that doesn't have a dedicated section above
@@ -32,7 +34,7 @@ const STATUS_BADGE = {
 // Licence each carry their own upload next to their fields now). Every
 // upload here is tagged OTHER — matching the competitor's own "Other
 // Documents" table, which is exactly this: a catch-all, not a master list.
-type Pending = { key: number; file: File; name: string; expiry: string; state: "ready" | "uploading" | "failed"; error?: string };
+type Pending = { key: number; file: File; name: string; track: boolean; expiry: string; note?: string | null; state: "ready" | "uploading" | "failed"; error?: string };
 
 export function DocumentsSection({
   employeeId,
@@ -58,17 +60,34 @@ export function DocumentsSection({
       // A phone photo is scaled down first; a PDF is left as it is.
       const file = await shrinkImage(picked);
       if (file.size > MAX_UPLOAD_BYTES) { skipped.push(`"${picked.name}" is too large (max ${MAX_UPLOAD_LABEL})`); continue; }
-      added.push({ key: nextKey.current++, file, name: picked.name.replace(/\.[A-Za-z0-9]{1,5}$/, ""), expiry: "", state: "ready" });
+      added.push({ key: nextKey.current++, file, name: nameFromFile(picked.name), track: false, expiry: "", note: "Reading the file…", state: "ready" });
     }
     setNotice(skipped.length ? `${skipped.join("; ")}. Not added.` : null);
     setRows((rs) => [...rs, ...added]);
     if (fileRef.current) fileRef.current.value = "";
+    // The AI suggests a name and the expiry date; the person can change either before uploading.
+    for (const r of added) {
+      void readOtherDoc(r.file).then((read) => {
+        setRows((rs) => rs.map((x) => {
+          if (x.key !== r.key) return x;
+          if (!read) return { ...x, note: null };
+          // Only fills what hasn't been touched since the file was picked.
+          return { ...x, name: x.name === r.name && read.name ? read.name : x.name, track: x.track || !!read.expiry, expiry: x.expiry || read.expiry, note: read.name || read.expiry ? "Filled in from the file. Check it before uploading." : null };
+        }));
+      });
+    }
   }
 
   // One request per file, so a single big or failing file never takes the others with it.
   function uploadAll() {
     const todo = rows.filter((r) => r.state !== "uploading");
     if (todo.length === 0) return;
+    const bad = todo.map((r) => ({ r, why: otherDocProblem(r.name, r.track, r.expiry) })).filter((x) => x.why);
+    if (bad.length > 0) {
+      for (const b of bad) patch(b.r.key, { state: "failed", error: b.why! });
+      setNotice("Fix the highlighted documents, then upload again.");
+      return;
+    }
     setNotice(null);
     startTransition(async () => {
       for (const r of todo) {
@@ -77,7 +96,7 @@ export function DocumentsSection({
         fd.append("employeeId", employeeId);
         fd.append("type", "OTHER");
         fd.append("name", r.name.trim());
-        fd.append("expiryDate", r.expiry);
+        fd.append("expiryDate", trackedExpiry(r.track, r.expiry));
         fd.append("file", r.file);
         try {
           const res = await uploadDocumentAction(fd);
@@ -107,18 +126,11 @@ export function DocumentsSection({
           {rows.length > 0 && (
             <ul className="space-y-2">
               {rows.map((r) => (
-                <li key={r.key} className="grid grid-cols-1 items-end gap-3 rounded-md border border-default p-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto]">
-                  <label className="block min-w-0">
-                    <span className="mb-1 block text-xs font-medium text-muted">Name <span className="font-normal">({r.file.name})</span></span>
-                    <input value={r.name} onChange={(e) => patch(r.key, { name: e.target.value })} disabled={r.state === "uploading"} placeholder="e.g. Contract, Offer letter" className="input w-full" />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-muted">Expiry date (optional)</span>
-                    <DatePicker value={r.expiry} onChange={(v) => patch(r.key, { expiry: v })} disabled={r.state === "uploading"} className="w-full" />
-                  </label>
+                <li key={r.key} className="grid grid-cols-1 items-end gap-3 rounded-md border border-default p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <OtherDocFields name={r.name} onName={(v) => patch(r.key, { name: v })} track={r.track} onTrack={(v) => patch(r.key, { track: v })} expiry={r.expiry} onExpiry={(v) => patch(r.key, { expiry: v })} disabled={r.state === "uploading"} note={r.note} fileLabel={r.file.name} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_14rem]" />
                   <button type="button" disabled={r.state === "uploading"} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} aria-label={`Remove ${r.file.name}`} className="btn btn-secondary h-9 px-2.5"><X className="h-4 w-4" aria-hidden /></button>
-                  {r.state === "uploading" && <p className="text-xs text-muted sm:col-span-3">Uploading…</p>}
-                  {r.state === "failed" && <p role="alert" className="text-xs text-[var(--error)] sm:col-span-3">{r.error}</p>}
+                  {r.state === "uploading" && <p className="text-xs text-muted sm:col-span-2">Uploading…</p>}
+                  {r.state === "failed" && <p role="alert" className="text-xs text-[var(--error)] sm:col-span-2">{r.error}</p>}
                 </li>
               ))}
             </ul>

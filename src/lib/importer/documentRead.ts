@@ -16,6 +16,8 @@ export type PageRead = {
   expiry: string;
   confidence: Confidence;
   blank: boolean;
+  /** For a page that is no standard document (type OTHER): a short name to file it under, e.g. "Offer letter". Empty otherwise. */
+  title?: string;
   /** Everything else printed on the page that belongs on the record, keyed by record field (see READ_FIELDS). Empty strings are dropped. */
   fields?: Record<string, string>;
 };
@@ -40,6 +42,8 @@ export type ReadDocument = {
   expiry: string;
   confidence: Confidence;
   fields: Record<string, string>;
+  /** What to call it when it is filed under Other documents. */
+  title: string;
 };
 
 const RANK: Record<Confidence, number> = { high: 3, medium: 2, low: 1 };
@@ -57,10 +61,11 @@ export function groupPages(source: number, reads: PageRead[]): ReadDocument[] {
       prev.holder = prev.holder || r.holder;
       prev.idNumber = prev.idNumber || r.idNumber;
       prev.expiry = prev.expiry || r.expiry;
+      prev.title = prev.title || (r.title ?? "");
       for (const [k, v] of Object.entries(r.fields ?? {})) if (v && !prev.fields[k]) prev.fields[k] = v;
       prev.confidence = lowest(prev.confidence, r.confidence);
     } else {
-      docs.push({ source, pages: [i + 1], type: r.type, holder: r.holder, idNumber: r.idNumber, expiry: r.expiry, confidence: r.confidence, fields: { ...(r.fields ?? {}) } });
+      docs.push({ source, pages: [i + 1], type: r.type, holder: r.holder, idNumber: r.idNumber, expiry: r.expiry, confidence: r.confidence, fields: { ...(r.fields ?? {}) }, title: r.title ?? "" });
     }
   });
   return docs;

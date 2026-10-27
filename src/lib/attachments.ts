@@ -8,6 +8,7 @@ import { ownDocIsConfidential } from "@/lib/ownCompany";
 import { isOutsideBranch } from "@/lib/branch";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { resolveDocTypes, VEHICLE_EXPIRY_FIELD } from "@/lib/documentTypes";
+import { otherDocFilename } from "@/lib/otherDoc";
 
 /**
  * The record types a generic attachment may be filed against, each with a lookup
@@ -94,7 +95,8 @@ export async function uploadAttachmentAction(
       entityType,
       entityId,
       docType,
-      filename: file.name,
+      // "Other" files are named by the person (or read from the file); the extension is kept so the file still opens.
+      filename: docType === "OTHER" ? otherDocFilename(String(formData.get("name") || ""), file.name) : file.name,
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
       expiryDate,

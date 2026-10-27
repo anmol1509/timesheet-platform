@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { OtherDocFields } from "@/components/OtherDocFields";
+import { readOtherDoc } from "@/components/otherDocRead";
+import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -35,6 +38,26 @@ export function AttachmentUploader({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // Type "Other" is the catch-all: it asks for a name, whether to track expiry and the date, read from the file when it can.
+  const [type, setType] = useState(docTypeOptions[0]?.value ?? "");
+  const isOther = type === "OTHER";
+  const [name, setName] = useState("");
+  const [track, setTrack] = useState(false);
+  const [expiry, setExpiry] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setNote(null); };
+
+  async function onFile(file: File | undefined) {
+    if (!file || !isOther) return;
+    const guess = nameFromFile(file.name);
+    setName((n) => n || guess);
+    setNote("Reading the file…");
+    const read = await readOtherDoc(file);
+    if (!read) { setNote(null); return; }
+    setName((n) => (n === guess && read.name ? read.name : n));
+    if (read.expiry) { setTrack(true); setExpiry((e) => e || read.expiry); }
+    setNote(read.name || read.expiry ? "Filled in from the file. Check it before uploading." : null);
+  }
 
   return (
     <div className="space-y-4">
@@ -42,12 +65,19 @@ export function AttachmentUploader({
         ref={formRef}
         action={async (formData) => {
           setError(null);
+          if (isOther) {
+            const why = otherDocProblem(name, track, expiry);
+            if (why) { setError(why); return; }
+            formData.set("name", name.trim());
+            formData.set("expiryDate", trackedExpiry(track, expiry));
+          }
           const result = await uploadAttachmentAction(formData);
           if (result?.error) {
             setError(result.error);
             return;
           }
           formRef.current?.reset();
+          resetOther();
         }}
         className="flex flex-wrap items-end gap-3 rounded-2xl border border-dashed border-strong p-4"
       >
@@ -58,12 +88,14 @@ export function AttachmentUploader({
 
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Type</span>
-<Select name="docType" defaultValue={docTypeOptions[0]?.value ?? ""} options={docTypeOptions.map((o) => ({ value: o.value, label: o.label }))} />
+<Select name="docType" value={type} onChange={(v) => { setType(v); if (v !== "OTHER") resetOther(); }} options={docTypeOptions.map((o) => ({ value: o.value, label: o.label }))} />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Expiry (optional)</span>
-          <DatePicker name="expiryDate" />
-        </label>
+        {!isOther && (
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Expiry (optional)</span>
+            <DatePicker name="expiryDate" />
+          </label>
+        )}
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-xs font-medium text-muted">
             File (max {MAX_UPLOAD_LABEL})
@@ -73,8 +105,10 @@ export function AttachmentUploader({
             type="file"
             required
             className="file-input"
+            onChange={(e) => void onFile(e.target.files?.[0])}
           />
         </label>
+        {isOther && <OtherDocFields name={name} onName={setName} track={track} onTrack={setTrack} expiry={expiry} onExpiry={setExpiry} note={note} className="grid w-full grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto_14rem]" />}
         <button
           type="submit"
           className="btn btn-primary"

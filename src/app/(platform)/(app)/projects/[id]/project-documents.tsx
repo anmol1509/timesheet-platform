@@ -9,6 +9,7 @@ import { shrinkImage } from "@/lib/compressImage";
 import { Select } from "@/components/ui/Select";
 import { DeleteButton } from "@/components/DeleteButton";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { OtherDocStage } from "@/components/OtherDocStage";
 
 type Doc = {
   id: string;
@@ -23,6 +24,7 @@ const STATUS_BADGE = {
   expiring: { label: "Expiring soon", color: "amber" as const },
   expired: { label: "Expired", color: "red" as const },
   not_set: { label: "No expiry set", color: "slate" as const },
+  not_tracked: { label: "Not tracked", color: "slate" as const },
 };
 
 const DOC_TYPES = ["CONTRACT", "LPO", "PERMIT", "OTHER"];
@@ -39,6 +41,8 @@ export function ProjectDocuments({
   const [type, setType] = useState("CONTRACT");
   const [expiryDate, setExpiryDate] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // A file picked for type Other waits here for its name and expiry decision.
+  const [staged, setStaged] = useState<File | null>(null);
 
   async function handleUpload() {
     const picked = fileRef.current?.files?.[0];
@@ -51,6 +55,11 @@ export function ProjectDocuments({
       return;
     }
     setError(null);
+    if (type === "OTHER") {
+      setStaged(file);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     const formData = new FormData();
     formData.append("projectId", projectId);
     formData.append("type", type);
@@ -76,12 +85,14 @@ export function ProjectDocuments({
             options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
           />
         </label>
+        {type !== "OTHER" && (
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">
             Expiry date (optional)
           </span>
           <DatePicker value={expiryDate} onChange={(v) => setExpiryDate(v)} />
         </label>
+        )}
         <input
           ref={fileRef}
           type="file"
@@ -95,6 +106,22 @@ export function ProjectDocuments({
           {error}
         </p>
       )}
+      {staged && (
+        <OtherDocStage
+          file={staged}
+          onDone={() => setStaged(null)}
+          save={async ({ name, expiry }) => {
+            const fd = new FormData();
+            fd.append("projectId", projectId);
+            fd.append("type", "OTHER");
+            fd.append("name", name);
+            fd.append("expiryDate", expiry);
+            fd.append("file", staged);
+            return addProjectDocumentAction(fd);
+          }}
+        />
+      )}
+
 
       {documents.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-muted">
@@ -113,7 +140,7 @@ export function ProjectDocuments({
           <tbody className="divide-y divide-[var(--border)]">
             {documents.map((d) => {
               const status = complianceStatus(d.expiryDate);
-              const badge = STATUS_BADGE[status];
+              const badge = STATUS_BADGE[status === "not_set" && d.type === "OTHER" ? "not_tracked" : status];
               return (
                 <tr key={d.id}>
                   <td className="px-4 py-3 text-primary">
