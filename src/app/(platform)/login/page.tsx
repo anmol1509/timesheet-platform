@@ -17,15 +17,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <AuthShell
       title="Sign in"
-      subtitle="Welcome back. Enter your details to continue."
-      footer={
-        <a href="https://manpowersync.com" className="hover:underline">
-          ← Back to manpowersync.com
-        </a>
-      }
+      subtitle="Welcome back! Sign in to access your ManpowerSync account."
     >
       {reset === "1" && (
-        <p role="status" className="mb-4 rounded-full bg-[var(--success-soft)] px-4 py-2.5 text-sm text-[var(--success)]">
+        <p role="status" className="mb-4 rounded-full bg-[var(--success-soft)] px-4 py-2.5 text-[14px] text-[var(--success)]">
           Your password has been updated. Sign in with the new one.
         </p>
       )}
