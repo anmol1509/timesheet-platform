@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireAdmin, requireUser } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { logAudit } from "@/lib/audit";
 import { deleteImage, storeImage } from "@/lib/storedImage";
@@ -96,6 +97,16 @@ export async function savePreferencesAction(input: Partial<Preferences>): Promis
   await prisma.user.update({ where: { id: user.id }, data: { preferences: next } });
   await writePreferenceCookies(next);
   revalidatePath("/", "layout");
+  return { error: null, ok: true };
+}
+
+/** An administrator sets (or, with null, clears) the look new accounts in their company start with. People who already chose their own look keep it. */
+export async function saveCompanyLookAction(input: Partial<Preferences> | null): Promise<State> {
+  const user = await requireAdmin();
+  if (!user.branchId) return { error: "Open a company first; the default belongs to one company." };
+  const { startPage: _start, ...look } = parsePreferences(input);
+  await prisma.branch.update({ where: { id: user.branchId }, data: { appearanceDefaults: input ? look : Prisma.DbNull } });
+  revalidatePath("/profile");
   return { error: null, ok: true };
 }
 

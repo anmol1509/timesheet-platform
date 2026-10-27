@@ -30,6 +30,8 @@ model Branch {
   aiWarnedLevel    Int               @default(0)
   // Set when the owner suspends the customer: the company's own people are signed out and can't sign in until it is cleared.
   suspendedAt      DateTime?
+  // The look new accounts start with (see lib/preferences.ts); an administrator sets it from My account > Appearance.
+  appearanceDefaults Json?
   code             String            @unique
   name             String
   emirate          String?

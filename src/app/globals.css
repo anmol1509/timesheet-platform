@@ -614,9 +614,9 @@ main .card > div > table > thead > tr:first-child > th:last-child {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(64rem 46rem at -8% -10%, rgb(124 92 255 / 0.38), transparent 62%),
-    radial-gradient(48rem 36rem at 105% 0%, rgb(56 189 248 / 0.24), transparent 60%),
-    radial-gradient(52rem 40rem at 20% 115%, rgb(244 114 182 / 0.20), transparent 60%);
+    radial-gradient(64rem 46rem at -8% -10%, color-mix(in srgb, var(--brand-primary) 38%, transparent), transparent 62%),
+    radial-gradient(48rem 36rem at 105% 0%, color-mix(in srgb, color-mix(in srgb, var(--brand-primary) 50%, #38bdf8) 26%, transparent), transparent 60%),
+    radial-gradient(52rem 40rem at 20% 115%, color-mix(in srgb, color-mix(in srgb, var(--brand-primary) 45%, #f472b6) 22%, transparent), transparent 60%);
 }
 
 .glass {
@@ -644,9 +644,9 @@ main .card > div > table > thead > tr:first-child > th:last-child {
 }
 :root[data-theme="dark"] .app-aurora::before {
   background:
-    radial-gradient(60rem 40rem at -8% -10%, rgb(124 92 255 / 0.22), transparent 60%),
-    radial-gradient(48rem 36rem at 105% 0%, rgb(56 189 248 / 0.12), transparent 60%),
-    radial-gradient(52rem 40rem at 20% 115%, rgb(244 114 182 / 0.10), transparent 60%);
+    radial-gradient(60rem 40rem at -8% -10%, color-mix(in srgb, var(--brand-primary) 24%, transparent), transparent 60%),
+    radial-gradient(48rem 36rem at 105% 0%, color-mix(in srgb, color-mix(in srgb, var(--brand-primary) 50%, #38bdf8) 14%, transparent), transparent 60%),
+    radial-gradient(52rem 40rem at 20% 115%, color-mix(in srgb, color-mix(in srgb, var(--brand-primary) 45%, #f472b6) 12%, transparent), transparent 60%);
 }
 :root[data-theme="dark"] .glass {
   background: linear-gradient(180deg, rgb(32 35 44 / 0.72), rgb(20 22 28 / 0.58));
@@ -662,9 +662,9 @@ main .card > div > table > thead > tr:first-child > th:last-child {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .app-aurora::before {
     background:
-      radial-gradient(60rem 40rem at -8% -10%, rgb(124 92 255 / 0.22), transparent 60%),
-      radial-gradient(48rem 36rem at 105% 0%, rgb(56 189 248 / 0.12), transparent 60%),
-      radial-gradient(52rem 40rem at 20% 115%, rgb(244 114 182 / 0.10), transparent 60%);
+      radial-gradient(60rem 40rem at -8% -10%, color-mix(in srgb, var(--brand-primary) 24%, transparent), transparent 60%),
+      radial-gradient(48rem 36rem at 105% 0%, color-mix(in srgb, color-mix(in srgb, var(--brand-primary) 50%, #38bdf8) 14%, transparent), transparent 60%),
+      radial-gradient(52rem 40rem at 20% 115%, color-mix(in srgb, color-mix(in srgb, var(--brand-primary) 45%, #f472b6) 12%, transparent), transparent 60%);
   }
   :root:not([data-theme="light"]) .glass {
     background: linear-gradient(180deg, rgb(32 35 44 / 0.72), rgb(20 22 28 / 0.58));

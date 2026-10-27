@@ -30,7 +30,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const tab: AccountTab = ACCOUNT_TABS.some((t) => t.key === sp.tab) ? (sp.tab as AccountTab) : "profile";
   const branch = user.branchId
-    ? await prisma.branch.findUnique({ where: { id: user.branchId }, select: { code: true, name: true } })
+    ? await prisma.branch.findUnique({ where: { id: user.branchId }, select: { code: true, name: true, appearanceDefaults: true } })
     : null;
   const subject = subjectOf(user);
   const unrestricted = user.role !== "STAFF" || !user.accessRole;
@@ -87,7 +87,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     );
   } else if (tab === "appearance") {
     const startPages = START_PAGES.filter((p) => canOpenPage(subject, p.href)).map((p) => ({ href: p.href, label: p.label }));
-    content = <AppearanceForm initial={parsePreferences(user.preferences)} startPages={startPages} />;
+    const companyDefault = branch?.appearanceDefaults ? parsePreferences(branch.appearanceDefaults) : null;
+    content = <AppearanceForm initial={parsePreferences(user.preferences ?? branch?.appearanceDefaults)} startPages={startPages} companyDefault={companyDefault} canSetCompanyDefault={!!branch && user.role !== "STAFF"} />;
   } else if (tab === "notifications") {
     content = (
       <section className="card p-6">

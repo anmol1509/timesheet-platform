@@ -54,7 +54,7 @@ import { cn } from "@/lib/cn";
 import { moduleForPath } from "@/lib/permissions";
 import { pathMatches } from "@/lib/navMatch";
 
-type Item = {
+export type Item = {
   href: string;
   label: string;
   icon: LucideIcon;
@@ -72,11 +72,11 @@ type Item = {
    */
   alsoMatch?: string[];
 };
-type Entry =
+export type Entry =
   | { type: "link"; item: Item; category: string }
   | { type: "group"; label: string; icon: LucideIcon; children: Item[]; category: string };
 
-const NAV: Entry[] = [
+export const NAV: Entry[] = [
   {
     type: "link",
     item: {
@@ -269,7 +269,7 @@ export function getNavPages(
 
 /** Drops nav rows whose module the user can't open (allowed = null → no restriction),
  * and any group left empty. Rows outside every module (dashboard, admin) always stay. */
-function visibleEntries(entries: Entry[], allowed: string[] | null, isAdmin: boolean): Entry[] {
+export function visibleEntries(entries: Entry[], allowed: string[] | null, isAdmin: boolean): Entry[] {
   const optIn = (item: Item) => !item.needs || isAdmin || !!allowed?.includes(item.needs);
   const ok = (item: Item) => {
     if (!optIn(item)) return false;
@@ -284,7 +284,7 @@ function visibleEntries(entries: Entry[], allowed: string[] | null, isAdmin: boo
   });
 }
 
-function adminGroup(): Entry {
+export function adminGroup(): Entry {
   return {
     type: "group",
     label: "Administration",
@@ -319,7 +319,7 @@ function matchSpecificity(pathname: string, item: Item): number | null {
 /** The single most-specific nav item for the current path, across the whole
  * nav (not just within one group) — see matchSpecificity. Exactly one row
  * (or none) is ever "active" at a time. */
-function resolveActiveHref(pathname: string, entries: Entry[]): string | null {
+export function resolveActiveHref(pathname: string, entries: Entry[]): string | null {
   let bestHref: string | null = null;
   let bestLen = -1;
   function consider(item: Item) {
@@ -336,17 +336,17 @@ function resolveActiveHref(pathname: string, entries: Entry[]): string | null {
   return bestHref;
 }
 
-function groupContainsActive(activeHref: string | null, children: Item[]) {
+export function groupContainsActive(activeHref: string | null, children: Item[]) {
   return children.some((c) => c.href === activeHref);
 }
 
 // Active state reads as "selected", not as a coloured button: a tinted surface
 // plus a brand rail, so a long nav doesn't turn into a stack of blue blocks.
-const ROW =
+export const ROW =
   "group/row relative flex items-center rounded-[10px] text-[13.5px] transition-colors";
-const ACTIVE =
+export const ACTIVE =
   "glass-pill font-semibold text-[var(--brand-primary)]";
-const INACTIVE = "text-secondary hover:bg-[color-mix(in_srgb,var(--surface)_55%,transparent)] hover:text-primary";
+export const INACTIVE = "text-secondary hover:bg-[color-mix(in_srgb,var(--surface)_55%,transparent)] hover:text-primary";
 
 /* ---- Per-browser sidebar preferences (open group, pinned pages) -------------
  * Read through useSyncExternalStore so the server render and first client
@@ -398,6 +398,8 @@ export function NavLinks({
   collapsed = false,
   pendingApprovals = 0,
   badges = {},
+  query = "",
+  labels = false,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -409,9 +411,21 @@ export function NavLinks({
   pendingApprovals?: number;
   /** Other rows that need someone to act, by href — shown as a count. */
   badges?: Record<string, number>;
+  /** Search-first layout: while there is text, the list shows only matching pages. */
+  query?: string;
+  /** Icon-rail mode: show each page or group name under its icon. */
+  labels?: boolean;
 }) {
   const pathname = usePathname();
   const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules, isAdmin);
+  const q = query.trim().toLowerCase();
+  const listed: Entry[] = q
+    ? entries.flatMap((e): Entry[] =>
+        e.type === "link"
+          ? e.item.label.toLowerCase().includes(q) ? [{ ...e, category: "Results" }] : []
+          : e.children.filter((c) => c.label.toLowerCase().includes(q) || e.label.toLowerCase().includes(q)).map((item) => ({ type: "link", item, category: "Results" }))
+      )
+    : entries;
 
   // One winner across the *whole* nav, not per group — fixes two rows (in
   // different groups, or a group row and a top-level item) lighting up for
@@ -564,14 +578,15 @@ export function NavLinks({
 
   return (
     <nav aria-label="Main" className={cn("flex flex-col gap-px", collapsed && "items-center")}>
-      {!collapsed && pins.length > 0 && (
+      {q && listed.length === 0 && <p className="px-2.5 py-3 text-[13px] text-muted">No page matches “{query.trim()}”.</p>}
+      {!collapsed && !q && pins.length > 0 && (
         <div className="contents">
           <p className="px-2.5 pt-1.5 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">Pinned</p>
           {pins.map((href) => renderLeaf(itemByHref.get(href)!, 0, "pin-", { rail: false, pin: false }))}
         </div>
       )}
-      {entries.map((entry, i) => {
-        const showCategory = !collapsed && entry.category !== entries[i - 1]?.category;
+      {listed.map((entry, i) => {
+        const showCategory = !collapsed && entry.category !== listed[i - 1]?.category;
         const categoryHeader = showCategory && (
           <p
             key={`cat-${entry.category}`}
@@ -594,9 +609,10 @@ export function NavLinks({
                   href={entry.item.href}
                   aria-label={entry.item.label}
                   aria-current={active ? "page" : undefined}
-                  className={cn(ROW, "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
+                  className={cn(ROW, labels ? "w-full flex-col gap-0.5 px-0.5 py-1.5" : "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
+                  {labels && <span className="line-clamp-2 w-full text-center text-[10px] leading-[1.15] break-words">{entry.item.label}</span>}
                 </Link>
               </Tooltip>
             );
@@ -628,11 +644,12 @@ export function NavLinks({
                     aria-label={entry.label}
                     className={cn(
                       ROW,
-                      "h-9 w-9 justify-center",
+                      labels ? "w-full flex-col gap-0.5 px-0.5 py-1.5" : "h-9 w-9 justify-center",
                       hasActiveChild ? ACTIVE : INACTIVE
                     )}
                   >
                     <GroupIcon className="h-4 w-4 shrink-0" />
+                    {labels && <span className="line-clamp-2 w-full text-center text-[10px] leading-[1.15] break-words">{entry.label === "Administration" ? "Admin" : entry.label}</span>}
                   </button>
                 </Popover.Trigger>
               </Tooltip>

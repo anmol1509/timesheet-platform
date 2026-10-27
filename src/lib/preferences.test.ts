@@ -8,8 +8,10 @@ test("unknown or missing values fall back to the defaults", () => {
 });
 
 test("good values are kept", () => {
-  const p = parsePreferences({ theme: "system", accent: "teal", density: "compact", textSize: "large", sidebar: "icons", startPage: "/payroll" });
-  assert.deepEqual(p, { theme: "system", accent: "teal", density: "compact", textSize: "large", sidebar: "icons", startPage: "/payroll" });
+  const p = parsePreferences({ theme: "system", accent: "teal", density: "compact", textSize: "large", layout: "topbar", navStyle: "dark", autoHide: true, font: "inter", accentHex: "#AABBCC", background: "plain", corners: "round", reduceMotion: true, highContrast: true, startPage: "/payroll" });
+  assert.deepEqual(p, { theme: "system", accent: "teal", density: "compact", textSize: "large", layout: "topbar", navStyle: "dark", autoHide: true, font: "inter", accentHex: "#aabbcc", background: "plain", corners: "round", reduceMotion: true, highContrast: true, startPage: "/payroll" });
+  assert.equal(parsePreferences({ sidebar: "icons" }).layout, "rail");
+  assert.equal(parsePreferences({ accentHex: "red" }).accentHex, "");
 });
 
 test("only changed choices become attributes", () => {
