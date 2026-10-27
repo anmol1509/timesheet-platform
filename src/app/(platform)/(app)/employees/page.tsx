@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, FileSearch, UserPlus, X } from "lucide-react";
+import { FileSearch, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/db";
@@ -13,6 +13,7 @@ import { BarList } from "@/components/BarList";
 import { Treemap } from "@/components/Treemap";
 import { Insights } from "@/components/ListSummary";
 import { EmployeeList } from "./employee-list";
+import { StatusRow, type StatusItem } from "@/components/StatusRow";
 
 export const metadata = { title: "Employees" };
 
@@ -127,8 +128,6 @@ export default async function EmployeesPage({
 
   const onWorkCount = rows.filter((r) => r.onWork).length;
   const benchCount = rows.length - onWorkCount;
-  const expiredCount = rows.filter((r) => r.worstStatus === "expired").length;
-  const expiringCount = rows.filter((r) => r.worstStatus === "expiring").length;
   const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
 
   // The charts count the whole group being looked at (the company or sponsor chosen), not just the trade or nationality that
@@ -144,6 +143,25 @@ export default async function EmployeesPage({
   for (const g of nationalityGroups) byNationality.set(g.nationality?.trim() || "Not set", (byNationality.get(g.nationality?.trim() || "Not set") ?? 0) + g._count._all);
   const topTrades = [...byTrade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   const nationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]);
+
+  // What needs attention in this list, as chips: people with expired or expiring documents, and incomplete profiles.
+  const peopleList = (people: typeof rows) => (
+    <ul className="divide-y divide-[var(--border)] rounded-md border border-default text-sm">
+      {people.slice(0, 60).map((r) => (
+        <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2">
+          <Link href={`/employees/${r.id}`} className="min-w-0 truncate text-primary hover:underline">{r.name} <span className="text-xs text-subtle">{r.employeeIdNo}</span></Link>
+        </li>
+      ))}
+      {people.length > 60 && <li className="px-3 py-2 text-xs text-muted">…and {people.length - 60} more</li>}
+    </ul>
+  );
+  const statusItems: StatusItem[] = [];
+  const expiredPeople = rows.filter((r) => r.worstStatus === "expired");
+  const expiringPeople = rows.filter((r) => r.worstStatus === "expiring");
+  const incompletePeople = rows.filter((r) => !r.complete);
+  if (expiredPeople.length > 0) statusItems.push({ key: "expired", tone: "danger", label: `${expiredPeople.length} with an expired document`, title: "Expired documents", description: "Renew them before they affect payroll or deployment.", content: <div className="space-y-3">{peopleList(expiredPeople)}<Link href="/employees/renewals" className="btn btn-secondary inline-flex">Review renewals</Link></div> });
+  if (expiringPeople.length > 0) statusItems.push({ key: "expiring", tone: "warn", label: `${expiringPeople.length} expiring soon`, title: "Documents expiring soon", content: <div className="space-y-3">{peopleList(expiringPeople)}<Link href="/employees/renewals" className="btn btn-secondary inline-flex">Review renewals</Link></div> });
+  if (incompletePeople.length > 0) statusItems.push({ key: "incomplete", tone: "info", label: `${incompletePeople.length} incomplete profiles`, title: "Incomplete profiles", description: "Some details are missing. Open a person to fill them in.", content: <div className="space-y-3">{peopleList(incompletePeople)}<Link href="/employees?filter=incomplete" className="btn btn-secondary inline-flex">Show them in the list</Link></div> });
 
   return (
     <div className="space-y-5">
@@ -172,23 +190,7 @@ export default async function EmployeesPage({
         }
       />
 
-      {expiredCount + expiringCount > 0 && (
-        <Link
-          href="/employees/renewals"
-          className={`flex items-center gap-3 rounded-card border px-4 py-3 text-sm transition hover:brightness-[0.98] ${expiredCount > 0 ? "border-[var(--error-border)] bg-[var(--error-soft)]" : "border-[var(--warning-border)] bg-[var(--warning-soft)]"}`}
-        >
-          <AlertTriangle className={`h-4 w-4 shrink-0 ${expiredCount > 0 ? "text-[var(--error)]" : "text-[var(--warning)]"}`} aria-hidden />
-          <span className="min-w-0 flex-1 text-primary">
-            <span className="font-semibold">
-              {expiredCount > 0 && `${expiredCount} ${expiredCount === 1 ? "person has" : "people have"} an expired document`}
-              {expiredCount > 0 && expiringCount > 0 && " · "}
-              {expiringCount > 0 && `${expiringCount} expiring soon`}
-            </span>
-            <span className="text-secondary"> — renew them before they affect payroll or deployment.</span>
-          </span>
-          <span className="flex shrink-0 items-center gap-1 font-medium text-primary">Review renewals<ArrowRight className="h-3.5 w-3.5" aria-hidden /></span>
-        </Link>
-      )}
+      <StatusRow items={statusItems} hideWhenClear label="Needs attention in this list" />
 
       <EmployeeKpiCards
         total={rows.length}

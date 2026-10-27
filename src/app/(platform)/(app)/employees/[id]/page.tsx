@@ -17,7 +17,9 @@ import { EditForm } from "./edit-form";
 import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { HistorySection } from "./history-section";
-import { ReadinessCard } from "./readiness-card";
+import { readinessItem } from "./readiness-card";
+import { StatusRow, type StatusItem } from "@/components/StatusRow";
+import { COMPLIANCE_FIELDS, complianceStatus, daysUntil } from "@/lib/compliance";
 import { VisaHistorySection } from "./visa-history-section";
 import { SalaryHistorySection, type RevisionRow } from "./salary-history-section";
 import { arrearsFor } from "@/lib/payrollSchedule";
@@ -196,6 +198,35 @@ export default async function EmployeeDetailPage({
     orderBy: { month: "desc" },
   });
 
+  // What needs attention on this profile, as chips: payroll readiness (for people who see pay) and documents.
+  const statusItems: StatusItem[] = [];
+  if (canViewPay) {
+    const r = await readinessItem(employee.id);
+    if (r.item) statusItems.push(r.item);
+  }
+  const docStatuses = COMPLIANCE_FIELDS.slice(0, 5).map((f) => {
+    const value = (employee as unknown as Record<string, unknown>)[f.key] as Date | null;
+    return { label: f.label, status: complianceStatus(value), days: value ? daysUntil(value) : null };
+  });
+  const docsToFix = docStatuses.filter((d) => d.status === "expired" || d.status === "expiring" || d.status === "not_set");
+  if (docsToFix.length > 0) {
+    statusItems.push({
+      key: "documents", tone: docStatuses.some((d) => d.status === "expired") ? "danger" : "warn", label: `${docsToFix.length} document${docsToFix.length === 1 ? "" : "s"} need attention`, title: "Documents that need attention", description: "Update the dates on the Documents tab, or upload the file.",
+      content: (
+        <ul className="divide-y divide-[var(--border)] rounded-md border border-default text-sm">
+          {docStatuses.map((d) => (
+            <li key={d.label} className="flex items-center justify-between gap-3 px-3 py-2">
+              <span className="text-primary">{d.label}</span>
+              <span className={d.status === "expired" ? "font-medium text-[var(--error)]" : d.status === "expiring" ? "font-medium text-[var(--warning)]" : d.status === "not_set" ? "text-muted" : "text-[var(--success)]"}>
+                {d.status === "not_set" ? "Not set" : d.status === "expired" ? `${-(d.days ?? 0)} days overdue` : d.status === "expiring" ? `${d.days} days left` : "Valid"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+
   return (
     <div className="space-y-6">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted">
@@ -301,7 +332,7 @@ export default async function EmployeeDetailPage({
         documentCount={employee.documents.length}
       />
 
-      {canViewPay && <ReadinessCard employeeId={employee.id} />}
+      <StatusRow items={statusItems} hideWhenClear={!canViewPay} clearText="Ready for payroll: pay, bank details and documents are in order" label="Needs attention on this profile" />
 
       <EditForm
         ownRateOnly={!employee.skills.some((s) => (Number(s.rate) || 0) > 0)}
