@@ -34,6 +34,9 @@ export function ChecksPanel({ runId, canEdit, issues }: { runId: string; canEdit
     });
   }
 
+  // One Recalculate button for the whole panel, under the first issue it applies to.
+  const firstRecalc = issues.find((i) => i.kind && RECALC_KINDS.has(i.kind));
+
   return (
     <div className="space-y-4">
       {issues.map((i) => (
@@ -51,7 +54,7 @@ export function ChecksPanel({ runId, canEdit, issues }: { runId: string; canEdit
             </ul>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            {canEdit && i.kind && RECALC_KINDS.has(i.kind) && <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={recalc}>{pending ? "Recalculating…" : "Recalculate the run"}</button>}
+            {canEdit && i.kind && RECALC_KINDS.has(i.kind) && i === firstRecalc && <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={recalc}>{pending ? "Recalculating…" : "Recalculate the run"}</button>}
             {i.href && <Link href={i.href} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">Open the records</Link>}
           </div>
         </section>
