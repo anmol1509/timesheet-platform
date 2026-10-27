@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertTriangle, ArrowRight, Eye, EyeOff, Headset, Loader2, Lock, Mail } from "lucide-react";
+import { AlertTriangle, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { loginAction } from "./actions";
 
@@ -111,15 +111,6 @@ export function LoginForm() {
         )}
       </button>
 
-      <div className="flex items-center gap-4 rounded-2xl bg-[#f4f2ff] px-5 py-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e8e4ff] text-[var(--brand-primary)]">
-          <Headset className="h-6 w-6" strokeWidth={1.7} aria-hidden />
-        </span>
-        <p className="text-[14px] leading-5 text-secondary">
-          <span className="block text-[15px] font-semibold text-[#14132b]">Need access?</span>
-          Contact your site administrator to get your account.
-        </p>
-      </div>
     </form>
   );
 }

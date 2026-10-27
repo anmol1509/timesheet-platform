@@ -1,4 +1,4 @@
-import { FileText, Globe, BarChart3, Clock, Users, type LucideIcon } from "lucide-react";
+import { FileText, BarChart3, Clock, Users, type LucideIcon } from "lucide-react";
 import { AuthHeader } from "./auth-header";
 
 const FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
@@ -88,12 +88,7 @@ export function AuthShell({
 
         {/* Form panel. */}
         <div className="relative flex min-h-0 flex-col overflow-y-auto bg-surface">
-          <div className="flex justify-end px-6 pt-6 sm:px-10 lg:px-12 lg:pt-5">
-            <span className="inline-flex items-center gap-2 rounded-full border border-default px-4 py-2 text-[14px] text-secondary" title="English is the only language for now">
-              <Globe className="h-4 w-4" aria-hidden /> English
-            </span>
-          </div>
-          <div className="flex flex-1 items-center justify-center px-6 pb-8 sm:px-10 lg:px-16">
+          <div className="flex flex-1 items-center justify-center px-6 py-8 sm:px-10 lg:px-16">
             <div className="w-full max-w-[440px]">
               <h1 className="text-[clamp(26px,4.2vh,34px)] leading-[1.1] font-bold tracking-[-0.02em] text-[#14132b]">{title}</h1>
               {subtitle && <p className="mt-2 text-[15px] leading-6 text-secondary">{subtitle}</p>}
