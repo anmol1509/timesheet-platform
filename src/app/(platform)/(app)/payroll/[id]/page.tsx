@@ -9,8 +9,7 @@ import { isCashMode, readDeductionItems, wpsGaps } from "@/lib/payroll";
 import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
-import { RunControls } from "./run-controls";
-import { LineAdjust } from "./line-adjust";
+import { LineAdjustCells, RunControls } from "./run-controls";
 import { RunStatus, type StatusItem } from "./run-status";
 import { BankFixQueue } from "./bank-fix-queue";
 import { PaymentCell } from "./payment-cell";
@@ -263,7 +262,11 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className={D}>Recurring</th>
                 <th className="px-3 py-3 text-right">Earns</th>
                 <th className="px-3 py-3 text-right">Deductions</th>
-                <th className="px-3 py-3" title="Deduction, advance, adjustment and bank charge typed against a worker for this month">Adjustments</th>
+                <th className="px-2 py-3 text-right">Deduction</th>
+                <th className="px-2 py-3 text-right">Advance</th>
+                <th className="px-2 py-3 text-right">Adjustment</th>
+                <th className="px-2 py-3 text-right" title="What the bank charges to pay this worker, typed here per worker. Tick Waive to take nothing.">Bank charge</th>
+                {draft && <th className="relative px-2 py-3"><span className="sr-only">Save</span></th>}
                 <th className="px-3 py-3 text-right">Net pay<Hint term="NET_PAY" /></th>
                 <th className="px-3 py-3">Bank<Hint term="WPS" /></th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
@@ -311,12 +314,11 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(slip.gross)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{slip.totalDeductions > 0 ? `−${aed(slip.totalDeductions)}` : "—"}</td>
-                    <td className="px-3 py-3 align-top">
-                      <LineAdjust
-                        lineId={l.id} name={l.employee.name} disabled={!editable} deductionCount={readDeductionItems(l.deductionItems)?.length ?? 0}
-                        values={{ deduction: n(l.manualDeduction), deductionNote: l.deductionNote ?? "", advance: n(l.loanDeduction), advanceNote: l.advanceNote ?? "", adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote ?? "", bankCharge: n(l.bankCharge), bankWaived: l.bankChargeWaived }}
-                      />
-                    </td>
+                    <LineAdjustCells
+                      lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
+                      adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} bankCharge={n(l.bankCharge)} bankWaived={l.bankChargeWaived} disabled={!editable}
+                    />
+                    {!editable && draft && <td />}
                     <td className="px-3 py-3 text-right font-semibold tabular-nums text-primary">{aed(n(l.net))}</td>
                     <td className="px-3 py-3">
                       {isCashMode(l.paymentMode) ? <Badge color="slate">Cash</Badge> : gaps.length === 0 ? <Badge color="green">Ready</Badge> : <Badge color="amber">Needs fixing</Badge>}
