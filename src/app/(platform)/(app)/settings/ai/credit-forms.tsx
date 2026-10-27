@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { topUpPriceLabel } from "@/lib/aiCredits";
 import { grantAiCreditsAction, requestCreditsAction, setAiAllowanceAction } from "./actions";
 
 type State = { error: string | null; ok?: boolean };
@@ -50,14 +51,18 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
 /** The strip on the page for asking for extra credits this month. */
 export function RequestStrip() {
   const [state, run, pending] = useActionState(requestCreditsAction, initial);
+  const [typed, setTyped] = useState("");
+  const credits = Number(typed.replace(/,/g, "").trim());
+  const valid = Number.isInteger(credits) && credits > 0;
   return (
     <form action={run} className="flex flex-wrap items-end gap-3 rounded-2xl border border-[var(--warning-border)] bg-[var(--warning-soft)] p-4">
       <div className="min-w-[14rem] flex-1">
         <p className="text-sm font-semibold text-primary">Request more credits <span className="font-normal text-secondary">(approval required)</span></p>
-        <p className="text-xs text-secondary">Need more this month? Send a request to ManpowerSync. The credits are added once it is approved.</p>
+        <p className="text-xs text-secondary">Need more this month? Send a request to ManpowerSync. The credits are added once it is approved. 1,000 credits = AED 10.</p>
       </div>
       <label className="block text-xs text-muted">Credits
-        <input name="credits" inputMode="numeric" placeholder="e.g. 1,000" className="input mt-1 h-9 w-32 text-sm" />
+        <input name="credits" inputMode="numeric" placeholder="e.g. 1,000" value={typed} onChange={(e) => setTyped(e.target.value)} className="input mt-1 h-9 w-32 text-sm" />
+        <span className="mt-1 block h-4 text-xs font-semibold text-primary">{valid ? topUpPriceLabel(credits) : "\u00a0"}</span>
       </label>
       <label className="block min-w-[12rem] flex-1 text-xs text-muted">Reason (optional)
         <input name="reason" maxLength={300} placeholder="e.g. Month-end payroll push, bulk document import" className="input mt-1 h-9 w-full text-sm" />
