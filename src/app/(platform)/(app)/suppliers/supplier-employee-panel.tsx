@@ -76,7 +76,7 @@ export function SupplierEmployeePanel({
         <DialogContent
           title={`${supplierName} — employees & insurance`}
           description="Who is on the books for this supplier, and who each workmen's compensation certificate covers."
-          className="max-w-3xl"
+          className="max-w-4xl"
         >
           <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
             {loading && (

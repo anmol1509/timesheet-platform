@@ -6,7 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import { addWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
+import { addWorkmenCompEmployeeAction, undoWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
 
 /**
  * Who is on one policy. Every name read off the certificate is listed with the workers it matches, and whether each is
@@ -19,6 +19,8 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
   const [busy, setBusy] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [pick, setPick] = useState("");
+  // Workers added from this list just now, so each can be taken back.
+  const [added, setAdded] = useState<Set<string>>(new Set());
   const [, start] = useTransition();
 
   const load = useCallback(() => {
@@ -40,7 +42,18 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
     start(async () => {
       const r = await addWorkmenCompEmployeeAction(supplierId, attachmentId, name);
       setBusy(null);
-      if (r.error) setError(r.error); else { setError(null); load(); onChanged(); }
+      if (r.error) setError(r.error);
+      else { setError(null); if (r.created && r.employeeId) setAdded((cur) => new Set(cur).add(r.employeeId!)); load(); onChanged(); }
+    });
+  }
+
+  function undoAdd(employeeId: string) {
+    setBusy(`undo:${employeeId}`);
+    start(async () => {
+      const r = await undoWorkmenCompEmployeeAction(supplierId, attachmentId, employeeId);
+      setBusy(null);
+      if (r.error) setError(r.error);
+      else { setError(null); setAdded((cur) => { const n = new Set(cur); n.delete(employeeId); return n; }); load(); onChanged(); }
     });
   }
 
@@ -72,6 +85,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
 
   const action = (w: WcWorker) => {
     if (!canEdit) return null;
+    if (added.has(w.employeeId)) return <span className="flex items-center gap-2 text-xs"><span className="text-[var(--success)]">Added</span><button type="button" disabled={busy !== null} onClick={() => undoAdd(w.employeeId)} className="font-medium text-[var(--error)] hover:underline">{busy === `undo:${w.employeeId}` ? "…" : "Undo"}</button></span>;
     const b = busy === w.employeeId;
     if (w.linkedTo === "this") return <button type="button" disabled={b} onClick={() => setLink(w.employeeId, false)} className="text-xs font-medium text-muted hover:text-error hover:underline">{b ? "…" : "Unlink"}</button>;
     return <button type="button" disabled={b} onClick={() => setLink(w.employeeId, true)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">{b ? "…" : w.linkedTo === "other" ? "Move here" : "Link"}</button>;

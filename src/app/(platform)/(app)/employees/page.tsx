@@ -99,6 +99,7 @@ export default async function EmployeesPage({
     return {
       id: e.id,
       employeeIdNo: e.employeeIdNo,
+      addedOn: e.createdAt.toISOString(),
       name: e.name,
       hasPhoto: !!e.photoMimeType,
       category: e.category,
@@ -187,6 +188,7 @@ export default async function EmployeesPage({
       )}
 
       <EmployeeKpiCards
+        active={filter === "on-work" || filter === "bench" ? filter : !filter || filter === "all" ? "all" : undefined}
         total={rows.length}
         onWork={onWorkCount}
         bench={benchCount}

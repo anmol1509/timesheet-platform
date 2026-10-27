@@ -21,12 +21,15 @@ export function DialogContent({
   /** Set true when the visible content already includes a heading, to avoid a duplicate title while keeping one for screen readers. */
   hideTitle?: boolean;
 }) {
+  // A width asked for by the caller replaces the default one. Without this the default cap won over any wider size
+  // (the two classes tie and the smaller cap is defined later), so wide dialogs were stuck at the default width.
+  const ownWidth = !!className && /(^|\s)(?:[a-z]+:)?max-w-/.test(className);
   return (
     <RadixDialog.Portal>
       <RadixDialog.Overlay className="rx-overlay fixed inset-0 z-40 bg-[#101828]/40 backdrop-blur-[2px]" />
       <RadixDialog.Content
         className={cn(
-          "rx-content rx-dialog fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-default bg-surface p-5 shadow-modal outline-none",
+          `rx-content rx-dialog fixed top-1/2 left-1/2 z-50 max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] ${ownWidth ? "" : "max-w-xl"} -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-default bg-surface p-5 shadow-modal outline-none`,
           className
         )}
       >

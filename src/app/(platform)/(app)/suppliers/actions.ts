@@ -20,6 +20,7 @@ import { partnerDuplicates } from "@/lib/duplicateCheck";
 import { assertContactsValid, contactsError } from "@/lib/validators";
 import { nearPeople, sameName } from "@/lib/people";
 import { generateEmployeeIdAction } from "@/app/(platform)/(app)/employees/new/actions";
+import { deleteEmployeesAction } from "@/app/(platform)/(app)/employees/actions";
 
 function stringOrNull(value: FormDataEntryValue | null) {
   const s = String(value || "").trim();
@@ -746,7 +747,7 @@ export async function setWorkmenCompLinkAction(supplierId: string, attachmentId:
  * Adds a name from the certificate as a worker of this company, with nothing else filled in, and links them to the policy.
  * They show as Incomplete on the Employees page until their details are added there.
  */
-export async function addWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, name: string): Promise<{ error?: string; employeeId?: string }> {
+export async function addWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, name: string): Promise<{ error?: string; employeeId?: string; created?: boolean }> {
   await requireWrite("partners.suppliers");
   await requireWrite("workforce.employees");
   const { user } = await requireUserWithBranch();
@@ -754,7 +755,7 @@ export async function addWorkmenCompEmployeeAction(supplierId: string, attachmen
   if (!cert) return { error: "Certificate not found." };
   const clean = name.replace(/\s+/g, " ").trim().slice(0, 120).toUpperCase();
   if (!clean) return { error: "There is no name to add." };
-  const company = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
+  const company = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true, isOwnCompany: true } });
   if (!company?.branchId) return { error: "Company not found." };
   // Someone already on the roster under this name is linked instead of added twice.
   const roster = await prisma.employee.findMany({ where: wcRoster(supplierId), select: { id: true, name: true } });
@@ -763,14 +764,34 @@ export async function addWorkmenCompEmployeeAction(supplierId: string, attachmen
   if (!existing) {
     const gen = await generateEmployeeIdAction(supplierId, null);
     if (!gen.id) return { error: gen.error ?? "Could not make an employee ID." };
-    const created = await prisma.employee.create({ data: { employeeIdNo: gen.id, name: clean, supplierId, branchId: company.branchId } });
+    // Under one of your own companies the worker is its employee and sponsored by it, so both are filled in.
+    const created = await prisma.employee.create({ data: { employeeIdNo: gen.id, name: clean, supplierId, ...(company.isOwnCompany ? { sponsorSupplierId: supplierId } : {}), branchId: company.branchId } });
     employeeId = created.id;
     await logAudit({ entityType: "EMPLOYEE", entityId: created.id, action: "CREATE", after: { name: clean, employeeIdNo: gen.id, via: "workmen compensation certificate" }, userId: user.id, userName: user.name, branchId: company.branchId });
   }
   await linkWorkersToCertificate(attachmentId, [employeeId!], user.id);
   revalidatePath(`/suppliers/${supplierId}`);
   revalidatePath("/employees");
-  return { employeeId };
+  return { employeeId, created: !existing };
+}
+
+/**
+ * Takes back a worker just added from a certificate: only one added in the last day to this company, and only while
+ * nothing has been recorded against them (the same checks as deleting an employee). The certificate stays; the copy
+ * filed on the worker goes with them.
+ */
+export async function undoWorkmenCompEmployeeAction(supplierId: string, attachmentId: string, employeeId: string): Promise<{ error?: string }> {
+  await requireWrite("partners.suppliers");
+  if (!(await ownCertificate(supplierId, attachmentId))) return { error: "Certificate not found." };
+  const w = await prisma.employee.findFirst({ where: { id: employeeId, ...wcRoster(supplierId) }, select: { id: true, createdAt: true } });
+  if (!w) return { error: "That worker isn't one this company employs or sponsors." };
+  if (Date.now() - w.createdAt.getTime() > 24 * 3600_000) return { error: "This worker was added more than a day ago, so it can't be undone from here. Remove them from Employees if needed." };
+  const res = await deleteEmployeesAction([employeeId]);
+  if (res.blocked.length > 0) return { error: res.blocked[0].reason };
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/employees");
+  revalidatePath("/documents");
+  return {};
 }
 
 /** Keeps the names read off an older certificate, so its workers can be listed and linked. */

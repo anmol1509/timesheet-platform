@@ -9,6 +9,7 @@ type Card = {
   pct: number;
   sub: string;
   href: string;
+  key?: string;
   icon: React.ComponentType<{ className?: string }>;
   chip: string;
   pctColor: string;
@@ -20,11 +21,14 @@ export function EmployeeKpiCards({
   onWork,
   bench,
   complianceIssues,
+  active,
 }: {
   total: number;
   onWork: number;
   bench: number;
   complianceIssues: number;
+  /** Which card matches the list below: "all", "on-work" or "bench". */
+  active?: string;
 }) {
   const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
   const cards: Card[] = [
@@ -33,6 +37,7 @@ export function EmployeeKpiCards({
       value: total,
       pct: 100,
       sub: "All registered employees",
+      key: "all",
       href: "/employees",
       icon: Users,
       chip: "bg-blue-100 text-blue-600",
@@ -43,6 +48,7 @@ export function EmployeeKpiCards({
       value: onWork,
       pct: pct(onWork),
       sub: "Deployed to projects",
+      key: "on-work",
       href: "/employees?filter=on-work",
       icon: ShieldCheck,
       chip: "bg-emerald-100 text-emerald-600",
@@ -53,6 +59,7 @@ export function EmployeeKpiCards({
       value: bench,
       pct: pct(bench),
       sub: "Available for deployment",
+      key: "bench",
       href: "/employees?filter=bench",
       icon: BedDouble,
       chip: "bg-blue-100 text-blue-600",
@@ -73,7 +80,13 @@ export function EmployeeKpiCards({
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((c) => (
-        <Link key={c.label} href={c.href} className="card flex flex-col gap-3 p-4 transition hover:-translate-y-px hover:shadow-sm">
+        <Link
+          key={c.label}
+          href={c.href}
+          scroll={false}
+          aria-current={c.key && c.key === active ? "true" : undefined}
+          className={cn("card flex flex-col gap-3 p-4 transition hover:-translate-y-px hover:shadow-sm", c.key && c.key === active && "border-[var(--brand-primary)] ring-2 ring-[var(--brand-primary)]/30 bg-brand-soft/40")}
+        >
           <div className="flex items-center justify-between gap-2">
             <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", c.chip)}>
               <c.icon className="h-4 w-4" aria-hidden />
