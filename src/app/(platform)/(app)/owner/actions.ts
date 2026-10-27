@@ -248,3 +248,26 @@ export async function syncAllAction(): Promise<OwnerState> {
   refresh();
   return failed ? { error: `${failed} customer${failed === 1 ? "" : "s"} couldn't be reached.` } : { error: null, ok: true };
 }
+
+/** Saves the rates behind the Costs & capacity page. */
+export async function saveRatesAction(_prev: OwnerState, fd: FormData): Promise<OwnerState> {
+  await requireOwner();
+  const n = (k: string) => { const v = Number(text(fd, k).replace(/,/g, "")); return Number.isFinite(v) && v >= 0 ? v : NaN; };
+  const customerComputeUsd: Record<string, number> = {};
+  const models: { family: string; inputUsd: number; outputUsd: number }[] = [];
+  for (const [k] of fd.entries()) {
+    if (k.startsWith("compute_")) { const v = n(k); if (!Number.isFinite(v)) return { error: "Every amount must be a number, 0 or more." }; customerComputeUsd[k.slice(8)] = v; }
+    if (k.startsWith("model_") && k.endsWith("_in")) {
+      const family = k.slice(6, -3);
+      const input = n(k), output = n(`model_${family}_out`);
+      if (!Number.isFinite(input) || !Number.isFinite(output)) return { error: "Every Claude price must be a number, 0 or more." };
+      models.push({ family, inputUsd: input, outputUsd: output });
+    }
+  }
+  const rates = { usdToAed: n("usdToAed"), supabasePlanUsd: n("supabasePlanUsd"), supabaseComputeCreditUsd: n("supabaseComputeCreditUsd"), mainComputeUsd: n("mainComputeUsd"), diskGb: n("diskGb"), vercelSeats: n("vercelSeats"), vercelSeatUsd: n("vercelSeatUsd"), emailPlanUsd: n("emailPlanUsd"), emailMonthlyLimit: n("emailMonthlyLimit"), customerComputeUsd, models };
+  if (Object.values({ ...rates, customerComputeUsd: 0, models: 0 }).some((v) => typeof v === "number" && !Number.isFinite(v))) return { error: "Every amount must be a number, 0 or more." };
+  if (rates.usdToAed <= 0 || rates.diskGb <= 0 || rates.emailMonthlyLimit <= 0) return { error: "The dollar rate, the disk size and the email limit must be more than 0." };
+  await prisma.ownerSetting.upsert({ where: { key: "rates" }, create: { key: "rates", value: rates }, update: { value: rates } });
+  revalidatePath("/owner/costs");
+  return { error: null, ok: true };
+}

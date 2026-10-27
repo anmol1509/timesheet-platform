@@ -21,6 +21,17 @@ export type EmailOptions = {
   replyTo?: string;
 };
 
+/** Counts one send for the month, so the owner can compare volume with the email plan. Never lets counting break a send. */
+async function countSend(ok: boolean) {
+  try {
+    const [{ prisma }, { monthKey }] = await Promise.all([import("@/lib/db"), import("@/lib/aiCredits")]);
+    const month = monthKey();
+    await prisma.emailStat.upsert({ where: { month }, create: { month, sent: ok ? 1 : 0, failed: ok ? 0 : 1 }, update: ok ? { sent: { increment: 1 } } : { failed: { increment: 1 } } });
+  } catch {
+    /* counting is best effort */
+  }
+}
+
 export async function sendEmail(to: string, subject: string, text: string, options: EmailOptions = {}): Promise<EmailSendResult> {
   if (!isEmailConfigured()) {
     console.warn("[email] RESEND_API_KEY/EMAIL_FROM not set: email not sent.");
@@ -35,8 +46,10 @@ export async function sendEmail(to: string, subject: string, text: string, optio
     if (!res.ok) {
       const detail = await res.text();
       console.error(`[email] Resend failed (${res.status}): ${detail}`);
+      await countSend(false);
       return { sent: false, reason: "request_failed", detail };
     }
+    await countSend(true);
     return { sent: true };
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
