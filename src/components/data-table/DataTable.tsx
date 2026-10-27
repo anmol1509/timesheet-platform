@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -96,6 +96,7 @@ export function DataTable<T extends { id: string }>({
   density = "default",
   stickyHeader = true,
   toolbarExtra,
+  sortPresets,
   pageSize,
   filters,
   initialFilters,
@@ -121,6 +122,8 @@ export function DataTable<T extends { id: string }>({
   stickyHeader?: boolean;
   /** Extra controls (filter chips, tabs) rendered at the toolbar's left. */
   toolbarExtra?: React.ReactNode;
+  /** Ready-made orderings offered in a "Sort" menu beside the search (column headers still sort too). */
+  sortPresets?: { key: string; direction: "asc" | "desc"; label: string }[];
   /** Rows per page. Omit to render every row without pagination. */
   pageSize?: number;
   /** Dropdown filters shown beside the search box. */
@@ -134,6 +137,11 @@ export function DataTable<T extends { id: string }>({
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilters ?? {});
+  // A card or chart that changes the address changes these too; the table follows (they were only read on first load).
+  const initialKey = JSON.stringify(initialFilters ?? {});
+  useEffect(() => {
+    setFilterValues(JSON.parse(initialKey) as Record<string, string>);
+  }, [initialKey]);
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.key))
   );
@@ -310,6 +318,25 @@ export function DataTable<T extends { id: string }>({
       {showToolbar && (
         <div className="flex flex-wrap items-center gap-2">
           {toolbarExtra}
+          {sortPresets && sortPresets.length > 0 && (
+            <label className="inline-flex items-center gap-1.5 text-[13px] text-secondary">
+              <span className="text-muted">Sort</span>
+              <select
+                aria-label="Sort the list"
+                className="input h-9 py-0 text-[13px]"
+                value={sort ? `${sort.key}:${sort.direction}` : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) { setSort(null); return; }
+                  const [key, direction] = v.split(":");
+                  setSort({ key, direction: direction as "asc" | "desc" });
+                }}
+              >
+                <option value="">Default order</option>
+                {sortPresets.map((o) => <option key={`${o.key}:${o.direction}`} value={`${o.key}:${o.direction}`}>{o.label}</option>)}
+              </select>
+            </label>
+          )}
           {searchable && (
             <div className="relative min-w-[12rem] flex-1 sm:max-w-sm">
               <Search

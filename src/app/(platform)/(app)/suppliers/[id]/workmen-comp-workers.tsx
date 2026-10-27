@@ -6,7 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Badge } from "@/components/Badge";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import { addWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
+import { addWorkmenCompEmployeeAction, undoWorkmenCompEmployeeAction, getWorkmenCompWorkersAction, saveInsuredNamesAction, setWorkmenCompLinkAction, type WcWorker, type WcWorkers } from "../actions";
 
 /**
  * Who is on one policy. Every name read off the certificate is listed with the workers it matches, and whether each is
@@ -19,6 +19,8 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
   const [busy, setBusy] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [pick, setPick] = useState("");
+  // Workers added from this list just now, so each can be taken back.
+  const [added, setAdded] = useState<Set<string>>(new Set());
   const [, start] = useTransition();
 
   const load = useCallback(() => {
@@ -35,12 +37,25 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
     });
   }
 
-  function addWorker(name: string) {
+  function addWorker(name: string, force = false) {
     setBusy(`add:${name}`);
     start(async () => {
-      const r = await addWorkmenCompEmployeeAction(supplierId, attachmentId, name);
+      const r = await addWorkmenCompEmployeeAction(supplierId, attachmentId, name, force);
       setBusy(null);
-      if (r.error) setError(r.error); else { setError(null); load(); onChanged(); }
+      // The same name already exists outside this group: ask before adding a second one.
+      if (r.duplicate) { if (window.confirm(`${r.error}\n\nAdd anyway?`)) addWorker(name, true); return; }
+      if (r.error) setError(r.error);
+      else { setError(null); if (r.created && r.employeeId) setAdded((cur) => new Set(cur).add(r.employeeId!)); load(); onChanged(); }
+    });
+  }
+
+  function undoAdd(employeeId: string) {
+    setBusy(`undo:${employeeId}`);
+    start(async () => {
+      const r = await undoWorkmenCompEmployeeAction(supplierId, attachmentId, employeeId);
+      setBusy(null);
+      if (r.error) setError(r.error);
+      else { setError(null); setAdded((cur) => { const n = new Set(cur); n.delete(employeeId); return n; }); load(); onChanged(); }
     });
   }
 
@@ -66,12 +81,23 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
   if (!data) return <p className="flex items-center gap-1.5 px-4 py-3 text-sm text-muted"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Loading…</p>;
 
   const named = data.names ?? [];
+  // Everyone of the group, the closest names to the one on the certificate first, then this company's own workers.
+  const matchOptions = (typed: string) => {
+    const words = new Set(typed.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
+    const overlap = (w: WcWorker) => w.name.toLowerCase().split(/[^a-z0-9]+/).filter((x) => words.has(x)).length;
+    return data.roster
+      .filter((w) => w.linkedTo !== "this")
+      .map((w) => ({ w, score: overlap(w) }))
+      .sort((a, b) => b.score - a.score || Number(b.w.own) - Number(a.w.own) || a.w.name.localeCompare(b.w.name))
+      .map(({ w }) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}${w.trade ? ` · ${w.trade}` : ""}${w.company ? ` — ${w.company}` : ""}${w.linkedTo === "other" ? " (on another policy)" : ""}` }));
+  };
   const linkedHere = data.roster.filter((w) => w.linkedTo === "this").length;
   const notOnRoster = named.filter((n) => n.candidates.length === 0).length;
   const unlinked = data.roster.filter((w) => w.linkedTo === null);
 
   const action = (w: WcWorker) => {
     if (!canEdit) return null;
+    if (added.has(w.employeeId)) return <span className="flex items-center gap-2 text-xs"><span className="text-[var(--success)]">Added</span><button type="button" disabled={busy !== null} onClick={() => undoAdd(w.employeeId)} className="font-medium text-[var(--error)] hover:underline">{busy === `undo:${w.employeeId}` ? "…" : "Undo"}</button></span>;
     const b = busy === w.employeeId;
     if (w.linkedTo === "this") return <button type="button" disabled={b} onClick={() => setLink(w.employeeId, false)} className="text-xs font-medium text-muted hover:text-error hover:underline">{b ? "…" : "Unlink"}</button>;
     return <button type="button" disabled={b} onClick={() => setLink(w.employeeId, true)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">{b ? "…" : w.linkedTo === "other" ? "Move here" : "Link"}</button>;
@@ -84,6 +110,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
     <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
       <Link href={`/employees/${w.employeeId}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm text-primary hover:underline">{w.name} <span className="tabular text-xs text-subtle">{w.employeeIdNo}</span></Link>
       {!w.active && <Badge color="slate">Inactive</Badge>}
+      {!w.own && w.company && <Badge color="blue">{w.company}</Badge>}
       {state(w)}
     </span>
   );
@@ -117,11 +144,22 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
                   </div>
                 )}
                 {n.candidates.length === 0 ? (
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-primary">{n.name}</span>
-                    <Badge color="red">Not on this company&rsquo;s roster</Badge>
-                    {canEdit && <button type="button" disabled={busy !== null} onClick={() => addWorker(n.name)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">{busy === `add:${n.name}` ? "Adding…" : "Add as employee"}</button>}
-                    {n.suggestions.length === 0 && <span className="text-xs text-muted">Adds them to this company with just the name and links the certificate. Fill in their details later on Employees (shown as Incomplete). Or pick the right worker below if the name is spelled differently.</span>}
+                  <div className="space-y-2 rounded-md bg-surface-subtle p-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-primary">{n.name}</span>
+                      <Badge color="red">No worker with this name yet</Badge>
+                      {n.elsewhere.length > 0 && <span className="text-xs text-[var(--warning)]">Same name at {n.elsewhere.map((o) => `${o.company ?? "another company"} (${o.employeeIdNo})`).join(", ")}.</span>}
+                    </div>
+                    {canEdit && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="w-96 max-w-full">
+                          <Select value="" onChange={(id) => { if (id) setLink(id, true); }} searchable placeholder="Match to an existing worker…" options={matchOptions(n.name)} />
+                        </div>
+                        <span className="text-xs text-muted">or</span>
+                        <button type="button" disabled={busy !== null} onClick={() => addWorker(n.name)} className="btn btn-secondary btn-sm">{busy === `add:${n.name}` ? "Adding…" : "Add as new employee"}</button>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted">Match lists the workers of this company, its parent and its subsidiaries, closest names first. Adding creates a worker with just the name; fill in their details later on Employees (shown as Incomplete).</p>
                   </div>
                 ) : (
                   n.candidates.map((w) => (
@@ -151,7 +189,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
         <div className="flex flex-wrap items-end gap-2">
           <label className="block w-72 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Link another worker to this policy</span>
-            <Select value={pick} onChange={setPick} searchable placeholder="Choose a worker…" options={unlinked.map((w) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}` }))} />
+            <Select value={pick} onChange={setPick} searchable placeholder="Choose a worker…" options={unlinked.map((w) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}${w.trade ? ` · ${w.trade}` : ""}${!w.own && w.company ? ` — ${w.company}` : ""}` }))} />
           </label>
           <button type="button" disabled={!pick || busy !== null} onClick={() => { setLink(pick, true); setPick(""); }} className={cn("btn btn-secondary btn-sm", !pick && "opacity-50")}>Link</button>
         </div>

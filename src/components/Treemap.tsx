@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { ActiveLink } from "@/components/ActiveLink";
 import { squarify } from "@/lib/squarify";
 
 export type TreemapItem = { key: string; label: string; value: number; href?: string };
@@ -70,7 +70,7 @@ export function Treemap({ items, emptyLabel = "No data yet." }: { items: Treemap
               );
               const href = hrefOf.get(r.key);
               return href ? (
-                <Link href={href} className={box} style={{ background: fillFor(ratio) }}>{inner}</Link>
+                <ActiveLink href={href} className={box} activeClassName="outline-2 outline-offset-[-2px] outline-[var(--brand-primary)] ring-2 ring-white/70" style={{ background: fillFor(ratio) }}>{inner}</ActiveLink>
               ) : (
                 <div className={box} style={{ background: fillFor(ratio) }}>{inner}</div>
               );

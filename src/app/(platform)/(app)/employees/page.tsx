@@ -99,6 +99,7 @@ export default async function EmployeesPage({
     return {
       id: e.id,
       employeeIdNo: e.employeeIdNo,
+      addedOn: e.createdAt.toISOString(),
       name: e.name,
       hasPhoto: !!e.photoMimeType,
       category: e.category,
@@ -130,14 +131,17 @@ export default async function EmployeesPage({
   const expiringCount = rows.filter((r) => r.worstStatus === "expiring").length;
   const complianceIssuesCount = rows.filter((r) => r.worstStatus === "expired" || r.worstStatus === "expiring").length;
 
+  // The charts count the whole group being looked at (the company or sponsor chosen), not just the trade or nationality that
+  // is filtered, so another bar can be clicked straight away and the active one stays in view.
+  const scope = { ...branchWhere(branchId), ...(supplierId ? { supplierId } : {}), ...(sponsorId ? { sponsorSupplierId: sponsorId } : {}) };
+  const [tradeGroups, nationalityGroups] = await Promise.all([
+    prisma.employee.groupBy({ by: ["trade"], where: scope, _count: { _all: true } }),
+    prisma.employee.groupBy({ by: ["nationality"], where: scope, _count: { _all: true } }),
+  ]);
   const byTrade = new Map<string, number>();
+  for (const g of tradeGroups) byTrade.set(g.trade?.trim() || "Not set", (byTrade.get(g.trade?.trim() || "Not set") ?? 0) + g._count._all);
   const byNationality = new Map<string, number>();
-  for (const r of rows) {
-    const t = r.trade ?? "Not set";
-    byTrade.set(t, (byTrade.get(t) ?? 0) + 1);
-    const n = r.nationality ?? "Not set";
-    byNationality.set(n, (byNationality.get(n) ?? 0) + 1);
-  }
+  for (const g of nationalityGroups) byNationality.set(g.nationality?.trim() || "Not set", (byNationality.get(g.nationality?.trim() || "Not set") ?? 0) + g._count._all);
   const topTrades = [...byTrade.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   const nationalities = [...byNationality.entries()].sort((a, b) => b[1] - a[1]);
 
@@ -200,12 +204,12 @@ export default async function EmployeesPage({
               <h3 className="mb-3 text-sm font-semibold text-primary">By trade</h3>
               <BarList
                 tone="brand"
-                items={topTrades.map(([label, count]) => ({ key: label, label, value: count }))}
+                items={topTrades.map(([label, count]) => ({ key: label, label, value: count, href: label === "Not set" ? undefined : `/employees?trade=${encodeURIComponent(label)}` }))}
               />
             </div>
             <div>
               <h3 className="mb-3 text-sm font-semibold text-primary">By nationality</h3>
-              <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count }))} />
+              <Treemap items={nationalities.map(([label, count]) => ({ key: label, label, value: count, href: label === "Not set" ? undefined : `/employees?nationality=${encodeURIComponent(label)}` }))} />
             </div>
           </div>
         </Insights>

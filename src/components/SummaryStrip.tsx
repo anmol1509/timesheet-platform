@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ActiveLink } from "@/components/ActiveLink";
 import { cn } from "@/lib/cn";
 
 export type SummaryCell = { label: string; value: string; sub?: string; tone?: "default" | "warning" | "danger"; href?: string };
@@ -21,7 +21,7 @@ export function SummaryStrip({ cells }: { cells: SummaryCell[] }) {
           </>
         );
         const cls = cn("min-w-0 px-4 py-3.5 sm:px-5", i >= 2 && "border-t border-default lg:border-t-0", i % 2 === 1 && "border-l border-default lg:border-l-0");
-        return c.href ? <Link key={c.label} href={c.href} className={cn(cls, "hover:bg-surface-hover")}>{inner}</Link> : <div key={c.label} className={cls}>{inner}</div>;
+        return c.href ? <ActiveLink key={c.label} href={c.href} className={cn(cls, "hover:bg-surface-hover")} activeClassName="bg-brand-soft/60 ring-2 ring-inset ring-[var(--brand-primary)]/40">{inner}</ActiveLink> : <div key={c.label} className={cls}>{inner}</div>;
       })}
     </div>
   );

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ActiveLink } from "@/components/ActiveLink";
 import { Users, ShieldCheck, BedDouble, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { AnimatedNumber } from "@/components/motion";
@@ -73,7 +73,12 @@ export function EmployeeKpiCards({
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {cards.map((c) => (
-        <Link key={c.label} href={c.href} className="card flex flex-col gap-3 p-4 transition hover:-translate-y-px hover:shadow-sm">
+        <ActiveLink
+          key={c.label}
+          href={c.href}
+          className="card flex flex-col gap-3 p-4 transition hover:-translate-y-px hover:shadow-sm"
+          activeClassName="border-[var(--brand-primary)] ring-2 ring-[var(--brand-primary)]/30 bg-brand-soft/40"
+        >
           <div className="flex items-center justify-between gap-2">
             <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", c.chip)}>
               <c.icon className="h-4 w-4" aria-hidden />
@@ -85,7 +90,7 @@ export function EmployeeKpiCards({
             <AnimatedNumber value={c.value} />
           </div>
           <p className="text-xs text-subtle">{c.sub}</p>
-        </Link>
+        </ActiveLink>
       ))}
     </div>
   );

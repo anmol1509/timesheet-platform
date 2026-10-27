@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { SegmentedControl } from "@/components/ui/RadioGroup";
@@ -40,6 +40,10 @@ export function InvoiceHistoryList({ invoices, banks = [], defaultBankId = "" }:
   const [status, setStatus] = useState<"all" | "outstanding">(
     initialStatus === "outstanding" ? "outstanding" : "all"
   );
+  // The cards above change the address; the list follows it.
+  useEffect(() => {
+    setStatus(initialStatus === "outstanding" ? "outstanding" : "all");
+  }, [initialStatus]);
 
   const filtered =
     status === "outstanding" ? invoices.filter((i) => i.status !== "PAID") : invoices;

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { ActiveLink } from "@/components/ActiveLink";
 import { m } from "motion/react";
 import { cn } from "@/lib/cn";
 
@@ -75,7 +75,7 @@ export function BarList({
         return (
           <li key={item.key}>
             {item.href ? (
-              <Link href={item.href} className="group -mx-2 block rounded-lg px-2 py-1 transition hover:bg-surface-hover">{row}</Link>
+              <ActiveLink href={item.href} className="group -mx-2 block rounded-lg px-2 py-1 transition hover:bg-surface-hover" activeClassName="bg-brand-soft ring-1 ring-[var(--brand-primary)]">{row}</ActiveLink>
             ) : (
               <div className="group py-1">{row}</div>
             )}

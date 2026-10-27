@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ActiveLink } from "@/components/ActiveLink";
 import { cn } from "@/lib/cn";
 import { AnimatedNumber } from "@/components/motion";
 
@@ -29,9 +29,10 @@ export function KpiStrip({ cells }: { cells: KpiCell[] }) {
       {cells.map((cell) => {
         const tone = cell.tone ?? "default";
         return (
-          <Link
+          <ActiveLink
             key={cell.label}
             href={cell.href}
+            activeClassName="border-[var(--brand-primary)] ring-2 ring-[var(--brand-primary)]/30"
             className={cn(
               "card relative flex flex-col px-4 py-3.5 transition hover:-translate-y-px hover:border-strong hover:shadow-md",
               tone === "danger" && "border-[var(--error-border)] bg-[linear-gradient(180deg,var(--error-soft),var(--surface)_70%)]",
@@ -54,7 +55,7 @@ export function KpiStrip({ cells }: { cells: KpiCell[] }) {
               </div>
             )}
             <span className="mt-1 text-xs text-subtle">{cell.sub}</span>
-          </Link>
+          </ActiveLink>
         );
       })}
     </div>

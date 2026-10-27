@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, BadgeCheck, Check, CircleX, Pencil, UserPlus, Users, X } from "lucide-react";
 import { Badge } from "@/components/Badge";
@@ -34,6 +34,8 @@ type EmployeeRow = {
   nationality: string | null;
   companyDisplayName: string | null;
   companyCode: string | null;
+  /** When the worker was added (ISO), for sorting by recency. */
+  addedOn: string;
   isOwnCompanySupplier: boolean;
   onWork: boolean;
   status: "ACTIVE" | "IDLE" | "UNDER_MOBILISATION" | "ON_SITE" | "ON_VACATION" | "TERMINATED";
@@ -174,6 +176,12 @@ export function EmployeeList({
     validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all"
   );
 
+  // The cards above and the tabs change the address; the list follows it (the state was only read once, on first load).
+  useEffect(() => {
+    setFilter(validFilters.includes(initialFilter as Filter) ? (initialFilter as Filter) : "all");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFilter]);
+
   const registered = registeredId
     ? employees.find((e) => e.id === registeredId)
     : undefined;
@@ -205,6 +213,14 @@ export function EmployeeList({
   }, [employees, filter]);
 
   const columns: DataTableColumn<EmployeeRow>[] = [
+    {
+      key: "addedOn",
+      header: "Added",
+      csvHeader: "Added on",
+      sortValue: (e) => e.addedOn,
+      csvValue: (e) => e.addedOn.slice(0, 10),
+      render: (e) => <span className="tabular whitespace-nowrap text-secondary">{new Date(e.addedOn).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>,
+    },
     {
       key: "employeeIdNo",
       header: "Employee code",
@@ -497,6 +513,12 @@ export function EmployeeList({
     <DataTable
       rows={rows}
       columns={columns}
+      sortPresets={[
+        { key: "addedOn", direction: "desc", label: "Newest added first" },
+        { key: "addedOn", direction: "asc", label: "Oldest added first" },
+        { key: "name", direction: "asc", label: "Name A to Z" },
+        { key: "employeeIdNo", direction: "asc", label: "Employee code" },
+      ]}
       onRowClick={(row, ordered) => setDrawer({ id: row.id, order: ordered.map((r) => r.id) })}
       selectable
       searchable
