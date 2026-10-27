@@ -72,7 +72,7 @@ export default async function DemandDocumentsIndexPage() {
                     </td>
                     <td className="px-4 py-3 text-secondary">{d.client.name}</td>
                     <td className="px-4 py-3 text-secondary">
-                      {d.project.code} — {d.project.name}
+                      {d.project.code}: {d.project.name}
                     </td>
                     <td className="px-4 py-3">
                       {d.mobilised === 0 ? (

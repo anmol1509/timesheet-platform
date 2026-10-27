@@ -107,7 +107,7 @@ export function BranchSwitcher({
             )}
             {branches.map((b) => (
               <button key={b.id} type="button" className={cn(row, active?.id === b.id ? "text-primary" : "text-secondary")} onClick={() => pick(b.id)}>
-                <span className="min-w-0 flex-1 truncate">{b.code} — {b.name}</span>
+                <span className="min-w-0 flex-1 truncate">{b.code}: {b.name}</span>
                 {active?.id === b.id && <Check className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />}
               </button>
             ))}

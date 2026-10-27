@@ -8,7 +8,7 @@ import { ShowcasePage, shot } from "@/app/(marketing)/welcome/showcase/showcase-
 
 const TITLE = "AI Assistant for Workforce Data (UAE)";
 const DESCRIPTION =
-  "Ask your workforce data a plain-language question and get an answer with a link to the record it came from — permission-aware, so nobody sees more than their role already allows.";
+  "Ask your workforce data a plain-language question and get an answer with a link to the record it came from. Permission-aware, so nobody sees more than their role already allows.";
 const URL = "https://manpowersync.com/ai-assistant-workforce-management";
 
 export const metadata: Metadata = finishMetadata({

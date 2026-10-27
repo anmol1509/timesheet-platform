@@ -14,6 +14,8 @@ import { NavAssistant } from "@/components/NavAssistant";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
 import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
+import { AiCreditsBar } from "@/components/AiCreditsBar";
+import { loadCreditStatus } from "@/lib/aiCreditsServer";
 import { UserMenu } from "@/components/UserMenu";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ProgressBar } from "@/components/motion/ProgressBar";
@@ -60,6 +62,8 @@ export default async function AppLayout({
   const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
+  // The AI credits bar is a header extra too: if the count can't be read it simply doesn't show.
+  const aiStatus = branchId ? await loadCreditStatus(branchId).catch(() => null) : null;
   const allowedModules = viewableModules(subjectOf(user));
   // A failed count must never take the page down: the badge just doesn't show.
   const pendingApprovals = await countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }).catch(() => 0);
@@ -101,6 +105,7 @@ export default async function AppLayout({
               <BranchSwitcher branches={branches.filter((b) => b.isActive)} activeBranchId={branchId} />
             </div>
           )}
+          {aiStatus && <AiCreditsBar status={aiStatus} isAdmin={isAdmin} />}
           <NotificationsMenu alerts={alerts} inbox={inbox} unreadCount={unreadCount} pendingApprovals={pendingApprovals} />
           <span className="mx-0.5 hidden h-5 w-px bg-[var(--border)] sm:block" aria-hidden />
           <UserMenu

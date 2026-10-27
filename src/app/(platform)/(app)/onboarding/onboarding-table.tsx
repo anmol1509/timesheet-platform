@@ -144,7 +144,7 @@ export function OnboardingTable({ candidates }: { candidates: Candidate[] }) {
         return (
           <span className={cn("text-xs", overdue ? "font-medium text-[var(--error)]" : "text-secondary")}>
             {overallStatusLabel(c)}
-            {c.dropped && c.droppedReason ? ` — ${c.droppedReason}` : ""}
+            {c.dropped && c.droppedReason ? `: ${c.droppedReason}` : ""}
             {overdue && stage ? ` (overdue for ${stage.label})` : ""}
           </span>
         );

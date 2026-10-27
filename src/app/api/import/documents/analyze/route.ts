@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { COPILOT_MODEL } from "@/lib/constants";
 import { requireImporter } from "@/lib/importer/access";
 import { rateLimit } from "@/lib/rateLimit";
+import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import { EMPLOYEE_DOC_TYPES, SUPPLIER_DOC_TYPE_OPTIONS } from "@/lib/importer/documentMatch";
 import { READ_FIELDS, type Audience, type PageRead } from "@/lib/importer/documentRead";
 
@@ -30,9 +31,10 @@ const schemaFor = (types: string[], audience: Audience) => {
           idNumber: { type: "string" as const, description: "The document's own number (passport no., Emirates ID, labour card no., visa file no., licence no.). Empty if not shown." },
           expiry: { type: "string" as const, description: "Expiry date as YYYY-MM-DD, or empty if the page shows none." },
           confidence: { type: "string" as const, enum: ["high", "medium", "low"] },
+          title: { type: "string" as const, description: "Only when type is OTHER: a short name a person would file this document under, e.g. Offer letter, Fire safety certificate, Insurance policy. Empty for every other type." },
           ...extraProps,
         },
-        required: ["ref", "type", "continuation", "blank", "holder", "idNumber", "expiry", "confidence", ...extra],
+        required: ["ref", "type", "continuation", "blank", "holder", "idNumber", "expiry", "confidence", "title", ...extra],
         additionalProperties: false,
       },
     },
@@ -66,7 +68,7 @@ const READ_FIELD_HELP: Record<string, string> = {
 };
 
 const systemFor = (audience: Audience, labels: string) => `You sort scanned paperwork for a UAE manpower company. You are shown pages in order, from one file.
-For each page say which document it is, using exactly one of these types: ${labels}. Use OTHER only when none fit.
+For each page say which document it is, using exactly one of these types: ${labels}. Use OTHER only when none fit; for an OTHER page also give a short title to file it under (for example Offer letter, Fire safety certificate, Insurance policy), and report its expiry date only if the page prints one.
 ${audience === "EMPLOYEE"
   ? "The documents belong to workers: passport bio-data page, Emirates ID (front and back are separate pages of ONE document), visa or residence page, MOHRE labour card / work permit, medical certificate, insurance and so on."
   : "The documents belong to supplier companies: trade licence, MOHRE permit, establishment card, insurance, Ejari / tenancy, chamber of commerce certificate, TRN certificate, contracts."}
@@ -78,6 +80,8 @@ export async function POST(request: Request) {
   const who = await requireImporter();
   if (who instanceof NextResponse) return who;
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "AI reading isn't switched on." }, { status: 503 });
+  const gate = await aiGate(who.branchId);
+  if (gate) return NextResponse.json({ error: gate }, { status: 402 });
   const budget = rateLimit(`docread:${who.user.id}`, READ_LIMIT);
   if (!budget.allowed) return NextResponse.json({ error: "A lot of pages were read in the last hour. Try again shortly." }, { status: 429, headers: { "Retry-After": String(budget.retryAfter) } });
 
@@ -103,6 +107,7 @@ export async function POST(request: Request) {
       output_config: { format: { type: "json_schema", schema: schemaFor(types, audience) } },
       messages: [{ role: "user", content }],
     });
+    await recordAiUsage({ branchId: who.branchId, userId: who.user.id, feature: "import-documents", model: COPILOT_MODEL, usage: res.usage });
     const text = res.content.find((b) => b.type === "text");
     if (res.stop_reason === "refusal" || text?.type !== "text") return NextResponse.json({ error: "The AI couldn't read these pages." }, { status: 422 });
     const parsed = JSON.parse(text.text) as { pages?: Partial<PageRead>[] };
@@ -119,6 +124,7 @@ export async function POST(request: Request) {
       if (fields.unifiedNo && type !== "VISA" && type !== "RESIDENCY_ISSUANCE") delete fields.unifiedNo;
       return {
         fields, ref: p.ref!, type, continuation: !!r?.continuation, blank: !!r?.blank,
+        title: type === "OTHER" ? String(r?.title ?? "").trim().slice(0, 100) : "",
         holder: String(r?.holder ?? "").slice(0, 120), idNumber: String(r?.idNumber ?? "").slice(0, 60), expiry,
         confidence: r?.confidence === "high" || r?.confidence === "medium" ? r.confidence : "low",
       };

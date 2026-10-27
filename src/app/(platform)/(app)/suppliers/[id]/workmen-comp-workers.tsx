@@ -89,7 +89,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
       .filter((w) => w.linkedTo !== "this")
       .map((w) => ({ w, score: overlap(w) }))
       .sort((a, b) => b.score - a.score || Number(b.w.own) - Number(a.w.own) || a.w.name.localeCompare(b.w.name))
-      .map(({ w }) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}${w.trade ? ` · ${w.trade}` : ""}${w.company ? ` — ${w.company}` : ""}${w.linkedTo === "other" ? " (on another policy)" : ""}` }));
+      .map(({ w }) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}${w.trade ? ` · ${w.trade}` : ""}${w.company ? `: ${w.company}` : ""}${w.linkedTo === "other" ? " (on another policy)" : ""}` }));
   };
   const linkedHere = data.roster.filter((w) => w.linkedTo === "this").length;
   const notOnRoster = named.filter((n) => n.candidates.length === 0).length;
@@ -189,7 +189,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
         <div className="flex flex-wrap items-end gap-2">
           <label className="block w-72 max-w-full">
             <span className="mb-1 block text-xs font-medium text-muted">Link another worker to this policy</span>
-            <Select value={pick} onChange={setPick} searchable placeholder="Choose a worker…" options={unlinked.map((w) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}${w.trade ? ` · ${w.trade}` : ""}${!w.own && w.company ? ` — ${w.company}` : ""}` }))} />
+            <Select value={pick} onChange={setPick} searchable placeholder="Choose a worker…" options={unlinked.map((w) => ({ value: w.employeeId, label: `${w.name} · ${w.employeeIdNo}${w.trade ? ` · ${w.trade}` : ""}${!w.own && w.company ? `: ${w.company}` : ""}` }))} />
           </label>
           <button type="button" disabled={!pick || busy !== null} onClick={() => { setLink(pick, true); setPick(""); }} className={cn("btn btn-secondary btn-sm", !pick && "opacity-50")}>Link</button>
         </div>

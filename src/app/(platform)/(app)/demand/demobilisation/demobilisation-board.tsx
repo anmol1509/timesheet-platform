@@ -394,7 +394,7 @@ export function DemobilisationBoard({
           {/* No undo: putting someone back on a job is a mobilisation, and it
               has its own screen that records it properly. */}
           <p className="border-t border-default px-4 py-3 text-xs text-subtle">
-            To put someone back on a job, mobilise them against a demand — that
+            To put someone back on a job, mobilise them against a demand. That
             opens a fresh placement rather than reopening a closed one.
           </p>
         </div>

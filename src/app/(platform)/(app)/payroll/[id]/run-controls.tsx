@@ -47,7 +47,7 @@ export function RunControls({
           </button>
         )}
         {status === "DRAFT" && submitted && (
-          <Link href="/approvals?type=PAYROLL" className="btn btn-secondary">Awaiting approval — open in Approvals</Link>
+          <Link href="/approvals?type=PAYROLL" className="btn btn-secondary">Awaiting approval: open in Approvals</Link>
         )}
         {status === "APPROVED" && canApprove && (
           <>

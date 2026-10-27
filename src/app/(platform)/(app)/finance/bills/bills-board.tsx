@@ -98,7 +98,7 @@ function BillForm({ suppliers, onDone }: { suppliers: { id: string; name: string
       </div>
       <label className="block"><span className="mb-1 block text-xs font-medium text-muted">Description</span><input name="description" className="input w-full" placeholder="e.g. Labour supply, Aug" /></label>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both — add anyway" : "Add bill"}</button>
+        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both: add anyway" : "Add bill"}</button>
         {state.error && <p role="alert" className={dup ? "text-sm text-[var(--warning)]" : errCls}>{state.error.replace("DUPLICATE: ", "")}</p>}
       </div>
       <p className="text-xs text-subtle">The bill is checked against the timesheet when it is saved, and the difference is shown before anyone approves it. New bills wait for approval before they can be paid.</p>
@@ -280,7 +280,7 @@ export function BillsBoard({ rows, suppliers, banks = [], canCreate, canPay, can
 
       <Dialog open={adding} onOpenChange={setAdding}><DialogContent title="Add supplier bill"><BillForm suppliers={suppliers} onDone={() => setAdding(false)} /></DialogContent></Dialog>
       <Dialog open={paying !== null} onOpenChange={(o) => !o && setPaying(null)}>
-        {paying && <DialogContent title={`Pay ${paying.supplier}`} description={`Bill #${paying.billNo} — balance AED ${aed(paying.balance)}`}><PayForm bill={paying} banks={banks} onDone={() => setPaying(null)} /></DialogContent>}
+        {paying && <DialogContent title={`Pay ${paying.supplier}`} description={`Bill #${paying.billNo}: balance AED ${aed(paying.balance)}`}><PayForm bill={paying} banks={banks} onDone={() => setPaying(null)} /></DialogContent>}
       </Dialog>
       <Dialog open={batching} onOpenChange={setBatching}>
         <DialogContent title="Pay selected bills" description="One date, method and reference for the whole batch."><BatchForm bills={selectedRows} banks={banks} onDone={() => { setBatching(false); setSelected(new Set()); }} /></DialogContent>

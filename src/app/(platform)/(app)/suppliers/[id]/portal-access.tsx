@@ -35,7 +35,7 @@ export function PortalAccessCard({
           Lets this supplier sign in at <span className="font-medium text-secondary">/vendor/login</span> with a code sent to one of the numbers below, to see their workers, timesheets and payments.
         </p>
         <p className="mt-1 text-xs text-muted">
-          {phones.length > 0 ? `Numbers on file: ${phones.join(", ")}` : "No phone number is on file yet — add a contact, secondary or coordinator number first."}
+          {phones.length > 0 ? `Numbers on file: ${phones.join(", ")}` : "No phone number is on file yet. Add a contact, secondary or coordinator number first."}
         </p>
         {error && <p role="alert" className="mt-1 text-xs text-[var(--danger-text,#b42318)]">{error}</p>}
       </div>

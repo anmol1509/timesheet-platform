@@ -1,3 +1,5 @@
+import { PRODUCT_BRAND } from "@/lib/email/brand";
+import { demoRequestMail } from "@/lib/email/templates";
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { prisma } from "@/lib/db";
@@ -42,11 +44,8 @@ export async function POST(request: Request) {
   // Best-effort notification, after the response — a slow/misconfigured
   // email provider must never delay or fail the visitor's submission.
   after(async () => {
-    await sendEmail(
-      SITE.demoNotifyEmail,
-      `New demo request: ${demoRequest.company}`,
-      `${demoRequest.name} (${demoRequest.company}) requested a demo.\n\nEmail: ${demoRequest.email}\nPhone: ${demoRequest.phone}`,
-    );
+    const mail = demoRequestMail({ name: demoRequest.name, company: demoRequest.company, email: demoRequest.email, phone: demoRequest.phone, brand: PRODUCT_BRAND });
+    await sendEmail(SITE.demoNotifyEmail, mail.subject, mail.text, { html: mail.html, replyTo: demoRequest.email });
   });
 
   return NextResponse.json({ ok: true });

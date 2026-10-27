@@ -87,7 +87,7 @@ export function registryExpiries(input: {
     const type = typesFor(f.branchId, f.entityType).find((t) => t.key === f.docType);
     if (!type || !type.isActive || !type.hasExpiry) continue;
     if (NEVER_COLLAPSED.has(f.docType)) {
-      add(f, { ...type, label: `${type.label} — ${f.filename}` });
+      add(f, { ...type, label: `${type.label}: ${f.filename}` });
       continue;
     }
     const k = `${f.entityType}|${f.entityId}|${f.docType}`;

@@ -191,7 +191,7 @@ export function SupplierCompanyForm({
         {own && (
           <>
             <Field label="How this company pays its people">
-              <Select name="payType" defaultValue={supplier.payType ?? ""} searchable={false} options={[{ value: "", label: "— not set —" }, { value: "BASIC", label: "Basic — monthly salary, from attendance" }, { value: "HOURLY", label: "Hourly — hours from the timesheet" }]} triggerClassName="w-full" />
+              <Select name="payType" defaultValue={supplier.payType ?? ""} searchable={false} options={[{ value: "", label: "— not set —" }, { value: "BASIC", label: "Basic: monthly salary, from attendance" }, { value: "HOURLY", label: "Hourly: hours from the timesheet" }]} triggerClassName="w-full" />
             </Field>
             <Field label="MOHRE establishment ID (for the WPS file)">
               <input name="wpsEstablishmentId" defaultValue={supplier.wpsEstablishmentId || ""} inputMode="numeric" className="input w-full" />

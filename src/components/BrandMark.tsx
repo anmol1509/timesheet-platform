@@ -27,7 +27,7 @@ export function BrandMark({
       href="/"
       onClick={onNavigate}
       className="flex min-w-0 items-center gap-2.5"
-      aria-label="ManpowerSync — dashboard"
+      aria-label="ManpowerSync: dashboard"
     >
       {/* eslint-disable @next/next/no-img-element -- data URIs, no loader needed */}
       {collapsed ? (

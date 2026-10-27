@@ -52,7 +52,7 @@ export default async function NocDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <p className="mt-1 text-sm text-muted">
-          {noc.demandRequest.client.name} — {noc.demandRequest.project.name}
+          {noc.demandRequest.client.name}: {noc.demandRequest.project.name}
         </p>
       </div>
 

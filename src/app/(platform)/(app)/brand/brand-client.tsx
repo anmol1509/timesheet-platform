@@ -35,13 +35,13 @@ const TOKEN_SWATCHES = [
 ] as const;
 
 const TYPE_SCALE = [
-  { cls: "text-2xl", label: "text-2xl — hero numbers (30px)" },
-  { cls: "text-xl", label: "text-xl — KPI figures (24px)" },
-  { cls: "text-lg", label: "text-lg — page titles (20px)" },
-  { cls: "text-md", label: "text-md — card titles (16px)" },
-  { cls: "text-base", label: "text-base — default UI (14px)" },
-  { cls: "text-sm", label: "text-sm — body/table cells (13px)" },
-  { cls: "text-xs", label: "text-xs — meta, timestamps (12px)" },
+  { cls: "text-2xl", label: "text-2xl: hero numbers (30px)" },
+  { cls: "text-xl", label: "text-xl: KPI figures (24px)" },
+  { cls: "text-lg", label: "text-lg: page titles (20px)" },
+  { cls: "text-md", label: "text-md: card titles (16px)" },
+  { cls: "text-base", label: "text-base: default UI (14px)" },
+  { cls: "text-sm", label: "text-sm: body/table cells (13px)" },
+  { cls: "text-xs", label: "text-xs: meta, timestamps (12px)" },
 ] as const;
 
 const DEMO_STEPS: StepItem[] = [
@@ -76,8 +76,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
         <div>
           <h1 className="text-page-title">Design system</h1>
           <p className="mt-1 text-sm text-muted">
-            Phase 1 foundations: tokens, dark mode, the motion kit, and the shared primitives —
-            before vs after.
+            Phase 1 foundations: tokens, dark mode, the motion kit, and the shared primitives, before vs after.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -103,7 +102,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
           ))}
         </div>
         <p className="mt-4 text-xs text-subtle">
-          Same tokens, different values per theme — switch the toggle above. Radii stay
+          Same tokens, different values per theme. Switch the toggle above. Radii stay
           controls 8px / cards 10px / overlays 14px in both.
         </p>
       </Card>
@@ -158,11 +157,11 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
             <SlideOver
               open={sheetOpen}
               onOpenChange={setSheetOpen}
-              title="Ajay Kumar — 12 Sept"
+              title="Ajay Kumar: 12 Sept"
               description="Mark attendance for the day without leaving the calendar."
             >
               <p className="text-sm text-muted">
-                Demo panel for the SlideOver primitive — the Daily Attendance redesign (Phase 5)
+                Demo panel for the SlideOver primitive. The Daily Attendance redesign (Phase 5)
                 uses this shape for the day editor.
               </p>
             </SlideOver>
@@ -194,7 +193,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
           />
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <Tooltip label="This is a Radix tooltip — portalled, flips near edges">
+          <Tooltip label="This is a Radix tooltip, portalled, flips near edges">
             <button type="button" className="btn btn-secondary btn-sm">
               Hover me
             </button>
@@ -203,14 +202,14 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
       </Card>
 
       <Row>
-        <Card title="Before — supplier settings">
+        <Card title="Before: supplier settings">
           <div className="space-y-3">
             <Checkbox label="Our own company" defaultChecked />
             <Checkbox label="Allow manual labour ID" />
             <Checkbox label="Overtime applies" defaultChecked />
           </div>
         </Card>
-        <Card title="After — supplier settings">
+        <Card title="After: supplier settings">
           <div className="space-y-3.5">
             <Switch
               checked={own}
@@ -225,7 +224,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
       </Row>
 
       <Row>
-        <Card title="Before — skill level">
+        <Card title="Before: skill level">
           <div className="w-60">
             <span className="mb-1 flex items-center justify-between text-xs font-medium text-muted">
               <span>Level</span>
@@ -243,7 +242,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
             />
           </div>
         </Card>
-        <Card title="After — skill level">
+        <Card title="After: skill level">
           <Slider
             className="w-60"
             label="Level"
@@ -259,7 +258,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
       </Row>
 
       <Row>
-        <Card title="Before — quantity & rate">
+        <Card title="Before: quantity & rate">
           <div className="flex gap-3">
             <label className="w-24">
               <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
@@ -271,7 +270,7 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
             </label>
           </div>
         </Card>
-        <Card title="After — quantity & rate">
+        <Card title="After: quantity & rate">
           <div className="flex gap-3">
             <div className="w-32">
               <span className="mb-1 block text-xs font-medium text-muted">Qty</span>
@@ -286,13 +285,13 @@ export function BrandClient({ initialTheme }: { initialTheme: ThemePreference })
       </Row>
 
       <Row>
-        <Card title="Before — visa expiry">
+        <Card title="Before: visa expiry">
           <label className="block w-48">
             <span className="mb-1 block text-xs font-medium text-muted">Visa expiry</span>
             <DatePicker defaultValue="2031-04-15" className="w-full" />
           </label>
         </Card>
-        <Card title="After — visa expiry">
+        <Card title="After: visa expiry">
           <div className="w-48">
             <span className="mb-1 block text-xs font-medium text-muted">Visa expiry</span>
             <DatePicker value={visa} onChange={setVisa} ariaLabel="Visa expiry" />

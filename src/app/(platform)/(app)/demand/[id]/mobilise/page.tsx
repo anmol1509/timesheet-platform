@@ -52,7 +52,7 @@ export default async function MobilisePage({
               Mobilise Request #{request.requestNo}
             </h1>
             <p className="mt-1 text-sm text-muted">
-              {request.client.name} — {request.project.name}
+              {request.client.name}: {request.project.name}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export default async function MobilisePage({
         // Approval is per trade line, so this is only shown when *nothing* is
         // approved; a partly-approved demand is mobilised line by line.
         <p className="rounded-control border border-[var(--warning-border)] bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
-          No trade on this demand is approved yet — approve the lines you want to
+          No trade on this demand is approved yet. Approve the lines you want to
           fill on the{" "}
           <Link href={`/demand/${request.id}`} className="font-medium underline">
             demand page

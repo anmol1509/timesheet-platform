@@ -1,3 +1,5 @@
+import type { AiMeter } from "@/lib/aiCredits";
+import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import Anthropic from "@anthropic-ai/sdk";
 import { COPILOT_MODEL } from "@/lib/constants";
 import type { PlacementIssue } from "./types";
@@ -38,7 +40,7 @@ Never pick a candidate just because it is the only one; a different person with 
 When several candidates have the identical name, only pick one if the trade or supplier clearly points to it; otherwise null.
 Answer only with the requested JSON.`;
 
-export async function suggestWorkerMatches(issues: PlacementIssue[]): Promise<PlacementIssue[]> {
+export async function suggestWorkerMatches(issues: PlacementIssue[], meter?: AiMeter): Promise<PlacementIssue[]> {
   const withCandidates = issues.filter((i) => i.candidates.length > 0).slice(0, 40);
   // Without the model, a clear lead in spelling is still worth showing.
   const heuristic = (i: PlacementIssue): PlacementIssue["ai"] | undefined => {
@@ -48,6 +50,8 @@ export async function suggestWorkerMatches(issues: PlacementIssue[]): Promise<Pl
   };
   const out = issues.map((i) => ({ ...i, ai: heuristic(i) }));
   if (withCandidates.length === 0 || !process.env.ANTHROPIC_API_KEY) return out;
+  // Out of credits: the spelling hint above still shows, the AI opinion is skipped.
+  if (await aiGate(meter?.branchId)) return out;
   try {
     const client = new Anthropic({ maxRetries: 0, timeout: 25_000 });
     const response = await client.messages.create({
@@ -60,6 +64,7 @@ export async function suggestWorkerMatches(issues: PlacementIssue[]): Promise<Pl
         content: `Typed names and candidates (JSON data):\n${JSON.stringify(withCandidates.map((i) => ({ key: i.key, typed: i.fileName, candidates: i.candidates.map((c) => ({ employeeId: c.id, name: c.name, code: c.code, trade: c.trade, supplier: c.supplier })) })))}`,
       }],
     });
+    await recordAiUsage({ branchId: meter?.branchId, userId: meter?.userId, feature: "import-matching", model: COPILOT_MODEL, usage: response.usage });
     const block = response.content.find((b) => b.type === "text");
     if (response.stop_reason === "refusal" || block?.type !== "text") return out;
     const parsed = JSON.parse(block.text) as { picks?: { key?: string; employeeId?: string | null; confidence?: string; reason?: string }[] };

@@ -37,7 +37,7 @@ export default async function MobilisationQueuePage() {
     id: d.id,
     requestNo: d.requestNo,
     clientName: d.client.name,
-    projectLabel: `${d.project.code} — ${d.project.name}`,
+    projectLabel: `${d.project.code}: ${d.project.name}`,
     // What we are committed to deliver is the approved number, not the
     // requested one — a demand cut from ten to six is full at six.
     needed: d.trades.reduce((sum, t) => sum + approvedHeadcount(t), 0),

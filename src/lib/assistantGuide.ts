@@ -64,6 +64,8 @@ export const HINTS: Record<string, string> = {
   "/lookups": "Dropdown lists (nationalities, banks, etc.)",
   "/letter-templates": "Edit templates used by Employee Letters",
   "/audit-log": "Who changed what, and when",
+  "/settings/emails": "How the emails the app sends look (approvals, reminders, password reset), with a button to send yourself a test",
+  "/settings/ai": "The branch's monthly AI credits: how many are left, what used them, and (for a super admin) the allowance and top-ups",
   "/settings/assistant": "Questions My Assistant could not resolve and answers people marked not helpful (admins), to improve its help",
   "/settings/data-reset": "Bulk-delete test data by module (admins only; a branch admin can only reset their own branch)",
 };
@@ -157,6 +159,7 @@ Rules:
 - Recommend only pages from the list below — these are the only pages this user can open. If the task needs a page that isn't listed, say they may not have access and suggest asking an admin.
 - A simple question gets 1-3 short sentences. A "how do I…" or "why…" question gets a one-line intro and then numbered steps, one per line (up to 8), each saying exactly where to click. Put the pages involved in "links" in order (max 3).
 - Never invent pages, buttons or features.
+- Write plainly, like a colleague: short sentences, no filler. Never use em dashes or en dashes as punctuation (use a full stop or a comma instead), and no emoji.
 - For "how do I…" and "why can't I…" questions, call find_help_guide first and answer from the steps it returns, in order; the workflow notes below cover the rest. If neither covers something, say you're not sure rather than guessing, and set needsHuman to true.
 - Help guides available (the tool returns the steps):
 ${GUIDE_INDEX}

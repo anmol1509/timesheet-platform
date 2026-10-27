@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions, resolveSuperAdminBranchId, subjectOf } from "@/lib/auth";
 import { moduleForPath, viewableModules } from "@/lib/permissions";
 import { ASSISTANT_LIMIT, rateLimit } from "@/lib/rateLimit";
+import { aiBranchOf, aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import { ASSISTANT_FALLBACK_MODEL, ASSISTANT_MODEL, assistantModelExtras } from "@/lib/constants";
 import { TOOLS, runTool, type AssistantTable, type RecordLink } from "@/lib/assistantTools";
 import type { AssistantAction } from "@/lib/assistantDiagnose";
@@ -34,10 +35,14 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (await isBlockedByPermissions(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const aiBranch = await aiBranchOf(user);
+  const gate = await aiGate(aiBranch);
+  if (gate) return NextResponse.json({ error: gate }, { status: 402 });
+
   const limit = rateLimit(`assistant:${user.id}`, ASSISTANT_LIMIT);
   if (!limit.allowed) {
     return NextResponse.json(
-      { error: "You've asked a lot of questions — try again shortly." },
+      { error: "You've asked a lot of questions. Try again shortly." },
       { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
     );
   }
@@ -135,6 +140,7 @@ export async function POST(request: Request) {
         activeModel = ASSISTANT_FALLBACK_MODEL;
         response = await request(activeModel, false);
       }
+      await recordAiUsage({ branchId: aiBranch, userId: user.id, feature: "assistant", model: activeModel, usage: response.usage });
       if (response.stop_reason === "refusal") break;
       if (response.stop_reason !== "tool_use") {
         const block = response.content.find((b) => b.type === "text");

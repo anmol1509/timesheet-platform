@@ -42,14 +42,14 @@ export default function Page() {
           <li>Capped at two years&rsquo; total basic salary, however long the service.</li>
         </ul>
         <p>
-          Allowances, commissions and overtime are excluded from the base figure entirely — only the
+          Allowances, commissions and overtime are excluded from the base figure entirely. Only the
           basic salary component counts, which is exactly the field that has to be tracked
           separately and accurately for every employee, not bundled into one all-in monthly figure.
         </p>
 
         <h2>When it&rsquo;s due</h2>
         <p>
-          The full amount is payable within 14 days of the employee&rsquo;s last working day — a short
+          The full amount is payable within 14 days of the employee&rsquo;s last working day. A short
           window that leaves little room for a calculation to be worked out from scratch after
           someone has already left.
         </p>

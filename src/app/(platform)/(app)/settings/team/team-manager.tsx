@@ -72,8 +72,8 @@ function UserForm({
 
   const roleOptions = [
     ...(isSuperAdmin ? [{ value: "SUPER_ADMIN", label: "Super admin (all branches)" }] : []),
-    { value: "BRANCH_ADMIN", label: "Branch admin — full access to the branch" },
-    { value: "STAFF", label: "Staff — limited by a permission set" },
+    { value: "BRANCH_ADMIN", label: "Branch admin: full access to the branch" },
+    { value: "STAFF", label: "Staff: limited by a permission set" },
   ];
   // Roles usable for this user: global ones, plus ones scoped to their branch.
   const effectiveBranch = isSuperAdmin ? branchId : (user?.branchId ?? null);

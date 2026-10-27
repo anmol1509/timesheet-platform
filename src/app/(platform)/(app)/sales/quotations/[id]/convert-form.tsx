@@ -19,7 +19,7 @@ export function ConvertToProjectForm({ quotationId }: { quotationId: string }) {
 
   return (
     <div className="rounded-xl border border-[var(--success-border)] bg-[var(--success-soft)] p-5">
-      <h2 className="mb-2 text-sm font-semibold text-primary">Accepted — create the project</h2>
+      <h2 className="mb-2 text-sm font-semibold text-primary">Accepted: create the project</h2>
       <p className="mb-3 text-sm text-secondary">
         One step: creates the project for this client, marks the quotation as converted, and (if ticked) raises the demand.
       </p>

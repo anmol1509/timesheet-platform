@@ -163,7 +163,7 @@ export async function attachCompanyFileAction(formData: FormData): Promise<{ err
   const docType = String(formData.get("docType") || "");
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "No file to add." };
-  if (file.size > MAX_UPLOAD_BYTES) return { error: `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
 
   const company = await prisma.supplier.findUnique({ where: { id: companyId }, select: { id: true, branchId: true, isOwnCompany: true, createdAt: true } });
   if (!company || !company.isOwnCompany || isOutsideBranch(company.branchId, branchId, isSuperAdmin)) return { error: "That company wasn't found." };

@@ -124,7 +124,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
       </div>
 
       {quotation.status === "REJECTED" ? (
-        <div className="rounded-xl border border-[var(--error-border)] bg-[var(--error-soft)] px-5 py-3 text-sm text-[var(--error)]">Lost{quotation.lostReason ? ` — ${quotation.lostReason}` : ""}</div>
+        <div className="rounded-xl border border-[var(--error-border)] bg-[var(--error-soft)] px-5 py-3 text-sm text-[var(--error)]">Lost{quotation.lostReason ? `: ${quotation.lostReason}` : ""}</div>
       ) : (
         <div className="card flex items-center gap-2 overflow-x-auto px-5 py-3.5 text-xs">
           {STAGES.map((s, i) => (
@@ -153,7 +153,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4">
               <h2 className="text-sm font-semibold text-primary">Lines</h2>
-              {showCost && <span className="text-xs text-subtle">Cost and profit are private — not on the PDF</span>}
+              {showCost && <span className="text-xs text-subtle">Cost and profit are private, not on the PDF</span>}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

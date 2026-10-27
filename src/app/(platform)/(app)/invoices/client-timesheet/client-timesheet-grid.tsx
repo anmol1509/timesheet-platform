@@ -386,7 +386,7 @@ function BatchEditPanel({ entryIds, onClose }: { entryIds: string[]; onClose: ()
   return (
     <div className="card p-4">
       <h3 className="mb-3 text-sm font-semibold text-primary">
-        Edit Common Details — {entryIds.length} selected
+        Edit Common Details: {entryIds.length} selected
       </h3>
       <div className="space-y-2">
         {ranges.map((r) => (

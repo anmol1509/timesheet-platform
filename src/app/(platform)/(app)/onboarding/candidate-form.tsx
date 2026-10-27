@@ -104,7 +104,7 @@ export function CandidateForm({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block sm:col-span-2">
             <span className={label}>Type of hire</span>
-            <Select name="candidateType" defaultValue={candidate?.candidateType ?? "OVERSEAS"} searchable={false} options={CANDIDATE_TYPES.map((t) => ({ value: t.value, label: `${t.label} — ${t.hint}` }))} />
+            <Select name="candidateType" defaultValue={candidate?.candidateType ?? "OVERSEAS"} searchable={false} options={CANDIDATE_TYPES.map((t) => ({ value: t.value, label: `${t.label}: ${t.hint}` }))} />
           </label>
           <label className="block">
             <span className={label}>Candidate name *</span>

@@ -23,7 +23,7 @@ export const POSTS: readonly Post[] = [
     cluster: "payroll-wps",
     title: "Why Your WPS SIF File Gets Rejected (and How to Fix It)",
     description:
-      "The most common reasons a UAE Wage Protection System salary file bounces back — IBAN mismatches, establishment ID errors, and salary structure issues — and how to stop them recurring every month.",
+      "The most common reasons a UAE Wage Protection System salary file bounces back (IBAN mismatches, establishment ID errors and salary structure issues) and how to stop them recurring every month.",
     date: "2026-09-01",
   },
   {
@@ -49,7 +49,7 @@ export const POSTS: readonly Post[] = [
     seoTitle: "UAE Overtime Rules for Construction Workers",
     title: "UAE Overtime Rules for Construction and Manpower Workers, Explained",
     description:
-      "Daily and weekly working-hour limits, overtime rates, night-shift premiums and rest-day pay under UAE labour law — and how to apply them consistently across a large workforce.",
+      "Daily and weekly working-hour limits, overtime rates, night-shift premiums and rest-day pay under UAE labour law. And how to apply them consistently across a large workforce.",
     date: "2026-09-18",
   },
   {
@@ -58,7 +58,7 @@ export const POSTS: readonly Post[] = [
     seoTitle: "Labour Card vs Work Permit vs Visa in the UAE",
     title: "Labour Card vs Work Permit vs Visa: What's the Difference in the UAE?",
     description:
-      "Three different documents, each tracked separately, each with its own expiry and its own consequence if it lapses — a plain-language guide for anyone managing a UAE workforce.",
+      "Three different documents, each tracked separately, each with its own expiry and its own consequence if it lapses. A plain-language guide for anyone managing a UAE workforce.",
     date: "2026-09-24",
   },
   {

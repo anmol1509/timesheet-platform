@@ -85,7 +85,7 @@ export async function markAttendanceAction(
       requested: 0,
       error: isSuperAdmin
         ? "Pick a branch from the switcher before marking attendance."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -110,7 +110,7 @@ export async function markAttendanceAction(
     return {
       saved: 0,
       requested: 0,
-      error: "Tick the employees to record before saving — nothing was marked.",
+      error: "Tick the employees to record before saving. Nothing was marked.",
     };
   }
 
@@ -376,7 +376,7 @@ export async function deleteAttendanceAction(
     return { deleted: 0 };
   }
   if (existing.locked && !isAdminRole(user.role)) {
-    return { deleted: 0, error: "That day is approved and locked — ask an admin." };
+    return { deleted: 0, error: "That day is approved and locked. Ask an admin." };
   }
 
   if ((await payrollLockedEmployees([existing.employeeId], existing.date.toISOString().slice(0, 7))).size > 0) {

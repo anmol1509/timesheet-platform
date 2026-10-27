@@ -81,7 +81,7 @@ export function InstantViewPicker({
             emptyText={
               category === "ALL"
                 ? "No employee matches."
-                : `No match in ${categoryLabel} — try All.`
+                : `No match in ${categoryLabel}: try All.`
             }
             options={employees.map((e) => ({
               value: e.id,

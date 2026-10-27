@@ -20,7 +20,7 @@ export default async function PayslipsPage({ params, searchParams }: { params: P
   return (
     <div className="space-y-6">
       <div className="print:hidden">
-        <h1 className="text-xl font-semibold tracking-tight text-primary">Payslips — {doc.month}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-primary">Payslips: {doc.month}</h1>
         <p className="mt-1 text-sm text-muted">Choose who gets a payslip, how it is printed, check the preview, then download.</p>
       </div>
       {doc.slips.length === 0

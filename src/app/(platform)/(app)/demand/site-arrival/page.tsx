@@ -74,7 +74,7 @@ export default async function SiteArrivalPage() {
     trade: e.trade,
     projectId: e.projectId,
     clientName: e.project?.client.name ?? null,
-    projectLabel: e.project ? `${e.project.code} — ${e.project.name}` : null,
+    projectLabel: e.project ? `${e.project.code}: ${e.project.name}` : null,
     mobilisationDate: e.mobilisationDate ? e.mobilisationDate.toISOString().slice(0, 10) : null,
     siteArrivalDate: e.siteArrivalDate ? e.siteArrivalDate.toISOString().slice(0, 10) : null,
     siteName: e.site?.name ?? null,

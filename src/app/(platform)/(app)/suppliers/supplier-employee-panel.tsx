@@ -61,7 +61,7 @@ export function SupplierEmployeePanel({
 
   return (
     <>
-      <Tooltip label={`Employees & insurance — ${supplierName}`}>
+      <Tooltip label={`Employees & insurance: ${supplierName}`}>
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -74,7 +74,7 @@ export function SupplierEmployeePanel({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          title={`${supplierName} — employees & insurance`}
+          title={`${supplierName}: employees & insurance`}
           description="Who is on the books for this supplier, and who each workmen's compensation certificate covers."
           className="max-w-4xl"
         >

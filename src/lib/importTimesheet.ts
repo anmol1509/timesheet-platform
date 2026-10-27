@@ -255,7 +255,7 @@ export async function importParsedMonths(
         noteSponsorOfHeldRow(entry.sponsorName);
         // Waiting for a decision on this supplier (or it was ignored): the row isn't imported.
         stats.rowsSkipped++;
-        stats.skippedRowDetails.push({ sheetName: month.sheetName, row: entryIndex + 1, name: entry.employeeName, idNo: entry.employeeIdNo, reason: `Supplier "${entry.supplierName}" isn't on record — add it, pick an existing one, or ignore it above.` });
+        stats.skippedRowDetails.push({ sheetName: month.sheetName, row: entryIndex + 1, name: entry.employeeName, idNo: entry.employeeIdNo, reason: `Supplier "${entry.supplierName}" isn't on record: add it, pick an existing one, or ignore it above.` });
         continue;
       }
 

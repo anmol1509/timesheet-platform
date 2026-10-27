@@ -53,7 +53,7 @@ export async function createSupplierAction(formData: FormData) {
       `/suppliers?error=${encodeURIComponent(
         isSuperAdmin
           ? "Pick a branch from the switcher before adding a supplier."
-          : "Your account has no branch assigned — contact an admin."
+          : "Your account has no branch assigned. Contact an admin."
       )}`
     );
   }
@@ -453,7 +453,7 @@ export async function deleteSupplierAction(formData: FormData) {
     if (sheetCount > 0) parts.push(`${sheetCount} generated sheet(s)`);
     redirect(
       `/suppliers?error=${encodeURIComponent(
-        `Can't delete — still linked to ${parts.join(" and ")}.`
+        `Can't delete: still linked to ${parts.join(" and ")}.`
       )}`
     );
   }
@@ -646,7 +646,7 @@ export async function uploadWorkmenCompAction(formData: FormData): Promise<{ id?
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { branchId: true } });
   if (!supplier || isOutsideBranch(supplier.branchId, branchId, isSuperAdmin)) return { error: "That supplier belongs to another branch." };
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
-  if (file.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
   if (!isAcceptedUploadType(file.type)) return { error: "Upload a PDF or a photo of the certificate." };
   const expiryDate = expiryRaw && !Number.isNaN(new Date(expiryRaw).getTime()) ? new Date(expiryRaw) : null;
   const created = await prisma.attachment.create({

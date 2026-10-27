@@ -71,7 +71,7 @@ export default async function VendorHome() {
     })),
     ...docIssues.slice(0, 5).map(({ w, worst, days }): Item => ({
       key: `d-${w.id}`, href: "/vendor/workers", icon: AlertTriangle, tone: days < 0 ? "danger" : "warning",
-      title: `${w.name} — ${worst.label} ${days < 0 ? `expired ${Math.abs(days)} days ago` : days === 0 ? "expires today" : `expires in ${days} days`}`, sub: w.employeeIdNo,
+      title: `${w.name}: ${worst.label} ${days < 0 ? `expired ${Math.abs(days)} days ago` : days === 0 ? "expires today" : `expires in ${days} days`}`, sub: w.employeeIdNo,
     })),
   ];
 

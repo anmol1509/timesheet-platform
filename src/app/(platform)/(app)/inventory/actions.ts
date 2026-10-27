@@ -33,7 +33,7 @@ export async function createInventoryItemAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding an item."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -124,7 +124,7 @@ export async function deleteInventoryItemAction(formData: FormData) {
   if (activeCount > 0) {
     redirect(
       `/inventory/${id}?error=${encodeURIComponent(
-        `Can't delete — still assigned to ${activeCount} project(s). Return it first.`
+        `Can't delete: still assigned to ${activeCount} project(s). Return it first.`
       )}`
     );
   }
@@ -225,7 +225,7 @@ export async function deleteVariantAction(formData: FormData) {
   if (heldCount > 0) {
     redirect(
       `/inventory/${existing.itemId}?error=${encodeURIComponent(
-        `Can't delete "${existing.name}" — ${heldCount} employee(s) still hold it. Return it first.`
+        `Can't delete "${existing.name}": ${heldCount} employee(s) still hold it. Return it first.`
       )}`
     );
   }
@@ -256,7 +256,7 @@ export async function bulkImportInventoryAction(rows: Record<string, string>[]):
   await requirePermission("facilities.inventory", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
-    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin.";
+    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned. Contact an admin.";
     return rows.map((_, i) => rowError(i, undefined, message));
   }
   const items = await prisma.inventoryItem.findMany({ where: { branchId }, include: { variants: true } });

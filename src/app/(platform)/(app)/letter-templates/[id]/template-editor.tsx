@@ -107,12 +107,12 @@ export function TemplateEditor(p: Props) {
           <LetterEditor html={p.html} onChange={(h) => { setHtml(h); setEditedAt(state); }} fields={fields} audience={p.audience} />
           <p className="text-xs text-muted">
             {p.audience === "SITE"
-              ? "Use Insert field for details filled in automatically, and Worker table to choose where the client's worker table prints — anything below it prints underneath."
+              ? "Use Insert field for details filled in automatically, and Worker table to choose where the client's worker table prints. Anything below it prints underneath."
               : "Use Insert field for the employee's details, and Ask when issuing for blanks the person issuing the letter fills in."}
           </p>
           {unknown.length > 0 && (
             <p role="alert" className="rounded-md border border-[var(--error-border)] bg-[var(--error-soft)] px-3 py-2 text-xs text-[var(--error)]">
-              Not a real field: {unknown.map((u) => `%%${u}%%`).join(", ")} — it would print blank. Delete it or use Insert field.
+              Not a real field: {unknown.map((u) => `%%${u}%%`).join(", ")}: it would print blank. Delete it or use Insert field.
             </p>
           )}
         </div>
@@ -129,7 +129,7 @@ export function TemplateEditor(p: Props) {
           </span>
         </div>
         {note && <p role="alert" className="text-sm text-[var(--danger-text,#b42318)]">{note}</p>}
-        {p.usedBy > 0 && <p className="text-xs text-muted">Used by {p.usedBy} NOC{p.usedBy === 1 ? "" : "s"} — changes here will affect their next download.</p>}
+        {p.usedBy > 0 && <p className="text-xs text-muted">Used by {p.usedBy} NOC{p.usedBy === 1 ? "" : "s"}: changes here will affect their next download.</p>}
       </form>
 
       <div className="min-w-0 xl:sticky xl:top-20 xl:self-start">

@@ -241,7 +241,7 @@ export async function VatReturnView({ branchId, from, asOf, manual }: { branchId
         {[q0, q1].map((q) => <Link key={q.label} href={`/finance/books/reports?view=vat&from=${q.from}&asof=${q.to}${manualQuery}`} className={`rounded-full border px-3 py-1 font-medium ${iso0 === q.from && iso1 === q.to ? "border-brand bg-brand-soft text-brand" : "border-default text-secondary hover:bg-surface-hover"}`}>{q.label}</Link>)}
       </div>
       <div className="rounded-[var(--radius-card)] border border-default bg-surface px-4 py-3 text-sm">
-        <p className="font-semibold text-primary">{branch?.name} — VAT return (Form 201)</p>
+        <p className="font-semibold text-primary">{branch?.name}: VAT return (Form 201)</p>
         <p className="text-xs text-muted">Tax registration number: <span className="font-mono text-primary">{branch?.trn || "not set (add it under Reference Data › Company)"}</span> · {fmtDate(from)} – {fmtDate(asOf)} · registered in {r.emirate}</p>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">

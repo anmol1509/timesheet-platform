@@ -104,7 +104,7 @@ export function DocumentChecklist({
                     type={editType?.(item.key) ?? "text"}
                     value={item.editValue ?? item.detail ?? ""}
                     onChange={(e) => onEdit(item.key, e.target.value)}
-                    placeholder="Not read — type it in"
+                    placeholder="Not read: type it in"
                     aria-label={item.label}
                     className="tabular mt-0.5 w-full rounded-sm border border-transparent bg-transparent px-1 py-0.5 text-xs text-secondary transition hover:border-default focus:border-[var(--brand-primary)] focus:bg-surface focus:outline-none"
                   />

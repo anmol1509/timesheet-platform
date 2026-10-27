@@ -130,7 +130,7 @@ export function WorkmenCompImport({
       <div>
         <h2 className="text-sm font-semibold text-primary">Workmen Compensation Insurance</h2>
         <p className="mt-1 text-xs text-muted">
-          Upload the insurance certificate — it&rsquo;s archived below under Documents, and the employee
+          Upload the insurance certificate: it&rsquo;s archived below under Documents, and the employee
           schedule is read automatically into an editable table you can review before creating records.
         </p>
       </div>

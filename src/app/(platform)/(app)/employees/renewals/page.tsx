@@ -46,7 +46,7 @@ export default async function RenewalsPage() {
         icon={CalendarClock}
         breadcrumbs={[{ label: "Workforce", href: "/employees" }, { label: "Renewals" }]}
         meta={<CountPill>{items.length}</CountPill>}
-        description="Every document falling due in the next 90 days — workers' visas, labour cards, passports and IDs; suppliers' licences, insurance and permits; owners' and sponsors' papers; and vehicle Mulkiya and insurance — worst first, so long-lead renewals start in time."
+        description="Every document falling due in the next 90 days, workers' visas, labour cards, passports and IDs; suppliers' licences, insurance and permits; owners' and sponsors' papers; and vehicle Mulkiya and insurance, worst first, so long-lead renewals start in time."
       />
       <RenewalsBoard items={rows} counts={counts} owners={owners} currentUserId={user.id} canEdit={canWrite(subject, "workforce.renewals")} canExport={can(subject, "workforce.renewals", "export")} />
     </div>

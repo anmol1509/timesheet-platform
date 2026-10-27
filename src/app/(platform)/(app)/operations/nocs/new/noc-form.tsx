@@ -87,7 +87,7 @@ export function NocForm({
             placeholder="Select demand request"
             options={requests.map((r) => ({
               value: r.id,
-              label: `#${r.requestNo} — ${r.clientName} / ${r.projectName}`,
+              label: `#${r.requestNo}: ${r.clientName} / ${r.projectName}`,
             }))}
           />
         </label>

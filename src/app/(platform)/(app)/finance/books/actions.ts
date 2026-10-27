@@ -87,7 +87,7 @@ export async function receiveMoneyAction(input: { source: MoneyInSource; from: s
     creditId = (await prisma.account.findFirst({ where: { branchId, tag: SOURCE_TAG[input.source] }, select: { id: true } }))?.id;
     if (!creditId) return { error: "That account is missing from your chart. Open Set-up first." };
   }
-  const narration = `${from}${input.narration.trim() ? ` — ${input.narration.trim()}` : ""}`;
+  const narration = `${from}${input.narration.trim() ? `: ${input.narration.trim()}` : ""}`;
   const [number] = await reserveNumbers(branchId, VOUCHER_PREFIX.RECEIPT, 1);
   const entry = await prisma.journalEntry.create({
     data: { branchId, number, date, type: "RECEIPT", narration, createdById: user.id, createdByName: user.name, lines: { create: [{ accountId: input.moneyAccountId, debit: amount, credit: 0, ...(fx && foreignAmount ? { currency: fx.currency, foreignAmount } : {}) }, { accountId: creditId as string, debit: 0, credit: amount }] } },

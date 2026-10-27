@@ -35,7 +35,7 @@ export default async function CompanyProfilePage({
     : [];
 
   if (!branch) {
-    return <p className="text-sm text-muted">No company to edit — this account isn&apos;t attached to a branch.</p>;
+    return <p className="text-sm text-muted">No company to edit: this account isn&apos;t attached to a branch.</p>;
   }
 
 
@@ -134,7 +134,7 @@ export default async function CompanyProfilePage({
           payerBankId={branch.wpsPayerBankId ?? ""}
           banks={banks.map((b) => ({
             id: b.id,
-            label: `${b.accountName} — ${b.bankName}${b.ibanNo ? ` · ${b.ibanNo}` : ""}`,
+            label: `${b.accountName}: ${b.bankName}${b.ibanNo ? ` · ${b.ibanNo}` : ""}`,
             complete: !!b.routingCode && !!(b.ibanNo || b.accountNo),
           }))}
         />

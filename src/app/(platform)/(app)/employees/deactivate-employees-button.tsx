@@ -57,7 +57,7 @@ export function DeactivateEmployeesButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           title={`Deactivate ${ids.length} employee${ids.length === 1 ? "" : "s"}?`}
-          description="They come off the active roster but keep every record — documents, timesheets and history are untouched. You can reactivate them from their profile."
+          description="They come off the active roster but keep every record. Documents, timesheets and history are untouched. You can reactivate them from their profile."
         >
           <label className="block">
             <span className="field-label">Reason (optional)</span>

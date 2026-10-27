@@ -55,7 +55,7 @@ export default async function DemandRequestDetailPage({
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl tracking-tight text-primary font-semibold">
-            Request #{request.requestNo} — {request.client.name}
+            Request #{request.requestNo}: {request.client.name}
           </h1>
           <div className="flex items-center gap-2">
             <Link
@@ -74,7 +74,7 @@ export default async function DemandRequestDetailPage({
           </div>
         </div>
         <p className="mt-1 text-sm text-muted">
-          {request.project.code} — {request.project.name}
+          {request.project.code}: {request.project.name}
         </p>
       </div>
 

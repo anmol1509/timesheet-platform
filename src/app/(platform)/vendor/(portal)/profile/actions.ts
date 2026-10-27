@@ -78,7 +78,7 @@ export async function uploadDocumentAction(_prev: State, formData: FormData): Pr
   const f = formData.get("file");
   if (!(f instanceof File) || f.size === 0) return { error: "Choose a file to upload." };
   if (!ALLOWED.includes(f.type)) return { error: "Upload a PDF, JPG or PNG." };
-  if (f.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(f.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+  if (f.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(f.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
   const expiryRaw = str(formData.get("expiryDate"));
   const expiryDate = expiryRaw ? parseDay(expiryRaw) : null;
   if (expiryRaw && !expiryDate) return { error: "Enter a valid expiry date." };

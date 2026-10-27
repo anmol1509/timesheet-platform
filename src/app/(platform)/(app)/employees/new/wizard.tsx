@@ -463,7 +463,7 @@ export function EmployeeWizard({
         message:
           total > 0
             ? `Read ${readable.length} file${readable.length === 1 ? "" : "s"} and filled ${total} field${total === 1 ? "" : "s"}.`
-            : `Read ${readable.length} file${readable.length === 1 ? "" : "s"} — nothing new to add.`,
+            : `Read ${readable.length} file${readable.length === 1 ? "" : "s"}: nothing new to add.`,
       });
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return; // cancelled: the status was already cleared
@@ -487,7 +487,7 @@ export function EmployeeWizard({
           message:
             count > 0
               ? `Filled ${count} field${count === 1 ? "" : "s"}.`
-              : "Nothing new to add — existing values kept.",
+              : "Nothing new to add: existing values kept.",
         },
       }));
     } catch (e) {
@@ -668,8 +668,8 @@ export function EmployeeWizard({
           ? fields.emiratesId
           : has("RESIDENCY_ISSUANCE", docFiles.RESIDENCY_ISSUANCE)
             ? fields.visaNumber
-              ? `Residency issuance — file ${fields.visaNumber}`
-              : "Residency issuance — card not issued yet"
+              ? `Residency issuance: file ${fields.visaNumber}`
+              : "Residency issuance: card not issued yet"
             : null,
       },
       {
@@ -688,7 +688,7 @@ export function EmployeeWizard({
         detail: photo
           ? photo.name
           : found.includes("PHOTO")
-            ? "Found in the pack — extracting…"
+            ? "Found in the pack: extracting…"
             : null,
       },
     ];
@@ -972,7 +972,7 @@ export function EmployeeWizard({
                   Upload the document pack
                 </p>
                 <p className="mt-0.5 text-xs text-secondary">
-                  Passport, Emirates ID and labour card — as one PDF or as
+                  Passport, Emirates ID and labour card. As one PDF or as
                   several files. Everything readable is filled in for you.
                 </p>
                 <div className="mt-3">
@@ -1340,7 +1340,7 @@ export function EmployeeWizard({
                 placeholder="Not deployed yet"
                 options={projects.map((p) => ({
                   value: p.id,
-                  label: `${p.code} — ${p.name}`,
+                  label: `${p.code}: ${p.name}`,
                 }))}
               />
             </Field>}
@@ -1500,7 +1500,7 @@ export function EmployeeWizard({
       {stepKey === "notes" && (
         <div className="space-y-4">
           <p className="text-sm text-muted">
-            Anything worth keeping on file — prior employment, a warning, a site
+            Anything worth keeping on file. Prior employment, a warning, a site
             incident. Each note has its own remarks and attachments. Optional.
           </p>
 
@@ -1544,7 +1544,7 @@ export function EmployeeWizard({
                       status={{ kind: "idle" }}
                       onAdd={(picked) => addNoteFiles(note.id, picked)}
                       onRemove={(i) => removeNoteFile(note.id, i)}
-                      hint="Experience letters, contracts, certificates — as many as you have."
+                      hint="Experience letters, contracts, certificates: as many as you have."
                     />
                   </div>
                 </li>
@@ -1624,7 +1624,7 @@ export function EmployeeWizard({
                 placeholder="Not deployed yet"
                 options={projects.map((p) => ({
                   value: p.id,
-                  label: `${p.code} — ${p.name}`,
+                  label: `${p.code}: ${p.name}`,
                 }))}
               />
             </ReviewRow>
@@ -1688,19 +1688,19 @@ export function EmployeeWizard({
               <p className="mt-2 text-sm text-subtle">No files attached.</p>
             ) : (
               <ul className="mt-2 space-y-1 text-sm text-secondary">
-                {photo && <li>Profile photo — {photo.name}</li>}
+                {photo && <li>Profile photo: {photo.name}</li>}
                 {packFiles.map((f, i) => (
-                  <li key={`pack-${i}`}>Document pack — {f.name}</li>
+                  <li key={`pack-${i}`}>Document pack: {f.name}</li>
                 ))}
                 {Object.entries(docFiles).map(([slot, f]) => (
                   <li key={slot}>
-                    {DOC_LABEL[slot] ?? slot} — {f.name}
+                    {DOC_LABEL[slot] ?? slot}: {f.name}
                   </li>
                 ))}
                 {notes.flatMap((note, ni) =>
                   note.files.map((f, fi) => (
                     <li key={`note-${ni}-${fi}`}>
-                      Note {ni + 1} — {f.name}
+                      Note {ni + 1}: {f.name}
                     </li>
                   ))
                 )}

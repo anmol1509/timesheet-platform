@@ -170,7 +170,7 @@ export default async function EmployeesPage({
           ))}
         </li>
       ))}
-      {people.length > 40 && <li className="px-3 py-2 text-xs text-muted">…and {people.length - 40} more — use Review renewals</li>}
+      {people.length > 40 && <li className="px-3 py-2 text-xs text-muted">…and {people.length - 40} more: use Review renewals</li>}
     </ul>
   );
   const statusItems: StatusItem[] = [];

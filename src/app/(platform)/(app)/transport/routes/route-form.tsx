@@ -95,7 +95,7 @@ export function RouteForm({
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Morning Pickup — Al Ain Road"
+            placeholder="e.g. Morning Pickup: Al Ain Road"
             className="input w-full"
           />
         </label>
@@ -114,7 +114,7 @@ export function RouteForm({
             value={projectId}
             onChange={setProjectId}
             placeholder="Not set"
-            options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            options={projects.map((p) => ({ value: p.id, label: `${p.code}: ${p.name}` }))}
           />
         </label>
       </div>

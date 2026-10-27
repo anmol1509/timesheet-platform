@@ -82,7 +82,7 @@ export function CitySelect({ name, country, value: controlled, defaultValue, onC
               {loading && results.length === 0 && (
                 <div className="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Loading…</div>
               )}
-              {!loading && results.length === 0 && !canUseTyped && <CommandEmpty className="px-3 py-6 text-center text-sm text-muted">No city list for this country — type the city and press Enter.</CommandEmpty>}
+              {!loading && results.length === 0 && !canUseTyped && <CommandEmpty className="px-3 py-6 text-center text-sm text-muted">No city list for this country. Type the city and press Enter.</CommandEmpty>}
               <CommandGroup>
                 {results.map((c) => (
                   <CommandItem key={c} value={c} onMouseDown={(e) => e.preventDefault()} onSelect={() => choose(c)} className="flex cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1.5 text-sm text-secondary outline-none data-[selected=true]:bg-surface-hover data-[selected=true]:text-primary">

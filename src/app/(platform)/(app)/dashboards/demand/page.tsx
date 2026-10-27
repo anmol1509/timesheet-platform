@@ -53,7 +53,7 @@ export default async function DemandDashboardPage() {
     id: d.id,
     requestNo: d.requestNo,
     clientName: d.client.name,
-    projectLabel: `${d.project.code} — ${d.project.name}`,
+    projectLabel: `${d.project.code}: ${d.project.name}`,
     needed: d.trades.reduce((sum, t) => sum + approvedHeadcount(t), 0),
     filled: d.trades.reduce((sum, t) => sum + t._count.allocations, 0),
     pendingApproval: d.trades.some((t) => t.approvedQuantity == null),
@@ -167,7 +167,7 @@ export default async function DemandDashboardPage() {
                     className="flex items-center justify-between gap-3 py-2 text-sm hover:underline"
                   >
                     <span className="text-primary">
-                      #{r.requestNo} — {r.clientName} ({r.projectLabel})
+                      #{r.requestNo}: {r.clientName} ({r.projectLabel})
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-[var(--surface-sunken)] sm:block">

@@ -43,7 +43,7 @@ export async function submitWorkerAction(_prev: State, formData: FormData): Prom
     const f = formData.get(field);
     if (!(f instanceof File) || f.size === 0) continue;
     if (!ALLOWED.includes(f.type)) return { error: "Attach documents as PDF, JPG or PNG." };
-    if (f.size > MAX_UPLOAD_BYTES) return { error: `${f.name} is ${(f.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+    if (f.size > MAX_UPLOAD_BYTES) return { error: `${f.name} is ${(f.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
     files.push({ file: f, docType });
   }
 

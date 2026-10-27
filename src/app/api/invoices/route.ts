@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       {
         error: isSuperAdmin
           ? "Pick a branch from the switcher before issuing an invoice."
-          : "Your account has no branch assigned — contact an admin.",
+          : "Your account has no branch assigned. Contact an admin.",
       },
       { status: 400 }
     );

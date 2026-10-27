@@ -253,7 +253,7 @@ export async function updateQuotationAction(formData: FormData) {
     branchId,
   });
   if (revise) {
-    await logSalesActivity({ quotationId: id, kind: "REVISION", body: `Revised to v${before.version + 1}${summary ? ` — ${summary}` : ""}${note ? `. ${note}` : ""}`, user, branchId });
+    await logSalesActivity({ quotationId: id, kind: "REVISION", body: `Revised to v${before.version + 1}${summary ? `: ${summary}` : ""}${note ? `. ${note}` : ""}`, user, branchId });
   }
 
   revalidatePath(`/sales/quotations/${id}`);
@@ -368,7 +368,7 @@ export async function convertQuotationToProjectAction(formData: FormData) {
     const project = await tx.project.create({
       data: {
         code: projectCode,
-        name: `${quotation.client.name} — ${quotation.quotationNumber}`,
+        name: `${quotation.client.name}: ${quotation.quotationNumber}`,
         clientId: quotation.clientId,
         branchId: branchId!,
         status: "PLANNING",
@@ -470,7 +470,7 @@ export async function deleteQuotationAction(formData: FormData) {
   if (before.projectId || before.status === "CONVERTED") {
     redirect(
       `/sales/quotations?error=${encodeURIComponent(
-        "Can't delete — this quotation was already converted into a project."
+        "Can't delete: this quotation was already converted into a project."
       )}`
     );
   }

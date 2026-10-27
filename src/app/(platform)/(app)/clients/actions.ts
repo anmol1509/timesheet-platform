@@ -1,5 +1,6 @@
 "use server";
 
+import { otherDocFilename } from "@/lib/otherDoc";
 import { findClientByName, uniqueClientCode } from "@/lib/entityCode";
 import { normalizeCode } from "@/lib/partyCode";
 import { redirect } from "next/navigation";
@@ -60,7 +61,7 @@ export async function createClientAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding a client."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -293,24 +294,26 @@ export async function removeClientTradeRateAction(formData: FormData) {
   revalidatePath(`/clients/${clientId}`);
 }
 
-export async function addClientDocumentAction(formData: FormData) {
+export async function addClientDocumentAction(formData: FormData): Promise<{ error?: string }> {
   await requireWrite("partners.clients");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const clientId = String(formData.get("clientId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
+  // "Other" documents are named by the person (or read from the file); the file's extension is kept so it still opens.
+  const typedName = String(formData.get("name") || "");
   const file = formData.get("file");
-  if (!clientId || !(file instanceof File) || file.size === 0) return;
-  if (file.size > MAX_UPLOAD_BYTES) return;
-  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return;
+  if (!clientId || !(file instanceof File) || file.size === 0) return { error: "Choose a file first." };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `"${file.name}" is too large.` };
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return { error: "That client isn't in this branch." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const created = await prisma.clientDocument.create({
     data: {
       clientId,
       type,
-      filename: file.name,
+      filename: type === "OTHER" ? otherDocFilename(typedName, file.name) : file.name,
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
       expiryDate,
@@ -329,6 +332,7 @@ export async function addClientDocumentAction(formData: FormData) {
   });
 
   revalidatePath(`/clients/${clientId}`);
+  return {};
 }
 
 export async function deleteClientDocumentAction(formData: FormData) {
@@ -450,7 +454,7 @@ export async function deleteClientAction(formData: FormData) {
     if (projectCount > 0) parts.push(`${projectCount} project(s)`);
     redirect(
       `/clients/${id}?error=${encodeURIComponent(
-        `Can't delete — still linked to ${parts.join(" and ")}. Remove those first.`
+        `Can't delete: still linked to ${parts.join(" and ")}. Remove those first.`
       )}`
     );
   }

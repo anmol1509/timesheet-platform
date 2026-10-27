@@ -46,10 +46,10 @@ const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 /** Reads one stored scan again and says what expiry it shows next to what is filed. Nothing is changed. */
 export async function recheckDocumentAction(id: string): Promise<Recheck | { error: string }> {
   await requirePermission("workforce", "edit");
-  const { branchId, isSuperAdmin } = await requireUserWithBranch();
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const d = await prisma.document.findUnique({ where: { id }, select: { id: true, type: true, mimeType: true, fileData: true, expiryDate: true, employee: { select: { name: true, employeeIdNo: true, branchId: true } } } });
   if (!d || isOutsideBranch(d.employee.branchId, branchId, isSuperAdmin)) return { error: "That document wasn't found." };
-  const r = await rereadExpiry({ bytes: d.fileData, mime: d.mimeType, type: d.type });
+  const r = await rereadExpiry({ bytes: d.fileData, mime: d.mimeType, type: d.type }, { branchId: d.employee.branchId ?? branchId, userId: user.id });
   const base = { id: d.id, employee: `${d.employee.name} · ${d.employee.employeeIdNo}`, type: d.type, mime: d.mimeType, stored: day(d.expiryDate) };
   if ("error" in r) return { ...base, read: null, issue: null, confidence: "low", error: r.error };
   return { ...base, read: r.expiry, issue: r.issue, confidence: r.confidence };

@@ -18,7 +18,7 @@ export type MergeField = { key: string; label: string; example: string };
  */
 export const LETTER_MERGE_FIELDS: MergeField[] = [
   { key: "CLIENTNAME", label: "Client name", example: "WADE ADAMS CONTRACTING LLC" },
-  { key: "CLIENTADDRESS", label: "Client address", example: "Business Bay — Dubai" },
+  { key: "CLIENTADDRESS", label: "Client address", example: "Business Bay: Dubai" },
   { key: "PROJECTNAME", label: "Project name", example: "R1117/1 Improvement Of Al Mustaqbal Road" },
   { key: "COMPANYNAME", label: "Issuing company", example: "ACME CONCRETE CARPENTER CONT" },
   // Kept for templates written before the issuing company had its own field.
@@ -29,7 +29,7 @@ export const LETTER_MERGE_FIELDS: MergeField[] = [
   { key: "DATE", label: "Today's date", example: "27-07-2026" },
   { key: "WORKERCOUNT", label: "Number of workers listed", example: "10" },
   // Filled only on check-in lists (Accommodation › Check-in); on any other letter they print blank.
-  { key: "CAMPNAME", label: "Camp: name (check-in lists)", example: "Camp A — Al Quoz" },
+  { key: "CAMPNAME", label: "Camp: name (check-in lists)", example: "Camp A: Al Quoz" },
   { key: "CAMPTYPE", label: "Camp: own, supplier or client (check-in lists)", example: "Own" },
   { key: "CHECKINDATE", label: "Check-in date (check-in lists)", example: "27-07-2026" },
   { key: "CHECKINCOUNT", label: "Workers checked in (check-in lists)", example: "10" },

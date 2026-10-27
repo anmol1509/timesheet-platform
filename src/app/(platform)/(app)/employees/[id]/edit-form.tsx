@@ -694,13 +694,13 @@ export function EditForm({
                   name="payStructure"
                   value={payStructure}
                   onChange={setPayStructure}
-                  placeholder="Not set — excluded from payroll"
+                  placeholder="Not set: excluded from payroll"
                   searchable={false}
                   options={[
-                    { value: "ITEMISED", label: "Itemised — basic + allowances" },
-                    { value: "FLAT", label: "Flat — one monthly rate" },
+                    { value: "ITEMISED", label: "Itemised: basic + allowances" },
+                    { value: "FLAT", label: "Flat: one monthly rate" },
                     // The hourly rate is not typed here: it is the rate on the worker's trade (Known Trade Details).
-                    { value: "HOURLY", label: "Hourly — paid per hour worked" },
+                    { value: "HOURLY", label: "Hourly: paid per hour worked" },
                   ]}
                 />
               </Field>
@@ -828,7 +828,7 @@ export function EditForm({
                   setSiteId("");
                 }}
                 placeholder="No project assigned"
-                options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+                options={projects.map((p) => ({ value: p.id, label: `${p.code}: ${p.name}` }))}
               />
             </Field>
             <Field label="Site assignment">

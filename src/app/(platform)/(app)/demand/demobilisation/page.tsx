@@ -92,7 +92,7 @@ export default async function DemobilisationPage({
       <PageHeader
         title="Demobilisation"
         icon={UserMinus}
-        description={<>Take workers off a job. Ends the placement everywhere at once — the stage, the project, the demand allocation and the assignment record.</>}
+        description={<>Take workers off a job. Ends the placement everywhere at once. The stage, the project, the demand allocation and the assignment record.</>}
         actions={
           <>
             {canImport && <Link href="/import/new/mobilisation" className="btn btn-secondary gap-1.5"><Upload className="h-4 w-4" aria-hidden />Import</Link>}
@@ -114,7 +114,7 @@ export default async function DemobilisationPage({
           clients={clients}
           projects={projects.map((p) => ({
             id: p.id,
-            label: `${p.code} — ${p.name}`,
+            label: `${p.code}: ${p.name}`,
             clientId: p.clientId,
           }))}
           deployed={deployed.map((e) => ({
@@ -126,7 +126,7 @@ export default async function DemobilisationPage({
             supplierName: e.supplier?.name ?? null,
             siteName: e.site?.name ?? null,
             clientName: e.project?.client.name ?? null,
-            projectLabel: e.project ? `${e.project.code} — ${e.project.name}` : null,
+            projectLabel: e.project ? `${e.project.code}: ${e.project.name}` : null,
             since: iso(e.siteArrivalDate ?? e.mobilisationDate),
           }))}
           recent={recent.map((h) => ({

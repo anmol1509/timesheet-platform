@@ -127,7 +127,7 @@ export function ManualEntryForm({
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">
-            Project (optional — enables Approved Rates on the invoice)
+            Project (optional: enables Approved Rates on the invoice)
           </span>
           <Select
             value={projectId}
@@ -136,7 +136,7 @@ export function ManualEntryForm({
               setSiteId("");
             }}
             placeholder="No project"
-            options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            options={projects.map((p) => ({ value: p.id, label: `${p.code}: ${p.name}` }))}
           />
         </label>
         <label className="block">

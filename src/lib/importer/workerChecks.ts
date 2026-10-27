@@ -43,8 +43,8 @@ export function dateProblem(field: string, d: Date, now = new Date()): string | 
     if (d.getUTCFullYear() < 1990) return "is before 1990";
     return null;
   }
-  if (t < n - 10 * YEAR) return "expired more than 10 years ago — check the year";
-  if (t > n + 12 * YEAR) return "is more than 12 years ahead — check the year";
+  if (t < n - 10 * YEAR) return "expired more than 10 years ago. Check the year";
+  if (t > n + 12 * YEAR) return "is more than 12 years ahead. Check the year";
   return null;
 }
 

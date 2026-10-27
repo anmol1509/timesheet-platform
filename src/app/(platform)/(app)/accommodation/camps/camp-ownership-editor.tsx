@@ -33,7 +33,7 @@ export function CampOwnershipEditor({
             ownerType === "SUPPLIER" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--info-soft)] text-[var(--brand-primary)]"
           }`}
         >
-          {ownerType === "SUPPLIER" ? `Supplier camp${currentSupplierName ? ` — ${currentSupplierName}` : ""}` : "Own camp"}
+          {ownerType === "SUPPLIER" ? `Supplier camp${currentSupplierName ? `: ${currentSupplierName}` : ""}` : "Own camp"}
         </span>
         <button
           type="button"

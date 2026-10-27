@@ -73,7 +73,7 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
       : 0;
 
   const attention: AttentionItem[] = [];
-  if (expiringSoon.length > 0) attention.push({ key: "exp", tone: "amber", icon: WarnIcon, title: `${expiringSoon.length} quotation${expiringSoon.length === 1 ? "" : "s"} about to lapse`, sub: expiringSoon.slice(0, 2).map((q) => `${q.quotationNumber} — ${q.client.name}`).join(", "), href: "/sales/quotations", action: "Follow up" });
+  if (expiringSoon.length > 0) attention.push({ key: "exp", tone: "amber", icon: WarnIcon, title: `${expiringSoon.length} quotation${expiringSoon.length === 1 ? "" : "s"} about to lapse`, sub: expiringSoon.slice(0, 2).map((q) => `${q.quotationNumber}: ${q.client.name}`).join(", "), href: "/sales/quotations", action: "Follow up" });
   if (openEnquiries > 0) attention.push({ key: "enq", tone: "blue", icon: ListIcon, title: `${openEnquiries} enquir${openEnquiries === 1 ? "y" : "ies"} awaiting a quote`, sub: "Still open", href: "/sales/enquiries", action: "Quote" });
 
   const hiddenSections = await getHiddenSections(user.id, "sales");
@@ -166,7 +166,7 @@ export default async function SalesDashboardPage({ searchParams }: { searchParam
                   className="flex items-center justify-between gap-3 py-2 text-sm hover:underline"
                 >
                   <span className="text-primary">
-                    {q.quotationNumber} — {q.client.name}
+                    {q.quotationNumber}: {q.client.name}
                   </span>
                   <span className="text-xs text-muted">
                     {q.validUntil?.toLocaleDateString("en-GB")}

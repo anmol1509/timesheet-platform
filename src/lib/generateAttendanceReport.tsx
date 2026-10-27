@@ -8,7 +8,7 @@ export type ReportMeta = { supplier: string; from: string; to: string; statusLab
 export async function attendanceReportXlsx(meta: ReportMeta, rows: ReportRow[]): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Attendance");
-  ws.addRow([`Attendance report — ${meta.supplier}`]).font = { bold: true, size: 13 };
+  ws.addRow([`Attendance report: ${meta.supplier}`]).font = { bold: true, size: 13 };
   ws.addRow([`${meta.from} to ${meta.to} · ${meta.statusLabel}`]);
   ws.addRow([]);
   const head = ws.addRow(["Employee ID", "Name", "Date", "Status", "Normal hours", "OT hours"]);

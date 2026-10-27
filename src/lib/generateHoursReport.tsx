@@ -97,7 +97,7 @@ export async function generateHoursReportPdf(input: HoursReportInput): Promise<B
     if (input.groupBySupplier && current) {
       body.push(
         <View key={`sub-${key}`} style={s.row} wrap={false}>
-          <View style={{ flex: 1 }}><Text style={[s.bandText, { textAlign: "right", paddingRight: 4 }]}>Subtotal — {current}</Text></View>
+          <View style={{ flex: 1 }}><Text style={[s.bandText, { textAlign: "right", paddingRight: 4 }]}>Subtotal: {current}</Text></View>
           <View style={[s.cell, { width: W.total, borderRightWidth: 0 }]}><Text style={[s.td, { fontFamily: "Helvetica-Bold" }]}>{fmt(subtotal)}</Text></View>
         </View>
       );
@@ -129,7 +129,7 @@ export async function generateHoursReportPdf(input: HoursReportInput): Promise<B
   const grand = rows.reduce((a, r) => a + totalOf(r), 0);
 
   const doc = (
-    <Document title={`Working hours — ${input.monthLabel}`}>
+    <Document title={`Working hours: ${input.monthLabel}`}>
       <Page size="A4" orientation="landscape" style={s.page}>
         <View fixed>
           <View style={s.headBand}>
@@ -145,13 +145,13 @@ export async function generateHoursReportPdf(input: HoursReportInput): Promise<B
             </View>
           </View>
           <View style={s.rule} />
-          <Text style={s.title}>WORKING HOURS — {input.monthLabel.toUpperCase()}</Text>
+          <Text style={s.title}>WORKING HOURS: {input.monthLabel.toUpperCase()}</Text>
         </View>
         <View style={s.table}>
           <Header />
           {body}
           <View style={[s.row, { backgroundColor: "#E8EAF6", borderBottomWidth: 0 }]} wrap={false}>
-            <View style={{ flex: 1 }}><Text style={[s.bandText, { textAlign: "right", paddingRight: 4 }]}>Total — {rows.length} employee{rows.length === 1 ? "" : "s"}</Text></View>
+            <View style={{ flex: 1 }}><Text style={[s.bandText, { textAlign: "right", paddingRight: 4 }]}>Total: {rows.length} employee{rows.length === 1 ? "" : "s"}</Text></View>
             <View style={[s.cell, { width: W.total, borderRightWidth: 0 }]}><Text style={[s.td, { fontFamily: "Helvetica-Bold" }]}>{fmt(grand)}</Text></View>
           </View>
         </View>
@@ -173,7 +173,7 @@ export async function generateHoursReportXlsx(input: HoursReportInput): Promise<
     ws.addRow([i + 1, r.employeeIdNo, r.name, r.trade ?? "", ...(show.supplier ? [r.supplier] : []), ...(show.project ? [r.project ?? ""] : []), ...(show.client ? [r.client ?? ""] : []), ...Array.from({ length: dayCount }, (_, d) => { const v = r.days[d] ?? ""; return v !== "" && !Number.isNaN(Number(v)) ? Number(v) : marker(v); }), totalOf(r)]);
   });
   ws.addRow([]);
-  const t = ws.addRow(["", "", `Total — ${rows.length} employees`]);
+  const t = ws.addRow(["", "", `Total: ${rows.length} employees`]);
   t.getCell(head.length).value = rows.reduce((a, r) => a + totalOf(r), 0);
   t.font = { bold: true };
   ws.views = [{ state: "frozen", xSplit: 3, ySplit: 1 }];

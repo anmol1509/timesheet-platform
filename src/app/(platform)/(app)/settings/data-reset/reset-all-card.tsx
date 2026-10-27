@@ -17,7 +17,7 @@ export function ResetAllCard({ totalCount, allBranches }: { totalCount: number; 
         <div>
           <h3 className="text-sm font-semibold text-[var(--error)]">Reset All Modules</h3>
           <p className="mt-0.5 text-xs text-[var(--error)]">
-            Deletes every module below in one shot, in the order that avoids conflicts. One transaction — either
+            Deletes every module below in one shot, in the order that avoids conflicts. One transaction, either
             all {totalCount} records across every module go, or (on any error) none do.
           </p>
         </div>
@@ -83,7 +83,7 @@ function ResetAllDialog({
         description={
           result
             ? "Done. This can't be undone."
-            : "This permanently deletes every module's data — Employees, Suppliers, Clients, Projects, Timesheets, Accommodation, everything below. There is no undo."
+            : "This permanently deletes every module's data. Employees, Suppliers, Clients, Projects, Timesheets, Accommodation, everything below. There is no undo."
         }
       >
         {result ? (

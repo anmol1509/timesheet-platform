@@ -1,3 +1,5 @@
+import type { AiMeter } from "@/lib/aiCredits";
+import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import Anthropic from "@anthropic-ai/sdk";
 import { COPILOT_MODEL } from "@/lib/constants";
 import { nameSimilarity } from "./workerMatch";
@@ -42,6 +44,7 @@ const TIMEOUT_MS = 20_000;
 export async function suggestPartyMatches(
   items: NewSupplier[],
   pools: { supplier: Existing[]; client: Existing[]; project: Existing[] },
+  meter?: AiMeter,
 ): Promise<NewSupplier[]> {
   const shortlist = (n: NewSupplier) => {
     const pool = pools[n.party ?? "supplier"] ?? [];
@@ -56,6 +59,7 @@ export async function suggestPartyMatches(
   });
   const asked = out.filter((n) => (lists.get(n.key)?.length ?? 0) > 0).slice(0, 40);
   if (asked.length === 0 || !process.env.ANTHROPIC_API_KEY) return out;
+  if (await aiGate(meter?.branchId)) return out;
   try {
     const client = new Anthropic({ maxRetries: 0, timeout: TIMEOUT_MS });
     const response = await client.messages.create({
@@ -65,6 +69,7 @@ export async function suggestPartyMatches(
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: `Typed names and names on record (JSON data):\n${JSON.stringify(asked.map((n) => ({ key: n.key, kind: n.party ?? "supplier", typed: n.name, onRecord: lists.get(n.key)!.map((c) => ({ id: c.id, name: c.name })) })))}` }],
     });
+    await recordAiUsage({ branchId: meter?.branchId, userId: meter?.userId, feature: "import-matching", model: COPILOT_MODEL, usage: response.usage });
     const block = response.content.find((b) => b.type === "text");
     if (response.stop_reason === "refusal" || block?.type !== "text") return out;
     const parsed = JSON.parse(block.text) as { picks?: { key?: string; id?: string | null; confidence?: string; reason?: string }[] };

@@ -17,7 +17,7 @@ export default async function EssLoginPage() {
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">Workforce ERP</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-primary">Employee sign in</h1>
-          <p className="mt-2 text-sm text-muted">See your payslips, attendance, leave and documents. We&apos;ll text you a code — no password needed.</p>
+          <p className="mt-2 text-sm text-muted">See your payslips, attendance, leave and documents. We&apos;ll text you a code, no password needed.</p>
         </div>
         <EssLoginForm deliveryConfigured={deliveryConfigured} />
         <p className="text-center text-xs text-muted">

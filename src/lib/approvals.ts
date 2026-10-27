@@ -88,7 +88,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
       if (e.outOfPocket) chips.push({ text: "Out of pocket", tone: "info" });
       if (exceedsApprovalLimit(total, limit, scope.role)) chips.push({ text: "Over your approval limit", tone: "danger" });
       out.push({
-        key: `EXPENSE:${e.id}`, kind: "EXPENSE", id: e.id, title: `${e.category} — ${e.description}`, subtitle: [e.paidTo && `to ${e.paidTo}`, e.project?.name, e.paymentMethod?.toLowerCase()].filter(Boolean).join(" · ") || "No details",
+        key: `EXPENSE:${e.id}`, kind: "EXPENSE", id: e.id, title: `${e.category}: ${e.description}`, subtitle: [e.paidTo && `to ${e.paidTo}`, e.project?.name, e.paymentMethod?.toLowerCase()].filter(Boolean).join(" · ") || "No details",
         requester: e.submittedBy.name, at: e.createdAt, amount: total, branch: branchTag(e.branch.code), href: "/finance/expenses?status=PENDING", chips, inline: true, rejectNeedsReason: false, confirmApprove: false,
       });
     }
@@ -104,7 +104,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
         chips.push(v.state === "MATCH" ? { text: "Matches timesheet", tone: "success" } : { text: `${v.diff > 0 ? "+" : "−"}AED ${Math.abs(v.diff).toLocaleString("en-AE", { maximumFractionDigits: 0 })} vs timesheet (${Math.abs(v.pct ?? 0)}%)`, tone: "warning" });
       } else if (b.periodMonth) chips.push({ text: `No timesheet for ${b.periodMonth}`, tone: "neutral" });
       out.push({
-        key: `BILL:${b.id}`, kind: "BILL", id: b.id, title: `${b.supplier.name} — bill #${b.billNo}`, subtitle: `${b.periodMonth ? `${b.periodMonth} · ` : ""}due ${b.dueDate.toISOString().slice(0, 10)}${b.description ? ` · ${b.description}` : ""}`,
+        key: `BILL:${b.id}`, kind: "BILL", id: b.id, title: `${b.supplier.name}: bill #${b.billNo}`, subtitle: `${b.periodMonth ? `${b.periodMonth} · ` : ""}due ${b.dueDate.toISOString().slice(0, 10)}${b.description ? ` · ${b.description}` : ""}`,
         requester: b.submittedBySupplier ? b.supplier.name : null, at: b.createdAt, amount: num(b.amount) + num(b.vatAmount), branch: branchTag(b.branch.code), href: "/finance/bills?view=REVIEW", chips, inline: true, rejectNeedsReason: true, confirmApprove: false,
       });
     }
@@ -116,7 +116,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     const nameOf = new Map(users.map((u) => [u.id, u.name]));
     for (const r of rows) {
       out.push({
-        key: `PAYROLL:${r.id}`, kind: "PAYROLL", id: r.id, title: `Payroll — ${r.company?.name ?? "Own companies"} · ${r.month}`, subtitle: `${r.lines.length} employee${r.lines.length === 1 ? "" : "s"} · ${r.payType === "HOURLY" ? "hourly, from timesheet" : "basic, from attendance"}`,
+        key: `PAYROLL:${r.id}`, kind: "PAYROLL", id: r.id, title: `Payroll: ${r.company?.name ?? "Own companies"} · ${r.month}`, subtitle: `${r.lines.length} employee${r.lines.length === 1 ? "" : "s"} · ${r.payType === "HOURLY" ? "hourly, from timesheet" : "basic, from attendance"}`,
         requester: r.submittedById ? nameOf.get(r.submittedById) ?? null : null, at: r.submittedAt!, amount: r.lines.reduce((s, l) => s + num(l.net), 0), branch: branchTag(r.branch.code), href: `/payroll/${r.id}`,
         chips: [], inline: true, rejectNeedsReason: true, confirmApprove: true,
       });
@@ -136,7 +136,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
       const planned = Array.isArray(r.schedule) && r.schedule.length > 0;
       out.push({
         key: `ADVANCE:${r.id}`, kind: "ADVANCE", id: r.id,
-        title: `${r.type === "LOAN" ? "Loan" : "Advance"} — ${r.employee.name} (${r.employee.employeeIdNo})`,
+        title: `${r.type === "LOAN" ? "Loan" : "Advance"}: ${r.employee.name} (${r.employee.employeeIdNo})`,
         subtitle: `${r.reason ?? "No reason given"} · ${planned ? `planned month by month from ${r.startMonth}` : num(r.instalment) >= num(r.principal) ? `deducted in full in ${r.startMonth}` : `AED ${num(r.instalment).toLocaleString("en-AE")} a month from ${r.startMonth}`}`,
         requester: nameOf.get(r.createdById) ?? null, at: r.createdAt, amount: num(r.principal), branch: branchTag(r.branch.code), href: "/payroll/loans",
         chips: [{ text: "Recovered from payroll", tone: "info" }], inline: true, rejectNeedsReason: true, confirmApprove: false,
@@ -148,7 +148,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     const rows = await prisma.workerSubmission.findMany({ where: { ...bw, status: "PENDING" }, orderBy: { submittedAt: "asc" }, take: LIMIT, include: { supplier: { select: { name: true } } } });
     for (const w of rows) {
       out.push({
-        key: `WORKER:${w.id}`, kind: "WORKER", id: w.id, title: `${[w.firstName, w.lastName].join(" ")} — new worker`, subtitle: `${w.trade} · ${w.supplier.name}${w.nationality ? ` · ${w.nationality}` : ""}`,
+        key: `WORKER:${w.id}`, kind: "WORKER", id: w.id, title: `${[w.firstName, w.lastName].join(" ")}: new worker`, subtitle: `${w.trade} · ${w.supplier.name}${w.nationality ? ` · ${w.nationality}` : ""}`,
         requester: w.supplier.name, at: w.submittedAt, amount: null, branch: null, href: "/approvals?type=WORKER", chips: [{ text: "Adds an employee", tone: "info" }], inline: true, rejectNeedsReason: true, confirmApprove: false,
       });
     }
@@ -159,9 +159,9 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     for (const c of rows) {
       const fields = Object.keys((c.payload ?? {}) as Record<string, unknown>).length;
       out.push({
-        key: `CHANGE:${c.id}`, kind: "CHANGE", id: c.id, title: `${c.supplier.name} — ${c.kind === "BANK" ? "bank details" : "contact details"}`, subtitle: `${fields} field${fields === 1 ? "" : "s"} to change`,
+        key: `CHANGE:${c.id}`, kind: "CHANGE", id: c.id, title: `${c.supplier.name}: ${c.kind === "BANK" ? "bank details" : "contact details"}`, subtitle: `${fields} field${fields === 1 ? "" : "s"} to change`,
         requester: c.supplier.name, at: c.requestedAt, amount: null, branch: null, href: "/approvals?type=CHANGE",
-        chips: c.kind === "BANK" ? [{ text: "Decides where payments go — confirm by phone", tone: "danger" }] : [], inline: true, rejectNeedsReason: true, confirmApprove: c.kind === "BANK",
+        chips: c.kind === "BANK" ? [{ text: "Decides where payments go: confirm by phone", tone: "danger" }] : [], inline: true, rejectNeedsReason: true, confirmApprove: c.kind === "BANK",
       });
     }
   }
@@ -196,7 +196,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
             ]
           : [];
         out.push({
-          key: `SUPPLIER:${s.id}:${field}`, kind: "SUPPLIER", id: s.id, field, title: `${s.name} — ${label} approval`,
+          key: `SUPPLIER:${s.id}:${field}`, kind: "SUPPLIER", id: s.id, field, title: `${s.name}: ${label} approval`,
           subtitle: field === "approvalStatus" ? "Lets its labour be attached to a project" : field === "labourApprovalStatus" ? "Lets its workers be allocated to a demand" : "Lets a payout sheet be generated for it",
           requester: null, at: s.createdAt, amount: null, branch: null, href: `/suppliers/${s.id}`, chips, inline: true, rejectNeedsReason: false, confirmApprove: false,
         });
@@ -213,7 +213,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     for (const r of rows) {
       const open = r.trades.filter((t) => t.approvedQuantity === null);
       out.push({
-        key: `DEMAND:${r.id}`, kind: "DEMAND", id: r.id, ids: open.map((t) => t.id), title: `Request #${r.requestNo} — ${r.client.name}`,
+        key: `DEMAND:${r.id}`, kind: "DEMAND", id: r.id, ids: open.map((t) => t.id), title: `Request #${r.requestNo}: ${r.client.name}`,
         subtitle: open.map((t) => `${t.quantity} ${t.trade}`).join(" · "), requester: null, at: r.createdAt, amount: null, branch: branchTag(r.branch.code), href: `/demand/${r.id}`,
         chips: [{ text: `${open.length} line${open.length === 1 ? "" : "s"} to approve`, tone: "info" }, ...(r.priority === "High" ? [{ text: "High priority", tone: "warning" as const }] : [])], inline: true, rejectNeedsReason: false, confirmApprove: false,
       });
@@ -234,7 +234,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     }
     for (const [key, g] of groups) {
       out.push({
-        key: `TIMESHEET:${key}`, kind: "TIMESHEET", id: g.ids[0], ids: g.ids, title: `${g.supplier} — timesheet ${g.month}`, subtitle: `${g.ids.length} row${g.ids.length === 1 ? "" : "s"}${g.client ? ` · ${g.client}` : ""}`,
+        key: `TIMESHEET:${key}`, kind: "TIMESHEET", id: g.ids[0], ids: g.ids, title: `${g.supplier}: timesheet ${g.month}`, subtitle: `${g.ids.length} row${g.ids.length === 1 ? "" : "s"}${g.client ? ` · ${g.client}` : ""}`,
         requester: null, at: g.at, amount: g.value, branch: null, href: "/invoices/client-timesheet", chips: [], inline: true, rejectNeedsReason: false, confirmApprove: true,
       });
     }
@@ -249,7 +249,7 @@ export async function loadApprovals(scope: ApprovalScope, only?: ApprovalKind[])
     const nameOf = new Map(users.map((u) => [u.id, u.name]));
     for (const c of rows) {
       out.push({
-        key: `CORRECTION:${c.id}`, kind: "CORRECTION", id: c.id, title: `${c.attendance.employee.name} — attendance ${c.attendance.date.toISOString().slice(0, 10)}`,
+        key: `CORRECTION:${c.id}`, kind: "CORRECTION", id: c.id, title: `${c.attendance.employee.name}: attendance ${c.attendance.date.toISOString().slice(0, 10)}`,
         subtitle: `${c.attendance.status}${c.requestedStatus ? ` → ${c.requestedStatus}` : ""}${c.reason ? ` · ${c.reason}` : ""}`, requester: nameOf.get(c.requestedById) ?? null, at: c.createdAt, amount: null, branch: null,
         href: "/attendance", chips: [], inline: true, rejectNeedsReason: false, confirmApprove: false,
       });

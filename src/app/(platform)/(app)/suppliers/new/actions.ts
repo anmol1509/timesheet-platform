@@ -55,7 +55,7 @@ async function createSupplier(formData: FormData): Promise<{ error: string | nul
   const docTypes = formData.getAll("docTypes").map(String);
   const expiries = formData.getAll("docExpiries").map(String);
   for (const f of files) {
-    if (f.size > MAX_UPLOAD_BYTES) return { error: `${f.name} is ${(f.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+    if (f.size > MAX_UPLOAD_BYTES) return { error: `${f.name} is ${(f.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
   }
 
   const code = typed || (await uniqueSupplierCode(name, branchId));

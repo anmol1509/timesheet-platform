@@ -35,7 +35,7 @@ export const SOLUTIONS_DATA = [
   {
     slug: "supplier-portal-software-uae",
     label: "Supplier portal",
-    description: "Subcontractors submit their own workers, timesheets and track payments — no more spreadsheets by email.",
+    description: "Subcontractors submit their own workers, timesheets and track payments. No more spreadsheets by email.",
   },
   {
     slug: "employee-self-service-portal-uae",

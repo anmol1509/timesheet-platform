@@ -50,7 +50,7 @@ export default async function DailyTimesheetPage() {
           trade: e.trade,
           supplierId: e.supplierId as string,
           projectId: e.projectId as string,
-          projectName: e.project ? `${e.project.code} — ${e.project.name}` : "",
+          projectName: e.project ? `${e.project.code}: ${e.project.name}` : "",
         }))}
       />
     </div>

@@ -321,7 +321,7 @@ export function ProjectList({ projects, emptyState }: { projects: ProjectRow[]; 
           <DeleteButton
             action={deleteProjectAction}
             hiddenFields={{ projectId: p.id }}
-            confirmMessage={`Delete project "${p.name}"? Anyone assigned to it is unassigned. Projects with timesheet, attendance or LPO history can't be deleted — you'll be told which.`}
+            confirmMessage={`Delete project "${p.name}"? Anyone assigned to it is unassigned. Projects with timesheet, attendance or LPO history can't be deleted. You'll be told which.`}
           />
         </div>
       )}

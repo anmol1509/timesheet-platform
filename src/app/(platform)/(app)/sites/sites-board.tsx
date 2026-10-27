@@ -135,9 +135,9 @@ export function SitesBoard({ projects, canWrite, monthLabel }: { projects: Proje
           {adding && (
             <form action={async (fd) => { await createSiteAction(fd); setAdding(null); }} className="space-y-3">
               <label className="block text-sm font-medium text-primary">Project
-                <div className="mt-1"><Select name="projectId" defaultValue={adding.projectId} placeholder="Select project" options={projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}${p.client ? ` · ${p.client}` : ""}` }))} /></div>
+                <div className="mt-1"><Select name="projectId" defaultValue={adding.projectId} placeholder="Select project" options={projects.map((p) => ({ value: p.id, label: `${p.code}: ${p.name}${p.client ? ` · ${p.client}` : ""}` }))} /></div>
               </label>
-              <label className="block text-sm font-medium text-primary">Site name<input name="name" required placeholder="e.g. Tower 3 — Podium" className="input mt-1 w-full" /></label>
+              <label className="block text-sm font-medium text-primary">Site name<input name="name" required placeholder="e.g. Tower 3: Podium" className="input mt-1 w-full" /></label>
               <label className="block text-sm font-medium text-primary">Address <span className="font-normal text-muted">(optional)</span><input name="address" className="input mt-1 w-full" /></label>
               <DialogFooter>
                 <button type="button" className="btn btn-secondary" onClick={() => setAdding(null)}>Cancel</button>

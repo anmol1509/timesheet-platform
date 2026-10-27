@@ -101,7 +101,7 @@ export function ReadinessFixes({ employeeId, rows, pay, bank, expiries }: { empl
         <li key={i.key}>
           <p className="flex items-start gap-2">
             {i.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden /> : <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${i.blocking ? "text-[var(--error)]" : "text-[var(--warning)]"}`} aria-hidden />}
-            <span className={i.ok ? "text-muted" : "text-primary"}><span className="font-medium">{i.label}</span>{!i.ok && <> — {i.problem}</>}</span>
+            <span className={i.ok ? "text-muted" : "text-primary"}><span className="font-medium">{i.label}</span>{!i.ok && <>: {i.problem}</>}</span>
           </p>
           {!i.ok && i.key === "pay" && <PayFix employeeId={employeeId} d={pay} />}
           {!i.ok && i.key === "bank" && <BankFix employeeId={employeeId} d={bank} />}

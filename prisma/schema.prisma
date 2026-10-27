@@ -23,6 +23,11 @@ model Branch {
   webhookEndpoints WebhookEndpoint[]
   // Public API access is part of the Pro and Custom plans; a super admin switches it on per branch.
   apiAccess        Boolean           @default(false)
+  // The monthly AI allowance, in credits (see src/lib/aiCredits.ts). A super admin sets it per branch; extra credits are granted on top for a month.
+  aiMonthlyCredits Int               @default(5000)
+  // The month ("2026-10") and highest warning (80 or 100) already sent to the admins, so each is sent once.
+  aiWarnedMonth    String?
+  aiWarnedLevel    Int               @default(0)
   code             String            @unique
   name             String
   emirate          String?
@@ -3377,4 +3382,32 @@ model SheetCounter {
   last     Int    @default(0)
 
   @@id([branchId, year])
+}
+
+/// One AI call, with the tokens it used and what that came to in credits. The bar and the monthly allowance are worked out from these.
+model AiUsage {
+  id           String   @id @default(cuid())
+  branchId     String
+  userId       String?
+  /// Which feature made the call: "assistant", "document-read", "import-documents"...
+  feature      String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  credits      Float
+  createdAt    DateTime @default(now())
+
+  @@index([branchId, createdAt])
+}
+
+/// Credits added to a branch on top of its monthly allowance, counted in the month they were granted.
+model AiCreditGrant {
+  id          String   @id @default(cuid())
+  branchId    String
+  credits     Int
+  note        String?
+  grantedById String?
+  grantedAt   DateTime @default(now())
+
+  @@index([branchId, grantedAt])
 }

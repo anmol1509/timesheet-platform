@@ -21,7 +21,7 @@ export default function Page() {
       <GuideLayout guide={guide}>
         <p>
           Nothing has to be re-typed to get your workforce and your current month&rsquo;s hours into
-          the system — both start from the files you already have.
+          the system. Both start from the files you already have.
         </p>
 
         <h2>1. Import your employees</h2>

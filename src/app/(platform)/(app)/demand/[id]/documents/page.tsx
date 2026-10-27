@@ -92,7 +92,7 @@ export default async function DemandDocumentsPage({
         </Link>
         <h1 className="mt-2 text-xl font-semibold tracking-tight text-primary">Mobilisation documents</h1>
         <p className="mt-1 text-sm text-muted">
-          {demand.client.name} — {demand.project.name}
+          {demand.client.name}: {demand.project.name}
         </p>
       </div>
 

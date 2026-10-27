@@ -93,7 +93,7 @@ export function NotificationsMenu({
           type="button"
           aria-label={
             unreadCount + alerts.length + pendingApprovals > 0
-              ? `Notifications — ${pendingApprovals} waiting for you, ${unreadCount} unread, ${alerts.length} compliance alerts`
+              ? `Notifications: ${pendingApprovals} waiting for you, ${unreadCount} unread, ${alerts.length} compliance alerts`
               : "Notifications"
           }
           className="relative shrink-0 rounded-md p-2 text-muted transition hover:bg-surface-hover hover:text-primary"

@@ -1,5 +1,6 @@
 "use server";
 
+import { otherDocFilename } from "@/lib/otherDoc";
 import { parseWeekdays } from "@/components/WeekdayPicker";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -70,7 +71,7 @@ export async function createProjectAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding a project."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -241,24 +242,26 @@ export async function updateProjectOtherDetailsAction(formData: FormData) {
 
 // --- Documents ---
 
-export async function addProjectDocumentAction(formData: FormData) {
+export async function addProjectDocumentAction(formData: FormData): Promise<{ error?: string }> {
   await requireWrite("projects.projects");
   assertContactsValid(formData);
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const projectId = String(formData.get("projectId") || "");
   const type = String(formData.get("type") || "OTHER");
   const expiryDate = dateOrNull(formData.get("expiryDate"));
+  // "Other" documents are named by the person (or read from the file); the file's extension is kept so it still opens.
+  const typedName = String(formData.get("name") || "");
   const file = formData.get("file");
-  if (!projectId || !(file instanceof File) || file.size === 0) return;
-  if (file.size > MAX_UPLOAD_BYTES) return;
-  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return;
+  if (!projectId || !(file instanceof File) || file.size === 0) return { error: "Choose a file first." };
+  if (file.size > MAX_UPLOAD_BYTES) return { error: `"${file.name}" is too large.` };
+  if (!(await assertProjectInBranch(projectId, branchId, isSuperAdmin))) return { error: "That project isn't in this branch." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const created = await prisma.projectDocument.create({
     data: {
       projectId,
       type,
-      filename: file.name,
+      filename: type === "OTHER" ? otherDocFilename(typedName, file.name) : file.name,
       fileData: buffer,
       mimeType: file.type || "application/octet-stream",
       expiryDate,
@@ -277,6 +280,7 @@ export async function addProjectDocumentAction(formData: FormData) {
   });
 
   revalidatePath(`/projects/${projectId}`);
+  return {};
 }
 
 export async function deleteProjectDocumentAction(formData: FormData) {
@@ -534,7 +538,7 @@ export async function deleteProjectAction(formData: FormData) {
     if (attendanceCount > 0) parts.push(`${attendanceCount} attendance record(s)`);
     redirect(
       `/projects?error=${encodeURIComponent(
-        `Can't delete "${target.name}" — still linked to ${parts.join(", ")}.`
+        `Can't delete "${target.name}": still linked to ${parts.join(", ")}.`
       )}`
     );
   }
@@ -744,7 +748,7 @@ export async function bulkImportProjectsAction(rows: Record<string, string>[]): 
   await requirePermission("projects.projects", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
-    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin.";
+    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned. Contact an admin.";
     return rows.map((_, i) => rowError(i, undefined, message));
   }
   const existingProjects = await prisma.project.findMany({ where: { branchId } });

@@ -250,7 +250,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       select: { approvalStatus: true },
     });
     if (newSupplier && newSupplier.approvalStatus !== "Approved") {
-      return { error: "This supplier isn't approved yet — approve it before assigning employees to it." };
+      return { error: "This supplier isn't approved yet. Approve it before assigning employees to it." };
     }
   }
 
@@ -260,7 +260,7 @@ export async function updateEmployeeAction(formData: FormData): Promise<{ error?
       select: { approvalStatus: true },
     });
     if (supplier && supplier.approvalStatus !== "Approved") {
-      return { error: "This supplier isn't approved yet — approve it before assigning its employees to a project." };
+      return { error: "This supplier isn't approved yet. Approve it before assigning its employees to a project." };
     }
   }
 

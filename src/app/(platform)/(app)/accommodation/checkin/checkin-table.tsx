@@ -56,8 +56,8 @@ type CampOption = {
 type Filter = "all" | "not_checked_in" | "checked_in" | "awaiting_bed";
 
 function campLabel(c: CampOption) {
-  const type = c.ownerType === "SUPPLIER" ? `Supplier${c.supplierName ? ` — ${c.supplierName}` : ""}` : "Own";
-  return `${c.name} (${type}) — ${c.roomCount} rooms, ${c.vacantBeds}/${c.totalBeds} beds vacant`;
+  const type = c.ownerType === "SUPPLIER" ? `Supplier${c.supplierName ? `: ${c.supplierName}` : ""}` : "Own";
+  return `${c.name} (${type}): ${c.roomCount} rooms, ${c.vacantBeds}/${c.totalBeds} beds vacant`;
 }
 
 const ALL = "";
@@ -217,9 +217,9 @@ export function CheckInTable({ rows, camps, suppliers, clients }: { rows: Employ
                   <td className="px-4 py-3">
                     {r.checkInId ? (
                       r.campKind === "OWN" ? (
-                        <Badge color="amber" dot>Checked in — {r.campName}</Badge>
+                        <Badge color="amber" dot>Checked in: {r.campName}</Badge>
                       ) : (
-                        <Badge color="blue" dot>{KIND_LABEL[r.campKind ?? ""] ?? "Camp"} — {r.campName}</Badge>
+                        <Badge color="blue" dot>{KIND_LABEL[r.campKind ?? ""] ?? "Camp"}: {r.campName}</Badge>
                       )
                     ) : (
                       <Badge color="slate">Not checked in</Badge>
@@ -421,7 +421,7 @@ function CheckInForm({ employees, camps, suppliers, clients, onChecked, onDone }
 
       {campType === "OWN" ? (
         camps.length === 0 ? (
-          <p className="text-sm text-muted">No own camps set up yet — add one under Camps first.</p>
+          <p className="text-sm text-muted">No own camps set up yet. Add one under Camps first.</p>
         ) : (
           <>
             <div className="grid gap-2.5 sm:grid-cols-2">
@@ -456,7 +456,7 @@ function CheckInForm({ employees, camps, suppliers, clients, onChecked, onDone }
                 {assignNow && short > 0 && (
                   <p role="status" className="mt-2 flex items-start gap-2 rounded-lg bg-[var(--warning-soft)] px-3 py-2 text-xs text-primary">
                     <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--warning)]" aria-hidden />
-                    <span>Only {camp.vacantBeds} bed{camp.vacantBeds === 1 ? " is" : "s are"} vacant in {camp.name.split(" — ")[0]}, so {short} of the {employees.length} will be checked in without a bed.</span>
+                    <span>Only {camp.vacantBeds} bed{camp.vacantBeds === 1 ? " is" : "s are"} vacant in {camp.name.split(/ — |: /)[0]}, so {short} of the {employees.length} will be checked in without a bed.</span>
                   </p>
                 )}
                 {assignNow && plan.length > 0 && (

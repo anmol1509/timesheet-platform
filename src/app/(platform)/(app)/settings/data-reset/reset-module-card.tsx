@@ -153,7 +153,7 @@ function ResetDialog({
                   onChange={(e) => setAcknowledgeGlobal(e.target.checked)}
                   className="mt-0.5"
                 />
-                <span>This affects every branch, not just one — either this data isn&apos;t split by branch, or no specific branch is currently selected.</span>
+                <span>This affects every branch, not just one. Either this data isn&apos;t split by branch, or no specific branch is currently selected.</span>
               </label>
             )}
             <label className="block">

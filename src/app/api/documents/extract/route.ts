@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
+import { aiBranchOf, aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import { reconcilePassport, type PassportCheck } from "@/lib/passportMrz";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
@@ -293,17 +294,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
+  const branchId = await aiBranchOf(user);
+  const gate = await aiGate(branchId);
+  if (gate) return NextResponse.json({ error: gate }, { status: 402 });
   const budget = rateLimit(`extract:${user.id}`, EXTRACTION_LIMIT);
   if (!budget.allowed) {
     return NextResponse.json(
-      { error: "Too many documents read in the last hour — try again shortly." },
+      { error: "Too many documents read in the last hour. Try again shortly." },
       { status: 429, headers: { "Retry-After": String(budget.retryAfter) } }
     );
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      { error: "Document auto-fill isn't configured yet — ANTHROPIC_API_KEY is missing." },
+      { error: "Document auto-fill isn't set up yet: the AI key is missing." },
       { status: 503 }
     );
   }
@@ -315,7 +319,7 @@ export async function POST(request: Request) {
   }
   if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json(
-      { error: `File too large — max ${MAX_UPLOAD_LABEL}.` },
+      { error: `File too large, max ${MAX_UPLOAD_LABEL}.` },
       { status: 400 }
     );
   }
@@ -361,6 +365,7 @@ export async function POST(request: Request) {
       ],
     });
 
+    await recordAiUsage({ branchId, userId: user.id, feature: "document-extract", model: DOCUMENT_MODEL, usage: response.usage });
     if (response.stop_reason === "refusal") {
       return NextResponse.json({ error: "Extraction was declined." }, { status: 422 });
     }
@@ -384,13 +389,13 @@ export async function POST(request: Request) {
 
     if (status === 401 || status === 403) {
       return NextResponse.json(
-        { error: "Document auto-fill is misconfigured — the API key was rejected." },
+        { error: "Document auto-fill isn't set up correctly: the AI key was rejected." },
         { status: 502 }
       );
     }
     if (status === 429) {
       return NextResponse.json(
-        { error: "Auto-fill is rate limited right now — try again in a moment." },
+        { error: "Auto-fill is rate limited right now. Try again in a moment." },
         { status: 502 }
       );
     }

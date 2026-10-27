@@ -47,8 +47,8 @@ export default async function ProjectsDashboardPage() {
   const lowBalanceLpos = lpoAlerts.filter((a) => a.kind === "LOW_BALANCE");
 
   const attention: AttentionItem[] = [];
-  if (expiringLpos.length > 0) attention.push({ key: "lpo-exp", tone: "red", icon: WarnIcon, title: `${expiringLpos.length} LPO${expiringLpos.length === 1 ? "" : "s"} expiring or expired`, sub: expiringLpos.slice(0, 2).map((a) => `${a.lpoNumber} — ${a.projectName}`).join(", "), href: "/projects", action: "Review" });
-  if (lowBalanceLpos.length > 0) attention.push({ key: "lpo-low", tone: "amber", icon: WarnIcon, title: `${lowBalanceLpos.length} LPO${lowBalanceLpos.length === 1 ? "" : "s"} with low balance`, sub: lowBalanceLpos.slice(0, 2).map((a) => `${a.lpoNumber} — ${a.projectName}`).join(", "), href: "/projects", action: "Review" });
+  if (expiringLpos.length > 0) attention.push({ key: "lpo-exp", tone: "red", icon: WarnIcon, title: `${expiringLpos.length} LPO${expiringLpos.length === 1 ? "" : "s"} expiring or expired`, sub: expiringLpos.slice(0, 2).map((a) => `${a.lpoNumber}: ${a.projectName}`).join(", "), href: "/projects", action: "Review" });
+  if (lowBalanceLpos.length > 0) attention.push({ key: "lpo-low", tone: "amber", icon: WarnIcon, title: `${lowBalanceLpos.length} LPO${lowBalanceLpos.length === 1 ? "" : "s"} with low balance`, sub: lowBalanceLpos.slice(0, 2).map((a) => `${a.lpoNumber}: ${a.projectName}`).join(", "), href: "/projects", action: "Review" });
   if (onHoldCount > 0) attention.push({ key: "hold", tone: "blue", icon: ListIcon, title: `${onHoldCount} project${onHoldCount === 1 ? "" : "s"} on hold`, sub: "Paused, no new work is booked", href: "/projects", action: "Open" });
 
   const hiddenSections = await getHiddenSections(user.id, "projects");
@@ -130,7 +130,7 @@ export default async function ProjectsDashboardPage() {
                     className="flex items-center justify-between gap-3 py-2 text-sm hover:underline"
                   >
                     <span className="text-primary">
-                      {a.lpoNumber} — {a.projectName}
+                      {a.lpoNumber}: {a.projectName}
                     </span>
                     <Badge color={a.kind === "EXPIRING" ? "amber" : "red"}>
                       {a.kind === "EXPIRING"

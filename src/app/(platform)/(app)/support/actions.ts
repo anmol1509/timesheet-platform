@@ -2,6 +2,8 @@
 
 import { requireUser } from "@/lib/auth";
 import { sendEmail } from "@/lib/notifications/email";
+import { PRODUCT_BRAND } from "@/lib/email/brand";
+import { supportRequestMail } from "@/lib/email/templates";
 
 const SUPPORT_INBOX = "info@manpowersync.com";
 
@@ -19,21 +21,12 @@ export async function submitSupportTicketAction(
   if (!subject) return { error: "Please give it a short subject." };
   if (!message) return { error: "Please describe the issue you're facing." };
 
-  const result = await sendEmail(
-    SUPPORT_INBOX,
-    `[ManpowerSync support] ${subject}`,
-    [
-      `From: ${user.name} <${user.email}>`,
-      page ? `Page: ${page}` : null,
-      "",
-      message,
-    ]
-      .filter((line): line is string => line !== null)
-      .join("\n")
-  );
+  // Goes to the support inbox as a designed email, and a reply goes straight back to the person who wrote.
+  const mail = supportRequestMail({ fromName: user.name, fromEmail: user.email, page: page || null, subject, message, brand: PRODUCT_BRAND });
+  const result = await sendEmail(SUPPORT_INBOX, mail.subject, mail.text, { html: mail.html, replyTo: user.email });
 
   if (!result.sent) {
-    return { error: "Couldn't send your message right now — please try again in a moment, or email info@manpowersync.com directly." };
+    return { error: "Couldn't send your message right now. Please try again in a moment, or email info@manpowersync.com directly." };
   }
   return { ok: true };
 }

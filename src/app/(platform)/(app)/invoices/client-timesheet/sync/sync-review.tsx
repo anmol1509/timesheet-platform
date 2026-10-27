@@ -130,7 +130,7 @@ export function SyncReview({
             className="btn btn-primary btn-sm"
             title={
               fixable.length === 0
-                ? "Nothing here can be written — the sheets have gone to the client"
+                ? "Nothing here can be written. The sheets have gone to the client"
                 : "Writes attendance into every sheet still open"
             }
           >
@@ -146,7 +146,7 @@ export function SyncReview({
           {sent.length > 0 && (
             <p className="rounded-card border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
               {sent.length} day(s) sit on sheets already sent to the client. They are
-              listed below but will not be rewritten — correct the sheet through the
+              listed below but will not be rewritten. Correct the sheet through the
               normal workflow, or reject it back to draft first.
             </p>
           )}

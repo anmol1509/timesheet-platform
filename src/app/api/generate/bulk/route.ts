@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const { supplierIds, month, gasWaived, template: templateValue, employeeIds, perEmployee, combined, issuerId } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
-      { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned — contact an admin." },
+      { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned. Contact an admin." },
       { status: 400 },
     );
   }
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
 
   for (const supplier of mine) {
     if (supplier.invoiceApprovalStatus !== "Approved") {
-      skipped.push(`${supplier.name} — not invoice-approved (currently ${supplier.invoiceApprovalStatus || "unset"})`);
+      skipped.push(`${supplier.name}: not invoice-approved (currently ${supplier.invoiceApprovalStatus || "unset"})`);
       continue;
     }
     const allEntries = await getSupplierMonthEntries(supplier.id, month);
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     const withTerms = allEntries.map((e) => ({ ...e, absentDeduction: startingAbsentDeduction(e.absentDeduction, e.absentCount, supplierRule, clientAbsenceRule(e.client)) }));
     const entries = employeeIds ? withTerms.filter((e) => employeeIds.includes(e.employeeIdNo)) : withTerms;
     if (entries.length === 0) {
-      skipped.push(`${supplier.name} — ${employeeIds ? "none of the selected employees have hours this month" : "no employees this month"}`);
+      skipped.push(`${supplier.name}: ${employeeIds ? "none of the selected employees have hours this month" : "no employees this month"}`);
       continue;
     }
 

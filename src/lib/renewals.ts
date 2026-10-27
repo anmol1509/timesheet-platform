@@ -117,7 +117,7 @@ export async function getRenewals(
         days,
         tier,
         supplier: e.supplier?.name ?? null,
-        project: e.project ? `${e.project.code} — ${e.project.name}` : null,
+        project: e.project ? `${e.project.code}: ${e.project.name}` : null,
         scan: (() => {
           const kinds = typesFor.get(field.key) ?? [];
           const doc = e.documents.find((d) => kinds.includes(d.type));

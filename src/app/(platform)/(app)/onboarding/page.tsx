@@ -59,7 +59,7 @@ export default async function OnboardingPage() {
         <PageHeader
           title="Candidate onboarding"
           icon={ListChecks}
-          description={<>From agency submission through to joining — one status per stage, dated and referenced.</>}
+          description={<>From agency submission through to joining. One status per stage, dated and referenced.</>}
         />
         <div className="flex items-center gap-2">
           <Link href="/onboarding/agencies" className="btn btn-secondary">

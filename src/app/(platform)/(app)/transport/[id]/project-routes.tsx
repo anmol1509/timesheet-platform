@@ -70,7 +70,7 @@ export function ProjectRoutes({
                 value={selected}
                 onChange={setSelected}
                 placeholder="Select a project"
-                options={available.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+                options={available.map((p) => ({ value: p.id, label: `${p.code}: ${p.name}` }))}
               />
             </label>
             <button

@@ -219,7 +219,7 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
     if (c.kind === "new") return r.person.name.trim();
     if (c.kind !== "existing") return "";
     if (c.partyId.startsWith(LOCAL)) return localRow(r)?.person.name.trim() ?? "";
-    return existingPeople.find((o) => o.id === c.partyId)?.label.split(" — ")[0] ?? "";
+    return existingPeople.find((o) => o.id === c.partyId)?.label.split(/ — |: /)[0] ?? "";
   };
 
   function partiesProblem(): string | null {
@@ -275,7 +275,7 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
             id={`party-${r.rid}-${t.key}`}
             label={t.label}
             file={d?.file ?? null}
-            status={d?.status === "reading" ? { kind: "reading" } : d?.status === "failed" ? { kind: "error", message: "Couldn't read it — fill the expiry in below." } : d ? { kind: "filled", message: d.status === "read" ? "Read" : "Added" } : { kind: "idle" }}
+            status={d?.status === "reading" ? { kind: "reading" } : d?.status === "failed" ? { kind: "error", message: "Couldn't read it: fill the expiry in below." } : d ? { kind: "filled", message: d.status === "read" ? "Read" : "Added" } : { kind: "idle" }}
             onSelect={(f) => void pickPartyDoc(r.rid, t.key, f)}
             onClear={() => clearPartyDoc(r.rid, t.key)}
           />
@@ -349,9 +349,9 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
           setProgress(`Uploading documents… ${i + 1} of ${queue.length}`);
           try {
             const r = await attachCompanyFileAction(queue[i].fd);
-            if (r.error) failed.push(`${queue[i].label} — ${r.error}`);
+            if (r.error) failed.push(`${queue[i].label}: ${r.error}`);
           } catch {
-            failed.push(`${queue[i].label} — the upload failed`);
+            failed.push(`${queue[i].label}: the upload failed`);
           }
         }
         setProgress(null);
@@ -414,7 +414,7 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-primary">Upload the company&rsquo;s documents</p>
                 <p className="mt-0.5 text-xs text-secondary">
-                  Trade licence, establishment card, VAT certificate, tenancy agreement and anything else you have — as one PDF or several files. Everything readable is filled in for you, and each file is sorted by what it is.
+                  Trade licence, establishment card, VAT certificate, tenancy agreement and anything else you have. As one PDF or several files. Everything readable is filled in for you, and each file is sorted by what it is.
                 </p>
                 <div className="mt-3">
                   <MultiUploadSlot
@@ -521,7 +521,7 @@ export function CompanyWizard({ companyTypes, requiredCompanyTypes, partyTypes, 
           <Field label="Trade licence expiry"><DatePicker value={v.tradeLicenseExpiry} onChange={set("tradeLicenseExpiry")} className="w-full" /></Field>
           <Field label="MOHRE permit number"><input className="input w-full" value={v.mohrePermitNumber} onChange={(e) => set("mohrePermitNumber")(e.target.value)} /></Field>
           <div className="sm:col-span-2 border-t border-default pt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">Address and contact — printed at the top of timesheets issued by this company</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">Address and contact: printed at the top of timesheets issued by this company</p>
           </div>
           <Field label="Country"><CountrySelect value={v.country} onChange={(c) => setV((p) => ({ ...p, country: c, emirate: "" }))} /></Field>
           <Field label="Emirate"><CitySelect country={v.country} value={v.emirate} onChange={set("emirate")} /></Field>

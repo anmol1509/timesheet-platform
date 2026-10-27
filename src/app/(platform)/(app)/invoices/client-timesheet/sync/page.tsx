@@ -65,7 +65,7 @@ export default async function TimesheetSyncPage({
         clients={clients}
         projects={projects.map((p) => ({
           id: p.id,
-          label: `${p.code} — ${p.name}`,
+          label: `${p.code}: ${p.name}`,
           clientId: p.clientId,
         }))}
         divergences={divergences}

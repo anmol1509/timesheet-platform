@@ -128,7 +128,7 @@ export async function generateEmployeeIdAction(
     return {
       id: null,
       source: null,
-      error: "Pick a supplier or sponsorship company first — the ID is based on it.",
+      error: "Pick a supplier or sponsorship company first. The ID is based on it.",
     };
   }
 
@@ -198,7 +198,7 @@ export async function createEmployeeAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding an employee."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -212,7 +212,7 @@ export async function createEmployeeAction(
   const photo = formData.get("photo");
   if (photo instanceof File && photo.size > 0) {
     if (photo.size > MAX_UPLOAD_BYTES) {
-      return { error: `Photo is too large — max ${MAX_UPLOAD_LABEL}.` };
+      return { error: `Photo is too large: max ${MAX_UPLOAD_LABEL}.` };
     }
     if (!isAcceptedPhotoType(photo.type)) {
       return { error: "That photo isn't an image file we can store." };

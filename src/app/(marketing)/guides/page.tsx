@@ -7,7 +7,7 @@ import p from "@/app/(marketing)/welcome/prose.module.css";
 import { GUIDES } from "./guides-data";
 
 const TITLE = "Manpower Software How-To Guides";
-const DESCRIPTION = `Step-by-step guides to running ${SITE.name} — importing your workforce, running payroll, and setting up your team.`;
+const DESCRIPTION = `Step-by-step guides to running ${SITE.name}: importing your workforce, running payroll, and setting up your team.`;
 const URL = "https://manpowersync.com/guides";
 
 export const metadata: Metadata = finishMetadata({
@@ -37,7 +37,7 @@ export default function GuidesIndexPage() {
         <LinkCardGrid
           columns={3}
           cards={[
-            { href: "/blog", title: "Blog", body: "UAE payroll and compliance reading — WPS rejections, gratuity, overtime rules and expiry tracking." },
+            { href: "/blog", title: "Blog", body: "UAE payroll and compliance reading. WPS rejections, gratuity, overtime rules and expiry tracking." },
             { href: "/faq", title: "FAQ", body: "The short answers: getting started, timesheets, payroll and WPS, security, subcontractors." },
             { href: "/features", title: "Features", body: "Every module in one place, from timesheets through to letters, NOCs and the audit trail." },
           ]}

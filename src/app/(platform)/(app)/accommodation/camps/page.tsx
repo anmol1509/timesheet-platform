@@ -208,7 +208,7 @@ export default async function CampsPage({
               />
               <div className="ml-auto flex flex-wrap items-center gap-3">
                 <span className="rounded-full bg-[var(--info-soft)] px-2.5 py-1 text-xs font-medium text-[var(--brand-primary)]">
-                  {selectedCamp.ownerType === "SUPPLIER" ? `Supplier camp${selectedCamp.owningSupplier ? ` — ${selectedCamp.owningSupplier.name}` : ""}` : selectedCamp.ownerType === "CLIENT" ? `Client camp${selectedCamp.owningClient ? ` — ${selectedCamp.owningClient.name}` : ""}` : "Own camp"}
+                  {selectedCamp.ownerType === "SUPPLIER" ? `Supplier camp${selectedCamp.owningSupplier ? `: ${selectedCamp.owningSupplier.name}` : ""}` : selectedCamp.ownerType === "CLIENT" ? `Client camp${selectedCamp.owningClient ? `: ${selectedCamp.owningClient.name}` : ""}` : "Own camp"}
                 </span>
                 <DeleteButton
                   action={deleteCampAction}
@@ -226,7 +226,7 @@ export default async function CampsPage({
       {selectedCamp ? (
         <div>
           <h2 className="mb-4 text-sm font-semibold text-primary">
-            {selectedCamp.name} — All Rooms
+            {selectedCamp.name}: All Rooms
           </h2>
           <CampView
             rooms={selectedCamp.rooms.map((r) => ({
@@ -247,7 +247,7 @@ export default async function CampsPage({
         </div>
       ) : (
         <p className="empty-state py-10 text-sm text-muted">
-          No camps yet — add one below to get started.
+          No camps yet: add one below to get started.
         </p>
       )}
 

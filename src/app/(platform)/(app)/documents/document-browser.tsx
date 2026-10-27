@@ -452,7 +452,7 @@ function UploadForm({ employees, onDone }: { employees: EmployeeOption[]; onDone
     const file = fileRef.current?.files?.[0];
     if (!file || !employeeId) return;
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`);
       return;
     }
     setError(null);
@@ -471,7 +471,7 @@ function UploadForm({ employees, onDone }: { employees: EmployeeOption[]; onDone
   if (employees.length === 0) {
     return (
       <p className="rounded-lg bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning)]">
-        No employees on record yet — <Link href="/employees/new" className="underline">add one</Link> before uploading documents.
+        No employees on record yet, <Link href="/employees/new" className="underline">add one</Link> before uploading documents.
       </p>
     );
   }

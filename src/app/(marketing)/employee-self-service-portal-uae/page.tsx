@@ -8,7 +8,7 @@ import { ShowcasePage, shot } from "@/app/(marketing)/welcome/showcase/showcase-
 
 const TITLE = "Employee Self-Service Portal UAE";
 const DESCRIPTION =
-  "Workers check their attendance, download payslips and view their own documents from any phone browser — no app to install, no call to HR needed.";
+  "Workers check their attendance, download payslips and view their own documents from any phone browser. No app to install, no call to HR needed.";
 const URL = "https://manpowersync.com/employee-self-service-portal-uae";
 
 export const metadata: Metadata = finishMetadata({

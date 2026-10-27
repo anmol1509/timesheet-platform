@@ -162,7 +162,7 @@ export function ReviewInvoice({
         )}
         {issued && (
           <div className="mt-3 rounded-lg bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">
-            Saved as {issued.invoiceNumber}. Rates are now locked for this invoice — view it
+            Saved as {issued.invoiceNumber}. Rates are now locked for this invoice, view it
             in{" "}
             <Link href="/invoices/history" className="underline">
               invoice history
@@ -204,7 +204,7 @@ export function ReviewInvoice({
         {unratedTrades.length > 0 && !issued && (
           <div className="mt-3 rounded-lg bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
             No billing rate configured for: {unratedTrades.join(", ")}. Those lines default to
-            AED 0 — set a rate below, or add it to{" "}
+            AED 0. Set a rate below, or add it to{" "}
             <Link href={`/clients/${client.id}`} className="underline">
               {client.name}&rsquo;s trade rate card
             </Link>{" "}

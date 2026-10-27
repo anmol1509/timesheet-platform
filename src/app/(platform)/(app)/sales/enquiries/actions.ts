@@ -106,7 +106,7 @@ export async function deleteEnquiryAction(formData: FormData) {
   if (quotationCount > 0) {
     redirect(
       `/sales/enquiries?error=${encodeURIComponent(
-        `Can't delete — ${quotationCount} quotation(s) came from this enquiry.`
+        `Can't delete: ${quotationCount} quotation(s) came from this enquiry.`
       )}`
     );
   }

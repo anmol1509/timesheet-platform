@@ -18,18 +18,23 @@ import { cutPdf, imageToPage, pdfToPages, type PageImage } from "@/lib/pdfPages"
 import { shrinkImage } from "@/lib/compressImage";
 import { pdfPageToImage } from "@/lib/pdfPageToImage";
 import { UndoImportButton } from "../../undo-button";
+import { nameFromFile, otherDocFilename, trackedExpiry } from "@/lib/otherDoc";
 
 type Opt = { value: string; label: string; icon?: React.ReactNode };
 type Cand = { kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string; sub: string; score: number };
 type Match = { status: "matched"; kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string; how: string } | { status: "several" | "close" | "unknown"; candidates: Cand[] };
 type Owner = { key: string; label: string; match: Match; ai?: { id: string | null; confidence: string; reason: string }; newWorker?: { name: string; passportNumber: string; emiratesId: string; trade: string } };
-type PlanDoc = { docKey: string; index: number; fileName: string; type: string; expiry: string; confidence: Confidence; pages: number[]; ownerKey: string | null; via: string | null; conflict: boolean; status: "ok" | "skip"; reason?: string; readByAi: boolean };
+type PlanDoc = { docKey: string; index: number; fileName: string; title?: string; type: string; expiry: string; confidence: Confidence; pages: number[]; ownerKey: string | null; via: string | null; conflict: boolean; status: "ok" | "skip"; reason?: string; readByAi: boolean };
 type Plan = { audience: Audience; owners: Owner[]; docs: PlanDoc[]; types: Opt[]; pickList: { employees: { id: string; label: string; name: string; photo: boolean }[]; suppliers: { id: string; label: string }[] } };
-type ReadDoc = { docKey: string; type: string; holder: string; idNumber: string; expiry: string; confidence: Confidence; pages: number[]; fields?: Record<string, string> };
+type ReadDoc = { docKey: string; type: string; holder: string; idNumber: string; expiry: string; confidence: Confidence; pages: number[]; fields?: Record<string, string>; title?: string };
 type Source = { index: number; path: string; blob: Blob; size: number; isPdf: boolean; isImage: boolean; totalPages: number; thumbs: Map<number, string>; docs?: ReadDoc[]; note?: string };
 type Pick = { kind: "EMPLOYEE" | "SUPPLIER"; id: string; name: string } | "skip" | "new";
-type DocEdit = { type?: string; expiry?: string; skip?: boolean; owner?: Pick };
+type DocEdit = { type?: string; expiry?: string; skip?: boolean; owner?: Pick; name?: string; track?: boolean };
 type Result = { name: string; status: string; message?: string; recordUpdated?: boolean };
+
+/** A document filed under Other documents: the name it is filed under, and whether its expiry is tracked (an expiry read from it turns tracking on). */
+const otherNameOf = (d: PlanDoc, e: DocEdit) => e.name ?? (d.title || nameFromFile(d.fileName));
+const otherTracked = (d: PlanDoc, e: DocEdit) => e.track ?? !!(e.expiry ?? d.expiry);
 
 const MAX_PAGES_PER_FILE = 120;
 const MAX_PAGES_PER_RUN = 500;
@@ -136,11 +141,12 @@ export function DocumentsWizard() {
             ok = false;
             const status = (e as Error & { status?: number }).status;
             if (status === 503) { aiDown = true; aiNote = "AI reading isn't switched on, so files are matched by their names."; }
+            else if (status === 402) { aiDown = true; aiNote = `${e instanceof Error ? e.message : "This month's AI credits are used up."} Files are matched by their names instead.`; }
             else s.note = `The AI couldn't read this file${e instanceof Error ? ` (${e.message})` : ""}. It is matched by its name.`;
           }
         }
         pages.forEach((p) => { p.base64 = ""; });
-        if (ok && reads.length) s.docs = groupPages(s.index, reads).map((d, n) => ({ docKey: `${s.index}-${n}`, type: d.type, holder: d.holder, idNumber: d.idNumber, expiry: d.expiry, confidence: d.confidence, pages: d.pages, fields: d.fields }));
+        if (ok && reads.length) s.docs = groupPages(s.index, reads).map((d, n) => ({ docKey: `${s.index}-${n}`, type: d.type, holder: d.holder, idNumber: d.idNumber, expiry: d.expiry, confidence: d.confidence, pages: d.pages, fields: d.fields, title: d.title }));
         if (ok && reads.length && !s.docs?.length) s.note = "No documents were found in this file (all pages looked blank).";
       }
       if (aiNote) setNotice(aiNote);
@@ -165,8 +171,11 @@ export function DocumentsWizard() {
 
   async function upload() {
     if (!plan) return;
-    setStep("uploading"); setError(null);
     const queue = sendable.slice();
+    // A document under Other needs a name, and a date when its expiry is tracked. Checked before anything starts.
+    const incomplete = queue.filter(({ d }) => typeOf(d) === "OTHER" && (!otherNameOf(d, edits[d.docKey] ?? {}).trim() || (otherTracked(d, edits[d.docKey] ?? {}) && !(edits[d.docKey]?.expiry ?? d.expiry))));
+    if (incomplete.length > 0) { setError(`${incomplete.length} document${incomplete.length === 1 ? " under Other needs" : "s under Other need"} a name, or an expiry date (or untick Track expiry). They are marked in the list.`); return; }
+    setStep("uploading"); setError(null);
     setProgress({ done: 0, total: queue.length, label: "Preparing…" });
     try {
       const label = `${queue.length} document${queue.length === 1 ? "" : "s"}`;
@@ -207,7 +216,14 @@ export function DocumentsWizard() {
           file = new File([image], `${display}.jpg`, { type: image.type || "image/jpeg" });
         }
         if (file.size > MAX_BULK_FILE_BYTES) { results.push({ name: file.name, status: "failed", message: `Over ${(MAX_BULK_FILE_BYTES / 1048576).toFixed(1)} MB. Compress it, or add it from the profile.` }); continue; }
-        items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: edits[d.docKey]?.expiry ?? d.expiry, fields: src.docs?.find((x) => x.docKey === d.docKey)?.fields });
+        const e = edits[d.docKey] ?? {};
+        if (type === "OTHER") {
+          // Filed under the name it was given; the expiry only when tracked.
+          file = new File([file], otherDocFilename(otherNameOf(d, e), file.name), { type: file.type });
+          items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: trackedExpiry(otherTracked(d, e), e.expiry ?? d.expiry), fields: src.docs?.find((x) => x.docKey === d.docKey)?.fields });
+          continue;
+        }
+        items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: e.expiry ?? d.expiry, fields: src.docs?.find((x) => x.docKey === d.docKey)?.fields });
       }
       setProgress({ done: 0, total: items.length, label: "Uploading…" });
       let i = 0;
@@ -482,6 +498,7 @@ function DocRows({ docs, types, edits, setEdits, sources, dim, withOwner, pickOp
   pickValue?: (p?: Pick) => string;
 }) {
   const patch = (k: string, v: Partial<DocEdit>) => setEdits((p) => ({ ...p, [k]: { ...p[k], ...v } }));
+  const rowType = (d: PlanDoc, e: DocEdit) => (types.some((t) => t.value === (e.type ?? d.type)) ? (e.type ?? d.type) : "OTHER");
   return (
     <ul className={cn("divide-y divide-[var(--border)] rounded-lg border border-default", dim && "opacity-50")}>
       {docs.map((d) => {
@@ -503,7 +520,13 @@ function DocRows({ docs, types, edits, setEdits, sources, dim, withOwner, pickOp
               </span>
             </span>
             <div className="w-52"><Select value={types.some((t) => t.value === (e.type ?? d.type)) ? (e.type ?? d.type) : "OTHER"} onChange={(v) => patch(d.docKey, { type: v })} searchable={false} options={types} /></div>
-            {(e.type ?? d.type) !== "PHOTO" && <DatePicker value={e.expiry ?? d.expiry} onChange={(iso) => patch(d.docKey, { expiry: iso })} ariaLabel={`Expiry date for ${d.fileName}`} placeholder="expiry (optional)" className="w-44" />}
+            {rowType(d, e) === "OTHER" && (
+              <>
+                <input value={otherNameOf(d, e)} onChange={(ev) => patch(d.docKey, { name: ev.target.value })} aria-label={`Name for ${d.fileName}`} placeholder="Name, e.g. Offer letter" className={cn("input h-9 w-48", !otherNameOf(d, e).trim() && !e.skip && "border-[var(--warning)]")} />
+                <label className="flex items-center gap-1.5 text-xs text-primary"><input type="checkbox" checked={otherTracked(d, e)} onChange={(ev) => patch(d.docKey, { track: ev.target.checked })} className="h-4 w-4 accent-[var(--brand-primary)]" />Track expiry</label>
+              </>
+            )}
+            {(e.type ?? d.type) !== "PHOTO" && <DatePicker value={e.expiry ?? d.expiry} onChange={(iso) => patch(d.docKey, { expiry: iso, ...(rowType(d, e) === "OTHER" ? { track: true } : {}) })} disabled={rowType(d, e) === "OTHER" && !otherTracked(d, e)} ariaLabel={`Expiry date for ${d.fileName}`} placeholder={rowType(d, e) === "OTHER" ? (otherTracked(d, e) ? "expiry date" : "not tracked") : "expiry (optional)"} className={cn("w-44", rowType(d, e) === "OTHER" && otherTracked(d, e) && !(e.expiry ?? d.expiry) && !e.skip && "rounded-md ring-1 ring-[var(--warning)]")} />}
             {withOwner && pickOptions && fromValue && pickValue && <div className="w-60"><Select value={pickValue(e.owner)} onChange={(v) => patch(d.docKey, { owner: fromValue(v) })} placeholder="Choose…" options={pickOptions} /></div>}
             <button type="button" className="text-xs text-muted hover:underline" onClick={() => patch(d.docKey, { skip: !e.skip })}>{e.skip ? "Include" : "Leave out"}</button>
           </li>

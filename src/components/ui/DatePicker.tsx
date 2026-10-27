@@ -81,6 +81,17 @@ export function DatePicker({
     const d = toDate(defaultValue ?? value);
     return d ? format(d, DISPLAY) : "";
   });
+  // A value set from outside (a date read from a file, a reset) shows in the box right away. Typing doesn't come back through
+  // here: what is typed is already what the value says, so a half-typed date is left alone.
+  const [seen, setSeen] = useState(value);
+  if (controlled && value !== seen) {
+    setSeen(value);
+    const typed = parse(text, DISPLAY, new Date());
+    const typedIso = isValid(typed) ? format(typed, ISO) : "";
+    const next = toDate(value);
+    if (next && typedIso !== value) setText(format(next, DISPLAY));
+    else if (!next && typedIso) setText("");
+  }
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useFormReset(rootRef, () => {

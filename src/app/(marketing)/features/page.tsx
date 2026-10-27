@@ -58,7 +58,7 @@ export default function FeaturesPage() {
         <LinkCardGrid
           columns={3}
           cards={[
-            { href: "/solutions", title: "All solutions", body: "Nine pages, one per part of the platform — timesheets through to the AI assistant." },
+            { href: "/solutions", title: "All solutions", body: "Nine pages, one per part of the platform. Timesheets through to the AI assistant." },
             { href: "/industries", title: "By industry", body: "How it fits construction, MEP, FM, cleaning & hospitality, oil & gas and security." },
             { href: "/guides", title: "Guides", body: "Step-by-step help with importing your workforce, running payroll and setting up roles." },
           ]}
@@ -67,7 +67,7 @@ export default function FeaturesPage() {
 
       <CtaBand
         title="See every module on your own data."
-        lead="Bring your current timesheet workbook — nothing to re-key before your first month."
+        lead="Bring your current timesheet workbook. Nothing to re-key before your first month."
       />
     </ContentShell>
   );

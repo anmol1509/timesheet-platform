@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     const recipients = task?.ownerId ? [task.ownerId] : c.assignedHrId ? [c.assignedHrId] : (adminsByBranch.get(c.branchId) ?? []);
     if (recipients.length === 0) continue;
 
-    const title = `Onboarding overdue — ${c.candidateName}`;
+    const title = `Onboarding overdue: ${c.candidateName}`;
     const already = await prisma.notification.findMany({
       where: { kind: "ONBOARDING_OVERDUE", title, createdAt: { gte: startOfDay }, userId: { in: recipients } },
       select: { userId: true },

@@ -386,7 +386,7 @@ function DisapproveModal({
     <Dialog modal={false} open={row !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         title={`Disapprove ${row?.name ?? ""}`}
-        description="They never actually reached site. This ends the placement — allocation removed, project cleared, back to Idle — and the reason is saved as a note on their profile."
+        description="They never actually reached site. This ends the placement (allocation removed, project cleared, back to Idle) and the reason is saved as a note on their profile."
       >
         {row && <DisapproveForm row={row} onClose={onClose} onDone={onDone} />}
       </DialogContent>

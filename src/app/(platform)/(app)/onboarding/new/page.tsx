@@ -27,7 +27,7 @@ export default async function NewCandidatePage() {
       <PageHeader
         title="Add candidate"
         icon={FilePlus2}
-        description={<>Start tracking a candidate an agency has put forward. Nothing here creates an Employee record — that happens once they join.</>}
+        description={<>Start tracking a candidate an agency has put forward. Nothing here creates an Employee record. That happens once they join.</>}
       />
       <CandidateForm sponsors={sponsors} agencies={agencies} agencyContacts={agencyContacts} projects={projects} demandRequests={demandRequests} hrUsers={hrUsers} />
     </div>

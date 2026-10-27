@@ -338,7 +338,7 @@ export async function findDivergences(opts: {
       entryStatus: entry?.status ?? null,
       clientName: employee.project?.client.name ?? null,
       projectLabel: employee.project
-        ? `${employee.project.code} — ${employee.project.name}`
+        ? `${employee.project.code}: ${employee.project.name}`
         : null,
       fixable: !entry || isTimesheetOpen(entry.status),
     });

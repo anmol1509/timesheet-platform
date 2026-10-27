@@ -265,7 +265,7 @@ export function RenewalsBoard({ items: base, counts, owners, currentUserId, canE
 
       {items.length > 0 && (
         <div className="card p-4">
-          <p className="mb-2.5 text-xs font-medium text-muted">Composition — {items.length} renewals due within 90 days</p>
+          <p className="mb-2.5 text-xs font-medium text-muted">Composition: {items.length} renewals due within 90 days</p>
           <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-surface-sunken">
             {TIERS.map((t) =>
               counts[t.key] > 0 ? (

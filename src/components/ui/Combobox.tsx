@@ -21,7 +21,7 @@ export function Combobox({
   onSelectOption,
   options,
   placeholder = "Type to search…",
-  emptyText = "No matches — you can still type a new value.",
+  emptyText = "No matches: you can still type a new value.",
   className,
   disabled,
   required,

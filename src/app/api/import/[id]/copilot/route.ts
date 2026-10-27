@@ -20,11 +20,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (useAi) {
     const limit = rateLimit(`import-copilot:${who.user.id}`, { limit: 20, windowMs: 60 * 60 * 1000 });
     if (!limit.allowed) {
-      return NextResponse.json({ error: "You've run the AI check a lot — try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
+      return NextResponse.json({ error: "You've run the AI check a lot. Try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
     }
   }
   try {
-    const result = await runTimesheetCopilot({ buffer: Buffer.from(batch.fileData), branchId: who.branchId, overrides: body.timesheetOverrides ?? {}, useAi });
+    const result = await runTimesheetCopilot({ buffer: Buffer.from(batch.fileData), branchId: who.branchId, userId: who.user.id, overrides: body.timesheetOverrides ?? {}, useAi });
     return NextResponse.json({ result });
   } catch (e) {
     console.error("[import-copilot] failed:", e instanceof Error ? e.message : e);

@@ -10,7 +10,7 @@ import { MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
 
 export const maxDuration = 60;
 
-type DocIn = { docKey: string; type: string; holder: string; idNumber: string; expiry: string; confidence: Confidence; pages: number[] };
+type DocIn = { docKey: string; type: string; holder: string; idNumber: string; expiry: string; confidence: Confidence; pages: number[]; title?: string };
 type FileIn = { index: number; path: string; size: number; docs?: DocIn[] };
 type Via = "number" | "name" | "folder or file name";
 
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
   type Owner = { key: string; label: string; match: OwnerMatch; ai?: PlacementIssue["ai"]; newWorker?: { name: string; passportNumber: string; emiratesId: string; trade: string } };
   const owners = new Map<string, Owner>();
-  const docsOut: { docKey: string; index: number; fileName: string; type: string; expiry: string; confidence: Confidence; pages: number[]; ownerKey: string | null; via: Via | null; conflict: boolean; status: "ok" | "skip"; reason?: string; readByAi: boolean }[] = [];
+  const docsOut: { docKey: string; index: number; fileName: string; title?: string; type: string; expiry: string; confidence: Confidence; pages: number[]; ownerKey: string | null; via: Via | null; conflict: boolean; status: "ok" | "skip"; reason?: string; readByAi: boolean }[] = [];
 
   for (const f of files) {
     const fileName = f.path.replace(/\\/g, "/").split("/").pop() ?? f.path;
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
         ownerKey = `${kind === "EMPLOYEE" ? "E" : "S"}:${match.id}`;
         if (!owners.has(ownerKey)) owners.set(ownerKey, { key: ownerKey, label: match.name, match });
       }
-      docsOut.push({ docKey: u.docKey, index: f.index, fileName, type, expiry: u.expiry, confidence: u.confidence, pages: u.pages, ownerKey, via, conflict, status: "ok", readByAi });
+      docsOut.push({ docKey: u.docKey, index: f.index, fileName, title: type === "OTHER" ? String(u.title ?? "").slice(0, 100) : "", type, expiry: u.expiry, confidence: u.confidence, pages: u.pages, ownerKey, via, conflict, status: "ok", readByAi });
       // What a "new worker" would be created with, built from what the AI read.
       if (ownerKey?.startsWith("N:") && audience === "EMPLOYEE" && readByAi && u.holder) {
         const o = owners.get(ownerKey)!;
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       candidates: (o.match as Extract<OwnerMatch, { candidates: unknown }>).candidates.filter((c) => c.kind === "EMPLOYEE").map((c) => ({ id: c.id, name: c.name, code: c.sub.split(" · ")[0] ?? "", trade: null, supplier: null, housed: null, score: c.score })),
     }))
     .filter((i) => i.candidates.length > 0);
-  if (issues.length) for (const i of await suggestWorkerMatches(issues)) { const o = owners.get(i.key); if (o && i.ai) o.ai = i.ai; }
+  if (issues.length) for (const i of await suggestWorkerMatches(issues, { branchId: who.branchId, userId: who.user.id })) { const o = owners.get(i.key); if (o && i.ai) o.ai = i.ai; }
 
   return NextResponse.json({
     audience,

@@ -46,7 +46,7 @@ export default async function AddEmployeePage() {
               <>
                 You have <span className="font-medium">All branches</span>{" "}
                 selected. Pick a specific branch in the switcher above before
-                adding an employee — otherwise this form can&rsquo;t be saved.
+                adding an employee. Otherwise this form can&rsquo;t be saved.
               </>
             ) : (
               <>

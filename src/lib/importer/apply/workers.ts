@@ -152,7 +152,7 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
       }
 
       if (g.names.length > 0) {
-        notes.push({ tone: "warn", title: `Code ${g.id} appears with different names`, detail: `${[v.name, ...g.names].join(" / ")}. They were merged as one worker — if they are different people, give each their own code.` });
+        notes.push({ tone: "warn", title: `Code ${g.id} appears with different names`, detail: `${[v.name, ...g.names].join(" / ")}. They were merged as one worker. If they are different people, give each their own code.` });
       }
       if (other && other.branchId === branchId && nameKey(other.name) !== nameKey(v.name)) {
         notes.push({ tone: "warn", title: "Name differs from the worker on file", detail: `On file: ${other.name}. The file says: ${clean(v.name)}. The name was updated.` });
@@ -163,7 +163,7 @@ export async function applyWorkers(ctx: ApplyCtx, input: MappedRow[], fixes: Fix
         ...(e.length >= 10 ? (byEid.get(e) ?? []).filter((x) => x !== g).map((x) => ({ code: x.id, name: x.values.name, what: "Emirates ID" })) : []),
         ...holders.filter((h) => idKey(h.employeeIdNo) !== idKey(g.id) && ((p && passKey(h.passportNumber ?? "") === p) || (e.length >= 10 && eidKey(h.emiratesId ?? "") === e))).map((h) => ({ code: h.employeeIdNo, name: h.name, what: p && passKey(h.passportNumber ?? "") === p ? "passport" : "Emirates ID" })),
       ];
-      for (const d of sameDoc) notes.push({ tone: "warn", title: `Same ${d.what} as ${d.name} (${d.code})`, detail: "Two different codes, one document — is this the same person entered twice? Both were kept." });
+      for (const d of sameDoc) notes.push({ tone: "warn", title: `Same ${d.what} as ${d.name} (${d.code})`, detail: "Two different codes, one document. Is this the same person entered twice? Both were kept." });
       const data: Record<string, unknown> = { name: clean(v.name) };
       for (const f of TEXT) if (clean(v[f])) data[f] = clean(v[f]);
       if (clean(v.trade)) data.trade = canonTrade(clean(v.trade));
