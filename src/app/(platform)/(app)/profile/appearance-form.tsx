@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ACCENTS, DEFAULT_PREFERENCES, DENSITIES, LAYOUTS, TEXT_SIZES, type Preferences } from "@/lib/preferences";
-import { savePreferencesAction } from "./actions";
+import { ACCENTS, BACKGROUNDS, CORNERS, DEFAULT_PREFERENCES, DENSITIES, FONTS, HEX_RE, LAYOUTS, NAV_STYLES, TEXT_SIZES, htmlAttributes, htmlStyle, type Preferences } from "@/lib/preferences";
+import { saveCompanyLookAction, savePreferencesAction } from "./actions";
 
 const THEME_CARDS = [
   { value: "light", label: "Light", icon: Sun, bg: "#f6f7fb", fg: "#0f172a", side: "#ffffff" },
@@ -15,15 +15,35 @@ const THEME_CARDS = [
 const DENSITY_LABEL = { comfortable: "Comfortable", compact: "Compact" } as const;
 const TEXT_LABEL = { small: "Small", normal: "Normal", large: "Large" } as const;
 
+const MANAGED = ["data-accent", "data-density", "data-text", "data-navstyle", "data-font", "data-bg", "data-corners", "data-motion", "data-contrast"];
+
 /** Shows a choice on the page straight away; it is only kept once the person saves. */
 function preview(p: Preferences) {
   const el = document.documentElement;
+  const attrs = htmlAttributes(p);
   el.setAttribute("data-theme", p.theme);
-  const set = (name: string, on: boolean, value: string) => (on ? el.setAttribute(name, value) : el.removeAttribute(name));
-  set("data-accent", p.accent !== "purple", p.accent);
-  set("data-density", p.density !== "comfortable", p.density);
-  set("data-text", p.textSize !== "normal", p.textSize);
+  for (const name of MANAGED) (attrs[name] ? el.setAttribute(name, attrs[name]) : el.removeAttribute(name));
+  const style = htmlStyle(p);
+  if (style) el.style.setProperty("--accent", style["--accent"]);
+  else el.style.removeProperty("--accent");
   window.dispatchEvent(new CustomEvent("layout-preview", { detail: p.layout }));
+  window.dispatchEvent(new CustomEvent("autohide-preview", { detail: p.autoHide }));
+}
+
+const NAV_SWATCH: Record<(typeof NAV_STYLES)[number]["key"], string> = {
+  glass: "linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.6))",
+  flat: "#ffffff",
+  dark: "#15171d",
+  brand: "linear-gradient(160deg,var(--brand-primary),color-mix(in srgb,var(--brand-primary) 75%,black))",
+};
+
+function Toggle({ label, hint, checked, disabled, onChange }: { label: string; hint: string; checked: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className={cn("flex items-start gap-3 text-sm", disabled && "opacity-50")}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--brand-primary)]" />
+      <span><span className="font-medium text-primary">{label}</span><span className="block text-xs text-muted">{hint}</span></span>
+    </label>
+  );
 }
 
 /** A tiny drawing of each menu layout, for the picker. */
@@ -63,7 +83,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
   );
 }
 
-export function AppearanceForm({ initial, startPages }: { initial: Preferences; startPages: { href: string; label: string }[] }) {
+export function AppearanceForm({ initial, startPages, companyDefault, canSetCompanyDefault }: { initial: Preferences; startPages: { href: string; label: string }[]; companyDefault: Preferences | null; canSetCompanyDefault: boolean }) {
   const [p, setP] = useState<Preferences>(initial);
   const [saved, setSaved] = useState<Preferences>(initial);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -75,6 +95,9 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
   useEffect(() => { savedRef.current = saved; }, [saved]);
   useEffect(() => () => preview(savedRef.current), []);
   const accent = ACCENTS.find((a) => a.key === p.accent);
+  const [company, setCompany] = useState<Preferences | null>(companyDefault);
+  const hasHex = HEX_RE.test(p.accentHex);
+  const autoHideApplies = p.layout === "classic" || p.layout === "search" || p.layout === "tabs";
   return (
     <div className="space-y-5">
       <section className="card p-5">
@@ -103,14 +126,21 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
         <p className="mb-4 mt-1 text-sm text-muted">Buttons, links and highlights. Only you see your choice.</p>
         <div role="radiogroup" aria-label="Accent colour" className="flex flex-wrap items-center gap-3.5">
           {ACCENTS.map((a) => (
-            <button key={a.key} type="button" role="radio" aria-checked={p.accent === a.key} aria-label={a.label} title={a.label} onClick={() => change({ accent: a.key })}
+            <button key={a.key} type="button" role="radio" aria-checked={!hasHex && p.accent === a.key} aria-label={a.label} title={a.label} onClick={() => change({ accent: a.key, accentHex: "" })}
               className="flex h-9 w-9 items-center justify-center rounded-full text-white transition focus-visible:outline-2 focus-visible:outline-offset-2"
-              style={{ background: a.light, boxShadow: p.accent === a.key ? `0 0 0 2px var(--surface), 0 0 0 4px ${a.light}` : undefined }}>
-              {p.accent === a.key && <Check className="h-4 w-4" aria-hidden />}
+              style={{ background: a.light, boxShadow: !hasHex && p.accent === a.key ? `0 0 0 2px var(--surface), 0 0 0 4px ${a.light}` : undefined }}>
+              {!hasHex && p.accent === a.key && <Check className="h-4 w-4" aria-hidden />}
             </button>
           ))}
-          <span className="text-sm text-muted">{accent?.label}{p.accent === "purple" ? " (the company default)" : ""}</span>
+          <label className="flex items-center gap-2 text-sm text-secondary">
+            <span className="sr-only">Own colour</span>
+            <input type="color" aria-label="Pick your own colour" value={hasHex ? p.accentHex : "#5645d4"} onChange={(e) => change({ accentHex: e.target.value })} className="h-9 w-9 cursor-pointer rounded-full border border-default bg-transparent p-0.5" />
+            <input type="text" inputMode="text" aria-label="Own colour as a hex code" placeholder="#5645d4" maxLength={7} value={p.accentHex} onChange={(e) => change({ accentHex: e.target.value.trim() })}
+              className={cn("input h-9 w-28 font-mono text-sm", p.accentHex && !hasHex && "border-[var(--error)]")} />
+          </label>
+          <span className="text-sm text-muted">{hasHex ? "Your own colour" : accent?.label}{!hasHex && p.accent === "purple" ? " (the standard colour)" : ""}</span>
         </div>
+        <p className="mt-3 text-xs text-muted">The glow behind the app follows this colour. Very light colours make white text hard to read, so pick a mid or dark one.</p>
       </section>
 
       <section className="card p-5">
@@ -129,6 +159,50 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
       </section>
 
       <section className="card p-5">
+        <h2 className="text-sm font-semibold text-primary">Menu colour</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">The look of the menu panel.</p>
+        <div role="radiogroup" aria-label="Menu colour" className="grid gap-3 sm:grid-cols-4">
+          {NAV_STYLES.map((n) => (
+            <button key={n.key} type="button" role="radio" aria-checked={p.navStyle === n.key} onClick={() => change({ navStyle: n.key })}
+              className={cn("rounded-card border-2 p-2.5 text-left transition", p.navStyle === n.key ? "border-[var(--brand-primary)]" : "border-default hover:border-strong")}>
+              <span className="flex h-14 items-center justify-center overflow-hidden rounded-md border border-default bg-[linear-gradient(135deg,#ece9fb,#f6f7fb)]">
+                <span className="h-10 w-9 rounded-lg border border-black/10 shadow-sm" style={{ background: NAV_SWATCH[n.key] }} />
+              </span>
+              <span className="mt-2 flex items-center text-sm font-medium text-primary">{n.label}{p.navStyle === n.key && <Check className="ml-auto h-4 w-4 text-brand" aria-hidden />}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-4">
+          <Toggle label="Hide the menu until I point at the left edge" hint={autoHideApplies ? "Gives pages the full width. Works with Classic, Search first and Modules and tabs." : "Not used by the layout you picked: it works with Classic, Search first and Modules and tabs."} checked={p.autoHide} disabled={!autoHideApplies} onChange={(autoHide) => change({ autoHide })} />
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="mb-4 text-sm font-semibold text-primary">Look</h2>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="font" className="mb-2 block text-sm font-medium text-primary">Font</label>
+            <select id="font" value={p.font} onChange={(e) => change({ font: e.target.value as Preferences["font"] })} className="input h-9 w-full max-w-60 text-sm">
+              {FONTS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+            </select>
+            <p className="mt-1.5 text-xs text-muted">Changes the typeface everywhere in the app.</p>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-primary">Background</p>
+            <Segmented label="Background" value={p.background} options={BACKGROUNDS.map((b) => ({ value: b.key, label: b.label }))} onChange={(background) => change({ background })} />
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-primary">Corners</p>
+            <Segmented label="Corners" value={p.corners} options={CORNERS.map((c) => ({ value: c.key, label: c.label }))} onChange={(corners) => change({ corners })} />
+          </div>
+          <div className="space-y-3">
+            <Toggle label="Reduce motion" hint="Fewer animations and transitions." checked={p.reduceMotion} onChange={(reduceMotion) => change({ reduceMotion })} />
+            <Toggle label="Higher contrast" hint="Darker text and stronger lines." checked={p.highContrast} onChange={(highContrast) => change({ highContrast })} />
+          </div>
+        </div>
+      </section>
+
+      <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold text-primary">Layout</h2>
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
@@ -141,11 +215,6 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
             <Segmented label="Text size" value={p.textSize} options={TEXT_SIZES.map((t) => ({ value: t, label: TEXT_LABEL[t] }))} onChange={(textSize) => change({ textSize })} />
           </div>
           <div>
-            <p className="mb-2 text-sm font-medium text-primary">Sidebar</p>
-            <Segmented label="Sidebar" value={p.sidebar} options={[{ value: "open", label: "Always open" }, { value: "icons", label: "Icons only" }]} onChange={(sidebar) => change({ sidebar })} />
-            <p className="mt-1.5 text-xs text-muted">Used by the Classic menu layout. Applies the next time a page loads.</p>
-          </div>
-          <div>
             <label htmlFor="start-page" className="mb-2 block text-sm font-medium text-primary">Start page</label>
             <select id="start-page" value={p.startPage} onChange={(e) => change({ startPage: e.target.value })} className="input h-9 w-full max-w-60 text-sm">
               {startPages.map((s) => <option key={s.href} value={s.href}>{s.label}</option>)}
@@ -155,13 +224,30 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
         </div>
       </section>
 
+      {canSetCompanyDefault && (
+        <section className="card p-5">
+          <h2 className="text-sm font-semibold text-primary">Company default</h2>
+          <p className="mb-3 mt-1 text-sm text-muted">The look people in your company start with when they have not chosen their own. People who already chose a look keep it.{company ? " A company default is set." : " None is set."}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => start(async () => {
+              const r = await saveCompanyLookAction(p);
+              if (r.error) setMsg({ ok: false, text: r.error }); else { setCompany(p); setMsg({ ok: true, text: "Saved as the company default." }); }
+            })}>Use this look as the company default</button>
+            {company && <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => start(async () => {
+              const r = await saveCompanyLookAction(null);
+              if (r.error) setMsg({ ok: false, text: r.error }); else { setCompany(null); setMsg({ ok: true, text: "Company default removed." }); }
+            })}>Remove the company default</button>}
+          </div>
+        </section>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" className="btn btn-primary" disabled={pending || !dirty} onClick={() => start(async () => {
           const r = await savePreferencesAction(p);
           if (r.error) setMsg({ ok: false, text: r.error });
           else { setSaved(p); window.dispatchEvent(new CustomEvent("theme-changed", { detail: p.theme })); setMsg({ ok: true, text: "Saved. It is applied on each device when you sign in." }); }
         })}>{pending ? "Saving…" : "Save"}</button>
-        <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => change({ ...DEFAULT_PREFERENCES, startPage: p.startPage })}>Back to the defaults</button>
+        <button type="button" className="btn btn-secondary" disabled={pending} onClick={() => change({ ...(company ?? DEFAULT_PREFERENCES), startPage: p.startPage })}>{company ? "Back to the company default" : "Back to the defaults"}</button>
         {dirty && !msg && <span className="text-sm text-muted">Previewing. Save to keep it.</span>}
         {msg && <p role={msg.ok ? "status" : "alert"} className={cn("text-sm", msg.ok ? "text-success" : "text-error")}>{msg.text}</p>}
       </div>

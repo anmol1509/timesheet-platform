@@ -87,7 +87,7 @@ export function TopNav(props: Props & { brandSlot?: React.ReactNode }) {
   const model = useNavModel(props);
   const [openCat, setOpenCat] = useState<string | null>(null);
   return (
-    <nav aria-label="Main" className="glass mx-3 mt-3 hidden items-center gap-1 rounded-[22px] px-3 py-2 lg:flex">
+    <nav aria-label="Main" className="glass nav-surface mx-3 mt-3 hidden items-center gap-1 rounded-[22px] px-3 py-2 lg:flex">
       <div className="mr-2 shrink-0 pr-2"><BrandMark collapsed /></div>
       {model.categories.map((c) => {
         const Icon = iconOf(c);
@@ -132,7 +132,7 @@ export function TwoLevelNav({ brandSlot, ...props }: Props & { brandSlot?: React
   const current = picked ?? model.activeEntry?.category ?? model.categories[0];
   return (
     <>
-      <aside className="glass fixed top-3 bottom-3 left-3 z-20 hidden w-20 flex-col items-center gap-1 rounded-[22px] py-3 lg:flex">
+      <aside className="glass nav-surface fixed top-3 bottom-3 left-3 z-20 hidden w-20 flex-col items-center gap-1 rounded-[22px] py-3 lg:flex">
         <div className="mb-2"><BrandMark collapsed /></div>
         {model.categories.map((c) => {
           const Icon = iconOf(c);
@@ -149,7 +149,7 @@ export function TwoLevelNav({ brandSlot, ...props }: Props & { brandSlot?: React
           );
         })}
       </aside>
-      <aside className="glass fixed top-3 bottom-3 left-[6.25rem] z-20 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
+      <aside className="glass nav-surface fixed top-3 bottom-3 left-[6.25rem] z-20 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
         <h2 className="shrink-0 px-4 pt-4 pb-2 text-sm font-semibold text-primary">{current}</h2>
         <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
           <CategoryPages model={model} category={current} />
@@ -164,7 +164,7 @@ export function TwoLevelNav({ brandSlot, ...props }: Props & { brandSlot?: React
 export function ModuleList({ brandSlot, ...props }: Props & { brandSlot?: React.ReactNode }) {
   const model = useNavModel(props);
   return (
-    <aside className="glass fixed top-3 bottom-3 left-3 z-20 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
+    <aside className="glass nav-surface nav-hide fixed top-3 bottom-3 left-3 z-40 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
       <div className="flex h-16 shrink-0 items-center px-4"><BrandMark /></div>
       {brandSlot && <div className="shrink-0 px-3 pb-1">{brandSlot}</div>}
       <nav aria-label="Modules" className="min-h-0 flex-1 overflow-y-auto px-3 py-2">

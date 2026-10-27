@@ -34,6 +34,7 @@ export function AppShell({
   brand,
   defaultCollapsed,
   layout: savedLayout = "classic",
+  autoHide: savedAutoHide = false,
   header,
   children,
 }: {
@@ -45,17 +46,24 @@ export function AppShell({
   brand: Brand;
   defaultCollapsed: boolean;
   layout?: LayoutKey;
+  autoHide?: boolean;
   header: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [collapsedSaved, setCollapsed] = useState(defaultCollapsed);
   const [layout, setLayout] = useState<LayoutKey>(savedLayout);
+  const [autoHide, setAutoHide] = useState(savedAutoHide);
   const [query, setQuery] = useState("");
   // The Appearance page previews a layout before it is saved.
   useEffect(() => {
     const on = (e: Event) => setLayout((e as CustomEvent<LayoutKey>).detail);
+    const hide = (e: Event) => setAutoHide((e as CustomEvent<boolean>).detail);
     window.addEventListener("layout-preview", on);
-    return () => window.removeEventListener("layout-preview", on);
+    window.addEventListener("autohide-preview", hide);
+    return () => {
+      window.removeEventListener("layout-preview", on);
+      window.removeEventListener("autohide-preview", hide);
+    };
   }, []);
   // Only the classic layout has the open / icons-only toggle; the icon rail is always icons, the others always open.
   const collapsed = layout === "rail" ? true : layout === "classic" ? collapsedSaved : false;
@@ -71,11 +79,11 @@ export function AppShell({
   }
 
   return (
-    <div className="app-aurora relative min-h-screen bg-canvas lg:flex">
+    <div data-autohide={autoHide && (layout === "classic" || layout === "search" || layout === "tabs") ? "1" : undefined} className="app-aurora relative min-h-screen bg-canvas lg:flex">
       {layout === "topbar" ? null : layout === "twolevel" ? <TwoLevelNav {...navProps} brandSlot={branch} /> : layout === "tabs" ? <ModuleList {...navProps} brandSlot={branch} /> : null}
       {sidebarLayout && <aside
         className={cn(
-          "glass hidden shrink-0 flex-col overflow-hidden rounded-[22px] transition-[width] duration-200 lg:fixed lg:top-3 lg:bottom-3 lg:left-3 lg:flex",
+          "glass nav-surface nav-hide hidden shrink-0 flex-col lg:z-40 overflow-hidden rounded-[22px] transition-[width] duration-200 lg:fixed lg:top-3 lg:bottom-3 lg:left-3 lg:flex",
           collapsed ? (layout === "rail" ? "w-20" : "w-16") : "w-64"
         )}
       >
@@ -155,7 +163,7 @@ export function AppShell({
           // below its content's min-content width, so a wide table pushed the
           // whole page sideways instead of scrolling inside its own card.
           "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-200",
-          layout === "topbar" ? "lg:[&>header]:ml-3" : layout === "twolevel" ? "lg:pl-[21.25rem]" : layout === "tabs" ? "lg:pl-[15.5rem]" : layout === "rail" ? "lg:pl-[6.5rem]" : collapsed ? "lg:pl-[5.5rem]" : "lg:pl-[17.5rem]"
+          layout === "topbar" ? "lg:[&>header]:ml-3" : layout === "twolevel" ? "lg:pl-[21.25rem]" : layout === "tabs" ? (autoHide ? "lg:pl-8" : "lg:pl-[15.5rem]") : autoHide && (layout === "classic" || layout === "search") ? "lg:pl-8" : layout === "rail" ? "lg:pl-[6.5rem]" : collapsed ? "lg:pl-[5.5rem]" : "lg:pl-[17.5rem]"
         )}
       >
         {header}

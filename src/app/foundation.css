@@ -400,3 +400,86 @@ summary:focus-visible,
 :root[data-density="compact"] .btn:not(.btn-sm) {
   height: 2rem;
 }
+
+/* ---------------------------------------------------------------------------
+   More personal appearance choices (My account › Appearance), each an attribute on <html>.
+--------------------------------------------------------------------------- */
+:root { --brand-raw: var(--brand-primary); }
+
+/* Own accent colour: the same derivation as the named accents; the lighter dark-mode value comes from the colour. */
+:root[data-accent="custom"] { --accent-dark: color-mix(in srgb, var(--accent) 60%, white); }
+
+/* Font: body copy and headings. */
+:root[data-font="jakarta"] { --font-sans: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; --font-display: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; }
+:root[data-font="inter"] { --font-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif; --font-display: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif; }
+:root[data-font="system"] { --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+:root[data-font="serif"] { --font-sans: ui-serif, Georgia, Cambria, "Times New Roman", serif; --font-display: ui-serif, Georgia, Cambria, "Times New Roman", serif; }
+
+/* Corners. */
+:root[data-corners="sharp"] { --radius-xs: 2px; --radius-sm: 3px; --radius-md: 4px; --radius-lg: 6px; --radius-xl: 8px; }
+:root[data-corners="round"] { --radius-xs: 6px; --radius-sm: 9px; --radius-md: 13px; --radius-lg: 18px; --radius-xl: 24px; }
+
+/* Background behind the app. */
+:root[data-bg="plain"] .app-aurora::before { display: none; }
+:root[data-bg="soft"] .app-aurora::before {
+  background: radial-gradient(60rem 40rem at -8% -10%, color-mix(in srgb, var(--brand-raw) 14%, transparent), transparent 62%) !important;
+}
+
+/* Less movement. */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Higher contrast: darker secondary text and stronger lines. */
+:root[data-contrast="high"] { --text-secondary: #1f2937; --text-muted: #374151; --text-subtle: #4b5563; --border: #9aa3b2; --border-strong: #6b7587; }
+:root[data-contrast="high"][data-theme="dark"] { --text-secondary: #e5e7eb; --text-muted: #cbd5e1; --text-subtle: #cbd5e1; --border: #5b6477; --border-strong: #8b95a7; }
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast="high"]:not([data-theme="light"]) { --text-secondary: #e5e7eb; --text-muted: #cbd5e1; --text-subtle: #cbd5e1; --border: #5b6477; --border-strong: #8b95a7; }
+}
+
+/* Menu colour. .nav-surface is the sidebar / top menu panel; the header stays glass. */
+:root[data-navstyle="flat"] .nav-surface {
+  background: var(--surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--border);
+  box-shadow: var(--elevation-card);
+}
+:root[data-navstyle="dark"] .nav-surface,
+:root[data-navstyle="brand"] .nav-surface {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  --text: #f4f5f8;
+  --text-secondary: rgb(244 245 248 / 0.82);
+  --text-muted: rgb(244 245 248 / 0.62);
+  --text-subtle: rgb(244 245 248 / 0.55);
+  --border: rgb(255 255 255 / 0.16);
+  --surface: rgb(255 255 255 / 0.14);
+  --surface-hover: rgb(255 255 255 / 0.12);
+  --glass-line: rgb(255 255 255 / 0.12);
+  --glass-highlight: rgb(255 255 255 / 0.08);
+  --brand-primary-soft: rgb(255 255 255 / 0.14);
+  --brand-primary-border: rgb(255 255 255 / 0.28);
+  border-color: var(--glass-line);
+  box-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.5);
+}
+:root[data-navstyle="dark"] .nav-surface { background: #15171d; --brand-primary: color-mix(in srgb, var(--brand-raw) 55%, white); }
+:root[data-navstyle="brand"] .nav-surface {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand-raw) 92%, white), color-mix(in srgb, var(--brand-raw) 78%, black));
+  --brand-primary: #ffffff;
+}
+:root[data-navstyle="dark"] .nav-surface .brand-logo,
+:root[data-navstyle="brand"] .nav-surface .brand-logo { filter: brightness(0) invert(1); }
+:root[data-navstyle="brand"] .nav-surface [aria-label="ManpowerSync: dashboard"] img { filter: brightness(0) invert(1); }
+
+/* Auto-hide: the menu slides left and leaves a thin strip; pointing at it (or tabbing into it) brings it back. */
+@media (min-width: 1024px) {
+  [data-autohide="1"] .nav-hide { transform: translateX(calc(-100% + 8px)); transition: transform 0.2s var(--ease, ease), width 0.2s; }
+  [data-autohide="1"] .nav-hide:hover,
+  [data-autohide="1"] .nav-hide:focus-within { transform: none; }
+}

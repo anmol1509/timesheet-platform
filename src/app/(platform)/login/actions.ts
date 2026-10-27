@@ -35,7 +35,7 @@ export async function loginAction(
     return { error: "Too many failed attempts. Try again in 15 minutes." };
   }
 
-  const user = await prisma.user.findUnique({ where: { email }, include: { accessRole: { select: { permissions: true } }, branch: { select: { suspendedAt: true } } } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { accessRole: { select: { permissions: true } }, branch: { select: { suspendedAt: true, appearanceDefaults: true } } } });
   if (!user || !verifyPassword(password, user.passwordHash)) {
     await prisma.otpChallenge.create({
       data: { kind: "STAFF_LOGIN", phone: key, codeHash: "-", expiresAt: new Date(Date.now() + LOCK_WINDOW_MS) },
@@ -55,7 +55,8 @@ export async function loginAction(
   const sid = await startSession(user.id);
   await setSessionCookie(user.id, remember, sid);
   // Their own look follows them to this device, and they land where they chose to start.
-  const prefs = parsePreferences(user.preferences);
+  // Someone who never chose a look starts with the one their company set, if any.
+  const prefs = parsePreferences(user.preferences ?? user.branch?.appearanceDefaults);
   await writePreferenceCookies(prefs); // also clears a previous person's look on a shared browser
   const subject = { role: user.role, permissions: user.accessRole?.permissions ?? null };
   redirect(prefs.startPage !== "/" && canOpenPage(subject, prefs.startPage) ? prefs.startPage : "/");

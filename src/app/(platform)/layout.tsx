@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { DM_Sans, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import { DM_Sans, Inter, Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "../globals.css";
 import { FormValidation } from "@/components/FormValidation";
 import { MotionProvider } from "@/components/motion/MotionProvider";
-import { ACCENT_COOKIE, DENSITY_COOKIE, TEXT_COOKIE, THEME_COOKIE, htmlAttributes, parsePreferences } from "@/lib/preferences";
+import { ACCENT_COOKIE, DENSITY_COOKIE, LOOK_COOKIE, TEXT_COOKIE, THEME_COOKIE, htmlAttributes, htmlStyle, parseLook, parsePreferences } from "@/lib/preferences";
 
 const dmSans = DM_Sans({
   weight: ["400", "500", "600"],
@@ -17,6 +17,9 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
 });
+
+// Only fetched by the browser when someone picks it under My account > Appearance > Font.
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], preload: false });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -53,12 +56,14 @@ export default async function RootLayout({
     density: cookieStore.get(DENSITY_COOKIE)?.value,
     textSize: cookieStore.get(TEXT_COOKIE)?.value,
   });
+  const look = parseLook(cookieStore.get(LOOK_COOKIE)?.value);
 
   return (
     <html
       lang="en"
-      {...htmlAttributes(prefs)}
-      className={`${dmSans.variable} ${jakarta.variable} ${geistMono.variable} h-full antialiased`}
+      {...htmlAttributes({ ...prefs, ...look })}
+      style={htmlStyle(look)}
+      className={`${dmSans.variable} ${jakarta.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-canvas text-[var(--text)]">
         <FormValidation />
