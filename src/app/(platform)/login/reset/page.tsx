@@ -24,7 +24,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
       >
         <a
           href="/login/forgot"
-          className="flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-navy)] font-semibold text-white shadow-sm transition hover:brightness-110"
+          className="flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-navy)] text-[15px] font-semibold text-white shadow-sm transition hover:brightness-110"
         >
           Send a new link
         </a>
