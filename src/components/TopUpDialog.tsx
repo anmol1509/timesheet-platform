@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Check } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/Dialog";
 import { cn } from "@/lib/cn";
+import { topUpPriceLabel } from "@/lib/aiCredits";
 import { requestCreditsAction } from "@/app/(platform)/(app)/settings/ai/actions";
 
 const PACKS = [
@@ -47,6 +48,7 @@ export function TopUpDialog({ open, onOpenChange, total }: { open: boolean; onOp
                     <button key={p.credits} type="button" aria-pressed={on} onClick={() => { setPack(p.credits); setCustom(""); }} className={cn("rounded-xl border px-3 py-2.5 text-left transition", on ? "border-[var(--brand-primary)] bg-[var(--brand-primary-soft)] text-[var(--brand-primary)]" : "border-default hover:bg-surface-hover")}>
                       <span className="tabular block text-base font-semibold">{n(p.credits)}</span>
                       <span className="block text-xs text-muted">{p.note}</span>
+                      <span className="mt-1 block text-xs font-semibold text-secondary">{topUpPriceLabel(p.credits)}</span>
                     </button>
                   );
                 })}
@@ -54,12 +56,13 @@ export function TopUpDialog({ open, onOpenChange, total }: { open: boolean; onOp
             </fieldset>
             <label className="block text-xs font-semibold text-primary">Or a number of your own
               <input inputMode="numeric" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="e.g. 3,500" className="input mt-1 h-9 w-full text-sm font-normal" />
+              {custom.trim() && credits > 0 && <span className="mt-1 block text-xs font-normal text-secondary">{n(credits)} credits = <span className="font-semibold text-primary">{topUpPriceLabel(credits)}</span></span>}
             </label>
             <label className="block text-xs font-semibold text-primary">What is it for? (optional)
               <input name="reason" maxLength={300} placeholder="e.g. Payroll month-end, importing 400 workers" className="input mt-1 h-9 w-full text-sm font-normal" />
             </label>
             <p className="rounded-lg bg-surface-sunken px-3 py-2 text-xs text-secondary">
-              {credits > 0 ? <>You will have <span className="tabular font-semibold text-primary">{n(total + credits)}</span> credits this month once it is approved.</> : "Choose or type a number of credits."}
+              {credits > 0 ? <>You will have <span className="tabular font-semibold text-primary">{n(total + credits)}</span> credits this month once it is approved. This top-up is <span className="font-semibold text-primary">{topUpPriceLabel(credits)}</span>.</> : "Choose or type a number of credits."}
             </p>
             {state.error && <p role="alert" className="text-xs text-[var(--error)]">{state.error}</p>}
             <div className="flex justify-end gap-2">

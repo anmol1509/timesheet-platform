@@ -5,7 +5,9 @@ import { prisma } from "@/lib/db";
 import { MODULES, can, ACTION_LABELS, describeAccess, type PermissionAction } from "@/lib/permissions";
 import { Avatar } from "@/components/Avatar";
 import { ImageUpload } from "@/components/ImageUpload";
-import { NotificationPrefsForm, PasswordForm, ProfileForm } from "./profile-forms";
+import { PasswordForm, ProfileForm } from "./profile-forms";
+import { NotificationSettings } from "./notification-settings";
+import { parseEmailPrefs } from "@/lib/emailPrefs";
 import { AccountRail, ACCOUNT_TABS, type AccountTab } from "./account-rail";
 import { AppearanceForm } from "./appearance-form";
 import { SessionsList, type SessionRow } from "./sessions-list";
@@ -88,9 +90,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     content = <AppearanceForm initial={parsePreferences(user.preferences)} startPages={startPages} />;
   } else if (tab === "notifications") {
     content = (
-      <section className="card p-5">
-        <h2 className="mb-3 text-sm font-semibold text-primary">Notifications</h2>
-        <NotificationPrefsForm notifyEmail={user.notifyEmail} />
+      <section className="card p-6">
+        <NotificationSettings initial={parseEmailPrefs(user.emailPrefs, user.notifyEmail)} email={user.email} />
       </section>
     );
   } else if (tab === "security") {

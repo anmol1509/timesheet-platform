@@ -12,6 +12,7 @@ import { parsePreferences, type Preferences } from "@/lib/preferences";
 import { canOpenPage, writePreferenceCookies } from "@/lib/preferenceCookies";
 import { getSessionFromCookies, reissueSessionCookie } from "@/lib/session";
 import { subjectOf } from "@/lib/auth";
+import { notifyUsers } from "@/lib/notifications/notify";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -72,6 +73,7 @@ export async function changePasswordAction(_prev: State, formData: FormData): Pr
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(next) } });
   // A new password signs everything else out: whoever had the old one loses access.
   await endOtherSessions(user.id, (await getSessionFromCookies())?.sid);
+  await notifyUsers({ userIds: [user.id], kind: "SECURITY_PASSWORD_CHANGED", title: "Your password was changed", body: "If you did this, there is nothing to do.\n\nIf you did not, tell your administrator straight away and reset your password.", href: "/profile?tab=security" });
   // Never log the password itself — just that it changed.
   await logAudit({
     entityType: "USER",

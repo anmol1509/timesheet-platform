@@ -3,6 +3,7 @@ import { emitWebhookEvent, hasSubscribers, processDue, purgeOldDeliveries } from
 import { prisma } from "@/lib/db";
 import { getRenewals, summarise } from "@/lib/renewals";
 import { notifyUsers } from "@/lib/notifications/notify";
+import { sendDueSummaries } from "@/lib/notifications/summary";
 import { dueReminder } from "@/lib/docExpiry";
 import { renewalKey } from "@/lib/renewalCases";
 
@@ -99,7 +100,9 @@ export async function GET(request: Request) {
   const retried = await processDue({ limit: 200 });
   const purged = await purgeOldDeliveries();
 
-  return NextResponse.json({ ranAt: new Date().toISOString(), digest, reminded, webhooks: { retried, purged } });
+  // This job runs at 08:00 UAE time, so it also sends the morning email summaries (after today's reminders are in).
+  const summaries = await sendDueSummaries().catch((e) => ({ error: e instanceof Error ? e.message : "failed" }));
+  return NextResponse.json({ ranAt: new Date().toISOString(), digest, reminded, webhooks: { retried, purged }, summaries });
 }
 
 type Item = Awaited<ReturnType<typeof getRenewals>>[number];

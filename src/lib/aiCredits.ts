@@ -84,3 +84,12 @@ export const FEATURE_LABEL: Record<string, string> = {
   "import-matching": "Matching names in imports",
   "import-copilot": "Checking a timesheet import",
 };
+
+/** What extra credits cost when a company asks for a top-up: 1,000 credits are AED 10. Shown only where a top-up is requested. */
+export const TOP_UP_AED_PER_1000 = 10;
+
+/** The price shown beside a top-up amount, e.g. "AED 10" or "AED 12.50". */
+export function topUpPriceLabel(credits: number): string {
+  const aed = Math.round((credits / 1000) * TOP_UP_AED_PER_1000 * 100) / 100;
+  return `AED ${Number.isInteger(aed) ? aed.toLocaleString("en-US") : aed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}

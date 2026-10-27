@@ -1,4 +1,5 @@
 import { renderEmail, type EmailBrand, type EmailTone } from "./layout";
+import { EMAIL_CATEGORIES, categoryOf } from "@/lib/emailPrefs";
 
 /** One email ready to send: the subject, the HTML and the plain-text copy for programs that don't show HTML. */
 export type Mail = { subject: string; html: string; text: string };
@@ -35,6 +36,8 @@ const KINDS: Record<string, Style> = {
   FOLLOWUP: REMINDER("Follow up", "Open the follow-up"),
   AI_CREDITS: REMINDER("AI credits", "See AI credits"),
   WEBHOOK_DISABLED: { eyebrow: "Action needed", tone: "danger", cta: "Open developer settings" },
+  SECURITY_NEW_SIGNIN: { eyebrow: "Security", tone: "warning", cta: "Review your devices" },
+  SECURITY_PASSWORD_CHANGED: { eyebrow: "Security", tone: "danger", cta: "Review your account" },
 };
 
 const DEFAULT_STYLE: Style = { eyebrow: "Notification", tone: "default", cta: "Open in ManpowerSync" };
@@ -133,4 +136,33 @@ export function testMail(input: { name: string; appUrl: string; brand: EmailBran
     brand: input.brand,
   });
   return { subject: `Test email from ${input.brand.name}`, html, text };
+}
+
+type SummaryItem = { kind: string; title: string };
+
+/** One email with everything that was held for a person, grouped the way the settings page groups it. */
+export function summaryMail(input: { name: string; items: SummaryItem[]; appUrl: string; brand: EmailBrand }): Mail {
+  const groups = EMAIL_CATEGORIES.map((c) => ({ c, items: input.items.filter((i) => categoryOf(i.kind) === c.id) })).filter((g) => g.items.length > 0);
+  const shown = (n: number) => `${n} ${n === 1 ? "update" : "updates"}`;
+  const paragraphs = [`Hi ${firstName(input.name)},`, `Here is what happened since your last summary.`];
+  for (const g of groups) {
+    paragraphs.push(`${g.c.label} (${g.items.length})`);
+    // The same line repeated (a bulk upload makes many alike) is shown once with how many there were.
+    const counts = new Map<string, number>();
+    for (const i of g.items) counts.set(i.title, (counts.get(i.title) ?? 0) + 1);
+    const distinct = [...counts.entries()];
+    const lines = distinct.slice(0, 8).map(([t, n]) => `- ${t}${n > 1 ? ` (${n} times)` : ""}`);
+    if (distinct.length > 8) lines.push(`- and ${distinct.length - 8} more kinds of update`);
+    paragraphs.push(lines.join("\n"));
+  }
+  const { html, text } = renderEmail({
+    preheader: groups.map((g) => `${g.c.label}: ${g.items.length}`).join(" · ").slice(0, 110),
+    eyebrow: "Your summary",
+    heading: `${shown(input.items.length)} for you`,
+    paragraphs,
+    button: { label: "Open ManpowerSync", url: `${input.appUrl}/notifications` },
+    brand: input.brand,
+    footer: `You get this because your email settings send some things as a daily summary. You can change that under your profile in ${input.brand.name}.`,
+  });
+  return { subject: `Your ${input.brand.name} summary: ${shown(input.items.length)}`, html, text };
 }

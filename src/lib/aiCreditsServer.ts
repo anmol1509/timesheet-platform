@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { notifyUsers } from "@/lib/notifications/notify";
 import { sendEmail } from "@/lib/notifications/email";
 import { resolveSuperAdminBranchId } from "@/lib/auth";
-import { creditStatus, creditsFor, monthKey, monthRange, OUT_OF_CREDITS, warningDue, type CreditStatus } from "@/lib/aiCredits";
+import { topUpPriceLabel, creditStatus, creditsFor, monthKey, monthRange, OUT_OF_CREDITS, warningDue, type CreditStatus } from "@/lib/aiCredits";
 
 /** The branch an AI call is charged to: the user's own, or for a super admin the one they are working in. */
 export async function aiBranchOf(user: { role: string; branchId: string | null }): Promise<string | null> {
@@ -98,7 +98,7 @@ export async function createCreditRequest(input: { branchId: string; userId: str
   await sendEmail(
     REQUEST_INBOX,
     `AI credits request: ${company} wants ${n} more`,
-    `${input.userName} at ${company} asked for ${n} extra AI credits this month.${input.reason ? `\n\nReason: ${input.reason}` : ""}\n\nApprove or decline it from the customer's page in the owner dashboard.`,
+    `${input.userName} at ${company} asked for ${n} extra AI credits this month (${topUpPriceLabel(input.credits)}).${input.reason ? `\n\nReason: ${input.reason}` : ""}\n\nApprove or decline it from the customer's page in the owner dashboard.`,
   ).catch(() => undefined);
   return { id: row.id };
 }

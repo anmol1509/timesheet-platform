@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { creditStatus, creditsFor, modelWeight, monthKey, monthRange, warningDue } from "./aiCredits";
+import { topUpPriceLabel, creditStatus, creditsFor, modelWeight, monthKey, monthRange, warningDue } from "./aiCredits";
 
 test("a credit is 1,000 input tokens, with output counted five times", () => {
   assert.equal(creditsFor("claude-haiku-4-5-20251001", 3000, 200), 4);
@@ -61,4 +61,14 @@ test("a warning goes out once per step per month", () => {
   // A new month starts again.
   assert.equal(warningDue(warn, { month: "2026-09", level: 100 }), 80);
   assert.equal(warningDue(creditStatus({ allowance: 100, granted: 0, used: 10, now }), { month: null, level: 0 }), null);
+});
+
+test("top-up prices: 1,000 credits are AED 10", () => {
+  assert.equal(topUpPriceLabel(1000), "AED 10");
+  assert.equal(topUpPriceLabel(2500), "AED 25");
+  assert.equal(topUpPriceLabel(5000), "AED 50");
+  assert.equal(topUpPriceLabel(10000), "AED 100");
+  assert.equal(topUpPriceLabel(3500), "AED 35");
+  assert.equal(topUpPriceLabel(1250), "AED 12.50");
+  assert.equal(topUpPriceLabel(1_000_000), "AED 10,000");
 });
