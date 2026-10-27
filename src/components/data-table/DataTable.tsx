@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -137,6 +137,11 @@ export function DataTable<T extends { id: string }>({
   const [sort, setSort] = useState<SortState>(null);
   const [query, setQuery] = useState("");
   const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilters ?? {});
+  // A card or chart that changes the address changes these too; the table follows (they were only read on first load).
+  const initialKey = JSON.stringify(initialFilters ?? {});
+  useEffect(() => {
+    setFilterValues(JSON.parse(initialKey) as Record<string, string>);
+  }, [initialKey]);
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(columns.filter((c) => c.defaultHidden).map((c) => c.key))
   );
