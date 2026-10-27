@@ -9,13 +9,15 @@ import { isCashMode, readDeductionItems, wpsGaps } from "@/lib/payroll";
 import { runReadiness, runSkipped } from "@/lib/payrollRun";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { EmployeeAvatar } from "@/components/Avatar";
-import { LineAdjustCells, RunControls } from "./run-controls";
+import { RunControls } from "./run-controls";
+import { LineAdjust } from "./line-adjust";
+import { RunStatus, type StatusItem } from "./run-status";
+import { BankFixQueue } from "./bank-fix-queue";
 import { PaymentCell } from "./payment-cell";
-import { NextStep, RunStepper, RunVariance, type VarianceRow } from "./run-insights";
+import { RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
 import { DaysButton } from "./days-panel";
 import { AdvancesButton } from "./advances-popup";
-import { BankFix } from "./bank-fix";
 import { FixPayPanel, type FixRow } from "./fix-pay-panel";
 import { Hint } from "@/components/Hint";
 import { anotherApproverExists, needsSeparateApprover } from "@/lib/payrollControls";
@@ -134,6 +136,83 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const needsSecondApprover = draft && needsSeparateApprover(threshold, total, await anotherApproverExists(run.branchId, user.id));
   const nextMonth = (() => { const [y, m] = run.month.split("-").map(Number); const d = new Date(Date.UTC(y, m, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; })();
 
+  // Everything that needs attention, as chips: each opens its details in a side panel instead of stacking above the workers.
+  const step = (run.status === "PAID" ? 4 : run.status === "APPROVED" ? 3 : run.submittedAt ? 2 : 0) as 0 | 2 | 3 | 4;
+  const warnings = issues.filter((i) => i.level === "warn");
+  const lead = run.status === "PAID" ? "This payroll is paid." : run.status === "APPROVED" ? "Approved: download the bank file and pay." : run.submittedAt ? "Waiting for approval." : run.lines.length === 0 ? "No one is in this run yet." : "Review the numbers, then submit.";
+  const leadTone = (run.status === "PAID" ? "done" : run.lines.length === 0 ? "stop" : run.submittedAt ? "wait" : "go") as "go" | "stop" | "wait" | "done";
+  const canEditRun = can(subject, "payroll.payroll", "edit") && !run.submittedAt;
+  const statusItems: StatusItem[] = [];
+  if (run.status === "DRAFT" && fixRows.length > 0) {
+    statusItems.push({ key: "left-out", label: `${fixRows.length} not in this run`, tone: "warn", title: "Workers left out of this run", description: "Their pay isn't set up yet. Set it here and they join the run.", content: <FixPayPanel runId={run.id} payType={run.payType} canEdit={canFixPay} rows={fixRows} /> });
+  }
+  if (draft && gapRows.length > 0) {
+    statusItems.push({
+      key: "bank", label: `${gapRows.length} need bank details`, tone: "warn", title: `Bank details missing for ${gapRows.length} worker${gapRows.length === 1 ? "" : "s"}`,
+      content: <BankFixQueue runId={run.id} canEdit={canEditRun} rows={gapRows.map(({ l, gaps }) => ({ employeeId: l.employee.id, name: l.employee.name, idNo: l.employee.employeeIdNo, gaps, defaults: { personCode: l.personCode ?? "", routingCode: l.routingCode ?? "", iban: l.account ?? "", bankName: l.bankName ?? "" } }))} />,
+    });
+  }
+  if (draft && run.returnNote && !run.submittedAt) {
+    statusItems.push({ key: "returned", label: "Sent back for correction", tone: "warn", title: "Sent back for correction", content: <p className="text-sm text-secondary">{run.returnNote}</p> });
+  }
+  if (needsSecondApprover) {
+    statusItems.push({ key: "approver", label: "Needs another approver", tone: "info", title: "Needs another approver", content: <p className="text-sm text-secondary">{threshold !== null ? <>This run is over the <span className="font-medium text-primary">AED {aed(threshold)}</span> limit, so it</> : <>This run</>} needs approving by someone other than {run.createdBy.name}, who prepared it.</p> });
+  }
+  if (!draft && (rejected > 0 || resubmit > 0)) {
+    statusItems.push({
+      key: "bank-rejected", label: rejected > 0 ? `${rejected} rejected by the bank` : `${resubmit} ready to resend`, tone: "warn", title: "Bank rejections",
+      content: (
+        <div className="space-y-3 text-sm text-secondary">
+          {rejected > 0 && <p><span className="font-medium text-primary">{rejected} rejected by the bank.</span> Fix their details, then use “Use updated bank details”.</p>}
+          {resubmit > 0 && <p><span className="font-medium text-primary">{resubmit} ready to resend.</span></p>}
+          {resubmit > 0 && can(subject, "payroll.payroll", "export") && <a className="btn btn-secondary" href={`/api/payroll/${run.id}/sif?only=resubmit`}>Download resend file (.SIF)</a>}
+        </div>
+      ),
+    });
+  }
+  if (warnings.length > 0) {
+    statusItems.push({
+      key: "checks", label: `${warnings.length} to check`, tone: "warn", title: "Worth checking before you approve",
+      content: (
+        <ul className="space-y-2 text-sm">
+          {warnings.map((i) => (
+            <li key={i.text} className="flex items-start gap-2 text-secondary">
+              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
+              <span>{i.text}{i.href && <> <Link href={i.href} className="text-[var(--brand-primary)] hover:underline">Open</Link></>}</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    });
+  }
+  if (prev && variance) {
+    const prevTotal = prev.lines.reduce((sum, l) => sum + n(l.net), 0);
+    const pct = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : 0;
+    statusItems.push({
+      key: "variance", label: `vs ${prevMonth}: ${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(0)}%`, tone: Math.abs(pct) >= 10 ? "warn" : "info", title: `Compared with ${prevMonth}`,
+      content: <RunVariance prevMonth={prevMonth} total={total} prevTotal={prevTotal} count={run.lines.length} prevCount={prev.lines.length} rows={variance} />,
+    });
+  }
+  if (owedBy.size > 0) {
+    statusItems.push({
+      key: "advances", label: `AED ${aed(owedTotal)} owed in advances`, tone: owedUnscheduled > 0 ? "warn" : "info", title: "Advances and loans still owed",
+      description: owedUnscheduled > 0 ? `${owedUnscheduled} worker${owedUnscheduled === 1 ? " has" : "s have"} an advance with no month chosen, so nothing is taken for it.` : "Set what to deduct this month for each worker.",
+      content: (
+        <ul className="divide-y divide-[var(--border)] rounded-md border border-default text-sm">
+          {run.lines.filter((l) => owedBy.has(l.employee.id)).map((l) => {
+            const o = owedBy.get(l.employee.id)!;
+            return (
+              <li key={l.employeeId} className="flex items-center justify-between gap-3 px-3 py-2">
+                <span className="min-w-0 truncate text-primary">{l.employee.name} <span className="text-xs text-subtle">AED {aed(o.owed)} owed</span></span>
+                <AdvancesButton runId={run.id} employeeId={l.employee.id} name={l.employee.name} count={o.count} owed={o.owed} unscheduled={o.unscheduled} />
+              </li>
+            );
+          })}
+        </ul>
+      ),
+    });
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -150,21 +229,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         </p>
       </div>
 
-      {run.status === "DRAFT" && fixRows.length > 0 && <FixPayPanel runId={run.id} payType={run.payType} canEdit={canFixPay} rows={fixRows} />}
-
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Total net pay</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">AED {aed(total)}</p></div>
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Employees</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{run.lines.length}</p>{cashCount > 0 && <p className="text-xs text-muted">{cashCount} paid in cash (not in WPS file)</p>}</div>
         <div className="card p-4"><p className="text-xs uppercase tracking-wide text-muted">Not in this run</p><p className="mt-1 text-2xl font-semibold tabular-nums text-primary">{unpaidSetup}</p><p className="text-xs text-muted">{skipped.length > 0 ? skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ") + (skipped.length > 3 ? "…" : "") : "Everyone is included"}</p></div>
       </div>
 
-      <NextStep status={run.status} submitted={!!run.submittedAt} blocking={0} warnings={issues.filter((i) => i.level === "warn").length} people={run.lines.length} canApprove={can(subject, "payroll.payroll", "approve")} />
-
-      <RunStepper status={run.status} submitted={!!run.submittedAt} issues={issues.length} />
-
-      {prev && variance && (
-        <RunVariance prevMonth={prevMonth} total={total} prevTotal={prev.lines.reduce((sum, l) => sum + n(l.net), 0)} count={run.lines.length} prevCount={prev.lines.length} rows={variance} />
-      )}
+      <RunStatus step={step} lead={lead} leadTone={leadTone} items={statusItems} />
 
       <RunControls
         id={run.id}
@@ -176,78 +247,10 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         canDelete={can(subject, "payroll.payroll", "delete")}
       />
 
-      {draft && gapRows.length > 0 && (
-        <div className="card flex gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
-          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
-          <div>
-            <p className="font-medium text-primary">Bank details missing for {gapRows.length} employee{gapRows.length === 1 ? "" : "s"}. This does not stop approval; the WPS bank file needs them</p>
-            <ul className="mt-1 space-y-0.5 text-secondary">
-              {gapRows.slice(0, 8).map(({ l, gaps }) => (
-                <li key={l.employeeId}>
-                  <Link href={`/employees/${l.employee.id}`} target="_blank" rel="noopener noreferrer" className="text-[var(--brand-primary)] hover:underline">{l.employee.name}</Link> — missing {gaps.join(", ")}
-                  {can(subject, "payroll.payroll", "edit") && !run.submittedAt && <BankFix runId={run.id} employeeId={l.employee.id} name={l.employee.name} defaults={{ personCode: l.personCode ?? "", routingCode: l.routingCode ?? "", iban: l.account ?? "", bankName: l.bankName ?? "" }} />}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-1 text-xs text-muted">You can approve without them. Before you download the WPS bank file, press “Fix now” beside a name and fill in their details, or choose “Paid in cash instead”.</p>
-          </div>
-        </div>
-      )}
-
-      {draft && run.returnNote && !run.submittedAt && (
-        <div className="card flex gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
-          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
-          <p className="text-secondary"><span className="font-medium text-primary">Sent back for correction:</span> {run.returnNote}</p>
-        </div>
-      )}
-
-      {needsSecondApprover && (
-        <div className="card flex gap-3 border-[var(--info-border)] bg-[var(--info-soft)] p-4 text-sm">
-          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--info)]" aria-hidden />
-          <p className="text-secondary">
-            {threshold !== null ? <>This run is over the <span className="font-medium text-primary">AED {aed(threshold)}</span> limit, so it</> : <>This run</>} needs approving by someone other than {run.createdBy.name}, who prepared it.
-          </p>
-        </div>
-      )}
-
-      {!draft && (rejected > 0 || resubmit > 0) && (
-        <div className="card flex flex-wrap items-center gap-3 border-[var(--warning-border)] bg-[var(--warning-soft)] p-4 text-sm">
-          <CircleAlert className="h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
-          <p className="flex-1 text-secondary">
-            {rejected > 0 && <><span className="font-medium text-primary">{rejected} rejected by the bank.</span> Fix their details, then use “Use updated bank details”. </>}
-            {resubmit > 0 && <><span className="font-medium text-primary">{resubmit} ready to resend.</span></>}
-          </p>
-          {resubmit > 0 && can(subject, "payroll.payroll", "export") && (
-            <a className="btn btn-secondary" href={`/api/payroll/${run.id}/sif?only=resubmit`}>Download resend file (.SIF)</a>
-          )}
-        </div>
-      )}
-
-      {issues.filter((i) => i.level === "warn").length > 0 && (
-        <div className="card p-4 text-sm">
-          <p className="font-medium text-primary">Worth checking</p>
-          <ul className="mt-2 space-y-1.5">
-            {issues.filter((i) => i.level === "warn").map((i) => (
-              <li key={i.text} className="flex items-start gap-2 text-secondary">
-                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
-                <span>{i.text}{i.href && <> <Link href={i.href} className="text-[var(--brand-primary)] hover:underline">Open</Link></>}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {run.lines.length === 0 ? (
         <div className="card p-10 text-center text-sm text-muted">No employees have a pay structure yet. Set one on each employee&apos;s Payroll &amp; WPS tab, then Recalculate.</div>
       ) : (
         <DetailView>
-        {owedBy.size > 0 && (
-          <div className={`rounded-lg border px-4 py-3 text-sm ${owedUnscheduled > 0 ? "border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning)]" : "border-default bg-surface-subtle text-secondary"}`}>
-            <span className="font-medium">AED {aed(owedTotal)} of advances and loans is still owed by {owedBy.size} worker{owedBy.size === 1 ? "" : "s"} in this run.</span>{" "}
-            {owedUnscheduled > 0 ? `${owedUnscheduled} of them ${owedUnscheduled === 1 ? "has" : "have"} an advance with no month chosen, so nothing is taken. ` : ""}
-            Open <span className="font-medium">Advances</span> beside a worker&apos;s name to see them and set what to deduct this month.
-          </div>
-        )}
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-default bg-surface-subtle text-left text-xs font-medium uppercase tracking-wide text-muted">
@@ -260,11 +263,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                 <th className={D}>Recurring</th>
                 <th className="px-3 py-3 text-right">Earns</th>
                 <th className="px-3 py-3 text-right">Deductions</th>
-                <th className="px-2 py-3 text-right">Deduction</th>
-                <th className="px-2 py-3 text-right">Advance</th>
-                <th className="px-2 py-3 text-right">Adjustment</th>
-                <th className="px-2 py-3 text-right" title="What the bank charges to pay this worker, typed here per worker. Tick Waive to take nothing.">Bank charge</th>
-                {draft && <th className="relative px-2 py-3"><span className="sr-only">Save</span></th>}
+                <th className="px-3 py-3" title="Deduction, advance, adjustment and bank charge typed against a worker for this month">Adjustments</th>
                 <th className="px-3 py-3 text-right">Net pay<Hint term="NET_PAY" /></th>
                 <th className="px-3 py-3">Bank<Hint term="WPS" /></th>
                 {!draft && <th className="px-3 py-3">Payment</th>}
@@ -312,11 +311,12 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{aed(slip.gross)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-secondary">{slip.totalDeductions > 0 ? `−${aed(slip.totalDeductions)}` : "—"}</td>
-                    <LineAdjustCells
-                      lineId={l.id} deduction={n(l.manualDeduction)} deductionNote={l.deductionNote ?? ""} advance={n(l.loanDeduction)} advanceNote={l.advanceNote ?? ""}
-                      adjustment={n(l.adjustment)} adjustmentNote={l.adjustmentNote ?? ""} bankCharge={n(l.bankCharge)} bankWaived={l.bankChargeWaived} disabled={!editable}
-                    />
-                    {!editable && draft && <td />}
+                    <td className="px-3 py-3 align-top">
+                      <LineAdjust
+                        lineId={l.id} name={l.employee.name} disabled={!editable} deductionCount={readDeductionItems(l.deductionItems)?.length ?? 0}
+                        values={{ deduction: n(l.manualDeduction), deductionNote: l.deductionNote ?? "", advance: n(l.loanDeduction), advanceNote: l.advanceNote ?? "", adjustment: n(l.adjustment), adjustmentNote: l.adjustmentNote ?? "", bankCharge: n(l.bankCharge), bankWaived: l.bankChargeWaived }}
+                      />
+                    </td>
                     <td className="px-3 py-3 text-right font-semibold tabular-nums text-primary">{aed(n(l.net))}</td>
                     <td className="px-3 py-3">
                       {isCashMode(l.paymentMode) ? <Badge color="slate">Cash</Badge> : gaps.length === 0 ? <Badge color="green">Ready</Badge> : <Badge color="amber">Needs fixing</Badge>}
