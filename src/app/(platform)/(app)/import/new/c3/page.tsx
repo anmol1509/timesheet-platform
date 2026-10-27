@@ -14,7 +14,7 @@ export default async function ImportC3Page() {
       <PageHeader
         title="Link C3 IDs"
         breadcrumbs={[{ label: "Import data", href: "/import" }, { label: "C3 IDs" }]}
-        description="Upload a sheet with each worker's name and C3 ID and link it to the workers you already have. Names are matched whatever the word order; anything unsure is for you to confirm. Nothing is saved until you press Save."
+        description="Upload a sheet with each worker's C3 ID and their employee ID or name, confirm the columns, review the matches, then import. Anything unsure is for you to confirm, and you can undo it afterwards."
       />
       {isSuperAdmin && !branchId && (
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">

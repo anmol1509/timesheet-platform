@@ -29,6 +29,7 @@ const STEPS: { key: Step; label: string }[] = [
 ];
 const LISTS: Record<ImportKind, { href: string; label: string }> = {
   SUPPLIERS: { href: "/suppliers", label: "Go to suppliers" },
+  COMPANIES: { href: "/my-companies", label: "Go to my companies" },
   CLIENTS: { href: "/clients", label: "Go to clients" },
   WORKERS: { href: "/employees", label: "Go to employees" },
   TIMESHEETS: { href: "/companies", label: "Go to timesheets" },
@@ -73,6 +74,15 @@ function tilesFor(kind: ImportKind, c: Record<string, number>): TileSpec[] {
       { label: "Not placed", value: c.notPlaced ?? 0, tone: (c.notPlaced ?? 0) > 0 ? "error" : "neutral", hint: "see the notes for why" },
       { label: "Need your choice", value: c.needDecision ?? 0, tone: (c.needDecision ?? 0) > 0 ? "info" : "neutral" },
       { label: "Camps updated", value: c.updated ?? 0, tone: "info" },
+      { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
+    ];
+  }
+  if (kind === "COMPANIES") {
+    return [
+      { label: "Companies added", value: c.created ?? 0, tone: "success", hint: c.parentsCreated ? `+ ${c.parentsCreated} parents` : undefined },
+      { label: "Updated", value: c.updated ?? 0, tone: "info" },
+      ...((c.peopleAdded ?? 0) > 0 ? [{ label: "Owners and sponsors added", value: c.peopleAdded, tone: "info" as const }] : []),
+      { label: "Merged", value: c.merged ?? 0, tone: "neutral", hint: "repeated rows" },
       { label: "Failed", value: c.failed ?? 0, tone: (c.failed ?? 0) > 0 ? "error" : "neutral" },
     ];
   }
@@ -482,7 +492,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
             {unresolvedSuppliers > 0 && <p className="text-xs text-[var(--warning)]">Decide on the {unresolvedSuppliers} new name{unresolvedSuppliers === 1 ? "" : "s"} above to continue.</p>}
             {unresolvedWorkers > 0 && <p className="text-xs text-[var(--warning)]">Confirm the {unresolvedWorkers} worker name{unresolvedWorkers === 1 ? "" : "s"} above to continue.</p>}
             <button type="button" className="btn btn-primary" onClick={start} disabled={busy || unresolvedSuppliers > 0 || unresolvedWorkers > 0 || ((summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 0)}>
-              Import {(summary.counts.created ?? 0) + (summary.counts.updated ?? 0)} {target.noun}{(summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 1 ? "" : "s"}
+              Import {(summary.counts.created ?? 0) + (summary.counts.updated ?? 0)} {(summary.counts.created ?? 0) + (summary.counts.updated ?? 0) === 1 ? target.noun : target.noun.endsWith("y") ? `${target.noun.slice(0, -1)}ies` : `${target.noun}s`}
             </button>
           </div>
         </div>

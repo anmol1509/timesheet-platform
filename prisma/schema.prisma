@@ -3414,6 +3414,22 @@ model AiCreditGrant {
   @@index([branchId, grantedAt])
 }
 
+/// A company admin's request for extra AI credits this month. The owner approves or declines it; approving adds the credits.
+model AiCreditRequest {
+  id              String    @id @default(cuid())
+  branchId        String
+  requestedById   String?
+  requestedByName String?
+  credits         Int
+  reason          String?
+  status          String    @default("PENDING") // PENDING, APPROVED, DECLINED
+  decidedAt       DateTime?
+  decidedNote     String?
+  createdAt       DateTime  @default(now())
+
+  @@index([branchId, status])
+}
+
 /// A customer of the platform, as the owner sees them: who they are, what they pay, where their data lives and how much AI they have.
 /// Lives in the owner's own database only. A customer on this platform (SHARED) is one company here; a DEDICATED customer has its own
 /// database and deployment, reached through the owner API with its own signing secret.

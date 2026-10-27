@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { addNoteAction, createInvoiceAction, creditsAction, recordPaymentAction, setStatusAction, syncCustomerAction, updateCustomerAction, voidInvoiceAction, type OwnerState } from "../actions";
+import { addNoteAction, createInvoiceAction, creditsAction, decideRequestAction, recordPaymentAction, setStatusAction, syncCustomerAction, updateCustomerAction, voidInvoiceAction, type OwnerState } from "../actions";
 
 const initial: OwnerState = { error: null };
 const L = "block text-xs text-muted";
@@ -42,6 +42,21 @@ export function CreditsForms({ id, allowance }: { id: string; allowance: number 
         <label className={`${L} max-w-[12rem]`}>Credits every month<input name="credits" inputMode="numeric" defaultValue={allowance} className={I} /></label>
       </Form>
     </div>
+  );
+}
+
+/** One waiting request for extra credits, with approve and decline. */
+export function RequestRow({ id, request }: { id: string; request: { id: string; credits: number; reason: string | null; by: string | null; at: string } }) {
+  return (
+    <li className="space-y-2 rounded-lg border border-default p-3">
+      <p className="text-sm text-primary"><span className="tabular font-semibold">+{request.credits.toLocaleString("en-US")}</span> credits{request.by ? <span className="text-muted"> asked by {request.by}</span> : null}</p>
+      {request.reason && <p className="text-xs text-secondary">{request.reason}</p>}
+      <p className="text-xs text-muted">{new Date(request.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dubai" })}</p>
+      <div className="flex flex-wrap gap-2">
+        <Form action={decideRequestAction} hidden={{ id, requestId: request.id, credits: String(request.credits), decision: "APPROVED" }} submit="Approve and add" busy="Adding…" className="inline" />
+        <Form action={decideRequestAction} hidden={{ id, requestId: request.id, credits: String(request.credits), decision: "DECLINED" }} submit="Decline" tone="danger" className="inline" />
+      </div>
+    </li>
   );
 }
 

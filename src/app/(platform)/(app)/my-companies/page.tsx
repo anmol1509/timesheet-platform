@@ -12,7 +12,9 @@ import { duplicateGroups } from "@/lib/people";
 import { PARTY_ROLE_LABEL } from "@/lib/documentTypes";
 import { DuplicatePeople, type DupPerson } from "./duplicate-people";
 import { buildChecklist, resolveDocTypes, type ChecklistItem } from "@/lib/documentTypes";
-import { Plus } from "lucide-react";
+import { Download, Plus, Upload } from "lucide-react";
+import { ExportLink } from "@/components/ExportLink";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CompanyTable, type CompanyRow, type DocSummary } from "./company-table";
 import { OWNER_ROLE, ownershipSummary } from "@/lib/ownership";
@@ -116,12 +118,22 @@ export default async function MyCompaniesPage() {
         meta={<CountPill>{rows.length}</CountPill>}
         description="The companies you own: their documents, owners and sponsors, logo and bank details. Third-party suppliers stay under Business Partners."
         actions={
-          canMyCompanies(subject, "create") ? (
-            <Button href="/my-companies/new" size="sm">
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Add company
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            {rows.length > 0 && (
+              <ExportLink className="btn btn-secondary btn-sm" href="/api/my-companies/export" title="An Excel file of your companies, owners and sponsors. The same layout can be imported back.">
+                <Download className="h-3.5 w-3.5" aria-hidden /> Export
+              </ExportLink>
+            )}
+            {canMyCompanies(subject, "create") && (
+              <Link href="/import/new/companies" className="btn btn-secondary btn-sm"><Upload className="h-3.5 w-3.5" aria-hidden /> Import</Link>
+            )}
+            {canMyCompanies(subject, "create") && (
+              <Button href="/my-companies/new" size="sm">
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Add company
+              </Button>
+            )}
+          </div>
         }
       />
       {rows.length > 0 && (

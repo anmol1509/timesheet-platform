@@ -97,6 +97,7 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
                       <div className="w-40">
                         <div className="h-1.5 overflow-hidden rounded-full bg-surface-sunken"><div className={cn("h-full rounded-full", stats.ai.level === "out" ? "bg-[var(--error)]" : stats.ai.level === "warn" ? "bg-[var(--warning)]" : "bg-[var(--brand-primary)]")} style={{ width: `${Math.max(stats.ai.pct, stats.ai.pct > 0 ? 3 : 0)}%` }} /></div>
                         <span className="tabular mt-1 block text-xs text-muted">{Math.round(stats.ai.remaining).toLocaleString("en-US")} of {Math.round(stats.ai.total).toLocaleString("en-US")} left</span>
+                        {stats.requests && stats.requests.length > 0 && <span className="mt-1 inline-block rounded-full bg-[var(--warning-soft)] px-2 py-0.5 text-xs font-medium text-[var(--warning)]">{stats.requests.length} credit {stats.requests.length === 1 ? "request" : "requests"} waiting</span>}
                       </div>
                     ) : <span className="text-muted">{c.aiMonthlyCredits.toLocaleString("en-US")} a month</span>}
                   </td>

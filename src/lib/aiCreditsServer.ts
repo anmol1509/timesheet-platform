@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notifyUsers } from "@/lib/notifications/notify";
+import { sendEmail } from "@/lib/notifications/email";
 import { resolveSuperAdminBranchId } from "@/lib/auth";
 import { creditStatus, creditsFor, monthKey, monthRange, OUT_OF_CREDITS, warningDue, type CreditStatus } from "@/lib/aiCredits";
 
@@ -81,4 +82,50 @@ export async function setBranchAllowance(branchId: string, credits: number): Pro
 export async function grantBranchCredits(branchId: string, credits: number, note: string | null, grantedById: string | null): Promise<void> {
   await prisma.aiCreditGrant.create({ data: { branchId, credits, note, grantedById } });
   await resetWarning(branchId);
+}
+
+/** Where a request for more credits is sent. */
+const REQUEST_INBOX = process.env.AI_REQUEST_EMAIL || "sales@manpowersync.com";
+
+export const MAX_REQUEST_CREDITS = 1_000_000;
+
+/** A company admin asks for extra credits this month. Saved here, and the owner is told by email. */
+export async function createCreditRequest(input: { branchId: string; userId: string; userName: string; credits: number; reason: string | null }): Promise<{ id: string }> {
+  const branch = await prisma.branch.findUnique({ where: { id: input.branchId }, select: { name: true, code: true } });
+  const row = await prisma.aiCreditRequest.create({ data: { branchId: input.branchId, requestedById: input.userId, requestedByName: input.userName, credits: input.credits, reason: input.reason } });
+  const company = branch ? `${branch.name} (${branch.code})` : "A company";
+  const n = input.credits.toLocaleString("en-US");
+  await sendEmail(
+    REQUEST_INBOX,
+    `AI credits request: ${company} wants ${n} more`,
+    `${input.userName} at ${company} asked for ${n} extra AI credits this month.${input.reason ? `\n\nReason: ${input.reason}` : ""}\n\nApprove or decline it from the customer's page in the owner dashboard.`,
+  ).catch(() => undefined);
+  return { id: row.id };
+}
+
+/** Waiting requests for the given companies (all companies here when none are given), oldest first. */
+export async function pendingCreditRequests(branchIds?: string[]) {
+  const rows = await prisma.aiCreditRequest.findMany({ where: { status: "PENDING", ...(branchIds ? { branchId: { in: branchIds } } : {}) }, orderBy: { createdAt: "asc" }, take: 50 });
+  return rows.map((r) => ({ id: r.id, credits: r.credits, reason: r.reason, by: r.requestedByName, at: r.createdAt.toISOString() }));
+}
+
+/** The owner's answer. Approving adds the credits for this month; either way the company's admins are told. */
+export async function decideCreditRequest(requestId: string, decision: "APPROVED" | "DECLINED", note: string | null, decidedById: string | null): Promise<{ ok: true } | { error: string }> {
+  const req = await prisma.aiCreditRequest.findUnique({ where: { id: requestId } });
+  if (!req) return { error: "That request wasn't found." };
+  if (req.status !== "PENDING") return { error: `That request was already ${req.status.toLowerCase()}.` };
+  // Claimed first, so a double click can't add the credits twice.
+  const claimed = await prisma.aiCreditRequest.updateMany({ where: { id: requestId, status: "PENDING" }, data: { status: decision, decidedAt: new Date(), decidedNote: note } });
+  if (claimed.count === 0) return { error: "That request was just answered." };
+  if (decision === "APPROVED") await grantBranchCredits(req.branchId, req.credits, req.reason ? `Requested: ${req.reason}`.slice(0, 200) : "Requested", decidedById);
+  const admins = await prisma.user.findMany({ where: { isActive: true, role: "BRANCH_ADMIN", branchId: req.branchId }, select: { id: true } });
+  const n = req.credits.toLocaleString("en-US");
+  await notifyUsers({
+    userIds: admins.map((a) => a.id),
+    kind: "AI_CREDITS",
+    title: decision === "APPROVED" ? `${n} extra AI credits were added` : `Your request for ${n} AI credits was declined`,
+    body: decision === "APPROVED" ? "They are available now and count for this month only." : note || "You can send a new request from the AI credits page.",
+    href: "/settings/ai?tab=requests",
+  });
+  return { ok: true };
 }

@@ -17,6 +17,36 @@ const SUPPLIERS: FieldDef[] = [
   { key: "trn", label: "TRN", aliases: ["trn", "tax registration number", "vat number", "vat no", "tax id", "vat trn"] },
 ];
 
+const COMPANIES: FieldDef[] = [
+  { key: "name", label: "Company name", required: true, aliases: ["company", "company name", "own company", "entity", "entity name", "name", "legal entity"] },
+  { key: "code", label: "Company code", aliases: ["code", "company code", "entity code", "short name", "short code"] },
+  { key: "fullName", label: "Full legal name (letterhead)", aliases: ["full name", "legal name", "full legal name", "registered name", "trade name", "name on licence", "name on license"] },
+  { key: "parent", label: "Part of (parent company)", aliases: ["parent", "parent company", "part of", "group", "holding company", "under", "subsidiary of"], hint: "Only for a subsidiary. Leave blank for a main company." },
+  { key: "trn", label: "TRN", aliases: ["trn", "tax registration number", "vat number", "vat no", "tax id", "vat trn"] },
+  { key: "activeFrom", label: "Active from", lenientDate: true, aliases: ["active from", "established", "established on", "incorporated", "date of incorporation", "start date", "operating since"] },
+  { key: "tradeLicenseNumber", label: "Trade licence number", aliases: ["trade license", "trade licence", "trade license number", "licence no", "license no", "tl no", "tl number", "licence number", "license number"] },
+  { key: "tradeLicenseExpiry", label: "Trade licence expiry", aliases: ["trade license expiry", "trade licence expiry", "licence expiry", "license expiry", "tl expiry", "tl expiry date", "licence expiry date"] },
+  { key: "mohrePermitNumber", label: "MOHRE permit number", aliases: ["mohre", "mohre permit", "mohre permit number", "mohre no", "establishment number", "establishment no", "mol number", "labour establishment", "labor establishment"] },
+  { key: "country", label: "Country", aliases: ["country", "registered country"] },
+  { key: "emirate", label: "Emirate", aliases: ["emirate", "city", "state", "emirate / city"] },
+  { key: "location", label: "Address", aliases: ["address", "office address", "registered address", "location", "office"] },
+  { key: "poBox", label: "P.O. Box", aliases: ["po box", "p.o. box", "p o box", "pobox", "post box"] },
+  { key: "phone", label: "Phone", aliases: ["phone", "telephone", "tel", "office phone", "office number", "landline"] },
+  { key: "contactEmail", label: "Email", aliases: ["email", "e-mail", "email address", "company email", "contact email"] },
+  { key: "contactPerson", label: "Contact person", aliases: ["contact person", "contact", "contact name", "representative", "poc", "point of contact"] },
+  { key: "contactPhone", label: "Contact phone", aliases: ["contact phone", "contact mobile", "contact number", "mobile", "mobile number"] },
+  { key: "signatoryName", label: "Authorised signatory", aliases: ["signatory", "signatory name", "authorised signatory", "authorized signatory", "signed by", "manager name"], hint: "Who signs letters on this company's letterhead" },
+  { key: "signatoryTitle", label: "Signatory title", aliases: ["signatory title", "signatory designation", "designation", "title", "position"] },
+  { key: "owner1", label: "Owner 1", aliases: ["owner 1", "owner1", "owner", "owner name", "shareholder", "shareholder 1", "partner 1"] },
+  { key: "owner1Percent", label: "Owner 1 share (%)", aliases: ["owner 1 share", "owner 1 %", "owner 1 percent", "owner1 share", "share 1", "share", "ownership", "ownership %", "shareholding"] },
+  { key: "owner2", label: "Owner 2", aliases: ["owner 2", "owner2", "shareholder 2", "partner 2"] },
+  { key: "owner2Percent", label: "Owner 2 share (%)", aliases: ["owner 2 share", "owner 2 %", "owner 2 percent", "owner2 share", "share 2"] },
+  { key: "owner3", label: "Owner 3", aliases: ["owner 3", "owner3", "shareholder 3", "partner 3"] },
+  { key: "owner3Percent", label: "Owner 3 share (%)", aliases: ["owner 3 share", "owner 3 %", "owner 3 percent", "owner3 share", "share 3"] },
+  { key: "sponsor1", label: "Sponsor 1", aliases: ["sponsor", "sponsor 1", "sponsor1", "sponsor name", "local sponsor", "visa sponsor"] },
+  { key: "sponsor2", label: "Sponsor 2", aliases: ["sponsor 2", "sponsor2"] },
+];
+
 const CLIENTS: FieldDef[] = [
   { key: "name", label: "Company name", required: true, aliases: ["client", "client name", "customer", "customer name", "company", "company name", "name"] },
   { key: "code", label: "Client code", aliases: ["code", "client code", "customer code", "client id", "customer id"] },
@@ -118,6 +148,7 @@ const TIMESHEETS: FieldDef[] = [
 
 export const TARGETS: Record<ImportKind, { label: string; noun: string; fields: FieldDef[] }> = {
   SUPPLIERS: { label: "Suppliers", noun: "supplier", fields: SUPPLIERS },
+  COMPANIES: { label: "My Companies", noun: "company", fields: COMPANIES },
   CLIENTS: { label: "Clients", noun: "client", fields: CLIENTS },
   WORKERS: { label: "Workers", noun: "worker", fields: WORKERS },
   TIMESHEETS: { label: "Timesheets", noun: "timesheet row", fields: TIMESHEETS },

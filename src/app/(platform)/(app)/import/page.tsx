@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FileStack, Briefcase, Building2, Bus, CalendarClock, HardHat, Home, Truck, ShieldCheck, Zap, Database, ArrowRight, UploadCloud, type LucideIcon } from "lucide-react";
+import { FileStack, Briefcase, Building2, Landmark, Bus, CalendarClock, HardHat, Home, Truck, ShieldCheck, Zap, Database, ArrowRight, UploadCloud, type LucideIcon } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { Badge, type BadgeColor } from "@/components/Badge";
 import { prisma } from "@/lib/db";
@@ -29,6 +29,7 @@ const TILES: { kind: ImportKind | "DOCUMENTS" | "C3"; icon: LucideIcon; tone: To
   { kind: "TIMESHEETS", icon: CalendarClock, tone: "error", label: "Timesheets", short: "Monthly workbook. Reads suppliers, clients, workers and hours.", href: "/import/new/timesheets" },
   { kind: "WORKERS", icon: HardHat, tone: "warning", label: "Workers", short: "Codes, trades, passport, Emirates ID, visa and labour card dates.", href: "/import/new/workers" },
   { kind: "SUPPLIERS", icon: Truck, tone: "success", label: "Suppliers", short: "Manpower suppliers and sub-suppliers, with contacts.", href: "/import/new/suppliers" },
+  { kind: "COMPANIES", icon: Landmark, tone: "brand", label: "My Companies", short: "Your own companies: licence, permit, owners with shares and sponsors.", href: "/import/new/companies" },
   { kind: "CLIENTS", icon: Building2, tone: "info", label: "Clients", short: "Companies you supply workers to, with billing details.", href: "/import/new/clients" },
   { kind: "CAMPS", icon: Home, tone: "success", label: "Camps", short: "Camps with their rooms and beds. Beds are optional.", href: "/import/new/camps" },
   { kind: "VEHICLES", icon: Bus, tone: "info", label: "Vehicles", short: "Vehicles and drivers, with Mulkiya and insurance dates.", href: "/import/new/vehicles" },
@@ -62,14 +63,15 @@ export default async function ImportHubPage({ searchParams }: { searchParams: Pr
 
   const sample = branchId ? await sampleState(branchId) : { loaded: false };
   const bw = branchId ? { branchId } : {};
-  const [nWorkers, nSuppliers, nClients, nCamps, nVehicles] = await Promise.all([
+  const [nWorkers, nSuppliers, nClients, nCamps, nVehicles, nOwn] = await Promise.all([
     prisma.employee.count({ where: bw }),
     prisma.supplier.count({ where: bw }),
     prisma.client.count({ where: bw }),
     prisma.camp.count({ where: bw }),
     prisma.vehicle.count({ where: bw }),
+    prisma.supplier.count({ where: { ...bw, isOwnCompany: true } }),
   ]);
-  const held: Partial<Record<ImportKind, number>> = { WORKERS: nWorkers, SUPPLIERS: nSuppliers, CLIENTS: nClients, CAMPS: nCamps, VEHICLES: nVehicles };
+  const held: Partial<Record<ImportKind, number>> = { WORKERS: nWorkers, SUPPLIERS: nSuppliers, COMPANIES: nOwn, CLIENTS: nClients, CAMPS: nCamps, VEHICLES: nVehicles };
   const lastOf = (kind: string) => batches.find((b) => b.kind === kind && (b.status === "DONE" || b.status === "UNDONE"));
 
   return (

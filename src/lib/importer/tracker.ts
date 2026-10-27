@@ -6,7 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 // import code itself doesn't have to remember to record anything.
 
 /** Models the importers write to. A write to one of these is recorded. */
-export const TRACKED_MODELS = new Set(["Supplier", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance", "Camp", "Room", "Bed", "Vehicle", "CampCheckIn", "AccommodationHistory", "EmployeeAssignmentHistory", "Project", "Document", "Attachment"]);
+export const TRACKED_MODELS = new Set(["Supplier", "SupplierParty", "SupplierPartyLink", "Client", "Employee", "TimesheetEntry", "Upload", "UploadMonth", "Attendance", "Camp", "Room", "Bed", "Vehicle", "CampCheckIn", "AccommodationHistory", "EmployeeAssignmentHistory", "Project", "Document", "Attachment"]);
 
 const delegate = (model: string) => (prisma as unknown as Record<string, any>)[model[0].toLowerCase() + model.slice(1)]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
