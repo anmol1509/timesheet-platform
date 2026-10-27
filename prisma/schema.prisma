@@ -3534,3 +3534,17 @@ model CustomerEvent {
 
   @@index([customerId, createdAt])
 }
+
+/// How many emails this deployment sent in a month ("2026-10"), so the owner can see volume against the email plan.
+model EmailStat {
+  month  String @id
+  sent   Int    @default(0)
+  failed Int    @default(0)
+}
+
+/// Owner-only settings (the rates behind the Costs & capacity page). Only the owner's own deployment uses it.
+model OwnerSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

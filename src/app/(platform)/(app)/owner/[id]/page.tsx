@@ -117,9 +117,16 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             <div className="flex items-center justify-between"><h2 className="text-sm font-semibold text-primary">Usage</h2>{stats && <Badge color={stats.suspended ? "amber" : "green"}>{stats.suspended ? "Locked" : "Open"}</Badge>}</div>
             {stats ? (
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                {([["Employees", num(stats.employees)], ["Active employees", num(stats.activeEmployees)], ["Users", num(stats.users)], ["Payroll runs", num(stats.payrollRuns)], ["Last payroll", stats.lastPayrollMonth ?? "None yet"], ["Last active", stats.lastActiveAt ? day(stats.lastActiveAt) : "Never"], ["App version", stats.version ?? "Unknown"], ["Read", c.lastSyncAt ? day(c.lastSyncAt) : "Never"]] as const).map(([k, v]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="tabular font-medium text-primary">{v}</dd></div>)}
+                {([["Employees", num(stats.employees)], ["Active employees", num(stats.activeEmployees)], ["Users", num(stats.users)], ["Payroll runs", num(stats.payrollRuns)], ["Last payroll", stats.lastPayrollMonth ?? "None yet"], ["Last active", stats.lastActiveAt ? day(stats.lastActiveAt) : "Never"], ["App version", stats.version ?? "Unknown"], ["Read", c.lastSyncAt ? day(c.lastSyncAt) : "Never"], ...(stats.clients !== undefined ? [["Clients", num(stats.clients)]] : []), ...(stats.projects !== undefined ? [["Projects", num(stats.projects)]] : []), ...(stats.imports ? [["Imports", `${num(stats.imports.done)} done${stats.imports.waiting ? `, ${num(stats.imports.waiting)} not applied` : ""}${stats.imports.failed ? `, ${num(stats.imports.failed)} failed` : ""}`]] : []), ...(stats.auditRows !== undefined ? [["Audit log rows", num(stats.auditRows)]] : []), ...(stats.migrations ? [["Database changes", `${num(stats.migrations.applied)} applied${stats.migrations.unfinished ? `, ${stats.migrations.unfinished} unfinished` : ""}`]] : [])] as [string, string][]).map(([k, v]) => <div key={k}><dt className="text-xs text-muted">{k}</dt><dd className="tabular font-medium text-primary">{v}</dd></div>)}
               </dl>
             ) : <p className="text-sm text-muted">Not read yet.</p>}
+            {stats?.db && (
+              <div className="rounded-lg border border-default bg-surface-sunken p-3 text-xs text-secondary">
+                <p className="mb-1 font-medium text-primary">Database storage: {bytesLabel(stats.db.bytes)}</p>
+                <ul className="space-y-0.5">{stats.db.tables.map((t) => <li key={t.name} className="flex justify-between gap-3"><span className="truncate">{t.name}</span><span className="tabular">{bytesLabel(t.bytes)}</span></li>)}</ul>
+                <p className="mt-1 text-muted">The whole database, read from their Supabase. Largest tables listed.</p>
+              </div>
+            )}
             <SyncForm id={c.id} />
           </section>
 
@@ -154,4 +161,10 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       </div>
     </div>
   );
+}
+
+function bytesLabel(b: number): string {
+  if (b >= 1024 ** 3) return `${(b / 1024 ** 3).toFixed(2)} GB`;
+  if (b >= 1024 ** 2) return `${(b / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(b / 1024))} KB`;
 }

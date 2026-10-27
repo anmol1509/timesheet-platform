@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Gauge, Plus } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { Badge } from "@/components/Badge";
 import { ActiveLink } from "@/components/ActiveLink";
@@ -56,7 +56,7 @@ export default async function OwnerPage({ searchParams }: { searchParams: Promis
           { label: "Overdue", value: aed(overdue), warn: overdue > 0 },
           { label: "AI used this month", value: `${Math.round(aiUsed).toLocaleString("en-US")} credits · ${aed(aiValue)}` },
         ]}
-        actions={<Link href="/owner/new" className="btn inline-flex items-center gap-1.5 bg-white text-[#43359f] hover:bg-white/90"><Plus className="h-4 w-4" aria-hidden />Add customer</Link>}
+        actions={<div className="flex gap-2"><Link href="/owner/costs" className="btn inline-flex items-center gap-1.5 bg-white/15 text-white hover:bg-white/25"><Gauge className="h-4 w-4" aria-hidden />Costs &amp; capacity</Link><Link href="/owner/new" className="btn inline-flex items-center gap-1.5 bg-white text-[#43359f] hover:bg-white/90"><Plus className="h-4 w-4" aria-hidden />Add customer</Link></div>}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
