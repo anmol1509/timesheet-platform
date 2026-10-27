@@ -4,11 +4,11 @@ import { ArrowLeft, Building2, ExternalLink, Printer } from "lucide-react";
 import { HeroHeader } from "@/components/HeroHeader";
 import { Badge } from "@/components/Badge";
 import { prisma } from "@/lib/db";
-import { requireOwner } from "@/lib/ownerServer";
+import { requireOwner, syncCustomer } from "@/lib/ownerServer";
 import { CUSTOMER_STATUS_LABEL, creditsValueAed, monthlyEquivalent, outstanding, receivable } from "@/lib/owner";
 import type { CustomerStats } from "@/lib/ownerStats";
 import { cn } from "@/lib/cn";
-import { CreditsForms, EditForm, InvoiceForm, NoteForm, PaymentForm, StatusForm, SyncForm, VoidForm } from "./panels";
+import { CreditsForms, EditForm, RequestRow, InvoiceForm, NoteForm, PaymentForm, StatusForm, SyncForm, VoidForm } from "./panels";
 
 export const metadata = { title: "Customer" };
 
@@ -27,7 +27,9 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
     include: { invoices: { orderBy: { issueDate: "desc" }, include: { payments: { select: { amount: true } } } }, payments: { orderBy: { receivedOn: "desc" }, take: 20, include: { invoice: { select: { number: true } } } }, events: { orderBy: { createdAt: "desc" }, take: 40 } },
   });
   if (!c) notFound();
-  const stats = (c.lastStats ?? null) as CustomerStats | null;
+  // Opening a customer reads how they are getting on, so credit requests that arrived since the last visit show up.
+  const fresh = await syncCustomer(c).catch(() => null);
+  const stats = ((fresh && "stats" in fresh ? fresh.stats : c.lastStats) ?? null) as CustomerStats | null;
   const rate = Number(c.aiRateAed);
   const invoices = c.invoices.map((i) => ({ ...i, total: Number(i.total), paid: i.payments.reduce((s, p) => s + Number(p.amount), 0) }));
   const recv = receivable(invoices.map((i) => ({ status: i.status, total: i.total, dueDate: i.dueDate, paid: i.paid })));
@@ -133,6 +135,12 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
               <p>Used this month {num(used)} credits = {aed(creditsValueAed(used, rate))}</p>
               <p>At {rate} AED a credit</p>
             </div>
+            {stats?.requests && stats.requests.length > 0 && (
+              <div className="space-y-2 rounded-xl bg-[var(--warning-soft)] p-3">
+                <h3 className="text-sm font-semibold text-primary">Waiting for you ({stats.requests.length})</h3>
+                <ul className="space-y-2">{stats.requests.map((r) => <RequestRow key={r.id} id={c.id} request={r} />)}</ul>
+              </div>
+            )}
             <CreditsForms id={c.id} allowance={c.aiMonthlyCredits} />
           </section>
 

@@ -4,7 +4,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { isOwnerUser } from "@/lib/owner";
 import { customerSecret, signRequest } from "@/lib/ownerApi";
 import { collectStats, type CustomerStats } from "@/lib/ownerStats";
-import { grantBranchCredits, setBranchAllowance } from "@/lib/aiCreditsServer";
+import { decideCreditRequest, grantBranchCredits, setBranchAllowance } from "@/lib/aiCreditsServer";
 
 /** Everything under /owner is for the owner only, and only on the owner's own deployment (OWNER_CONSOLE=1). Anyone else gets "not found". */
 export async function requireOwner() {
@@ -74,6 +74,22 @@ export async function applyCredits(c: CustomerRow, change: { setMonthly?: number
     if (!r.ok) return { error: r.error };
   }
   if (change.setMonthly !== undefined) await prisma.customer.update({ where: { id: c.id }, data: { aiMonthlyCredits: change.setMonthly } });
+  await syncCustomer(c).catch(() => undefined);
+  return { ok: true };
+}
+
+/** Approves or declines a company's request for extra credits, wherever their data lives. */
+export async function applyDecision(c: CustomerRow, requestId: string, decision: "APPROVED" | "DECLINED", note: string | null, byId: string | null): Promise<{ ok: true } | { error: string }> {
+  if (c.hosting === "SHARED") {
+    if (!c.branchId) return { error: "This customer isn't linked to a company here." };
+    const mine = await prisma.aiCreditRequest.findFirst({ where: { id: requestId, branchId: c.branchId }, select: { id: true } });
+    if (!mine) return { error: "That request isn't for this customer." };
+    const r = await decideCreditRequest(requestId, decision, note, byId);
+    if ("error" in r) return r;
+  } else {
+    const r = await callCustomer(c, "POST", "/api/owner/credits", { code: c.code, decide: { id: requestId, decision, note: note ?? undefined } });
+    if (!r.ok) return { error: r.error };
+  }
   await syncCustomer(c).catch(() => undefined);
   return { ok: true };
 }

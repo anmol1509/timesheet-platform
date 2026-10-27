@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { grantBranchCredits, setBranchAllowance } from "@/lib/aiCreditsServer";
+import { aiBranchOf, createCreditRequest, grantBranchCredits, MAX_REQUEST_CREDITS, setBranchAllowance } from "@/lib/aiCreditsServer";
 
 type State = { error: string | null; ok?: boolean };
 
@@ -39,6 +39,21 @@ export async function grantAiCreditsAction(_prev: State, formData: FormData): Pr
   if (!(await prisma.branch.findUnique({ where: { id: branchId }, select: { id: true } }))) return { error: "That company wasn't found." };
   await grantBranchCredits(branchId, credits, note, user.id);
   await logAudit({ entityType: "BRANCH", entityId: branchId, action: "UPDATE", after: { aiCreditsGranted: credits, note }, userId: user.id, userName: user.name, branchId });
+  revalidatePath("/settings/ai");
+  return { error: null, ok: true };
+}
+
+/** A company admin asks for extra credits this month. The owner approves it and the credits are added. */
+export async function requestCreditsAction(_prev: State, formData: FormData): Promise<State> {
+  const user = await requireAdmin();
+  const branchId = await aiBranchOf(user);
+  if (!branchId) return { error: "Pick a company first." };
+  const credits = wholeNumber(formData.get("credits"));
+  const reason = String(formData.get("reason") || "").trim().slice(0, 300) || null;
+  if (!Number.isFinite(credits) || credits < 1 || credits > MAX_REQUEST_CREDITS) return { error: `Enter a whole number of credits between 1 and ${MAX_REQUEST_CREDITS.toLocaleString("en-US")}.` };
+  const waiting = await prisma.aiCreditRequest.count({ where: { branchId, status: "PENDING" } });
+  if (waiting >= 3) return { error: "You already have requests waiting. They will be answered soon." };
+  await createCreditRequest({ branchId, userId: user.id, userName: user.name, credits, reason });
   revalidatePath("/settings/ai");
   return { error: null, ok: true };
 }

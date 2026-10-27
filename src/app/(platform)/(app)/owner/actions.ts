@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { addEvent, applyCredits, applySuspended, callCustomer, requireOwner, syncCustomer } from "@/lib/ownerServer";
+import { addEvent, applyCredits, applyDecision, applySuspended, callCustomer, requireOwner, syncCustomer } from "@/lib/ownerServer";
 import { CUSTOMER_STATUSES, invoiceAmounts, isValidCustomerCode, nextInvoiceNumber, outstanding } from "@/lib/owner";
 import { loadCompanySetup, provisionCompany } from "@/lib/provisionCompany";
 
@@ -142,6 +142,20 @@ export async function creditsAction(_prev: OwnerState, fd: FormData): Promise<Ow
     if ("error" in r) return { error: r.error };
     await addEvent(c.id, "CREDITS", `${credits.toLocaleString("en-US")} credits added for this month${note ? ` (${note})` : ""}.`, owner.name);
   }
+  refresh(c.id);
+  return { error: null, ok: true };
+}
+
+/** Approves or declines a customer's request for extra credits. */
+export async function decideRequestAction(_prev: OwnerState, fd: FormData): Promise<OwnerState> {
+  const owner = await requireOwner();
+  const c = await prisma.customer.findUnique({ where: { id: text(fd, "id") } });
+  if (!c) return { error: "Customer not found." };
+  const decision = text(fd, "decision") === "APPROVED" ? "APPROVED" : "DECLINED";
+  const credits = whole(fd, "credits");
+  const r = await applyDecision(c, text(fd, "requestId"), decision, text(fd, "note") || null, owner.id);
+  if ("error" in r) return { error: r.error };
+  await addEvent(c.id, "CREDITS", decision === "APPROVED" ? `Approved a request for ${Number.isFinite(credits) ? credits.toLocaleString("en-US") : ""} extra credits.` : "Declined a request for extra credits.", owner.name);
   refresh(c.id);
   return { error: null, ok: true };
 }

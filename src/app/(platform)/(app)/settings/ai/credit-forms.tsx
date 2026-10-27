@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { grantAiCreditsAction, setAiAllowanceAction } from "./actions";
+import { grantAiCreditsAction, requestCreditsAction, setAiAllowanceAction } from "./actions";
 
 type State = { error: string | null; ok?: boolean };
 const initial: State = { error: null };
@@ -44,5 +44,27 @@ export function CreditForms({ branchId, allowance }: { branchId: string; allowan
         </div>
       </form>
     </div>
+  );
+}
+
+/** The strip on the page for asking for extra credits this month. */
+export function RequestStrip() {
+  const [state, run, pending] = useActionState(requestCreditsAction, initial);
+  return (
+    <form action={run} className="flex flex-wrap items-end gap-3 rounded-2xl border border-[var(--warning-border)] bg-[var(--warning-soft)] p-4">
+      <div className="min-w-[14rem] flex-1">
+        <p className="text-sm font-semibold text-primary">Request more credits <span className="font-normal text-secondary">(approval required)</span></p>
+        <p className="text-xs text-secondary">Need more this month? Send a request to ManpowerSync. The credits are added once it is approved.</p>
+      </div>
+      <label className="block text-xs text-muted">Credits
+        <input name="credits" inputMode="numeric" placeholder="e.g. 1,000" className="input mt-1 h-9 w-32 text-sm" />
+      </label>
+      <label className="block min-w-[12rem] flex-1 text-xs text-muted">Reason (optional)
+        <input name="reason" maxLength={300} placeholder="e.g. Month-end payroll push, bulk document import" className="input mt-1 h-9 w-full text-sm" />
+      </label>
+      <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{pending ? "Sending…" : "Send request"}</button>
+      {state.error && <p role="alert" className="w-full text-xs text-[var(--error)]">{state.error}</p>}
+      {state.ok && !state.error && <p className="w-full text-xs text-[var(--success)]">Request sent. You will get a message when it is answered.</p>}
+    </form>
   );
 }
