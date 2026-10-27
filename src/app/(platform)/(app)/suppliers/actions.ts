@@ -1128,3 +1128,30 @@ export async function saveSupplierSignatoryAction(formData: FormData) {
   revalidatePath(`/suppliers/${ctx.supplier.id}`);
   return { error: null };
 }
+
+/**
+ * The few details a timesheet header prints (TRN, address, phone, email), set one by one from the company page's status
+ * panel, so a missing item is filled where it is reported. Only the fields sent are changed; nothing is cleared.
+ */
+export async function setCompanyHeaderFieldsAction(supplierId: string, fields: { trn?: string; location?: string; phone?: string; contactEmail?: string }): Promise<{ error: string | null; ok?: boolean }> {
+  await requireWrite("partners.suppliers");
+  const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
+  const existing = await prisma.supplier.findUnique({ where: { id: supplierId }, select: { id: true, branchId: true, isOwnCompany: true, trn: true, location: true, phone: true, contactEmail: true } });
+  if (!existing || isOutsideBranch(existing.branchId, branchId, isSuperAdmin)) return { error: "Company not found." };
+  if (existing.isOwnCompany && !canMyCompanies(subjectOf(user), "edit")) return { error: "Changing an own company's details needs My Companies access." };
+  const data: { trn?: string; location?: string; phone?: string; contactEmail?: string } = {};
+  const trn = (fields.trn ?? "").replace(/\s+/g, "");
+  if (trn) { if (!/^\d{15}$/.test(trn)) return { error: "A TRN has 15 digits." }; data.trn = trn; }
+  const email = (fields.contactEmail ?? "").trim();
+  if (email) { if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: "That email address doesn't look right." }; data.contactEmail = email; }
+  const phone = (fields.phone ?? "").trim().slice(0, 40);
+  if (phone) data.phone = phone;
+  const location = (fields.location ?? "").trim().slice(0, 200);
+  if (location) data.location = location;
+  if (Object.keys(data).length === 0) return { error: "Fill in at least one detail." };
+  await prisma.supplier.update({ where: { id: supplierId }, data });
+  await logAudit({ entityType: "SUPPLIER", entityId: supplierId, action: "UPDATE", before: { trn: existing.trn, location: existing.location, phone: existing.phone, contactEmail: existing.contactEmail }, after: { ...data, via: "company status panel" }, userId: user.id, userName: user.name, branchId: existing.branchId });
+  revalidatePath(`/suppliers/${supplierId}`);
+  revalidatePath("/my-companies");
+  return { error: null, ok: true };
+}
