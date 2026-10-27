@@ -27,20 +27,29 @@ export function AuthShell({
 }) {
   return (
     <div className="theme-force-light min-h-screen w-full bg-[linear-gradient(135deg,#eceaff_0%,#f6f5fd_45%,#e8eeff_100%)] p-0 lg:p-5">
-      <div className="mx-auto grid min-h-screen w-full max-w-[1760px] overflow-hidden bg-surface lg:min-h-[calc(100vh-2.5rem)] lg:grid-cols-[1.12fr_1fr] lg:rounded-[32px] lg:shadow-[0_30px_80px_rgb(60_45_160_/_0.18)]">
+      <div className="mx-auto grid min-h-screen w-full max-w-[1760px] overflow-hidden bg-surface lg:min-h-[calc(100vh-2.5rem)] lg:grid-cols-[1.25fr_1fr] lg:rounded-[32px] lg:shadow-[0_30px_80px_rgb(60_45_160_/_0.18)]">
         {/* Brand panel: the photo sits on the right and fades into a pale wash on the left so the text stays readable.
             Purely decorative and hidden on small screens; the form panel restates everything a screen reader needs. */}
         <div
           aria-hidden
-          className="relative hidden flex-col justify-between overflow-hidden p-12 lg:flex xl:p-16"
-          style={{
-            backgroundImage:
-              "linear-gradient(90deg, rgb(244 242 255 / 0.96) 0%, rgb(244 242 255 / 0.86) 38%, rgb(244 242 255 / 0.12) 72%, rgb(244 242 255 / 0) 100%), linear-gradient(0deg, rgb(244 242 255 / 0.55) 0%, rgb(244 242 255 / 0) 30%), url(/brand-assets/login-hero.webp)",
-            backgroundSize: "cover",
-            backgroundPosition: "right bottom",
-          }}
+          className="relative hidden flex-col justify-between overflow-hidden bg-[linear-gradient(180deg,#9fb0f6_0%,#c5c3f8_38%,#efeafc_100%)] p-12 lg:flex xl:p-16"
         >
-          <div>
+          {/* The photo sits along the bottom and fades into the sky colour above it; a pale wash on the left keeps the text readable. */}
+          <div
+            className="absolute inset-x-0 bottom-0 h-[82%] bg-no-repeat"
+            style={{
+              backgroundImage: "url(/brand-assets/login-hero.webp)",
+              backgroundSize: "cover",
+              backgroundPosition: "72% bottom",
+              maskImage: "linear-gradient(to bottom, transparent 0%, #000 22%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 22%)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: "linear-gradient(90deg, rgb(244 242 255 / 0.93) 0%, rgb(244 242 255 / 0.7) 34%, rgb(244 242 255 / 0) 62%), linear-gradient(0deg, rgb(244 242 255 / 0.5) 0%, rgb(244 242 255 / 0) 22%)" }}
+          />
+          <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element -- data URI, no loader needed */}
             <img src={BRAND_LOGO} alt="" height={52} width={Math.round(52 * BRAND_LOGO_ASPECT)} className="h-[52px] w-auto" />
             <p className="mt-14 max-w-sm text-[13px] leading-6 font-medium tracking-[0.22em] text-[#3a3858] uppercase">
@@ -70,7 +79,7 @@ export function AuthShell({
               ))}
             </ul>
           </div>
-          <div className="mt-10">
+          <div className="relative mt-10">
             <span className="block h-0.5 w-14 rounded bg-[#5645d4]" />
             <p className="mt-4 max-w-[16rem] text-[15px] leading-6 text-[#14132b]">Trusted by leading companies across the UAE and beyond.</p>
           </div>
