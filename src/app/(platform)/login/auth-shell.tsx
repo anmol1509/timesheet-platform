@@ -80,18 +80,18 @@ export function AuthShell({
               width={Math.round(72 * BRAND_LOGO_ASPECT)}
               className="mb-8 h-[72px] w-auto"
             />
-            <h1 className="text-2xl font-semibold tracking-tight text-primary">{title}</h1>
-            {subtitle && <p className="mt-2 text-sm text-muted">{subtitle}</p>}
+            <h1 className="text-[28px] leading-9 font-semibold tracking-tight text-primary">{title}</h1>
+            {subtitle && <p className="mt-2 text-[15px] leading-6 text-secondary">{subtitle}</p>}
 
             <div className="mt-8">{children}</div>
 
-            {footer && <p className="mt-6 text-center text-xs text-muted">{footer}</p>}
+            {footer && <p className="mt-6 text-center text-[14px] text-muted">{footer}</p>}
           </div>
         </div>
         {/* The dark panel's own logo + copyright are hidden below lg along
             with the rest of that panel, so this panel needs its own footer
             for narrow screens — the lg+ view already has one on the left. */}
-        <p className="pb-6 text-center text-xs text-muted lg:hidden">
+        <p className="pb-6 text-center text-[13px] text-muted lg:hidden">
           © {new Date().getFullYear()} ManpowerSync. All rights reserved.
         </p>
       </div>

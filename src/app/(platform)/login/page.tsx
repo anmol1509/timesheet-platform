@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <AuthShell
       title="Sign in"
-      subtitle="Need workforce or site access? Contact your site administrator."
+      subtitle="Welcome back. Enter your details to continue."
       footer={
         <a href="https://manpowersync.com" className="hover:underline">
           ← Back to manpowersync.com

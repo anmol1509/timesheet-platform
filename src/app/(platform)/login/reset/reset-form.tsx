@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { resetPasswordAction } from "../reset-actions";
 
 const FIELD =
-  "block w-full rounded-full border border-strong bg-surface px-5 py-3 pr-12 text-sm text-primary transition outline-none placeholder:text-subtle hover:border-[#b9bfc9] focus:border-[var(--brand-primary)] focus:shadow-[0_0_0_3px_rgb(86_69_212_/_0.12)] disabled:cursor-not-allowed disabled:bg-surface-sunken";
+  "block w-full rounded-full border border-strong bg-surface px-5 py-3 pr-12 text-[15px] text-primary transition outline-none placeholder:text-subtle hover:border-[#b9bfc9] focus:border-[var(--brand-primary)] focus:shadow-[0_0_0_3px_rgb(86_69_212_/_0.12)] disabled:cursor-not-allowed disabled:bg-surface-sunken";
 
 export function ResetForm({ token }: { token: string }) {
   const [state, action, pending] = useActionState(resetPasswordAction, { error: null } as { error: string | null });
@@ -16,7 +16,7 @@ export function ResetForm({ token }: { token: string }) {
       <input type="hidden" name="token" value={token} />
       {(["password", "confirm"] as const).map((name, i) => (
         <div key={name}>
-          <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-secondary">
+          <label htmlFor={name} className="mb-1.5 block text-[14px] font-medium text-secondary">
             {i === 0 ? "New password" : "Confirm new password"}
           </label>
           <div className="relative">
@@ -49,7 +49,7 @@ export function ResetForm({ token }: { token: string }) {
       ))}
 
       {state.error && (
-        <p role="alert" className="flex items-center gap-2 rounded-2xl bg-[var(--error-soft)] px-4 py-2.5 text-sm text-[var(--error)]">
+        <p role="alert" className="flex items-center gap-2 rounded-2xl bg-[var(--error-soft)] px-4 py-2.5 text-[14px] text-[var(--error)]">
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
           <span>
             {state.error}
@@ -68,7 +68,7 @@ export function ResetForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-navy)] font-semibold text-white shadow-sm transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-70"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-navy)] text-[15px] font-semibold text-white shadow-sm transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-70"
       >
         {pending ? (
           <>
