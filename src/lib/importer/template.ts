@@ -12,6 +12,10 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
     { name: "Al Noor Manpower Supply", code: "SANMS", parent: "", fullName: "AL NOOR MANPOWER SUPPLY L.L.C", contactPerson: "Rashid Al Mansoori", contactPhone: "+971 50 123 4501", contactEmail: "rashid@alnoor.example", tradeLicenseNumber: "TL-123456", category: "Manpower supply", trn: "100123456700003" },
     { name: "Al Noor Site Services", code: "", parent: "Al Noor Manpower Supply", fullName: "", contactPerson: "", contactPhone: "", contactEmail: "", tradeLicenseNumber: "", category: "", trn: "" },
   ],
+  COMPANIES: [
+    { name: "Gulf Skills", code: "SGSC", fullName: "GULF SKILLS GENERAL CONTRACTING L.L.C", parent: "", trn: "100123456700003", activeFrom: "01/02/2018", tradeLicenseNumber: "TL-445566", tradeLicenseExpiry: "31/01/2027", mohrePermitNumber: "1234567", country: "United Arab Emirates", emirate: "Dubai", location: "Office 1204, Business Bay Tower", poBox: "12345", phone: "+971 4 555 0100", contactEmail: "info@gulfskills.example", contactPerson: "Omar Hassan", contactPhone: "+971 50 123 4567", signatoryName: "Omar Hassan", signatoryTitle: "General Manager", owner1: "Khalid Al Mazrouei", owner1Percent: "60", owner2: "Omar Hassan", owner2Percent: "40", owner3: "", owner3Percent: "", sponsor1: "Khalid Al Mazrouei", sponsor2: "" },
+    { name: "Gulf Skills Site Services", code: "", fullName: "", parent: "Gulf Skills", trn: "", activeFrom: "", tradeLicenseNumber: "", tradeLicenseExpiry: "", mohrePermitNumber: "", country: "", emirate: "Abu Dhabi", location: "", poBox: "", phone: "", contactEmail: "", contactPerson: "", contactPhone: "", signatoryName: "", signatoryTitle: "", owner1: "Khalid Al Mazrouei", owner1Percent: "100", owner2: "", owner2Percent: "", owner3: "", owner3Percent: "", sponsor1: "", sponsor2: "" },
+  ],
   CAMPS: [
     { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "101", roomType: "4 Bed Room", bunks: "2", singles: "", nationality: "India", employee: "Ravi Kumar", employeeCode: "", bed: "" },
     { camp: "Al Quoz Camp 1", campType: "Own", owner: "", room: "101", roomType: "", bunks: "", singles: "", nationality: "", employee: "Ali Khan", employeeCode: "", bed: "Bunk 02 Upper" },
@@ -39,7 +43,7 @@ const EXAMPLES: Record<Exclude<ImportKind, "TIMESHEETS">, Record<string, string>
 const HELP: Record<string, string> = {
   name: "As it should appear everywhere. Capitals and extra spaces don't matter; the same name won't be added twice.",
   code: "Optional. Leave blank and we'll make one from the name (e.g. Gulf Skills Contracting → SGSC).",
-  parent: "Sub-suppliers only: the name of the main supplier. Leave blank for a main supplier.",
+  parent: "Sub-suppliers only: the name of the main supplier. Leave blank for a main supplier. For My Companies: the company this one is part of; leave blank for a main company.",
   employeeIdNo: "Your worker ID or code, e.g. TP103. Unique. Used to match the worker next time.",
   supplier: "The company that supplies the worker. Added automatically if it's new.",
   sponsor: "The visa-holding company, if different. Added automatically if it's new.",
@@ -57,6 +61,18 @@ const HELP: Record<string, string> = {
   transport: "Itemised only. Optional.",
   otherAllowance: "Itemised only. Optional.",
   c3Id: "The worker's C3 salary-card ID. Used in the payroll C3 file. Optional.",
+  fullName: "The formal name printed on letters and timesheets, e.g. GULF SKILLS GENERAL CONTRACTING L.L.C. Optional.",
+  trn: "The 15-digit tax registration number. Spaces and dashes are removed.",
+  activeFrom: "When the company started operating. Optional.",
+  tradeLicenseExpiry: "The licence's expiry date. Used for the renewal reminders.",
+  mohrePermitNumber: "The MOHRE establishment or permit number. Optional.",
+  country: "The country the company is registered in, e.g. United Arab Emirates.",
+  emirate: "Dubai, Abu Dhabi, Sharjah and so on.",
+  location: "Office address as it should print on letters.",
+  signatoryName: "Who signs letters issued on this company's letterhead.",
+  owner1: "An owner's name. Owners with the same name across companies are the same person. Up to three here; add more on the company's page.",
+  owner1Percent: "The owner's share as a whole number, 1 to 100. Shares must add up to 100. Leave all shares blank to split evenly.",
+  sponsor1: "The sponsor's name (the person or company that sponsors the visas). Up to two here.",
   trade: "e.g. Carpenter, Steel Fixer. Matched to the trades you already have.",
   camp: "The camp's name. Repeat it on every room row; the camp is created once. A row with only a camp name makes an empty camp.",
   campType: "Own, Supplier or Client: who provides the camp. Blank = Own.",
@@ -102,6 +118,7 @@ export async function buildTemplate(kind: ImportKind, monthLabel = new Date()): 
     if (i < 0) return;
     for (let r = 2; r <= 1000; r++) main.getCell(r, i + 1).dataValidation = { type: "list", allowBlank: true, formulae: [`"${values.join(",")}"`] };
   };
+  if (kind === "COMPANIES") { const i = fields.findIndex((f) => f.key === "country"); if (i >= 0) { const lists = wb.addWorksheet("Lists", { state: "hidden" }); COUNTRIES.forEach((c, n) => { lists.getCell(n + 1, 1).value = c.name; }); for (let r = 2; r <= 1000; r++) main.getCell(r, i + 1).dataValidation = { type: "list", allowBlank: true, formulae: [`Lists!$A$1:$A$${COUNTRIES.length}`], showErrorMessage: false }; } }
   if (kind === "CAMPS") listCol("campType", ["Own", "Supplier", "Client"]);
   if (kind === "MOBILISATION") listCol("stage", ["Under mobilisation", "On site", "Active", "Bench"]);
   if (kind === "VEHICLES") listCol("status", ["Active", "Maintenance", "Inactive"]);

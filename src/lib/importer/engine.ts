@@ -7,6 +7,7 @@ import { TARGETS } from "./targets";
 import { trackedClient, undoChanges } from "./tracker";
 import type { ApplyCtx, ApplyResult, Db, ImportKind } from "./types";
 import { applySuppliers } from "./apply/suppliers";
+import { applyCompanies } from "./apply/companies";
 import { suggestWorkerMatches } from "./workerAi";
 import { suggestPartyMatches } from "./partyAi";
 import { applyMobilisation } from "./apply/mobilisation";
@@ -54,6 +55,7 @@ async function apply(kind: ImportKind, ctx: ApplyCtx, batch: { fileData: Uint8Ar
   const wb = await loadWorkbook(buffer, batch.filename);
   const rows = extractRows(wb, mapping, fields);
   if (kind === "SUPPLIERS") return applySuppliers(ctx, rows);
+  if (kind === "COMPANIES") return applyCompanies(ctx, rows);
   if (kind === "CLIENTS") return applyClients(ctx, rows);
   if (kind === "MOBILISATION") return applyMobilisation(ctx, rows, mapping.workerDecisions ?? {}, mapping.supplierDecisions ?? {}, mapping.mobilisationOptions ?? {});
   if (kind === "CAMPS") return applyCamps(ctx, rows, mapping.workerDecisions ?? {}, mapping.campOptions ?? {});
