@@ -120,6 +120,7 @@ export function WorkmenCompWorkers({ supplierId, attachmentId, filename, canEdit
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-primary">{n.name}</span>
                     <Badge color="red">Not on this company&rsquo;s roster</Badge>
+                    {n.elsewhere.length > 0 && <span className="text-xs text-[var(--warning)]">Same name at {n.elsewhere.map((o) => `${o.company ?? "another company"} (${o.employeeIdNo})`).join(", ")}: check it is a different person before adding.</span>}
                     {canEdit && <button type="button" disabled={busy !== null} onClick={() => addWorker(n.name)} className="text-xs font-medium text-[var(--brand-primary)] hover:underline">{busy === `add:${n.name}` ? "Adding…" : "Add as employee"}</button>}
                     {n.suggestions.length === 0 && <span className="text-xs text-muted">Adds them to this company with just the name and links the certificate. Fill in their details later on Employees (shown as Incomplete). Or pick the right worker below if the name is spelled differently.</span>}
                   </div>

@@ -676,7 +676,7 @@ export async function linkWorkmenCompCoverageAction(supplierId: string, names: s
 }
 
 export type WcWorker = { employeeId: string; employeeIdNo: string; name: string; active: boolean; linkedTo: "this" | "other" | null; otherFile: string | null };
-export type WcNameRow = { name: string; candidates: WcWorker[]; /** Workers with a close but not identical name, offered when nobody matches exactly. */ suggestions: WcWorker[] };
+export type WcNameRow = { name: string; candidates: WcWorker[]; /** Workers with a close but not identical name, offered when nobody matches exactly. */ suggestions: WcWorker[]; /** Workers of other companies with the same name, so the same person is not added twice by mistake. */ elsewhere: { name: string; employeeIdNo: string; company: string | null }[] };
 export type WcWorkers = {
   /** The names on the certificate; null when they were not kept (a certificate from before) and can be read again. */
   names: WcNameRow[] | null;
@@ -704,10 +704,16 @@ export async function getWorkmenCompWorkersAction(supplierId: string, attachment
   });
   const roster = workers.map(worker);
   const rawNames = Array.isArray(stored?.insuredNames) ? cleanNames(stored.insuredNames) : null;
+  // People of other companies in the same branch, looked at only for names nobody on this roster matches.
+  const rosterIds = new Set(workers.map((w) => w.id));
+  const others = rawNames && rawNames.length > 0 && cert.branchId
+    ? (await prisma.employee.findMany({ where: { branchId: cert.branchId, active: true }, select: { id: true, name: true, employeeIdNo: true, supplier: { select: { name: true } } } })).filter((o) => !rosterIds.has(o.id))
+    : [];
   const names: WcNameRow[] | null = rawNames && rawNames.length > 0
     ? rawNames.map((name) => {
         const candidates = roster.filter((w) => sameName(name, w.name));
-        return { name, candidates, suggestions: candidates.length === 0 ? nearPeople(name, roster) : [] };
+        const elsewhere = candidates.length === 0 ? others.filter((o) => sameName(name, o.name)).slice(0, 3).map((o) => ({ name: o.name, employeeIdNo: o.employeeIdNo, company: o.supplier?.name ?? null })) : [];
+        return { name, candidates, suggestions: candidates.length === 0 ? nearPeople(name, roster) : [], elsewhere };
       })
     : null;
   const matched = new Set((names ?? []).flatMap((n) => n.candidates.map((c) => c.employeeId)));
