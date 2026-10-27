@@ -21,15 +21,17 @@ type Reach = { ok: true; data: unknown } | { ok: false; error: string };
 
 /** One signed call to a customer's own deployment. */
 export async function callCustomer(c: { code: string; appUrl: string | null }, method: "GET" | "POST", path: string, payload?: unknown): Promise<Reach> {
+  // Each customer's own key (OWNER_SECRET_<CODE>), or one worked out from a master secret.
   const master = process.env.OWNER_MASTER_SECRET;
-  if (!master) return { ok: false, error: "OWNER_MASTER_SECRET isn't set on this deployment, so customers with their own deployment can't be reached." };
+  const secret = process.env[`OWNER_SECRET_${c.code.toUpperCase()}`] || (master ? customerSecret(master, c.code) : null);
+  if (!secret) return { ok: false, error: `The key for ${c.code} (OWNER_SECRET_${c.code.toUpperCase()}) isn't set on this deployment, so their own app can't be reached.` };
   if (!c.appUrl) return { ok: false, error: "This customer has no deployment address yet." };
   const body = payload === undefined ? "" : JSON.stringify(payload);
   const ts = Date.now();
   try {
     const res = await fetch(`${c.appUrl.replace(/\/$/, "")}${path}`, {
       method,
-      headers: { "content-type": "application/json", "x-owner-timestamp": String(ts), "x-owner-signature": signRequest(customerSecret(master, c.code), ts, method, path, body) },
+      headers: { "content-type": "application/json", "x-owner-timestamp": String(ts), "x-owner-signature": signRequest(secret, ts, method, path, body) },
       body: method === "GET" ? undefined : body,
       signal: AbortSignal.timeout(20_000),
       cache: "no-store",
