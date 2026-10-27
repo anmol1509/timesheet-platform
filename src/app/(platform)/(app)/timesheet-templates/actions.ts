@@ -35,7 +35,7 @@ export async function customiseTemplateAction(formData: FormData) {
   assertContactsValid(formData);
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) redirect("/timesheet-templates?error=" + encodeURIComponent("Pick a branch first."));
+  if (!branchId) redirect("/timesheet-templates?error=" + encodeURIComponent("Pick a company first."));
   const baseKey = str(formData.get("baseKey"));
   if (!isTemplateKey(baseKey)) redirect("/timesheet-templates");
   const created = await prisma.timesheetTemplate.create({

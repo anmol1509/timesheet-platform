@@ -100,7 +100,7 @@ export default async function LetterTemplatesPage({ searchParams }: { searchPara
       )}
 
       {!branchId ? (
-        <p className="text-sm text-muted">Pick a branch from the switcher to manage its templates.</p>
+        <p className="text-sm text-muted">Sign in as a company administrator to manage its templates.</p>
       ) : templates.length === 0 ? (
         <section className="card p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">

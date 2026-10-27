@@ -44,16 +44,15 @@ export default async function DataResetPage() {
         <div>
           <p className="font-medium">This runs against the live database. There is no separate staging environment.</p>
           <p className="mt-0.5 text-[var(--error)]">
-            Anything deleted here is gone for good. Admins only{branchId ? ", and only for your own branch" : ""}. Each module requires typing its name to confirm.
+            Anything deleted here is gone for good. Admins only{branchId ? ", and only for your own company" : ""}. Each module requires typing its name to confirm.
           </p>
         </div>
       </div>
 
       {!branchId && (
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
-          You&apos;re viewing <strong>All branches</strong>. Resetting a module now will run across every branch,
-          not just one. Each one will ask you to confirm that before it runs. Pick a specific branch from the
-          switcher (top right) to scope a reset to just that branch instead.
+          You&apos;re viewing every company together. Resetting a module now will run across every company,
+          not just one. Each one will ask you to confirm that before it runs. Sign in as a company administrator to scope a reset to just that company instead.
         </p>
       )}
 

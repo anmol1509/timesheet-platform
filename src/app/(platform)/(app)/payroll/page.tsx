@@ -108,7 +108,7 @@ export default async function PayrollPage() {
         }
       />
 
-      {!branchId && <p className="text-sm text-muted">Pick a branch from the switcher to see or create payroll runs.</p>}
+      {!branchId && <p className="text-sm text-muted">Sign in as a company administrator to see or create payroll runs.</p>}
 
       {branchId && setupLeft > 0 && (
         <SetupBanner remaining={setupLeft} summary={setupSummary}>

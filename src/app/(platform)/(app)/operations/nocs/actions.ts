@@ -113,7 +113,7 @@ export async function issueNocAction(formData: FormData): Promise<{ id?: string;
   const displayFields = String(formData.get("displayFields") || "");
   const mobilizeDate = dateOrNull(formData.get("mobilizeDate"));
   const remarks = stringOrNull(formData.get("remarks"));
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   if (!demandRequestId || !templateId) return { error: "Choose a template." };
   if (asked.length === 0) return { error: "Tick at least one worker." };
 

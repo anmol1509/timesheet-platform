@@ -16,7 +16,7 @@ export type RecurringInput = { id?: string; name: string; frequency: string; sta
 export async function saveRecurringAction(input: RecurringInput): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const name = input.name.trim();
   if (!name) return { error: "Say what it is for, e.g. Office rent." };
   if (!["MONTHLY", "QUARTERLY", "YEARLY"].includes(input.frequency)) return { error: "Choose how often." };
@@ -48,7 +48,7 @@ export async function saveRecurringAction(input: RecurringInput): Promise<Result
 export async function deleteRecurringAction(id: string): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const cur = await prisma.recurringEntry.findUnique({ where: { id } });
   if (!cur || cur.branchId !== branchId) return { error: "Not found." };
   await prisma.recurringEntry.delete({ where: { id } });

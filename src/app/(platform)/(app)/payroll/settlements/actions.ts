@@ -49,7 +49,7 @@ export async function createSettlementAction(_prev: State, formData: FormData): 
   await requireWrite("payroll.payroll");
   await requirePermission("payroll.payroll", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const employeeId = String(formData.get("employeeId") || "");
   const exitDate = dateOf(formData.get("exitDate"));
   const reason = String(formData.get("reason") || "").trim().slice(0, 80) || null;

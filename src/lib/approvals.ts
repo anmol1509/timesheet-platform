@@ -30,6 +30,8 @@ export const kindLabel = (k: ApprovalKind) => APPROVAL_KINDS.find((x) => x.kind 
 
 /** The kinds this person may decide. Super admins and branch admins may decide everything in scope. */
 export function allowedKinds(subject: PermissionSubject): ApprovalKind[] {
+  // The platform owner doesn't approve a customer's work: each company decides its own, and nothing waits on the owner.
+  if (subject.role === "SUPER_ADMIN") return [];
   return APPROVAL_KINDS.filter((k) => can(subject, k.module, k.action)).map((k) => k.kind);
 }
 

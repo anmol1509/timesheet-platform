@@ -51,7 +51,7 @@ export function approvalBlockers(f: BlockerFacts): string[] {
   if (f.status !== "DRAFT") return [`The run is already ${f.status.toLowerCase()}, so there is nothing to approve.`];
   if (f.lineCount === 0) out.push("The run has no workers in it. Check each worker has a pay structure on their Trade & pay tab, then press More › Recalculate.");
   if (!f.submitted) out.push("It has not been sent for approval. Open the run and press Submit for approval; approvers only see submitted runs in Approvals.");
-  if (f.threshold !== null && f.total > f.threshold) out.push(`The run total (AED ${f.total.toLocaleString("en-AE", { minimumFractionDigits: 2 })}) is over the branch's approval limit (AED ${f.threshold.toLocaleString("en-AE")}), so someone other than the person who created it has to approve it.`);
+  if (f.threshold !== null && f.total > f.threshold) out.push(`The run total (AED ${f.total.toLocaleString("en-AE", { minimumFractionDigits: 2 })}) is over the company's approval limit (AED ${f.threshold.toLocaleString("en-AE")}), so someone other than the person who created it has to approve it.`);
   return out;
 }
 

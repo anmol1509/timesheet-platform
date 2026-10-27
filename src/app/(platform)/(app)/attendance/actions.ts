@@ -84,8 +84,8 @@ export async function markAttendanceAction(
       saved: 0,
       requested: 0,
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before marking attendance."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before marking attendance."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 
@@ -97,7 +97,7 @@ export async function markAttendanceAction(
   }
   // Both are written onto every row saved below, so they must be this branch's.
   if (!(await refsBelongToBranch(branchId, { project: projectId, supplier: supplierId }))) {
-    return { saved: 0, requested: 0, error: "That project or supplier isn't part of this branch." };
+    return { saved: 0, requested: 0, error: "That project or supplier isn't part of this company." };
   }
 
   let rows: AttendanceRow[];

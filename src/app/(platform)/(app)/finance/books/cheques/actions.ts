@@ -16,7 +16,7 @@ const refresh = () => revalidatePath("/finance/books", "layout");
 
 async function branchOf() {
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." as const };
+  if (!branchId) return { error: "Pick a company first." as const };
   const b = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
   if (!b?.booksOpeningDate) return { error: "Set up the books first." as const };
   return { user, branchId, opening: utcDay(b.booksOpeningDate), lockedUntil: b.booksLockedUntil ? utcDay(b.booksLockedUntil) : null };

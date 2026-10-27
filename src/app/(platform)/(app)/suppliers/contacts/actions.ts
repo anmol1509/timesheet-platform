@@ -15,7 +15,7 @@ export async function addContactAction(_prev: State, formData: FormData): Promis
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.messages", "edit");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch from the switcher first." };
+  if (!branchId) return { error: "Sign in as a company administrator first." };
   const department = str(formData.get("department"));
   const personName = str(formData.get("personName"));
   const email = str(formData.get("email"));

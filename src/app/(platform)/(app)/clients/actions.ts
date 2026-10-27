@@ -60,8 +60,8 @@ export async function createClientAction(
   if (!branchId) {
     return {
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding a client."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before adding a client."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 
@@ -306,7 +306,7 @@ export async function addClientDocumentAction(formData: FormData): Promise<{ err
   const file = formData.get("file");
   if (!clientId || !(file instanceof File) || file.size === 0) return { error: "Choose a file first." };
   if (file.size > MAX_UPLOAD_BYTES) return { error: `"${file.name}" is too large.` };
-  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return { error: "That client isn't in this branch." };
+  if (!(await assertClientInBranch(clientId, branchId, isSuperAdmin))) return { error: "That client isn't in this company." };
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const created = await prisma.clientDocument.create({
@@ -376,7 +376,7 @@ export async function bulkImportClientsAction(rows: Record<string, string>[]) {
       continue;
     }
     if (!branchId) {
-      results.push({ row: i + 2, status: "error", message: "No branch selected to import into." });
+      results.push({ row: i + 2, status: "error", message: "No company selected to import into." });
       continue;
     }
     try {

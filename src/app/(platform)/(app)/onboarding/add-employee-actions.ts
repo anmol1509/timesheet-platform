@@ -56,7 +56,7 @@ export async function addCandidateAsEmployeeAction(_prev: AddEmployeeState, form
   const missing = missingEssentials({ name, passportNumber, supplierId });
   if (missing.length > 0) return { error: `Add the ${missing.join(", ")} first. Everything else can be filled in later.` };
   if (!(await refsBelongToBranch(candidate.branchId, { supplier: [supplierId, sponsorSupplierId], project: projectId }))) {
-    return { error: "That company, sponsor or project isn't in this branch." };
+    return { error: "That company, sponsor or project isn't in this company." };
   }
 
   // A hire joins, and is sponsored by, one of the branch's own companies: never the agency or another supplier.

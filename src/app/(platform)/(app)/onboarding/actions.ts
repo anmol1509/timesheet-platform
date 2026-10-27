@@ -56,7 +56,7 @@ function profileFields(formData: FormData) {
  * sponsor one of the branch's own companies. Returns the problem, or null.
  */
 async function linkProblem(branchId: string, agencyId: string | null, sponsorSupplierId: string | null, keep?: { agencyId: string | null; sponsorSupplierId: string | null }): Promise<string | null> {
-  if (!(await refsBelongToBranch(branchId, { supplier: [agencyId, sponsorSupplierId] }))) return "That agency or company isn't in this branch.";
+  if (!(await refsBelongToBranch(branchId, { supplier: [agencyId, sponsorSupplierId] }))) return "That agency or company isn't in this company.";
   if (agencyId && agencyId !== keep?.agencyId) {
     const a = await prisma.supplier.findUnique({ where: { id: agencyId }, select: { isRecruitmentAgency: true, status: true } });
     if (!a?.isRecruitmentAgency) return "That isn't a recruitment agency. Add it under Onboarding → Agencies first.";
@@ -100,7 +100,7 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
   const fields = profileFields(formData);
   if (!fields.candidateName) return { error: "Candidate name is required." };
   if (!branchId) {
-    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a candidate." : "Your account has no branch assigned. Contact an admin." };
+    return { error: isSuperAdmin ? "Sign in as a company administrator before adding a candidate." : "Your account has no company assigned. Contact an admin." };
   }
   const dupError = await findDuplicate(branchId, fields.passportNumber, fields.emiratesId);
   if (dupError) return { error: dupError };
@@ -240,7 +240,7 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
   const name = stringOrNull(formData.get("name"));
   if (!name) return { error: "Name is required." };
   if (!branchId) {
-    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding an agency." : "Your account has no branch assigned. Contact an admin." };
+    return { error: isSuperAdmin ? "Sign in as a company administrator before adding an agency." : "Your account has no company assigned. Contact an admin." };
   }
 
   const existing = await findSupplierByName(name, branchId);
@@ -340,7 +340,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
   await requireWrite("onboarding.tracker");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const results: ImportRowResult[] = [];
-  if (!branchId) return rows.map((_, i) => ({ row: i + 2, status: "error", message: "No branch selected to import into." }));
+  if (!branchId) return rows.map((_, i) => ({ row: i + 2, status: "error", message: "No company selected to import into." }));
 
   const agencyNames = [...new Set(rows.map((r) => (r["Agency"] || "").trim()).filter(Boolean))];
   const agencies = agencyNames.length

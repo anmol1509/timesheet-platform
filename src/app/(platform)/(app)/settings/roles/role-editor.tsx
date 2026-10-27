@@ -65,7 +65,7 @@ export function RoleEditor({
               name="branchId"
               defaultValue=""
               searchable={false}
-              options={[{ value: "", label: "Every branch" }, ...branches.map((b) => ({ value: b.id, label: `${b.code} · ${b.name}` }))]}
+              options={[{ value: "", label: "Every company" }, ...branches.map((b) => ({ value: b.id, label: `${b.code} · ${b.name}` }))]}
             />
           </label>
         )}

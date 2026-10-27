@@ -118,8 +118,8 @@ function ResetAllDialog({
               />
               <span>
                 {allBranches
-                  ? "I understand this deletes every module's data across every branch, because no specific branch is selected."
-                  : "I understand this deletes every module's data for this branch."}
+                  ? "I understand this deletes every module's data across every company, because no specific company is selected."
+                  : "I understand this deletes every module's data for this company."}
               </span>
             </label>
             <label className="block">

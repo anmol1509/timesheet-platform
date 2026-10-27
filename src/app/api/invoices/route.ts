@@ -35,8 +35,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: isSuperAdmin
-          ? "Pick a branch from the switcher before issuing an invoice."
-          : "Your account has no branch assigned. Contact an admin.",
+          ? "Sign in as a company administrator before issuing an invoice."
+          : "Your account has no company assigned. Contact an admin.",
       },
       { status: 400 }
     );

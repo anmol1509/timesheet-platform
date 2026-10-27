@@ -10,7 +10,7 @@ import { COVER_FIELDS } from "@/lib/quotationCover";
 export async function createQuotationTemplateAction(name: string, intro: string, closing: string): Promise<{ id?: string; error?: string }> {
   await requireWrite("sales.quotations");
   const { branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const n = name.trim();
   const i = intro.trim();
   if (!n) return { error: "Give the template a name." };

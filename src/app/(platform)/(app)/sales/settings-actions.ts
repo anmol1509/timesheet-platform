@@ -10,7 +10,7 @@ import { parseQuoteSettings, type QuoteSettings } from "@/lib/quotationMath";
 export async function saveQuoteSettingsAction(input: QuoteSettings): Promise<{ error?: string }> {
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const clean = parseQuoteSettings(input);
   if (clean.daysPerMonth < 1 || clean.daysPerMonth > 31) return { error: "Working days a month must be between 1 and 31." };
   if (clean.hoursPerDay <= 0 || clean.hoursPerDay > 24) return { error: "Hours a day must be between 1 and 24." };

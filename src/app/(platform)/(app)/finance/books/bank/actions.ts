@@ -29,7 +29,7 @@ async function entryAmount(entryId: string, accountId: string) {
 export async function importStatementAction(accountId: string, lines: StatementLine[]): Promise<Result & { added?: number; duplicates?: number }> {
   await requireWrite("finance.books");
   const { branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   if (!(await ownAccount(branchId, accountId))) return { error: "Choose the bank account this statement is for." };
   const clean = lines.filter((l) => /^\d{4}-\d{2}-\d{2}$/.test(l.date) && Number.isFinite(l.amount) && l.amount !== 0).slice(0, 5000);
   if (clean.length === 0) return { error: "No transactions to add." };
@@ -58,7 +58,7 @@ async function applyMatch(statementId: string, entryId: string, who: string, bra
 export async function matchStatementLineAction(statementId: string, entryId: string): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const r = await applyMatch(statementId, entryId, user.name, branchId);
   refresh();
   return r;
@@ -68,7 +68,7 @@ export async function matchStatementLineAction(statementId: string, entryId: str
 export async function acceptMatchesAction(pairs: { statementId: string; entryId: string }[]): Promise<Result & { matched?: number }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   let matched = 0;
   for (const p of pairs.slice(0, 500)) if (!(await applyMatch(p.statementId, p.entryId, user.name, branchId)).error) matched++;
   refresh();
@@ -89,7 +89,7 @@ export async function unmatchStatementLineAction(statementId: string): Promise<R
 export async function addEntryForStatementLineAction(statementId: string, counterAccountId: string, narration: string): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const s = await prisma.bankStatementLine.findUnique({ where: { id: statementId } });
   if (!s || s.branchId !== branchId) return { error: "Statement line not found." };
   if (s.entryId) return { error: "That line is already matched." };

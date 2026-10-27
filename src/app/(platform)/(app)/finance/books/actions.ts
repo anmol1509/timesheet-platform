@@ -34,7 +34,7 @@ async function branchState(branchId: string) {
 export async function setupBooksAction(openingDate: string): Promise<Result> {
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const date = parseDay(openingDate);
   if (!date) return { error: "Choose the date your books start from." };
   const existing = await branchState(branchId);
@@ -55,7 +55,7 @@ const SOURCE_TAG: Record<Exclude<MoneyInSource, "OTHER">, string> = { OTHER_INCO
 export async function receiveMoneyAction(input: { source: MoneyInSource; from: string; date: string; amount: number; narration: string; moneyAccountId: string; creditAccountId?: string; foreign?: { amount: number; rate: number } }): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const date = parseDay(input.date);
   if (!date) return { error: "Choose a date." };
   const fx = (await foreignAccounts(branchId))[input.moneyAccountId];
@@ -103,7 +103,7 @@ export type VoucherInput = { date: string; narration: string; lines: { accountId
 export async function createVoucherAction(input: VoucherInput): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const date = parseDay(input.date);
   if (!date) return { error: "Choose a date." };
   const narration = input.narration.trim();
@@ -137,7 +137,7 @@ export async function createVoucherAction(input: VoucherInput): Promise<Result &
 export async function voidVoucherAction(id: string, reason: string): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const why = reason.trim();
   if (!why) return { error: "Say why it is being voided." };
   const entry = await prisma.journalEntry.findUnique({ where: { id }, select: { branchId: true, sourceKey: true, status: true, date: true, number: true, type: true } });
@@ -156,7 +156,7 @@ export async function voidVoucherAction(id: string, reason: string): Promise<Res
 export async function saveAccountAction(input: { id?: string; code: string; name: string; type: string }): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const code = input.code.trim();
   const name = input.name.trim();
   if (!/^[0-9A-Za-z.\-]{1,12}$/.test(code)) return { error: "Give the account a short code (letters, numbers, - or .)." };
@@ -186,7 +186,7 @@ export async function saveAccountAction(input: { id?: string; code: string; name
 export async function setAccountActiveAction(id: string, active: boolean): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const acc = await prisma.account.findUnique({ where: { id } });
   if (!acc || acc.branchId !== branchId) return { error: "Account not found." };
   if (!active) {
@@ -204,7 +204,7 @@ export async function setAccountActiveAction(id: string, active: boolean): Promi
 export async function lockBooksAction(date: string | null): Promise<Result> {
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const d = date ? parseDay(date) : null;
   if (date && !d) return { error: "That date isn't valid." };
   const before = await branchState(branchId);
@@ -222,7 +222,7 @@ export async function lockBooksAction(date: string | null): Promise<Result> {
 export async function saveOpeningBalancesAction(rows: { accountId: string; debit: number; credit: number }[]): Promise<Result & { plug?: number }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const state = await branchState(branchId);
   if (!state?.booksOpeningDate) return { error: "Set up the books first." };
   const date = utcDay(state.booksOpeningDate);
@@ -271,7 +271,7 @@ export async function saveOpeningBalancesAction(rows: { accountId: string; debit
 export async function refreshPostingsAction(): Promise<Result & { created?: number; updated?: number; removed?: number; unmapped?: string[] }> {
   await requireWrite("finance.books");
   const { branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const r = await syncPostings(branchId);
   refresh();
   return { created: r.created, updated: r.updated, removed: r.removed, unmapped: r.unmapped };
@@ -287,7 +287,7 @@ export type ImportRow = { accountId?: string; newCode?: string; newName?: string
 export async function importOpeningBalancesAction(rows: ImportRow[]): Promise<Result & { plug?: number; created?: number }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const state = await branchState(branchId);
   if (!state?.booksOpeningDate) return { error: "Set up the books first." };
   const existing = await prisma.account.findMany({ where: { branchId }, select: { id: true, code: true } });
@@ -333,7 +333,7 @@ export async function importOpeningBalancesAction(rows: ImportRow[]): Promise<Re
 export async function saveProvisionSettingsAction(input: { gratuity: boolean; leave: boolean; tickets: boolean; policy: Policy }): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const policy = readPolicy(input.policy);
   const g = policy.gratuity;
   if (g.daysFirst > 0 && g.capMonths <= 0) return { error: "Set a gratuity cap of at least 1 month, or 0 days to turn it off." };
@@ -351,7 +351,7 @@ export type RuleInput = { id?: string; name: string; method: string; amount: num
 export async function saveProvisionRuleAction(input: RuleInput): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const name = input.name.trim();
   if (!name) return { error: "Give the provision a name." };
   if (name.length > 60) return { error: "Keep the name under 60 characters." };
@@ -380,7 +380,7 @@ export async function saveProvisionRuleAction(input: RuleInput): Promise<Result>
 export async function saveDefaultBanksAction(input: { receipt: string; payment: string }): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const check = async (id: string) => (id ? !!(await prisma.bank.findFirst({ where: { id, branchId }, select: { id: true } })) : true);
   if (!(await check(input.receipt)) || !(await check(input.payment))) return { error: "Choose one of the company's banks." };
   const data = { defaultReceiptBankId: input.receipt || null, defaultPaymentBankId: input.payment || null };
@@ -395,7 +395,7 @@ export async function saveDefaultBanksAction(input: { receipt: string; payment: 
 export async function createTransferAction(input: { from: string; to: string; date: string; amount: number; narration: string; fromForeign?: number; toForeign?: number }): Promise<Result & { number?: string }> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const date = parseDay(input.date);
   if (!date) return { error: "Choose a date." };
   const amount = r2(Number(input.amount) || 0);
@@ -433,7 +433,7 @@ export async function createTransferAction(input: { from: string; to: string; da
 export async function closeYearAction(year: number, lockIt: boolean): Promise<Result & { profit?: number }> {
   await requireAdmin();
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const y = Math.round(Number(year));
   if (!Number.isFinite(y) || y < 2000 || y > 2100) return { error: "Choose a year." };
   const state = await branchState(branchId);
@@ -469,7 +469,7 @@ export async function closeYearAction(year: number, lockIt: boolean): Promise<Re
 export async function saveExchangeRateAction(input: { currency: string; date: string; rate: number }): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const currency = input.currency.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency) || currency === "AED") return { error: "Choose a foreign currency." };
   const date = parseDay(input.date);
@@ -486,7 +486,7 @@ export async function saveExchangeRateAction(input: { currency: string; date: st
 export async function deleteExchangeRateAction(id: string): Promise<Result> {
   await requireWrite("finance.books");
   const { branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const cur = await prisma.exchangeRate.findUnique({ where: { id }, select: { branchId: true } });
   if (!cur || cur.branchId !== branchId) return { error: "Not found." };
   await prisma.exchangeRate.delete({ where: { id } });

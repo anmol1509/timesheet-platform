@@ -141,7 +141,7 @@ export async function saveEmployeeFieldAction(input: { id: string; field: string
   const { id, field } = input;
   if (!FIELDS.has(field)) return { error: "That field can't be edited here." };
   const before = await prisma.employee.findUnique({ where: { id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this company." };
 
   const raw = (input.value ?? "").trim();
   let value: string | Date | null = raw || null;
@@ -166,7 +166,7 @@ export async function saveEmployeeFieldAction(input: { id: string; field: string
 
   if (field === "projectId") {
     if (value) {
-      if (value !== before.projectId && !(await refsBelongToBranch(before.branchId, { supplier: [], project: value as string, vehicle: null }))) return { error: "That project isn't part of this branch." };
+      if (value !== before.projectId && !(await refsBelongToBranch(before.branchId, { supplier: [], project: value as string, vehicle: null }))) return { error: "That project isn't part of this company." };
       if (value !== before.projectId && before.supplierId) {
         const s = await prisma.supplier.findUnique({ where: { id: before.supplierId }, select: { approvalStatus: true } });
         if (s && s.approvalStatus !== "Approved") return { error: "This supplier isn't approved yet. Approve it before assigning its employees to a project." };
@@ -278,7 +278,7 @@ export async function applyScanAction(input: { id: string; fields: ExtractedDocu
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!can(subjectOf(user), "workforce", "edit")) return { error: "You don't have permission to edit employees." };
   const before = await prisma.employee.findUnique({ where: { id: input.id } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this company." };
 
   const result: ScanResult = { applied: [], conflicts: [] };
   const data: Record<string, unknown> = {};
@@ -331,7 +331,7 @@ export async function setEmployeeTradeAction(input: { id: string; trade: string 
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!can(subjectOf(user), "workforce", "edit")) return { error: "You don't have permission to edit employees." };
   const before = await prisma.employee.findUnique({ where: { id: input.id }, select: { id: true, branchId: true, category: true, trade: true, position: true, skills: { select: { skill: { select: { name: true } } } } } });
-  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this branch." };
+  if (!before || isOutsideBranch(before.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this company." };
   if (before.category === "STAFF") return { error: "Office staff have a position, not a trade." };
   const name = input.trade.trim();
   const known = before.skills.some((k) => k.skill.name.toLowerCase() === name.toLowerCase());

@@ -55,7 +55,7 @@ export default async function DevelopersPage() {
         ]}
       />
       {!branchId ? (
-        <p className="card p-5 text-sm text-muted">Pick a branch from the switcher (top right) to manage its API keys.</p>
+        <p className="card p-5 text-sm text-muted">Sign in as a company administrator to manage its API keys.</p>
       ) : (
         <DevelopersManager keys={rows} enabled={!!branch?.apiAccess} branchName={branch?.name ?? ""} baseUrl={`${base}/api/v1`} salesEmail={SITE.salesEmail}>
           <WebhooksManager

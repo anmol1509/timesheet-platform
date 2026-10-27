@@ -19,7 +19,7 @@ export default async function DocumentTypesPage() {
   const admin = await requireAdmin();
   const branchId = admin.role === "SUPER_ADMIN" ? await resolveSuperAdminBranchId() : admin.branchId;
   if (!branchId) {
-    return <p className="card max-w-md p-5 text-sm text-muted">Pick a branch from the switcher (top right) to manage its document types.</p>;
+    return <p className="card max-w-md p-5 text-sm text-muted">Sign in as a company administrator to manage its document types.</p>;
   }
   const rows = await prisma.documentType.findMany({ where: { branchId } });
   const changedKeys = new Set(rows.map((r) => `${r.appliesTo}|${r.key}`));

@@ -90,7 +90,7 @@ export function AddMemberWizard({
     : !/^\S+@\S+\.\S+$/.test(email.trim()) ? "Enter a valid email address."
     : digits.length < 7 ? "Add a phone number."
     : password.length < 8 ? "The temporary password needs at least 8 characters."
-    : isSuperAdmin && !branchId ? "Choose a branch."
+    : isSuperAdmin && !branchId ? "Choose a company."
     : null;
 
   function next() {
@@ -182,7 +182,7 @@ export function AddMemberWizard({
           </label>
           {isSuperAdmin && (
             <label className="block">
-              <span className={label}>Branch{reqStar}</span>
+              <span className={label}>Company{reqStar}</span>
               <Select
                 value={branchId}
                 onChange={setBranchId}
@@ -204,7 +204,7 @@ export function AddMemberWizard({
                 const active = id === selected;
                 const meta =
                   c.kind === "admin"
-                    ? { t: "Admin", d: "Full access to this branch, including settings and team.", icon: ShieldCheck }
+                    ? { t: "Admin", d: "Full access to this company, including settings and team.", icon: ShieldCheck }
                     : c.kind === "none"
                       ? { t: "Standard staff", d: "All operational modules, nothing administrative.", icon: UserRound }
                       : c.kind === "existing"
@@ -257,7 +257,7 @@ export function AddMemberWizard({
           )}
           {choice.kind === "admin" && (
             <p className="rounded-lg bg-surface-subtle px-3 py-2 text-sm text-secondary">
-              Admins can open every module and manage settings, team and roles for {isSuperAdmin ? "the chosen branch" : "your branch"}.
+              Admins can open every module and manage settings, team and roles for {isSuperAdmin ? "the chosen company" : "your company"}.
             </p>
           )}
         </div>

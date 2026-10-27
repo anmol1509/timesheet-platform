@@ -14,7 +14,7 @@ const day = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T00:00
 
 async function guard(date: Date) {
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." as const };
+  if (!branchId) return { error: "Pick a company first." as const };
   const b = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksOpeningDate: true, booksLockedUntil: true } });
   if (!b?.booksOpeningDate) return { error: "Set up the books first." as const };
   if (isLocked(date, b.booksLockedUntil ? utcDay(b.booksLockedUntil) : null)) return { error: "That period is locked." as const };
@@ -78,7 +78,7 @@ export async function disposeAssetAction(input: { id: string; date: string; amou
 export async function deleteAssetAction(id: string): Promise<Result> {
   await requireWrite("finance.books");
   const { user, branchId } = await requireUserWithBranch();
-  if (!branchId) return { error: "Pick a branch first." };
+  if (!branchId) return { error: "Pick a company first." };
   const cur = await prisma.fixedAsset.findUnique({ where: { id } });
   if (!cur || cur.branchId !== branchId) return { error: "Asset not found." };
   const b = await prisma.branch.findUnique({ where: { id: branchId }, select: { booksLockedUntil: true } });

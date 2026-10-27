@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const { supplierIds, month, gasWaived, template: templateValue, employeeIds, perEmployee, combined, issuerId } = parsed.data;
   if (!branchId) {
     return NextResponse.json(
-      { error: isSuperAdmin ? "Pick a branch from the switcher first." : "Your account has no branch assigned. Contact an admin." },
+      { error: isSuperAdmin ? "Sign in as a company administrator first." : "Your account has no company assigned. Contact an admin." },
       { status: 400 },
     );
   }

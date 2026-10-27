@@ -40,8 +40,8 @@ export async function submitManualEntryAction(
   if (!branchId) {
     return {
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding a manual entry."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before adding a manual entry."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
 
@@ -59,7 +59,7 @@ export async function submitManualEntryAction(
   // Looked up inside the branch: an unscoped lookup would copy another tenant's
   // project name into this branch's timesheet rows.
   const project = projectId ? await prisma.project.findFirst({ where: { id: projectId, branchId }, select: { name: true } }) : null;
-  if (projectId && !project) return { error: "That project isn't part of this branch." };
+  if (projectId && !project) return { error: "That project isn't part of this company." };
   const pickedSite =
     siteIdInput && projectId
       ? await prisma.site.findFirst({ where: { id: siteIdInput, projectId } })
@@ -202,8 +202,8 @@ export async function submitDailyTimesheetAction(
       saved: 0,
       requested: 0,
       error: isSuperAdmin
-        ? "Pick a branch from the switcher before adding a daily entry."
-        : "Your account has no branch assigned. Contact an admin.",
+        ? "Sign in as a company administrator before adding a daily entry."
+        : "Your account has no company assigned. Contact an admin.",
     };
   }
   const date = String(formData.get("date") || "").trim();
@@ -215,7 +215,7 @@ export async function submitDailyTimesheetAction(
   }
   // supplierId is part of the entry's unique key and is written onto every row.
   if (!(await refsBelongToBranch(branchId, { supplier: supplierId }))) {
-    return { saved: 0, requested: 0, error: "That supplier isn't part of this branch." };
+    return { saved: 0, requested: 0, error: "That supplier isn't part of this company." };
   }
 
   // Site is optional — only set when the chosen project actually has one

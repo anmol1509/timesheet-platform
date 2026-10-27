@@ -80,7 +80,7 @@ export async function GET(request: Request) {
     startOfDay.setUTCHours(0, 0, 0, 0);
     const [admins, already] = await Promise.all([
       prisma.user.findMany({
-        where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId: branch.id }] },
+        where: { isActive: true, role: "BRANCH_ADMIN", branchId: branch.id },
         select: { id: true },
       }),
       prisma.notification.findMany({ where: { kind: "EXPIRY_DIGEST", title, createdAt: { gte: startOfDay } }, select: { userId: true } }),
@@ -126,7 +126,7 @@ async function sendStepReminders(branchId: string, branchName: string, items: It
   const title = (n: number) => `${n} document${n === 1 ? "" : "s"} reaching a reminder date: ${branchName}`;
 
   const [admins, cases] = await Promise.all([
-    prisma.user.findMany({ where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId }] }, select: { id: true } }),
+    prisma.user.findMany({ where: { isActive: true, role: "BRANCH_ADMIN", branchId }, select: { id: true } }),
     prisma.renewalCase.findMany({
       where: { branchId, ownerId: { not: null }, OR: fresh.map((d) => ({ kind: d.item.kind, subjectId: d.item.subjectId, document: d.item.document, expiry: new Date(`${d.item.expiry.slice(0, 10)}T00:00:00Z`) })) },
       select: { kind: true, subjectId: true, document: true, expiry: true, ownerId: true },

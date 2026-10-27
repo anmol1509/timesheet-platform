@@ -93,7 +93,7 @@ async function build(view: string, branchId: string, from: Date, asOf: Date, q: 
 export async function GET(req: Request) {
   const { user, branchId } = await requireUserWithBranch();
   if (!can(subjectOf(user), "finance.books", "view")) return NextResponse.json({ error: "You don't have permission to view the books." }, { status: 403 });
-  if (!branchId) return NextResponse.json({ error: "Pick a branch first." }, { status: 400 });
+  if (!branchId) return NextResponse.json({ error: "Pick a company first." }, { status: 400 });
   const q = new URL(req.url).searchParams;
   const asOf = valid(q.get("asof")) ?? new Date(todayInUae() + "T00:00:00.000Z");
   const from = valid(q.get("from")) ?? new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));

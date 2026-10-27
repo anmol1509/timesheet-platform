@@ -65,7 +65,7 @@ export default async function DataHealthPage({ searchParams }: { searchParams: P
       <div className="space-y-4">
         <HeroHeader icon={HeartPulse} title="Data health" subtitle="How complete your records are in each module, and what's missing for whom." />
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
-          Pick a specific branch from the switcher (top right) to see how complete its records are.
+          Sign in as a company administrator to see how complete its records are.
         </p>
       </div>
     );

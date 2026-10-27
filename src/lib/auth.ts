@@ -18,8 +18,10 @@ export async function getCurrentUser() {
   if (!session) return null;
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    include: { accessRole: { select: { id: true, name: true, permissions: true } } },
+    include: { accessRole: { select: { id: true, name: true, permissions: true } }, branch: { select: { suspendedAt: true } } },
   });
+  // A company the owner has suspended is signed out too (the owner's own account is never locked out of it).
+  if (user && user.role !== "SUPER_ADMIN" && user.branch?.suspendedAt) return null;
   // A suspended user is signed out everywhere on their next request.
   if (user && !user.isActive) return null;
   if (user && !(await sessionStillValid(session, user.sessionsValidAfter))) return null;

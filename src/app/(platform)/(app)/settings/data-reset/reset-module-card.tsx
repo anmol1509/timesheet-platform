@@ -32,7 +32,7 @@ export function ResetModuleCard({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-primary">{label}</h3>
-            <Badge color={global ? "amber" : "slate"}>{global ? "All branches" : "This branch"}</Badge>
+            <Badge color={global ? "amber" : "slate"}>{global ? "All companies" : "This company"}</Badge>
           </div>
           <p className="mt-1 text-xs text-muted">{description}</p>
           {dependsOnLabels.length > 0 && (
@@ -153,7 +153,7 @@ function ResetDialog({
                   onChange={(e) => setAcknowledgeGlobal(e.target.checked)}
                   className="mt-0.5"
                 />
-                <span>This affects every branch, not just one. Either this data isn&apos;t split by branch, or no specific branch is currently selected.</span>
+                <span>This affects every company, not just one. Either this data isn&apos;t split by company, or no specific company is currently selected.</span>
               </label>
             )}
             <label className="block">

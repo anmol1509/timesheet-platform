@@ -12,9 +12,11 @@ import { MobileSidebar } from "./mobile-sidebar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NavAssistant } from "@/components/NavAssistant";
 import { ShortcutsSheet } from "@/components/ShortcutsSheet";
-import { BranchSwitcher } from "@/components/BranchSwitcher";
 import { NotificationsMenu } from "@/components/NotificationsMenu";
 import { AiCreditsBar } from "@/components/AiCreditsBar";
+import Link from "next/link";
+import { isOwnerUser } from "@/lib/owner";
+import { ownerConsoleOn } from "@/lib/ownerServer";
 import { loadCreditStatus } from "@/lib/aiCreditsServer";
 import { UserMenu } from "@/components/UserMenu";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -63,7 +65,7 @@ export default async function AppLayout({
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
   // The AI credits bar is a header extra too: if the count can't be read it simply doesn't show.
-  const aiStatus = branchId ? await loadCreditStatus(branchId).catch(() => null) : null;
+  const aiStatus = branchId && !isSuperAdmin ? await loadCreditStatus(branchId).catch(() => null) : null;
   const allowedModules = viewableModules(subjectOf(user));
   // A failed count must never take the page down: the badge just doesn't show.
   const pendingApprovals = await countPendingApprovals({ branchId, isSuperAdmin, subject: subjectOf(user), role: user.role }).catch(() => 0);
@@ -100,11 +102,7 @@ export default async function AppLayout({
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {isSuperAdmin && (
-            <div className="hidden sm:block">
-              <BranchSwitcher branches={branches.filter((b) => b.isActive)} activeBranchId={branchId} />
-            </div>
-          )}
+          {ownerConsoleOn() && isOwnerUser(user) && <Link href="/owner" className="hidden rounded-full border border-default bg-surface px-3 py-1 text-xs font-medium text-secondary transition hover:text-primary sm:inline-flex">Owner</Link>}
           {aiStatus && <AiCreditsBar status={aiStatus} isAdmin={isAdmin} />}
           <NotificationsMenu alerts={alerts} inbox={inbox} unreadCount={unreadCount} pendingApprovals={pendingApprovals} />
           <span className="mx-0.5 hidden h-5 w-px bg-[var(--border)] sm:block" aria-hidden />

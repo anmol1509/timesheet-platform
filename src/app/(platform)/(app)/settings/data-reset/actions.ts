@@ -25,7 +25,7 @@ export async function resetModuleAction(
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   if (!checkAccess(user.role, branchId)) {
-    return { error: "Only an admin assigned to a branch can reset data." };
+    return { error: "Only an admin assigned to a company can reset data." };
   }
 
   const moduleId = String(formData.get("moduleId") || "");
@@ -46,8 +46,8 @@ export async function resetModuleAction(
   if (isGlobalRun && !acknowledgeGlobal) {
     return {
       error: mod.branchScoped
-        ? "Confirm you understand this runs across every branch, since no specific branch is selected."
-        : "Confirm you understand this isn't split by branch and affects every branch.",
+        ? "Confirm you understand this runs across every company, since no specific company is selected."
+        : "Confirm you understand this isn't split by company and affects every company.",
     };
   }
 
@@ -87,7 +87,7 @@ export async function resetAllAction(
   assertContactsValid(formData);
   const { user, branchId } = await requireUserWithBranch();
   if (!checkAccess(user.role, branchId)) {
-    return { error: "Only an admin assigned to a branch can reset data." };
+    return { error: "Only an admin assigned to a company can reset data." };
   }
 
   const confirmText = String(formData.get("confirmText") || "").trim();
@@ -98,7 +98,7 @@ export async function resetAllAction(
   }
   // Only a super admin viewing "All branches" can reach every tenant's data.
   if (!branchId && !acknowledgeGlobal) {
-    return { error: "Confirm you understand this deletes every module's data across every branch, since no specific branch is selected." };
+    return { error: "Confirm you understand this deletes every module's data across every company, since no specific company is selected." };
   }
 
   let allCounts: Record<string, Record<string, number>>;

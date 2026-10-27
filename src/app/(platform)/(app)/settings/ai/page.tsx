@@ -17,7 +17,7 @@ export default async function AiCreditsPage() {
   const isSuperAdmin = user.role === "SUPER_ADMIN";
   const branchId = isSuperAdmin ? await resolveSuperAdminBranchId() : user.branchId;
   if (!branchId) {
-    return <p className="card p-6 text-sm text-muted">Pick a branch from the switcher to see its AI credits.</p>;
+    return <p className="card p-6 text-sm text-muted">Sign in as a company administrator to see its AI credits.</p>;
   }
   const now = new Date();
   const { start, end } = monthRange(monthKey(now));
@@ -40,7 +40,7 @@ export default async function AiCreditsPage() {
       <HeroHeader
         icon={Sparkles}
         title="AI credits"
-        subtitle={`${branch?.name ?? "This branch"}: every AI action, such as reading a document, the assistant or matching names in an import, uses credits. When they are used up AI pauses until they reset; everything can still be done by hand.`}
+        subtitle={`${branch?.name ?? "This company"}: every AI action, such as reading a document, the assistant or matching names in an import, uses credits. When they are used up AI pauses until they reset; everything can still be done by hand.`}
         pills={[
           { label: "Left", value: fmt(status.remaining), warn: status.level !== "ok" },
           { label: "Used", value: fmt(status.used) },
@@ -125,9 +125,9 @@ export default async function AiCreditsPage() {
 
       {isSuperAdmin && allBranches.length > 1 && (
         <section className="card overflow-hidden">
-          <h2 className="border-b border-default px-4 py-3 text-sm font-semibold text-primary">All branches</h2>
+          <h2 className="border-b border-default px-4 py-3 text-sm font-semibold text-primary">All companies</h2>
           <table className="w-full text-sm">
-            <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase"><tr><th className="px-4 py-2">Branch</th><th className="px-4 py-2 text-right">Allowance</th><th className="px-4 py-2 text-right">Used</th><th className="px-4 py-2 text-right">Left</th></tr></thead>
+            <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase"><tr><th className="px-4 py-2">Company</th><th className="px-4 py-2 text-right">Allowance</th><th className="px-4 py-2 text-right">Used</th><th className="px-4 py-2 text-right">Left</th></tr></thead>
             <tbody className="divide-y divide-[var(--border)]">
               {allBranches.map((b) => (
                 <tr key={b.id}>
@@ -139,7 +139,7 @@ export default async function AiCreditsPage() {
               ))}
             </tbody>
           </table>
-          <p className="border-t border-default px-4 py-2 text-xs text-muted">Switch branch in the header to change another branch&apos;s allowance.</p>
+          <p className="border-t border-default px-4 py-2 text-xs text-muted">Switch company in the header to change another company&apos;s allowance.</p>
         </section>
       )}
     </div>

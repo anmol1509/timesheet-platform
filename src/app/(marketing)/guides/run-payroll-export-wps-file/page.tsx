@@ -42,7 +42,7 @@ export default function Page() {
 
         <h2>3. Approval and the four-eyes check</h2>
         <p>
-          A branch can set a payroll approval threshold &mdash; above that total, the person who
+          A company can set a payroll approval threshold &mdash; above that total, the person who
           created the run can&rsquo;t also approve it. A second person has to sign off, and the whole
           decision is written to the audit log.
         </p>

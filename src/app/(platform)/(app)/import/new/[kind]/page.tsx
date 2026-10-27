@@ -22,7 +22,7 @@ export default async function NewImportPage({ params }: { params: Promise<{ kind
       />
       {isSuperAdmin && !branchId && (
         <p className="rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-2 text-sm text-[var(--warning)]">
-          You&apos;re viewing <strong>All branches</strong>. Pick a specific branch from the switcher (top right) before importing.
+          You&apos;re viewing <strong>All companies</strong>. Sign in as a company administrator before importing.
         </p>
       )}
       <ImportWizard kind={kind} />

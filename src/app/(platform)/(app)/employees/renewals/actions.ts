@@ -46,7 +46,7 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
     const b = branchOf.get(`${r.kind}|${r.subjectId}`);
     return b && !isOutsideBranch(b, branchId, isSuperAdmin);
   });
-  if (targets.length === 0) return { error: "Those renewals aren't in this branch." };
+  if (targets.length === 0) return { error: "Those renewals aren't in this company." };
 
   // An owner must be an active person of the same branch (or an administrator without a branch).
   let ownerName: string | null | undefined;
@@ -54,7 +54,7 @@ export async function updateRenewalsAction(refs: RenewalRef[], patch: RenewalPat
     const owner = await prisma.user.findUnique({ where: { id: patch.ownerId }, select: { id: true, name: true, isActive: true, branchId: true, role: true } });
     if (!owner || !owner.isActive) return { error: "That person can't be given renewals." };
     const branches = new Set(targets.map((t) => branchOf.get(`${t.kind}|${t.subjectId}`)));
-    if (owner.role !== "SUPER_ADMIN" && (branches.size !== 1 || !branches.has(owner.branchId ?? ""))) return { error: "That person belongs to a different branch." };
+    if (owner.role !== "SUPER_ADMIN" && (branches.size !== 1 || !branches.has(owner.branchId ?? ""))) return { error: "That person belongs to a different company." };
     ownerName = owner.name;
   }
 
@@ -98,7 +98,7 @@ export async function setRenewalExpiryAction(input: { employeeId: string; field:
   const next = new Date(`${input.expiry}T00:00:00.000Z`);
   if (Number.isNaN(next.getTime()) || next.getUTCFullYear() < 2000 || next.getUTCFullYear() > 2100) return { error: "That date doesn't look right." };
   const e = await prisma.employee.findUnique({ where: { id: input.employeeId } });
-  if (!e || isOutsideBranch(e.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this branch." };
+  if (!e || isOutsideBranch(e.branchId, branchId, isSuperAdmin)) return { error: "That employee isn't in this company." };
   const before = (e as Record<string, unknown>)[field.key] as Date | null;
   await prisma.employee.update({ where: { id: e.id }, data: { [field.key]: next } });
   await logAudit({ entityType: "EMPLOYEE", entityId: e.id, action: "UPDATE", before: { [field.key]: before }, after: { [field.key]: next, source: "renewal" }, userId: user.id, userName: user.name, branchId });

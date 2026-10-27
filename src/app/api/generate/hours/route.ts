@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   const { employeeIds, month, show, groupBySupplier, format, issuerId } = parsed.data;
-  if (!branchId) return NextResponse.json({ error: "Pick a branch from the switcher first." }, { status: 400 });
+  if (!branchId) return NextResponse.json({ error: "Sign in as a company administrator first." }, { status: 400 });
 
   const entries = await prisma.timesheetEntry.findMany({
     where: { branchId, month, employeeIdNo: { in: employeeIds }, status: { not: "REJECTED" } },

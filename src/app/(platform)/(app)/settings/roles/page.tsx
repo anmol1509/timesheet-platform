@@ -40,7 +40,7 @@ export default async function RolesPage() {
           description: r.description,
           permissions: r.permissions,
           branchId: r.branchId,
-          branchLabel: r.branch ? r.branch.code : "Every branch",
+          branchLabel: r.branch ? r.branch.code : "Every company",
           userCount: r.users.length,
           members: r.users.map((u) => u.name),
           editable: isSuperAdmin || r.branchId === admin.branchId,

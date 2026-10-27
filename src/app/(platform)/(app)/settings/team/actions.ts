@@ -30,7 +30,7 @@ async function validAccessRoleId(raw: string, branchId: string | null) {
   if (!raw) return { id: null as string | null, error: null as string | null };
   const role = await prisma.accessRole.findUnique({ where: { id: raw } });
   if (!role || (role.branchId !== null && role.branchId !== branchId)) {
-    return { id: null, error: "That permission set isn't available for this user's branch." };
+    return { id: null, error: "That permission set isn't available for this user's company." };
   }
   return { id: role.id, error: null };
 }
@@ -65,7 +65,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
   if (role === "SUPER_ADMIN") branchId = null;
   else if (isSuperAdmin) {
     branchId = v("branchId") || null;
-    if (!branchId) return { error: "Choose a branch for this user." };
+    if (!branchId) return { error: "Choose a company for this user." };
   } else branchId = admin.branchId;
 
   if (await prisma.user.findUnique({ where: { email } })) return { error: "A user with that email already exists." };
@@ -114,7 +114,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
       });
     });
   } catch {
-    return { error: "A role with that name already exists for this branch. Pick it from the list instead, or use another name." };
+    return { error: "A role with that name already exists for this company. Pick it from the list instead, or use another name." };
   }
   if (newRole) {
     await logAudit({
@@ -163,7 +163,7 @@ export async function updateUserAction(_prev: State, formData: FormData): Promis
     if (role === "SUPER_ADMIN") branchId = null;
     else if (admin.role === "SUPER_ADMIN") {
       branchId = v("branchId") || target.branchId;
-      if (!branchId) return { error: "Choose a branch for this user." };
+      if (!branchId) return { error: "Choose a company for this user." };
     }
     if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
       const supers = await prisma.user.count({ where: { role: "SUPER_ADMIN", isActive: true } });

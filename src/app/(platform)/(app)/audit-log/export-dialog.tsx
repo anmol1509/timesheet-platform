@@ -13,7 +13,7 @@ export function ExportDialog({ triggerClassName }: { triggerClassName?: string }
       <DialogTrigger asChild>
         <button type="button" className={triggerClassName ?? "btn btn-secondary gap-1.5"}><Download className="h-4 w-4" aria-hidden />Export CSV</button>
       </DialogTrigger>
-      <DialogContent title="Export audit log" description="Up to 50,000 matching entries for the current branch view." className="max-w-md">
+      <DialogContent title="Export audit log" description="Up to 50,000 matching entries for the current company view." className="max-w-md">
         <form action="/api/audit-log/export" method="get" className="mt-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <label className="block"><span className="mb-1 block text-xs font-medium text-muted">From</span><DatePicker name="from" className="w-full" /></label>

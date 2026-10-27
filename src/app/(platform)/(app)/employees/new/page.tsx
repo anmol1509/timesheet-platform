@@ -44,13 +44,13 @@ export default async function AddEmployeePage() {
           <p className="text-sm text-secondary">
             {isSuperAdmin ? (
               <>
-                You have <span className="font-medium">All branches</span>{" "}
-                selected. Pick a specific branch in the switcher above before
+                You have <span className="font-medium">All companies</span>{" "}
+                selected. Sign in as a company administrator before
                 adding an employee. Otherwise this form can&rsquo;t be saved.
               </>
             ) : (
               <>
-                Your account has no branch assigned, so employees can&rsquo;t be
+                Your account has no company assigned, so employees can&rsquo;t be
                 created. Contact an administrator.
               </>
             )}
