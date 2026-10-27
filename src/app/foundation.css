@@ -442,16 +442,16 @@ summary:focus-visible,
   :root[data-contrast="high"]:not([data-theme="light"]) { --text-secondary: #e5e7eb; --text-muted: #cbd5e1; --text-subtle: #cbd5e1; --border: #5b6477; --border-strong: #8b95a7; }
 }
 
-/* Menu colour. .nav-surface is the sidebar / top menu panel; the header stays glass. */
-:root[data-navstyle="flat"] .nav-surface {
+/* Menu colour. .nav-surface.glass is the sidebar / top menu panel; the header stays glass. */
+:root[data-navstyle="flat"] .nav-surface.glass {
   background: var(--surface);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border: 1px solid var(--border);
   box-shadow: var(--elevation-card);
 }
-:root[data-navstyle="dark"] .nav-surface,
-:root[data-navstyle="brand"] .nav-surface {
+:root[data-navstyle="dark"] .nav-surface.glass,
+:root[data-navstyle="brand"] .nav-surface.glass {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   --text: #f4f5f8;
@@ -468,18 +468,27 @@ summary:focus-visible,
   border-color: var(--glass-line);
   box-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.5);
 }
-:root[data-navstyle="dark"] .nav-surface { background: #15171d; --brand-primary: color-mix(in srgb, var(--brand-raw) 55%, white); }
-:root[data-navstyle="brand"] .nav-surface {
+:root[data-navstyle="dark"] .nav-surface.glass { background: #15171d; --brand-primary: color-mix(in srgb, var(--brand-raw) 55%, white); }
+:root[data-navstyle="brand"] .nav-surface.glass {
   background: linear-gradient(160deg, color-mix(in srgb, var(--brand-raw) 92%, white), color-mix(in srgb, var(--brand-raw) 78%, black));
   --brand-primary: #ffffff;
 }
-:root[data-navstyle="dark"] .nav-surface .brand-logo,
-:root[data-navstyle="brand"] .nav-surface .brand-logo { filter: brightness(0) invert(1); }
-:root[data-navstyle="brand"] .nav-surface [aria-label="ManpowerSync: dashboard"] img { filter: brightness(0) invert(1); }
+:root[data-navstyle="dark"] .nav-surface.glass .brand-logo,
+:root[data-navstyle="brand"] .nav-surface.glass .brand-logo { filter: brightness(0) invert(1); }
+:root[data-navstyle="brand"] .nav-surface.glass [aria-label="ManpowerSync: dashboard"] img { filter: brightness(0) invert(1); }
 
 /* Auto-hide: the menu slides left and leaves a thin strip; pointing at it (or tabbing into it) brings it back. */
 @media (min-width: 1024px) {
   [data-autohide="1"] .nav-hide { transform: translateX(calc(-100% + 8px)); transition: transform 0.2s var(--ease, ease), width 0.2s; }
   [data-autohide="1"] .nav-hide:hover,
   [data-autohide="1"] .nav-hide:focus-within { transform: none; }
+}
+/* In dark theme the accent is a light tint; darken it so the white menu text stays readable. */
+:root[data-theme="dark"][data-navstyle="brand"] .nav-surface.glass {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--brand-raw) 68%, black), color-mix(in srgb, var(--brand-raw) 48%, black));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-navstyle="brand"] .nav-surface.glass {
+    background: linear-gradient(160deg, color-mix(in srgb, var(--brand-raw) 68%, black), color-mix(in srgb, var(--brand-raw) 48%, black));
+  }
 }
