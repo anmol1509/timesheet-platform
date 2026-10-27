@@ -10,7 +10,7 @@ const STATUS: Record<string, { label: string; color: BadgeColor }> = {
   PENDING: { label: "Awaiting bank", color: "slate" },
   PAID: { label: "Paid", color: "green" },
   REJECTED: { label: "Rejected", color: "red" },
-  RESUBMIT: { label: "Fixed — resend", color: "amber" },
+  RESUBMIT: { label: "Fixed: resend", color: "amber" },
 };
 
 /**

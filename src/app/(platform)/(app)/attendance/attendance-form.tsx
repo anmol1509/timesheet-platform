@@ -555,7 +555,7 @@ export function AttendanceForm({
           <div className="overflow-x-auto">
             {allLocked && (
               <p className="mb-2 text-xs font-medium text-[var(--warning)]">
-                This day is approved and locked — use &ldquo;Request correction&rdquo; to change a row.
+                This day is approved and locked. Use &ldquo;Request correction&rdquo; to change a row.
               </p>
             )}
             <table className="w-full text-sm">
@@ -729,7 +729,7 @@ function CorrectionRequestPanel({
 
   return (
     <div className="empty-state p-4">
-      <h3 className="mb-2 text-sm font-semibold text-primary">Request correction — {employeeName}</h3>
+      <h3 className="mb-2 text-sm font-semibold text-primary">Request correction: {employeeName}</h3>
       {done ? (
         <p className="text-sm text-[var(--success)]">Correction request submitted for manager review.</p>
       ) : (

@@ -33,7 +33,7 @@ export async function saveDocumentTypeAction(formData: FormData): Promise<{ erro
   const key = existingKey || docTypeKey(label);
   if (!key) return { error: "Use letters or numbers in the name." };
   const builtIn = BUILT_IN_DOC_TYPES.some((d) => d.appliesTo === appliesTo && d.key === key);
-  if (!existingKey && builtIn) return { error: "A built-in document type already has that name — edit it in the list." };
+  if (!existingKey && builtIn) return { error: "A built-in document type already has that name. Edit it in the list." };
   const reminderDays = hasExpiry ? parseReminderDays(String(formData.get("reminderDays") || "")) : [];
 
   const where = { branchId_appliesTo_key: { branchId, appliesTo, key } };

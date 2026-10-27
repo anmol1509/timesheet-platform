@@ -43,7 +43,7 @@ export default async function EnquiryDetailPage({ params }: { params: Promise<{ 
               <Badge color={COLOR[e.status] ?? "slate"} dot>{e.status}</Badge>
             </div>
             <p className="mt-1 text-sm text-muted"><Link href={`/clients/${e.clientId}`} className="hover:underline">{e.client.name}</Link>{e.projectHint && <> · {e.projectHint}</>} · received {e.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-            {e.status === "Lost" && e.lostReason && <p className="mt-1 text-sm text-[var(--error)]">Lost — {e.lostReason}</p>}
+            {e.status === "Lost" && e.lostReason && <p className="mt-1 text-sm text-[var(--error)]">Lost: {e.lostReason}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
             {live && canQuote && <Link href={`/sales/quotations/new?enquiryId=${e.id}&clientId=${e.clientId}`} className="btn btn-primary">{e.quotations.length ? "Another quotation" : "Create quotation"}</Link>}

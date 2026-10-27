@@ -71,7 +71,7 @@ export function DemandRequestForm({
       <DraftBar
         type="DEMAND_REQUEST"
         state={{ clientId, projectId, remarks, trades }}
-        title={[clients.find((c) => c.id === clientId)?.name, projects.find((p) => p.id === projectId)?.name].filter(Boolean).join(" — ") || undefined}
+        title={[clients.find((c) => c.id === clientId)?.name, projects.find((p) => p.id === projectId)?.name].filter(Boolean).join(": ") || undefined}
         hasContent={!!(clientId || projectId || remarks.trim() || trades.some((t) => t.trade))}
         onRestore={(d) => {
           setClientId(d.clientId ?? "");
@@ -100,7 +100,7 @@ export function DemandRequestForm({
             onChange={setProjectId}
             placeholder={clientId ? "Select project" : "Select a client first"}
             disabled={!clientId}
-            options={availableProjects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            options={availableProjects.map((p) => ({ value: p.id, label: `${p.code}: ${p.name}` }))}
           />
         </label>
         <div className="sm:col-span-2">

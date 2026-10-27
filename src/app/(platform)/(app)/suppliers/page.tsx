@@ -152,7 +152,7 @@ export default async function SuppliersPage({
         <EmptyState
           icon={Truck}
           title="No suppliers yet"
-          description="Suppliers provide the manpower you deploy. Use Add supplier to record its trade licence and approval status — suppliers are also created automatically when they appear in a timesheet upload."
+          description="Suppliers provide the manpower you deploy. Use Add supplier to record its trade licence and approval status. Suppliers are also created automatically when they appear in a timesheet upload."
           action={
             <Link href="/import/new/suppliers" className="btn btn-secondary btn-sm">
               Import suppliers

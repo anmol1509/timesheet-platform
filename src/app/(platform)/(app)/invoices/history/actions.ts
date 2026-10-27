@@ -67,7 +67,7 @@ export async function deleteInvoiceAction(formData: FormData) {
   if (existing.status !== "DRAFT") {
     redirect(
       `/invoices/history?error=${encodeURIComponent(
-        `Can't delete ${existing.invoiceNumber} — it's already ${existing.status.toLowerCase()}. Only draft invoices can be deleted.`
+        `Can't delete ${existing.invoiceNumber}: it's already ${existing.status.toLowerCase()}. Only draft invoices can be deleted.`
       )}`
     );
   }

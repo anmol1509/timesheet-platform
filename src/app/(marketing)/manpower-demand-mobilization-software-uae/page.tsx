@@ -8,7 +8,7 @@ import { ShowcasePage, shot } from "@/app/(marketing)/welcome/showcase/showcase-
 
 const TITLE = "Manpower Demand & Mobilisation Software UAE";
 const DESCRIPTION =
-  "Track every client request from enquiry and quotation through mobilisation, site arrival and demobilisation — and know exactly who's deployed where, today.";
+  "Track every client request from enquiry and quotation through mobilisation, site arrival and demobilisation. And know exactly who's deployed where, today.";
 const URL = "https://manpowersync.com/manpower-demand-mobilization-software-uae";
 
 export const metadata: Metadata = finishMetadata({

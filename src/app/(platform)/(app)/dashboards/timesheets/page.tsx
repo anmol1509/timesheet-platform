@@ -142,7 +142,7 @@ export default async function TimesheetsDashboardPage({ searchParams }: { search
       <Sec id="hours" hidden={hiddenSections}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Panel
-          title="Hours — normal vs overtime"
+          title="Hours: normal vs overtime"
           className="lg:col-span-2"
           href="/attendance"
           linkLabel="Attendance"

@@ -16,7 +16,7 @@ const COLOR = { ACTIVE: "green", INCOMPLETE: "amber", DISABLED: "slate" } as con
 
 export function BankList({ banks }: { banks: BankRow[] }) {
   const columns: DataTableColumn<BankRow>[] = [
-    { key: "accountName", header: "Account", render: (b) => (<><Link href={`/banks/${b.id}`} className="font-medium text-primary hover:underline">{b.accountName}</Link><span className="block text-xs text-muted">{b.bankName}</span></>), csvValue: (b) => `${b.accountName} — ${b.bankName}` },
+    { key: "accountName", header: "Account", render: (b) => (<><Link href={`/banks/${b.id}`} className="font-medium text-primary hover:underline">{b.accountName}</Link><span className="block text-xs text-muted">{b.bankName}</span></>), csvValue: (b) => `${b.accountName}: ${b.bankName}` },
     { key: "company", header: "Company", render: (b) => b.company || <span className="text-subtle">—</span>, csvValue: (b) => b.company },
     { key: "accountNo", header: "Account no.", render: (b) => b.accountNo || <span className="text-subtle">—</span>, csvValue: (b) => b.accountNo },
     { key: "ibanNo", header: "IBAN", render: (b) => b.ibanNo || <span className="text-subtle">—</span>, csvValue: (b) => b.ibanNo },

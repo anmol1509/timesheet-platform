@@ -35,7 +35,7 @@ function parse(formData: FormData): { error: string } | { ok: true; data: Parsed
   const file = f instanceof File && f.size > 0 ? f : null;
   if (file) {
     if (!ALLOWED.includes(file.type)) return { error: "Attach the invoice as a PDF, JPG or PNG." };
-    if (file.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+    if (file.size > MAX_UPLOAD_BYTES) return { error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
   }
   return { ok: true, data: { billNo, billDate, periodMonth: /^\d{4}-\d{2}$/.test(periodRaw) ? periodRaw : null, amount, vatAmount, description: str(formData.get("description")) || null, file } };
 }
@@ -54,7 +54,7 @@ async function tellFinance(branchId: string, supplierName: string, billNo: strin
     userIds: await approverIds("finance", branchId),
     kind: "SUPPLIER_INVOICE_SUBMITTED",
     title: `${resubmitted ? "Invoice resubmitted" : "New supplier invoice"}: AED ${total.toFixed(2)}`,
-    body: `${supplierName} — invoice #${billNo}. Waiting for your approval.`,
+    body: `${supplierName}: invoice #${billNo}. Waiting for your approval.`,
     href: "/approvals?type=BILL",
   });
 }

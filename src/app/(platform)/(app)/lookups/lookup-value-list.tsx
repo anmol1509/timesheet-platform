@@ -69,7 +69,7 @@ export function LookupValueList({ values }: { values: Row[] }) {
                   hiddenFields={{ lookupValueId: v.id }}
                   confirmMessage={
                     usage[v.id]
-                      ? `Delete "${v.value}"? ${usage[v.id]} record(s) still carry this value — they keep it, but it won't be offered in dropdowns any more. Deactivating hides it without touching the list.`
+                      ? `Delete "${v.value}"? ${usage[v.id]} record(s) still carry this value. They keep it, but it won't be offered in dropdowns any more. Deactivating hides it without touching the list.`
                       : `Delete "${v.value}"? It will no longer be offered in dropdowns.`
                   }
                 />

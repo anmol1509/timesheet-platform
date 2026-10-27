@@ -57,7 +57,7 @@ export async function createBankAction(_prev: State, formData: FormData): Promis
   { const invalid = contactsError(formData); if (invalid) return { error: invalid }; }
   await requirePermission("partners.banks", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
-  if (!branchId) return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a bank." : "Your account has no branch assigned — contact an admin." };
+  if (!branchId) return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a bank." : "Your account has no branch assigned. Contact an admin." };
   const r = await readFields(formData, branchId);
   if (!r.ok) return { error: r.error };
   const created = await prisma.bank.create({ data: { ...r.data, branchId } });

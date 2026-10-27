@@ -228,7 +228,7 @@ export function SupplierWizard() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-primary">Upload the document pack</p>
                 <p className="mt-0.5 text-xs text-secondary">
-                  Trade licence, MOHRE permit, TRN certificate and anything else you have — as one PDF or as several files. Everything readable is filled in for you.
+                  Trade licence, MOHRE permit, TRN certificate and anything else you have. As one PDF or as several files. Everything readable is filled in for you.
                 </p>
                 <div className="mt-3">
                   <MultiUploadSlot

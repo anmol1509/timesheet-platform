@@ -49,7 +49,7 @@ export function firstInvalidContact(entries: Iterable<[string, FormDataEntryValu
     if (EMAIL_KEY.test(key) && !isValidEmail(raw)) return { field: key, message: EMAIL_MESSAGE };
     if (PHONE_KEY.test(key) && !isValidPhone(raw)) return { field: key, message: PHONE_MESSAGE };
     const compact = raw.replace(/\s+/g, "");
-    if (IBAN_KEY.test(key) && !ibanChecksumOk(compact.toUpperCase())) return { field: key, message: "That IBAN isn't valid — please re-check the digits." };
+    if (IBAN_KEY.test(key) && !ibanChecksumOk(compact.toUpperCase())) return { field: key, message: "That IBAN isn't valid: please re-check the digits." };
     if (EID_KEY.test(key) && compact.replace(/\D/g, "").length !== 15) return { field: key, message: "An Emirates ID has 15 digits." };
     if (TRN_KEY.test(key) && compact.replace(/\D/g, "").length !== 15) return { field: key, message: "A TRN has 15 digits." };
   }

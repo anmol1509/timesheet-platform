@@ -18,7 +18,7 @@ export async function requireImporter(): Promise<Importer | NextResponse> {
   }
   if (!branchId) {
     return NextResponse.json(
-      { error: isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin." },
+      { error: isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned. Contact an admin." },
       { status: 400 }
     );
   }

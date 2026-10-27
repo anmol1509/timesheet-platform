@@ -123,7 +123,7 @@ export function UploadForm() {
           {busy ? "Uploading…" : "Drop your consolidated time sheet here"}
         </p>
         <p className="mt-1 text-xs text-muted">
-          or click to browse — .xlsx files only
+          or click to browse: .xlsx files only
         </p>
       </div>
 
@@ -182,7 +182,7 @@ export function UploadForm() {
             {((result.stats.attendanceConflicts ?? 0) > 0 || (result.stats.attendanceLocked ?? 0) > 0) && (
               <li className="text-[var(--warning)]">
                 {(result.stats.attendanceConflicts ?? 0) + (result.stats.attendanceLocked ?? 0)} days already had
-                attendance that differs from the sheet — left as they were
+                attendance that differs from the sheet, left as they were
               </li>
             )}
             {(result.stats.attendanceUnrecognised ?? 0) > 0 && (
@@ -206,7 +206,7 @@ export function UploadForm() {
           {result.stats.skippedRowDetails.length > 0 && (
             <div className="mt-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] p-3">
               <p className="text-xs font-medium text-[var(--warning)]">
-                Skipped rows — fix these in the source sheet and re-upload:
+                Skipped rows: fix these in the source sheet and re-upload:
               </p>
               <ul className="mt-2 space-y-1 text-xs text-[var(--warning)]">
                 {result.stats.skippedRowDetails.map((r, i) => (
@@ -229,8 +229,7 @@ export function UploadForm() {
                   <li>
                     <span className="font-medium">
                       {result.warnings.zeroRateCount} row(s) have a rate of 0
-                    </span>{" "}
-                    — usually means a column header wasn&rsquo;t recognized.
+                    </span>{" "}: usually means a column header wasn&rsquo;t recognized.
                     <ul className="mt-1 ml-3 list-disc space-y-0.5">
                       {result.warnings.zeroRateSample.map((w, i) => (
                         <li key={i}>

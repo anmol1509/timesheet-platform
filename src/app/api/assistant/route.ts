@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const limit = rateLimit(`assistant:${user.id}`, ASSISTANT_LIMIT);
   if (!limit.allowed) {
     return NextResponse.json(
-      { error: "You've asked a lot of questions — try again shortly." },
+      { error: "You've asked a lot of questions. Try again shortly." },
       { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
     );
   }

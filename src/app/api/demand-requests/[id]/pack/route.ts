@@ -113,7 +113,7 @@ export async function GET(
       ).find(Boolean);
 
       if (!match) {
-        missing.push(`${worker.employeeIdNo} — ${section.label}`);
+        missing.push(`${worker.employeeIdNo}: ${section.label}`);
         continue;
       }
       const doc = await prisma.document.findUnique({
@@ -131,7 +131,7 @@ export async function GET(
   // A manifest, so whoever opens the zip can see what wasn't on file rather
   // than assuming the pack is complete.
   const lines = [
-    `Mobilisation pack — Request #${demand.requestNo}`,
+    `Mobilisation pack: Request #${demand.requestNo}`,
     `Client: ${demand.client.name}`,
     `Generated: ${new Date().toISOString().slice(0, 10)}`,
     `Workers: ${workers.length}`,

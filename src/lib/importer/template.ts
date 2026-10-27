@@ -126,7 +126,7 @@ export async function buildTemplate(kind: ImportKind, monthLabel = new Date()): 
   for (const f of fields) notes.addRow([f.label, f.required ? "Yes" : "No", HELP[f.key] ?? (f.aliases?.length ? `Also understood as: ${f.aliases.slice(0, 4).join(", ")}.` : "")]);
   notes.addRow([]);
   notes.addRow(["Dates", "", "Write day/month/year, e.g. 25/12/2026, or a real Excel date."]);
-  notes.addRow(["Tip", "", "Fill in the first sheet. You don't have to keep our headings — the importer matches yours — but these import without any matching."]);
+  notes.addRow(["Tip", "", "Fill in the first sheet. You don't have to keep our headings (the importer matches yours), but these import without any matching."]);
   notes.getColumn(1).width = 26; notes.getColumn(2).width = 10; notes.getColumn(3).width = 90;
 
   wb.eachSheet((ws) => { if (ws.name === "Example") ws.properties.tabColor = { argb: "FF9CA3AF" }; });
@@ -172,7 +172,7 @@ async function buildTimesheetTemplate(wb: ExcelJS.Workbook, when: Date): Promise
     "Every day you fill in also becomes an Attendance record (hours = present, A = absent, L = leave, H = holiday, OFF = weekly off). Days that already have attendance are left alone.",
     "Overtime and salaried (basic) pay are not set here: mark overtime under Attendance, and set basic salary on the worker or in the Workers import.",
     "After uploading, open the month's payroll draft and press Recalculate to pick the new hours up.",
-    "Your own file doesn't have to look like this — the importer finds your columns — this is just the simplest layout.",
+    "Your own file doesn't have to look like this. The importer finds your columns, and this is just the simplest layout.",
   ]) notes.addRow([line]);
   notes.getColumn(1).width = 120;
   return Buffer.from(await wb.xlsx.writeBuffer());

@@ -87,7 +87,7 @@ export function DeleteEmployeesButton({
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent
           title="Confirm delete"
-          description={`Delete ${label}? Any documents, skills and photos on file go too. Employees with timesheet or attendance history can't be deleted — you'll be offered to deactivate those instead.`}
+          description={`Delete ${label}? Any documents, skills and photos on file go too. Employees with timesheet or attendance history can't be deleted. You'll be offered to deactivate those instead.`}
         >
           <DialogFooter>
             <button

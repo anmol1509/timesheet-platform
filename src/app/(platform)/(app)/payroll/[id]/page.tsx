@@ -96,7 +96,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
   const projects = projectIds.length
     ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, code: true, name: true } })
     : [];
-  const projectLabel = new Map(projects.map((p) => [p.id, `${p.code} — ${p.name}`]));
+  const projectLabel = new Map(projects.map((p) => [p.id, `${p.code}: ${p.name}`]));
   const n = (d: { toString(): string }) => Number(d.toString());
   const total = run.lines.reduce((s, l) => s + n(l.net), 0);
   const cashCount = run.lines.filter((l) => isCashMode(l.paymentMode)).length;
@@ -212,7 +212,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       <div>
         <Link href="/payroll" className="text-xs text-muted hover:text-secondary">← Payroll</Link>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-primary">Payroll — {run.company?.name ?? "Own companies"} · {run.month}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-primary">Payroll: {run.company?.name ?? "Own companies"} · {run.month}</h1>
           {run.payType && <Badge color="blue">{run.payType === "HOURLY" ? "Paid by the hour · from timesheets" : "Monthly salary · from attendance"}</Badge>}
           <Badge color={STATUS[run.status]?.color ?? "slate"} dot>{STATUS[run.status]?.label ?? run.status}</Badge>
         </div>

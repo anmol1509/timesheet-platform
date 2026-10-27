@@ -52,7 +52,7 @@ export async function buildTimesheetTemplateXlsx(): Promise<Buffer> {
 
   ws.mergeCells(1, 1, 1, REMARKS);
   const title = ws.getCell(1, 1);
-  title.value = "TIMESHEET — LABOUR SUPPLY";
+  title.value = "TIMESHEET: LABOUR SUPPLY";
   title.font = { name: "Arial", size: 16, bold: true, color: { argb: "FFFFFFFF" } };
   title.fill = HEAD_FILL;
   title.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
@@ -273,7 +273,7 @@ export async function buildTimesheetTemplatePdf(): Promise<Uint8Array> {
   // Page 1: header + roster
   const p1 = pdf.addPage([W, H]);
   p1.drawRectangle({ x: M, y: H - M - 24, width: W - 2 * M, height: 24, color: navy });
-  text(p1, "TIMESHEET — LABOUR SUPPLY", M + 8, H - M - 16, 13, bold, rgb(1, 1, 1));
+  text(p1, "TIMESHEET: LABOUR SUPPLY", M + 8, H - M - 16, 13, bold, rgb(1, 1, 1));
 
   const field = (label: string, x: number, y: number, w: number) => {
     box(p1, x, y, 70, 16, rgb(0.93, 0.95, 0.97));

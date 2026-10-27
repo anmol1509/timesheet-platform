@@ -136,7 +136,7 @@ export function BedAllocationTable({ rows, camps, suppliers, clients }: { rows: 
           </tbody>
         </table>
         {visible.length === 0 && (
-          <p className="px-4 py-10 text-center text-sm text-muted">{rows.length === 0 ? "No one is checked into a camp right now — start under Check-In." : "Nothing matches this filter."}</p>
+          <p className="px-4 py-10 text-center text-sm text-muted">{rows.length === 0 ? "No one is checked into a camp right now, start under Check-In." : "Nothing matches this filter."}</p>
         )}
         {visible.length > 0 && <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} totalItems={visible.length} pageSize={PAGE_SIZE} />}
       </div>

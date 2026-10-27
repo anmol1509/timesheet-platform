@@ -51,7 +51,7 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
     const file = fileRef.current?.files?.[0];
     if (!file) return;
     if (file.size > MAX_UPLOAD_BYTES) {
-      setScanError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      setScanError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`);
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
@@ -84,7 +84,7 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
         <ScanLine className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-primary">Scan a receipt to fill this in</p>
-          <p className="text-xs text-subtle">Photo or PDF — you still review everything before submitting.</p>
+          <p className="text-xs text-subtle">Photo or PDF: you still review everything before submitting.</p>
         </div>
         <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" id="receipt-scan-input" onChange={handleScan} disabled={scanning} />
         <label htmlFor="receipt-scan-input" className={`btn btn-secondary shrink-0 ${scanning ? "pointer-events-none opacity-60" : "cursor-pointer"}`}>
@@ -117,7 +117,7 @@ function NewExpenseForm({ projects, onDone }: { projects: { id: string; name: st
       </div>
       <label className="flex items-center gap-2 text-sm text-secondary"><input type="checkbox" name="outOfPocket" value="1" className="h-4 w-4" /> Paid out of pocket (owed back to the person who submits it)</label>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both — submit anyway" : "Submit expense"}</button>
+        <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : dup ? "Keep both: submit anyway" : "Submit expense"}</button>
         {state.error && <p role="alert" className={dup ? "text-sm text-[var(--warning)]" : "text-sm text-[var(--danger-text,#b42318)]"}>{state.error.replace("DUPLICATE: ", "")}</p>}
       </div>
     </form>
@@ -200,7 +200,7 @@ export function ExpensesBoard({ rows, projects, canCreate, canApprove, canDelete
       </Dialog>
       <Dialog open={filing !== null} onOpenChange={(o) => !o && setFiling(null)}>
         {filing && (
-          <DialogContent title={`${filing.category} — AED ${aed(filing.total)}`} description={`${day(filing.date)} · ${filing.description}`}>
+          <DialogContent title={`${filing.category}: AED ${aed(filing.total)}`} description={`${day(filing.date)} · ${filing.description}`}>
             <div className="mt-4 space-y-4">
               <p className="text-sm text-secondary">{[filing.method?.toLowerCase(), filing.paidTo && `paid to ${filing.paidTo}`, filing.project, `submitted by ${filing.by}`].filter(Boolean).join(" · ")}</p>
               <div>

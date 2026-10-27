@@ -144,7 +144,7 @@ export default async function CheckInPage() {
           label="Vacant beds"
           value={<>{vacantTotal} <span className="text-base font-normal text-muted">of {bedsTotal}</span></>}
           icon={BedDouble}
-          hint={campOptions.map((c) => `${c.name.split(" — ")[0]} ${c.vacantBeds}`).join(" · ") || undefined}
+          hint={campOptions.map((c) => `${c.name.split(/ — |: /)[0]} ${c.vacantBeds}`).join(" · ") || undefined}
         />
       </div>
 

@@ -45,7 +45,7 @@ export default function CampAccommodationPage() {
           image: shot("sol-camps.webp", 1400, 940, "The Camps screen: 60 beds, 24 occupied, 40% occupancy, and Camp A rooms with each bed and its worker."),
           badge: { icon: <ShieldAlert size={18} aria-hidden />, title: "2 vehicle documents due", sub: "Flagged before they expire" },
           slice: {
-            label: "Camp A — Al Quoz",
+            label: "Camp A: Al Quoz",
             amount: "12 / 30 beds",
             meta: "2 camps · 60 beds · 40% occupied",
             steps: [

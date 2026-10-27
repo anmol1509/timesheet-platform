@@ -84,7 +84,7 @@ export function RoleEditor({
 
       <PermissionMatrix perms={perms} onChange={setPerms} />
       <p className="text-xs text-muted">
-        Administration (settings, team, lookups, audit log, data reset) is never granted through a role — it stays with admins.
+        Administration (settings, team, lookups, audit log, data reset) is never granted through a role. It stays with admins.
       </p>
 
       <div className="flex items-center gap-3">

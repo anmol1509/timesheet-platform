@@ -140,7 +140,7 @@ export function WorkmenCompSection({ supplierId, policies, workers, canEdit, onC
           {progress.map((r, i) => (
             <li key={i} className={cn("flex gap-2", r.state === "failed" ? "text-error" : r.state === "done" ? "text-secondary" : "text-muted")}>
               <span className="w-14 shrink-0">{r.state === "working" ? "Reading…" : r.state === "waiting" ? "Waiting" : r.state === "done" ? "Added" : "Failed"}</span>
-              <span className="min-w-0 truncate">{r.name}{r.note ? ` — ${r.note}` : ""}</span>
+              <span className="min-w-0 truncate">{r.name}{r.note ? `: ${r.note}` : ""}</span>
             </li>
           ))}
         </ul>

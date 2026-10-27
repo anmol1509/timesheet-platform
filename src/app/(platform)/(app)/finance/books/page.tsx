@@ -121,7 +121,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                     <td className="whitespace-nowrap px-4 py-2.5 align-top text-muted">{fmtDate(e.date)}</td>
                     <td className="px-4 py-2.5">
                       <details>
-                        <summary className="cursor-pointer list-none font-medium text-primary">{e.narration}{void_ && e.voidReason ? ` — voided: ${e.voidReason}` : ""}</summary>
+                        <summary className="cursor-pointer list-none font-medium text-primary">{e.narration}{void_ && e.voidReason ? `: voided: ${e.voidReason}` : ""}</summary>
                         <p className="mt-0.5 text-xs text-muted">{e.number}{flow.direction === null ? ` · ${aed(flow.amount)}` : ""}</p>
                         <table className="mt-2 w-full text-xs no-underline">
                           <thead><tr className="text-muted"><th className="py-0.5 pr-3 text-left font-normal">Account</th><th className="w-24 py-0.5 text-right font-normal">Debit</th><th className="w-24 py-0.5 text-right font-normal">Credit</th></tr></thead>

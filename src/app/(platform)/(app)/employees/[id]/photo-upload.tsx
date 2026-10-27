@@ -27,7 +27,7 @@ export function PhotoUpload({
   async function handleFile(picked: File) {
     const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`Photo is too large — max ${MAX_UPLOAD_LABEL}.`);
+      setError(`Photo is too large: max ${MAX_UPLOAD_LABEL}.`);
       return;
     }
     setError(null);

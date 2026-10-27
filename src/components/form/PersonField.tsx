@@ -97,7 +97,7 @@ export function PersonField({
               )}
             </button>
           </DialogTrigger>
-          <DialogContent title={`${label} — contact`} description={person.trim() || undefined} className="max-w-sm">
+          <DialogContent title={`${label}: contact`} description={person.trim() || undefined} className="max-w-sm">
             <div className="mt-4 space-y-4">
               <div>
                 <label className="field-label" htmlFor={`${name}-phone`}>

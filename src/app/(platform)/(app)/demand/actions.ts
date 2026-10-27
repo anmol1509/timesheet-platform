@@ -466,7 +466,7 @@ export async function setTradeApprovalAction(
   if (next === null) {
     if (trade.allocations.length > 0) {
       return {
-        error: `${trade.trade} has ${trade.allocations.length} worker(s) mobilised — remove them first.`,
+        error: `${trade.trade} has ${trade.allocations.length} worker(s) mobilised: remove them first.`,
       };
     }
     approvedQuantity = null;

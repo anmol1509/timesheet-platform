@@ -35,7 +35,7 @@ export function DeleteClientsButton({
       if (blocked.length > 0) {
         toast.error(
           `Kept ${blocked.length}: still in use`,
-          blocked.map((b) => `${b.name} — ${b.reason}`).join("; ")
+          blocked.map((b) => `${b.name}: ${b.reason}`).join("; ")
         );
       }
       onDone?.();

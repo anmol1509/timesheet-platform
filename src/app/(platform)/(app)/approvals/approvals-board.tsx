@@ -112,7 +112,7 @@ export function ApprovalsBoard({ items, tabs, filters, requesters, totalShown }:
         }
       }
       setChecked(new Set());
-      setBulkMsg(failed.length ? `${ok} approved. ${failed.length} couldn't be approved — ${failed[0]}` : `${ok} approved.`);
+      setBulkMsg(failed.length ? `${ok} approved. ${failed.length} couldn't be approved: ${failed[0]}` : `${ok} approved.`);
       router.refresh();
     });
   }

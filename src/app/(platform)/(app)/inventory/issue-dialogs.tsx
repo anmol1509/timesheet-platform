@@ -74,7 +74,7 @@ function IssueBody({ item, employees, onClose }: { item: { id: string; name: str
       <Select
         value=""
         onChange={(id) => id && setLines((prev) => [...prev, { employeeId: id, variantId: firstWithStock, quantity: 1 }])}
-        placeholder="Add a worker — type a name or ID…"
+        placeholder="Add a worker: type a name or ID…"
         options={employees.filter((e) => !taken.has(e.id)).map((e) => ({ value: e.id, label: `${e.name} (${e.employeeIdNo})` }))}
       />
       {lines.length > 0 && (

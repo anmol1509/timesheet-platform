@@ -38,7 +38,7 @@ export function WpsForm({
         />
         <span className="mt-1 block text-xs text-muted">
           Accounts come from <Link href="/banks" className="text-[var(--brand-primary)] hover:underline">Business Partners → Banks</Link>.
-          {selected && !selected.complete && " This account is missing its routing code or IBAN — add them there, or the WPS file can't be built."}
+          {selected && !selected.complete && " This account is missing its routing code or IBAN. Add them there, or the WPS file can't be built."}
         </span>
       </label>
       <div className="flex items-center gap-3">

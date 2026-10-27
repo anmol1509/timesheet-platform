@@ -85,14 +85,14 @@ export default async function DocumentsPage() {
     supplierId: e.supplierId,
     supplierName: e.supplier?.name ?? null,
     projectId: e.projectId,
-    projectName: e.project ? `${e.project.code} — ${e.project.name}` : null,
+    projectName: e.project ? `${e.project.code}: ${e.project.name}` : null,
     wcCovered: !!(e.supplierId && e.wcAttachmentId && certificates.some((c) => c.id === e.wcAttachmentId)),
     wcAttachmentId: e.wcAttachmentId,
   }));
   const suppliers = [...new Map([...documents.filter((d) => d.employee.supplierId).map((d) => [d.employee.supplierId!, d.employee.supplier!.name] as [string, string]), ...activeEmployees.filter((e) => e.supplierId).map((e) => [e.supplierId!, e.supplier!.name] as [string, string])]).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const projects = [...new Map([...documents.filter((d) => d.employee.projectId).map((d) => [d.employee.projectId!, `${d.employee.project!.code} — ${d.employee.project!.name}`] as [string, string]), ...activeEmployees.filter((e) => e.projectId).map((e) => [e.projectId!, `${e.project!.code} — ${e.project!.name}`] as [string, string])]).entries()]
+  const projects = [...new Map([...documents.filter((d) => d.employee.projectId).map((d) => [d.employee.projectId!, `${d.employee.project!.code}: ${d.employee.project!.name}`] as [string, string]), ...activeEmployees.filter((e) => e.projectId).map((e) => [e.projectId!, `${e.project!.code}: ${e.project!.name}`] as [string, string])]).entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -123,7 +123,7 @@ export default async function DocumentsPage() {
     supplierId: d.employee.supplierId,
     supplierName: d.employee.supplier?.name ?? null,
     projectId: d.employee.projectId,
-    projectName: d.employee.project ? `${d.employee.project.code} — ${d.employee.project.name}` : null,
+    projectName: d.employee.project ? `${d.employee.project.code}: ${d.employee.project.name}` : null,
     uploadedByName: d.uploadedBy.name,
     uploadedAt: d.uploadedAt.toISOString(),
     expiryDate: d.expiryDate ? d.expiryDate.toISOString() : null,

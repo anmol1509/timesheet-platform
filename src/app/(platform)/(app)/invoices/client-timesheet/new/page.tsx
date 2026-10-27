@@ -30,7 +30,7 @@ export default async function NewClientTimesheetEntryPage() {
       <PageHeader
         title="New Timesheet Entry"
         icon={FilePlus2}
-        description={<>Add timesheet rows by hand instead of uploading an Excel file. The columns match the Excel format — ID, name, trade, rate, supplier, client, and one column per day. Pick a Project to tag the location.</>}
+        description={<>Add timesheet rows by hand instead of uploading an Excel file. The columns match the Excel format. ID, name, trade, rate, supplier, client, and one column per day. Pick a Project to tag the location.</>}
       />
 
       <ManualEntryForm

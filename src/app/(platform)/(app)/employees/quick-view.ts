@@ -169,7 +169,7 @@ export async function saveEmployeeFieldAction(input: { id: string; field: string
       if (value !== before.projectId && !(await refsBelongToBranch(before.branchId, { supplier: [], project: value as string, vehicle: null }))) return { error: "That project isn't part of this branch." };
       if (value !== before.projectId && before.supplierId) {
         const s = await prisma.supplier.findUnique({ where: { id: before.supplierId }, select: { approvalStatus: true } });
-        if (s && s.approvalStatus !== "Approved") return { error: "This supplier isn't approved yet — approve it before assigning its employees to a project." };
+        if (s && s.approvalStatus !== "Approved") return { error: "This supplier isn't approved yet. Approve it before assigning its employees to a project." };
       }
     }
   }

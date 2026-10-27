@@ -71,7 +71,7 @@ export async function createProjectAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding a project."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -538,7 +538,7 @@ export async function deleteProjectAction(formData: FormData) {
     if (attendanceCount > 0) parts.push(`${attendanceCount} attendance record(s)`);
     redirect(
       `/projects?error=${encodeURIComponent(
-        `Can't delete "${target.name}" — still linked to ${parts.join(", ")}.`
+        `Can't delete "${target.name}": still linked to ${parts.join(", ")}.`
       )}`
     );
   }
@@ -748,7 +748,7 @@ export async function bulkImportProjectsAction(rows: Record<string, string>[]): 
   await requirePermission("projects.projects", "create");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   if (!branchId) {
-    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned — contact an admin.";
+    const message = isSuperAdmin ? "Pick a branch from the switcher before importing." : "Your account has no branch assigned. Contact an admin.";
     return rows.map((_, i) => rowError(i, undefined, message));
   }
   const existingProjects = await prisma.project.findMany({ where: { branchId } });

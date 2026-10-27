@@ -14,7 +14,7 @@ export async function applyDivergencesAction(formData: FormData) {
       applied: 0,
       error: isSuperAdmin
         ? "Pick a branch from the switcher before syncing."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 

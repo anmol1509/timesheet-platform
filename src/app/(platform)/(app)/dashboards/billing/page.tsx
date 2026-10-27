@@ -165,7 +165,7 @@ export default async function BillingDashboardPage({ searchParams }: { searchPar
                     className="flex items-center justify-between gap-3 py-2 text-sm hover:underline"
                   >
                     <span className="text-primary">
-                      {inv.invoiceNumber} — {inv.client.name}
+                      {inv.invoiceNumber}: {inv.client.name}
                     </span>
                     <span className="tabular text-xs text-muted">
                       AED {inv.totalAmount.toLocaleString()}

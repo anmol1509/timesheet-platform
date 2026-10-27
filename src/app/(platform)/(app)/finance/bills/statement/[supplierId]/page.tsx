@@ -24,7 +24,7 @@ export default async function StatementPage({ params }: { params: Promise<{ supp
   });
 
   const lines: Line[] = bills.flatMap((b) => [
-    { date: b.billDate, text: `Bill #${b.billNo}${b.description ? ` — ${b.description}` : ""}`, debit: Number(b.amount) + Number(b.vatAmount), credit: 0 },
+    { date: b.billDate, text: `Bill #${b.billNo}${b.description ? `: ${b.description}` : ""}`, debit: Number(b.amount) + Number(b.vatAmount), credit: 0 },
     ...b.payments.map((p) => ({ date: p.paidOn, text: `${p.method === "CREDIT" ? "Credit" : "Payment"} · #${b.billNo}${p.reference ? ` · ${p.reference}` : ""}`, debit: 0, credit: Number(p.amount) })),
   ]).sort((a, b) => a.date.getTime() - b.date.getTime());
 

@@ -37,15 +37,15 @@ export default function Page() {
         <ul>
           <li>
             <strong>Standard overtime</strong> (beyond 8 hours/day or 48 hours/week): 125% of the
-            hourly basic wage — basic pay plus 25%.
+            hourly basic wage, basic pay plus 25%.
           </li>
           <li>
-            <strong>Night overtime</strong> (10pm&ndash;4am): 150% of the hourly basic wage — basic pay
+            <strong>Night overtime</strong> (10pm&ndash;4am): 150% of the hourly basic wage, basic pay
             plus 50%.
           </li>
         </ul>
         <p>
-          In both cases, the calculation is based on <strong>basic salary only</strong> — allowances
+          In both cases, the calculation is based on <strong>basic salary only</strong>: allowances
           are excluded, the same rule that applies to end-of-service gratuity.
         </p>
 
@@ -53,21 +53,21 @@ export default function Page() {
         <p>
           Every employee is entitled to at least one paid rest day a week. Work on that rest day is
           paid at full pay plus a 50% premium, or compensated with an alternative rest day instead.
-          Which day counts as the rest day is flexible — it doesn&rsquo;t have to be Friday, and
+          Which day counts as the rest day is flexible. It doesn&rsquo;t have to be Friday, and
           employers can designate whichever day fits their business.
         </p>
 
         <h2>Daily break requirements</h2>
         <p>
           Workers can&rsquo;t be scheduled more than 5 consecutive hours without a break, and total
-          breaks across the day must add up to at least an hour — relevant when planning shift
+          breaks across the day must add up to at least an hour. Relevant when planning shift
           patterns across a large site workforce, not just an individual worker&rsquo;s hours.
         </p>
 
         <h2>Why this is hard to apply by hand at scale</h2>
         <p>
           None of these rules are complicated individually. What&rsquo;s hard is applying the right
-          rate to the right hour — standard, night, rest-day — consistently across hundreds of
+          rate to the right hour (standard, night, rest-day) consistently across hundreds of
           workers with different shift patterns, every single month, without a system that flags
           the exception automatically as hours come in rather than at month-end reconciliation.
         </p>

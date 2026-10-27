@@ -243,7 +243,7 @@ export function DaysButton({ runId, employeeId, name }: { runId: string; employe
                 {view.canAdjust ? (
                   <div className="space-y-1.5">
                     <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted">Deductions <span className="font-normal">(each one is named; untick &ldquo;Payslip&rdquo; to keep it off the payslip&apos;s own line — it is then counted in &ldquo;Other deductions&rdquo;)</span></p>
+                      <p className="text-xs font-medium text-muted">Deductions <span className="font-normal">(each one is named; untick &ldquo;Payslip&rdquo; to keep it off the payslip&apos;s own line. It is then counted in &ldquo;Other deductions&rdquo;)</span></p>
                       {rows.map((r, i) => (
                         <div key={i} className="grid grid-cols-[8rem_1fr_auto_auto] items-center gap-2">
                           <input className="input h-8 text-right text-xs tabular-nums" type="number" step="0.01" min="0" value={r.amount} onChange={(e) => { setSaved(false); setRows((p) => p.map((x, k) => (k === i ? { ...x, amount: e.target.value } : x))); }} aria-label={`Deduction ${i + 1} amount (AED)`} />

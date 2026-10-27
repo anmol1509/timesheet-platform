@@ -92,7 +92,7 @@ export default async function ClientTimesheetPage({
     ...new Map(
       withContext
         .filter((e) => e.resolvedProject)
-        .map((e) => [e.resolvedProject!.id, `${e.resolvedProject!.code} — ${e.resolvedProject!.name}`])
+        .map((e) => [e.resolvedProject!.id, `${e.resolvedProject!.code}: ${e.resolvedProject!.name}`])
     ),
   ].sort((a, b) => a[1].localeCompare(b[1]));
   const siteOptions = [
@@ -177,8 +177,7 @@ export default async function ClientTimesheetPage({
 
       {allEntries.length > 0 && projectOptions.length === 0 && siteOptions.length === 0 && (
         <p className="text-xs text-subtle">
-          These rows carry no project or site, so those filters have nothing to offer
-          — set them on the entries or on the workers&rsquo; records to use them here.
+          These rows carry no project or site, so those filters have nothing to offer. Set them on the entries or on the workers&rsquo; records to use them here.
         </p>
       )}
 
@@ -186,7 +185,7 @@ export default async function ClientTimesheetPage({
         <div className="empty-state flex flex-col items-center gap-3 py-10">
           <p className="text-sm text-muted">
             {allEntries.length > 0
-              ? "No entries match those filters — clear the project or site to see the rest."
+              ? "No entries match those filters. Clear the project or site to see the rest."
               : "No billable timesheet entries for this client/month."}
           </p>
           {allEntries.length === 0 && (

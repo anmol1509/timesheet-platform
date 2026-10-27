@@ -20,7 +20,7 @@ const STATE_STYLE = {
 
 const STATE_LABEL = {
   submitted: "Submitted",
-  draft: "Draft — not submitted",
+  draft: "Draft: not submitted",
   empty: "Nothing marked",
   emptyFuture: "Not due yet",
 } as const;
@@ -129,7 +129,7 @@ export function AttendanceCalendar({
             <Link
               key={day.date}
               href={`/attendance?month=${month}&date=${day.date}`}
-              aria-label={`${day.date} — ${STATE_LABEL[visualState(day)]}`}
+              aria-label={`${day.date}: ${STATE_LABEL[visualState(day)]}`}
               aria-current={isSelected ? "date" : undefined}
               className={cn(
                 "flex min-h-[62px] flex-col rounded-control border p-2 transition hover:brightness-95",

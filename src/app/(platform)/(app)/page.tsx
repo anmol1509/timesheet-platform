@@ -164,7 +164,7 @@ export default async function DashboardPage() {
     ...alerts.slice(0, 6).map((a) => ({
       key: `c-${a.employeeId}-${a.field}`,
       href: `/documents?employee=${a.employeeId}`,
-      title: `${a.field} — ${a.name}`,
+      title: `${a.field}: ${a.name}`,
       sub:
         a.days < 0
           ? `expired ${Math.abs(a.days)} days ago`
@@ -177,7 +177,7 @@ export default async function DashboardPage() {
     ...lpoAlerts.map((a) => ({
       key: `l-${a.lpoId}-${a.kind}`,
       href: `/projects/${a.projectId}`,
-      title: `${a.lpoNumber} — ${a.projectName}`,
+      title: `${a.lpoNumber}: ${a.projectName}`,
       sub:
         a.kind === "EXPIRING"
           ? a.days != null && a.days < 0

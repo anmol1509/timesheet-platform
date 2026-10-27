@@ -314,7 +314,7 @@ function CompanyScan({ adapter, id, names, onDone, title, hint }: { adapter: Com
         if (ac.signal.aborted) break;
         setStatus(files.length > 1 ? `Reading ${n + 1} of ${files.length}…` : "Reading the document…");
         const file = await shrinkImage(raw);
-        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`); continue; }
+        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`); continue; }
         let fields: ExtractedCompanyFields = {};
         if (file.type.startsWith("image/") || file.type === "application/pdf") {
           const body = new FormData();

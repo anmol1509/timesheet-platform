@@ -141,7 +141,7 @@ export async function applyTimesheets(
     notes.push({
       tone: "warn",
       title: `${stats.nationalityNotSaved} workers have a Nationality that isn't a country`,
-      detail: `${(stats.nationalityNotSavedValues ?? []).join(", ")} — not saved. Use the country, e.g. India.`,
+      detail: `${(stats.nationalityNotSavedValues ?? []).join(", ")}: not saved. Use the country, e.g. India.`,
     });
   }
   if ((stats.nearMatches ?? []).length > 0) {
@@ -155,7 +155,7 @@ export async function applyTimesheets(
     notes.push({
       tone: "warn",
       title: "Some projects in the sheet don't exist",
-      detail: `${(stats.projectsNotFound ?? []).join(", ")} — those rows weren't linked to a project. Create the project first, or match its code or name exactly, then re-upload.`,
+      detail: `${(stats.projectsNotFound ?? []).join(", ")}: those rows weren't linked to a project. Create the project first, or match its code or name exactly, then re-upload.`,
     });
   }
   if ((stats.workersLinkedToProject ?? 0) > 0) {

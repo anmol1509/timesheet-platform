@@ -29,14 +29,14 @@ export default function Page() {
         <p>
           This is the document that lets someone <strong>enter and work in the UAE in the first
           place</strong>, issued before the residence visa itself. It&rsquo;s the earliest of the three in
-          a new hire&rsquo;s timeline — sponsored by the employer, and tied to the specific job they&rsquo;re
+          a new hire&rsquo;s timeline. Sponsored by the employer, and tied to the specific job they&rsquo;re
           being brought in for.
         </p>
 
         <h2>Residence visa</h2>
         <p>
           Once someone is in the country and has completed the medical and Emirates ID process, they
-          receive a residence visa — the document that lets them <strong>live</strong> in the UAE,
+          receive a residence visa. The document that lets them <strong>live</strong> in the UAE,
           separate from the right to work itself. This is the one most people mean when they say
           &ldquo;visa,&rdquo; and it has to be renewed periodically (commonly every one to three
           years depending on the visa type) or the worker&rsquo;s legal residency lapses along with it.
@@ -62,8 +62,8 @@ export default function Page() {
         </p>
 
         <p>
-          Tracking entry permit, residence visa and labour card as three distinct fields — each with
-          its own expiry date and its own alert — is the only way to actually know which one is the
+          Tracking entry permit, residence visa and labour card as three distinct fields, each with
+          its own expiry date and its own alert, is the only way to actually know which one is the
           problem when something doesn&rsquo;t match, instead of finding out only when a file bounces or
           a fine arrives.
         </p>

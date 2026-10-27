@@ -83,7 +83,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
       if (permissions.length === 0) return { error: "Tick at least one permission for this role." };
       for (const p of permissions) {
         const [mod] = p.split(":");
-        if (!permissions.includes(`${mod}:view`)) return { error: `Grant View on ${mod} too — its other actions can't work without it.` };
+        if (!permissions.includes(`${mod}:view`)) return { error: `Grant View on ${mod} too: its other actions can't work without it.` };
       }
       newRole = { name: roleName, permissions };
     } else {
@@ -114,7 +114,7 @@ export async function createUserAction(_prev: State, formData: FormData): Promis
       });
     });
   } catch {
-    return { error: "A role with that name already exists for this branch — pick it from the list instead, or use another name." };
+    return { error: "A role with that name already exists for this branch. Pick it from the list instead, or use another name." };
   }
   if (newRole) {
     await logAudit({
@@ -167,7 +167,7 @@ export async function updateUserAction(_prev: State, formData: FormData): Promis
     }
     if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN") {
       const supers = await prisma.user.count({ where: { role: "SUPER_ADMIN", isActive: true } });
-      if (supers <= 1) return { error: "This is the last super admin — promote another one first." };
+      if (supers <= 1) return { error: "This is the last super admin, promote another one first." };
     }
   }
 

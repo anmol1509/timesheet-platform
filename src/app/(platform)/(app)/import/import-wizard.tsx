@@ -334,7 +334,7 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
           <p className="max-w-md text-xs text-muted">
             {kind === "TIMESHEETS"
               ? "An Excel (.xlsx) timesheet with a tab per month. Drop one file for everyone, or one per client: several files are read together. Suppliers, sponsors, clients, workers, hours and attendance are all read from them."
-              : "An Excel (.xlsx) or CSV file with a header row. Your column names don't have to match ours — you'll confirm the matches next."}
+              : "An Excel (.xlsx) or CSV file with a header row. Your column names don't have to match ours. You'll confirm the matches next."}
           </p>
           {busy && <button type="button" onClick={() => uploadAbort.current?.abort()} className="btn btn-secondary">Cancel</button>}
           {/* A real <label> around the input: the browser opens the picker itself, with no script click in between. */}

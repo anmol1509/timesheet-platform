@@ -86,7 +86,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
           {
             href: "/manpower-erp-uae",
             title: "Manpower ERP",
-            body: "The full platform this runs on — workforce, timesheets, payroll, billing and compliance in one system.",
+            body: "The full platform this runs on. Workforce, timesheets, payroll, billing and compliance in one system.",
           },
           {
             href: "/wps-payroll-software-uae",
@@ -100,7 +100,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
           },
         ]}
         ctaTitle={`See ${SITE.name} built for ${industry.name.toLowerCase()}.`}
-        ctaLead="Bring your current workforce sheet — nothing to re-key before your first month."
+        ctaLead="Bring your current workforce sheet. Nothing to re-key before your first month."
       />
     </ContentShell>
   );

@@ -165,7 +165,7 @@ export function InventorySection({
             <span>
               Already holds {heldByEmployee.reduce((n, a) => n + a.quantity, 0)} unreturned unit
               {heldByEmployee.reduce((n, a) => n + a.quantity, 0) === 1 ? "" : "s"} of this item
-              (issued {formatDate(heldByEmployee[0].issuedDate)}) — confirm before issuing another.
+              (issued {formatDate(heldByEmployee[0].issuedDate)}): confirm before issuing another.
             </span>
             <label className="flex items-center gap-1.5 font-medium">
               <input

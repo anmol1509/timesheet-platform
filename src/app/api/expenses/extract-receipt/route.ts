@@ -52,14 +52,14 @@ export async function POST(request: Request) {
   const budget = rateLimit(`extract-receipt:${user.id}`, EXTRACTION_LIMIT);
   if (!budget.allowed) {
     return NextResponse.json(
-      { error: "Too many receipts read in the last hour — try again shortly." },
+      { error: "Too many receipts read in the last hour. Try again shortly." },
       { status: 429, headers: { "Retry-After": String(budget.retryAfter) } }
     );
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      { error: "Receipt auto-fill isn't configured yet — ANTHROPIC_API_KEY is missing." },
+      { error: "Receipt auto-fill isn't set up yet: the AI key is missing." },
       { status: 503 }
     );
   }
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
   }
   if (file.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: `File too large — max ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
+    return NextResponse.json({ error: `File too large, max ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
   }
 
   const isImage = SUPPORTED_IMAGE_TYPES.has(file.type);
@@ -118,10 +118,10 @@ export async function POST(request: Request) {
     const status = typeof e === "object" && e !== null && "status" in e ? Number((e as { status: unknown }).status) : 0;
 
     if (status === 401 || status === 403) {
-      return NextResponse.json({ error: "Receipt auto-fill is misconfigured — the API key was rejected." }, { status: 502 });
+      return NextResponse.json({ error: "Receipt auto-fill isn't set up correctly: the AI key was rejected." }, { status: 502 });
     }
     if (status === 429) {
-      return NextResponse.json({ error: "Auto-fill is rate limited right now — try again in a moment." }, { status: 502 });
+      return NextResponse.json({ error: "Auto-fill is rate limited right now. Try again in a moment." }, { status: 502 });
     }
     if (status === 413) {
       return NextResponse.json({ error: "That receipt is too large to read. Try a smaller or split file." }, { status: 502 });

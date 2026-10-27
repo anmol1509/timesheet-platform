@@ -5,7 +5,7 @@ import { CtaBand, FaqList, LinkCardGrid, PageHero, Section } from "@/app/(market
 import { FAQS, SITE } from "@/app/(marketing)/welcome/content";
 
 const TITLE = "Manpower ERP FAQ: Setup, WPS & Pricing";
-const DESCRIPTION = `Common questions about ${SITE.name} — getting started, timesheets, payroll and WPS, security, and how subcontractors fit in.`;
+const DESCRIPTION = `Common questions about ${SITE.name}: getting started, timesheets, payroll and WPS, security, and how subcontractors fit in.`;
 const URL = "https://manpowersync.com/faq";
 
 export const metadata: Metadata = finishMetadata({
@@ -44,7 +44,7 @@ export default function FaqPage() {
           columns={3}
           cards={[
             { href: "/guides", title: "Guides", body: "Step-by-step help importing your workforce, running payroll and setting up roles and permissions." },
-            { href: "/blog", title: "Blog", body: "UAE payroll and compliance reading — WPS rejections, gratuity, overtime rules and expiry tracking." },
+            { href: "/blog", title: "Blog", body: "UAE payroll and compliance reading. WPS rejections, gratuity, overtime rules and expiry tracking." },
             { href: "/pricing", title: "Pricing", body: "How pricing works, what's included, and how to get a quote for your own workforce." },
           ]}
         />

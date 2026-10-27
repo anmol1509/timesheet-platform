@@ -8,7 +8,7 @@ import { ShowcasePage, shot } from "@/app/(marketing)/welcome/showcase/showcase-
 
 const TITLE = "Subcontractor Portal Software UAE";
 const DESCRIPTION =
-  "Give subcontractors their own portal to receive demands, submit workers and timesheets, and track their payments — without another forwarded spreadsheet or follow-up call.";
+  "Give subcontractors their own portal to receive demands, submit workers and timesheets, and track their payments. Without another forwarded spreadsheet or follow-up call.";
 const URL = "https://manpowersync.com/supplier-portal-software-uae";
 
 export const metadata: Metadata = finishMetadata({

@@ -23,7 +23,7 @@ export type EmailOptions = {
 
 export async function sendEmail(to: string, subject: string, text: string, options: EmailOptions = {}): Promise<EmailSendResult> {
   if (!isEmailConfigured()) {
-    console.warn("[email] RESEND_API_KEY/EMAIL_FROM not set — email not sent.");
+    console.warn("[email] RESEND_API_KEY/EMAIL_FROM not set: email not sent.");
     return { sent: false, reason: "not_configured" };
   }
   try {

@@ -46,12 +46,12 @@ export async function POST(request: Request) {
   const gate = await aiGate(branchId);
   if (gate) return NextResponse.json({ error: gate }, { status: 402 });
   const budget = rateLimit(`extract:${user.id}`, EXTRACTION_LIMIT);
-  if (!budget.allowed) return NextResponse.json({ error: "Too many documents read in the last hour — try again shortly." }, { status: 429, headers: { "Retry-After": String(budget.retryAfter) } });
-  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "Document auto-fill isn't configured yet — ANTHROPIC_API_KEY is missing." }, { status: 503 });
+  if (!budget.allowed) return NextResponse.json({ error: "Too many documents read in the last hour. Try again shortly." }, { status: 429, headers: { "Retry-After": String(budget.retryAfter) } });
+  if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "Document auto-fill isn't set up yet: the AI key is missing." }, { status: 503 });
 
   const file = (await request.formData()).get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file provided." }, { status: 400 });
-  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: `File too large — max ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
+  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: `File too large, max ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
   const isImage = IMAGE_TYPES.has(file.type);
   if (!isImage && file.type !== "application/pdf") return NextResponse.json({ error: "Only images (JPEG/PNG/GIF/WebP) or PDFs can be auto-read." }, { status: 400 });
 

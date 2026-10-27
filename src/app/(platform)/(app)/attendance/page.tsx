@@ -113,7 +113,7 @@ export default async function AttendancePage({
           clients={clients}
           projects={projects.map((p) => ({
             id: p.id,
-            label: `${p.code} — ${p.name}`,
+            label: `${p.code}: ${p.name}`,
             clientId: p.clientId,
           }))}
           sites={sites.map((x) => ({ id: x.id, label: x.name, projectId: x.projectId }))}
@@ -129,7 +129,7 @@ export default async function AttendancePage({
             supplierName: e.supplier?.name ?? null,
             projectId: e.projectId,
             clientId: e.project?.clientId ?? null,
-            projectName: e.project ? `${e.project.code} — ${e.project.name}` : "",
+            projectName: e.project ? `${e.project.code}: ${e.project.name}` : "",
             siteId: e.siteId,
             // The project decides the weekly off; a worker with no project is off on Sunday.
             weeklyOffDays: e.project?.weeklyOffDays ?? [0],

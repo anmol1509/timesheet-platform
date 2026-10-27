@@ -49,7 +49,7 @@ export function AuthShell({
         />
         <div className="max-w-md">
           <p className="text-xs font-semibold tracking-wide text-white/60 uppercase">
-            Workforce, projects and timesheets — one place.
+            Workforce, projects and timesheets: one place.
           </p>
           <h2 className="mt-3 text-5xl leading-[1.05] font-semibold tracking-tight text-white">
             Manage

@@ -59,7 +59,7 @@ export function ScanUpload({ employeeId, docType, hasPhoto, multiple, title, hin
         if (ac.signal.aborted) break;
         setStatus(picked.length > 1 ? `Reading ${n + 1} of ${picked.length}…` : "Reading the document…");
         const file = await shrinkImage(raw);
-        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`); continue; }
+        if (file.size > MAX_UPLOAD_BYTES) { setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`); continue; }
 
         let fields: ExtractedDocumentFields = {};
         if (file.type.startsWith("image/") || file.type === "application/pdf") {

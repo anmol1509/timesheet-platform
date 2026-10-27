@@ -39,7 +39,7 @@ export default function Page() {
         <ul>
           <li>Nobody owns the check on a recurring schedule, so it happens when someone remembers.</li>
           <li>
-            Renewals in progress and expired documents look the same in a static list — there&rsquo;s
+            Renewals in progress and expired documents look the same in a static list. There&rsquo;s
             no way to tell &ldquo;already being renewed&rdquo; from &ldquo;nobody has noticed yet&rdquo;.
           </li>
           <li>
@@ -51,8 +51,8 @@ export default function Page() {
         <h2>A practical checklist</h2>
         <h3>1. One system of record, not one per site</h3>
         <p>
-          Every document — passport, visa, Emirates ID, labour card, medical certificate, driving
-          licence — should live against the employee&rsquo;s own record, not in a folder named after
+          Every document (passport, visa, Emirates ID, labour card, medical certificate, driving
+          licence) should live against the employee&rsquo;s own record, not in a folder named after
           the month it was collected. If a worker moves site or supplier, their document history
           should move with them.
         </p>
@@ -68,8 +68,7 @@ export default function Page() {
         <h3>3. Route the alert to the person who can act</h3>
         <p>
           A dashboard nobody opens isn&rsquo;t a compliance system. Expiry alerts that reach the
-          right person directly — over WhatsApp, over email, wherever they&rsquo;ll actually see it
-          — close the gap between &ldquo;the system flagged it&rdquo; and &ldquo;someone did
+          right person directly, over WhatsApp, over email, wherever they&rsquo;ll actually see it, close the gap between &ldquo;the system flagged it&rdquo; and &ldquo;someone did
           something about it&rdquo;.
         </p>
 
@@ -90,7 +89,7 @@ export default function Page() {
         </p>
 
         <p>
-          None of this is complicated in principle — it&rsquo;s a matter of the check actually
+          None of this is complicated in principle. It&rsquo;s a matter of the check actually
           happening every time, for every worker, without depending on someone remembering. That&rsquo;s
           the part software is good at, and spreadsheets aren&rsquo;t.
         </p>

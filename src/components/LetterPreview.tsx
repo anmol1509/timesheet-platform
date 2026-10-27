@@ -27,7 +27,7 @@ function toPreviewHtml(html: string, audience: Audience, values?: Record<string,
       if (key.startsWith(ASK_PREFIX)) return chip("ask", `[${key.slice(ASK_PREFIX.length)}]`, "Filled in when the letter is issued");
       const f = fields.get(key) ?? (key === "SPONSORSHIPCOMPANYNAME" ? fields.get("COMPANYNAME") : undefined);
       const real = values?.[key];
-      return f ? chip("ok", real ?? f.example, real ? `${f.label} — from the chosen employee` : `${f.label} — filled in automatically (sample)`) : chip("bad", `⚠ %%${key}%%`, "Not a real field — it would print blank");
+      return f ? chip("ok", real ?? f.example, real ? `${f.label}: from the chosen employee` : `${f.label}: filled in automatically (sample)`) : chip("bad", `⚠ %%${key}%%`, "Not a real field: it would print blank");
     });
   if (audience !== "SITE") return fill(html);
   const { before, after } = splitAtWorkerTable(html);

@@ -140,10 +140,10 @@ export function EditVehicleForm({ vehicle, drivers }: { vehicle: Vehicle; driver
             <input name="lessor" defaultValue={vehicle.lessor ?? ""} className="input w-full" />
           </Field>
         )}
-        <Field label="Registration (Mulkiya) expiry — follows the uploaded Mulkiya">
+        <Field label="Registration (Mulkiya) expiry: follows the uploaded Mulkiya">
           <DatePicker name="registrationExpiry" defaultValue={vehicle.registrationExpiry} className="w-full" />
         </Field>
-        <Field label="Insurance expiry — follows the uploaded policy">
+        <Field label="Insurance expiry: follows the uploaded policy">
           <DatePicker name="insuranceExpiry" defaultValue={vehicle.insuranceExpiry} className="w-full" />
         </Field>
         <Field label="Status">

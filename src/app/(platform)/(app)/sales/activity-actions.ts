@@ -50,7 +50,7 @@ export async function setFollowUpAction(t: Target, date: string | null, why?: st
   await logSalesActivity({
     ...ids(t),
     kind: "FOLLOWUP",
-    body: when ? `Follow-up set for ${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${why ? ` — ${why}` : ""}` : "Follow-up cleared",
+    body: when ? `Follow-up set for ${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}${why ? `: ${why}` : ""}` : "Follow-up cleared",
     user: ctx.user,
     branchId: ctx.branchId,
   });
@@ -63,7 +63,7 @@ export async function markLostAction(t: Target, reason: string): Promise<Result>
   const ctx = await load(t);
   if (!ctx) return { error: "You can't change that record." };
   const why = reason.trim();
-  if (!why) return { error: "Say why it was lost — it helps next time." };
+  if (!why) return { error: "Say why it was lost. It helps next time." };
   if (t.entity === "quotation") {
     if (!["DRAFT", "SENT", "NEGOTIATION", "APPROVED"].includes(ctx.status)) return { error: "This quotation can't be marked lost any more." };
     await prisma.quotation.update({ where: { id: t.id }, data: { status: "REJECTED", lostReason: why, nextFollowUpAt: null } });
@@ -71,7 +71,7 @@ export async function markLostAction(t: Target, reason: string): Promise<Result>
     if (ctx.status === "Converted") return { error: "This enquiry already became a quotation that was won." };
     await prisma.enquiry.update({ where: { id: t.id }, data: { status: "Lost", lostReason: why, nextFollowUpAt: null } });
   }
-  await logSalesActivity({ ...ids(t), kind: "LOST", body: `Lost — ${why}`, user: ctx.user, branchId: ctx.branchId });
+  await logSalesActivity({ ...ids(t), kind: "LOST", body: `Lost: ${why}`, user: ctx.user, branchId: ctx.branchId });
   await logAudit({ entityType: t.entity === "quotation" ? "QUOTATION" : "ENQUIRY", entityId: t.id, action: "UPDATE", before: { status: ctx.status }, after: { lostReason: why }, userId: ctx.user.id, userName: ctx.user.name, branchId: ctx.branchId });
   refresh(t);
   return {};

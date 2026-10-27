@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const kind = new URL(request.url).searchParams.get("kind");
   const file = (await request.formData()).get("file");
   if (!(file instanceof File) || file.size === 0) return NextResponse.json({ error: "Choose a file." }, { status: 400 });
-  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: `File too large — max ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
+  if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: `File too large: max ${MAX_UPLOAD_LABEL}.` }, { status: 400 });
   const name = file.name.toLowerCase();
   if (!name.endsWith(".csv") && !name.endsWith(".xlsx") && file.type !== "text/csv") {
     return NextResponse.json({ error: "Upload an .xlsx or .csv file. For an old .xls, save it as .xlsx first." }, { status: 400 });

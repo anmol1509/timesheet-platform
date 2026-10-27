@@ -70,7 +70,7 @@ export function VariantsSection({ itemId, variants }: { itemId: string; variants
 
         {variants.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">
-            No variants yet — without one, this item is issued directly (no size/colour breakdown).
+            No variants yet: without one, this item is issued directly (no size/colour breakdown).
           </p>
         ) : (
           <div className="mt-4 overflow-hidden overflow-x-auto rounded-card border border-default">

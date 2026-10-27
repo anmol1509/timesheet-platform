@@ -223,10 +223,10 @@ export const DASHBOARD_WIDGETS: DashboardWidget[] = [
   {
     id: "trend-attention",
     section: "hours",
-    label: "Hours — normal vs overtime + Hours by weekday",
+    label: "Hours: normal vs overtime + Hours by weekday",
     render: (d) => (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Panel title="Hours — normal vs overtime" className="lg:col-span-2" href="/attendance" linkLabel="Attendance">
+        <Panel title="Hours: normal vs overtime" className="lg:col-span-2" href="/attendance" linkLabel="Attendance">
           <HoursSplitChart split={d.hoursSplit} />
         </Panel>
         <Panel title="Hours by weekday" href="/history" linkLabel="History">
@@ -573,7 +573,7 @@ export function buildTodo(d: DashboardData): TodoItem[] {
   const expired = d.alerts.filter((a) => a.days < 0);
   const soon = d.alerts.filter((a) => a.days >= 0);
   if (expired.length > 0) {
-    out.push({ rank: 10, key: "expired", tone: "red", icon: AlertTriangle, title: `${plural(expired.length, "document")} expired`, sub: expired.slice(0, 3).map((a) => `${a.field} — ${a.name}`).join(", ") + (expired.length > 3 ? ` and ${expired.length - 3} more` : ""), href: "/employees/renewals", action: "Review", tag: "Expired" });
+    out.push({ rank: 10, key: "expired", tone: "red", icon: AlertTriangle, title: `${plural(expired.length, "document")} expired`, sub: expired.slice(0, 3).map((a) => `${a.field}: ${a.name}`).join(", ") + (expired.length > 3 ? ` and ${expired.length - 3} more` : ""), href: "/employees/renewals", action: "Review", tag: "Expired" });
   }
   const m = d.money;
   if (m?.scope.bills && m.billsOverdue.count > 0) {
@@ -602,10 +602,10 @@ export function buildTodo(d: DashboardData): TodoItem[] {
     out.push({ rank: 70, key: "bills-soon", tone: "amber", icon: FileText, title: `${aed(m.billsDueSoon.amount)} due to suppliers this week`, sub: plural(m.billsDueSoon.count, "bill"), href: "/finance/bills", action: "Review" });
   }
   if (soon.length > 0) {
-    out.push({ rank: 80, key: "expiring", tone: "amber", icon: AlertTriangle, title: `${plural(soon.length, "document")} expiring soon`, sub: soon.slice(0, 3).map((x) => `${x.field} — ${x.name}`).join(", ") + (soon.length > 3 ? ` and ${soon.length - 3} more` : ""), href: "/employees/renewals", action: "Review" });
+    out.push({ rank: 80, key: "expiring", tone: "amber", icon: AlertTriangle, title: `${plural(soon.length, "document")} expiring soon`, sub: soon.slice(0, 3).map((x) => `${x.field}: ${x.name}`).join(", ") + (soon.length > 3 ? ` and ${soon.length - 3} more` : ""), href: "/employees/renewals", action: "Review" });
   }
   if (d.lpoAlerts.length > 0) {
-    out.push({ rank: 90, key: "lpo", tone: "amber", icon: ClipboardList, title: `${plural(d.lpoAlerts.length, "LPO alert")}`, sub: d.lpoAlerts.slice(0, 2).map((x) => `${x.lpoNumber} — ${x.projectName}`).join(", "), href: "/projects", action: "Review" });
+    out.push({ rank: 90, key: "lpo", tone: "amber", icon: ClipboardList, title: `${plural(d.lpoAlerts.length, "LPO alert")}`, sub: d.lpoAlerts.slice(0, 2).map((x) => `${x.lpoNumber}: ${x.projectName}`).join(", "), href: "/projects", action: "Review" });
   }
   const o = d.operations;
   if (o?.sales && o.sales.followUpsDue > 0) {

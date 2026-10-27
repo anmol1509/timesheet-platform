@@ -26,7 +26,7 @@ export async function submitSupportTicketAction(
   const result = await sendEmail(SUPPORT_INBOX, mail.subject, mail.text, { html: mail.html, replyTo: user.email });
 
   if (!result.sent) {
-    return { error: "Couldn't send your message right now — please try again in a moment, or email info@manpowersync.com directly." };
+    return { error: "Couldn't send your message right now. Please try again in a moment, or email info@manpowersync.com directly." };
   }
   return { ok: true };
 }

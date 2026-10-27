@@ -18,7 +18,7 @@ export function LostButton({ entity, id, label = "Mark as lost" }: { entity: "qu
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
-    const full = [reason, extra.trim()].filter(Boolean).join(" — ");
+    const full = [reason, extra.trim()].filter(Boolean).join(": ");
     start(async () => {
       const res = await markLostAction({ entity, id }, full);
       if (res.error) return setError(res.error);

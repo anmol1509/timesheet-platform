@@ -15,7 +15,7 @@ export const INDUSTRIES_DATA = [
     differentiators: [
       {
         title: "Deployment tracked by trade, not just headcount",
-        body: "Helpers, masons, steel fixers, carpenters and electricians are tracked as the trade they're deployed as today — matching a demand for 20 shuttering carpenters to who's actually idle and qualified.",
+        body: "Helpers, masons, steel fixers, carpenters and electricians are tracked as the trade they're deployed as today. Matching a demand for 20 shuttering carpenters to who's actually idle and qualified.",
       },
       {
         title: "WPS payroll built for a large blue-collar roster",
@@ -35,11 +35,11 @@ export const INDUSTRIES_DATA = [
       "Specialist trades billed by the hour across several concurrent projects, with mobilisation and hours-to-invoice tracked so nothing slips through between sites.",
     keywords: ["MEP manpower software UAE", "MEP contractor workforce software", "MEP labour supply UAE"],
     intro:
-      "MEP contractors run specialist trades — electricians, plumbers, HVAC technicians — across several concurrent projects at once, usually billed by the hour on tight margins where a missed billable hour is a direct loss.",
+      "MEP contractors run specialist trades (electricians, plumbers, HVAC technicians) across several concurrent projects at once, usually billed by the hour on tight margins where a missed billable hour is a direct loss.",
     differentiators: [
       {
         title: "Trade rates set per client and per project",
-        body: "A client's agreed rate for an electrician on one project doesn't have to be the same as another — rates are set at the client or project level, not one flat number for the whole company.",
+        body: "A client's agreed rate for an electrician on one project doesn't have to be the same as another. Rates are set at the client or project level, not one flat number for the whole company.",
       },
       {
         title: "Approved hours become an invoice, not a gap",
@@ -59,7 +59,7 @@ export const INDUSTRIES_DATA = [
       "Cleaners, technicians and support staff spread across many client sites and smaller recurring contracts, tracked and billed per client without a spreadsheet per contract.",
     keywords: ["facilities management workforce software UAE", "FM manpower software UAE", "facilities management staffing software"],
     intro:
-      "A facilities management company typically runs many smaller contracts at once — a handful of staff per client site, spread across a large client base — which makes per-client tracking and billing the real operational challenge, more than headcount.",
+      "A facilities management company typically runs many smaller contracts at once (a handful of staff per client site, spread across a large client base), which makes per-client tracking and billing the real operational challenge, more than headcount.",
     differentiators: [
       {
         title: "Many small contracts, tracked without a spreadsheet each",
@@ -71,7 +71,7 @@ export const INDUSTRIES_DATA = [
       },
       {
         title: "Billing that matches each client's own rate",
-        body: "Invoices are generated per client against their agreed rate and the hours actually worked at their site — not a single blended rate across your whole book of contracts.",
+        body: "Invoices are generated per client against their agreed rate and the hours actually worked at their site. Not a single blended rate across your whole book of contracts.",
       },
     ],
   },
@@ -80,10 +80,10 @@ export const INDUSTRIES_DATA = [
     name: "Cleaning & Hospitality",
     title: "Workforce Software for Cleaning & Hospitality (UAE)",
     description:
-      "High-headcount, shift-based staffing with simple worker-facing tools and fast onboarding — built for a workforce that turns over more often than a typical office roster.",
+      "High-headcount, shift-based staffing with simple worker-facing tools and fast onboarding. Built for a workforce that turns over more often than a typical office roster.",
     keywords: ["cleaning company staffing software UAE", "hospitality staffing software UAE", "shift workforce management UAE"],
     intro:
-      "Cleaning and hospitality staffing runs on high headcount, shift-based rosters with more turnover than most other manpower segments — the operational bottleneck is usually onboarding and shift attendance at volume, not a shortage of trades.",
+      "Cleaning and hospitality staffing runs on high headcount, shift-based rosters with more turnover than most other manpower segments. The operational bottleneck is usually onboarding and shift attendance at volume, not a shortage of trades.",
     differentiators: [
       {
         title: "Bulk onboarding for high-turnover rosters",
@@ -91,7 +91,7 @@ export const INDUSTRIES_DATA = [
       },
       {
         title: "Shift attendance without an app to install",
-        body: "The employee portal runs in any phone browser, which matters more here than most segments — a workforce with high turnover can't be trained on a new app every time someone joins.",
+        body: "The employee portal runs in any phone browser, which matters more here than most segments. A workforce with high turnover can't be trained on a new app every time someone joins.",
       },
       {
         title: "Payroll that keeps up with roster churn",
@@ -111,7 +111,7 @@ export const INDUSTRIES_DATA = [
     differentiators: [
       {
         title: "Site clearance tracked alongside every other document",
-        body: "CICPA and other restricted-site clearance details sit on the employee record next to their visa, Emirates ID and medical certificate — one expiry-tracking system instead of a separate register for site access.",
+        body: "CICPA and other restricted-site clearance details sit on the employee record next to their visa, Emirates ID and medical certificate. One expiry-tracking system instead of a separate register for site access.",
       },
       {
         title: "Camps built for remote-site accommodation",
@@ -131,7 +131,7 @@ export const INDUSTRIES_DATA = [
       "Guard deployment per client site, shift-based attendance, and licence and certification expiry tracked the same way visas and Emirates IDs are.",
     keywords: ["security services manpower software UAE", "security guard workforce software", "security staffing software UAE"],
     intro:
-      "Security services staffing runs on guards deployed to many client sites around the clock, where licensing and certification lapses carry the same operational risk as an expired visa — and are just as easy to lose track of across a large roster.",
+      "Security services staffing runs on guards deployed to many client sites around the clock, where licensing and certification lapses carry the same operational risk as an expired visa. And are just as easy to lose track of across a large roster.",
     differentiators: [
       {
         title: "Guard deployment tracked per client site",
@@ -143,7 +143,7 @@ export const INDUSTRIES_DATA = [
       },
       {
         title: "Licence and certification expiry, tracked like a visa",
-        body: "Security licences and certifications get the same expiry alerts as visas and labour cards — one system flags all of it, instead of a separate register that's easy to let lapse.",
+        body: "Security licences and certifications get the same expiry alerts as visas and labour cards. One system flags all of it, instead of a separate register that's easy to let lapse.",
       },
     ],
   },

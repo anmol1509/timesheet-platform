@@ -229,7 +229,7 @@ export function ClientList({ clients }: { clients: ClientRow[] }) {
           <DeleteButton
             action={deleteClientAction}
             hiddenFields={{ clientId: c.id }}
-            confirmMessage={`Delete client "${c.name}"? Clients with projects or timesheet history can't be deleted — you'll be told which.`}
+            confirmMessage={`Delete client "${c.name}"? Clients with projects or timesheet history can't be deleted. You'll be told which.`}
           />
         </div>
       )}

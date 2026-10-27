@@ -50,7 +50,7 @@ export function ClientDocuments({
     // A phone photo is scaled down first; a PDF is left as it is.
     const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`);
       if (fileRef.current) fileRef.current.value = "";
       return;
     }

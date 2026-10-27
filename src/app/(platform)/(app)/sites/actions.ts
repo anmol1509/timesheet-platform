@@ -159,7 +159,7 @@ export async function bulkImportSitesAction(rows: Record<string, string>[]): Pro
     const siteName = cellOf(r, "Site name").replace(/\s+/g, " ");
     const projectRef = cellOf(r, "Project");
     if (!siteName) { results.push(rowError(i, undefined, "Site name is required.")); continue; }
-    if (!projectRef) { results.push(rowError(i, siteName, "Project is required — its code or its name.")); continue; }
+    if (!projectRef) { results.push(rowError(i, siteName, "Project is required: its code or its name.")); continue; }
     const project = byCode.get(projectRef.toLowerCase()) ?? (byName.get(nameKey(projectRef)) ?? [])[0];
     const ambiguous = !byCode.has(projectRef.toLowerCase()) && (byName.get(nameKey(projectRef))?.length ?? 0) > 1;
     if (!project) { results.push(rowError(i, siteName, `Project "${projectRef}" wasn't found. Use its code or exact name.`)); continue; }

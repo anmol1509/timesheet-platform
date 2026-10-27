@@ -100,7 +100,7 @@ export async function createCandidateAction(_prev: State, formData: FormData): P
   const fields = profileFields(formData);
   if (!fields.candidateName) return { error: "Candidate name is required." };
   if (!branchId) {
-    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a candidate." : "Your account has no branch assigned — contact an admin." };
+    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding a candidate." : "Your account has no branch assigned. Contact an admin." };
   }
   const dupError = await findDuplicate(branchId, fields.passportNumber, fields.emiratesId);
   if (dupError) return { error: dupError };
@@ -240,7 +240,7 @@ export async function createAgencyAction(_prev: CreateAgencyResult, formData: Fo
   const name = stringOrNull(formData.get("name"));
   if (!name) return { error: "Name is required." };
   if (!branchId) {
-    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding an agency." : "Your account has no branch assigned — contact an admin." };
+    return { error: isSuperAdmin ? "Pick a branch from the switcher before adding an agency." : "Your account has no branch assigned. Contact an admin." };
   }
 
   const existing = await findSupplierByName(name, branchId);
@@ -380,7 +380,7 @@ export async function bulkImportCandidatesAction(rows: Record<string, string>[])
       }
       const agencyRaw = (r["Agency"] || "").trim();
       if (agencyRaw && !agencyByName.has(agencyRaw.toLowerCase())) {
-        results.push({ row: i + 2, status: "error", message: `Agency "${agencyRaw}" isn't a recruitment agency on file — add it under Onboarding → Agencies first.` });
+        results.push({ row: i + 2, status: "error", message: `Agency "${agencyRaw}" isn't a recruitment agency on file. Add it under Onboarding → Agencies first.` });
         continue;
       }
       const data = {
@@ -414,7 +414,7 @@ export async function dropCandidateAction(_prev: State, formData: FormData): Pro
   const id = String(formData.get("id") || "");
   if (!(await assertOnboardingInBranch(id, branchId, isSuperAdmin))) return { error: "You can't edit that candidate." };
   const reason = stringOrNull(formData.get("reason"));
-  if (!reason) return { error: "Say why — for example withdrew, failed the trade test, or didn't arrive." };
+  if (!reason) return { error: "Say why: for example withdrew, failed the trade test, or didn't arrive." };
   const c = await prisma.candidateOnboarding.findUnique({ where: { id }, select: { joined: true, droppedAt: true, branchId: true } });
   if (!c) return { error: "Candidate not found." };
   if (c.joined) return { error: "This candidate has already joined as an employee." };

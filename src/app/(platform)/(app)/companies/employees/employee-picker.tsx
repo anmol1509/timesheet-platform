@@ -101,7 +101,7 @@ export function EmployeeSheetPicker({ month, rows, issuer }: { month: string; ro
       a.download = isPdf ? `timesheet-selected-employees-${month}.pdf` : `timesheets-${month}-selected.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      if (Number(res.headers.get("X-Skipped") ?? 0) > 0) setError("Some companies were left out — see NOT-GENERATED.txt in the zip.");
+      if (Number(res.headers.get("X-Skipped") ?? 0) > 0) setError("Some companies were left out. See NOT-GENERATED.txt in the zip.");
     } catch {
       setError("Couldn't generate the timesheets. Try again.");
     } finally {

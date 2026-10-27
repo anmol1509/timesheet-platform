@@ -50,7 +50,7 @@ export default async function VendorDemandsPage({ searchParams }: { searchParams
                 <Link href={`/vendor/demands/${o.id}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 transition hover:bg-surface-hover">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-primary">Request #{o.demandRequest.requestNo} <span className="font-normal text-muted">· {o.demandRequest.requestType}</span></p>
-                    <p className="mt-0.5 truncate text-xs text-muted">{o.demandRequest.trades.map((t) => `${t.quantity} ${t.trade}`).join(" · ")} — {total} worker{total === 1 ? "" : "s"} in total</p>
+                    <p className="mt-0.5 truncate text-xs text-muted">{o.demandRequest.trades.map((t) => `${t.quantity} ${t.trade}`).join(" · ")}: {total} worker{total === 1 ? "" : "s"} in total</p>
                     <p className="text-xs text-subtle">Sent {day(o.sentAt)}</p>
                   </div>
                   {closed && o.status === "SENT" ? <Badge color="slate">Closed</Badge> : <Badge color={STATUS[o.status]?.color ?? "slate"} dot>{STATUS[o.status]?.label ?? o.status}</Badge>}

@@ -148,7 +148,7 @@ export function CampView({
   const vacantCount = allBeds.filter((b) => !b.employeeId).length;
 
   if (rooms.length === 0) {
-    return <p className="empty-state py-10 text-sm text-muted">This camp has no rooms yet — add one below.</p>;
+    return <p className="empty-state py-10 text-sm text-muted">This camp has no rooms yet. Add one below.</p>;
   }
 
   /** One berth or bed: an occupant you can drag or check out, or a vacant slot you can drop a worker on. */
@@ -290,7 +290,7 @@ export function CampView({
 
                 {groups.length === 0 ? (
                   <p className="rounded-control border border-dashed border-default px-3 py-4 text-center text-xs text-subtle">
-                    {total === 0 ? "No beds yet — use Add beds." : "No vacant beds in this room."}
+                    {total === 0 ? "No beds yet: use Add beds." : "No vacant beds in this room."}
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">

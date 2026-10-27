@@ -57,7 +57,7 @@ export async function resetModuleAction(
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
     return {
-      error: `Reset failed — other data still references these records. Reset a dependent module first, then retry. (${detail})`,
+      error: `Reset failed: other data still references these records. Reset a dependent module first, then retry. (${detail})`,
     };
   }
 
@@ -114,7 +114,7 @@ export async function resetAllAction(
     }, { timeout: 60000 });
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    return { error: `Reset All failed partway through — nothing was deleted (the whole thing is one transaction). (${detail})` };
+    return { error: `Reset All failed partway through. Nothing was deleted (the whole thing is one transaction). (${detail})` };
   }
 
   await logAudit({

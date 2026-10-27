@@ -353,7 +353,7 @@ async function listRows(input: Record<string, unknown>, ctx: ToolContext): Promi
     const nm = new Map(names.map((n) => [n.id, n.name]));
     const value = groups.reduce((a, g) => a + (g._sum.invoiceValue ?? 0), 0);
     table = {
-      title: `Approved by clients but not invoiced — AED ${aed(value)} waiting to be billed`, columns: ["Client", "Month", "Workers", "Hours", "Value (AED)"], total: groups.length,
+      title: `Approved by clients but not invoiced: AED ${aed(value)} waiting to be billed`, columns: ["Client", "Month", "Workers", "Hours", "Value (AED)"], total: groups.length,
       rows: groups.slice(0, ROW_CAP).map((g) => [g.clientId ? nm.get(g.clientId) ?? "?" : "No client set", g.month, String(g._count._all), aed(g._sum.totalHours ?? 0), aed(g._sum.invoiceValue ?? 0)]),
     };
   } else if (kind === "missing_photo") {

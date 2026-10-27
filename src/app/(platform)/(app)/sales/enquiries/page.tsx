@@ -71,7 +71,7 @@ export default async function EnquiriesPage({
         <EmptyState
           icon={FileQuestion}
           title="No enquiries yet"
-          description="An enquiry is the first step in the sales pipeline — log what a client is asking for, then raise a quotation against it."
+          description="An enquiry is the first step in the sales pipeline. Log what a client is asking for, then raise a quotation against it."
           action={
             <Link href="/sales/enquiries/new" className="btn btn-primary btn-sm">
               New enquiry

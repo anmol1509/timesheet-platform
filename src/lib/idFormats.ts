@@ -37,7 +37,7 @@ export function hintFor(kind: MaskKind, value: string): Hint {
     case "iban": {
       if (ibanChecksumOk(value)) return value.startsWith("AE") && value.length !== 23 ? { tone: "warn", text: "UAE IBANs have 23 characters." } : { tone: "ok", text: "Valid IBAN" };
       if (value.startsWith("AE") && value.length < 23) return { tone: "warn", text: `UAE IBANs have 23 characters (${value.length} so far).` };
-      return { tone: "warn", text: "This doesn't pass the IBAN check — please re-check the digits." };
+      return { tone: "warn", text: "This doesn't pass the IBAN check. Please re-check the digits." };
     }
     case "eid": {
       const n = value.replace(/\D/g, "").length;

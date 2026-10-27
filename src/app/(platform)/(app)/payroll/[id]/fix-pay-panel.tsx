@@ -107,7 +107,7 @@ export function FixPayPanel({ runId, payType, canEdit, rows }: { runId: string; 
       <div className="flex items-start gap-3">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-primary">Fix pay setup — {rows.length} worker{rows.length === 1 ? "" : "s"} can&rsquo;t be paid yet</h2>
+          <h2 className="text-sm font-semibold text-primary">Fix pay setup: {rows.length} worker{rows.length === 1 ? "" : "s"} can&rsquo;t be paid yet</h2>
           <p className="mt-0.5 text-xs text-muted">They are left out of this run until their pay is set. Set it here and they join the run straight away. Every change is kept in their pay history.</p>
         </div>
       </div>

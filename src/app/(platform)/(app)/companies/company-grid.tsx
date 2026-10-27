@@ -86,7 +86,7 @@ export function CompanyGrid({
       a.click();
       URL.revokeObjectURL(url);
       const left = Number(res.headers.get("X-Skipped") ?? 0);
-      if (left > 0) setZipError(`${left} company(ies) were left out — see NOT-GENERATED.txt in the zip.`);
+      if (left > 0) setZipError(`${left} company(ies) were left out: see NOT-GENERATED.txt in the zip.`);
     } catch {
       setZipError("Couldn't generate the timesheets. Try again.");
     } finally {

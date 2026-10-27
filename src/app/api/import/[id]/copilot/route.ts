@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (useAi) {
     const limit = rateLimit(`import-copilot:${who.user.id}`, { limit: 20, windowMs: 60 * 60 * 1000 });
     if (!limit.allowed) {
-      return NextResponse.json({ error: "You've run the AI check a lot — try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
+      return NextResponse.json({ error: "You've run the AI check a lot. Try again shortly." }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
     }
   }
   try {

@@ -80,7 +80,7 @@ export function validateApproval(
     return {
       ok: false,
       error:
-        `${line.allocatedCount} worker(s) are already mobilised on this line — ` +
+        `${line.allocatedCount} worker(s) are already mobilised on this line, ` +
         `remove ${line.allocatedCount - next} before cutting the approval to ${next}.`,
     };
   }

@@ -85,7 +85,7 @@ export async function uploadAttachmentAction(
   }
   if (file.size > MAX_UPLOAD_BYTES) {
     return {
-      error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.`,
+      error: `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.`,
     };
   }
 

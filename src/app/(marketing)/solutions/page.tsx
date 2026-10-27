@@ -6,7 +6,7 @@ import { FACTS, SITE } from "@/app/(marketing)/welcome/content";
 import { SOLUTIONS_DATA } from "./solutions-data";
 
 const TITLE = "Manpower Supply Software Solutions UAE";
-const DESCRIPTION = `Every part of ${SITE.name}, one page each — timesheets, payroll, billing, mobilisation, camps, portals and the built-in assistant.`;
+const DESCRIPTION = `Every part of ${SITE.name}, one page each: timesheets, payroll, billing, mobilisation, camps, portals and the built-in assistant.`;
 const URL = "https://manpowersync.com/solutions";
 
 export const metadata: Metadata = finishMetadata({

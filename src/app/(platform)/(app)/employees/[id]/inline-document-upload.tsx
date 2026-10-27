@@ -103,7 +103,7 @@ export function InlineDocumentUpload({
     // A phone photo is scaled down first; a PDF is left as it is.
     const file = await shrinkImage(picked);
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError(`"${file.name}" is too large — max ${MAX_UPLOAD_LABEL}.`);
+      setError(`"${file.name}" is too large: max ${MAX_UPLOAD_LABEL}.`);
       if (fileRef.current) fileRef.current.value = "";
       return;
     }
@@ -205,7 +205,7 @@ export function InlineDocumentUpload({
       {extracted && !applied && (
         <div className="mt-2 rounded-lg border border-[var(--info-border)] bg-[var(--info-soft)] p-3">
           <p className="mb-2 text-xs font-medium text-[var(--brand-primary)]">
-            Auto-read from the document — apply to this employee&rsquo;s profile?
+            Auto-read from the document: apply to this employee&rsquo;s profile?
           </p>
           <div className="mb-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--brand-primary)] sm:grid-cols-4">
             {extracted.name && <span>Name: {extracted.name}</span>}
@@ -247,7 +247,7 @@ export function InlineDocumentUpload({
       {applied && (
         <p className="mt-1 text-xs text-[var(--success)]">
           {onExtracted
-            ? "Auto-filled below — review before saving."
+            ? "Auto-filled below: review before saving."
             : "Applied to profile."}
         </p>
       )}

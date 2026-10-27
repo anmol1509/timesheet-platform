@@ -16,7 +16,7 @@ export function CostTrend({ runs }: { runs: { month: string; total: number; head
     <section>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[13px] font-medium text-muted">Net payroll — {last.month}</p>
+          <p className="text-[13px] font-medium text-muted">Net payroll: {last.month}</p>
           <p className="tabular mt-1 text-3xl font-semibold tracking-tight text-primary">AED {aed(last.total)}</p>
           <p className="mt-1 text-xs text-subtle">
             {delta !== null && (

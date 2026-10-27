@@ -95,7 +95,7 @@ export function ImportWizard({ chart, openingDate }: { chart: ChartAccount[]; op
           </div>
           <dl className="grid gap-2 rounded-[var(--radius-card)] bg-[var(--surface-sunken)] p-3 text-sm sm:grid-cols-3">
             <div><dt className="text-xs text-muted">Read from file</dt><dd className="tabular font-medium text-primary">Dr {aed(debit)} · Cr {aed(credit)}</dd></div>
-            <div><dt className="text-xs text-muted">Matches the file total</dt><dd className={`font-medium ${parsed.sourceDebit == null ? "text-muted" : tied ? "text-success" : "text-error"}`}>{parsed.sourceDebit == null ? "No total row found" : tied ? `Yes, ${aed(parsed.sourceDebit)}` : `No — file says Dr ${aed(parsed.sourceDebit)}`}</dd></div>
+            <div><dt className="text-xs text-muted">Matches the file total</dt><dd className={`font-medium ${parsed.sourceDebit == null ? "text-muted" : tied ? "text-success" : "text-error"}`}>{parsed.sourceDebit == null ? "No total row found" : tied ? `Yes, ${aed(parsed.sourceDebit)}` : `No: file says Dr ${aed(parsed.sourceDebit)}`}</dd></div>
             <div><dt className="text-xs text-muted">Mapped</dt><dd className="font-medium text-primary">{matched} to existing, {rows.length - matched} new accounts</dd></div>
           </dl>
           {diff !== 0 && <p className="text-sm text-warning">Debits and credits differ by {aed(Math.abs(diff))}. That would be parked in Opening balance equity, so check the export is complete before importing.</p>}

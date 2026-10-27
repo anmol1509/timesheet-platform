@@ -30,7 +30,7 @@ export async function saveRoleAction(_prev: State, formData: FormData): Promise<
   // An action without View on its module would be unreachable — reject it clearly.
   for (const p of permissions) {
     const [mod] = p.split(":");
-    if (!permissions.includes(`${mod}:view`)) return { error: `Grant View on ${mod} too — its other actions can't work without it.` };
+    if (!permissions.includes(`${mod}:view`)) return { error: `Grant View on ${mod} too: its other actions can't work without it.` };
   }
 
   let branchId: string | null;

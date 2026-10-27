@@ -111,7 +111,7 @@ function DemoDialog({ onClose }: { onClose: () => void }) {
         {status === "success" ? (
           <div className="py-4 text-center">
             <h2 id={titleId} className="text-xl font-semibold text-slate-900">
-              Thanks — we&rsquo;ll be in touch
+              Thanks: we&rsquo;ll be in touch
             </h2>
             <p className="mt-2 text-sm text-slate-500">
               Someone from our team will reach out shortly to schedule your demo.

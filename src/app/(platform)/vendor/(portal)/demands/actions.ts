@@ -28,7 +28,7 @@ async function tellOffice(demand: { requestNo: number; branchId: string }, suppl
     userIds: await approverIds("demand", demand.branchId),
     kind: "DEMAND_SUPPLIER_REPLY",
     title,
-    body: `${supplierName} — ${body}`,
+    body: `${supplierName}: ${body}`,
     href: `/demand`,
   });
 }

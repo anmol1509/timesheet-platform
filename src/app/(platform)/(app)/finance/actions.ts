@@ -70,7 +70,7 @@ export async function createExpenseAction(_prev: State, formData: FormData): Pro
     userIds: (await approverIds("finance", branchId)).filter((id) => id !== user.id),
     kind: "EXPENSE_SUBMITTED",
     title: `Expense to approve: AED ${(amount + vatAmount).toFixed(2)}`,
-    body: `${category} — ${description} (by ${user.name}).`,
+    body: `${category}: ${description} (by ${user.name}).`,
     href: "/approvals?type=EXPENSE",
   });
   revalidatePath("/finance/expenses");
@@ -103,7 +103,7 @@ export async function decideExpenseAction(formData: FormData): Promise<State> {
     userIds: [e.submittedById].filter((x) => x !== user.id),
     kind: "EXPENSE_DECIDED",
     title: `Expense ${decision === "APPROVED" ? "approved" : "rejected"}: AED ${(Number(e.amount) + Number(e.vatAmount)).toFixed(2)}`,
-    body: `${e.category} — ${e.description}.${note ? ` Note: ${note}` : ""}`,
+    body: `${e.category}: ${e.description}.${note ? ` Note: ${note}` : ""}`,
     href: "/finance/expenses",
   });
   revalidatePath("/finance/expenses");

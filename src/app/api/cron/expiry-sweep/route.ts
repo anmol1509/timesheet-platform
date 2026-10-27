@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
     // In-app + (opted-in) email digest for the admins who own this
     // branch, once per day even if the cron is retried.
-    const title = `Expiry digest — ${branch.name}`;
+    const title = `Expiry digest: ${branch.name}`;
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
     const [admins, already] = await Promise.all([
@@ -121,9 +121,9 @@ async function sendStepReminders(branchId: string, branchName: string, items: It
   if (written.count === 0) return 0;
 
   const line = (d: (typeof fresh)[number]) =>
-    `${d.item.document} — ${d.item.subjectName} (${d.item.subjectRef}): ${d.item.days < 0 ? `expired ${-d.item.days} day${d.item.days === -1 ? "" : "s"} ago` : d.item.days === 0 ? "expires today" : `${d.item.days} day${d.item.days === 1 ? "" : "s"} left`}`;
+    `${d.item.document}: ${d.item.subjectName} (${d.item.subjectRef}): ${d.item.days < 0 ? `expired ${-d.item.days} day${d.item.days === -1 ? "" : "s"} ago` : d.item.days === 0 ? "expires today" : `${d.item.days} day${d.item.days === 1 ? "" : "s"} left`}`;
   const body = (rows: typeof fresh) => rows.slice(0, 8).map(line).join("\n") + (rows.length > 8 ? `\n…and ${rows.length - 8} more` : "");
-  const title = (n: number) => `${n} document${n === 1 ? "" : "s"} reaching a reminder date — ${branchName}`;
+  const title = (n: number) => `${n} document${n === 1 ? "" : "s"} reaching a reminder date: ${branchName}`;
 
   const [admins, cases] = await Promise.all([
     prisma.user.findMany({ where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { role: "BRANCH_ADMIN", branchId }] }, select: { id: true } }),

@@ -36,7 +36,7 @@ export default function AppError({
         </h1>
         <p className="mt-1.5 text-sm text-muted">
           This page couldn&rsquo;t be loaded. Your data hasn&rsquo;t been
-          changed — retrying is safe.
+          changed, retrying is safe.
         </p>
         {error.digest && (
           <p className="mt-3 rounded-md bg-surface-sunken px-2 py-1 font-mono text-[11px] text-subtle">

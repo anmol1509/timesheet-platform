@@ -61,7 +61,7 @@ export function AdvancesButton({ runId, employeeId, name, count, owed, unschedul
   return (
     <Dialog onOpenChange={load}>
       <DialogTrigger asChild>
-        <button type="button" className={unscheduled ? "font-medium text-[var(--warning)] hover:underline" : "text-[var(--brand-primary)] hover:underline"} title={`${count} open advance${count === 1 ? "" : "s"}, AED ${aed(owed)} owed${unscheduled ? " — no month chosen for at least one" : ""}`}>
+        <button type="button" className={unscheduled ? "font-medium text-[var(--warning)] hover:underline" : "text-[var(--brand-primary)] hover:underline"} title={`${count} open advance${count === 1 ? "" : "s"}, AED ${aed(owed)} owed${unscheduled ? ": no month chosen for at least one" : ""}`}>
           Advances ({count})
         </button>
       </DialogTrigger>

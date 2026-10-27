@@ -138,7 +138,7 @@ export async function markAdvanceGivenAction(formData: FormData): Promise<State>
   // Proof of the hand-over (a signed voucher, a transfer slip…): any files attached are kept with the advance.
   const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0).slice(0, 5);
   for (const f of files) {
-    if (f.size > MAX_UPLOAD_BYTES) return { error: `${f.name} is ${(f.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_UPLOAD_LABEL}.` };
+    if (f.size > MAX_UPLOAD_BYTES) return { error: `${f.name} is ${(f.size / 1024 / 1024).toFixed(1)}MB: the limit is ${MAX_UPLOAD_LABEL}.` };
     if (!isAcceptedUploadType(f.type)) return { error: `${f.name}: attach a PDF or a photo.` };
   }
   await prisma.employeeLoan.update({ where: { id: loan.id }, data: { givenDate, method, reference } });

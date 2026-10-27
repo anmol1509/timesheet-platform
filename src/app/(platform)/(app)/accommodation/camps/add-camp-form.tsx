@@ -102,7 +102,7 @@ function AddCampBody() {
         </div>
         <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2 text-sm text-primary">
           <b>{rooms.length}</b> room{rooms.length === 1 ? "" : "s"} · <b>{totalBeds}</b> bed{totalBeds === 1 ? "" : "s"}
-          <span className="text-muted"> — a bunk counts as 2 beds (upper and lower)</span>
+          <span className="text-muted">: a bunk counts as 2 beds (upper and lower)</span>
         </p>
       </div>
 

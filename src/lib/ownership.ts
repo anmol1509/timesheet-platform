@@ -28,7 +28,7 @@ export function ownershipSummary(shares: (number | null | undefined)[]): Ownersh
 /** The sentence for a summary that is not ok, or null when it is. */
 export function ownershipProblem(s: OwnershipSummary): string | null {
   if (s.ok) return null;
-  if (s.unset > 0) return `Choose a share for ${s.unset === 1 ? "each owner" : `all ${s.owners} owners`} — they must add up to 100%.`;
+  if (s.unset > 0) return `Choose a share for ${s.unset === 1 ? "each owner" : `all ${s.owners} owners`}: they must add up to 100%.`;
   return s.remaining > 0 ? `Owners' shares add up to ${s.total}%, ${s.remaining}% short of 100%.` : `Owners' shares add up to ${s.total}%, ${-s.remaining}% over 100%.`;
 }
 

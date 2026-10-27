@@ -51,7 +51,7 @@ export function AgencyPicker({
           searchable
           disabled={disabled}
           placeholder="Select an agency…"
-          emptyText="No agencies yet — add one with the button."
+          emptyText="No agencies yet: add one with the button."
           options={[{ value: "", label: "None" }, ...list.map((a) => ({ value: a.id, label: a.name }))]}
         />
       </div>

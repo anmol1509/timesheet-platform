@@ -289,7 +289,7 @@ export default async function InstantViewPage({
                       <td className="py-2">{h.bedLabel || "—"}</td>
                       <td className="py-2">{formatDate(h.checkInDate)}</td>
                       <td className="py-2">{h.checkOutDate ? formatDate(h.checkOutDate) : h.plannedCheckOutDate ? <span className="text-[var(--warning)]">Leaving {formatDate(h.plannedCheckOutDate)}</span> : formatDate(h.checkOutDate)}</td>
-                      <td className="py-2">{h.checkOutReason ? `${h.checkOutReason}${h.checkOutNote ? ` — ${h.checkOutNote}` : ""}` : "—"}</td>
+                      <td className="py-2">{h.checkOutReason ? `${h.checkOutReason}${h.checkOutNote ? `: ${h.checkOutNote}` : ""}` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

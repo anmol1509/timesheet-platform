@@ -15,7 +15,7 @@ import { removePartyLinkAction } from "./party-actions";
 /** "Khalid Al Mansoori — Owner of Al Noor, Sponsor of Gulf Skills": enough to tell two people with the same name apart. */
 export function personLabel(name: string, links: { role: string; supplier: { name: string } }[]) {
   const where = links.slice(0, 2).map((l) => `${PARTY_ROLE_LABEL[l.role] ?? l.role} of ${l.supplier.name}`).join(", ");
-  return where ? `${name} — ${where}${links.length > 2 ? ` +${links.length - 2}` : ""}` : name;
+  return where ? `${name}: ${where}${links.length > 2 ? ` +${links.length - 2}` : ""}` : name;
 }
 
 /**

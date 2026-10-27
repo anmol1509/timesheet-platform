@@ -26,7 +26,7 @@ export function PersonPicker({ options, choice, onChoice, person, onPerson, hide
   const value = choice.kind === "existing" ? choice.partyId : choice.kind === "new" ? NEW : "";
   // Someone already on file with the name being typed: offer them instead, so the same person isn't entered twice.
   const typed = choice.kind === "new" ? person.name.trim() : "";
-  const matches = typed ? similarPeople(typed, options.map((o) => ({ ...o, name: o.label.split(" — ")[0] }))) : [];
+  const matches = typed ? similarPeople(typed, options.map((o) => ({ ...o, name: o.label.split(/ — |: /)[0] }))) : [];
   const shown = options.filter((o) => !hideIds.includes(o.id) || (choice.kind === "existing" && choice.partyId === o.id));
   return (
     <div className="space-y-2">

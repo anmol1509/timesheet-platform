@@ -26,7 +26,7 @@ export function DropPanel({ candidateId, joined, droppedAt, droppedReason }: { c
   if (droppedAt) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-soft)] px-4 py-3">
-        <p className="text-sm text-primary"><span className="font-medium">Dropped</span> on {new Date(droppedAt).toLocaleDateString("en-GB")}{droppedReason ? ` — ${droppedReason}` : ""}. They are out of the queue and the reminders.</p>
+        <p className="text-sm text-primary"><span className="font-medium">Dropped</span> on {new Date(droppedAt).toLocaleDateString("en-GB")}{droppedReason ? `: ${droppedReason}` : ""}. They are out of the queue and the reminders.</p>
         <form action={reinstateCandidateAction}>
           <input type="hidden" name="id" value={candidateId} />
           <button type="submit" className="btn btn-secondary btn-sm"><RotateCcw className="h-3.5 w-3.5" aria-hidden /> Bring back</button>

@@ -390,7 +390,7 @@ export async function deleteBedAction(formData: FormData) {
   if (bed.employeeId) {
     redirect(
       `/accommodation/camps?error=${encodeURIComponent(
-        `Can't delete bed ${bed.label} — ${bed.employee?.name ?? "someone"} is housed there. Check them out first.`
+        `Can't delete bed ${bed.label}: ${bed.employee?.name ?? "someone"} is housed there. Check them out first.`
       )}`
     );
   }
@@ -476,7 +476,7 @@ export async function deleteCampAction(formData: FormData) {
   if (checkInCount > 0) {
     redirect(
       `/accommodation/camps?error=${encodeURIComponent(
-        `Can't delete ${existing.name} — it has ${checkInCount} check-in record(s) on file.`
+        `Can't delete ${existing.name}: it has ${checkInCount} check-in record(s) on file.`
       )}`
     );
   }
@@ -538,7 +538,7 @@ export async function placeWorkerInBedAction(employeeId: string, bedId: string):
       }
     });
   } catch {
-    return { error: "Couldn't move them — the bed may have just been taken. Refresh and try again." };
+    return { error: "Couldn't move them: the bed may have just been taken. Refresh and try again." };
   }
 
   await logAudit({

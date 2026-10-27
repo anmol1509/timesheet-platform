@@ -113,7 +113,7 @@ export function UploadSlot({
         <p className="mt-1 flex items-start gap-1.5 text-xs text-[var(--error)]">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden />
           <span>
-            {status.message} The file is still attached — you can fill the
+            {status.message} The file is still attached. You can fill the
             fields in by hand.
           </span>
         </p>
@@ -193,7 +193,7 @@ export function MultiUploadSlot({
       />
 
       <p className="mt-1 text-xs text-subtle">
-        {hint ?? "You can select several files at once — passport, Emirates ID and labour card together."}
+        {hint ?? "You can select several files at once. Passport, Emirates ID and labour card together."}
       </p>
 
       {status.kind === "reading" && (
@@ -212,7 +212,7 @@ export function MultiUploadSlot({
         <p className="mt-1 flex items-start gap-1.5 text-xs text-[var(--error)]">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden />
           <span>
-            {status.message} The files are still attached — you can fill the
+            {status.message} The files are still attached. You can fill the
             fields in by hand.
           </span>
         </p>

@@ -24,7 +24,7 @@ const IMPORT_COLUMNS = [
 ];
 
 export function SiteTable({ sites }: { sites: SiteRow[] }) {
-  const projectOptions = [...new Map(sites.map((s) => [s.projectId, `${s.projectCode} — ${s.projectName}`])).entries()]
+  const projectOptions = [...new Map(sites.map((s) => [s.projectId, `${s.projectCode}: ${s.projectName}`])).entries()]
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const clientOptions = [...new Set(sites.map((s) => s.clientName).filter((c): c is string => !!c))].sort().map((v) => ({ value: v, label: v }));
@@ -105,7 +105,7 @@ export function SiteTable({ sites }: { sites: SiteRow[] }) {
       emptyState={<p className="px-4 py-10 text-center text-sm text-muted">No sites yet. Add one above, or import a list with the Import button.</p>}
       renderRowActions={(s) =>
         s.workers > 0 || s.timesheetRows > 0 ? (
-          <span className="text-xs text-subtle" title="In use by workers or timesheet rows — clear those first">
+          <span className="text-xs text-subtle" title="In use by workers or timesheet rows, clear those first">
             In use
           </span>
         ) : (

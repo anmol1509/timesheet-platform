@@ -34,7 +34,7 @@ export function DocumentChecklist({ items, canOpen = true }: { items: ChecklistI
               </span>
             )}
             {r.count > 1 && <span className="text-xs text-muted">{r.count} files</span>}
-            <Badge color={missingRequired ? "red" : state.color}>{missingRequired ? "Missing — required" : state.label}</Badge>
+            <Badge color={missingRequired ? "red" : state.color}>{missingRequired ? "Missing: required" : state.label}</Badge>
           </li>
         );
       })}

@@ -61,7 +61,7 @@ export async function createClientAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding a client."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -454,7 +454,7 @@ export async function deleteClientAction(formData: FormData) {
     if (projectCount > 0) parts.push(`${projectCount} project(s)`);
     redirect(
       `/clients/${id}?error=${encodeURIComponent(
-        `Can't delete — still linked to ${parts.join(" and ")}. Remove those first.`
+        `Can't delete: still linked to ${parts.join(" and ")}. Remove those first.`
       )}`
     );
   }

@@ -30,7 +30,7 @@ export function SampleCard({ loaded }: { loaded: boolean }) {
         <p className="mt-0.5 text-xs text-muted">
           {loaded
             ? "Suppliers, clients, 24 workers and a month of hours and attendance, all marked (Sample). Remove them whenever you like; your own data isn't touched."
-            : "Load a small sample company — suppliers, clients, 24 workers and a month of hours and attendance — and remove it in one click when you're ready to bring in your own."}
+            : "Load a small sample company (suppliers, clients, 24 workers and a month of hours and attendance) and remove it in one click when you're ready to bring in your own."}
         </p>
         {error && <p className="mt-1 text-xs text-[var(--error)]">{error}</p>}
       </div>

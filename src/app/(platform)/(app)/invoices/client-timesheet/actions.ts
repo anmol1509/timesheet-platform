@@ -41,7 +41,7 @@ export async function submitManualEntryAction(
     return {
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding a manual entry."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
 
@@ -159,7 +159,7 @@ export async function submitManualEntryAction(
   };
 
   const uploadData = {
-    filename: `Manual Entry — ${monthLabel}`,
+    filename: `Manual Entry: ${monthLabel}`,
     fileData: null,
     uploadedById: user.id,
     branchId,
@@ -203,7 +203,7 @@ export async function submitDailyTimesheetAction(
       requested: 0,
       error: isSuperAdmin
         ? "Pick a branch from the switcher before adding a daily entry."
-        : "Your account has no branch assigned — contact an admin.",
+        : "Your account has no branch assigned. Contact an admin.",
     };
   }
   const date = String(formData.get("date") || "").trim();
@@ -583,7 +583,7 @@ export async function deleteTimesheetEntryAction(
     return { deleted: 0 };
   }
   if (before.status === "LOCKED" && !isAdminRole(user.role)) {
-    return { deleted: 0, error: "That row is locked — only an admin can remove it." };
+    return { deleted: 0, error: "That row is locked: only an admin can remove it." };
   }
 
   await prisma.timesheetEntry.delete({ where: { id: entryId } });
