@@ -12,6 +12,7 @@ import { ScrollFade } from "@/components/ScrollFade";
 export function MobileSidebar({
   isAdmin,
   isSuperAdmin,
+  isOwner = false,
   allowedModules,
   pendingApprovals,
   badges,
@@ -19,6 +20,7 @@ export function MobileSidebar({
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isOwner?: boolean;
   allowedModules: string[] | null;
   pendingApprovals?: number;
   badges?: Record<string, number>;
@@ -60,7 +62,7 @@ export function MobileSidebar({
               if ((e.target as HTMLElement).closest("a")) setOpen(false);
             }}
           >
-            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} pendingApprovals={pendingApprovals} badges={badges} />
+            <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} isOwner={isOwner} allowedModules={allowedModules} pendingApprovals={pendingApprovals} badges={badges} />
           </ScrollFade>
           <div className="shrink-0 border-t border-default p-3">
             <SidebarHelp onAssistant={() => setOpen(false)} />

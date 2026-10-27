@@ -28,6 +28,7 @@ import { cn } from "@/lib/cn";
 export function AppShell({
   isAdmin,
   isSuperAdmin,
+  isOwner = false,
   allowedModules,
   pendingApprovals,
   badges,
@@ -40,6 +41,7 @@ export function AppShell({
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isOwner?: boolean;
   allowedModules: string[] | null;
   pendingApprovals?: number;
   badges?: Record<string, number>;
@@ -68,7 +70,7 @@ export function AppShell({
   // Only the classic layout has the open / icons-only toggle; the icon rail is always icons, the others always open.
   const collapsed = layout === "rail" ? true : layout === "classic" ? collapsedSaved : false;
   const sidebarLayout = layout === "classic" || layout === "rail" || layout === "search";
-  const navProps = { isAdmin, allowedModules, pendingApprovals, badges };
+  const navProps = { isAdmin, isOwner, allowedModules, pendingApprovals, badges };
   const branch = <BranchCard brand={brand} isAdmin={isAdmin} compact />;
 
   function toggle() {
@@ -131,7 +133,7 @@ export function AppShell({
             collapsed ? "px-2" : "px-3"
           )}
         >
-          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} badges={badges} query={layout === "search" ? query : ""} labels={layout === "rail"} />
+          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} badges={badges} query={layout === "search" ? query : ""} labels={layout === "rail"} isOwner={isOwner} />
         </ScrollFade>
 
         {!collapsed && (

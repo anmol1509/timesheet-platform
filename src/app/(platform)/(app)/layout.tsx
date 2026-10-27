@@ -67,6 +67,7 @@ export default async function AppLayout({
   const alerts = alertsResult.status === "fulfilled" ? alertsResult.value : [];
   const branches = branchesResult.status === "fulfilled" ? branchesResult.value : [];
   const isAdmin = user.role !== "STAFF";
+  const showOwner = ownerConsoleOn() && isOwnerUser(user);
   // The AI credits bar is a header extra too: if the count can't be read it simply doesn't show.
   const aiStatus = branchId && !isSuperAdmin ? await loadCreditStatus(branchId).catch(() => null) : null;
   const allowedModules = viewableModules(subjectOf(user));
@@ -100,7 +101,7 @@ export default async function AppLayout({
   const header = (
     <header className="glass sticky top-3 z-30 mx-3 mt-3 rounded-[22px] lg:ml-0">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-5">
-        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} badges={badges} />
+        <MobileSidebar isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} isOwner={showOwner} allowedModules={allowedModules} brand={brand} pendingApprovals={pendingApprovals} badges={badges} />
         <div className="min-w-0 flex-1 lg:max-w-xl">
           <CommandPalette isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} />
         </div>
@@ -133,6 +134,7 @@ export default async function AppLayout({
       <AppShell
         isAdmin={isAdmin}
         isSuperAdmin={isSuperAdmin}
+        isOwner={showOwner}
         allowedModules={allowedModules}
         pendingApprovals={pendingApprovals}
         badges={badges}
