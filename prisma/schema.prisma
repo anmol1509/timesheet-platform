@@ -1891,12 +1891,15 @@ model Notification {
   createdAt DateTime  @default(now())
   /// Waiting for the person's next email summary (see emailPrefs). Cleared when the summary is sent or dropped.
   emailQueued Boolean @default(false)
+  /// When this notification was emailed straight away; used to stop a flood of emails (see limitBursts).
+  emailedAt   DateTime?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
   @@index([userId, readAt, createdAt])
   @@index([emailQueued, userId])
+  @@index([userId, emailedAt])
 }
 
 // ---------------------------------------------------------------------------

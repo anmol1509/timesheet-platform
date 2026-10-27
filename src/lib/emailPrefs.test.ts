@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { categoryOf, defaultEmailPrefs, inQuietHours, parseEmailPrefs, planEmail, summaryAction, uaeTime } from "./emailPrefs";
+import { limitBursts, categoryOf, defaultEmailPrefs, inQuietHours, parseEmailPrefs, planEmail, summaryAction, uaeTime } from "./emailPrefs";
 
 // 2026-10-27 is a Tuesday. UAE time is UTC+4.
 const tue10am = new Date("2026-10-27T06:00:00Z");
@@ -71,4 +71,14 @@ test("saved preferences are cleaned up", () => {
   assert.equal(p.quiet.to, 6);
   assert.equal(p.weekends, "SEND");
   assert.equal(p.pausedUntil, null);
+});
+
+test("a flood of instant emails is held for the summary, security is not", () => {
+  assert.equal(limitBursts("SEND_NOW", "EXPENSE_SUBMITTED", { lastHour: 0, sameKindLast15Min: 0 }), "SEND_NOW");
+  assert.equal(limitBursts("SEND_NOW", "EXPENSE_SUBMITTED", { lastHour: 4, sameKindLast15Min: 2 }), "SEND_NOW");
+  assert.equal(limitBursts("SEND_NOW", "EXPENSE_SUBMITTED", { lastHour: 5, sameKindLast15Min: 0 }), "QUEUE");
+  assert.equal(limitBursts("SEND_NOW", "EXPENSE_SUBMITTED", { lastHour: 1, sameKindLast15Min: 3 }), "QUEUE");
+  assert.equal(limitBursts("SEND_NOW", "SECURITY_NEW_SIGNIN", { lastHour: 50, sameKindLast15Min: 50 }), "SEND_NOW");
+  assert.equal(limitBursts("SKIP", "EXPENSE_SUBMITTED", { lastHour: 50, sameKindLast15Min: 50 }), "SKIP");
+  assert.equal(limitBursts("QUEUE", "EXPENSE_SUBMITTED", { lastHour: 0, sameKindLast15Min: 0 }), "QUEUE");
 });

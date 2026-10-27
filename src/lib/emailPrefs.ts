@@ -111,3 +111,17 @@ export function summaryAction(prefs: EmailPrefs, now: Date): "SEND" | "WAIT" | "
   if (prefs.weekends === "HOLD" && isWeekend(uaeTime(now).weekday)) return "WAIT";
   return "SEND";
 }
+
+/** The most instant emails one person gets in an hour, and of one kind in a quarter of an hour. Past either, the rest wait for the morning summary. */
+export const MAX_INSTANT_PER_HOUR = 5;
+export const MAX_SAME_KIND_PER_15_MIN = 3;
+
+/**
+ * A flood guard on top of planEmail: a bulk upload, an import or a loop that notifies once per item would otherwise send one
+ * email each. Once a person has had enough instant emails recently, new ones are held for their summary instead (everything is
+ * still in the app straight away). Security emails are never held.
+ */
+export function limitBursts(plan: "SEND_NOW" | "QUEUE" | "SKIP", kind: string, recent: { lastHour: number; sameKindLast15Min: number }): "SEND_NOW" | "QUEUE" | "SKIP" {
+  if (plan !== "SEND_NOW" || categoryOf(kind) === "security") return plan;
+  return recent.lastHour >= MAX_INSTANT_PER_HOUR || recent.sameKindLast15Min >= MAX_SAME_KIND_PER_15_MIN ? "QUEUE" : "SEND_NOW";
+}

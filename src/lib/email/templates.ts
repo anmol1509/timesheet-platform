@@ -147,8 +147,12 @@ export function summaryMail(input: { name: string; items: SummaryItem[]; appUrl:
   const paragraphs = [`Hi ${firstName(input.name)},`, `Here is what happened since your last summary.`];
   for (const g of groups) {
     paragraphs.push(`${g.c.label} (${g.items.length})`);
-    const lines = g.items.slice(0, 8).map((i) => `- ${i.title}`);
-    if (g.items.length > 8) lines.push(`- and ${g.items.length - 8} more`);
+    // The same line repeated (a bulk upload makes many alike) is shown once with how many there were.
+    const counts = new Map<string, number>();
+    for (const i of g.items) counts.set(i.title, (counts.get(i.title) ?? 0) + 1);
+    const distinct = [...counts.entries()];
+    const lines = distinct.slice(0, 8).map(([t, n]) => `- ${t}${n > 1 ? ` (${n} times)` : ""}`);
+    if (distinct.length > 8) lines.push(`- and ${distinct.length - 8} more kinds of update`);
     paragraphs.push(lines.join("\n"));
   }
   const { html, text } = renderEmail({

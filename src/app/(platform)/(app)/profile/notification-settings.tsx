@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
-import { EMAIL_CATEGORIES, PAUSE_CHOICES, SUMMARY_HOUR, isPaused, type Delivery, type EmailPrefs } from "@/lib/emailPrefs";
+import { EMAIL_CATEGORIES, MAX_INSTANT_PER_HOUR, PAUSE_CHOICES, SUMMARY_HOUR, isPaused, type Delivery, type EmailPrefs } from "@/lib/emailPrefs";
 import { saveEmailPrefsAction, sendTestEmailAction } from "../notifications/actions";
 
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: h, label: `${h % 12 === 0 ? 12 : h % 12}:00 ${h < 12 ? "AM" : "PM"}` }));
@@ -94,6 +94,7 @@ export function NotificationSettings({ initial, email }: { initial: EmailPrefs; 
 
       <div className={cn(!prefs.enabled && "opacity-60")}>
         <p className="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">What to email me about</p>
+        <p className="mb-2 text-xs text-muted">To keep your inbox calm, at most {MAX_INSTANT_PER_HOUR} instant emails arrive in an hour. If a bulk upload or a busy moment makes more, the rest wait for your morning summary. Everything is in the app straight away.</p>
         <ul>
           {EMAIL_CATEGORIES.map((c) => {
             const locked = !!c.locked;

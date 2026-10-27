@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "./email";
 import { appBaseUrl, brandForBranch, PRODUCT_BRAND } from "@/lib/email/brand";
 import { notificationMail } from "@/lib/email/templates";
-import { parseEmailPrefs, planEmail } from "@/lib/emailPrefs";
+import { limitBursts, parseEmailPrefs, planEmail } from "@/lib/emailPrefs";
 
 export type NotifyInput = {
   userIds: string[];
@@ -34,9 +34,22 @@ export async function notifyUsers({ userIds, kind, title, body = null, href = nu
 
     // Each person's own email settings decide whether this one is emailed now, held for their next summary, or not emailed.
     const now = new Date();
-    const plan = new Map(users.map((u) => [u.id, planEmail(parseEmailPrefs(u.emailPrefs, u.notifyEmail), kind, now)] as const));
+    const first = new Map(users.map((u) => [u.id, planEmail(parseEmailPrefs(u.emailPrefs, u.notifyEmail), kind, now)] as const));
+    // Flood guard: someone who has just had several instant emails gets the rest in their summary instead.
+    const wouldSend = users.filter((u) => first.get(u.id) === "SEND_NOW").map((u) => u.id);
+    const hour = new Map<string, number>();
+    const quarter = new Map<string, number>();
+    if (wouldSend.length > 0) {
+      const [h, q] = await Promise.all([
+        prisma.notification.groupBy({ by: ["userId"], where: { userId: { in: wouldSend }, emailedAt: { gte: new Date(now.getTime() - 3_600_000) } }, _count: { _all: true } }),
+        prisma.notification.groupBy({ by: ["userId"], where: { userId: { in: wouldSend }, kind, emailedAt: { gte: new Date(now.getTime() - 900_000) } }, _count: { _all: true } }),
+      ]);
+      for (const r of h) hour.set(r.userId, r._count._all);
+      for (const r of q) quarter.set(r.userId, r._count._all);
+    }
+    const plan = new Map(users.map((u) => [u.id, limitBursts(first.get(u.id)!, kind, { lastHour: hour.get(u.id) ?? 0, sameKindLast15Min: quarter.get(u.id) ?? 0 })] as const));
     await prisma.notification.createMany({
-      data: users.map((u) => ({ userId: u.id, kind, title, body, href, emailQueued: plan.get(u.id) === "QUEUE" })),
+      data: users.map((u) => ({ userId: u.id, kind, title, body, href, emailQueued: plan.get(u.id) === "QUEUE", emailedAt: plan.get(u.id) === "SEND_NOW" ? now : null })),
     });
     const toEmail = users.filter((u) => plan.get(u.id) === "SEND_NOW");
 
