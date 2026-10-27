@@ -1,5 +1,7 @@
 "use server";
 
+import { brandForBranch } from "@/lib/email/brand";
+import { clientDecisionMail } from "@/lib/email/templates";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, subjectOf } from "@/lib/auth";
@@ -42,10 +44,11 @@ function isFinalApprover(role: string) {
  * isFinalApprover); a staff approval is still an internal step. Best-effort —
  * a failed send must never fail the approval itself.
  */
-async function notifyClientOfApproval(to: string | null, clientName: string, subject: string, body: string) {
+async function notifyClientOfApproval(to: string | null, clientName: string, subject: string, body: string, branchId: string | null) {
   if (!to) return;
   try {
-    await sendEmail(to, subject, `Hi ${clientName} team,\n\n${body}`);
+    const mail = clientDecisionMail({ clientName, subject, body, brand: await brandForBranch(branchId) });
+    await sendEmail(to, mail.subject, mail.text, { html: mail.html });
   } catch (e) {
     console.error("[approvals] client notification email failed:", e instanceof Error ? e.message : e);
   }
@@ -112,7 +115,8 @@ export async function decideApprovalAction(input: Input): Promise<State> {
             dr.client.contactEmail,
             dr.client.name,
             `Demand request #${dr.requestNo} approved`,
-            `Your demand request #${dr.requestNo} has been approved: ${tradeList}.`
+            `Your demand request #${dr.requestNo} has been approved: ${tradeList}.`,
+            branchId
           );
         }
       }
@@ -142,7 +146,8 @@ export async function decideApprovalAction(input: Input): Promise<State> {
             e.client.contactEmail,
             e.client.name,
             "Timesheet approved",
-            `Your team's timesheet entries have been approved.`
+            `Your team's timesheet entries have been approved.`,
+            branchId
           );
         }
       }

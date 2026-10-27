@@ -1,3 +1,5 @@
+import type { AiMeter } from "@/lib/aiCredits";
+import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import Anthropic from "@anthropic-ai/sdk";
 import { COPILOT_MODEL } from "@/lib/constants";
 import { pickExpiry } from "@/lib/expiryPick";
@@ -22,8 +24,10 @@ Go by the label printed next to or under each date, never by position: on a resi
 Never report the date of birth or a date from a stamp or signature. Never work out an expiry by adding a validity period to an issue date, and never use the date of a form, report, application or certificate as the expiry: if the document does not print an expiry, return an empty string. Dates must be YYYY-MM-DD (convert 19/Apr/2028 to 2028-04-19; UAE dates print day first). Give an empty string for anything you cannot read with confidence and never guess.`;
 
 /** Reads a stored scan again and says what dates it shows. Used to check expiries that were read wrongly the first time. */
-export async function rereadExpiry(file: { bytes: Uint8Array; mime: string; type: string }): Promise<ExpiryRead | { error: string }> {
+export async function rereadExpiry(file: { bytes: Uint8Array; mime: string; type: string }, meter?: AiMeter): Promise<ExpiryRead | { error: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { error: "AI reading isn't switched on." };
+  const gate = await aiGate(meter?.branchId);
+  if (gate) return { error: gate };
   const data = Buffer.from(file.bytes).toString("base64");
   const block: Anthropic.ContentBlockParam =
     file.mime === "application/pdf"
@@ -41,6 +45,7 @@ export async function rereadExpiry(file: { bytes: Uint8Array; mime: string; type
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: [block, { type: "text", text: `This is a ${file.type.replace(/_/g, " ").toLowerCase()}. What are its issue and expiry dates?` }] }],
     });
+    await recordAiUsage({ branchId: meter?.branchId, userId: meter?.userId, feature: "document-recheck", model: COPILOT_MODEL, usage: res.usage });
     const text = res.content.find((b) => b.type === "text");
     if (res.stop_reason === "refusal" || text?.type !== "text") return { error: "The AI couldn't read this file." };
     const parsed = JSON.parse(text.text) as { issue?: string; expiry?: string; confidence?: string };

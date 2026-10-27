@@ -64,6 +64,8 @@ export const HINTS: Record<string, string> = {
   "/lookups": "Dropdown lists (nationalities, banks, etc.)",
   "/letter-templates": "Edit templates used by Employee Letters",
   "/audit-log": "Who changed what, and when",
+  "/settings/emails": "How the emails the app sends look (approvals, reminders, password reset), with a button to send yourself a test",
+  "/settings/ai": "The branch's monthly AI credits: how many are left, what used them, and (for a super admin) the allowance and top-ups",
   "/settings/assistant": "Questions My Assistant could not resolve and answers people marked not helpful (admins), to improve its help",
   "/settings/data-reset": "Bulk-delete test data by module (admins only; a branch admin can only reset their own branch)",
 };

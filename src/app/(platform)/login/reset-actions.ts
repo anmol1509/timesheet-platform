@@ -1,5 +1,7 @@
 "use server";
 
+import { brandForBranch } from "@/lib/email/brand";
+import { passwordResetMail } from "@/lib/email/templates";
 import { endSessionsFor } from "@/lib/userSessions";
 import { after } from "next/server";
 import { headers } from "next/headers";
@@ -50,11 +52,8 @@ export async function requestPasswordResetAction(_prev: State, formData: FormDat
     const link = `${base}/login/reset?token=${token}`;
     // After the response, so a real account and an unknown one answer in the same time.
     after(async () => {
-      await sendEmail(
-        user.email,
-        "Reset your ManpowerSync password",
-        `Hi ${user.name},\n\nSomeone asked to reset the password for your ManpowerSync account. Use this link to choose a new one. It works once and expires in 1 hour:\n\n${link}\n\nIf you didn't ask for this, you can ignore this email and your password stays the same.\n`
-      );
+      const mail = passwordResetMail({ name: user.name, link, brand: await brandForBranch(user.branchId) });
+      await sendEmail(user.email, mail.subject, mail.text, { html: mail.html });
     });
   }
   return { error: null, done: true };

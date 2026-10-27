@@ -4,6 +4,7 @@ import { COPILOT_MODEL } from "@/lib/constants";
 import { requireImporter } from "@/lib/importer/access";
 import { extOf } from "@/lib/importer/documentMatch";
 import { MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
+import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 
 export const maxDuration = 60;
 
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
   const who = await requireImporter();
   if (who instanceof NextResponse) return who;
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "AI reading isn't switched on." }, { status: 503 });
+  const gate = await aiGate(who.branchId);
+  if (gate) return NextResponse.json({ error: gate }, { status: 402 });
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File) || file.size === 0 || file.size > MAX_BULK_FILE_BYTES) return NextResponse.json({ error: "Send one file under 4 MB." }, { status: 400 });
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: [block, { type: "text", text: "What is this document?" }] }],
     });
+    await recordAiUsage({ branchId: who.branchId, userId: who.user.id, feature: "import-documents", model: COPILOT_MODEL, usage: res.usage });
     const text = res.content.find((b) => b.type === "text");
     if (res.stop_reason === "refusal" || text?.type !== "text") return NextResponse.json({ error: "AI couldn't read this one." }, { status: 422 });
     const out = JSON.parse(text.text) as { type: string; expiry: string | null; holder: string | null };

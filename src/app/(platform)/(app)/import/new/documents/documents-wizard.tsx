@@ -141,6 +141,7 @@ export function DocumentsWizard() {
             ok = false;
             const status = (e as Error & { status?: number }).status;
             if (status === 503) { aiDown = true; aiNote = "AI reading isn't switched on, so files are matched by their names."; }
+            else if (status === 402) { aiDown = true; aiNote = `${e instanceof Error ? e.message : "This month's AI credits are used up."} Files are matched by their names instead.`; }
             else s.note = `The AI couldn't read this file${e instanceof Error ? ` (${e.message})` : ""}. It is matched by its name.`;
           }
         }

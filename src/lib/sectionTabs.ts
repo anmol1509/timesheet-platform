@@ -30,6 +30,8 @@ export const SECTION_TABS: SectionTab[][] = [
   [
     { href: "/audit-log", label: "Audit log", match: under("/audit-log") },
     { href: "/settings/assistant", label: "Assistant feedback", match: under("/settings/assistant") },
+    { href: "/settings/ai", label: "AI credits", match: under("/settings/ai") },
+    { href: "/settings/emails", label: "Emails", match: under("/settings/emails") },
   ],
   // Who can sign in, and what each person may open and do
   [

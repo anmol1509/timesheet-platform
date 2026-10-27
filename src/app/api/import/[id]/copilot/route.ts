@@ -24,7 +24,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
   try {
-    const result = await runTimesheetCopilot({ buffer: Buffer.from(batch.fileData), branchId: who.branchId, overrides: body.timesheetOverrides ?? {}, useAi });
+    const result = await runTimesheetCopilot({ buffer: Buffer.from(batch.fileData), branchId: who.branchId, userId: who.user.id, overrides: body.timesheetOverrides ?? {}, useAi });
     return NextResponse.json({ result });
   } catch (e) {
     console.error("[import-copilot] failed:", e instanceof Error ? e.message : e);

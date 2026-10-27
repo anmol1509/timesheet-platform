@@ -1,3 +1,4 @@
+import { aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
 import { COPILOT_MODEL } from "@/lib/constants";
@@ -104,7 +105,7 @@ const bump = (m: Counted, k: string | null | undefined) => {
 };
 const top = (m: Counted, n = CAP) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 
-export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: string; overrides?: TimesheetOverrides; useAi?: boolean }): Promise<CopilotResult> {
+export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: string; userId?: string; overrides?: TimesheetOverrides; useAi?: boolean }): Promise<CopilotResult> {
   const { buffer, branchId, overrides = {}, useAi = true } = args;
   const [sheets, parsed, suppliers, clients, skills] = await Promise.all([
     describeTimesheetWorkbook(buffer, overrides),
@@ -196,6 +197,7 @@ export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: stri
   result.summary = `${rows} worker rows across ${parsed.months.length} month${parsed.months.length === 1 ? "" : "s"}; ${newSuppliers.length} new compan${newSuppliers.length === 1 ? "y" : "ies"} and ${newClients.length} new client${newClients.length === 1 ? "" : "s"} would be created.`;
 
   if (!useAi || !process.env.ANTHROPIC_API_KEY || rows === 0) return result;
+  if (await aiGate(args.branchId)) return result;
 
   const digest = {
     headers,
@@ -220,6 +222,7 @@ export async function runTimesheetCopilot(args: { buffer: Buffer; branchId: stri
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: `Digest (JSON data):\n${JSON.stringify(digest)}` }],
     });
+    await recordAiUsage({ branchId: args.branchId, userId: args.userId, feature: "import-copilot", model: COPILOT_MODEL, usage: response.usage });
     const block = response.content.find((b) => b.type === "text");
     if (response.stop_reason === "refusal" || block?.type !== "text") return result;
     const out = JSON.parse(block.text) as {

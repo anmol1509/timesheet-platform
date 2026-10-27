@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
+import { aiBranchOf, aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -41,6 +42,9 @@ export type ExtractedCompanyFields = {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user || (await isBlockedByPermissions(user))) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  const branchId = await aiBranchOf(user);
+  const gate = await aiGate(branchId);
+  if (gate) return NextResponse.json({ error: gate }, { status: 402 });
   const budget = rateLimit(`extract:${user.id}`, EXTRACTION_LIMIT);
   if (!budget.allowed) return NextResponse.json({ error: "Too many documents read in the last hour — try again shortly." }, { status: 429, headers: { "Retry-After": String(budget.retryAfter) } });
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "Document auto-fill isn't configured yet — ANTHROPIC_API_KEY is missing." }, { status: 503 });
@@ -69,6 +73,7 @@ export async function POST(request: Request) {
         },
       ],
     });
+    await recordAiUsage({ branchId, userId: user.id, feature: "company-extract", model: DOCUMENT_MODEL, usage: response.usage });
     if (response.stop_reason === "refusal") return NextResponse.json({ error: "Extraction was declined." }, { status: 422 });
     const block = response.content.find((b) => b.type === "text");
     if (!block || block.type !== "text") return NextResponse.json({ error: "No extraction result returned." }, { status: 502 });

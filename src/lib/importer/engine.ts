@@ -108,8 +108,8 @@ export async function previewBatch(batchId: string, user: BatchUser, mapping: St
   const done = result;
   // Both opinions are asked for together so the review stays well inside the time limit.
   const [issues, parties] = await Promise.all([
-    (kind === "CAMPS" || kind === "MOBILISATION") && done.placementIssues?.length ? suggestWorkerMatches(done.placementIssues) : done.placementIssues,
-    done.newSuppliers?.length ? suggestPartyMatches(done.newSuppliers, { supplier: done.existingSuppliers ?? [], client: done.existingClients ?? [], project: done.existingProjects ?? [] }) : done.newSuppliers,
+    (kind === "CAMPS" || kind === "MOBILISATION") && done.placementIssues?.length ? suggestWorkerMatches(done.placementIssues, { branchId: batch.branchId, userId: user.id }) : done.placementIssues,
+    done.newSuppliers?.length ? suggestPartyMatches(done.newSuppliers, { supplier: done.existingSuppliers ?? [], client: done.existingClients ?? [], project: done.existingProjects ?? [] }, { branchId: batch.branchId, userId: user.id }) : done.newSuppliers,
   ]);
   done.placementIssues = issues;
   done.newSuppliers = parties;

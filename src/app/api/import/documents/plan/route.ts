@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       candidates: (o.match as Extract<OwnerMatch, { candidates: unknown }>).candidates.filter((c) => c.kind === "EMPLOYEE").map((c) => ({ id: c.id, name: c.name, code: c.sub.split(" · ")[0] ?? "", trade: null, supplier: null, housed: null, score: c.score })),
     }))
     .filter((i) => i.candidates.length > 0);
-  if (issues.length) for (const i of await suggestWorkerMatches(issues)) { const o = owners.get(i.key); if (o && i.ai) o.ai = i.ai; }
+  if (issues.length) for (const i of await suggestWorkerMatches(issues, { branchId: who.branchId, userId: who.user.id })) { const o = owners.get(i.key); if (o && i.ai) o.ai = i.ai; }
 
   return NextResponse.json({
     audience,

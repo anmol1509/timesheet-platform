@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentUser, isBlockedByPermissions } from "@/lib/auth";
 import { EXTRACTION_LIMIT, rateLimit } from "@/lib/rateLimit";
+import { aiBranchOf, aiGate, recordAiUsage } from "@/lib/aiCreditsServer";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, DOCUMENT_MODEL } from "@/lib/constants";
 import { EXPENSE_CATEGORIES } from "@/lib/financeConstants";
 
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
+  const branchId = await aiBranchOf(user);
+  const gate = await aiGate(branchId);
+  if (gate) return NextResponse.json({ error: gate }, { status: 402 });
   const budget = rateLimit(`extract-receipt:${user.id}`, EXTRACTION_LIMIT);
   if (!budget.allowed) {
     return NextResponse.json(
@@ -97,6 +101,7 @@ export async function POST(request: Request) {
       ],
     });
 
+    await recordAiUsage({ branchId, userId: user.id, feature: "receipt", model: DOCUMENT_MODEL, usage: response.usage });
     if (response.stop_reason === "refusal") {
       return NextResponse.json({ error: "Extraction was declined." }, { status: 422 });
     }
