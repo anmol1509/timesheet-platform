@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { OtherDocFields } from "@/components/OtherDocFields";
 import { readOtherDoc } from "@/components/otherDocRead";
+import { readCompanyDoc } from "@/components/companyDocRead";
 import { nameFromFile, otherDocProblem, trackedExpiry } from "@/lib/otherDoc";
 import { uploadAttachmentAction, deleteAttachmentAction } from "@/lib/attachments";
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
@@ -44,11 +45,21 @@ export function AttachmentUploader({
   const [name, setName] = useState("");
   const [track, setTrack] = useState(false);
   const [expiry, setExpiry] = useState("");
+  // A company document's expiry is read from the file when it is chosen, for the person to check.
+  const [plainExpiry, setPlainExpiry] = useState("");
   const [note, setNote] = useState<string | null>(null);
-  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setNote(null); };
+  const resetOther = () => { setName(""); setTrack(false); setExpiry(""); setPlainExpiry(""); setNote(null); };
 
   async function onFile(file: File | undefined) {
-    if (!file || !isOther) return;
+    if (!file) return;
+    if (!isOther) {
+      if (entityType !== "SUPPLIER") return;
+      setNote("Reading the file for its expiry date…");
+      const read = await readCompanyDoc(file);
+      if (read?.expiry) { setPlainExpiry(read.expiry); setNote("Expiry read from the file. Check it before uploading."); }
+      else setNote(null);
+      return;
+    }
     const guess = nameFromFile(file.name);
     setName((n) => n || guess);
     setNote("Reading the file…");
@@ -93,7 +104,7 @@ export function AttachmentUploader({
         {!isOther && (
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-muted">Expiry (optional)</span>
-            <DatePicker name="expiryDate" />
+            <DatePicker name="expiryDate" value={plainExpiry} onChange={setPlainExpiry} />
           </label>
         )}
         <label className="block flex-1 min-w-[180px]">
@@ -115,6 +126,7 @@ export function AttachmentUploader({
         >
           Upload
         </button>
+        {!isOther && note && <p className="w-full text-xs text-muted">{note}</p>}
       </form>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
