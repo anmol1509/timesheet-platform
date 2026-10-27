@@ -22,13 +22,13 @@ import { PartyStatement, canSeeStatement } from "../../finance/books/parties/sta
 import { WorkmenCompSection } from "./workmen-comp-section";
 import { SubsidiaryTabs } from "./subsidiary-tabs";
 import { SupplierHierarchyCard } from "./hierarchy-card";
-import { DocumentChecklist } from "@/components/DocumentChecklist";
+import { CompanyDocsTable, type DocRow } from "./company-docs-table";
 import { SupplierPartiesSection } from "./parties-section";
 import { CompanyHeaderPreview } from "./header-preview";
 import { StatusRow, type StatusItem } from "@/components/StatusRow";
 import { headerGaps } from "@/lib/issuerHeader";
 import { HeaderFix } from "./company-fixes";
-import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
+import { buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 
 export const metadata = { title: "Supplier" };
 
@@ -101,11 +101,18 @@ export default async function SupplierDetailPage({
   // Types a file was filed under before the registry (or that a branch has since removed) still need a label in the list.
   const known = new Set(companyTypes.map((t) => t.key));
   const shownFiles = restricted ? companyFiles.filter((a) => !ownDocIsConfidential(a.docType)) : companyFiles;
-  const legacyOptions = [...new Set(companyFiles.map((a) => a.docType))].filter((k) => !known.has(k) && !WC_TYPES.includes(k)).map((k) => ({ value: k, label: k }));
 
   // What needs attention on this page, as chips: required documents missing, documents expired or expiring, and (for an
   // own company) what is missing from its timesheet header.
   const checklist = buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany);
+  const rank = (f: { expiryDate: string | null; uploadedAt: string }) => (f.expiryDate ? new Date(f.expiryDate).getTime() : new Date(f.uploadedAt).getTime() - 1e13);
+  const numberFor: Record<string, string | null> = { TRADE_LICENSE: supplier.tradeLicenseNumber, TRN_CERTIFICATE: supplier.trn, MOHRE_PERMIT: supplier.mohrePermitNumber };
+  const docRows: DocRow[] = checklist.map((c) => ({
+    key: c.type.key, label: c.type.label, required: c.required, hasExpiry: c.type.hasExpiry, state: c.state, daysLeft: c.daysLeft,
+    detail: numberFor[c.type.key] ?? "", count: c.count, currentExpiry: c.current?.expiryDate ?? null,
+    files: shownFiles.filter((f) => f.docType === c.type.key).sort((a, b) => rank(b) - rank(a)),
+  }));
+  const legacyFiles = shownFiles.filter((f) => !known.has(f.docType) && !WC_TYPES.includes(f.docType));
   const missingRequired = checklist.filter((c) => c.required && c.state === "missing");
   const lapsing = checklist.filter((c) => c.state === "expired" || c.state === "expiring");
   const gaps = supplier.isOwnCompany ? headerGaps({ name: supplier.name, fullName: supplier.fullName, location: supplier.location, emirate: supplier.emirate, country: supplier.country, phone: supplier.phone, contactEmail: supplier.contactEmail, poBox: supplier.poBox, trn: supplier.trn, logoId: supplier.logoId }) : [];
@@ -131,7 +138,7 @@ export default async function SupplierDetailPage({
   if (gaps.length > 0) statusItems.push({ key: "header", tone: "warn", label: `Timesheet header: ${gaps.length} missing`, title: "Timesheet header incomplete", description: "These print blank on timesheets issued by this company.", content: <HeaderFix supplierId={supplier.id} gaps={gaps} canEdit={canEdit && mayOpenOwn} /> });
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         {supplier.isOwnCompany && mayOpenOwn ? (
           <Link href="/my-companies" className="text-sm text-muted hover:underline">
@@ -239,19 +246,7 @@ export default async function SupplierDetailPage({
                       This is one of your own companies, so its documents are restricted. You can see what is on file and when it expires, and you can still add the letterhead. Opening the rest needs &ldquo;My Companies&rdquo; access from an administrator.
                     </p>
                   )}
-                  <div className="space-y-4">
-                    <DocumentChecklist items={buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany)} canOpen={!restricted} />
-                    {canEdit && (
-                      <AttachmentUploader
-                        entityType="SUPPLIER"
-                        entityId={supplier.id}
-                        entityBranchId={supplier.branchId}
-                        revalidate={`/suppliers/${supplier.id}`}
-                        docTypeOptions={restricted ? [{ value: "LETTERHEAD", label: "Letterhead (blank, for letters)" }] : [...activeDocTypes(companyTypes).map((t) => ({ value: t.key, label: t.label })), ...legacyOptions]}
-                        attachments={shownFiles}
-                      />
-                    )}
-                  </div>
+                  <CompanyDocsTable rows={docRows} legacy={legacyFiles} supplierId={supplier.id} revalidate={`/suppliers/${supplier.id}`} canEdit={canEdit} restricted={restricted} canOpen={!restricted} />
                 </section>
                 {supplier.isOwnCompany && (
                   <section>
