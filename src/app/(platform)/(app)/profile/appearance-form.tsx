@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ACCENTS, DEFAULT_PREFERENCES, DENSITIES, TEXT_SIZES, type Preferences } from "@/lib/preferences";
+import { ACCENTS, DEFAULT_PREFERENCES, DENSITIES, LAYOUTS, TEXT_SIZES, type Preferences } from "@/lib/preferences";
 import { savePreferencesAction } from "./actions";
 
 const THEME_CARDS = [
@@ -23,6 +23,31 @@ function preview(p: Preferences) {
   set("data-accent", p.accent !== "purple", p.accent);
   set("data-density", p.density !== "comfortable", p.density);
   set("data-text", p.textSize !== "normal", p.textSize);
+  window.dispatchEvent(new CustomEvent("layout-preview", { detail: p.layout }));
+}
+
+/** A tiny drawing of each menu layout, for the picker. */
+function LayoutThumb({ k }: { k: (typeof LAYOUTS)[number]["key"] }) {
+  const bar = "rounded-sm bg-[var(--text-subtle,#94a3b8)] opacity-40";
+  const side = "rounded-md bg-[var(--brand-primary)] opacity-25";
+  const rows = (n: number) => Array.from({ length: n }, (_, i) => <span key={i} className={cn("block h-1 w-full", bar)} />);
+  const body = <span className="flex-1 space-y-1 p-1.5"><span className={cn("block h-1.5 w-2/5", bar)} /><span className={cn("block h-6 w-full", bar)} /></span>;
+  return (
+    <span className="flex h-20 flex-col overflow-hidden rounded-md border border-default bg-canvas p-1">
+      {k === "topbar" && <span className="mb-1 flex h-3 shrink-0 items-center gap-1 rounded-md bg-[var(--brand-primary)]/25 px-1"><span className={cn("h-1 w-4", bar)} /><span className={cn("h-1 w-4", bar)} /><span className={cn("h-1 w-4", bar)} /></span>}
+      <span className="flex min-h-0 flex-1 gap-1">
+        {k === "classic" && <span className={cn("flex w-[30%] flex-col gap-1 p-1", side)}>{rows(5)}</span>}
+        {k === "rail" && <span className={cn("flex w-[12%] flex-col items-center gap-1 p-1", side)}>{rows(5)}</span>}
+        {k === "search" && <span className={cn("flex w-[30%] flex-col gap-1 p-1", side)}><span className="block h-2 w-full rounded-sm bg-white/70" />{rows(4)}</span>}
+        {k === "twolevel" && <><span className={cn("flex w-[12%] flex-col items-center gap-1 p-1", side)}>{rows(4)}</span><span className={cn("flex w-[22%] flex-col gap-1 p-1", side)}>{rows(4)}</span></>}
+        {k === "tabs" && <span className={cn("flex w-[24%] flex-col gap-1 p-1", side)}>{rows(5)}</span>}
+        <span className="flex min-w-0 flex-1 flex-col">
+          {k === "tabs" && <span className="flex h-2.5 shrink-0 gap-1 border-b border-default"><span className="h-1 w-4 rounded-sm bg-[var(--brand-primary)]" /><span className={cn("h-1 w-4", bar)} /><span className={cn("h-1 w-4", bar)} /></span>}
+          {body}
+        </span>
+      </span>
+    </span>
+  );
 }
 
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
@@ -89,6 +114,21 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
       </section>
 
       <section className="card p-5">
+        <h2 className="text-sm font-semibold text-primary">Menu layout</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">How the menu is arranged on a computer. On a phone the menu always slides in from the side.</p>
+        <div role="radiogroup" aria-label="Menu layout" className="grid gap-3 sm:grid-cols-3">
+          {LAYOUTS.map((l) => (
+            <button key={l.key} type="button" role="radio" aria-checked={p.layout === l.key} onClick={() => change({ layout: l.key })}
+              className={cn("rounded-card border-2 p-2.5 text-left transition", p.layout === l.key ? "border-[var(--brand-primary)]" : "border-default hover:border-strong")}>
+              <LayoutThumb k={l.key} />
+              <span className="mt-2 flex items-center gap-1.5 text-sm font-medium text-primary">{l.label}{p.layout === l.key && <Check className="ml-auto h-4 w-4 text-brand" aria-hidden />}</span>
+              <span className="block text-xs text-muted">{l.hint}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card p-5">
         <h2 className="mb-4 text-sm font-semibold text-primary">Layout</h2>
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
@@ -103,7 +143,7 @@ export function AppearanceForm({ initial, startPages }: { initial: Preferences; 
           <div>
             <p className="mb-2 text-sm font-medium text-primary">Sidebar</p>
             <Segmented label="Sidebar" value={p.sidebar} options={[{ value: "open", label: "Always open" }, { value: "icons", label: "Icons only" }]} onChange={(sidebar) => change({ sidebar })} />
-            <p className="mt-1.5 text-xs text-muted">Applies the next time a page loads.</p>
+            <p className="mt-1.5 text-xs text-muted">Used by the Classic menu layout. Applies the next time a page loads.</p>
           </div>
           <div>
             <label htmlFor="start-page" className="mb-2 block text-sm font-medium text-primary">Start page</label>

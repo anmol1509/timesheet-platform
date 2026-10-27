@@ -22,6 +22,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ProgressBar } from "@/components/motion/ProgressBar";
 import { getComplianceAlerts } from "@/lib/dashboardAlerts";
+import { LAYOUT_COOKIE, parsePreferences } from "@/lib/preferences";
 import { THEME_COOKIE, isThemePreference, type ThemePreference } from "@/lib/theme-preference";
 
 export default async function AppLayout({
@@ -32,6 +33,7 @@ export default async function AppLayout({
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
+  const layout = parsePreferences({ layout: cookieStore.get(LAYOUT_COOKIE)?.value }).layout;
   const themeCookieValue = cookieStore.get(THEME_COOKIE)?.value;
   // Same default as the root layout: unset means light, not "follow system".
   const themePref: ThemePreference = isThemePreference(themeCookieValue)
@@ -135,6 +137,7 @@ export default async function AppLayout({
         badges={badges}
         brand={brand}
         defaultCollapsed={sidebarCollapsed}
+        layout={layout}
         header={header}
       >
         {children}

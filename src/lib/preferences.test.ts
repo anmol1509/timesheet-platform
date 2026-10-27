@@ -8,8 +8,8 @@ test("unknown or missing values fall back to the defaults", () => {
 });
 
 test("good values are kept", () => {
-  const p = parsePreferences({ theme: "system", accent: "teal", density: "compact", textSize: "large", sidebar: "icons", startPage: "/payroll" });
-  assert.deepEqual(p, { theme: "system", accent: "teal", density: "compact", textSize: "large", sidebar: "icons", startPage: "/payroll" });
+  const p = parsePreferences({ theme: "system", accent: "teal", density: "compact", textSize: "large", sidebar: "icons", layout: "topbar", startPage: "/payroll" });
+  assert.deepEqual(p, { theme: "system", accent: "teal", density: "compact", textSize: "large", sidebar: "icons", layout: "topbar", startPage: "/payroll" });
 });
 
 test("only changed choices become attributes", () => {

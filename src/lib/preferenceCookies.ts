@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { ACCENT_COOKIE, DENSITY_COOKIE, TEXT_COOKIE, THEME_COOKIE, type Preferences } from "@/lib/preferences";
+import { ACCENT_COOKIE, DENSITY_COOKIE, LAYOUT_COOKIE, TEXT_COOKIE, THEME_COOKIE, type Preferences } from "@/lib/preferences";
 import { SIDEBAR_COOKIE } from "@/app/(platform)/(app)/sidebar-preference";
 import { can, moduleForPath, type PermissionSubject } from "@/lib/permissions";
 
@@ -13,6 +13,7 @@ export async function writePreferenceCookies(p: Preferences) {
   jar.set(ACCENT_COOKIE, p.accent, opts);
   jar.set(DENSITY_COOKIE, p.density, opts);
   jar.set(TEXT_COOKIE, p.textSize, opts);
+  jar.set(LAYOUT_COOKIE, p.layout, opts);
   jar.set(SIDEBAR_COOKIE, p.sidebar === "icons" ? "1" : "0", opts);
 }
 

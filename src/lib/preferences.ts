@@ -26,6 +26,17 @@ export type TextSize = (typeof TEXT_SIZES)[number];
 export const SIDEBARS = ["open", "icons"] as const;
 export type SidebarMode = (typeof SIDEBARS)[number];
 
+/** How the main menu is laid out. Every layout lists the same pages; phones always get the slide-out menu. */
+export const LAYOUTS = [
+  { key: "classic", label: "Classic", hint: "Full sidebar with groups" },
+  { key: "rail", label: "Icon rail", hint: "Icons only, pages open in a flyout" },
+  { key: "search", label: "Search first", hint: "Search box and pinned pages on top" },
+  { key: "topbar", label: "Top bar", hint: "No sidebar, menu across the top" },
+  { key: "twolevel", label: "Two-level", hint: "Icon rail plus a pages column" },
+  { key: "tabs", label: "Modules and tabs", hint: "Module list, pages as tabs" },
+] as const;
+export type LayoutKey = (typeof LAYOUTS)[number]["key"];
+
 /** Where a person lands after signing in. Only pages they are allowed to open are offered or followed. */
 export const START_PAGES = [
   { href: "/", label: "Dashboard" },
@@ -45,15 +56,17 @@ export type Preferences = {
   density: Density;
   textSize: TextSize;
   sidebar: SidebarMode;
+  layout: LayoutKey;
   startPage: string;
 };
 
-export const DEFAULT_PREFERENCES: Preferences = { theme: "light", accent: "purple", density: "comfortable", textSize: "normal", sidebar: "open", startPage: "/" };
+export const DEFAULT_PREFERENCES: Preferences = { theme: "light", accent: "purple", density: "comfortable", textSize: "normal", sidebar: "open", layout: "classic", startPage: "/" };
 
 export const THEME_COOKIE = "theme";
 export const ACCENT_COOKIE = "accent";
 export const DENSITY_COOKIE = "density";
 export const TEXT_COOKIE = "textsize";
+export const LAYOUT_COOKIE = "layout";
 
 const pick = <T extends string>(allowed: readonly T[], v: unknown, fallback: T): T => (typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : fallback);
 
@@ -67,6 +80,7 @@ export function parsePreferences(raw: unknown): Preferences {
     density: pick(DENSITIES, r.density, d.density),
     textSize: pick(TEXT_SIZES, r.textSize, d.textSize),
     sidebar: pick(SIDEBARS, r.sidebar, d.sidebar),
+    layout: pick(LAYOUTS.map((l) => l.key), r.layout, d.layout),
     startPage: typeof r.startPage === "string" && START_PAGES.some((p) => p.href === r.startPage) ? r.startPage : d.startPage,
   };
 }
