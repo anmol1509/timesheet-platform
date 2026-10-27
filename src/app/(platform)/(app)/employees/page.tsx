@@ -1,3 +1,4 @@
+import { ExpiryFix } from "./[id]/profile-fixes";
 import Link from "next/link";
 import { FileSearch, UserPlus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -86,6 +87,8 @@ export default async function EmployeesPage({
       ["Passport", e.passportExpiry],
       ["Emirates ID", e.emiratesIdExpiry],
     ];
+    const fieldOf: Record<string, string> = { Visa: "visaExpiry", "Labour card": "laborCardExpiry", Medical: "medicalExpiry", Passport: "passportExpiry", "Emirates ID": "emiratesIdExpiry" };
+    const lapsing = docs.flatMap(([label, d]) => { const st = complianceStatus(d); return st === "expired" || st === "expiring" ? [{ field: fieldOf[label], label, state: st }] : []; });
     const dated = docs.filter((d): d is [string, Date] => d[1] !== null).sort((a, b) => a[1].getTime() - b[1].getTime());
     const nextExpiry = dated[0] ? { doc: dated[0][0], days: daysUntil(dated[0][1]) } : null;
     const statuses = docs.map(([, d]) => complianceStatus(d));
@@ -120,6 +123,7 @@ export default async function EmployeesPage({
       campName: e.campCheckIns[0]?.camp.name ?? null,
       bedLabel: e.campCheckIns[0]?.bed ? `${e.campCheckIns[0].bed.room.name} · ${e.campCheckIns[0].bed.label}` : null,
       nextExpiry,
+      lapsing,
       docCounts,
       complete: isEmployeeComplete(e),
       ...(canViewPay ? { pay: payCells(e) } : {}),
@@ -155,12 +159,26 @@ export default async function EmployeesPage({
       {people.length > 60 && <li className="px-3 py-2 text-xs text-muted">…and {people.length - 60} more</li>}
     </ul>
   );
+  // Expired / expiring: each person's lapsing documents with a new-date box, saved right there.
+  const expiryList = (people: typeof rows, state: "expired" | "expiring") => (
+    <ul className="divide-y divide-[var(--border)] rounded-md border border-default text-sm">
+      {people.slice(0, 40).map((r) => (
+        <li key={r.id} className="space-y-1 px-3 py-2">
+          <Link href={`/employees/${r.id}`} className="block truncate text-primary hover:underline">{r.name} <span className="text-xs text-subtle">{r.employeeIdNo}</span></Link>
+          {r.lapsing.filter((l) => l.state === state).map((l) => (
+            <div key={l.field}><span className="text-xs text-muted">{l.label}</span><ExpiryFix employeeId={r.id} field={l.field} current="" /></div>
+          ))}
+        </li>
+      ))}
+      {people.length > 40 && <li className="px-3 py-2 text-xs text-muted">…and {people.length - 40} more — use Review renewals</li>}
+    </ul>
+  );
   const statusItems: StatusItem[] = [];
   const expiredPeople = rows.filter((r) => r.worstStatus === "expired");
   const expiringPeople = rows.filter((r) => r.worstStatus === "expiring");
   const incompletePeople = rows.filter((r) => !r.complete);
-  if (expiredPeople.length > 0) statusItems.push({ key: "expired", tone: "danger", label: `${expiredPeople.length} with an expired document`, title: "Expired documents", description: "Renew them before they affect payroll or deployment.", content: <div className="space-y-3">{peopleList(expiredPeople)}<Link href="/employees/renewals" className="btn btn-secondary inline-flex">Review renewals</Link></div> });
-  if (expiringPeople.length > 0) statusItems.push({ key: "expiring", tone: "warn", label: `${expiringPeople.length} expiring soon`, title: "Documents expiring soon", content: <div className="space-y-3">{peopleList(expiringPeople)}<Link href="/employees/renewals" className="btn btn-secondary inline-flex">Review renewals</Link></div> });
+  if (expiredPeople.length > 0) statusItems.push({ key: "expired", tone: "danger", label: `${expiredPeople.length} with an expired document`, title: "Expired documents", description: "Renew them before they affect payroll or deployment.", content: <div className="space-y-3">{expiryList(expiredPeople, "expired")}<Link href="/employees/renewals" className="btn btn-secondary inline-flex">Review renewals</Link></div> });
+  if (expiringPeople.length > 0) statusItems.push({ key: "expiring", tone: "warn", label: `${expiringPeople.length} expiring soon`, title: "Documents expiring soon", content: <div className="space-y-3">{expiryList(expiringPeople, "expiring")}<Link href="/employees/renewals" className="btn btn-secondary inline-flex">Review renewals</Link></div> });
   if (incompletePeople.length > 0) statusItems.push({ key: "incomplete", tone: "info", label: `${incompletePeople.length} incomplete profiles`, title: "Incomplete profiles", description: "Some details are missing. Open a person to fill them in.", content: <div className="space-y-3">{peopleList(incompletePeople)}<Link href="/employees?filter=incomplete" className="btn btn-secondary inline-flex">Show them in the list</Link></div> });
 
   return (

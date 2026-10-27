@@ -12,6 +12,7 @@ import { EmployeeAvatar } from "@/components/Avatar";
 import { LineAdjustCells, RunControls } from "./run-controls";
 import { RunStatus, type StatusItem } from "./run-status";
 import { BankFixQueue } from "./bank-fix-queue";
+import { ChecksPanel } from "./checks-panel";
 import { PaymentCell } from "./payment-cell";
 import { RunVariance, type VarianceRow } from "./run-insights";
 import { DetailView } from "./detail-view";
@@ -169,19 +170,13 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
       ),
     });
   }
-  if (warnings.length > 0) {
+  // "Worth checking": each issue with its workers and the fix beside it (the workers left out have their own chip above).
+  const checks = warnings.filter((i) => i.kind !== "skipped");
+  if (checks.length > 0) {
     statusItems.push({
-      key: "checks", label: `${warnings.length} to check`, tone: "warn", title: "Worth checking before you approve",
-      content: (
-        <ul className="space-y-2 text-sm">
-          {warnings.map((i) => (
-            <li key={i.text} className="flex items-start gap-2 text-secondary">
-              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
-              <span>{i.text}{i.href && <> <Link href={i.href} className="text-[var(--brand-primary)] hover:underline">Open</Link></>}</span>
-            </li>
-          ))}
-        </ul>
-      ),
+      key: "checks", label: `${checks.length} to check`, tone: "warn", title: "Worth checking before you approve",
+      description: "Open a worker to correct their days, then recalculate.",
+      content: <ChecksPanel runId={run.id} canEdit={canEditRun} issues={checks.map((i) => ({ text: i.text, href: i.href, kind: i.kind, workers: i.workers }))} />,
     });
   }
   if (prev && variance) {

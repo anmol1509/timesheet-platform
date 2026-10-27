@@ -27,6 +27,7 @@ import { SupplierPartiesSection } from "./parties-section";
 import { CompanyHeaderPreview } from "./header-preview";
 import { StatusRow, type StatusItem } from "@/components/StatusRow";
 import { headerGaps } from "@/lib/issuerHeader";
+import { HeaderFix } from "./company-fixes";
 import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 
 export const metadata = { title: "Supplier" };
@@ -121,9 +122,13 @@ export default async function SupplierDetailPage({
       ))}
     </ul>
   );
-  if (missingRequired.length > 0) statusItems.push({ key: "required", tone: "danger", label: `${missingRequired.length} required document${missingRequired.length === 1 ? "" : "s"} missing`, title: "Required documents missing", description: "Upload them under Documents on this page.", content: docList(missingRequired) });
-  if (lapsing.length > 0) statusItems.push({ key: "lapsing", tone: "warn", label: `${lapsing.length} expired or expiring`, title: "Documents expired or expiring", description: "Upload the renewed file under Documents on this page.", content: docList(lapsing) });
-  if (gaps.length > 0) statusItems.push({ key: "header", tone: "warn", label: `Timesheet header: ${gaps.length} missing`, title: "Timesheet header incomplete", description: "These print blank on timesheets issued by this company.", content: <ul className="list-disc space-y-1 pl-5 text-sm text-primary">{gaps.map((g) => <li key={g}>{g}</li>)}</ul> });
+  // Upload the files for the listed document types without leaving the panel (not offered where the documents are restricted).
+  const uploader = (items: typeof checklist) => (canEdit && !restricted ? (
+    <AttachmentUploader entityType="SUPPLIER" entityId={supplier.id} entityBranchId={supplier.branchId} revalidate={`/suppliers/${supplier.id}`} docTypeOptions={items.map((c) => ({ value: c.type.key, label: c.type.label }))} attachments={[]} />
+  ) : null);
+  if (missingRequired.length > 0) statusItems.push({ key: "required", tone: "danger", label: `${missingRequired.length} required document${missingRequired.length === 1 ? "" : "s"} missing`, title: "Required documents missing", description: "Upload each one here.", content: <div className="space-y-4">{docList(missingRequired)}{uploader(missingRequired)}</div> });
+  if (lapsing.length > 0) statusItems.push({ key: "lapsing", tone: "warn", label: `${lapsing.length} expired or expiring`, title: "Documents expired or expiring", description: "Upload the renewed file here.", content: <div className="space-y-4">{docList(lapsing)}{uploader(lapsing)}</div> });
+  if (gaps.length > 0) statusItems.push({ key: "header", tone: "warn", label: `Timesheet header: ${gaps.length} missing`, title: "Timesheet header incomplete", description: "These print blank on timesheets issued by this company.", content: <HeaderFix supplierId={supplier.id} gaps={gaps} canEdit={canEdit && mayOpenOwn} /> });
 
   return (
     <div className="max-w-3xl space-y-6">

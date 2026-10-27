@@ -18,6 +18,7 @@ import { DocumentsSection } from "./documents-section";
 import { SkillsSection } from "./skills-section";
 import { HistorySection } from "./history-section";
 import { readinessItem } from "./readiness-card";
+import { DocumentFixes } from "./profile-fixes";
 import { StatusRow, type StatusItem } from "@/components/StatusRow";
 import { COMPLIANCE_FIELDS, complianceStatus, daysUntil } from "@/lib/compliance";
 import { VisaHistorySection } from "./visa-history-section";
@@ -206,24 +207,13 @@ export default async function EmployeeDetailPage({
   }
   const docStatuses = COMPLIANCE_FIELDS.slice(0, 5).map((f) => {
     const value = (employee as unknown as Record<string, unknown>)[f.key] as Date | null;
-    return { label: f.label, status: complianceStatus(value), days: value ? daysUntil(value) : null };
+    return { field: f.key as string, label: f.label, state: complianceStatus(value), status: complianceStatus(value), days: value ? daysUntil(value) : null, current: value ? value.toISOString().slice(0, 10) : "" };
   });
   const docsToFix = docStatuses.filter((d) => d.status === "expired" || d.status === "expiring" || d.status === "not_set");
   if (docsToFix.length > 0) {
     statusItems.push({
-      key: "documents", tone: docStatuses.some((d) => d.status === "expired") ? "danger" : "warn", label: `${docsToFix.length} document${docsToFix.length === 1 ? "" : "s"} need attention`, title: "Documents that need attention", description: "Update the dates on the Documents tab, or upload the file.",
-      content: (
-        <ul className="divide-y divide-[var(--border)] rounded-md border border-default text-sm">
-          {docStatuses.map((d) => (
-            <li key={d.label} className="flex items-center justify-between gap-3 px-3 py-2">
-              <span className="text-primary">{d.label}</span>
-              <span className={d.status === "expired" ? "font-medium text-[var(--error)]" : d.status === "expiring" ? "font-medium text-[var(--warning)]" : d.status === "not_set" ? "text-muted" : "text-[var(--success)]"}>
-                {d.status === "not_set" ? "Not set" : d.status === "expired" ? `${-(d.days ?? 0)} days overdue` : d.status === "expiring" ? `${d.days} days left` : "Valid"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ),
+      key: "documents", tone: docStatuses.some((d) => d.status === "expired") ? "danger" : "warn", label: `${docsToFix.length} document${docsToFix.length === 1 ? "" : "s"} need attention`, title: "Documents that need attention", description: "Set the new expiry date here once a document is renewed.",
+      content: <DocumentFixes employeeId={employee.id} docs={docStatuses} />,
     });
   }
 

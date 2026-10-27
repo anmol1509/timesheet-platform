@@ -329,7 +329,15 @@ export async function runSkipped(run: RunScope): Promise<SkippedEmployee[]> {
   });
 }
 
-export type ReadinessIssue = { level: "block" | "warn"; text: string; href?: string };
+export type ReadinessIssue = {
+  level: "block" | "warn";
+  text: string;
+  href?: string;
+  /** What kind of thing it is, so the screen can offer the right fix. */
+  kind?: "skipped" | "pending-timesheets" | "no-hours" | "no-attendance" | "zero-pay" | "swing";
+  /** The workers it is about, each of whom can be opened and corrected where the issue is shown. */
+  workers?: { id: string; name: string }[];
+};
 
 /**
  * What to sort out before approving a run, in plain words. Blocking issues are
@@ -349,7 +357,7 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
   const names = (xs: { name: string }[]) => `${xs.slice(0, 3).map((x) => x.name).join(", ")}${xs.length > 3 ? "…" : ""}`;
 
   if (skipped.length > 0) {
-    issues.push({ level: "warn", text: `${skipped.length} employee${skipped.length === 1 ? " is" : "s are"} not in this run because their pay details are missing: ${skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ")}${skipped.length > 3 ? "…" : ""}.`, href: "/employees" });
+    issues.push({ level: "warn", text: `${skipped.length} employee${skipped.length === 1 ? " is" : "s are"} not in this run because their pay details are missing: ${skipped.slice(0, 3).map((x) => `${x.name} (${x.reason})`).join("; ")}${skipped.length > 3 ? "…" : ""}.`, href: "/employees", kind: "skipped" });
   }
 
   const hourlyLines = lines.filter((l) => l.payStructure === "HOURLY");
@@ -358,26 +366,26 @@ export async function runReadiness(run: RunScope): Promise<ReadinessIssue[]> {
     // Hours come from the timesheet: flag sheets that haven't been approved, and people with no hours at all.
     const ids = hourlyLines.map((l) => l.employee.employeeIdNo);
     const pending = ids.length ? await prisma.timesheetEntry.count({ where: { month: run.month, employeeIdNo: { in: ids }, status: { in: ["DRAFT", "SUBMITTED", "UNDER_REVIEW"] } } }) : 0;
-    if (pending > 0) issues.push({ level: "warn", text: `${pending} timesheet row${pending === 1 ? " is" : "s are"} for ${run.month} still not approved, so the hours may change. Recalculate after they are final.`, href: "/invoices/client-timesheet" });
+    if (pending > 0) issues.push({ level: "warn", text: `${pending} timesheet row${pending === 1 ? " is" : "s are"} for ${run.month} still not approved, so the hours may change. Recalculate after they are final.`, href: "/invoices/client-timesheet", kind: "pending-timesheets" });
     const noHours = hourlyLines.filter((l) => l.timesheetHours <= 0);
-    if (noHours.length > 0) issues.push({ level: "warn", text: `${noHours.length} employee${noHours.length === 1 ? " has" : "s have"} no timesheet hours for ${run.month}, so ${noHours.length === 1 ? "they are" : "they are all"} paid nothing: ${names(noHours.map((l) => l.employee))}.`, href: "/invoices/client-timesheet" });
+    if (noHours.length > 0) issues.push({ level: "warn", text: `${noHours.length} employee${noHours.length === 1 ? " has" : "s have"} no timesheet hours for ${run.month}, so ${noHours.length === 1 ? "they are" : "they are all"} paid nothing: ${names(noHours.map((l) => l.employee))}.`, href: "/invoices/client-timesheet", kind: "no-hours", workers: noHours.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   }
   if (basicLines.length > 0) {
     const attendedRows = await prisma.attendance.findMany({ where: { branchId: run.branchId, date: { gte: bounds.start, lt: nextMonth } }, distinct: ["employeeId"], select: { employeeId: true } });
     const attended = new Set(attendedRows.map((a) => a.employeeId));
     const noAttendance = basicLines.filter((l) => !attended.has(l.employeeId));
-    if (noAttendance.length > 0 && attended.size > 0) issues.push({ level: "warn", text: `${noAttendance.length} employee${noAttendance.length === 1 ? " has" : "s have"} no attendance recorded for ${run.month}, so absences and overtime are counted as zero: ${names(noAttendance.map((l) => l.employee))}.`, href: "/attendance" });
-    if (attended.size === 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance" });
+    if (noAttendance.length > 0 && attended.size > 0) issues.push({ level: "warn", text: `${noAttendance.length} employee${noAttendance.length === 1 ? " has" : "s have"} no attendance recorded for ${run.month}, so absences and overtime are counted as zero: ${names(noAttendance.map((l) => l.employee))}.`, href: "/attendance", kind: "no-attendance", workers: noAttendance.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
+    if (attended.size === 0) issues.push({ level: "warn", text: `No attendance has been recorded for ${run.month}. Everyone is paid in full with no overtime.`, href: "/attendance", kind: "no-attendance", workers: basicLines.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   }
 
   const zero = lines.filter((l) => num(l.net) <= 0);
-  if (zero.length > 0) issues.push({ level: "warn", text: `${zero.length} employee${zero.length === 1 ? " has" : "s have"} zero net pay: ${names(zero.map((l) => l.employee))}.` });
+  if (zero.length > 0) issues.push({ level: "warn", text: `${zero.length} employee${zero.length === 1 ? " has" : "s have"} zero net pay: ${names(zero.map((l) => l.employee))}.`, kind: "zero-pay", workers: zero.map((l) => ({ id: l.employeeId, name: l.employee.name })) });
   if (prevRun && prevRun.lines.length > 0) {
     const prevTotal = prevRun.lines.reduce((s, l) => s + num(l.net), 0);
     const total = lines.reduce((s, l) => s + num(l.net), 0);
     if (prevTotal > 0) {
       const pct = Math.round(((total - prevTotal) / prevTotal) * 100);
-      if (Math.abs(pct) >= 15) issues.push({ level: "warn", text: `Total net pay is ${pct > 0 ? "up" : "down"} ${Math.abs(pct)}% on ${prevRun.month}. Worth a look before approving.` });
+      if (Math.abs(pct) >= 15) issues.push({ level: "warn", text: `Total net pay is ${pct > 0 ? "up" : "down"} ${Math.abs(pct)}% on ${prevRun.month}. Worth a look before approving.`, kind: "swing" });
     }
   }
   return issues;
