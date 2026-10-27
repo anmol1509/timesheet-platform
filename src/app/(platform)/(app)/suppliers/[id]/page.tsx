@@ -25,6 +25,8 @@ import { SupplierHierarchyCard } from "./hierarchy-card";
 import { DocumentChecklist } from "@/components/DocumentChecklist";
 import { SupplierPartiesSection } from "./parties-section";
 import { CompanyHeaderPreview } from "./header-preview";
+import { StatusRow, type StatusItem } from "@/components/StatusRow";
+import { headerGaps } from "@/lib/issuerHeader";
 import { activeDocTypes, buildChecklist, resolveDocTypes } from "@/lib/documentTypes";
 
 export const metadata = { title: "Supplier" };
@@ -99,6 +101,29 @@ export default async function SupplierDetailPage({
   const known = new Set(companyTypes.map((t) => t.key));
   const shownFiles = restricted ? companyFiles.filter((a) => !ownDocIsConfidential(a.docType)) : companyFiles;
   const legacyOptions = [...new Set(companyFiles.map((a) => a.docType))].filter((k) => !known.has(k) && !WC_TYPES.includes(k)).map((k) => ({ value: k, label: k }));
+
+  // What needs attention on this page, as chips: required documents missing, documents expired or expiring, and (for an
+  // own company) what is missing from its timesheet header.
+  const checklist = buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany);
+  const missingRequired = checklist.filter((c) => c.required && c.state === "missing");
+  const lapsing = checklist.filter((c) => c.state === "expired" || c.state === "expiring");
+  const gaps = supplier.isOwnCompany ? headerGaps({ name: supplier.name, fullName: supplier.fullName, location: supplier.location, emirate: supplier.emirate, country: supplier.country, phone: supplier.phone, contactEmail: supplier.contactEmail, poBox: supplier.poBox, trn: supplier.trn, logoId: supplier.logoId }) : [];
+  const statusItems: StatusItem[] = [];
+  const docList = (items: typeof checklist) => (
+    <ul className="divide-y divide-[var(--border)] rounded-md border border-default text-sm">
+      {items.map((c) => (
+        <li key={c.type.key} className="flex items-center justify-between gap-3 px-3 py-2">
+          <span className="text-primary">{c.type.label}</span>
+          <span className={c.state === "expired" || c.state === "missing" ? "font-medium text-[var(--error)]" : "font-medium text-[var(--warning)]"}>
+            {c.state === "missing" ? "Missing" : c.state === "expired" ? `Expired ${-(c.daysLeft ?? 0)} days ago` : `Expires in ${c.daysLeft} days`}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+  if (missingRequired.length > 0) statusItems.push({ key: "required", tone: "danger", label: `${missingRequired.length} required document${missingRequired.length === 1 ? "" : "s"} missing`, title: "Required documents missing", description: "Upload them under Documents on this page.", content: docList(missingRequired) });
+  if (lapsing.length > 0) statusItems.push({ key: "lapsing", tone: "warn", label: `${lapsing.length} expired or expiring`, title: "Documents expired or expiring", description: "Upload the renewed file under Documents on this page.", content: docList(lapsing) });
+  if (gaps.length > 0) statusItems.push({ key: "header", tone: "warn", label: `Timesheet header: ${gaps.length} missing`, title: "Timesheet header incomplete", description: "These print blank on timesheets issued by this company.", content: <ul className="list-disc space-y-1 pl-5 text-sm text-primary">{gaps.map((g) => <li key={g}>{g}</li>)}</ul> });
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -178,6 +203,8 @@ export default async function SupplierDetailPage({
         )}
         </div>
       </div>
+
+      <StatusRow items={statusItems} hideWhenClear label="Needs attention on this company" />
 
       <PortalAccessCard
         supplierId={supplier.id}
