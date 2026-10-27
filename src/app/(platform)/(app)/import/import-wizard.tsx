@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Sparkles, Undo2, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Sparkles, Square, Undo2, UploadCloud } from "lucide-react";
+import { clock, timeLeft } from "@/lib/progressTime";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReportView, type TileSpec } from "@/components/import/report";
 import { cn } from "@/lib/cn";
@@ -117,6 +118,9 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
 export function ImportWizard({ kind }: { kind: ImportKind }) {
   const target = TARGETS[kind];
   const [step, setStep] = useState<Step>("upload");
+  const [stopping, setStopping] = useState(false);
+  const [, setTick] = useState(0);
+  const runStart = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
@@ -237,9 +241,24 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
   function start() {
     void wrap(async () => {
       await call(`/api/import/${batchId}/run`, { method: "POST" });
+      runStart.current = Date.now();
+      setStopping(false);
       setStep("running");
     });
   }
+
+  /** Asks the server to end the run. It stops at the next row; the screen then shows "stopped part-way" with Undo. */
+  function stopRun() {
+    setStopping(true);
+    void call(`/api/import/${batchId}/cancel`, { method: "POST" }).catch(() => setStopping(false));
+  }
+
+  // The clock on the running screen ticks once a second.
+  useEffect(() => {
+    if (step !== "running") return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [step]);
 
   // While it runs, ask how far along it is.
   useEffect(() => {
@@ -500,15 +519,23 @@ export function ImportWizard({ kind }: { kind: ImportKind }) {
 
       {step === "running" && (
         <div className="card space-y-3 p-6">
-          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" aria-hidden /> Importing…
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" aria-hidden /> {stopping ? "Stopping…" : "Importing…"}
+            </p>
+            <button type="button" className="btn btn-secondary btn-sm flex gap-1.5" disabled={stopping} onClick={stopRun}>
+              <Square className="h-3 w-3" aria-hidden /> {stopping ? "Stopping…" : "Stop"}
+            </button>
+          </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-sunken" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct(status)}>
             <div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${Math.max(pct(status), 4)}%` }} />
           </div>
           <p className="tabular text-xs text-muted">
-            {status && status.progressTotal > 0 ? `${status.progressDone} of ${status.progressTotal}` : "Starting…"} &middot; you can leave this page; the import carries on.
+            {status && status.progressTotal > 0 ? `${status.progressDone} of ${status.progressTotal}` : "Starting…"}
+            {runStart.current ? ` · ${clock(Date.now() - runStart.current)} so far` : ""}
+            {status && status.progressTotal > 0 && runStart.current && timeLeft(runStart.current, status.progressDone, status.progressTotal) ? ` · ${timeLeft(runStart.current, status.progressDone, status.progressTotal)}` : ""}
           </p>
+          <p className="text-xs text-muted">{stopping ? "Finishing the row it is on. What was saved so far is kept and can be undone." : "You can leave this page; the import carries on. Stop ends it and keeps what is already saved, which can be undone."}</p>
         </div>
       )}
 

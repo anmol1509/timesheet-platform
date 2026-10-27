@@ -1,16 +1,17 @@
 "use client";
 
 import { DatePicker } from "@/components/ui/DatePicker";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import JSZip from "jszip";
-import { AlertTriangle, CheckCircle2, FileText, FolderUp, HardHat, Loader2, Sparkles, Truck, UploadCloud } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileText, FolderUp, HardHat, Loader2, Sparkles, Square, Truck, UploadCloud } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { EmployeeAvatar } from "@/components/Avatar";
 import type { SelectOption } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { expiryDoubt } from "@/lib/expiryDoubt";
 import { todayInUae } from "@/lib/today";
+import { clock, timeLeft } from "@/lib/progressTime";
 import { MAX_BATCH_BYTES, MAX_BATCH_FILES, MAX_BULK_FILE_BYTES } from "@/lib/importer/documentLimits";
 import { MIME_BY_EXT, extOf } from "@/lib/importer/documentMatch";
 import { groupPages, type Audience, type Confidence, type PageRead } from "@/lib/importer/documentRead";
@@ -75,6 +76,9 @@ async function collect(list: File[]): Promise<Source[]> {
   return out;
 }
 
+/** How many files are read at the same time. Each needs the browser to draw its pages and a call to the AI, so a few at once is much faster than one by one. */
+const READ_AT_ONCE = 3;
+
 const baseName = (path: string) => (path.replace(/\\/g, "/").split("/").pop() ?? path).replace(/\.[a-z0-9]{2,5}$/i, "");
 
 export function DocumentsWizard() {
@@ -90,39 +94,61 @@ export function DocumentsWizard() {
   const [edits, setEdits] = useState<Record<string, DocEdit>>({});
   const [newWorkers, setNewWorkers] = useState<Record<string, { name: string; passportNumber: string; emiratesId: string; trade: string }>>({});
   const [updateExpiry, setUpdateExpiry] = useState(true);
-  const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
+  const [progress, setProgress] = useState({ done: 0, total: 0, label: "", startedAt: 0 });
+  const [stopping, setStopping] = useState(false);
+  const [, setTick] = useState(0);
+  const stopRef = useRef(false);
   const [outcome, setOutcome] = useState<{ batchId: string; results: Result[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dirRef = useRef<HTMLInputElement>(null);
   const noun = audience === "EMPLOYEE" ? "worker" : "supplier";
+  const running = step === "reading" || step === "uploading";
+
+  // While files are being read or sent: tick the clock, and ask before the page is left, because leaving ends the work.
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    const onBefore = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
+      if (!window.confirm("This is still running. If you leave this page it will stop.\n\nLeave anyway?")) { e.preventDefault(); e.stopPropagation(); }
+    };
+    window.addEventListener("beforeunload", onBefore);
+    document.addEventListener("click", onClick, true);
+    return () => { clearInterval(id); window.removeEventListener("beforeunload", onBefore); document.removeEventListener("click", onClick, true); };
+  }, [running]);
 
   async function begin(list: File[]) {
     if (list.length === 0) return;
     setBusy(true); setError(null); setNotice(null);
+    stopRef.current = false; setStopping(false);
     setStep("reading");
     try {
       const all = await collect(list);
       if (all.length === 0) throw new Error("Nothing to upload in that selection.");
       const total = all.filter((s) => MIME_BY_EXT[extOf(s.path)]).length;
-      setProgress({ done: 0, total, label: "Reading your files…" });
+      const startedAt = Date.now();
+      setProgress({ done: 0, total, label: "Reading your files…", startedAt });
       let pagesLeft = MAX_PAGES_PER_RUN;
       let aiDown = !useAi;
       let aiNote: string | null = null;
       let done = 0;
+      const finished = new Set<number>();
 
-      for (const s of all) {
-        done++;
-        setProgress({ done, total, label: `Reading ${baseName(s.path)}…` });
-        if (aiDown || (!s.isPdf && !s.isImage) || s.size > 40 * 1024 * 1024) continue;
+      async function readOne(s: Source) {
+        if (aiDown || (!s.isPdf && !s.isImage) || s.size > 40 * 1024 * 1024) return;
         let pages: PageImage[] = [];
         if (s.isPdf) {
           const r = await pdfToPages(s.blob, { maxPages: Math.min(MAX_PAGES_PER_FILE, pagesLeft) });
-          if (!r) { s.note = "This PDF couldn't be opened (it may be damaged or locked), so it is matched by its name."; continue; }
+          if (!r) { s.note = "This PDF couldn't be opened (it may be damaged or locked), so it is matched by its name."; return; }
           pages = r.pages; s.totalPages = r.total;
           if (r.total > pages.length) s.note = `Only the first ${pages.length} of ${r.total} pages were read.`;
         } else {
           const p = await imageToPage(s.blob);
-          if (!p) { s.note = "This image format can't be read here, so it is matched by its name."; continue; }
+          if (!p) { s.note = "This image format can't be read here, so it is matched by its name."; return; }
           pages = [p]; s.totalPages = 1;
         }
         pagesLeft -= pages.length;
@@ -149,9 +175,30 @@ export function DocumentsWizard() {
         if (ok && reads.length) s.docs = groupPages(s.index, reads).map((d, n) => ({ docKey: `${s.index}-${n}`, type: d.type, holder: d.holder, idNumber: d.idNumber, expiry: d.expiry, confidence: d.confidence, pages: d.pages, fields: d.fields, title: d.title }));
         if (ok && reads.length && !s.docs?.length) s.note = "No documents were found in this file (all pages looked blank).";
       }
-      if (aiNote) setNotice(aiNote);
 
-      setProgress({ done: total, total, label: "Working out who each document belongs to…" });
+      // A few files are read at the same time. Pressing Stop lets the ones in progress finish and starts no more.
+      let next = 0;
+      async function worker() {
+        while (next < all.length && !stopRef.current) {
+          const s = all[next++];
+          setProgress((p) => ({ ...p, label: `Reading ${baseName(s.path)}…` }));
+          await readOne(s);
+          finished.add(s.index);
+          done++;
+          setProgress((p) => ({ ...p, done, total }));
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(READ_AT_ONCE, all.length) }, () => worker()));
+      if (stopRef.current) {
+        const kept = all.filter((s) => finished.has(s.index));
+        if (kept.length === 0) throw new Error("You stopped before any file was read.");
+        setNotice(`You stopped early: ${kept.length} of ${all.length} files were read and are listed below. The other ${all.length - kept.length} were left out, so upload them again to read them.`);
+        all.length = 0; kept.forEach((k, n) => { k.index = n; all.push(k); });
+        all.forEach((k) => { if (k.docs) k.docs = k.docs.map((d, n) => ({ ...d, docKey: `${k.index}-${n}` })); });
+      }
+      if (aiNote) setNotice((n) => (n ? `${n} ${aiNote}` : aiNote));
+
+      setProgress((p) => ({ ...p, done: total, total, label: "Working out who each document belongs to…" }));
       const res = await post<Plan>("/api/import/documents/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ audience, files: all.map((s) => ({ index: s.index, path: s.path, size: s.size, docs: s.docs })) }) });
       const initial: Record<string, Pick> = {};
       for (const o of res.owners) if (o.match.status === "matched") initial[o.key] = { kind: o.match.kind, id: o.match.id, name: o.match.name };
@@ -176,7 +223,8 @@ export function DocumentsWizard() {
     const incomplete = queue.filter(({ d }) => typeOf(d) === "OTHER" && (!otherNameOf(d, edits[d.docKey] ?? {}).trim() || (otherTracked(d, edits[d.docKey] ?? {}) && !(edits[d.docKey]?.expiry ?? d.expiry))));
     if (incomplete.length > 0) { setError(`${incomplete.length} document${incomplete.length === 1 ? " under Other needs" : "s under Other need"} a name, or an expiry date (or untick Track expiry). They are marked in the list.`); return; }
     setStep("uploading"); setError(null);
-    setProgress({ done: 0, total: queue.length, label: "Preparing…" });
+    stopRef.current = false; setStopping(false);
+    setProgress({ done: 0, total: queue.length, label: "Preparing…", startedAt: Date.now() });
     try {
       const label = `${queue.length} document${queue.length === 1 ? "" : "s"}`;
       const { batchId } = await post<{ batchId: string }>("/api/import/documents/start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ label, total: queue.length }) });
@@ -192,7 +240,11 @@ export function DocumentsWizard() {
       }
       type Item = { file: File; ownerKind: "EMPLOYEE" | "SUPPLIER"; ownerId: string; type: string; expiry: string; fields?: Record<string, string> };
       const items: Item[] = [];
+      let prepared = 0;
       for (const { d, o } of queue) {
+        if (stopRef.current) break;
+        prepared++;
+        setProgress((p) => ({ ...p, done: prepared - 1, total: queue.length, label: "Preparing…" }));
         const src = sources[d.index];
         const owner = o === "new" ? (created.get(d.ownerKey!) ? { kind: "EMPLOYEE" as const, id: created.get(d.ownerKey!)!.id } : null) : { kind: o.kind, id: o.id };
         const type = typeOf(d);
@@ -225,9 +277,10 @@ export function DocumentsWizard() {
         }
         items.push({ file, ownerKind: owner.kind, ownerId: owner.id, type, expiry: e.expiry ?? d.expiry, fields: src.docs?.find((x) => x.docKey === d.docKey)?.fields });
       }
-      setProgress({ done: 0, total: items.length, label: "Uploading…" });
+      const sendStart = Date.now();
+      setProgress({ done: 0, total: items.length, label: "Uploading…", startedAt: sendStart });
       let i = 0;
-      while (i < items.length) {
+      while (i < items.length && !stopRef.current) {
         const group: Item[] = [];
         let bytes = 0;
         while (i < items.length && group.length < MAX_BATCH_FILES && (group.length === 0 || bytes + items[i].file.size <= MAX_BATCH_BYTES)) { bytes += items[i].file.size; group.push(items[i]); i++; }
@@ -240,7 +293,16 @@ export function DocumentsWizard() {
         } catch (e) {
           results.push(...group.map((g) => ({ name: g.file.name, status: "failed", message: e instanceof Error ? e.message : "Could not be sent." })));
         }
-        setProgress({ done: Math.min(i, items.length), total: items.length, label: "Uploading…" });
+        setProgress({ done: Math.min(i, items.length), total: items.length, label: "Uploading…", startedAt: sendStart });
+      }
+      if (stopRef.current) {
+        // What was already filed stays filed; the rest is listed so it can be sent again.
+        const unsent = [
+          ...items.slice(i).map((g) => g.file.name),
+          ...queue.slice(prepared).map(({ d }) => `${baseName(sources[d.index].path)} - ${labelOf(typeOf(d))}`),
+        ];
+        const unique = [...new Set(unsent)];
+        results.push(...unique.map((name) => ({ name, status: "failed", message: "Not uploaded: you stopped the upload. Upload it again." })));
       }
       await post(`/api/import/documents/${batchId}/finish`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows: results }) });
       setOutcome({ batchId, results });
@@ -309,24 +371,21 @@ export function DocumentsWizard() {
     );
   }
 
-  if (step === "reading") {
+  if (step === "reading" || step === "uploading") {
+    const reading = step === "reading";
     const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+    const left = progress.startedAt ? timeLeft(progress.startedAt, progress.done, progress.total) : null;
     return (
       <div className="card space-y-3 p-6">
-        <p className="flex items-center gap-2 text-sm font-semibold text-primary"><Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" aria-hidden />Reading your documents&hellip;</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-primary"><Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" aria-hidden />{reading ? "Reading your documents…" : progress.label || "Uploading…"}</p>
+          <button type="button" className="btn btn-secondary btn-sm flex gap-1.5" disabled={stopping} onClick={() => { stopRef.current = true; setStopping(true); }}>
+            <Square className="h-3 w-3" aria-hidden /> {stopping ? "Stopping…" : "Stop"}
+          </button>
+        </div>
         <div className="h-2 overflow-hidden rounded-full bg-surface-sunken" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${Math.max(pct, 4)}%` }} /></div>
-        <p className="tabular truncate text-xs text-muted">{progress.label} &middot; {progress.done} of {progress.total} files</p>
-      </div>
-    );
-  }
-
-  if (step === "uploading") {
-    const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
-    return (
-      <div className="card space-y-3 p-6">
-        <p className="flex items-center gap-2 text-sm font-semibold text-primary"><Loader2 className="h-4 w-4 animate-spin text-[var(--brand-primary)]" aria-hidden />{progress.label || "Uploading…"}</p>
-        <div className="h-2 overflow-hidden rounded-full bg-surface-sunken" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><div className="h-full rounded-full bg-[var(--brand-primary)] transition-all" style={{ width: `${Math.max(pct, 4)}%` }} /></div>
-        <p className="tabular text-xs text-muted">{progress.done} of {progress.total} &middot; keep this page open until it finishes.</p>
+        <p className="tabular truncate text-xs text-muted">{reading ? `${progress.label} · ` : ""}{progress.done} of {progress.total} {reading ? "files" : "documents"}{progress.startedAt ? ` · ${clock(Date.now() - progress.startedAt)} so far` : ""}{left ? ` · ${left}` : progress.done < 2 ? " · working out the time left…" : ""}</p>
+        <p className="text-xs text-muted">{stopping ? (reading ? "Finishing the files already being read, then showing what was read." : "Finishing the batch being sent. Everything already filed stays filed.") : "Keep this page open. Leaving it stops the work. Stop keeps everything done so far."}</p>
       </div>
     );
   }

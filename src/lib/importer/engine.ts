@@ -18,6 +18,9 @@ import { applyWorkers } from "./apply/workers";
 import { applyTimesheets } from "./apply/timesheets";
 
 const UNDO_DAYS = 30;
+
+/** Written to a running batch by the Stop button; the run checks for it as it reports progress. */
+export const STOP_REQUESTED = "STOP_REQUESTED";
 const MAX_REPORT_ROWS = 600;
 
 export type BatchUser = { id: string; name: string; canEditPay?: boolean };
@@ -144,7 +147,9 @@ export async function runBatch(batchId: string, user: BatchUser, opts: { claimed
       const now = Date.now();
       if (done < total && now - last < 700) return;
       last = now;
-      await prisma.importBatch.update({ where: { id: batchId }, data: { progressDone: done, progressTotal: total } });
+      const row = await prisma.importBatch.update({ where: { id: batchId }, data: { progressDone: done, progressTotal: total }, select: { error: true } });
+      // The person pressed Stop: end here. What was saved so far is recorded, so it can be undone.
+      if (row.error === STOP_REQUESTED) throw new Error("Stopped by you.");
     },
   };
   try {
