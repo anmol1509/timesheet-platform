@@ -399,6 +399,7 @@ export function NavLinks({
   pendingApprovals = 0,
   badges = {},
   query = "",
+  labels = false,
 }: {
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -412,6 +413,8 @@ export function NavLinks({
   badges?: Record<string, number>;
   /** Search-first layout: while there is text, the list shows only matching pages. */
   query?: string;
+  /** Icon-rail mode: show each page or group name under its icon. */
+  labels?: boolean;
 }) {
   const pathname = usePathname();
   const entries = visibleEntries(isAdmin ? [...NAV, adminGroup()] : NAV, allowedModules, isAdmin);
@@ -606,9 +609,10 @@ export function NavLinks({
                   href={entry.item.href}
                   aria-label={entry.item.label}
                   aria-current={active ? "page" : undefined}
-                  className={cn(ROW, "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
+                  className={cn(ROW, labels ? "w-full flex-col gap-0.5 px-0.5 py-1.5" : "h-9 w-9 justify-center", active ? ACTIVE : INACTIVE)}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
+                  {labels && <span className="line-clamp-2 w-full text-center text-[10px] leading-[1.15] break-words">{entry.item.label}</span>}
                 </Link>
               </Tooltip>
             );
@@ -640,11 +644,12 @@ export function NavLinks({
                     aria-label={entry.label}
                     className={cn(
                       ROW,
-                      "h-9 w-9 justify-center",
+                      labels ? "w-full flex-col gap-0.5 px-0.5 py-1.5" : "h-9 w-9 justify-center",
                       hasActiveChild ? ACTIVE : INACTIVE
                     )}
                   >
                     <GroupIcon className="h-4 w-4 shrink-0" />
+                    {labels && <span className="line-clamp-2 w-full text-center text-[10px] leading-[1.15] break-words">{entry.label === "Administration" ? "Admin" : entry.label}</span>}
                   </button>
                 </Popover.Trigger>
               </Tooltip>

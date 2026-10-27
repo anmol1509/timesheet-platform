@@ -76,7 +76,7 @@ export function AppShell({
       {sidebarLayout && <aside
         className={cn(
           "glass hidden shrink-0 flex-col overflow-hidden rounded-[22px] transition-[width] duration-200 lg:fixed lg:top-3 lg:bottom-3 lg:left-3 lg:flex",
-          collapsed ? "w-16" : "w-64"
+          collapsed ? (layout === "rail" ? "w-20" : "w-16") : "w-64"
         )}
       >
         <div
@@ -123,7 +123,7 @@ export function AppShell({
             collapsed ? "px-2" : "px-3"
           )}
         >
-          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} badges={badges} query={layout === "search" ? query : ""} />
+          <NavLinks isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} allowedModules={allowedModules} collapsed={collapsed} pendingApprovals={pendingApprovals} badges={badges} query={layout === "search" ? query : ""} labels={layout === "rail"} />
         </ScrollFade>
 
         {!collapsed && (
@@ -155,7 +155,7 @@ export function AppShell({
           // below its content's min-content width, so a wide table pushed the
           // whole page sideways instead of scrolling inside its own card.
           "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-200",
-          layout === "topbar" ? "lg:[&>header]:ml-3" : layout === "twolevel" ? "lg:pl-[20.25rem]" : layout === "tabs" ? "lg:pl-[15.5rem]" : collapsed ? "lg:pl-[5.5rem]" : "lg:pl-[17.5rem]"
+          layout === "topbar" ? "lg:[&>header]:ml-3" : layout === "twolevel" ? "lg:pl-[21.25rem]" : layout === "tabs" ? "lg:pl-[15.5rem]" : layout === "rail" ? "lg:pl-[6.5rem]" : collapsed ? "lg:pl-[5.5rem]" : "lg:pl-[17.5rem]"
         )}
       >
         {header}

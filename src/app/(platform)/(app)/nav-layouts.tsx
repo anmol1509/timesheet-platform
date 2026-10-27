@@ -132,7 +132,7 @@ export function TwoLevelNav({ brandSlot, ...props }: Props & { brandSlot?: React
   const current = picked ?? model.activeEntry?.category ?? model.categories[0];
   return (
     <>
-      <aside className="glass fixed top-3 bottom-3 left-3 z-20 hidden w-16 flex-col items-center gap-1 rounded-[22px] py-3 lg:flex">
+      <aside className="glass fixed top-3 bottom-3 left-3 z-20 hidden w-20 flex-col items-center gap-1 rounded-[22px] py-3 lg:flex">
         <div className="mb-2"><BrandMark collapsed /></div>
         {model.categories.map((c) => {
           const Icon = iconOf(c);
@@ -140,15 +140,16 @@ export function TwoLevelNav({ brandSlot, ...props }: Props & { brandSlot?: React
           const count = model.categoryCount(c);
           return (
             <Tooltip key={c} label={c}>
-              <button type="button" onClick={() => setPicked(c)} aria-label={c} aria-pressed={on} className={cn(ROW, "relative h-10 w-10 justify-center", on ? ACTIVE : INACTIVE)}>
+              <button type="button" onClick={() => setPicked(c)} aria-label={c} aria-pressed={on} className={cn(ROW, "relative w-[4.25rem] flex-col gap-0.5 px-0.5 py-1.5", on ? ACTIVE : INACTIVE)}>
                 <Icon className="h-[18px] w-[18px]" />
+                <span className="w-full text-center text-[10px] leading-[1.15]">{c}</span>
                 {count > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[var(--error)]" aria-hidden />}
               </button>
             </Tooltip>
           );
         })}
       </aside>
-      <aside className="glass fixed top-3 bottom-3 left-[5.25rem] z-20 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
+      <aside className="glass fixed top-3 bottom-3 left-[6.25rem] z-20 hidden w-56 flex-col overflow-hidden rounded-[22px] lg:flex">
         <h2 className="shrink-0 px-4 pt-4 pb-2 text-sm font-semibold text-primary">{current}</h2>
         <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3">
           <CategoryPages model={model} category={current} />
