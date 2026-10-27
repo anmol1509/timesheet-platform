@@ -9,7 +9,7 @@ import { loginAction } from "./actions";
  * in the whole app, scoped to this file only. Matches the login-only radius
  * exception in globals.css (.login-brand-panel + rounded-l-full on the panel). */
 const FIELD =
-  "block w-full rounded-full border border-strong bg-surface py-3.5 pr-5 pl-12 text-[16px] text-primary transition outline-none placeholder:text-subtle hover:border-[#b9bfc9] focus:border-[var(--brand-primary)] focus:shadow-[0_0_0_3px_rgb(86_69_212_/_0.12)] disabled:cursor-not-allowed disabled:bg-surface-sunken";
+  "block w-full rounded-full border border-strong bg-surface py-3 pr-5 pl-12 text-[15px] text-primary transition outline-none placeholder:text-subtle hover:border-[#b9bfc9] focus:border-[var(--brand-primary)] focus:shadow-[0_0_0_3px_rgb(86_69_212_/_0.12)] disabled:cursor-not-allowed disabled:bg-surface-sunken";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, {
@@ -19,7 +19,7 @@ export function LoginForm() {
   const [capsLock, setCapsLock] = useState(false);
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="space-y-4">
       <div>
         <label htmlFor="email" className="mb-2 block text-[15px] font-medium text-[#14132b]">
           Email address
@@ -96,7 +96,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-navy)] text-[17px] font-semibold text-white shadow-sm transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-70"
+        className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-navy)] text-[16px] font-semibold text-white shadow-sm transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-70"
       >
         {pending ? (
           <>
@@ -111,8 +111,8 @@ export function LoginForm() {
         )}
       </button>
 
-      <div className="flex items-center gap-4 rounded-2xl bg-[#f4f2ff] px-5 py-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#e8e4ff] text-[var(--brand-primary)]">
+      <div className="flex items-center gap-4 rounded-2xl bg-[#f4f2ff] px-5 py-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e8e4ff] text-[var(--brand-primary)]">
           <Headset className="h-6 w-6" strokeWidth={1.7} aria-hidden />
         </span>
         <p className="text-[14px] leading-5 text-secondary">
