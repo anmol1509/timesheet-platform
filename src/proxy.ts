@@ -65,6 +65,8 @@ export async function proxy(request: NextRequest) {
     // /welcome is the homepage's internal path; "/" is its one public URL.
     if (pathname === "/welcome") return NextResponse.redirect(new URL("/", request.url), 308);
     if (isPublicBrandAsset(pathname)) return NextResponse.next();
+    // The IndexNow ownership file (<32 hex characters>.txt) that search engines fetch from the site root.
+    if (/^\/[a-f0-9]{32}\.txt$/.test(pathname)) return NextResponse.next();
     // The "Book a demo" form posts here from the marketing site itself; without this the gate below answers it with a 404 page.
     if (pathname === "/api/demo-requests") return NextResponse.next();
     const isMarketingContent = MARKETING_CONTENT_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
