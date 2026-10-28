@@ -1,15 +1,24 @@
 /**
  * AI credits: pure rules, no database. Every AI call reports the tokens it used; a credit is a fixed amount of that, so
  * the bar means the same thing whichever feature spent it. One credit is 1,000 input tokens, with output counted five times
- * (it costs five times as much), on the standard model. A larger model costs more per token, so it counts for more.
+ * (it costs five times as much), on the standard model. A model that costs more per token counts for more, and a cheaper one for less.
  */
 
-/** What a model's tokens count for, against the standard model. Unknown models count as the standard one. */
+/**
+ * What a model's tokens count for, against the standard model (Haiku 4.5, $1 per million input tokens). It follows each model's
+ * list price, so a model that costs a tenth counts for a tenth. Unknown models count as the standard one.
+ * Prices per million input tokens: Haiku 5.5 $0.10, Haiku 4.5 $1, Sonnet 5.x $2 (older Sonnet $3), Opus 5.5 $4,
+ * other Opus $5, Fable and Mythos $10.
+ */
 export function modelWeight(model: string): number {
   const m = model.toLowerCase();
+  if (m.includes("haiku-5")) return 0.1;
   if (m.includes("haiku")) return 1;
+  if (m.includes("sonnet-5")) return 2;
   if (m.includes("sonnet")) return 3;
-  if (m.includes("opus") || m.includes("fable")) return 5;
+  if (m.includes("opus-5-5")) return 4;
+  if (m.includes("opus")) return 5;
+  if (m.includes("fable") || m.includes("mythos")) return 10;
   return 1;
 }
 
