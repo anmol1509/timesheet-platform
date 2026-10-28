@@ -17,6 +17,7 @@ const MARKETING_CONTENT_PATHS = [
   "/features",
   "/faq",
   "/tools",
+  "/ar",
   "/compare",
   "/pricing",
   "/manpower-erp-uae",

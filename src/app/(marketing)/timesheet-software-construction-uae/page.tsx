@@ -41,7 +41,7 @@ export default function TimesheetSoftwarePage() {
           ),
           lead: "Enter hours once. Overtime and rest-day rules are applied as they arrive, and the approved hours flow straight to invoices and payroll.",
           ticks: ["Upload your workbook as it is", "Overtime flagged as hours come in", "One approval queue for every site"],
-          secondaryCta: { href: "/tools/timesheet-template", label: "Get the free timesheet template" },
+          secondaryCta: { href: "/tools/construction-timesheet-template", label: "Get the free timesheet template" },
           image: shot("sol-ts-client.webp", 1400, 800, "A September client timesheet in ManpowerSync: six workers with trade, status and a day-by-day grid of hours, Fridays marked OFF."),
           badge: { icon: <CalendarCheck size={18} aria-hidden />, title: "Client approved", sub: "Ready to invoice" },
           slice: {
@@ -94,7 +94,7 @@ export default function TimesheetSoftwarePage() {
           after: { tag: "With ManpowerSync", title: "Entered once, used everywhere", items: ["Workbooks uploaded as they are", "Exceptions flagged as hours arrive", "Suppliers submit through their portal", "The same hours feed invoices and payroll", "Every edit in the audit log"] },
           note: (
             <>
-              Need a layout to start from? Download the <a href="/tools/timesheet-template" style={{ fontWeight: 600, color: "var(--primary)" }}>free timesheet template</a>.
+              Need a layout to start from? Download the <a href="/tools/construction-timesheet-template" style={{ fontWeight: 600, color: "var(--primary)" }}>free timesheet template</a>.
             </>
           ),
         },
