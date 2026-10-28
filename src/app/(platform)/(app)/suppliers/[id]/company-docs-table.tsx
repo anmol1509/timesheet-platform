@@ -15,7 +15,7 @@ import { deleteAttachmentAction, uploadAttachmentAction } from "@/lib/attachment
 import { MAX_UPLOAD_LABEL } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 
-export type DocFile = { id: string; docType: string; filename: string; expiryDate: string | null; uploadedAt: string };
+export type DocFile = { id: string; docType: string; filename: string; expiryDate: string | null; uploadedAt: string; docNumber?: string | null; issueDate?: string | null };
 export type DocRow = {
   key: string;
   label: string;
@@ -23,8 +23,10 @@ export type DocRow = {
   hasExpiry: boolean;
   state: "valid" | "expiring" | "expired" | "missing" | "uploaded";
   daysLeft: number | null;
-  /** A number kept on the company's own record (licence number, TRN, MOHRE permit), shown beside the document. */
+  /** The number printed on the current file (licence, permit, certificate number); the company's own record fills in when the file has none. */
   detail: string;
+  /** Issue date of the current file. */
+  currentIssue: string | null;
   /** How many files this type holds, counting ones a restricted person may not open. */
   count: number;
   /** The files this person may open, newest expiry first. */
@@ -43,7 +45,7 @@ const STATE: Record<DocRow["state"], { label: string; color: BadgeColor }> = {
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-type Queued = { id: number; file: File; type: string; name: string; expiry: string; state: "reading" | "ready" | "saving" | "failed"; note?: string };
+type Queued = { id: number; file: File; type: string; name: string; expiry: string; number: string; issue: string; state: "reading" | "ready" | "saving" | "failed"; note?: string };
 
 /**
  * A company's documents as one table: a row per document type with its status, expiry and file. Uploading a file reads it
@@ -66,7 +68,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
   async function addBulk(files: File[]) {
     if (!canEdit || files.length === 0) return;
     const base = Date.now();
-    const items: Queued[] = files.map((file, i) => ({ id: base + i, file, type: "OTHER", name: nameFromFile(file.name), expiry: "", state: "reading" }));
+    const items: Queued[] = files.map((file, i) => ({ id: base + i, file, type: "OTHER", name: nameFromFile(file.name), expiry: "", number: "", issue: "", state: "reading" }));
     setQueue((cur) => [...cur, ...items]);
     const patch = (id: number, p: Partial<Queued>) => setQueue((cur) => cur.map((q) => (q.id === id ? { ...q, ...p } : q)));
     // Three at a time, so a big drop does not wait on one slow file.
@@ -77,7 +79,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
         const read = await readCompanyDoc(item.file);
         if (!read) { patch(item.id, { state: "ready", note: "Couldn't read this file. Choose what it is and type the expiry." }); continue; }
         const known = typeOptions.some((o) => o.value === read.docType);
-        patch(item.id, { state: "ready", type: known ? read.docType : "OTHER", expiry: read.expiry, note: known ? (read.expiry ? "Read from the file. Check it before filing." : "Read from the file. No expiry date found.") : "Not one of the listed documents, so it goes under Other." });
+        patch(item.id, { state: "ready", type: known ? read.docType : "OTHER", expiry: read.expiry, number: read.number, issue: read.issue, note: known ? (read.expiry ? "Read from the file. Check it before filing." : "Read from the file. No expiry date found.") : "Not one of the listed documents, so it goes under Other." });
       }
     };
     await Promise.all([worker(), worker(), worker()]);
@@ -93,6 +95,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
       fd.set("entityType", "SUPPLIER"); fd.set("entityId", supplierId); fd.set("revalidate", revalidate);
       fd.set("docType", q.type); fd.set("file", q.file);
       fd.set("expiryDate", q.expiry);
+      fd.set("docNumber", q.number); fd.set("issueDate", q.issue);
       if (isOther) fd.set("name", q.name.trim());
       const res = await uploadAttachmentAction(fd);
       if (res?.error) setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, state: "failed", note: res.error } : x)));
@@ -135,6 +138,12 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
                 <Select value={q.type} onChange={(v) => setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, type: v } : x)))} options={typeOptions} disabled={q.state === "reading" || q.state === "saving"} />
                 <DatePicker value={q.expiry} onChange={(v) => setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, expiry: v } : x)))} ariaLabel="Expiry date" placeholder="Expiry (optional)" disabled={q.state === "reading" || q.state === "saving"} className="w-full" />
                 <button type="button" aria-label={`Remove ${q.file.name}`} className="rounded-md p-1.5 text-subtle hover:bg-surface-hover hover:text-primary" onClick={() => setQueue((cur) => cur.filter((x) => x.id !== q.id))}><X className="h-4 w-4" /></button>
+                {q.type !== "OTHER" && (
+                  <label className="block lg:col-span-4">
+                    <span className="mb-1 block text-xs font-medium text-muted">Number on the document (optional)</span>
+                    <input value={q.number} onChange={(e) => setQueue((cur) => cur.map((x) => (x.id === q.id ? { ...x, number: e.target.value } : x)))} className="input w-full max-w-xs" placeholder="e.g. licence or permit number" />
+                  </label>
+                )}
                 {q.type === "OTHER" && (
                   <label className="block lg:col-span-4">
                     <span className="mb-1 block text-xs font-medium text-muted">Name of this document</span>
@@ -149,9 +158,9 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-default bg-surface">
-        <table className="w-full min-w-[56rem] text-sm">
+        <table className="w-full min-w-[62rem] text-sm">
           <thead className="bg-surface-subtle text-left text-xs font-medium tracking-wide text-muted uppercase">
-            <tr><th className="px-4 py-2.5">Document</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5">Number</th><th className="px-3 py-2.5">Expires</th><th className="px-3 py-2.5">File</th><th className="px-3 py-2.5 text-right">Actions</th></tr>
+            <tr><th className="px-4 py-2.5">Document</th><th className="px-3 py-2.5">Status</th><th className="px-3 py-2.5">Number</th><th className="px-3 py-2.5">Issued</th><th className="px-3 py-2.5">Expires</th><th className="px-3 py-2.5">File</th><th className="px-3 py-2.5 text-right">Actions</th></tr>
           </thead>
           <tbody className="divide-y divide-[var(--border)]">
             {rows.map((r) => {
@@ -169,6 +178,7 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
                     </td>
                     <td className="px-3 py-3 align-top">{isOther && r.count === 0 ? <Badge color="slate">None yet</Badge> : <Badge color={missingRequired ? "red" : st.color}>{missingRequired ? "Missing: required" : st.label}</Badge>}</td>
                     <td className="tabular px-3 py-3 align-top text-secondary">{r.detail || <span className="text-muted">-</span>}</td>
+                    <td className="tabular px-3 py-3 align-top text-secondary">{r.currentIssue ? shortDate(r.currentIssue) : <span className="text-muted">-</span>}</td>
                     <td className="tabular px-3 py-3 align-top text-secondary">
                       {r.currentExpiry && r.hasExpiry ? <>{shortDate(r.currentExpiry)}<span className="block text-xs text-muted">{r.daysLeft !== null && r.daysLeft < 0 ? `expired ${-r.daysLeft}d ago` : `${r.daysLeft}d left`}</span></> : <span className="text-muted">{r.hasExpiry ? "-" : "No expiry"}</span>}
                     </td>
@@ -189,10 +199,10 @@ export function CompanyDocsTable({ rows, legacy, supplierId, revalidate, canEdit
                     </td>
                   </tr>
                   {expanded && (
-                    <tr><td colSpan={6} className="bg-brand-soft/20 px-4 py-4"><RowUploader row={r} supplierId={supplierId} revalidate={revalidate} onDone={() => { setOpen(null); router.refresh(); }} /></td></tr>
+                    <tr><td colSpan={7} className="bg-brand-soft/20 px-4 py-4"><RowUploader row={r} supplierId={supplierId} revalidate={revalidate} onDone={() => { setOpen(null); router.refresh(); }} /></td></tr>
                   )}
                   {canOpen && ((!isOther && filesOpen.has(r.key)) || isOther) && r.files.length > 0 && (
-                    <tr><td colSpan={6} className="bg-surface-subtle/60 px-4 py-2"><FileList files={r.files} revalidate={revalidate} canEdit={canEdit && uploadable(r.key)} showName={isOther} /></td></tr>
+                    <tr><td colSpan={7} className="bg-surface-subtle/60 px-4 py-2"><FileList files={r.files} revalidate={revalidate} canEdit={canEdit && uploadable(r.key)} showName={isOther} /></td></tr>
                   )}
                 </RowGroup>
               );
@@ -223,6 +233,7 @@ function FileList({ files, revalidate, canEdit, showName }: { files: DocFile[]; 
         <li key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm">
           <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-primary hover:underline">{a.filename}</a>
           {showName && <span className="text-xs text-muted">{a.docType === "OTHER" ? "" : a.docType}</span>}
+          {a.docNumber && <span className="tabular text-xs text-secondary">No. {a.docNumber}</span>}
           <span className="tabular text-xs text-muted">{a.expiryDate ? `expires ${shortDate(a.expiryDate)}` : "no expiry tracked"}</span>
           <span className="tabular text-xs text-subtle">added {shortDate(a.uploadedAt)}</span>
           {canEdit && <DeleteButton action={deleteAttachmentAction} hiddenFields={{ attachmentId: a.id, revalidate }} confirmMessage={`Delete "${a.filename}"?`} />}
@@ -237,6 +248,8 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
   const isOther = row.key === "OTHER";
   const [file, setFile] = useState<File | null>(null);
   const [expiry, setExpiry] = useState("");
+  const [number, setNumber] = useState("");
+  const [issue, setIssue] = useState("");
   const [name, setName] = useState("");
   const [track, setTrack] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -260,13 +273,15 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
       setNote(read.name || read.expiry ? "Filled in from the file. Check it before saving." : null);
       return;
     }
-    if (!row.hasExpiry) return;
-    setNote("Reading the file for its expiry date…"); setReading(true);
+    if (row.key === "LETTERHEAD") return;
+    setNote("Reading the file…"); setReading(true);
     const read = await readCompanyDoc(f);
     setReading(false);
     if (!read) { setNote("Couldn't read the file, so type the expiry date yourself."); return; }
-    if (read.expiry) { setExpiry(read.expiry); setNote("Expiry read from the file. Check it before saving."); }
-    else setNote("No expiry date found on the file. Type it if it has one.");
+    if (read.expiry) setExpiry(read.expiry);
+    if (read.number) setNumber(read.number);
+    if (read.issue) setIssue(read.issue);
+    setNote(read.expiry || read.number || read.issue ? "Details read from the file. Check them before saving." : "Nothing could be read from the file. Type the details if it has them.");
     if (read.docType !== row.key && read.docType !== "OTHER") setWarn(`This looks like a different document (${read.docType.replace(/_/g, " ").toLowerCase()}). Check you chose the right row.`);
   }
 
@@ -279,6 +294,7 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
       fd.set("entityType", "SUPPLIER"); fd.set("entityId", supplierId); fd.set("revalidate", revalidate);
       fd.set("docType", row.key); fd.set("file", file);
       fd.set("expiryDate", isOther ? trackedExpiry(track, expiry) : expiry);
+      if (!isOther) { fd.set("docNumber", number); fd.set("issueDate", issue); }
       if (isOther) fd.set("name", name.trim());
       const res = await uploadAttachmentAction(fd);
       if (res?.error) setError(res.error);
@@ -293,11 +309,23 @@ function RowUploader({ row, supplierId, revalidate, onDone }: { row: DocRow; sup
           <span className="mb-1 block text-xs font-medium text-muted">File (max {MAX_UPLOAD_LABEL})</span>
           <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" className="file-input" onChange={(e) => void choose(e.target.files?.[0])} />
         </label>
-        {!isOther && row.hasExpiry && (
+        {!isOther && row.key !== "LETTERHEAD" && (
           <label className="block w-56">
-            <span className="mb-1 block text-xs font-medium text-muted">Expiry date</span>
-            <DatePicker value={expiry} onChange={setExpiry} ariaLabel="Expiry date" placeholder="dd/mm/yyyy" className="w-full" />
+            <span className="mb-1 block text-xs font-medium text-muted">Number on the document</span>
+            <input value={number} onChange={(e) => setNumber(e.target.value)} aria-label="Number on the document" className="input w-full" placeholder="Optional" />
           </label>
+        )}
+        {!isOther && row.hasExpiry && (
+          <>
+            <label className="block w-48">
+              <span className="mb-1 block text-xs font-medium text-muted">Issue date</span>
+              <DatePicker value={issue} onChange={setIssue} ariaLabel="Issue date" placeholder="dd/mm/yyyy" className="w-full" />
+            </label>
+            <label className="block w-48">
+              <span className="mb-1 block text-xs font-medium text-muted">Expiry date</span>
+              <DatePicker value={expiry} onChange={setExpiry} ariaLabel="Expiry date" placeholder="dd/mm/yyyy" className="w-full" />
+            </label>
+          </>
         )}
         <button type="button" className="btn btn-primary" disabled={pending || reading || !file} onClick={save}>{pending ? "Saving…" : reading ? "Reading…" : "Save"}</button>
       </div>

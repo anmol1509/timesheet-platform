@@ -73,7 +73,7 @@ export default async function SupplierDetailPage({
     prisma.attachment.findMany({
       where: { entityType: "SUPPLIER", entityId: supplier.id },
       orderBy: { uploadedAt: "desc" },
-      select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true },
+      select: { id: true, docType: true, filename: true, expiryDate: true, uploadedAt: true, docNumber: true, issueDate: true },
     }),
     prisma.supplier.findMany({
       where: { branchId: supplier.branchId, parentSupplierId: null, id: { not: supplier.id } },
@@ -97,7 +97,7 @@ export default async function SupplierDetailPage({
   const partyTypes = resolveDocTypes(typeRows, "SUPPLIER_PARTY");
   const companyFiles = attachments
     .filter((a) => !WC_TYPES.includes(a.docType))
-    .map((a) => ({ id: a.id, docType: a.docType, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, uploadedAt: a.uploadedAt.toISOString() }));
+    .map((a) => ({ id: a.id, docType: a.docType, filename: a.filename, expiryDate: a.expiryDate ? a.expiryDate.toISOString() : null, uploadedAt: a.uploadedAt.toISOString(), docNumber: a.docNumber, issueDate: a.issueDate ? a.issueDate.toISOString() : null }));
   // Types a file was filed under before the registry (or that a branch has since removed) still need a label in the list.
   const known = new Set(companyTypes.map((t) => t.key));
   const shownFiles = restricted ? companyFiles.filter((a) => !ownDocIsConfidential(a.docType)) : companyFiles;
@@ -107,11 +107,15 @@ export default async function SupplierDetailPage({
   const checklist = buildChecklist(companyTypes, companyFiles, supplier.isOwnCompany);
   const rank = (f: { expiryDate: string | null; uploadedAt: string }) => (f.expiryDate ? new Date(f.expiryDate).getTime() : new Date(f.uploadedAt).getTime() - 1e13);
   const numberFor: Record<string, string | null> = { TRADE_LICENSE: supplier.tradeLicenseNumber, TRN_CERTIFICATE: supplier.trn, MOHRE_PERMIT: supplier.mohrePermitNumber };
-  const docRows: DocRow[] = checklist.map((c) => ({
-    key: c.type.key, label: c.type.label, required: c.required, hasExpiry: c.type.hasExpiry, state: c.state, daysLeft: c.daysLeft,
-    detail: numberFor[c.type.key] ?? "", count: c.count, currentExpiry: c.current?.expiryDate ?? null,
-    files: shownFiles.filter((f) => f.docType === c.type.key).sort((a, b) => rank(b) - rank(a)),
-  }));
+  const docRows: DocRow[] = checklist.map((c) => {
+    const files = shownFiles.filter((f) => f.docType === c.type.key).sort((x, y) => rank(y) - rank(x));
+    return {
+      key: c.type.key, label: c.type.label, required: c.required, hasExpiry: c.type.hasExpiry, state: c.state, daysLeft: c.daysLeft,
+      // The number and issue date read from the current file; the company's own record fills in a number the file does not carry.
+      detail: files[0]?.docNumber || numberFor[c.type.key] || "", currentIssue: files[0]?.issueDate ?? null,
+      count: c.count, currentExpiry: c.current?.expiryDate ?? null, files,
+    };
+  });
   const legacyFiles = shownFiles.filter((f) => !known.has(f.docType) && !WC_TYPES.includes(f.docType));
   const missingRequired = checklist.filter((c) => c.required && c.state === "missing");
   const lapsing = checklist.filter((c) => c.state === "expired" || c.state === "expiring");
