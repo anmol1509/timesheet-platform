@@ -244,6 +244,7 @@ export const FOOTER: { title: string; links: { label: string; href: string }[] }
       { label: "WPS SIF file checker", href: "/tools/wps-sif-file-checker" },
       { label: "UAE IBAN validator", href: "/tools/uae-iban-validator" },
       { label: "Timesheet template", href: "/tools/construction-timesheet-template" },
+      { label: "Free online time clock", href: "/tools/free-online-time-clock" },
     ],
   },
   {

@@ -42,6 +42,14 @@ export const TOOLS = [
       "Free construction and labour supply timesheet template for the UAE, in Excel and PDF: roster, attendance codes, trade summary, VAT and sign-off blocks.",
     updated: "2026-10-21",
   },
+  {
+    slug: "free-online-time-clock",
+    label: "Free online time clock",
+    title: "Free Online Time Clock (Clock In & Out)",
+    description:
+      "Free online time clock: clock in and out from any browser, see hours by day and download them as a CSV. Saved on your device only, no sign-up.",
+    updated: "2026-10-28",
+  },
 ] as const;
 
 export type Tool = (typeof TOOLS)[number];
