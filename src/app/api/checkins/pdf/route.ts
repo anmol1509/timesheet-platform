@@ -1,3 +1,4 @@
+import { parseDay } from "@/lib/dates";
 import { NextResponse } from "next/server";
 import { requireUserWithBranch } from "@/lib/auth";
 import { isOutsideBranch } from "@/lib/branch";
@@ -15,7 +16,10 @@ const STATUS_LABEL: Record<string, string> = {
 
 export async function GET(request: Request) {
   const { branchId, isSuperAdmin } = await requireUserWithBranch();
-  const ids = new URL(request.url).searchParams.get("ids")?.split(",").filter(Boolean) ?? [];
+  const params = new URL(request.url).searchParams;
+  const ids = params.get("ids")?.split(",").filter(Boolean) ?? [];
+  // Optional YYYY-MM-DD for the date the document carries (today when not given).
+  const issuedOn = parseDay(params.get("letterDate") ?? "") ?? new Date();
   if (ids.length === 0) {
     return NextResponse.json({ error: "No check-ins specified." }, { status: 400 });
   }
@@ -56,7 +60,7 @@ export async function GET(request: Request) {
       campType,
       checkInDate,
       count: visible.length,
-      date: new Date().toLocaleDateString("en-GB"),
+      date: issuedOn.toLocaleDateString("en-GB", { timeZone: "UTC" }),
     }),
     rows: visible.map((c, i) => ({
       slNo: i + 1,

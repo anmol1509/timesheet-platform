@@ -34,6 +34,8 @@ export async function createNocAction(formData: FormData) {
   const employeeIds = formData.getAll("employeeId").map(String).filter(Boolean);
   const displayFields = String(formData.get("displayFields") || "");
   const mobilizeDate = dateOrNull(formData.get("mobilizeDate"));
+  // The date printed on the letter: the one chosen, else the day it is issued, so a reprint never changes it.
+  const letterDate = dateOrNull(formData.get("letterDate")) ?? new Date();
   const remarks = stringOrNull(formData.get("remarks"));
   if (!demandRequestId || !templateId || !branchId) return;
 
@@ -51,6 +53,7 @@ export async function createNocAction(formData: FormData) {
       branchId,
       displayFields: displayFields || null,
       mobilizeDate,
+      letterDate,
       remarks,
       requestedById: user.id,
       employees: { create: employeeIds.map((employeeId) => ({ employeeId })) },
@@ -112,6 +115,8 @@ export async function issueNocAction(formData: FormData): Promise<{ id?: string;
   const asked = [...new Set(formData.getAll("employeeId").map(String).filter(Boolean))];
   const displayFields = String(formData.get("displayFields") || "");
   const mobilizeDate = dateOrNull(formData.get("mobilizeDate"));
+  // The date printed on the letter: the one chosen, else the day it is issued, so a reprint never changes it.
+  const letterDate = dateOrNull(formData.get("letterDate")) ?? new Date();
   const remarks = stringOrNull(formData.get("remarks"));
   if (!branchId) return { error: "Pick a company first." };
   if (!demandRequestId || !templateId) return { error: "Choose a template." };
@@ -138,6 +143,7 @@ export async function issueNocAction(formData: FormData): Promise<{ id?: string;
       branchId: request.branchId,
       displayFields: displayFields || null,
       mobilizeDate,
+      letterDate,
       remarks,
       requestedById: user.id,
       employees: { create: employeeIds.map((employeeId) => ({ employeeId })) },

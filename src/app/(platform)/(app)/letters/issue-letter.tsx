@@ -54,7 +54,9 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   const [error, setError] = useState<string | null>(null);
 
   const template = templates.find((t) => t.id === templateId);
-  const key = useMemo(() => JSON.stringify(inputs), [inputs]);
+  // The date printed on the letter (YYYY-MM-DD); blank means today. Part of the key, so changing it refreshes the preview and drops a stale hand-edit.
+  const [letterDate, setLetterDate] = useState("");
+  const key = useMemo(() => JSON.stringify([inputs, letterDate]), [inputs, letterDate]);
 
   function chooseIssuer(next: IssuerOption) {
     setIssuerKey(next.key);
@@ -86,7 +88,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   // Debounced live preview with the person's real details.
   useEffect(() => {
     if (!employeeId || !templateId || !issuerKey) return;
-    const t = setTimeout(() => startPreview(async () => setPreview(await previewLetterAction(employeeId, templateId, inputs, issuerKey))), 350);
+    const t = setTimeout(() => startPreview(async () => setPreview(await previewLetterAction(employeeId, templateId, inputs, issuerKey, letterDate))), 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, templateId, key, issuerKey, reload]);
@@ -111,7 +113,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
     setEditError(null);
     if (edited !== null) { setEditState({ scope: editScope, html: edited, title: editedTitle ?? "", editing: true }); setEditorKey((n) => n + 1); return; }
     setOpeningEdit(true);
-    const r = await editableLetterAction(employeeId, templateId, inputs, (issuerKey || "PROFILE") as IssuerKey).catch(() => ({ error: "Couldn't open the letter for editing." }));
+    const r = await editableLetterAction(employeeId, templateId, inputs, (issuerKey || "PROFILE") as IssuerKey, letterDate).catch(() => ({ error: "Couldn't open the letter for editing." }));
     setOpeningEdit(false);
     if ("error" in r && r.error) { setEditError(r.error); return; }
     setEditState({ scope: editScope, html: ("html" in r && r.html) || fallbackHtml, title: ("title" in r && r.title) || shown?.title || "", editing: true });
@@ -121,7 +123,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
   function issue() {
     setError(null);
     startIssue(async () => {
-      const res = await issueLetterAction(employeeId, templateId, inputs, { issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp, signatureImageId: showSignature ? oneOffSig?.id ?? null : null, stampImageId: showStamp ? oneOffStamp?.id ?? null : null }, allowEmpty, edited, editedTitle);
+      const res = await issueLetterAction(employeeId, templateId, inputs, { letterDate, issuer: (issuerKey || "PROFILE") as IssuerKey, onLetterhead, signatoryName, signatoryTitle, showSignature, showStamp, signatureImageId: showSignature ? oneOffSig?.id ?? null : null, stampImageId: showStamp ? oneOffStamp?.id ?? null : null }, allowEmpty, edited, editedTitle);
       if (res.error) setError(res.error);
       else if (res.id) window.open(`/api/letters/${res.id}/pdf`, "_blank");
     });
@@ -164,6 +166,10 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
         <label className="block">
           <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Letter</span>
           <Select value={templateId} onChange={(v) => { setTemplateId(v); setInputs({}); setPreview(null); }} options={templates.map((t) => ({ value: t.id, label: t.name }))} triggerClassName="w-full" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold tracking-wide text-muted uppercase">Letter date <span className="font-normal normal-case">(blank = today)</span></span>
+          <DatePicker value={letterDate} onChange={setLetterDate} ariaLabel="Letter date" className="w-full" />
         </label>
         {template?.asks.map((label) => (
           <label key={label} className="block">
@@ -232,7 +238,7 @@ export function IssueLetter({ employees, templates, popular, companyName, today,
                 <LetterEditor key={editorKey} html={edited} onChange={setEdited} fields={[]} audience="EMPLOYEE" oneOff />
               </div>
             ) : shown?.html ? (
-              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={today} title={(edited !== null && editedTitle?.trim()) || shown.title || ""} html={edited ?? shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins: onLetterhead ? { top: issuer.topMm, bottom: issuer.bottomMm, ...defaults.letterheadSides } : defaults.plain, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
+              <EmployeeLetterPaper companyName={issuer.name} refNo="LTR-••••••" date={letterDate ? isoToLetterDate(letterDate) : today} title={(edited !== null && editedTitle?.trim()) || shown.title || ""} html={edited ?? shown.html} options={{ onLetterhead, letterheadUrl: issuer.letterheadUrl, topMm: issuer.topMm, bottomMm: issuer.bottomMm, margins: onLetterhead ? { top: issuer.topMm, bottom: issuer.bottomMm, ...defaults.letterheadSides } : defaults.plain, signatoryName, signatoryTitle, signatureUrl: showSignature ? signatureUrl : null, stampUrl: showStamp ? stampUrl : null }} />
             ) : (
               <p className="py-16 text-center text-sm text-muted">{employeeId ? (shown?.error ?? "Preparing…") : "Choose an employee to see the letter with their details filled in."}</p>
             )}

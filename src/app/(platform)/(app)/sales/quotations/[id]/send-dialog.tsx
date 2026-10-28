@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { cn } from "@/lib/cn";
 import { COVER_FIELDS } from "@/lib/quotationCover";
 import { markQuotationSentAction } from "../actions";
@@ -25,14 +26,17 @@ export function SendDialog({ quotationId, version, hasLetterhead, companyName, t
   const [sig, setSig] = useState(true);
   const [stamp, setStamp] = useState(true);
   const [ot, setOt] = useState(true);
+  // The date printed on the cover letter (YYYY-MM-DD); blank means today.
+  const [coverDate, setCoverDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [editor, setEditor] = useState<null | { name: string; intro: string; closing: string }>(null);
 
   const query = useMemo(() => {
     const p = new URLSearchParams({ paper: paper === "LETTERHEAD" ? "letterhead" : "plain", layout, terms: terms ? "1" : "0", sig: sig ? "1" : "0", stamp: stamp ? "1" : "0", ot: ot ? "1" : "0" });
+    if (coverDate) p.set("date", coverDate);
     return p.toString();
-  }, [paper, layout, terms, sig, stamp, ot]);
+  }, [paper, layout, terms, sig, stamp, ot, coverDate]);
   const url = `/api/quotations/${quotationId}?${query}`;
   const layoutName = layout === "standard" ? "Standard" : layout === "compact" ? "Compact" : templates.find((t) => t.id === layout)?.name ?? "Custom";
 
@@ -72,6 +76,10 @@ export function SendDialog({ quotationId, version, hasLetterhead, companyName, t
         <DialogContent title="Send quotation" description={`Version ${version}. Choose how it is printed, download the PDF, then record that it went out.`} className="max-w-5xl!">
           <div className="mt-4 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
             <div className="space-y-4">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
+                <DatePicker value={coverDate} onChange={setCoverDate} ariaLabel="Letter date" className="w-48" />
+              </label>
               <div>
                 <p className="mb-1.5 text-xs font-medium text-muted">Print on</p>
                 <div className="grid gap-2">

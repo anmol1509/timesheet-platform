@@ -16,7 +16,7 @@ export const BANK_KEYS = ["BANKNAME", "IBAN"];
 export type EmployeeValues = { values: Record<string, string>; salaryAvailable: boolean };
 
 /** Loads an employee and turns them into merge-field values for a letter. */
-export async function employeeLetterValues(employeeId: string, opts: { canSeePay: boolean; companyName?: string | null }): Promise<(EmployeeValues & { employee: { id: string; branchId: string; name: string } }) | null> {
+export async function employeeLetterValues(employeeId: string, opts: { canSeePay: boolean; companyName?: string | null; /** The date the letter carries; today when not given. */ date?: Date }): Promise<(EmployeeValues & { employee: { id: string; branchId: string; name: string } }) | null> {
   const e = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: {
@@ -60,11 +60,12 @@ export async function employeeLetterValues(employeeId: string, opts: { canSeePay
       IBAN: opts.canSeePay ? e.wpsIban || e.wpsAccountNumber || "" : "",
       COMPANYNAME: (opts.companyName || (e.supplier?.isOwnCompany ? e.supplier.fullName || e.supplier.name : e.branch.name)).toUpperCase(),
       BRANCHNAME: e.branch.name,
-      DATE: formatLetterDate(new Date()),
+      DATE: formatLetterDate(opts.date ?? new Date()),
     },
   };
 }
 
+import { parseDay } from "@/lib/dates";
 import { askLabels, substituteInHtml, templateHtml, tokensIn, ASK_PREFIX } from "@/lib/letterHtml";
 import { EMPLOYEE_MERGE_FIELDS } from "@/lib/letterFields";
 import { sanitizeLetterHtml } from "@/lib/letterSanitize";
@@ -83,6 +84,8 @@ export async function renderEmployeeLetter(opts: {
   inputs: Record<string, string>;
   canSeePay: boolean;
   refNo?: string;
+  /** The date printed on the letter, as YYYY-MM-DD; today when blank. */
+  letterDate?: string;
   /** Letters issued for a visa or supplier company name that company as the employer. */
   issuerSupplierId?: string | null;
   /** For editing by hand: a detail missing on the employee's record shows as "[Label]" instead of vanishing. */
@@ -91,7 +94,7 @@ export async function renderEmployeeLetter(opts: {
   const companyName = opts.issuerSupplierId ? await supplierLetterName(opts.issuerSupplierId) : null;
   const [template, ev] = await Promise.all([
     prisma.letterTemplate.findUnique({ where: { id: opts.templateId } }),
-    employeeLetterValues(opts.employeeId, { canSeePay: opts.canSeePay, companyName }),
+    employeeLetterValues(opts.employeeId, { canSeePay: opts.canSeePay, companyName, date: parseDay(opts.letterDate ?? "") ?? undefined }),
   ]);
   if (!ev) return { ok: false, error: "Employee not found." };
   if (!template || template.audience !== "EMPLOYEE") return { ok: false, error: "Choose an employee letter template." };

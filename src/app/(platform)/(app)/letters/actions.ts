@@ -1,5 +1,6 @@
 "use server";
 
+import { parseDay } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch, requirePermission, subjectOf, requireView, requireWrite } from "@/lib/auth";
@@ -16,11 +17,11 @@ import { MARGIN_BRANCH_SELECT, marginsOfBranch } from "@/lib/paperMargins";
 import { loadIssuerOptions, resolveIssuerSupplier, type IssuerKey, type IssuerOption } from "@/lib/employeeLetterIssuer";
 
 type Inputs = Record<string, string>;
-export type LayoutInput = { issuer: IssuerKey; onLetterhead: boolean; signatoryName: string; signatoryTitle: string; showSignature: boolean; showStamp: boolean; /** A signature or stamp uploaded for this letter only. Wins over the company's own. */ signatureImageId?: string | null; stampImageId?: string | null };
+export type LayoutInput = { /** The date printed on the letter, as YYYY-MM-DD; today when blank. */ letterDate?: string; issuer: IssuerKey; onLetterhead: boolean; signatoryName: string; signatoryTitle: string; showSignature: boolean; showStamp: boolean; /** A signature or stamp uploaded for this letter only. Wins over the company's own. */ signatureImageId?: string | null; stampImageId?: string | null };
 const clean = (inputs: Inputs) => Object.fromEntries(Object.entries(inputs ?? {}).map(([k, v]) => [String(k).slice(0, 120), String(v ?? "").slice(0, 400)]));
 
 /** Live preview: the letter with the employee's real details filled in. Stores nothing. */
-export async function previewLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; title?: string; missing?: string[]; empty?: string[]; gaps?: { key: string; label: string }[]; error?: string }> {
+export async function previewLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE", letterDate = ""): Promise<{ html?: string; title?: string; missing?: string[]; empty?: string[]; gaps?: { key: string; label: string }[]; error?: string }> {
   await requireView("workforce.letters");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } } } });
@@ -28,12 +29,12 @@ export async function previewLetterAction(employeeId: string, templateId: string
   if (!emp.supplier?.isOwnCompany) return { error: "Letters are only made for employees of your own company." };
   const who = await resolveIssuerSupplier(employeeId, issuer);
   if ("error" in who) return { error: who.error };
-  const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId });
+  const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId, letterDate });
   return r.ok ? { html: r.html, title: r.title, missing: r.missing, empty: r.empty, gaps: r.gaps } : { error: r.error };
 }
 
 /** The letter as text to edit by hand: details missing on the employee's record show as "[Label]" so they can be seen and filled in. */
-export async function editableLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE"): Promise<{ html?: string; title?: string; gaps?: string[]; error?: string }> {
+export async function editableLetterAction(employeeId: string, templateId: string, inputs: Inputs, issuer: IssuerKey = "PROFILE", letterDate = ""): Promise<{ html?: string; title?: string; gaps?: string[]; error?: string }> {
   await requireView("workforce.letters");
   const { user, branchId, isSuperAdmin } = await requireUserWithBranch();
   const emp = await prisma.employee.findUnique({ where: { id: employeeId }, select: { branchId: true, supplier: { select: { isOwnCompany: true } } } });
@@ -41,7 +42,7 @@ export async function editableLetterAction(employeeId: string, templateId: strin
   if (!emp.supplier?.isOwnCompany) return { error: "Letters are only made for employees of your own company." };
   const who = await resolveIssuerSupplier(employeeId, issuer);
   if ("error" in who) return { error: who.error };
-  const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId, markGaps: true });
+  const r = await renderEmployeeLetter({ employeeId, templateId, inputs: clean(inputs), canSeePay: can(subjectOf(user), "payroll", "view"), issuerSupplierId: who.supplierId, markGaps: true, letterDate });
   return r.ok ? { html: r.html, title: r.title, gaps: r.empty } : { error: r.error };
 }
 
@@ -77,7 +78,10 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   // Wording changed for this one letter: cleaned the same way as a template, and it must still say something.
   const edited = typeof editedHtml === "string" && editedHtml.trim() ? sanitizeLetterHtml(editedHtml.slice(0, 40_000)) : null;
   if (edited !== null && htmlToText(edited).length === 0) return { error: "The edited letter is empty." };
+  const letterDate = parseDay(String(layoutIn.letterDate ?? ""));
+  const letterDateIso = letterDate ? String(layoutIn.letterDate) : "";
   const layout = {
+    letterDate: letterDateIso || null,
     ...(edited !== null ? { edited: true } : {}),
     modern: true,
     margins,
@@ -96,7 +100,7 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
   const canSeePay = can(subjectOf(user), "payroll", "view");
   // The heading printed on this letter: as typed when it was changed by hand, else the template's.
   const typedHeading = typeof editedTitle === "string" ? editedTitle.replace(/\s+/g, " ").trim().slice(0, 120) : "";
-  const first = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, issuerSupplierId: who.supplierId });
+  const first = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, issuerSupplierId: who.supplierId, letterDate: letterDateIso });
   if (!first.ok) return { error: first.error };
   const heading = edited !== null && typedHeading ? typedHeading : first.title;
   if (first.missing.length > 0) return { error: `Fill in: ${first.missing.join(", ")}.` };
@@ -113,7 +117,7 @@ export async function issueLetterAction(employeeId: string, templateId: string, 
     data: { employeeId, templateId, title: heading, bodyHtml: first.html, inputs: values, layout, issuedById: user.id, branchId: first.branchId },
   });
   const ref = refLabel(created.refNo);
-  const final = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, refNo: ref, issuerSupplierId: who.supplierId });
+  const final = await renderEmployeeLetter({ employeeId, templateId, inputs: values, canSeePay, refNo: ref, issuerSupplierId: who.supplierId, letterDate: letterDateIso });
   const bodyHtml = edited !== null ? edited.split("LTR-••••••").join(ref) : final.ok ? final.html : substituteInHtml(first.html, { "LTR-••••••": ref });
   await prisma.issuedLetter.update({ where: { id: created.id }, data: { bodyHtml } });
   await logAudit({ entityType: "ISSUED_LETTER", entityId: created.id, action: "CREATE", after: { ref, title: heading, employee: first.employeeName, template: first.templateName, ...layout }, userId: user.id, userName: user.name, branchId: first.branchId });

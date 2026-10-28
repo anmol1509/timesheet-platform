@@ -1,3 +1,4 @@
+import { parseDay } from "@/lib/dates";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireUserWithBranch } from "@/lib/auth";
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!letter || isOutsideBranch(letter.branchId, branchId, isSuperAdmin)) return NextResponse.json({ error: "Letter not found." }, { status: 404 });
 
   // What was chosen when it was issued: whose letterhead, signatory, signature, stamp.
-  const saved = (letter.layout ?? {}) as { modern?: boolean; margins?: { top: number; bottom: number; left: number; right: number } | null; issuerSupplierId?: string | null; onLetterhead?: boolean; signatoryName?: string | null; signatoryTitle?: string | null; showSignature?: boolean; showStamp?: boolean; signatureImageId?: string | null; stampImageId?: string | null };
+  const saved = (letter.layout ?? {}) as { modern?: boolean; margins?: { top: number; bottom: number; left: number; right: number } | null; issuerSupplierId?: string | null; onLetterhead?: boolean; signatoryName?: string | null; signatoryTitle?: string | null; showSignature?: boolean; showStamp?: boolean; signatureImageId?: string | null; stampImageId?: string | null; letterDate?: string | null };
   // Letters issued for a visa or supplier company print that company's letterhead, signature and stamp.
   const supplier = saved.issuerSupplierId ? await loadSupplierPrint(saved.issuerSupplierId, letter.branchId, { signature: !!saved.showSignature, stamp: !!saved.showStamp, letterhead: !!saved.onLetterhead }) : null;
   const layout: LetterLayout = supplier
@@ -53,7 +54,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   let buffer: Uint8Array = await generateEmployeeLetterPdf({
     letterhead: supplier ? supplier.letterhead : await buildLetterhead(letter.branch),
     refNo: refLabel(letter.refNo),
-    date: formatLetterDate(letter.createdAt),
+    date: formatLetterDate((saved.letterDate && parseDay(saved.letterDate)) || letter.createdAt),
     title: letter.title,
     bodyHtml: letter.bodyHtml,
     layout,

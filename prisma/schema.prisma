@@ -1856,6 +1856,8 @@ model Noc {
   docNo         Int       @unique @default(autoincrement())
   status        String    @default("Pending") // "Pending" | "Mobilization Complete"
   mobilizeDate  DateTime?
+  /// The date printed on the letter, fixed when the NOC is issued (older NOCs have none and print the day they are downloaded).
+  letterDate    DateTime?
   remarks       String?
   displayFields String? // comma-separated Employee field keys, see src/lib/nocDisplayFields.ts
   createdAt     DateTime  @default(now())

@@ -31,6 +31,8 @@ export function NocForm({
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [displayFields, setDisplayFields] = useState<Set<string>>(new Set(DEFAULT_NOC_DISPLAY_FIELDS));
   const [mobilizeDate, setMobilizeDate] = useState("");
+  // The date printed on the letter; blank means the day it is issued.
+  const [letterDate, setLetterDate] = useState("");
   const [remarks, setRemarks] = useState("");
 
   const selectedRequest = requests.find((r) => r.id === demandRequestId);
@@ -67,6 +69,7 @@ export function NocForm({
     for (const id of selectedEmployees) formData.append("employeeId", id);
     formData.append("displayFields", [...displayFields].join(","));
     formData.append("mobilizeDate", mobilizeDate);
+    formData.append("letterDate", letterDate);
     formData.append("remarks", remarks);
     startTransition(() => {
       createNocAction(formData);
@@ -103,6 +106,10 @@ export function NocForm({
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">Mobilize Date</span>
           <DatePicker value={mobilizeDate} onChange={(v) => setMobilizeDate(v)} className="w-full" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-muted">Letter date <span className="font-normal">(blank = today)</span></span>
+          <DatePicker value={letterDate} onChange={setLetterDate} className="w-full" />
         </label>
         <div className="sm:col-span-2">
           <label className="block">
